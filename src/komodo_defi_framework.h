@@ -1,30 +1,66 @@
+#ifndef KOMODO_DEFI_FRAMEWORK_H
+#define KOMODO_DEFI_FRAMEWORK_H
+
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 
-#if _WIN32
-#include <windows.h>
-#else
-#include <pthread.h>
-#include <unistd.h>
-#endif
-
-#if _WIN32
+#ifdef _WIN32
 #define FFI_PLUGIN_EXPORT __declspec(dllexport)
 #else
 #define FFI_PLUGIN_EXPORT
 #endif
 
-// A very short-lived native function.
-//
-// For very short-lived functions, it is fine to call them on the main isolate.
-// They will block the Dart execution while running the native function, so
-// only do this for native functions which are guaranteed to be short-lived.
-FFI_PLUGIN_EXPORT int sum(int a, int b);
+// typedef void (*LogCallback)(const char *line);
+typedef void (*LogCallback)(const char *line);
 
-// A longer lived native function, which occupies the thread calling it.
-//
-// Do not call these kind of native functions in the main isolate. They will
-// block Dart execution. This will cause dropped frames in Flutter applications.
-// Instead, call these native functions on a separate isolate.
-FFI_PLUGIN_EXPORT int sum_long_running(int a, int b);
+/**
+ * Starts the MM2 in a detached singleton thread.
+ */
+// FFI_PLUGIN_EXPORT int8_t mm2_main(const char *conf, LogCallback log_cb);
+
+FFI_PLUGIN_EXPORT int8_t mm2_main(const char *conf, LogCallback log_cb);
+
+/**
+ * Checks if the MM2 singleton thread is currently running or not.
+ * 0 .. not running.
+ * 1 .. running, but no context yet.
+ * 2 .. context, but no RPC yet.
+ * 3 .. RPC is up.
+ */
+FFI_PLUGIN_EXPORT int8_t mm2_main_status(void);
+
+/**
+ * Run a few hand-picked tests.
+ *
+ * The tests are wrapped into a library method in order to run them in such embedded environments
+ * where running "cargo test" is not an easy option.
+ *
+ * MM2 is mostly used as a library in environments where we can't simpy run it as a separate process
+ * and we can't spawn multiple MM2 instances in the same process YET
+ * therefore our usual process-spawning tests can not be used here.
+ *
+ * Returns the `torch` (as in Olympic flame torch) if the tests have passed. Panics otherwise.
+ */
+FFI_PLUGIN_EXPORT int32_t mm2_test(int32_t torch, LogCallback log_cb);
+
+/**
+ * Stop an MM2 instance or reset the static variables.
+ */
+FFI_PLUGIN_EXPORT int8_t mm2_stop(void);
+
+// FFI_PLUGIN_EXPORT const char *documentDirectory(void);
+// FFI_PLUGIN_EXPORT int8_t mm2_main_status(void);
+// FFI_PLUGIN_EXPORT uint8_t is_loopback_ip(const char *ip);
+// FFI_PLUGIN_EXPORT int8_t mm2_main(const char *conf, void (*log_cb)(const char *line));
+// FFI_PLUGIN_EXPORT int8_t mm2_stop(void);
+// FFI_PLUGIN_EXPORT void lsof(void);
+// FFI_PLUGIN_EXPORT const char *metrics(void);
+
+// // Add these new function declarations
+// FFI_PLUGIN_EXPORT const char *mm2_version(void);
+// FFI_PLUGIN_EXPORT const char *mm2_rpc(const char *request);
+// FFI_PLUGIN_EXPORT void mm2_rpc_free(char *response);
+
+#endif // KOMODO_DEFI_FRAMEWORK_H

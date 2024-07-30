@@ -27,43 +27,76 @@ class KomodoDefiFrameworkBindings {
           lookup)
       : _lookup = lookup;
 
-  /// A very short-lived native function.
-  ///
-  /// For very short-lived functions, it is fine to call them on the main isolate.
-  /// They will block the Dart execution while running the native function, so
-  /// only do this for native functions which are guaranteed to be short-lived.
-  int sum(
-    int a,
-    int b,
+  /// Starts the MM2 in a detached singleton thread.
+  /// /
+  /// // FFI_PLUGIN_EXPORT int8_t mm2_main(const char *conf, LogCallback log_cb);
+  int mm2_main(
+    ffi.Pointer<ffi.Char> conf,
+    LogCallback log_cb,
   ) {
-    return _sum(
-      a,
-      b,
+    return _mm2_main(
+      conf,
+      log_cb,
     );
   }
 
-  late final _sumPtr =
-      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.Int, ffi.Int)>>('sum');
-  late final _sum = _sumPtr.asFunction<int Function(int, int)>();
+  late final _mm2_mainPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int8 Function(ffi.Pointer<ffi.Char>, LogCallback)>>('mm2_main');
+  late final _mm2_main = _mm2_mainPtr
+      .asFunction<int Function(ffi.Pointer<ffi.Char>, LogCallback)>();
 
-  /// A longer lived native function, which occupies the thread calling it.
+  /// Checks if the MM2 singleton thread is currently running or not.
+  /// 0 .. not running.
+  /// 1 .. running, but no context yet.
+  /// 2 .. context, but no RPC yet.
+  /// 3 .. RPC is up.
+  int mm2_main_status() {
+    return _mm2_main_status();
+  }
+
+  late final _mm2_main_statusPtr =
+      _lookup<ffi.NativeFunction<ffi.Int8 Function()>>('mm2_main_status');
+  late final _mm2_main_status =
+      _mm2_main_statusPtr.asFunction<int Function()>();
+
+  /// Run a few hand-picked tests.
   ///
-  /// Do not call these kind of native functions in the main isolate. They will
-  /// block Dart execution. This will cause dropped frames in Flutter applications.
-  /// Instead, call these native functions on a separate isolate.
-  int sum_long_running(
-    int a,
-    int b,
+  /// The tests are wrapped into a library method in order to run them in such embedded environments
+  /// where running "cargo test" is not an easy option.
+  ///
+  /// MM2 is mostly used as a library in environments where we can't simpy run it as a separate process
+  /// and we can't spawn multiple MM2 instances in the same process YET
+  /// therefore our usual process-spawning tests can not be used here.
+  ///
+  /// Returns the `torch` (as in Olympic flame torch) if the tests have passed. Panics otherwise.
+  int mm2_test(
+    int torch,
+    LogCallback log_cb,
   ) {
-    return _sum_long_running(
-      a,
-      b,
+    return _mm2_test(
+      torch,
+      log_cb,
     );
   }
 
-  late final _sum_long_runningPtr =
-      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.Int, ffi.Int)>>(
-          'sum_long_running');
-  late final _sum_long_running =
-      _sum_long_runningPtr.asFunction<int Function(int, int)>();
+  late final _mm2_testPtr =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(ffi.Int32, LogCallback)>>(
+          'mm2_test');
+  late final _mm2_test =
+      _mm2_testPtr.asFunction<int Function(int, LogCallback)>();
+
+  /// Stop an MM2 instance or reset the static variables.
+  int mm2_stop() {
+    return _mm2_stop();
+  }
+
+  late final _mm2_stopPtr =
+      _lookup<ffi.NativeFunction<ffi.Int8 Function()>>('mm2_stop');
+  late final _mm2_stop = _mm2_stopPtr.asFunction<int Function()>();
 }
+
+/// typedef void (*LogCallback)(const char *line);
+typedef LogCallback = ffi.Pointer<ffi.NativeFunction<LogCallbackFunction>>;
+typedef LogCallbackFunction = ffi.Void Function(ffi.Pointer<ffi.Char> line);
+typedef DartLogCallbackFunction = void Function(ffi.Pointer<ffi.Char> line);

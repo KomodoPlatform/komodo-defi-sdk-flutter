@@ -4,8 +4,8 @@
 # This file should be version controlled and should not be manually edited.
 
 version:
-  revision: "0c21fbc5821046ec92b975b219165b1f32c5a687"
-  channel: "master"
+  revision: "b0850beeb25f6d5b10426284f506557f66181b36"
+  channel: "stable"
 
 project_type: plugin_ffi
 
@@ -13,20 +13,23 @@ project_type: plugin_ffi
 migration:
   platforms:
     - platform: root
-      create_revision: 0c21fbc5821046ec92b975b219165b1f32c5a687
-      base_revision: 0c21fbc5821046ec92b975b219165b1f32c5a687
+      create_revision: b0850beeb25f6d5b10426284f506557f66181b36
+      base_revision: b0850beeb25f6d5b10426284f506557f66181b36
     - platform: android
-      create_revision: 0c21fbc5821046ec92b975b219165b1f32c5a687
-      base_revision: 0c21fbc5821046ec92b975b219165b1f32c5a687
+      create_revision: b0850beeb25f6d5b10426284f506557f66181b36
+      base_revision: b0850beeb25f6d5b10426284f506557f66181b36
     - platform: ios
-      create_revision: 0c21fbc5821046ec92b975b219165b1f32c5a687
-      base_revision: 0c21fbc5821046ec92b975b219165b1f32c5a687
+      create_revision: b0850beeb25f6d5b10426284f506557f66181b36
+      base_revision: b0850beeb25f6d5b10426284f506557f66181b36
     - platform: macos
-      create_revision: 0c21fbc5821046ec92b975b219165b1f32c5a687
-      base_revision: 0c21fbc5821046ec92b975b219165b1f32c5a687
+      create_revision: b0850beeb25f6d5b10426284f506557f66181b36
+      base_revision: b0850beeb25f6d5b10426284f506557f66181b36
+    - platform: web
+      create_revision: b0850beeb25f6d5b10426284f506557f66181b36
+      base_revision: b0850beeb25f6d5b10426284f506557f66181b36
     - platform: windows
-      create_revision: 0c21fbc5821046ec92b975b219165b1f32c5a687
-      base_revision: 0c21fbc5821046ec92b975b219165b1f32c5a687
+      create_revision: b0850beeb25f6d5b10426284f506557f66181b36
+      base_revision: b0850beeb25f6d5b10426284f506557f66181b36
 
   # User provided section
 

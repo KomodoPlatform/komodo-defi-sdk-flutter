@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 
-import 'package:komodo_defi_framework/komodo_defi_framework.dart' as komodo_defi_framework;
+import 'package:komodo_defi_framework/komodo_defi_framework.dart'
+    as komodo_defi_framework;
 
 void main() {
   runApp(const MyApp());
@@ -15,14 +15,10 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  late int sumResult;
-  late Future<int> sumAsyncResult;
-
   @override
   void initState() {
     super.initState();
-    sumResult = komodo_defi_framework.sum(1, 2);
-    sumAsyncResult = komodo_defi_framework.sumAsync(3, 4);
+    komodo_defi_framework.main();
   }
 
   @override
@@ -46,23 +42,12 @@ class _MyAppState extends State<MyApp> {
                   textAlign: TextAlign.center,
                 ),
                 spacerSmall,
-                Text(
-                  'sum(1, 2) = $sumResult',
-                  style: textStyle,
-                  textAlign: TextAlign.center,
-                ),
-                spacerSmall,
-                FutureBuilder<int>(
-                  future: sumAsyncResult,
-                  builder: (BuildContext context, AsyncSnapshot<int> value) {
-                    final displayValue =
-                        (value.hasData) ? value.data : 'loading';
-                    return Text(
-                      'await sumAsync(3, 4) = $displayValue',
-                      style: textStyle,
-                      textAlign: TextAlign.center,
-                    );
+                OutlinedButton(
+                  onPressed: () async {
+                    // TODO: Pass seed phrase from text input (generate random)
+                    komodo_defi_framework.main();
                   },
+                  child: const Text('Start KDF'),
                 ),
               ],
             ),

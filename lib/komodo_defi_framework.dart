@@ -1,131 +1,297 @@
-
 import 'dart:async';
-import 'dart:ffi';
-import 'dart:io';
-import 'dart:isolate';
+import 'dart:convert';
+import 'dart:ffi' as ffi;
 
-import 'komodo_defi_framework_bindings_generated.dart';
+import 'package:ffi/ffi.dart';
+import 'package:komodo_defi_framework/komodo_defi_framework_bindings_generated.dart';
 
-/// A very short-lived native function.
-///
-/// For very short-lived functions, it is fine to call them on the main isolate.
-/// They will block the Dart execution while running the native function, so
-/// only do this for native functions which are guaranteed to be short-lived.
-int sum(int a, int b) => _bindings.sum(a, b);
+import 'src/coins_config_manager.dart';
 
-/// A longer lived native function, which occupies the thread calling it.
-///
-/// Do not call these kind of native functions in the main isolate. They will
-/// block Dart execution. This will cause dropped frames in Flutter applications.
-/// Instead, call these native functions on a separate isolate.
-///
-/// Modify this to suit your own use case. Example use cases:
-///
-/// 1. Reuse a single isolate for various different kinds of requests.
-/// 2. Use multiple helper isolates for parallel execution.
-Future<int> sumAsync(int a, int b) async {
-  final SendPort helperIsolateSendPort = await _helperIsolateSendPort;
-  final int requestId = _nextSumRequestId++;
-  final _SumRequest request = _SumRequest(requestId, a, b);
-  final Completer<int> completer = Completer<int>();
-  _sumRequests[requestId] = completer;
-  helperIsolateSendPort.send(request);
-  return completer.future;
+typedef LoggerCallback = void Function(String logMessage);
+
+class KomodoDefiFramework {
+  final IKdfOperations _kdfOperations;
+  final ILogger _logger;
+
+  KomodoDefiFramework._({
+    required IKdfOperations kdfOperations,
+    required ILogger logger,
+  })  : _kdfOperations = kdfOperations,
+        _logger = logger;
+
+  factory KomodoDefiFramework({void Function(String)? logger}) {
+    final dynamicLibrary = ffi.DynamicLibrary.process();
+    // final dynamicLibrary =  ffi.DynamicLibrary.open('komodo_defi_framework/komodo_defi_framework');
+
+    final loggerInstance = Logger(externalLogger: logger);
+    final configManager = CoinsConfigManager();
+    final kdfOperations =
+        KdfOperations(dynamicLibrary, loggerInstance, configManager);
+
+    return KomodoDefiFramework._(
+      kdfOperations: kdfOperations,
+      logger: loggerInstance,
+    );
+  }
+
+  Future<KdfStarupResult> kdfMain() => _kdfOperations.kdfMain();
+  MainStatus kdfMainStatus() => _kdfOperations.kdfMainStatus();
+  bool isRunning() => _kdfOperations.isRunning();
+  Stream<String> get logStream => _logger.logStream;
+
+  Future<StopStatus> kdfStop() => _kdfOperations.kdfStop();
+
+  Future<void> dispose() async {
+    if (_kdfOperations.isRunning()) {
+      await _kdfOperations.kdfStop();
+    }
+    _logger.dispose();
+  }
 }
 
-const String _libName = 'komodo_defi_framework';
+// Updated enums
+enum MainStatus { notRunning, noContext, noRpc, rpcIsUp }
 
-/// The dynamic library in which the symbols for [KomodoDefiFrameworkBindings] can be found.
-final DynamicLibrary _dylib = () {
-  if (Platform.isMacOS || Platform.isIOS) {
-    return DynamicLibrary.open('$_libName.framework/$_libName');
-  }
-  if (Platform.isAndroid || Platform.isLinux) {
-    return DynamicLibrary.open('lib$_libName.so');
-  }
-  if (Platform.isWindows) {
-    return DynamicLibrary.open('$_libName.dll');
-  }
-  throw UnsupportedError('Unknown platform: ${Platform.operatingSystem}');
-}();
-
-/// The bindings to the native functions in [_dylib].
-final KomodoDefiFrameworkBindings _bindings = KomodoDefiFrameworkBindings(_dylib);
-
-
-/// A request to compute `sum`.
-///
-/// Typically sent from one isolate to another.
-class _SumRequest {
-  final int id;
-  final int a;
-  final int b;
-
-  const _SumRequest(this.id, this.a, this.b);
+enum KdfStarupResult {
+  ok,
+  alreadyRunning,
+  confIsNull,
+  confNotUtf8,
+  cantThread,
+  unknown
 }
 
-/// A response with the result of `sum`.
-///
-/// Typically sent from one isolate to another.
-class _SumResponse {
-  final int id;
-  final int result;
+enum StopStatus { ok, notRunning, errorStopping, stoppingAlready }
 
-  const _SumResponse(this.id, this.result);
+// Interfaces
+abstract class IKdfOperations {
+  Future<KdfStarupResult> kdfMain();
+  MainStatus kdfMainStatus();
+  Future<StopStatus> kdfStop();
+  bool isRunning();
 }
 
-/// Counter to identify [_SumRequest]s and [_SumResponse]s.
-int _nextSumRequestId = 0;
+abstract class ILogger {
+  void log(String message);
+  Stream<String> get logStream;
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>
+      get logNative;
+  void dispose();
+}
 
-/// Mapping from [_SumRequest] `id`s to the completers corresponding to the correct future of the pending request.
-final Map<int, Completer<int>> _sumRequests = <int, Completer<int>>{};
+class Logger implements ILogger {
+  final StreamController<String> _logStreamController =
+      StreamController<String>.broadcast();
+  final void Function(String)? _externalLogger;
+  late final ffi.NativeCallable<ffi.Void Function(ffi.Pointer<ffi.Char>)>
+      _nativeCallable;
+  late final StreamSubscription<String> _logSubscription;
 
-/// The SendPort belonging to the helper isolate.
-Future<SendPort> _helperIsolateSendPort = () async {
-  // The helper isolate is going to send us back a SendPort, which we want to
-  // wait for.
-  final Completer<SendPort> completer = Completer<SendPort>();
+  Logger({void Function(String)? externalLogger})
+      : _externalLogger = externalLogger {
+    _nativeCallable =
+        ffi.NativeCallable<ffi.Void Function(ffi.Pointer<ffi.Char>)>.listener(
+      _logCallback,
+    );
+    _logSubscription = _logStreamController.stream.listen(_handleLog);
+  }
 
-  // Receive port on the main isolate to receive messages from the helper.
-  // We receive two types of messages:
-  // 1. A port to send messages on.
-  // 2. Responses to requests we sent.
-  final ReceivePort receivePort = ReceivePort()
-    ..listen((dynamic data) {
-      if (data is SendPort) {
-        // The helper isolate sent us the port on which we can sent it requests.
-        completer.complete(data);
-        return;
-      }
-      if (data is _SumResponse) {
-        // The helper isolate sent us a response to a request we sent.
-        final Completer<int> completer = _sumRequests[data.id]!;
-        _sumRequests.remove(data.id);
-        completer.complete(data.result);
-        return;
-      }
-      throw UnsupportedError('Unsupported message type: ${data.runtimeType}');
-    });
+  void _handleLog(String message) {
+    (_externalLogger ?? print).call(message);
+  }
 
-  // Start the helper isolate.
-  await Isolate.spawn((SendPort sendPort) async {
-    final ReceivePort helperReceivePort = ReceivePort()
-      ..listen((dynamic data) {
-        // On the helper isolate listen to requests and respond to them.
-        if (data is _SumRequest) {
-          final int result = _bindings.sum_long_running(data.a, data.b);
-          final _SumResponse response = _SumResponse(data.id, result);
-          sendPort.send(response);
-          return;
+  @override
+  void log(String message) {
+    _logStreamController.add(message);
+  }
+
+  @override
+  Stream<String> get logStream => _logStreamController.stream;
+
+  @override
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>
+      get logNative => _nativeCallable.nativeFunction;
+
+  void _logCallback(ffi.Pointer<ffi.Char> linePtr) {
+    try {
+      // First, try to decode the entire string
+      final line = linePtr.cast<Utf8>().toDartString();
+      log(line);
+    } catch (e) {
+      if (e is FormatException && e.offset != null) {
+        // If there's a specific offset where the error occurred
+        try {
+          final validPart = _extractValidString(linePtr, e.offset!);
+          final errorMsg =
+              'UTF-8 decoding error at offset ${e.offset}. Valid part of the message: "$validPart"';
+          log(errorMsg);
+        } catch (innerError) {
+          // If even extracting the valid part fails
+          log('Error extracting valid part of the message: $innerError');
         }
-        throw UnsupportedError('Unsupported message type: ${data.runtimeType}');
+      } else {
+        // For any other type of error
+        log('Error processing log message: $e');
+      }
+    }
+  }
+
+  String _extractValidString(ffi.Pointer<ffi.Char> ptr, int errorOffset) {
+    // Create a copy of the data to ensure it's not modified or freed
+    final bytes = ptr.cast<ffi.Uint8>().asTypedList(errorOffset).toList();
+    return utf8.decode(bytes, allowMalformed: true);
+  }
+
+  @override
+  void dispose() {
+    _logSubscription.cancel();
+    _logStreamController.close();
+    _nativeCallable.close();
+  }
+}
+
+class KdfOperations implements IKdfOperations {
+  final ffi.DynamicLibrary _dynamicLibrary;
+  final ILogger _logger;
+  final IConfigManager _configManager;
+
+  KdfOperations(this._dynamicLibrary, this._logger, this._configManager);
+
+  late final _bindings = KomodoDefiFrameworkBindings(_dynamicLibrary);
+
+  @override
+  Future<KdfStarupResult> kdfMain() async {
+    final startParams = await _configManager.generateStartParamsFromDefault();
+    final startParamsPtr = startParams.toNativeUtf8().cast<ffi.Char>();
+
+    try {
+      final result = _bindings.mm2_main(startParamsPtr, _logger.logNative);
+      return _intToKdfError(result);
+    } finally {
+      calloc.free(startParamsPtr);
+    }
+  }
+
+  @override
+  MainStatus kdfMainStatus() {
+    final status = _bindings.mm2_main_status();
+    return _intToMainStatus(status);
+  }
+
+  @override
+  bool isRunning() => kdfMainStatus() == MainStatus.rpcIsUp;
+
+  @override
+  Future<StopStatus> kdfStop() async {
+    final stopWatch = Stopwatch()..start();
+    final result = _bindings.mm2_stop();
+    _logger.log('KDF stop result: $result');
+
+    final stopStatus = _intToStopStatus(result);
+    if (stopStatus == StopStatus.ok) {
+      bool isShutdown = false;
+      final shutdownCompleter = Completer<void>();
+
+      // Listen for the shutdown message
+      final subscription = _logger.logStream.listen((message) {
+        if (message.contains("MmCtx") && message.contains("has been dropped")) {
+          shutdownCompleter.complete();
+        }
       });
 
-    // Send the port to the main isolate on which we can receive requests.
-    sendPort.send(helperReceivePort.sendPort);
-  }, receivePort.sendPort);
+      // Poll for status change
+      final timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+        if (kdfMainStatus() == MainStatus.notRunning) {
+          shutdownCompleter.complete();
+        }
+      });
 
-  // Wait until the helper isolate has sent us back the SendPort on which we
-  // can start sending requests.
-  return completer.future;
-}();
+      // Wait for shutdown or timeout
+      try {
+        await shutdownCompleter.future.timeout(const Duration(seconds: 30));
+        isShutdown = true;
+        timer.cancel();
+        stopWatch.stop();
+      } on TimeoutException {
+        _logger.log('KDF shutdown timed out after 30 seconds');
+      } finally {
+        subscription.cancel();
+      }
+
+      _logger
+          .log('KDF shutdown completed in ${stopWatch.elapsedMilliseconds}ms');
+      _logger.log('Final KDF status: ${kdfMainStatus()}');
+
+      return isShutdown ? StopStatus.ok : StopStatus.errorStopping;
+    }
+
+    return stopStatus;
+  }
+}
+
+KdfStarupResult _intToKdfError(int errorCode) {
+  switch (errorCode) {
+    case 0:
+      return KdfStarupResult.ok;
+    case 1:
+      return KdfStarupResult.alreadyRunning;
+    case 2:
+      return KdfStarupResult.confIsNull;
+    case 3:
+      return KdfStarupResult.confNotUtf8;
+    case 5:
+      return KdfStarupResult.cantThread;
+    default:
+      return KdfStarupResult.unknown;
+  }
+}
+
+MainStatus _intToMainStatus(int statusCode) {
+  switch (statusCode) {
+    case 0:
+      return MainStatus.notRunning;
+    case 1:
+      return MainStatus.noContext;
+    case 2:
+      return MainStatus.noRpc;
+    case 3:
+      return MainStatus.rpcIsUp;
+    default:
+      throw ArgumentError('Unknown MainStatus code: $statusCode');
+  }
+}
+
+StopStatus _intToStopStatus(int statusCode) {
+  switch (statusCode) {
+    case 0:
+      return StopStatus.ok;
+    case 1:
+      return StopStatus.notRunning;
+    case 2:
+      return StopStatus.errorStopping;
+    case 3:
+      return StopStatus.stoppingAlready;
+    default:
+      throw ArgumentError('Unknown StopStatus code: $statusCode');
+  }
+}
+
+void main() async {
+  final framework = KomodoDefiFramework(
+    logger: (String logMessage) => print('KDF Message: $logMessage'),
+  );
+
+  print('Starting KDF...');
+  final result = await framework.kdfMain();
+  print('KDF start result: $result');
+
+  while (!framework.isRunning()) {
+    await Future.delayed(const Duration(seconds: 1));
+  }
+
+  print('Stopping KDF...');
+  final stopResult = await framework.kdfStop();
+  print('KDF stop result: $stopResult');
+
+  await framework.dispose();
+}
