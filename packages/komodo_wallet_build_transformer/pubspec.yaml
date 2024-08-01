@@ -1,0 +1,26 @@
+name: komodo_wallet_build_transformer
+description: A build transformer for Komodo Wallet used for managing all build-time dependencies.
+version: 0.0.1
+# repository: https://github.com/my_org/my_repo
+publish_to: "none"
+
+environment:
+  sdk: ^3.4.0
+
+# Add regular dependencies here.
+dependencies:
+  args: ^2.5.0 # dart.dev
+  http: 0.13.6 # dart.dev
+  crypto: 3.0.3 # dart.dev
+  path: ^1.9.0
+  
+  # Approved via https://github.com/KomodoPlatform/komodo-wallet/pull/1106
+  archive:
+    git:
+      url: https://github.com/KomodoPlatform/archive.git
+      ref: 6fc3b89fcdb89b593402e0dabc13a7d7fd3f762d #3.3.7
+  html: ^0.15.4
+
+dev_dependencies:
+  lints: ^3.0.0
+  test: ^1.24.0
