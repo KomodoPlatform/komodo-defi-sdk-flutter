@@ -1,36 +1,41 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:komodo_defi_framework/src/extensions/http_extensions.dart';
+import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:math';
 
+// TODO: Future refactoring to minimize time that seed is in memory
 abstract class IConfigManager {
-  Future<String> generateStartParamsFromDefault();
+  Future<JsonMap> generateStartParamsFromDefault(String seed);
 }
 
-class CoinsConfigManager implements IConfigManager {
+// TODO: Refactor so that separate implementation for web vs native?
+class StartupConfigManager implements IConfigManager {
   static const String coinsUrl =
       // 'https://komodoplatform.github.io/coins/utils/coins_config.json';
       'https://komodoplatform.github.io/coins/coins';
 
   @override
-  Future<String> generateStartParamsFromDefault() async {
-    final homeDir = await getApplicationDocumentsDirectory();
-    final userHome = homeDir.path;
+  Future<JsonMap> generateStartParamsFromDefault(String seed) async {
+    final homeDir = kIsWeb ? null : await getApplicationDocumentsDirectory();
+    final userHome = homeDir?.path;
     final dbDir = userHome;
 
     return generateStartParams(
       'GUI_FFI',
-      _generateBip39Passphrase(),
+      seed,
       userHome,
       dbDir,
     );
   }
 
-  Future<String> generateStartParams(
+  Future<JsonMap> generateStartParams(
     String gui,
     String passphrase,
-    String userHome,
-    String dbDir,
+    String? userHome,
+    String? dbDir,
   ) async {
     String coinsData = await fetchCoinsData();
 
@@ -44,38 +49,26 @@ class CoinsConfigManager implements IConfigManager {
       'rpc_password': generatePassword(),
       'netid': 8762,
       'gui': gui,
-      'userhome': userHome,
-      'dbdir': dbDir,
+      if (userHome != null) 'userhome': userHome,
+      if (dbDir != null) 'dbdir': dbDir,
       'passphrase': passphrase,
       'coins': json.decode(coinsData),
     };
 
-    String jsonParams = json.encode(startParams);
+    // String jsonParams = json.encode(startParams);
 
-    // Censor the rpc_password and passphrase, and shorten the coins list to first and last 5 characters
-    final consoleSafeParams = jsonParams
-        .replaceAll(RegExp(r'"rpc_password":".*?"'), '"rpc_password":"***"')
-        .replaceAll(RegExp(r'"passphrase":".*?"'), '"passphrase":"***"')
-        .replaceAll(RegExp(r'"coins":\[{.*?}\]'), '"coins":"_{{SNIP}}_"');
-    print('Start params: $consoleSafeParams');
+    // // Censor the rpc_password and passphrase, and shorten the coins list to first and last 5 characters
+    // final consoleSafeParams = jsonParams
+    //     .replaceAll(RegExp(r'"rpc_password":".*?"'), '"rpc_password":"***"')
+    //     .replaceAll(RegExp(r'"passphrase":".*?"'), '"passphrase":"***"')
+    //     .replaceAll(RegExp(r'"coins":\[{.*?}\]'), '"coins":"_{{SNIP}}_"');
+    // print('Start params: $consoleSafeParams');
 
-    return jsonParams;
+    return startParams;
   }
 
-  Future<String> fetchCoinsData() async {
-    try {
-      final response = await http.get(Uri.parse(coinsUrl));
-      if (response.statusCode == 200) {
-        return response.body;
-      } else {
-        print('Failed to load coins data. Status code: ${response.statusCode}');
-        return '';
-      }
-    } catch (e) {
-      print('Error fetching coins data: $e');
-      return '';
-    }
-  }
+  Future<String> fetchCoinsData() async =>
+      (await http.Client().getJsonList(coinsUrl)).toJsonString();
 
   String generatePassword() {
     const String lowerCase = 'abcdefghijklmnopqrstuvwxyz';
@@ -135,8 +128,4 @@ class CoinsConfigManager implements IConfigManager {
 
     return true;
   }
-}
-
-String _generateBip39Passphrase() {
-  return "arrow garment kite truth yellow pelican roast latin discover jewel describe merry polar equip pistol next forest dignity kick word steel seminar actual genuine";
 }

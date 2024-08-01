@@ -44,7 +44,7 @@ web/dist/*.js
 web/dist/*.wasm
 web/dist/*LICENSE.txt
 web/src/mm2/
-web/src/kdfi/
+web/src/kdf/
 
 # Symbolication related
 app.*.symbols
@@ -99,3 +99,7 @@ macos/Frameworks/*
 
 # Xcode-related
 **/xcuserdata/
+
+# Flutter SDK
+.fvm/
+**.zip

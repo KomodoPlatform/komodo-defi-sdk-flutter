@@ -1,3 +1,4 @@
+import 'package:bip39/bip39.dart';
 import 'package:flutter/material.dart';
 
 import 'package:komodo_defi_framework/komodo_defi_framework.dart'
@@ -18,7 +19,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    komodo_defi_framework.main();
+    // komodo_defi_framework
   }
 
   @override
@@ -45,7 +46,9 @@ class _MyAppState extends State<MyApp> {
                 OutlinedButton(
                   onPressed: () async {
                     // TODO: Pass seed phrase from text input (generate random)
-                    komodo_defi_framework.main();
+                    await komodo_defi_framework.KomodoDefiFramework.create(
+                      externalLogger: print,
+                    ).startKdf(generateMnemonic());
                   },
                   child: const Text('Start KDF'),
                 ),
