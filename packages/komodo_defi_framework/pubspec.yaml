@@ -7,7 +7,10 @@ publish_to: "none"
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
-  flutter: '>=3.3.0'
+  # Minimum Flutter version is set quite high for build transformer capabilities.
+  # If this is too high for your project, this can be lowered by commenting out
+  # the following line and running the build transformer manually via CLI.
+  flutter: '>=3.22.0'
 
 dependencies:
   ffi: ^2.1.2
