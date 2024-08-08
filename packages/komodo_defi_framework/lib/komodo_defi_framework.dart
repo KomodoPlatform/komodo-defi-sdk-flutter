@@ -7,6 +7,8 @@ import 'src/operations/kdf_operations_native.dart'
     if (dart.library.html) 'src/operations/kdf_operations_web.dart';
 import 'src/startup_config_manager.dart';
 
+export 'src/operations/kdf_operations_interface.dart';
+
 class KomodoDefiFramework {
   final ILogger _logger;
   final IConfigManager _configManager;

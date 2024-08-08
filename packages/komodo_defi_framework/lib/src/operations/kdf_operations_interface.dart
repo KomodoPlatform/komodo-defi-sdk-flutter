@@ -89,11 +89,5 @@ abstract class IKdfOperations {
 
   Future<JsonMap> mm2Rpc(JsonMap request);
 
-  // Belongs in the higher layer abstraction
-  // /// Returns the wallet id of the running wallet, or null if no wallet is
-  // /// running. The wallet id is the KMD address of the wallet. For HD wallets,
-  // /// the wallet id is the address of index 0.
-  // Future<String?> getRunningWalletId();
-
   Future<void> validateSetup();
 }

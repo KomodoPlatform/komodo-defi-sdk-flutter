@@ -2,3 +2,5 @@
 library;
 
 export 'src/komodo_defi_rpc_methods.dart';
+export 'src/models/models.dart';
+export 'src/rpc_methods/methods.dart';
