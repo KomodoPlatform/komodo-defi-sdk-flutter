@@ -180,10 +180,10 @@ packages:
   komodo_defi_framework:
     dependency: "direct main"
     description:
-      path: ".."
+      path: "../packages/komodo_defi_framework"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "0.1.0"
   komodo_wallet_build_transformer:
     dependency: transitive
     description:
