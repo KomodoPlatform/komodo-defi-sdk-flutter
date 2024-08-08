@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart';
 import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
 import 'package:komodo_defi_framework/src/native/komodo_defi_framework_bindings_generated.dart';
 import 'package:komodo_defi_framework/src/startup_config_manager.dart';
@@ -66,7 +67,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
           _logCallback.nativeFunction.address,
         ),
       );
-      return KdfStartupResult.fromInt(result);
+      return KdfStartupResult.fromDefaultInt(result);
     } finally {
       calloc.free(startParamsPtr);
     }
@@ -75,17 +76,32 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   @override
   MainStatus kdfMainStatus() {
     final status = _bindings.mm2_main_status();
-    return _intToMainStatus(status);
+    return MainStatus.fromDefaultInt(status);
   }
 
   @override
   Future<StopStatus> kdfStop() async {
     final result = await compute(_kdfStopIsolate, null);
-    return _intToStopStatus(result);
+    return StopStatus.fromDefaultInt(result);
   }
 
   @override
   bool isRunning() => kdfMainStatus() == MainStatus.rpcIsUp;
+
+  // TODO: Remote RPC calls as a mixin? E.g. for localhost native calls and
+  // for remote server calls.
+  final Uri _url = Uri.parse('http://localhost:7783');
+  final Client _client = Client();
+
+  @override
+  Future<JsonMap> mm2Rpc(JsonMap request) async {
+    final response = await _client.post(
+      _url,
+      body: json.encode(request),
+      headers: {'Content-Type': 'application/json'},
+    );
+    return json.decode(response.body);
+  }
 
   @override
   Future<void> validateSetup() async {
@@ -93,36 +109,6 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       _bindings.mm2_main_status();
     } catch (e) {
       throw Exception('Failed to validate KDF setup: $e');
-    }
-  }
-
-  MainStatus _intToMainStatus(int status) {
-    switch (status) {
-      case 0:
-        return MainStatus.notRunning;
-      case 1:
-        return MainStatus.noContext;
-      case 2:
-        return MainStatus.noRpc;
-      case 3:
-        return MainStatus.rpcIsUp;
-      default:
-        throw ArgumentError('Unknown MainStatus code: $status');
-    }
-  }
-
-  StopStatus _intToStopStatus(int status) {
-    switch (status) {
-      case 0:
-        return StopStatus.ok;
-      case 1:
-        return StopStatus.notRunning;
-      case 2:
-        return StopStatus.errorStopping;
-      case 3:
-        return StopStatus.stoppingAlready;
-      default:
-        throw ArgumentError('Unknown StopStatus code: $status');
     }
   }
 

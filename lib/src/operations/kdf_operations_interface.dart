@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
 import 'package:komodo_defi_framework/src/logger/logger.dart';
 import 'package:komodo_defi_framework/src/startup_config_manager.dart';
 
@@ -7,7 +8,22 @@ enum MainStatus {
   notRunning,
   noContext,
   noRpc,
-  rpcIsUp,
+  rpcIsUp;
+
+  static MainStatus fromDefaultInt(int value) {
+    switch (value) {
+      case 0:
+        return MainStatus.notRunning;
+      case 1:
+        return MainStatus.noContext;
+      case 2:
+        return MainStatus.noRpc;
+      case 3:
+        return MainStatus.rpcIsUp;
+      default:
+        throw ArgumentError('Unknown MainStatus code: $value');
+    }
+  }
 }
 
 enum KdfStartupResult {
@@ -22,7 +38,7 @@ enum KdfStartupResult {
   // InvalidParams = 2,
   // NoCoinsInConf = 3,
 
-  static KdfStartupResult fromInt(int value) {
+  static KdfStartupResult fromDefaultInt(int value) {
     switch (value) {
       case 0:
         return KdfStartupResult.ok;
@@ -38,7 +54,27 @@ enum KdfStartupResult {
   }
 }
 
-enum StopStatus { ok, notRunning, errorStopping, stoppingAlready }
+enum StopStatus {
+  ok,
+  notRunning,
+  errorStopping,
+  stoppingAlready;
+
+  static StopStatus fromDefaultInt(int status) {
+    switch (status) {
+      case 0:
+        return StopStatus.ok;
+      case 1:
+        return StopStatus.notRunning;
+      case 2:
+        return StopStatus.errorStopping;
+      case 3:
+        return StopStatus.stoppingAlready;
+      default:
+        throw ArgumentError('Unknown StopStatus code: $status');
+    }
+  }
+}
 
 abstract class IKdfOperations {
   IKdfOperations.create({
@@ -50,6 +86,14 @@ abstract class IKdfOperations {
   MainStatus kdfMainStatus();
   Future<StopStatus> kdfStop();
   bool isRunning();
+
+  Future<JsonMap> mm2Rpc(JsonMap request);
+
+  // Belongs in the higher layer abstraction
+  // /// Returns the wallet id of the running wallet, or null if no wallet is
+  // /// running. The wallet id is the KMD address of the wallet. For HD wallets,
+  // /// the wallet id is the address of index 0.
+  // Future<String?> getRunningWalletId();
 
   Future<void> validateSetup();
 }

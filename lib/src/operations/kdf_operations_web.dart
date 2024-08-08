@@ -6,6 +6,7 @@ import 'dart:js_util' as js_util;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
+import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
 import 'package:komodo_defi_framework/src/logger/logger.dart';
 import 'package:komodo_defi_framework/src/startup_config_manager.dart';
 
@@ -60,7 +61,7 @@ class KdfOperationsWeb implements IKdfOperations {
       );
     } on int catch (e) {
       _logger.log('Error starting KDF: $e');
-      return KdfStartupResult.fromInt(e);
+      return KdfStartupResult.fromDefaultInt(e);
     } catch (e) {
       _logger.log('Unknown error starting KDF: $e');
     }
@@ -72,14 +73,14 @@ class KdfOperationsWeb implements IKdfOperations {
   MainStatus kdfMainStatus() {
     _ensureLoadedSync();
     final status = _kdfModule!.callMethod('mm2_main_status'.toJS);
-    return _intToMainStatus(status as int);
+    return MainStatus.fromDefaultInt(status as int);
   }
 
   @override
   Future<StopStatus> kdfStop() async {
     await _ensureLoaded();
     final result = _kdfModule!.callMethod('mm2_stop'.toJS);
-    return _intToStopStatus(result as int);
+    return StopStatus.fromDefaultInt(result as int);
   }
 
   @override
@@ -166,34 +167,15 @@ class KdfOperationsWeb implements IKdfOperations {
     }
   }
 
-  MainStatus _intToMainStatus(int status) {
-    switch (status) {
-      case 0:
-        return MainStatus.notRunning;
-      case 1:
-        return MainStatus.noContext;
-      case 2:
-        return MainStatus.noRpc;
-      case 3:
-        return MainStatus.rpcIsUp;
-      default:
-        throw ArgumentError('Unknown MainStatus code: $status');
-    }
-  }
+  @override
+  Future<JsonMap> mm2Rpc(JsonMap request) async {
+    await _ensureLoaded();
 
-  StopStatus _intToStopStatus(int status) {
-    switch (status) {
-      case 0:
-        return StopStatus.ok;
-      case 1:
-        return StopStatus.notRunning;
-      case 2:
-        return StopStatus.errorStopping;
-      case 3:
-        return StopStatus.stoppingAlready;
-      default:
-        throw ArgumentError('Unknown StopStatus code: $status');
-    }
+    final response = await js_util.promiseToFuture(
+      _kdfModule!.callMethod('mm2_rpc'.toJS, js_util.jsify(request)),
+    );
+
+    return response as JsonMap;
   }
 }
 
