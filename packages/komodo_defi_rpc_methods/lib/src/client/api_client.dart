@@ -7,3 +7,21 @@ abstract class ApiClient {
   Future<void> stop();
   bool isInitialized();
 }
+
+class ApiClientMock implements ApiClient {
+  @override
+  Future<JsonMap> sendRequest(JsonMap request) async {
+    return <String, dynamic>{};
+  }
+
+  @override
+  Future<void> initialize(String passphrase) async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  bool isInitialized() {
+    return true;
+  }
+}
