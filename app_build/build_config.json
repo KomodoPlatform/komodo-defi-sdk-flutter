@@ -1,0 +1,41 @@
+{
+    "api": {
+        "api_commit_hash": "35e92394928825c337f246f8e19fbfab1f65c4a8",
+        "branch": "main",
+        "fetch_at_build_enabled": true,
+        "source_urls": [
+            "https://sdk.devbuilds.komodo.earth"
+        ],
+        "platforms": {
+            "web": {
+                "matching_keyword": "wasm",
+                "valid_zip_sha256_checksums": [
+                    "17b4a708b4cff0ca56c5963f605e51378a269ac3b95f1a95fc0d09daccce35da"
+                ],
+                "path": "web/kdf/bin"
+            },
+            "macos": {
+                "matching_keyword": "mac-arm64",
+                "valid_zip_sha256_checksums": [
+                    "ccf616600b9d156596ab62d33cbcbf63ff77c5ac259c22de33e0505f269f8f8f"
+                ],
+                "path": "macos/bin"
+            }
+        }
+    },
+    "coins": {
+        "update_commit_on_build": true,
+        "bundled_coins_repo_commit": "2bc5f42161b19dcbecadd1a57b6d90ec2b22b0ec",
+        "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
+        "coins_repo_content_url": "https://komodoplatform.github.io/coins",
+        "coins_repo_branch": "master",
+        "runtime_updates_enabled": true,
+        "mapped_files": {
+            "assets/config/coins_config.json": "utils/coins_config_unfiltered.json",
+            "assets/config/coins.json": "coins"
+        },
+        "mapped_folders": {
+            "assets/coin_icons/png/": "icons"
+        }
+    }
+}

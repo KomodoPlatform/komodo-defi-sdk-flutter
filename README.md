@@ -1,3 +1,12 @@
+# Komodo Defi Framework Flutter Package
+
+This package provides a high-level opinionated framework for interacting with the Komodo Defi API and manages/automates the process of fetching the binary libraries.
+
+
+TODO: Add a proper description and documentation for the package. Below is the default README.md content for a Flutter FFI plugin.
+
+
+
 # komodo_defi_framework
 
 A new Flutter FFI plugin project.

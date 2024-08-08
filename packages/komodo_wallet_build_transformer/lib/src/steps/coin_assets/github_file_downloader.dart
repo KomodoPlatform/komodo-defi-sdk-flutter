@@ -57,6 +57,11 @@ class GitHubFileDownloader {
   }) async {
     final String apiUrl = '$repoApiUrl/commits/$branch';
     final http.Response response = await http.get(Uri.parse(apiUrl));
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to retrieve latest commit hash. Status code: ${response.statusCode}',
+      );
+    }
     final Map<String, dynamic> data =
         jsonDecode(response.body) as Map<String, dynamic>;
     return data['sha'] as String;
@@ -84,9 +89,24 @@ class GitHubFileDownloader {
     createFolders(mappedFiles.keys.toList());
     for (final MapEntry<String, String> entry in mappedFiles.entries) {
       final String localPath = entry.key;
-      final Uri fileContentUrl =
-          Uri.parse('$repoContentUrl/$repoCommit/${entry.value}');
+
+      final isRawContentUrl =
+          entry.value.startsWith('https://raw.githubusercontent.com');
+
+      final Uri fileContentUrl = Uri.parse(
+        isRawContentUrl
+            ? '$repoContentUrl/$repoCommit/${entry.value}'
+            : '$repoContentUrl/${entry.value}',
+      );
+
       final http.Response fileContent = await http.get(fileContentUrl);
+      if (fileContent.statusCode != 200) {
+        throw Exception(
+          'Failed to download file: ${fileContentUrl.toString()}'
+          '[${fileContent.statusCode}]: ${fileContent.reasonPhrase}',
+        );
+      }
+
       await File(localPath).writeAsString(fileContent.body);
 
       _downloadedFiles++;
@@ -267,6 +287,7 @@ class GitHubFileDownloader {
 
     try {
       final String fileResponse = await http.read(Uri.parse(item.downloadUrl));
+
       await File(outputPath).writeAsBytes(fileResponse.codeUnits);
       return GitHubFileDownloadEvent(
         event: GitHubDownloadEvent.downloaded,

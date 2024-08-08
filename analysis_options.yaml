@@ -3,9 +3,14 @@ include: package:flutter_lints/flutter.yaml
 linter:
   rules:
     require_trailing_commas: true
-    # require sorted imports
+    # require sorted package imports
+    sort_unnamed_constructors_first: true
+    
+    directives_ordering: true
+
+
+    # sort_pub_dependencies: true
     sort_pub_dependencies: true
-    # Require import to be 
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

@@ -1,0 +1,43 @@
+name: komodo_wallet_cli
+description: A sample command-line application with basic argument parsing.
+version: 0.0.1
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+# Add regular dependencies here.
+dependencies:
+  args: ^2.4.2
+
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  test: ^1.24.0
+
+  komodo_wallet_build_transformer:
+    path: ../komodo_wallet_build_transformer
+
+assets:
+  - path: assets/transformer_invoker.txt
+    transformers:
+        - package: komodo_wallet_build_transformer
+          args: [
+          # Uncomment any of the following options to disable specific build
+          # steps. They are executed in the order listed in `_build_steps`
+          # in `packages/komodo_wallet_build_transformer/bin/komodo_wallet_build_transformer.dart`
+            # Configure fetch_defi_api in `config/build_config.yaml`
+            --fetch_defi_api,
+            # Configure `fetch_coin_assets` in `config/build_config.yaml`
+            --fetch_coin_assets,
+            --copy_platform_assets,
+            # Uncomment the following option to enable concurrent build step
+            # execution. This is useful for reducing build time in development,
+            # but is not recommended for production builds.
+            # - --concurrent,
+
+            #! NB: There may be complications if we want to publish the
+            # sub-packages as separate packages. However, Flutter's upcoming
+            # support for native/web build hooks may simplify this process.
+            --config_output_path=packages/komodo_wallet_cli/config/build_config.yaml
+          ]

@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_framework/src/extensions/http_extensions.dart';
 import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:math';
 
 // TODO: Future refactoring to minimize time that seed is in memory
 abstract class IConfigManager {

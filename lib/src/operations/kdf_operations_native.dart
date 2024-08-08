@@ -1,9 +1,8 @@
-// File: kdf_operations_native.dart
-
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
-import 'dart:async';
 import 'dart:io';
+
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
@@ -20,14 +19,14 @@ IKdfOperations createKdfOperations({
   required IConfigManager configManager,
 }) {
   _logger = logger;
-  return KdfOperationsNative.create(
+  return KdfOperationsNativeLibrary.create(
     logger: logger,
     configManager: configManager,
   );
 }
 
-class KdfOperationsNative implements IKdfOperations {
-  KdfOperationsNative._(
+class KdfOperationsNativeLibrary implements IKdfOperations {
+  KdfOperationsNativeLibrary._(
     this._configManager,
     this._bindings,
     this._logCallback,
@@ -39,11 +38,11 @@ class KdfOperationsNative implements IKdfOperations {
       _logCallback;
 
   @override
-  factory KdfOperationsNative.create({
+  factory KdfOperationsNativeLibrary.create({
     required ILogger logger,
     required IConfigManager configManager,
   }) {
-    return KdfOperationsNative._(
+    return KdfOperationsNativeLibrary._(
       configManager,
       KomodoDefiFrameworkBindings(_library),
       ffi.NativeCallable<ffi.Void Function(ffi.Pointer<ffi.Char>)>.listener(
@@ -194,12 +193,16 @@ ffi.DynamicLibrary _loadLibrary() {
     try {
       final lib = path == 'PROCESS'
           ? ffi.DynamicLibrary.process()
-          : ffi.DynamicLibrary.open(path);
+          : path == 'EXECUTABLE'
+              ? ffi.DynamicLibrary.executable()
+              : ffi.DynamicLibrary.open(path);
       if (lib.providesSymbol('mm2_main')) {
+        _logger?.log('Loaded library at path: $path');
         return lib;
       }
     } catch (_) {
       // Continue to the next path if this one fails
+      // _logger?.log('Failed to load library at path: $path');
     }
   }
   throw UnsupportedError('No valid library path found');
@@ -207,7 +210,16 @@ ffi.DynamicLibrary _loadLibrary() {
 
 List<String> _getLibraryPaths() {
   if (Platform.isMacOS) {
-    return ['libkdflib.dylib', 'libkdflib.a', 'PROCESS'];
+    return [
+      'kdf',
+      'mm2',
+      'Frameworks/libkdflib.a',
+      'komodo_defi_framework/Frameworks/libkdflib.a',
+      'libkdflib.dylib',
+      'libkdflib.a',
+      'PROCESS',
+      'EXECUTABLE',
+    ];
   } else if (Platform.isIOS) {
     return ['libkdflib.dylib']; // Assuming similar library name for iOS
   } else if (Platform.isAndroid) {

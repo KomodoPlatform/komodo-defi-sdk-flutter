@@ -17,7 +17,11 @@ include: package:flutter_lints/flutter.yaml
 
 linter:
   rules:
-    - require_trailing_commas: true
+    
+    require_trailing_commas: true
+
+    directives_ordering: true
+
 # analyzer:
 #   exclude:
 #     - path/to/excluded/files/**

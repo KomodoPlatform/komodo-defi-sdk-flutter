@@ -1,33 +1,41 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:args/args.dart';
 import 'package:archive/archive_io.dart';
+import 'package:crypto/crypto.dart';
 import 'package:html/parser.dart' as parser;
 import 'package:http/http.dart' as http;
-import 'package:crypto/crypto.dart';
 import 'package:komodo_wallet_build_transformer/src/build_step.dart';
 import 'package:path/path.dart' as path;
 
 class FetchDefiApiStep extends BuildStep {
-  factory FetchDefiApiStep.withBuildConfig(Map<String, dynamic> buildConfig) {
+  factory FetchDefiApiStep.withBuildConfig(
+    Map<String, dynamic> buildConfig,
+    Directory artifactOutputPath,
+    File buildConfigFile,
+  ) {
     final apiConfig = buildConfig['api'] as Map<String, dynamic>;
     return FetchDefiApiStep(
-      projectRoot: Directory.current.path,
+      // projectRoot: Directory.current.path,
       apiCommitHash: apiConfig['api_commit_hash'],
       platformsConfig: apiConfig['platforms'],
       sourceUrls: List<String>.from(apiConfig['source_urls']),
       apiBranch: apiConfig['branch'],
+      // TODO: Change type to Directory?
+      artifactOutputPath: artifactOutputPath.path,
       enabled: apiConfig['fetch_at_build_enabled'],
+      buildConfigFile: buildConfigFile,
     );
   }
 
   FetchDefiApiStep({
-    required this.projectRoot,
+    // required this.projectRoot,
     required this.apiCommitHash,
     required this.platformsConfig,
     required this.sourceUrls,
     required this.apiBranch,
+    required this.artifactOutputPath,
+    required this.buildConfigFile,
     this.selectedPlatform,
     this.forceUpdate = false,
     this.enabled = true,
@@ -38,11 +46,13 @@ class FetchDefiApiStep extends BuildStep {
 
   static const idStatic = 'fetch_defi_api';
 
-  final String projectRoot;
+  // final String projectRoot;
   final String apiCommitHash;
   final Map<String, dynamic> platformsConfig;
   final List<String> sourceUrls;
   final String apiBranch;
+  final String artifactOutputPath;
+  final File buildConfigFile;
   String? selectedPlatform;
   bool forceUpdate;
   bool enabled;
@@ -80,15 +90,15 @@ class FetchDefiApiStep extends BuildStep {
         ? [selectedPlatform!]
         : platformsConfig.keys.toList();
 
+    stdout.writeln('=====================');
     for (final platform in platformsToUpdate) {
       final progressString =
           '${(platformsToUpdate.indexOf(platform) + 1)}/${platformsToUpdate.length}';
-      stdout.writeln('=====================');
       stdout.writeln('[$progressString] Updating $platform platform...');
       await _updatePlatform(platform, platformsConfig);
-      stdout.writeln('=====================');
     }
-    _updateDocumentation();
+    stdout.writeln('=====================');
+    _updateDocumentationIfExists();
   }
 
   static const String _overrideEnvName = 'OVERRIDE_DEFI_API_DOWNLOAD';
@@ -102,7 +112,7 @@ class FetchDefiApiStep extends BuildStep {
   /// build, even if it is already up-to-date with the configuration.
   ///
   /// If set to false/FALSE/False, the API fetching will be skipped, even if
-  /// the existing API is not up-to-date with the coniguration.
+  /// the existing API is not up-to-date with the configuration.
   ///
   /// If unset, the default behavior will be used.
   ///
@@ -118,12 +128,16 @@ class FetchDefiApiStep extends BuildStep {
       const bool.hasEnvironment(_overrideEnvName)
           ? const bool.fromEnvironment(_overrideEnvName)
           : Platform.environment[_overrideEnvName] != null
-              ? bool.tryParse(Platform.environment[_overrideEnvName]!,
-                  caseSensitive: false)
+              ? bool.tryParse(
+                  Platform.environment[_overrideEnvName]!,
+                  caseSensitive: false,
+                )
               : null;
 
   Future<void> _updatePlatform(
-      String platform, Map<String, dynamic> config) async {
+    String platform,
+    Map<String, dynamic> config,
+  ) async {
     final updateMessage = overrideDefiApiDownload != null
         ? '${overrideDefiApiDownload! ? 'FORCING' : 'SKIPPING'} update of $platform platform because OVERRIDE_DEFI_API_DOWNLOAD is set to $overrideDefiApiDownload'
         : null;
@@ -235,22 +249,30 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   void _updateLastUpdatedFile(
-      String platform, String destinationFolder, String zipFilePath) {
+    String platform,
+    String destinationFolder,
+    String zipFilePath,
+  ) {
     final lastUpdatedFile =
         File(path.join(destinationFolder, '.api_last_updated_$platform'));
     final currentTimestamp = DateTime.now().toIso8601String();
     final fileChecksum =
         sha256.convert(File(zipFilePath).readAsBytesSync()).toString();
-    lastUpdatedFile.writeAsStringSync(json.encode({
-      'api_commit_hash': apiCommitHash,
-      'timestamp': currentTimestamp,
-      'checksums': [fileChecksum]
-    }));
+    lastUpdatedFile.writeAsStringSync(
+      json.encode({
+        'api_commit_hash': apiCommitHash,
+        'timestamp': currentTimestamp,
+        'checksums': [fileChecksum],
+      }),
+    );
     stdout.writeln('Updated last updated file for $platform.');
   }
 
-  Future<bool> _checkIfOutdated(String platform, String destinationFolder,
-      Map<String, dynamic> config) async {
+  Future<bool> _checkIfOutdated(
+    String platform,
+    String destinationFolder,
+    Map<String, dynamic> config,
+  ) async {
     final lastUpdatedFilePath =
         path.join(destinationFolder, '.api_last_updated_$platform');
     final lastUpdatedFile = File(lastUpdatedFilePath);
@@ -284,46 +306,56 @@ class FetchDefiApiStep extends BuildStep {
     return true;
   }
 
+  // ignore: unused_element
   Future<void> _updateWebPackages() async {
-    _logMessage('Updating Web platform...');
-    final installResult =
-        await Process.run('npm', ['install'], workingDirectory: projectRoot);
-    if (installResult.exitCode != 0) {
-      throw Exception('npm install failed: ${installResult.stderr}');
-    }
+    // _logMessage('Updating Web platform...');
+    // final installResult =
+    //     await Process.run('npm', ['install'], workingDirectory: projectRoot);
+    // if (installResult.exitCode != 0) {
+    //   throw Exception('npm install failed: ${installResult.stderr}');
+    // }
 
-    final buildResult = await Process.run('npm', ['run', 'build'],
-        workingDirectory: projectRoot);
-    if (buildResult.exitCode != 0) {
-      throw Exception('npm run build failed: ${buildResult.stderr}');
-    }
+    // final buildResult = await Process.run('npm', ['run', 'build'],
+    //     workingDirectory: projectRoot);
+    // if (buildResult.exitCode != 0) {
+    //   throw Exception('npm run build failed: ${buildResult.stderr}');
+    // }
 
-    _logMessage('Web platform updated successfully.');
+    // _logMessage('Web platform updated successfully.');
   }
 
-  Future<void> _updateLinuxPlatform(String destinationFolder) async {
-    _logMessage('Updating Linux platform...');
-    // Update the file permissions to make it executable. As part of the
-    // transition from mm2 naming to kdfi, update whichever file is present.
-    // ignore: unused_local_variable
-    final binaryName = ['mm2', 'kdfi']
-        .map((e) => path.join(destinationFolder, e))
-        .where((filePath) => File(filePath).existsSync())
-      ..forEach((filePath) => Process.run('chmod', ['+x', filePath]));
+  void setFilePermissions(File file) {
+    if (Platform.isWindows) {
+      Process.runSync('attrib', ['+x', file.path]);
+    } else {
+      Process.runSync('chmod', ['+x', file.path]);
+    }
+  }
 
-    _logMessage('Linux platform updated successfully.');
+  void _setExecutablePermissions(String destinationFolder) {
+    _logMessage('Setting executable permissions for $destinationFolder...');
+    // Update the file permissions to make it executable. As part of the
+    // transition from mm2 naming to kdf, update whichever file is present.
+    // ignore: unused_local_variable
+    final binaryName = ['mm2', 'kdf']
+        .map((e) => File(path.join(destinationFolder, e)))
+        .where((filePath) => filePath.existsSync())
+      ..forEach((filePath) => setFilePermissions(filePath));
   }
 
   String _getPlatformDestinationFolder(String platform) {
     if (platformsConfig.containsKey(platform)) {
-      return path.join(projectRoot, platformsConfig[platform]['path']);
+      return path.join(artifactOutputPath, platformsConfig[platform]['path']);
     } else {
       throw ArgumentError('Invalid platform: $platform');
     }
   }
 
   Future<String> _findZipFileUrl(
-      String platform, Map<String, dynamic> config, String sourceUrl) async {
+    String platform,
+    Map<String, dynamic> config,
+    String sourceUrl,
+  ) async {
     if (sourceUrl.startsWith('https://api.github.com/repos/')) {
       return await _fetchFromGitHub(platform, config, sourceUrl);
     } else {
@@ -332,7 +364,10 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   Future<String> _fetchFromGitHub(
-      String platform, Map<String, dynamic> config, String sourceUrl) async {
+    String platform,
+    Map<String, dynamic> config,
+    String sourceUrl,
+  ) async {
     final repoMatch = RegExp(r'^https://api\.github\.com/repos/([^/]+)/([^/]+)')
         .firstMatch(sourceUrl);
     if (repoMatch == null) {
@@ -366,11 +401,15 @@ class FetchDefiApiStep extends BuildStep {
     }
 
     throw Exception(
-        'Zip file not found for platform $platform in GitHub releases');
+      'Zip file not found for platform $platform in GitHub releases',
+    );
   }
 
   Future<String> _getCommitHashForRelease(
-      String tag, String owner, String repo) async {
+    String tag,
+    String owner,
+    String repo,
+  ) async {
     final commitsUrl = 'https://api.github.com/repos/$owner/$repo/commits/$tag';
     final response = await http.get(Uri.parse(commitsUrl));
     _checkResponseSuccess(response);
@@ -380,7 +419,10 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   Future<String> _fetchFromBaseUrl(
-      String platform, Map<String, dynamic> config, String sourceUrl) async {
+    String platform,
+    Map<String, dynamic> config,
+    String sourceUrl,
+  ) async {
     final url = '$sourceUrl/$apiBranch/';
     final response = await http.get(Uri.parse(url));
     _checkResponseSuccess(response);
@@ -406,21 +448,33 @@ class FetchDefiApiStep extends BuildStep {
   void _checkResponseSuccess(http.Response response) {
     if (response.statusCode != 200) {
       throw HttpException(
-          'Failed to fetch data: ${response.statusCode} ${response.reasonPhrase}');
+        'Failed to fetch data: ${response.statusCode} ${response.reasonPhrase}',
+      );
     }
+  }
+
+  // TODO: Dynamically determine if the platform is using an executable file
+  // or static/dynamic library.
+  bool _isBinaryExecutable(String platform) {
+    return platform == 'linux' || platform == 'macos' || platform == 'windows';
   }
 
   Future<void> _postUpdateActions(String platform, String destinationFolder) {
     if (platform == 'web') {
-      return _updateWebPackages();
-    } else if (platform == 'linux') {
-      return _updateLinuxPlatform(destinationFolder);
+      // return _updateWebPackages();
+      // TODO: Consider adding npm if it makes a significant difference to
+      // file build size or if it is required for cache-busting.
+    }
+    if (_isBinaryExecutable(platform)) {
+      _setExecutablePermissions(destinationFolder);
     }
     return Future.value();
   }
 
   Future<void> _extractZipFile(
-      String zipFilePath, String destinationFolder) async {
+    String zipFilePath,
+    String destinationFolder,
+  ) async {
     final bytes = File(zipFilePath).readAsBytesSync();
     final archive = ZipDecoder().decodeBytes(bytes);
 
@@ -439,63 +493,69 @@ class FetchDefiApiStep extends BuildStep {
     _logMessage('Extraction completed.');
   }
 
-  void _updateDocumentation() {
-    final documentationFile = File('$projectRoot/docs/UPDATE_API_MODULE.md');
-    final content = documentationFile.readAsStringSync().replaceAllMapped(
-          RegExp(r'(Current api module version is) `([^`]+)`'),
-          (match) => '${match[1]} `$apiCommitHash`',
-        );
-    documentationFile.writeAsStringSync(content);
-    _logMessage('Updated API version in documentation.');
-  }
-}
+  void _updateDocumentationIfExists() {
+    //   final documentationFile = File('$projectRoot/docs/UPDATE_API_MODULE.md');
+    //   if (!documentationFile.existsSync()) {
+    //     return;
+    //   }
 
-late final ArgResults _argResults;
-
-void main(List<String> arguments) async {
-  final parser = ArgParser()
-    ..addOption('platform', abbr: 'p', help: 'Specify the platform to update')
-    ..addOption('api-version',
-        abbr: 'a', help: 'Specify the API version to update to')
-    ..addFlag('force',
-        abbr: 'f', negatable: false, help: 'Force update the API module')
-    ..addFlag('help',
-        abbr: 'h', negatable: false, help: 'Display usage information');
-
-  _argResults = parser.parse(arguments);
-
-  if (_argResults['help']) {
-    _logMessage('Usage: dart app_build/build_steps.dart [options]');
-    _logMessage(parser.usage);
-    return;
+    //   final content = documentationFile.readAsStringSync().replaceAllMapped(
+    //         RegExp(r'(Current api module version is) `([^`]+)`'),
+    //         (match) => '${match[1]} `$apiCommitHash`',
+    //       );
+    //   documentationFile.writeAsStringSync(content);
+    //   _logMessage('Updated API version in documentation.');
+    // }
   }
 
-  final projectRoot = Directory.current.path;
-  final configFile = File('$projectRoot/app_build/build_config.json');
-  final config = json.decode(configFile.readAsStringSync());
+  // late final ArgResults _argResults;
 
-  final platform = _argResults.option('platform');
-  final apiVersion =
-      _argResults.option('api-version') ?? config['api']['api_commit_hash'];
-  final forceUpdate = _argResults.flag('force');
+// void main(List<String> arguments) async {
+//   final parser = ArgParser()
+//     ..addOption('platform', abbr: 'p', help: 'Specify the platform to update')
+//     ..addOption('api-version',
+//         abbr: 'a', help: 'Specify the API version to update to')
+//     ..addFlag('force',
+//         abbr: 'f', negatable: false, help: 'Force update the API module')
+//     ..addFlag('help',
+//         abbr: 'h', negatable: false, help: 'Display usage information');
 
-  final fetchDefiApiStep = FetchDefiApiStep(
-    projectRoot: projectRoot,
-    apiCommitHash: apiVersion,
-    platformsConfig: config['api']['platforms'],
-    sourceUrls: List<String>.from(config['api']['source_urls']),
-    apiBranch: config['api']['branch'],
-    selectedPlatform: platform,
-    forceUpdate: forceUpdate,
-    enabled: true,
-  );
+//   _argResults = parser.parse(arguments);
 
-  await fetchDefiApiStep.build();
+//   if (_argResults['help']) {
+//     _logMessage('Usage: dart app_build/build_steps.dart [options]');
+//     _logMessage(parser.usage);
+//     return;
+//   }
 
-  if (_argResults.wasParsed('api-version')) {
-    config['api']['api_commit_hash'] = apiVersion;
-    configFile.writeAsStringSync(json.encode(config));
-  }
+//   // final projectRoot = Directory.current.path;
+//   // final configFile = File('$projectRoot/app_build/build_config.json');
+//   final config = json.decode(configFile.readAsStringSync());
+
+//   final platform = _argResults['platform'] as String?;
+//   final apiVersion =
+//       _argResults['api-version'] as String? ?? config['api']['api_commit_hash'];
+//   final forceUpdate = _argResults['force'] as bool;
+
+//   final fetchDefiApiStep = FetchDefiApiStep(
+//     // projectRoot: projectRoot,
+//     apiCommitHash: apiVersion,
+//     platformsConfig: config['api']['platforms'],
+//     sourceUrls: List<String>.from(config['api']['source_urls']),
+//     apiBranch: config['api']['branch'],
+//     artifactOutputPath: config['artifact_output_path'],
+//     buildConfigFile: configFile,
+//     selectedPlatform: platform,
+//     forceUpdate: forceUpdate,
+//     enabled: true,
+//   );
+
+//   await fetchDefiApiStep.build();
+
+//   if (_argResults.wasParsed('api-version')) {
+//     config['api']['api_commit_hash'] = apiVersion;
+//     configFile.writeAsStringSync(json.encode(config));
+//   }
 }
 
 void _logMessage(String message, {bool error = false}) {

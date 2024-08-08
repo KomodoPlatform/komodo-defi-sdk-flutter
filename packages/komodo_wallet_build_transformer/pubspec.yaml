@@ -10,8 +10,8 @@ environment:
 # Add regular dependencies here.
 dependencies:
   args: ^2.5.0 # dart.dev
-  http: 0.13.6 # dart.dev
-  crypto: 3.0.3 # dart.dev
+  http: ^1.2.2 # dart.dev
+  crypto: ^3.0.3 # dart.dev
   path: ^1.9.0
   
   # Approved via https://github.com/KomodoPlatform/komodo-wallet/pull/1106
@@ -22,5 +22,5 @@ dependencies:
   html: ^0.15.4
 
 dev_dependencies:
-  lints: ^3.0.0
+  flutter_lints: ^4.0.0
   test: ^1.24.0

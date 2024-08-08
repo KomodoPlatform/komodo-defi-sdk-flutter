@@ -22,8 +22,10 @@ A new Flutter FFI plugin project.
   s.source_files = 'Classes/**/*'
   s.dependency 'FlutterMacOS'
   # s.vendored_libraries = 'Frameworks/libmm2.a'
-  s.vendored_libraries = 'Frameworks/libkdflib.a'
+  # s.vendored_libraries = ['Frameworks/libkdflib.a']
+  s.vendored_libraries = ['Frameworks/*.a']
   # Exclude i386 and arm64 from iOS Simulator build
+  
   # s.pod_target_xcconfig = { "OTHER_LDFLAGS" => "$(inherited) -force_load $(PODS_TARGET_SRCROOT)/Frameworks/libkdflib.a -lstdc++" }
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',

@@ -11,8 +11,8 @@ import 'package:komodo_defi_framework/src/startup_config_manager.dart';
 
 import 'kdf_operations_interface.dart';
 
-const _kdfAsstsPath = 'assets/packages/komodo_defi_framework/web/src';
-const _kdfJsBootstrapperPath = '$_kdfAsstsPath/kdflib_bootstrapper.js';
+const _kdfAsstsPath = 'kdf';
+const _kdfJsBootstrapperPath = '$_kdfAsstsPath/res/kdflib_bootstrapper.js';
 
 IKdfOperations createKdfOperations({
   required ILogger logger,

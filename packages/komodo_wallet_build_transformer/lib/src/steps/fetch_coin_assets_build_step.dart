@@ -1,7 +1,3 @@
-// ignore_for_file: avoid_print
-// TODO(Francois): Change print statements to Log statements
-
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -15,15 +11,15 @@ import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_fil
 import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/result.dart';
 import 'package:path/path.dart' as path;
 
-/// Entry point used if invoked as a CLI script.
-const String defaultBuildConfigPath = 'app_build/build_config.json';
-
 class FetchCoinAssetsBuildStep extends BuildStep {
+  final File buildConfigOutput;
+
   FetchCoinAssetsBuildStep({
-    required this.projectDir,
+    required this.artifactOutputDirectory,
     required this.config,
     required this.downloader,
     required this.originalBuildConfig,
+    required this.buildConfigOutput,
     this.receivePort,
   }) {
     receivePort?.listen(
@@ -33,19 +29,32 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   }
 
   factory FetchCoinAssetsBuildStep.withBuildConfig(
-      Map<String, dynamic> buildConfig,
-      [ReceivePort? receivePort]) {
-    final CoinCIConfig config = CoinCIConfig.fromJson(buildConfig['coins']);
+    Map<String, dynamic> buildConfig,
+    File outputBuildConfigFile, {
+    required Directory artifactOutputDirectory,
+    ReceivePort? receivePort,
+  }) {
+    CoinCIConfig config = CoinCIConfig.fromJson(buildConfig['coins']);
+    config = config.copyWith(
+      // If the branch is `master`, use the repository mirror URL to avoid
+      // rate limiting issues. Consider refactoring config to allow branch
+      // specific mirror URLs to remove this workaround.
+      coinsRepoContentUrl: config.coinsRepoBranch == 'master'
+          ? 'https://komodoplatform.github.io/coins'
+          : null,
+    );
+
     final GitHubFileDownloader downloader = GitHubFileDownloader(
       repoApiUrl: config.coinsRepoApiUrl,
       repoContentUrl: config.coinsRepoContentUrl,
     );
 
     return FetchCoinAssetsBuildStep(
-      projectDir: Directory.current.path,
+      artifactOutputDirectory: artifactOutputDirectory.path,
       config: config,
       downloader: downloader,
       originalBuildConfig: buildConfig,
+      buildConfigOutput: outputBuildConfigFile,
     );
   }
 
@@ -53,14 +62,17 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   final String id = idStatic;
   static const idStatic = 'fetch_coin_assets';
   final Map<String, dynamic>? originalBuildConfig;
-  final String projectDir;
+  final String artifactOutputDirectory;
   final CoinCIConfig config;
   final GitHubFileDownloader downloader;
   final ReceivePort? receivePort;
 
   @override
   Future<void> build() async {
-    final alreadyHadCoinAssets = File('assets/config/coins.json').existsSync();
+    // Check if the coin assets already exist in the artifact directory
+    final alreadyHadCoinAssets =
+        File('$artifactOutputDirectory/assets/config/coins.json').existsSync();
+
     final isDebugBuild =
         (Platform.environment['FLUTTER_BUILD_MODE'] ?? '').toLowerCase() ==
             'debug';
@@ -73,15 +85,15 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       configWithUpdatedCommit =
           config.copyWith(bundledCoinsRepoCommit: latestCommitHash);
       await configWithUpdatedCommit.save(
-        assetPath: defaultBuildConfigPath,
+        assetPath: buildConfigOutput.path,
         originalBuildConfig: originalBuildConfig,
       );
     }
 
     await downloader.download(
       configWithUpdatedCommit.bundledCoinsRepoCommit,
-      configWithUpdatedCommit.mappedFiles,
-      configWithUpdatedCommit.mappedFolders,
+      _adjustPaths(configWithUpdatedCommit.mappedFiles),
+      _adjustPaths(configWithUpdatedCommit.mappedFolders),
     );
 
     final bool wasCommitHashUpdated = config.bundledCoinsRepoCommit !=
@@ -97,7 +109,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       if (!isDebugBuild || !alreadyHadCoinAssets) {
         stderr.writeln(errorMessage);
         receivePort?.close();
-        throw StepCompletedWithChangesException(errorMessage);
+        throw BuildStepWithoutRevertException(errorMessage);
       }
 
       stdout.writeln('\n[WARN] $errorMessage\n');
@@ -130,7 +142,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
   @override
   Future<void> revert([Exception? e]) async {
-    if (e is StepCompletedWithChangesException) {
+    if (e is BuildStepWithoutRevertException) {
       print(
         'Step not reverted because the build process was completed with changes',
       );
@@ -154,9 +166,9 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
   Future<bool> _canSkipMappedFiles(Map<String, String> files) async {
     for (final MapEntry<String, String> mappedFile in files.entries) {
-      final GitHubFile remoteFile = await _fetchRemoteFileContent(mappedFile);
+      final GitHubFile remoteFile = await _fetchRemoteFileMetadata(mappedFile);
       final Result canSkipFile = await _canSkipFile(
-        mappedFile.key,
+        path.join(artifactOutputDirectory, mappedFile.key),
         remoteFile,
       );
       if (!canSkipFile.success) {
@@ -176,7 +188,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
         config.bundledCoinsRepoCommit,
       );
       final Result canSkipFolder = await _canSkipDirectory(
-        mappedFolder.key,
+        path.join(artifactOutputDirectory, mappedFolder.key),
         remoteFolderContents,
       );
 
@@ -188,16 +200,27 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     return true;
   }
 
-  Future<GitHubFile> _fetchRemoteFileContent(
+  Future<GitHubFile> _fetchRemoteFileMetadata(
     MapEntry<String, String> mappedFile,
   ) async {
-    final Uri fileContentUrl = Uri.parse(
-      '${config.coinsRepoApiUrl}/contents/${mappedFile.value}?ref=${config.bundledCoinsRepoCommit}',
+    final String fileMetadataUrl =
+        '${config.coinsRepoApiUrl}/contents/${mappedFile.value}?ref=${config.bundledCoinsRepoCommit}';
+
+    final http.Response fileContentResponse = await http.get(
+      Uri.parse(fileMetadataUrl),
     );
-    final http.Response fileContentResponse = await http.get(fileContentUrl);
+
+    if (fileContentResponse.statusCode != 200) {
+      throw Exception(
+        'Failed to fetch remote file metadata at $fileMetadataUrl: '
+        '${fileContentResponse.statusCode} ${fileContentResponse.reasonPhrase}',
+      );
+    }
+
     final GitHubFile fileContent = GitHubFile.fromJson(
       jsonDecode(fileContentResponse.body) as Map<String, dynamic>,
     );
+
     return fileContent;
   }
 
@@ -264,6 +287,12 @@ class FetchCoinAssetsBuildStep extends BuildStep {
         .map((FileSystemEntity file) => file.path)
         .toList();
   }
+
+  Map<String, String> _adjustPaths(Map<String, String> paths) {
+    return paths.map(
+      (key, value) => MapEntry(path.join(artifactOutputDirectory, key), value),
+    );
+  }
 }
 
 void onProgressError(dynamic error) {
@@ -284,8 +313,8 @@ void onProgressData(dynamic message, ReceivePort? recevePort) {
   }
 }
 
-class StepCompletedWithChangesException implements Exception {
-  StepCompletedWithChangesException(this.message);
+class BuildStepWithoutRevertException implements Exception {
+  BuildStepWithoutRevertException(this.message);
 
   final String message;
 

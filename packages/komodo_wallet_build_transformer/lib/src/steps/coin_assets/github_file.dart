@@ -75,4 +75,43 @@ class GitHubFile {
 
   /// The links associated with the file.
   final Links? links;
+
+  // Copy with method
+  GitHubFile copyWith({
+    String? name,
+    String? path,
+    String? sha,
+    int? size,
+    String? url,
+    String? htmlUrl,
+    String? gitUrl,
+    String? downloadUrl,
+    String? type,
+    Links? links,
+  }) {
+    return GitHubFile(
+      name: name ?? this.name,
+      path: path ?? this.path,
+      sha: sha ?? this.sha,
+      size: size ?? this.size,
+      url: url ?? this.url,
+      htmlUrl: htmlUrl ?? this.htmlUrl,
+      gitUrl: gitUrl ?? this.gitUrl,
+      downloadUrl: downloadUrl ?? this.downloadUrl,
+      type: type ?? this.type,
+      links: links ?? this.links,
+    );
+  }
+
+  GitHubFile withStaticHostingUrl(String branch) {
+    final staticHostingUrls = {
+      'master': 'https://komodoplatform.github.io/coins',
+    };
+
+    return copyWith(
+      downloadUrl: staticHostingUrls.containsKey(branch)
+          ? '${staticHostingUrls[branch]}/$path'
+          : downloadUrl,
+    );
+  }
 }
