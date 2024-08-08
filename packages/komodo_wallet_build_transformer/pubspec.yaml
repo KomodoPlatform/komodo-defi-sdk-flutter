@@ -1,7 +1,7 @@
 name: komodo_wallet_build_transformer
 description: A build transformer for Komodo Wallet used for managing all build-time dependencies.
 version: 0.0.1
-# repository: https://github.com/my_org/my_repo
+repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/
 publish_to: "none"
 
 environment:

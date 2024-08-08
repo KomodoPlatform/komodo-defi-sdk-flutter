@@ -1,7 +1,7 @@
 name: komodo_wallet_cli
 description: A sample command-line application with basic argument parsing.
 version: 0.0.1
-# repository: https://github.com/my_org/my_repo
+repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

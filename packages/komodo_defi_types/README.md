@@ -1,15 +1,6 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Komodo DeFi Types
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/guides/libraries/writing-package-pages). 
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-library-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/developing-packages). 
--->
+A shared library for common types/entities used in the Komodo DeFi Framework. **NB: They should be kept lightweight and agnostic to the context in which they are used.** E.g. A `Coin` type should not contain the balance or contract address information.
 
 TODO: Put a short description of the package here that helps potential users
 know whether this package might be useful for them.
