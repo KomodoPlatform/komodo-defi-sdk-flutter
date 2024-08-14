@@ -35,6 +35,7 @@ String _generateDefaultRpcPassword() {
 
 class _ConfigureDialogState extends State<ConfigureDialog> {
   String _selectedHostType = 'local';
+  String _selectedProtocol = 'https';
   final TextEditingController _passphraseController = TextEditingController();
   final TextEditingController _userpassController =
       TextEditingController(text: _generateDefaultRpcPassword());
@@ -96,6 +97,30 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                 ),
               ],
               if (_selectedHostType == 'remote') ...[
+                DropdownButtonFormField<String>(
+                  value: _selectedProtocol,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedProtocol = value!;
+                      if (_selectedProtocol == 'http') {
+                        _showHttpWarning(context);
+                      }
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Protocol',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'http',
+                      child: Text('http'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'https',
+                      child: Text('https'),
+                    ),
+                  ],
+                ),
                 TextField(
                   controller: _userpassController,
                   decoration: const InputDecoration(
@@ -104,14 +129,15 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                 ),
                 TextField(
                   controller: _ipController,
-                  // TODO: Change to form field and set up validation so that
-                  // user knows if the IP address is invalid.
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Host or IP Address',
-                    hintText:
-                        'e.g. http://123.456.789.012 or https://example.com',
-
-                    // errorText:
+                    hintText: 'e.g. 123.456.789.012 or example.com',
+                    suffixIcon: _selectedHostType == 'remote'
+                        ? Tooltip(
+                            message: _remoteAccessTooltipMessage(),
+                            child: const Icon(Icons.info_outline),
+                          )
+                        : null,
                   ),
                 ),
                 TextField(
@@ -170,7 +196,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
               case 'remote':
                 config = RemoteConfig(
                   userpass: _userpassController.text,
-                  ipAddress: _ipController.text,
+                  ipAddress: '$_selectedProtocol://${_ipController.text}',
                   port: int.parse(_portController.text),
                 );
                 break;
@@ -191,7 +217,6 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   'Invalid/unsupported host type: $_selectedHostType',
                 );
             }
-            // Return both config and passphrase
             Navigator.of(context).pop(
               {'config': config, 'passphrase': _passphraseController.text},
             );
@@ -200,6 +225,40 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
         ),
       ],
     );
+  }
+
+  void _showHttpWarning(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Warning: HTTP is not secure'),
+          content: const Text(
+              'You have selected HTTP, which is not secure as your RPC password will be sent in plain text, which can be intercepted by malicious actors. '
+              'For remotely accessible KDF instances, it is recommended to use a strong (32+ character) RPC password and set the connection to HTTPS.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _remoteAccessTooltipMessage() {
+    return '''
+1. Setup a server to run KDF and ensure the necessary ports are exposed. Default is `7783`. This can easily be set up using our docker image: https://hub.docker.com/r/komodoofficial/komodo-defi-framework
+2. (Optional) Generate a private and public key and set the paths as environment variables using `MM_CERT_PATH` and `MM_CERT_KEY_PATH` or add them to the launch parameter.
+3. Set the following parameters in MM2.json or pass them as CLI parameters:
+``json
+"https": true,
+"rpc_local_only": false,
+"rpcip": "0.0.0.0",
+```''';
   }
 
   @override
@@ -214,6 +273,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
     String? savedUserpass = prefs.getString('userpass');
     String? savedIp = prefs.getString('ipAddress');
     String? savedPort = prefs.getString('port');
+    String? savedProtocol = prefs.getString('protocol');
     String? savedAwsRegion = prefs.getString('awsRegion');
     String? savedAwsAccessKey = prefs.getString('awsAccessKey');
     String? savedAwsSecretKey = prefs.getString('awsSecretKey');
@@ -225,6 +285,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
       _userpassController.text = savedUserpass ?? _generateDefaultRpcPassword();
       _ipController.text = savedIp ?? '';
       _portController.text = savedPort ?? '';
+      _selectedProtocol = savedProtocol ?? 'https';
       _awsRegionController.text = savedAwsRegion ?? '';
       _awsAccessKeyController.text = savedAwsAccessKey ?? '';
       _awsSecretKeyController.text = savedAwsSecretKey ?? '';
@@ -238,6 +299,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
     await prefs.setString('userpass', _userpassController.text);
     await prefs.setString('ipAddress', _ipController.text);
     await prefs.setString('port', _portController.text);
+    await prefs.setString('protocol', _selectedProtocol);
     await prefs.setString('awsRegion', _awsRegionController.text);
     await prefs.setString('awsAccessKey', _awsAccessKeyController.text);
     await prefs.setString('awsSecretKey', _awsSecretKeyController.text);

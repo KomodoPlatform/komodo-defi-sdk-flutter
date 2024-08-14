@@ -59,6 +59,7 @@ class StartupConfigManager implements IKdfStartupConfig {
       'rpc_password': rpcPassword,
       'netid': 8762,
       'gui': gui,
+      if (!kIsWeb) 'https': true,
       if (userHome != null) 'userhome': userHome,
       if (dbDir != null) 'dbdir': dbDir,
       'passphrase': passphrase,
