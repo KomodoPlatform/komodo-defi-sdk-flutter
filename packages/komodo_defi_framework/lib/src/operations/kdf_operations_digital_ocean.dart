@@ -58,6 +58,9 @@ class KdfOperationsDigitalOcean implements IKdfOperations {
 
   void _log(String message) => _logCallback(message);
 
+  @override
+  String operationsName = 'DigitalOcean';
+
   Future<String?> _getDropletIp(String dropletId) async {
     final url = 'https://api.digitalocean.com/v2/droplets/$dropletId';
     final response = await http.get(

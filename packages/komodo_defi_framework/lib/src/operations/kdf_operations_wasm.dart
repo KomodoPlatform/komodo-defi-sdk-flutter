@@ -32,12 +32,11 @@ class KdfOperationsWasm implements IKdfOperations {
     required LocalConfig config,
     void Function(String)? logCallback,
   }) {
-    final operations = KdfOperationsWasm._(configManager, config);
-    operations._logger = logCallback;
-    return operations;
+    return KdfOperationsWasm._(configManager, config).._logger = logCallback;
   }
 
   KdfOperationsWasm._(this._configManager, this._config);
+
   final IKdfStartupConfig _configManager;
   final LocalConfig _config;
   bool _libraryLoaded = false;
@@ -50,6 +49,9 @@ class KdfOperationsWasm implements IKdfOperations {
             .toDart ??
         false;
   }
+
+  @override
+  String operationsName = 'Local WASM JS Library';
 
   @override
   Future<bool> isRunning() async =>

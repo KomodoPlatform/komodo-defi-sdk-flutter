@@ -29,9 +29,8 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-String _generateDefaultRpcPassword() {
-  return '9xtg6E#6YK|9';
-}
+/// Generate a random 32 character password for the RPC userpass
+String _generateDefaultRpcPassword() => SecurityUtils.securePassword(32);
 
 class _ConfigureDialogState extends State<ConfigureDialog> {
   String _selectedHostType = 'local';
@@ -398,8 +397,10 @@ class _MyAppState extends State<MyApp> {
               verticalSpacerSmall,
               Text('Version: $_version', style: textStyle),
               verticalSpacerSmall,
-              Text('Host type: ${_kdfFramework?.kdfType ?? 'None selected.'}',
-                  style: textStyle),
+              Text(
+                'Host type: ${_kdfFramework?.operationsName ?? 'None selected.'}',
+                style: textStyle,
+              ),
               const Divider(),
               const Text('Logs:', style: textStyle),
               Expanded(

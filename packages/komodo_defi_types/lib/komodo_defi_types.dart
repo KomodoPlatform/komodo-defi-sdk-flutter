@@ -5,5 +5,9 @@ library;
 
 export 'src/komodo_defi_types_base.dart';
 
-// TODO: Export any libraries intended for clients of this package.
+// TODO: Consider moving utils to a separate package. The rationale for
+// including them here is that many are associated with the types in this
+// package.
 export 'src/utils/json_type_utils.dart';
+
+export 'src/utils/security_utils.dart';

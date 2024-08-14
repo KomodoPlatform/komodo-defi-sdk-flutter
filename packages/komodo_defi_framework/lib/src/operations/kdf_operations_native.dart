@@ -78,6 +78,9 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   LocalConfig _config;
 
   @override
+  String operationsName = 'Local Native Library';
+
+  @override
   Future<KdfStartupResult> kdfMain(String passphrase) async {
     final startParams = await _configManager
         .generateStartParamsFromDefault(passphrase, userpass: _config.userpass);

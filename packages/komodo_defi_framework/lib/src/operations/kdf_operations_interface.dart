@@ -83,6 +83,8 @@ abstract class IKdfOperations {
   //   required IConfigManager configManager,
   // });
 
+  String get operationsName;
+
   Future<KdfStartupResult> kdfMain(String passphrase);
   Future<MainStatus> kdfMainStatus();
   Future<StopStatus> kdfStop();

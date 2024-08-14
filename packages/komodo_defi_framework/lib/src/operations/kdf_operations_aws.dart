@@ -98,6 +98,9 @@ class KdfOperationsAWS implements IKdfOperations {
   void _log(String message) => _logCallback(message);
 
   @override
+  String operationsName = 'Amazon Web Services (AWS)';
+
+  @override
   Future<bool> isRunning() async {
     return await kdfMainStatus() == MainStatus.rpcIsUp;
   }

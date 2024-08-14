@@ -4,11 +4,12 @@ import 'package:http/http.dart';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart';
-
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/startup_config_manager.dart';
 
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
+export 'package:komodo_defi_types/komodo_defi_types.dart' show SecurityUtils;
+
 export 'src/operations/kdf_operations_interface.dart';
 
 class KomodoDefiFramework {
@@ -47,7 +48,7 @@ class KomodoDefiFramework {
   final IKdfStartupConfig _configManager;
   late final IKdfOperations _kdfOperations;
 
-  Type get kdfType => _kdfOperations.runtimeType;
+  String get operationsName => _kdfOperations.operationsName;
 
   // void Function(String)? _logger;
   final StreamController<String> _logStream = StreamController.broadcast();

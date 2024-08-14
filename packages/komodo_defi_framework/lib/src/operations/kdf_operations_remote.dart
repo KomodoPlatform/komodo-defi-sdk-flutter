@@ -68,6 +68,9 @@ class KdfOperationsRemote implements IKdfOperations {
   void _log(String message) => _logCallback(message);
 
   @override
+  String operationsName = 'Remote RPC Server';
+
+  @override
   Future<bool> isRunning() async {
     return await kdfMainStatus() == MainStatus.rpcIsUp;
   }
