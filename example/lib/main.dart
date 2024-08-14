@@ -285,7 +285,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
       _passphraseController.text = generateMnemonic();
       _userpassController.text = savedUserpass ?? _generateDefaultRpcPassword();
       _ipController.text = savedIp ?? '';
-      _portController.text = savedPort ?? '';
+      _portController.text = savedPort ?? '7783';
       _selectedProtocol = savedProtocol ?? 'https';
       _awsRegionController.text = savedAwsRegion ?? '';
       _awsAccessKeyController.text = savedAwsAccessKey ?? '';

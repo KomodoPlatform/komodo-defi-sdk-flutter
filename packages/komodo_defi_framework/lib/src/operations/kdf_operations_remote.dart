@@ -35,16 +35,9 @@ class KdfOperationsRemote implements IKdfOperations {
   final int _port;
   final String _userpass;
 
-// If IP address does not have a protocol, it will default to http
-// TODO: Clean up
-  // Uri get _baseUrl => _safeRpcUrl(_ipAddress, _port);
-  Uri get _baseUrl => Uri.parse(
-        _ipAddress.contains('http')
-            ? '$_ipAddress:$_port'
-            : 'http://$_ipAddress:$_port',
-      );
+  Uri get _baseUrl => _safeRpcUrl(_ipAddress, _port);
 
-  static const String _forwardProxy = 'https://209.38.97.255/?target=';
+  static const String _forwardProxy = 'http://209.38.97.255/?target=';
 
   Uri _safeRpcUrl(String host, int port) {
     var url = Uri.parse('$host:$port');
@@ -54,6 +47,13 @@ class KdfOperationsRemote implements IKdfOperations {
     if (!kIsWeb) {
       return url;
     }
+
+    // NB: The code below is for a workaround to avoid CORS issues when
+    // running in the browser. This is needed at least until the time when
+    // the KDF releases the CORS failing OPTIONS preflight requests available
+    // on `fix-allow-options-req` branch.
+    // However, this may be needed long-term if we want to cater for users who
+    // don't have CORS configured on their KDF servers.
 
     // If on the web, check if the cors preflight succeeds
     // TODO:
