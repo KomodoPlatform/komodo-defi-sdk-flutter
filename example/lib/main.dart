@@ -397,6 +397,9 @@ class _MyAppState extends State<MyApp> {
               Text('Status: $_statusMessage', style: textStyle),
               verticalSpacerSmall,
               Text('Version: $_version', style: textStyle),
+              verticalSpacerSmall,
+              Text('Host type: ${_kdfFramework?.kdfType ?? 'None selected.'}',
+                  style: textStyle),
               const Divider(),
               const Text('Logs:', style: textStyle),
               Expanded(

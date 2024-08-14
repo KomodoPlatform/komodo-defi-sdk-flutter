@@ -18,26 +18,26 @@ IKdfOperations createLocalKdfOperations({
   required IKdfStartupConfig configManager,
   required LocalConfig config,
 }) {
-  return KdfOperationsWeb.create(
+  return KdfOperationsWasm.create(
     logCallback: logCallback ?? print,
     configManager: configManager,
     config: config,
   );
 }
 
-class KdfOperationsWeb implements IKdfOperations {
+class KdfOperationsWasm implements IKdfOperations {
   @override
-  factory KdfOperationsWeb.create({
+  factory KdfOperationsWasm.create({
     required IKdfStartupConfig configManager,
     required LocalConfig config,
     void Function(String)? logCallback,
   }) {
-    final operations = KdfOperationsWeb._(configManager, config);
+    final operations = KdfOperationsWasm._(configManager, config);
     operations._logger = logCallback;
     return operations;
   }
 
-  KdfOperationsWeb._(this._configManager, this._config);
+  KdfOperationsWasm._(this._configManager, this._config);
   final IKdfStartupConfig _configManager;
   final LocalConfig _config;
   bool _libraryLoaded = false;

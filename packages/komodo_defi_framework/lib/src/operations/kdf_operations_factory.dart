@@ -2,7 +2,7 @@ import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_aws.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_digital_ocean.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart';
-import 'package:komodo_defi_framework/src/operations/kdf_operations_web.dart'
+import 'package:komodo_defi_framework/src/operations/kdf_operations_wasm.dart'
     if (dart.library.io) 'package:komodo_defi_framework/src/operations/kdf_operations_native.dart'
     as local;
 import 'package:komodo_defi_framework/src/startup_config_manager.dart';

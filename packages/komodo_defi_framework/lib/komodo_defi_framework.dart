@@ -47,6 +47,8 @@ class KomodoDefiFramework {
   final IKdfStartupConfig _configManager;
   late final IKdfOperations _kdfOperations;
 
+  Type get kdfType => _kdfOperations.runtimeType;
+
   // void Function(String)? _logger;
   final StreamController<String> _logStream = StreamController.broadcast();
 
