@@ -77,12 +77,12 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   DropdownMenuItem(
                     value: 'aws',
                     enabled: false,
-                    child: Text('AWS'),
+                    child: Text('AWS (Unavailable)'),
                   ),
                   DropdownMenuItem(
                     value: 'digital-ocean',
                     enabled: false,
-                    child: Text('Digital Ocean'),
+                    child: Text('Digital Ocean (Unavailable)'),
                   ),
                 ],
               ),
@@ -117,7 +117,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                     ),
                     DropdownMenuItem(
                       value: 'https',
-                      child: Text('https'),
+                      child: Text('https (Requires special configuration)'),
                     ),
                   ],
                 ),
@@ -329,7 +329,7 @@ class _MyAppState extends State<MyApp> {
       GlobalKey<ScaffoldMessengerState>();
 
   // TODO: More specific name
-  bool get _canInteract => _kdfFramework != null || !_isRunning;
+  bool get _canInteract => _kdfFramework != null;
 
   // Open end drawer on start
   @override
@@ -562,6 +562,13 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _executeRpc() async {
+    // For now, we can hide this feature since it's a bit redundant now that
+    // we have the RequestPlayground widget.
+
+    // Open the RequestPlayground widget instead
+    return Scaffold.of(_scaffoldMessengerKey.currentContext!).openEndDrawer();
+
+    // ignore: dead_code
     if (_kdfFramework == null || !_isRunning) {
       _showMessage('KDF is not running.');
       return;

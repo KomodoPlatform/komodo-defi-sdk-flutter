@@ -106,3 +106,5 @@ macos/Frameworks/*
 **.zip
 
 key.txt
+.firebaserc
+firebase.json
