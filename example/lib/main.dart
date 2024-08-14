@@ -8,6 +8,8 @@ import 'package:json_editor_flutter/json_editor_flutter.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_framework_example/widgets/request_playground.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -346,7 +348,22 @@ class _MyAppState extends State<MyApp> {
       scaffoldMessengerKey: _scaffoldMessengerKey,
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Komodo DeFi Framework Example'),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Komodo DeFi Framework Flutter SDK Example'),
+              const SizedBox(width: 16),
+              // Button to the project's GitHub repository
+              IconButton(
+                icon: const Icon(Icons.code),
+                onPressed: () {
+                  launchUrlString(
+                    'https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/tree/dev',
+                  );
+                },
+              ),
+            ],
+          ),
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -381,13 +398,14 @@ class _MyAppState extends State<MyApp> {
                     ),
                   ),
                   horizontalSpacerSmall,
-                  OutlinedButton(
+                  OutlinedButton.icon(
                     onPressed: _canInteract ? _checkStatus : null,
-                    child: const Text('Check Status'),
+                    label: const Text('Refresh Status'),
+                    icon: const Icon(Icons.refresh),
                   ),
                   horizontalSpacerSmall,
                   OutlinedButton(
-                    onPressed: _canInteract ? _executeRpc : null,
+                    onPressed: _canInteract && _isRunning ? _executeRpc : null,
                     child: const Text('Execute RPC'),
                   ),
                 ],
