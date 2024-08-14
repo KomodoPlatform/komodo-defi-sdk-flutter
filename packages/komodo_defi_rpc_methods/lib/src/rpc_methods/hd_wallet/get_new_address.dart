@@ -1,4 +1,5 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Get a new address for the specified coin
 ///
@@ -28,11 +29,13 @@ class GetNewAddressRequest
   // https://komodoplatform.com/en/docs/komodo-defi-framework/api/v20-dev/hd_address_management/#arguments
   GetNewAddressRequest({
     required super.rpcPass,
-    required super.client,
+    // required super.client,
     required this.coin,
+    this.gapLimit,
   }) : super(method: 'get_new_address');
 
   final String coin;
+  final int? gapLimit;
 
   @override
   Map<String, dynamic> toJson() {
@@ -40,7 +43,10 @@ class GetNewAddressRequest
       'userpass': rpcPass,
       'method': method,
       'mmrpc': mmrpc,
-      'params': {'coin': coin},
+      'params': {
+        'coin': coin,
+        if (gapLimit != null) 'gaplimit': gapLimit,
+      },
     };
   }
 
@@ -57,7 +63,7 @@ class GetNewAddressResponse extends BaseResponse {
   factory GetNewAddressResponse.fromJson(Map<String, dynamic> json) {
     return GetNewAddressResponse(
       mmrpc: json.value<String>('mmrpc'),
-      address: json.nestedValue<String>(['result', 'address']),
+      address: json.value<String>('result', 'address'),
     );
   }
 

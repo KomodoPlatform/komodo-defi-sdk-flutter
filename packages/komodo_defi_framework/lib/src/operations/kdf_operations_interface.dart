@@ -1,9 +1,5 @@
 import 'dart:async';
 
-import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
-import 'package:komodo_defi_framework/src/logger/logger.dart';
-import 'package:komodo_defi_framework/src/startup_config_manager.dart';
-
 enum MainStatus {
   notRunning,
   noContext,
@@ -31,6 +27,11 @@ enum KdfStartupResult {
   alreadyRunning,
   invalidParams,
   noCoinsInConf;
+
+  // Getter for if the KDF is running successfully e.g. KdfStartupResult.ok
+  // or KdfStartupResult.alreadyRunning
+  bool isRunning() =>
+      this == KdfStartupResult.ok || this == KdfStartupResult.alreadyRunning;
 
   // Int values
   // Ok = 0,
@@ -77,17 +78,16 @@ enum StopStatus {
 }
 
 abstract class IKdfOperations {
-  IKdfOperations.create({
-    required ILogger logger,
-    required IConfigManager configManager,
-  });
+  // IKdfOperations.create({
+  //   required ILogger logger,
+  //   required IConfigManager configManager,
+  // });
 
   Future<KdfStartupResult> kdfMain(String passphrase);
-  MainStatus kdfMainStatus();
+  Future<MainStatus> kdfMainStatus();
   Future<StopStatus> kdfStop();
-  bool isRunning();
-
-  Future<JsonMap> mm2Rpc(JsonMap request);
-
+  Future<bool> isRunning();
+  Future<String?> version();
+  Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request);
   Future<void> validateSetup();
 }

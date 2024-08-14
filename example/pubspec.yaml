@@ -20,6 +20,7 @@ version: 1.0.0+1
 
 environment:
   sdk: ^3.4.4
+  flutter: '>=3.22.0 <3.23.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -43,6 +44,11 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   bip39: ^1.0.6
+  json_editor_flutter: ^1.4.2
+  flutter_secure_storage: ^4.2.1
+  shared_preferences: ^2.3.1
+  postman_collection: ^0.0.9
+  flutter_json_view: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -59,7 +65,6 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
-  # flutter_web_plugins: any
 flutter:
 
   # The following line ensures that the Material Icons font is
@@ -67,10 +72,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/komodo_defi.postman_collection.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -14,6 +14,10 @@ environment:
 dependencies:
   komodo_defi_framework:
     path: ../komodo_defi_framework
+  komodo_defi_rpc_methods:
+    path: ../komodo_defi_rpc_methods
+  komodo_defi_types:
+    path: ../komodo_defi_types
 
 dev_dependencies:
   mocktail: ^1.0.4

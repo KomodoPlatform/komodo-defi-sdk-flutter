@@ -13,6 +13,7 @@ environment:
   flutter: '>=3.22.0'
 
 dependencies:
+  aws_client: ^0.6.0
   ffi: ^2.1.2
   flutter:
     sdk: flutter
@@ -20,7 +21,6 @@ dependencies:
     sdk: flutter
   http: ^1.2.2
   js: ^0.7.1
-
   komodo_wallet_build_transformer:
     path: ../komodo_wallet_build_transformer
 
@@ -38,6 +38,7 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   flutter_test:
     sdk: flutter
+  very_good_analysis: ^6.0.0
   yaml: ^3.1.2
 
 

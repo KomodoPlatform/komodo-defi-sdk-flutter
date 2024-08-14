@@ -80,6 +80,7 @@ windows/**/mm2.exe
 linux/mm2/mm2
 macos/mm2
 **/.api_last_updated*
+.venv/
 
 # Android C++ files
 android/app/.cxx/
@@ -103,3 +104,5 @@ macos/Frameworks/*
 # Flutter SDK
 .fvm/
 **.zip
+
+key.txt

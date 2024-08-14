@@ -9,8 +9,8 @@ environment:
   sdk: ^3.4.0
 
 dependencies:
-  komodo_defi_framework:
-    path: ../komodo_defi_framework
+  komodo_defi_types:
+    path: ../komodo_defi_types
 
 dev_dependencies:
   mocktail: ^1.0.4

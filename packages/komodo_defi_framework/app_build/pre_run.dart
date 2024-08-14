@@ -49,7 +49,7 @@ void main() async {
   final args = (transformer['args'] as List).cast<String>().toList()
     ..addAll([
       '-i',
-      path,
+      path as String,
       '-o',
       path,
     ]);

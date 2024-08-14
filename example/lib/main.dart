@@ -1,11 +1,25 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:bip39/bip39.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:json_editor_flutter/json_editor_flutter.dart';
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
+import 'package:komodo_defi_framework_example/widgets/request_playground.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:komodo_defi_framework/komodo_defi_framework.dart'
-    as komodo_defi_framework;
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // (await SharedPreferences.getInstance()).clear();
+  runApp(const MaterialApp(home: MyApp()));
+}
 
-void main() {
-  runApp(const MyApp());
+class ConfigureDialog extends StatefulWidget {
+  const ConfigureDialog({super.key});
+
+  @override
+  _ConfigureDialogState createState() => _ConfigureDialogState();
 }
 
 class MyApp extends StatefulWidget {
@@ -15,48 +29,622 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+String _generateDefaultRpcPassword() {
+  return '9xtg6E#6YK|9';
+}
+
+class _ConfigureDialogState extends State<ConfigureDialog> {
+  String _selectedHostType = 'local';
+  final TextEditingController _passphraseController = TextEditingController();
+  final TextEditingController _userpassController =
+      TextEditingController(text: _generateDefaultRpcPassword());
+  final TextEditingController _ipController = TextEditingController();
+  final TextEditingController _portController = TextEditingController();
+  final TextEditingController _awsRegionController = TextEditingController();
+  final TextEditingController _awsAccessKeyController = TextEditingController();
+  final TextEditingController _awsSecretKeyController = TextEditingController();
+  final TextEditingController _awsInstanceTypeController =
+      TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Configure KDF'),
+      content: ConstrainedBox(
+        constraints:
+            const BoxConstraints(minWidth: 300, minHeight: 300, maxWidth: 300),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButton<String>(
+                value: _selectedHostType,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedHostType = value!;
+                  });
+                },
+                items: const [
+                  DropdownMenuItem(
+                    value: 'local',
+                    child: Text('Local'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'remote',
+                    child: Text('Remote (LAN/Internet)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'aws',
+                    enabled: false,
+                    child: Text('AWS'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'digital-ocean',
+                    enabled: false,
+                    child: Text('Digital Ocean'),
+                  ),
+                ],
+              ),
+              if (_selectedHostType != 'remote') ...[
+                TextField(
+                  controller: _passphraseController,
+                  maxLines: 6,
+                  minLines: 1,
+                  decoration: const InputDecoration(
+                    labelText: 'Seed',
+                  ),
+                ),
+              ],
+              if (_selectedHostType == 'remote') ...[
+                TextField(
+                  controller: _userpassController,
+                  decoration: const InputDecoration(
+                    labelText: 'RPC Password (userpass)',
+                  ),
+                ),
+                TextField(
+                  controller: _ipController,
+                  // TODO: Change to form field and set up validation so that
+                  // user knows if the IP address is invalid.
+                  decoration: const InputDecoration(
+                    labelText: 'Host or IP Address',
+                    hintText:
+                        'e.g. http://123.456.789.012 or https://example.com',
+
+                    // errorText:
+                  ),
+                ),
+                TextField(
+                  controller: _portController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'Port',
+                  ),
+                ),
+              ],
+              if (_selectedHostType == 'aws') ...[
+                TextField(
+                  controller: _awsRegionController,
+                  decoration: const InputDecoration(
+                    labelText: 'AWS Region',
+                  ),
+                ),
+                TextField(
+                  controller: _awsAccessKeyController,
+                  decoration: const InputDecoration(
+                    labelText: 'AWS Access Key',
+                  ),
+                ),
+                TextField(
+                  controller: _awsSecretKeyController,
+                  decoration: const InputDecoration(
+                    labelText: 'AWS Secret Key',
+                  ),
+                ),
+                TextField(
+                  controller: _awsInstanceTypeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Instance Type',
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () async {
+            KdfConfig config;
+            await _saveConfiguration();
+            switch (_selectedHostType) {
+              case 'remote':
+                config = RemoteConfig(
+                  userpass: _userpassController.text,
+                  ipAddress: _ipController.text,
+                  port: int.parse(_portController.text),
+                );
+                break;
+              case 'aws':
+                config = AwsConfig(
+                  userpass: _userpassController.text,
+                  region: _awsRegionController.text,
+                  accessKey: _awsAccessKeyController.text,
+                  secretKey: _awsSecretKeyController.text,
+                  instanceType: _awsInstanceTypeController.text,
+                );
+                break;
+              case 'local':
+                config = LocalConfig(userpass: _userpassController.text);
+                break;
+              default:
+                throw Exception(
+                  'Invalid/unsupported host type: $_selectedHostType',
+                );
+            }
+            // Return both config and passphrase
+            Navigator.of(context).pop(
+              {'config': config, 'passphrase': _passphraseController.text},
+            );
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+
   @override
   void initState() {
     super.initState();
-    // komodo_defi_framework
+    _loadSavedConfiguration();
+  }
+
+  Future<void> _loadSavedConfiguration() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? savedHostType = prefs.getString('hostType');
+    String? savedUserpass = prefs.getString('userpass');
+    String? savedIp = prefs.getString('ipAddress');
+    String? savedPort = prefs.getString('port');
+    String? savedAwsRegion = prefs.getString('awsRegion');
+    String? savedAwsAccessKey = prefs.getString('awsAccessKey');
+    String? savedAwsSecretKey = prefs.getString('awsSecretKey');
+    String? savedAwsInstanceType = prefs.getString('awsInstanceType');
+
+    setState(() {
+      _selectedHostType = savedHostType ?? 'local';
+      _passphraseController.text = generateMnemonic();
+      _userpassController.text = savedUserpass ?? _generateDefaultRpcPassword();
+      _ipController.text = savedIp ?? '';
+      _portController.text = savedPort ?? '';
+      _awsRegionController.text = savedAwsRegion ?? '';
+      _awsAccessKeyController.text = savedAwsAccessKey ?? '';
+      _awsSecretKeyController.text = savedAwsSecretKey ?? '';
+      _awsInstanceTypeController.text = savedAwsInstanceType ?? '';
+    });
+  }
+
+  Future<void> _saveConfiguration() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('hostType', _selectedHostType);
+    await prefs.setString('userpass', _userpassController.text);
+    await prefs.setString('ipAddress', _ipController.text);
+    await prefs.setString('port', _portController.text);
+    await prefs.setString('awsRegion', _awsRegionController.text);
+    await prefs.setString('awsAccessKey', _awsAccessKeyController.text);
+    await prefs.setString('awsSecretKey', _awsSecretKeyController.text);
+    await prefs.setString('awsInstanceType', _awsInstanceTypeController.text);
+
+    //! IMPORTANT: Replace SharedPreferences with a more secure solution before using this in production.
+  }
+}
+
+class _MyAppState extends State<MyApp> {
+  KomodoDefiFramework? _kdfFramework;
+  String? _statusMessage;
+  String? _version;
+  bool _isRunning = false;
+  String? _passphrase; // Add this line
+  final _logController = StreamController<String>.broadcast();
+  final ScrollController _scrollController = ScrollController();
+  final List<String> _logMessages = []; // List to store log messages
+
+  Map<String, dynamic> rpcInput = {
+    'userpass': '********',
+    'method': 'get_enabled_coins',
+    'params': {},
+  };
+
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
+  // TODO: More specific name
+  bool get _canInteract => _kdfFramework != null || !_isRunning;
+
+  // Open end drawer on start
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedData();
   }
 
   @override
   Widget build(BuildContext context) {
-    const textStyle = TextStyle(fontSize: 25);
-    const spacerSmall = SizedBox(height: 10);
+    const textStyle = TextStyle(fontSize: 18);
+    const verticalSpacerSmall = SizedBox(height: 12);
+    const horizontalSpacerSmall = SizedBox(width: 12);
     return MaterialApp(
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Native Packages'),
+          title: const Text('Komodo DeFi Framework Example'),
         ),
-        body: SingleChildScrollView(
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              children: [
-                const Text(
-                  'This calls a native function through FFI that is shipped as source in the package. '
-                  'The native code is built as part of the Flutter Runner build.',
-                  style: textStyle,
-                  textAlign: TextAlign.center,
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: _isRunning ? null : _configure,
+                    label: const Text('Configure'),
+                    icon: const Icon(Icons.settings),
+                  ),
+                  horizontalSpacerSmall,
+                  FilledButton.icon(
+                    onPressed:
+                        _isRunning || !_canInteract || _passphrase == null
+                            ? null
+                            : () => _startKdf(
+                                  _passphrase!,
+                                ), // Pass the stored passphrase
+                    label: const Text('Start KDF'),
+                    icon: const Icon(Icons.play_arrow),
+                  ),
+                  horizontalSpacerSmall,
+                  ElevatedButton.icon(
+                    onPressed: _isRunning ? _stopKdf : null,
+                    label: const Text('Stop KDF'),
+                    icon: const Icon(Icons.stop),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                  ),
+                  horizontalSpacerSmall,
+                  OutlinedButton(
+                    onPressed: _canInteract ? _checkStatus : null,
+                    child: const Text('Check Status'),
+                  ),
+                  horizontalSpacerSmall,
+                  OutlinedButton(
+                    onPressed: _canInteract ? _executeRpc : null,
+                    child: const Text('Execute RPC'),
+                  ),
+                ],
+              ),
+              verticalSpacerSmall,
+              Text('Status: $_statusMessage', style: textStyle),
+              verticalSpacerSmall,
+              Text('Version: $_version', style: textStyle),
+              const Divider(),
+              const Text('Logs:', style: textStyle),
+              Expanded(
+                child: Container(
+                  color: Colors.black,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      child: StreamBuilder<String>(
+                        stream: _logController.stream,
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            _logMessages.add(snapshot.data!);
+
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (_scrollController.hasClients) {
+                                _scrollController.jumpTo(
+                                  _scrollController.position.maxScrollExtent,
+                                );
+                              }
+                            });
+                          }
+
+                          if (_logMessages.isEmpty) {
+                            return const Text(
+                              'No logs available.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontFamily: 'Courier',
+                              ),
+                            );
+                          }
+
+                          return Text(
+                            _logMessages.join('\n'),
+                            style: const TextStyle(
+                              color: Colors.greenAccent,
+                              fontFamily: 'Courier',
+                              fontSize: 16,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
                 ),
-                spacerSmall,
-                OutlinedButton(
-                  onPressed: () async {
-                    // TODO: Pass seed phrase from text input (generate random)
-                    await komodo_defi_framework.KomodoDefiFramework.create(
-                      externalLogger: print,
-                    ).startKdf(generateMnemonic());
-                  },
-                  child: const Text('Start KDF'),
-                ),
-              ],
-            ),
+              ),
+            ],
+          ),
+        ),
+        endDrawer: SizedBox(
+          width: 600,
+          height: double.infinity,
+          child: RequestPlayground(
+            executeRequest: (rpcInput) async {
+              if (_kdfFramework == null || !_isRunning) {
+                _showMessage('KDF is not running.');
+                throw Exception('KDF is not running.');
+              }
+              return (await _kdfFramework!.executeRpc(rpcInput)).toString();
+            },
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _logController.close();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkStatus() async {
+    if (_kdfFramework == null) {
+      _showMessage('Please configure the framework first.');
+      return;
+    }
+
+    final status = await _kdfFramework!.kdfMainStatus();
+
+    final version =
+        MainStatus.rpcIsUp == status ? await _kdfFramework!.version() : 'N/A';
+    setState(() {
+      _isRunning = status == MainStatus.rpcIsUp;
+      _statusMessage = status.toString();
+      _version = version;
+    });
+  }
+
+  KdfConfig _configFromMap(Map<String, dynamic> map) {
+    switch (map['hostType']) {
+      case 'local':
+        return LocalConfig(userpass: map['userpass']);
+      case 'remote':
+        return RemoteConfig(
+          userpass: map['userpass'],
+          ipAddress: map['ipAddress'],
+          port: map['port'],
+        );
+      case 'aws':
+        return AwsConfig(
+          userpass: map['userpass'],
+          region: map['region'],
+          accessKey: map['accessKey'],
+          secretKey: map['secretKey'],
+          instanceType: map['instanceType'],
+        );
+      default:
+        throw Exception('Invalid/unsupported host type: ${map['hostType']}');
+    }
+  }
+
+  Map<String, dynamic> _configToMap(KdfConfig config) {
+    if (config is RemoteConfig) {
+      return {
+        'hostType': config.hostType,
+        'userpass': config.userpass,
+        'ipAddress': config.ipAddress,
+        'port': config.port,
+      };
+    } else if (config is AwsConfig) {
+      return {
+        'hostType': config.hostType,
+        'userpass': config.userpass,
+        'region': config.region,
+        'accessKey': config.accessKey,
+        'secretKey': config.secretKey,
+        'instanceType': config.instanceType,
+      };
+    } else if (config is LocalConfig) {
+      return {
+        'hostType': config.hostType,
+        'userpass': config.userpass,
+      };
+    } else {
+      return {};
+    }
+  }
+
+  void _configure() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => const ConfigureDialog(),
+    );
+
+    if (result != null) {
+      final KdfConfig config = result['config'];
+      final String passphrase = result['passphrase'];
+
+      setState(() {
+        _kdfFramework = KomodoDefiFramework.create(
+          config: config,
+          externalLogger: _logController.add,
+        );
+        _passphrase = passphrase;
+      });
+
+      await _saveConfig(config);
+    }
+  }
+
+  void _executeRpc() async {
+    if (_kdfFramework == null || !_isRunning) {
+      _showMessage('KDF is not running.');
+      return;
+    }
+
+    String updatedInput = jsonEncode(rpcInput);
+
+    final didSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Execute RPC'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 500,
+              width: 500,
+              child: JsonEditor(
+                json: jsonEncode(
+                  {
+                    'userpass': '********',
+                    'method': 'get_enabled_coins',
+                  },
+                ),
+                onChanged: (json) => updatedInput = json,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(false);
+            },
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop(true);
+            },
+            label: const Text('Execute'),
+            icon: const Icon(Icons.play_arrow_rounded),
+          ),
+        ],
+      ),
+    );
+
+    if (didSave == false || didSave == null) {
+      return;
+    }
+    final decoded = jsonDecode(updatedInput);
+
+    rpcInput = decoded;
+
+    await _saveData();
+
+    final rpcResponse = await _kdfFramework!.executeRpc(decoded);
+
+    _showMessage('RPC Response: ${rpcResponse.toString()}');
+  }
+
+  Future<void> _loadSavedData() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? savedRpcInput = prefs.getString('rpcInput');
+    String? savedConfig = prefs.getString('lastUsedConfig');
+
+    if (savedRpcInput != null) {
+      rpcInput = jsonDecode(savedRpcInput);
+    }
+
+    if (savedConfig != null) {
+      final configMap = jsonDecode(savedConfig) as Map<String, dynamic>;
+      final config = _configFromMap(configMap);
+      setState(() {
+        _kdfFramework = KomodoDefiFramework.create(
+          config: config,
+          externalLogger: _logController.add,
+        );
+      });
+      _checkStatus();
+    }
+  }
+
+  Future<void> _saveConfig(KdfConfig config) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('lastUsedConfig', jsonEncode(_configToMap(config)));
+
+    //! IMPORTANT: Replace SharedPreferences with a more secure solution before using this in production.
+  }
+
+  Future<void> _saveData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('rpcInput', jsonEncode(rpcInput));
+
+    //! IMPORTANT: Replace SharedPreferences with a more secure solution before using this in production.
+  }
+
+  void _showMessage(String message) {
+    _scaffoldMessengerKey.currentState!.showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  void _startKdf(String passphrase) async {
+    _statusMessage = null;
+
+    if (_kdfFramework == null) {
+      _showMessage('Please configure the framework first.');
+      return;
+    }
+
+    try {
+      final result = await _kdfFramework!.startKdf(passphrase);
+      setState(() {
+        _statusMessage = 'KDF running: $result';
+        _isRunning = true;
+      });
+
+      if (!result.isRunning()) {
+        _showMessage('Failed to start KDF: $result');
+        // return;
+      }
+    } catch (e) {
+      _showMessage('Failed to start KDF: $e');
+    }
+
+    await _saveData();
+  }
+
+  void _stopKdf() async {
+    if (_kdfFramework == null) {
+      _showMessage('Please configure the framework first.');
+      return;
+    }
+
+    try {
+      final result = await _kdfFramework!.kdfStop();
+      setState(() {
+        _statusMessage = 'KDF stopped: $result';
+        _isRunning = false;
+      });
+
+      _checkStatus().ignore();
+    } catch (e) {
+      _showMessage('Failed to stop KDF: $e');
+    }
   }
 }

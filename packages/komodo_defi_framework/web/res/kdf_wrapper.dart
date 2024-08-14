@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:js' as js;
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
+import 'package:js/js_util.dart';
 
 class KdfPlugin {
   static void registerWith(Registrar registrar) {
@@ -69,19 +70,20 @@ class KdfPlugin {
 
   Future<int> _mm2Main(String conf, Function logCallback) async {
     await _ensureLoaded();
-    return js.context
-        .callMethod('mm2_main', [conf, js.allowInterop(logCallback)]);
+    return dartify(
+      js.context.callMethod('mm2_main', [conf, js.allowInterop(logCallback)]),
+    )! as int;
   }
 
   int _mm2MainStatus() {
     if (!_libraryLoaded) {
       throw StateError('KDF library not loaded. Call ensureLoaded() first.');
     }
-    return js.context.callMethod('mm2_main_status');
+    return js.context.callMethod('mm2_main_status') as int;
   }
 
   Future<int> _mm2Stop() async {
     await _ensureLoaded();
-    return js.context.callMethod('mm2_stop');
+    return js.context.callMethod('mm2_stop') as int;
   }
 }

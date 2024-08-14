@@ -6,56 +6,82 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart';
+import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
 import 'package:komodo_defi_framework/src/native/komodo_defi_framework_bindings_generated.dart';
+import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/startup_config_manager.dart';
 
-import '../logger/logger.dart';
-import 'kdf_operations_interface.dart';
+typedef NativeLogCallback = ffi.Void Function(ffi.Pointer<ffi.Char>);
 
-ILogger? _logger; // Declare logger as a nullable global variable
-
-IKdfOperations createKdfOperations({
-  required ILogger logger,
-  required IConfigManager configManager,
+KdfOperationsNativeLibrary createLocalKdfOperations({
+  required void Function(String) logCallback,
+  required IKdfStartupConfig configManager,
+  required LocalConfig config,
 }) {
-  _logger = logger;
   return KdfOperationsNativeLibrary.create(
-    logger: logger,
+    logCallback: logCallback,
     configManager: configManager,
+    config: config,
   );
 }
 
 class KdfOperationsNativeLibrary implements IKdfOperations {
+  // void _log(String message) => _logCallback(message);
+
+  @override
+  factory KdfOperationsNativeLibrary.create({
+    required void Function(String)? logCallback,
+    required IKdfStartupConfig configManager,
+    required LocalConfig config,
+  }) {
+    final nativeLogCallback = ffi.NativeCallable<NativeLogCallback>.listener(
+      (ffi.Pointer<ffi.Char> messagePtr) {
+        try {
+          // final message = messagePtr.cast<Utf8>().toDartString();
+          final message = utf8.decode(
+            messagePtr
+                .cast<ffi.Uint8>()
+                .asTypedList(messagePtr[0].bitLength)
+                .toList(),
+            allowMalformed: true,
+          );
+          if (message.isNotEmpty) {
+            (logCallback ?? print).call(message);
+          } else {
+            (logCallback ?? print).call(message);
+          }
+        } catch (e) {
+          (logCallback ?? print).call('Failed to decode log message: $e');
+        }
+      },
+    );
+
+    print('Passed config: ${config.toJson()}');
+
+    return KdfOperationsNativeLibrary._(
+      configManager,
+      KomodoDefiFrameworkBindings(_library),
+      nativeLogCallback,
+      config,
+    );
+  }
   KdfOperationsNativeLibrary._(
     this._configManager,
     this._bindings,
     this._logCallback,
+    this._config,
   );
 
-  final IConfigManager _configManager;
+  final IKdfStartupConfig _configManager;
   final KomodoDefiFrameworkBindings _bindings;
-  final ffi.NativeCallable<ffi.Void Function(ffi.Pointer<ffi.Char>)>
-      _logCallback;
-
-  @override
-  factory KdfOperationsNativeLibrary.create({
-    required ILogger logger,
-    required IConfigManager configManager,
-  }) {
-    return KdfOperationsNativeLibrary._(
-      configManager,
-      KomodoDefiFrameworkBindings(_library),
-      ffi.NativeCallable<ffi.Void Function(ffi.Pointer<ffi.Char>)>.listener(
-        logCallback,
-      ),
-    );
-  }
+  final ffi.NativeCallable<NativeLogCallback> _logCallback;
+  LocalConfig _config;
 
   @override
   Future<KdfStartupResult> kdfMain(String passphrase) async {
-    final startParams =
-        await _configManager.generateStartParamsFromDefault(passphrase);
+    final startParams = await _configManager
+        .generateStartParamsFromDefault(passphrase, userpass: _config.userpass);
     final startParamsPtr =
         startParams.toJsonString().toNativeUtf8().cast<ffi.Char>();
 
@@ -74,7 +100,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   }
 
   @override
-  MainStatus kdfMainStatus() {
+  Future<MainStatus> kdfMainStatus() async {
     final status = _bindings.mm2_main_status();
     return MainStatus.fromDefaultInt(status);
   }
@@ -86,21 +112,25 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   }
 
   @override
-  bool isRunning() => kdfMainStatus() == MainStatus.rpcIsUp;
+  Future<bool> isRunning() async =>
+      (await kdfMainStatus()) == MainStatus.rpcIsUp;
 
-  // TODO: Remote RPC calls as a mixin? E.g. for localhost native calls and
-  // for remote server calls.
   final Uri _url = Uri.parse('http://localhost:7783');
   final Client _client = Client();
 
   @override
-  Future<JsonMap> mm2Rpc(JsonMap request) async {
+  Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
+    print('mm2 config: ${_config.toJson()}');
+    print('mm2Rpc request (pre-process): $request');
+    request['userpass'] = _config.userpass;
     final response = await _client.post(
       _url,
-      body: json.encode(request),
+      body:
+          // json.encode(request..putIfAbsent('userpass', () => _config.userpass)),
+          json.encode(request),
       headers: {'Content-Type': 'application/json'},
     );
-    return json.decode(response.body);
+    return json.decode(response.body) as Map<String, dynamic>;
   }
 
   @override
@@ -112,6 +142,25 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     }
   }
 
+  @override
+  Future<String?> version() async {
+    final response = await _client.post(
+      _url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'method': 'version',
+        'userpass': _config.userpass,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> result = json.decode(response.body);
+      return result['result'];
+    }
+
+    return null;
+  }
+
   static int _kdfMainIsolate(_KdfMainParams params) {
     final dylib = _library;
     assert(
@@ -121,11 +170,10 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     final bindings = KomodoDefiFrameworkBindings(dylib);
     final startParamsPtr =
         ffi.Pointer<ffi.Char>.fromAddress(params.startParamsPtrAddress);
-    final logCallback = ffi.Pointer<
-        ffi.NativeFunction<
-            ffi.Void Function(
-              ffi.Pointer<ffi.Char>,
-            )>>.fromAddress(params.logCallbackAddress);
+    final logCallback =
+        ffi.Pointer<ffi.NativeFunction<NativeLogCallback>>.fromAddress(
+      params.logCallbackAddress,
+    );
     return bindings.mm2_main(startParamsPtr, logCallback);
   }
 
@@ -138,44 +186,24 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     final bindings = KomodoDefiFrameworkBindings(dylib);
     return bindings.mm2_stop();
   }
-}
 
-String _extractValidString(ffi.Pointer<ffi.Char> ptr, int errorOffset) {
-  // Create a copy of the data to ensure it's not modified or freed
-  final bytes = ptr.cast<ffi.Uint8>().asTypedList(errorOffset).toList();
-  return utf8.decode(bytes, allowMalformed: true);
-}
-
-// Define the logCallback function as a top-level function
-void logCallback(ffi.Pointer<ffi.Char> messagePtr) {
-  String? message;
-  try {
-    // First, try to decode the entire string
-    message = messagePtr.cast<Utf8>().toDartString();
-  } on FormatException catch (e) {
-    if (e.offset != null) {
-      message = _extractValidString(messagePtr, e.offset!);
-    } else {
-      rethrow;
-    }
+  void dispose() {
+    _logCallback.close(); // Ensure the NativeCallable is properly closed
   }
-
-  _logger?.log(message);
 }
 
 class _KdfMainParams {
-  final int startParamsPtrAddress;
-  final int logCallbackAddress;
-
   _KdfMainParams(
     this.startParamsPtrAddress,
     this.logCallbackAddress,
   );
+  final int startParamsPtrAddress;
+  final int logCallbackAddress;
 }
 
 ffi.DynamicLibrary _loadLibrary() {
-  List<String> paths = _getLibraryPaths();
-  for (String path in paths) {
+  final paths = _getLibraryPaths();
+  for (final path in paths) {
     try {
       final lib = path == 'PROCESS'
           ? ffi.DynamicLibrary.process()
@@ -183,12 +211,11 @@ ffi.DynamicLibrary _loadLibrary() {
               ? ffi.DynamicLibrary.executable()
               : ffi.DynamicLibrary.open(path);
       if (lib.providesSymbol('mm2_main')) {
-        _logger?.log('Loaded library at path: $path');
+        print('Loaded library at path: $path');
         return lib;
       }
     } catch (_) {
       // Continue to the next path if this one fails
-      // _logger?.log('Failed to load library at path: $path');
     }
   }
   throw UnsupportedError('No valid library path found');
@@ -207,7 +234,7 @@ List<String> _getLibraryPaths() {
       'EXECUTABLE',
     ];
   } else if (Platform.isIOS) {
-    return ['libkdflib.dylib']; // Assuming similar library name for iOS
+    return ['libkdflib.dylib'];
   } else if (Platform.isAndroid) {
     return ['libkdflib.so', 'libkdflib_static.so'];
   } else if (Platform.isWindows) {
@@ -219,5 +246,4 @@ List<String> _getLibraryPaths() {
   }
 }
 
-// Memoized static getter for the library
 final ffi.DynamicLibrary _library = _loadLibrary();

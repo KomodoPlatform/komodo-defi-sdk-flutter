@@ -1,16 +1,4 @@
-include: package:flutter_lints/flutter.yaml
-
-linter:
-  rules:
-    require_trailing_commas: true
-    # require sorted package imports
-    sort_unnamed_constructors_first: true
-    
-    directives_ordering: true
-
-
-    # sort_pub_dependencies: true
-    sort_pub_dependencies: true
-
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
+analyzer:
+  errors:
+    public_member_api_docs: ignore
+include: package:very_good_analysis/analysis_options.6.0.0.yaml

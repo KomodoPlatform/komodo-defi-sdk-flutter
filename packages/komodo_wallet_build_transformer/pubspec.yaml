@@ -15,10 +15,11 @@ dependencies:
   path: ^1.9.0
   
   # Approved via https://github.com/KomodoPlatform/komodo-wallet/pull/1106
-  archive:
-    git:
-      url: https://github.com/KomodoPlatform/archive.git
-      ref: 6fc3b89fcdb89b593402e0dabc13a7d7fd3f762d #3.3.7
+  # archive:
+  #   git:
+  #     url: https://github.com/KomodoPlatform/archive.git
+  #     ref: 6fc3b89fcdb89b593402e0dabc13a7d7fd3f762d #3.3.7
+  archive: ^3.6.1
   html: ^0.15.4
 
 dev_dependencies:
