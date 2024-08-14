@@ -271,6 +271,20 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  komodo_defi_rpc_methods:
+    dependency: transitive
+    description:
+      path: "../packages/komodo_defi_rpc_methods"
+      relative: true
+    source: path
+    version: "0.1.0+1"
+  komodo_defi_types:
+    dependency: transitive
+    description:
+      path: "../packages/komodo_defi_types"
+      relative: true
+    source: path
+    version: "0.0.1"
   komodo_wallet_build_transformer:
     dependency: transitive
     description:

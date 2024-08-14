@@ -8,6 +8,9 @@ import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.da
 import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart';
 import 'package:komodo_defi_framework/src/startup_config_manager.dart';
 
+/// NB: This class is not complete and may still need significant work.
+/// The current approach of when to set vs when to get the RPC userpass
+/// may be flawed.
 class KdfOperationsAWS implements IKdfOperations {
   factory KdfOperationsAWS.createFromConfig({
     required void Function(String) logCallback,
@@ -249,6 +252,9 @@ class KdfOperationsAWS implements IKdfOperations {
     }
   }
 
+  // TODO! Set this up so we are fetching the RPC password from the instance.
+  // Also, we need to set up the initial userpass for the instance if it's not
+  // already set.
   Future<String?> _fetchRpcPassword() async {
     _log('Fetching RPC password from MM2.json...');
     final commandResult = await _ssmClient.sendCommand(

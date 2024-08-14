@@ -183,7 +183,7 @@ class KdfOperationsWeb implements IKdfOperations {
         'method': 'version',
       });
 
-      return response['result'];
+      return response['result'] as String?;
     } catch (e) {
       _logger?.call("Couldn't get KDF version: $e");
       return null;

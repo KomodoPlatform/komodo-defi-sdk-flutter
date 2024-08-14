@@ -29,7 +29,7 @@ class TaskEnableUtxoInit
 
   @override
   NewTaskResponse parseResponse(String responseBody) {
-    final json = decodeJson(responseBody);
+    final json = jsonFromString(responseBody);
     if (json['error'] != null) {
       throw GeneralErrorResponse.fromJson(json);
     }

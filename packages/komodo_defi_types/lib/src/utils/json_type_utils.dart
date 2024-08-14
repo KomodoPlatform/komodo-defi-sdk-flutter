@@ -3,7 +3,7 @@ import 'dart:convert';
 typedef JsonMap = Map<String, dynamic>;
 typedef JsonList = List<dynamic>;
 
-JsonMap decodeJson(String json) {
+JsonMap jsonFromString(String json) {
   final decode = jsonDecode(json);
 
   assert(
@@ -49,7 +49,7 @@ T _traverseJson<T extends dynamic>(
   return value as T;
 }
 
-extension JsonMapExtension on JsonMap {
+extension JsonMapExtension on Map<String, dynamic> {
   T nestedValue<T extends dynamic>(List<String> keys, {T? defaultValue}) =>
       _traverseJson<T>(this, keys, defaultValue: defaultValue);
 
@@ -64,4 +64,7 @@ extension JsonMapExtension on JsonMap {
     final keys = [key, key2, key3, key4, key5].toList();
     return _traverseJson<V>(this, keys);
   }
+
+  static JsonMap fromJsonString(String jsonString) =>
+      json.decode(jsonString) as JsonMap;
 }

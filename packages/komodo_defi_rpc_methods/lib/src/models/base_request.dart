@@ -57,7 +57,7 @@ mixin RequestHandlingMixin<T extends BaseResponse,
 // Parse response from JSON
   @override
   T parseResponse(String responseBody) {
-    final json = decodeJson(responseBody);
+    final json = jsonFromString(responseBody);
 
     if (GeneralErrorResponse.isErrorResponse(json)) {
       throw GeneralErrorResponse.fromJson(json);

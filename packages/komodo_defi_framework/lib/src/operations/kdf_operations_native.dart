@@ -27,8 +27,6 @@ KdfOperationsNativeLibrary createLocalKdfOperations({
 }
 
 class KdfOperationsNativeLibrary implements IKdfOperations {
-  // void _log(String message) => _logCallback(message);
-
   @override
   factory KdfOperationsNativeLibrary.create({
     required void Function(String)? logCallback,
@@ -57,13 +55,12 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       },
     );
 
-    print('Passed config: ${config.toJson()}');
-
     return KdfOperationsNativeLibrary._(
       configManager,
       KomodoDefiFrameworkBindings(_library),
       nativeLogCallback,
       config,
+      logCallback ?? print,
     );
   }
   KdfOperationsNativeLibrary._(
@@ -71,8 +68,10 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     this._bindings,
     this._logCallback,
     this._config,
+    this._log,
   );
 
+  void Function(String) _log;
   final IKdfStartupConfig _configManager;
   final KomodoDefiFrameworkBindings _bindings;
   final ffi.NativeCallable<NativeLogCallback> _logCallback;
@@ -120,8 +119,8 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
 
   @override
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
-    print('mm2 config: ${_config.toJson()}');
-    print('mm2Rpc request (pre-process): $request');
+    _log('mm2 config: ${_config.toJson()}');
+    _log('mm2Rpc request (pre-process): $request');
     request['userpass'] = _config.userpass;
     final response = await _client.post(
       _url,
@@ -144,21 +143,14 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
 
   @override
   Future<String?> version() async {
-    final response = await _client.post(
-      _url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'method': 'version',
-        'userpass': _config.userpass,
-      }),
-    );
+    try {
+      final response = await mm2Rpc({'method': 'version'});
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> result = json.decode(response.body);
-      return result['result'];
+      return response['result'] as String?;
+    } on Exception catch (e) {
+      'Error getting KDF version: $e';
+      return null;
     }
-
-    return null;
   }
 
   static int _kdfMainIsolate(_KdfMainParams params) {

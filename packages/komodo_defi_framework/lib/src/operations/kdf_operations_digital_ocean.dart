@@ -3,8 +3,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
+import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart';
 import 'package:komodo_defi_framework/src/startup_config_manager.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+/// NB: This class is not complete and may still need significant work.
+/// The current approach of when to set vs when to get the RPC userpass
+/// may be flawed.
 class KdfOperationsDigitalOcean implements IKdfOperations {
   KdfOperationsDigitalOcean._({
     required void Function(String) logCallback,
@@ -49,6 +54,7 @@ class KdfOperationsDigitalOcean implements IKdfOperations {
   final String? _sshKeyId;
   final String _image;
   String? _dropletIp;
+  String? userpass;
 
   void _log(String message) => _logCallback(message);
 
@@ -63,13 +69,26 @@ class KdfOperationsDigitalOcean implements IKdfOperations {
     );
 
     if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data['droplet']['networks']['v4'][0]['ip_address'];
+      final data = jsonFromString(response.body);
+      return (data.value<JsonList?>('droplet', 'networks', 'v4')?.first
+              as JsonMap?)
+          ?.value<String>('ip_address');
     }
 
     _log('Failed to get droplet IP: ${response.body}');
     return null;
   }
+
+  KdfOperationsRemote? get _remoteOperations =>
+      [_dropletIp, _apiToken, userpass].contains(null)
+          ? null
+          : KdfOperationsRemote.create(
+              logCallback: _log,
+              configManager: _configManager,
+              ipAddress: _dropletIp!,
+              port: 7783,
+              userpass: userpass!,
+            );
 
   Future<void> _createDroplet() async {
     const url = 'https://api.digitalocean.com/v2/droplets';
@@ -92,8 +111,9 @@ class KdfOperationsDigitalOcean implements IKdfOperations {
 
     if (response.statusCode == 202) {
       final data = json.decode(response.body);
-      _log('Droplet created with ID: ${data['droplet']['id']}');
-      _dropletIp = await _getDropletIp(data['droplet']['id'].toString());
+      _log('Droplet created with ID: ${data.value('droplet', 'id')}');
+      _dropletIp =
+          await _getDropletIp(data.value<String>('droplet', 'id').toString());
     } else {
       _log('Failed to create droplet: ${response.body}');
       throw Exception('Failed to create droplet');
@@ -194,8 +214,8 @@ class KdfOperationsDigitalOcean implements IKdfOperations {
     );
 
     if (response.statusCode == 200) {
-      final Map<String, dynamic> result = json.decode(response.body);
-      return result['result'];
+      final result = jsonFromString(response.body);
+      return result.value<String?>('result');
     }
 
     return null;

@@ -23,6 +23,8 @@ dependencies:
   js: ^0.7.1
   komodo_wallet_build_transformer:
     path: ../komodo_wallet_build_transformer
+  komodo_defi_types:
+    path: ../komodo_defi_types
 
   logging: ^1.2.0
   path_provider: ^2.1.3
