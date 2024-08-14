@@ -399,7 +399,7 @@ class _MyAppState extends State<MyApp> {
               Row(
                 children: [
                   FilledButton.tonalIcon(
-                    onPressed: _isRunning ? null : _configure,
+                    onPressed: _configure,
                     label: const Text('Configure'),
                     icon: const Icon(Icons.settings),
                   ),
@@ -593,20 +593,24 @@ class _MyAppState extends State<MyApp> {
       builder: (context) => const ConfigureDialog(),
     );
 
-    if (result != null) {
-      final KdfConfig config = result['config'];
-      final String passphrase = result['passphrase'];
-
-      setState(() {
-        _kdfFramework = KomodoDefiFramework.create(
-          config: config,
-          externalLogger: _logController.add,
-        );
-        _passphrase = passphrase;
-      });
-
-      await _saveConfig(config);
+    if (result == null) {
+      return;
     }
+
+    setState(() => _kdfFramework = null);
+
+    final KdfConfig config = result['config'];
+    final String passphrase = result['passphrase'];
+
+    setState(() {
+      _kdfFramework = KomodoDefiFramework.create(
+        config: config,
+        externalLogger: _logController.add,
+      );
+      _passphrase = passphrase;
+    });
+
+    await _saveConfig(config);
   }
 
   void _executeRpc() async {
