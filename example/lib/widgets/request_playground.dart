@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -103,10 +105,10 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
       try {
         _jsonData = parseJsonWithCommentStripping(rawBody);
       } catch (e) {
-        print('Error parsing JSON: $e');
+        print('Error parsing JSON for request: ${_requests[index].name}');
         _jsonData = {};
       }
-      print('Json Data: $_jsonData');
+      print('Selected request: ${_requests[index].name}');
       _response = ''; // Clear previous response
     });
   }

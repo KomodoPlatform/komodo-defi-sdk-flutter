@@ -134,9 +134,27 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                     labelText: 'Host or IP Address',
                     hintText: 'e.g. 123.456.789.012 or example.com',
                     suffixIcon: _selectedHostType == 'remote'
-                        ? Tooltip(
-                            message: _remoteAccessTooltipMessage(),
-                            child: const Icon(Icons.info_outline),
+                        ? IconButton(
+                            icon: const Icon(Icons.info_outline),
+                            onPressed: () => showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Remote Access Setup'),
+                                content: SingleChildScrollView(
+                                  child: SelectableText(
+                                    _remoteAccessTooltipMessage(),
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            ),
                           )
                         : null,
                   ),
@@ -255,11 +273,16 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
 1. Setup a server to run KDF and ensure the necessary ports are exposed. Default is `7783`. This can easily be set up using our docker image: https://hub.docker.com/r/komodoofficial/komodo-defi-framework
 2. (Optional) Generate a private and public key and set the paths as environment variables using `MM_CERT_PATH` and `MM_CERT_KEY_PATH` or add them to the launch parameter.
 3. Set the following parameters in MM2.json or pass them as CLI parameters:
-``json
+```json
 "https": true,
 "rpc_local_only": false,
 "rpcip": "0.0.0.0",
-```''';
+```
+4. If using Docker, run the container with the following comand:
+```bash
+docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-framework:dev-latest
+```
+''';
   }
 
   @override
@@ -329,6 +352,8 @@ class _MyAppState extends State<MyApp> {
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   // TODO: More specific name
   bool get _canInteract => _kdfFramework != null;
 
@@ -347,6 +372,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       scaffoldMessengerKey: _scaffoldMessengerKey,
       home: Scaffold(
+        key: _scaffoldKey,
         appBar: AppBar(
           title: Row(
             mainAxisSize: MainAxisSize.min,
@@ -588,7 +614,9 @@ class _MyAppState extends State<MyApp> {
     // we have the RequestPlayground widget.
 
     // Open the RequestPlayground widget instead
-    return Scaffold.of(_scaffoldMessengerKey.currentContext!).openEndDrawer();
+    if (_scaffoldKey.currentState != null) {
+      return _scaffoldKey.currentState?.openEndDrawer();
+    }
 
     // ignore: dead_code
     if (_kdfFramework == null || !_isRunning) {

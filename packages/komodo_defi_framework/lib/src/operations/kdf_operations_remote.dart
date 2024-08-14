@@ -146,7 +146,7 @@ class KdfOperationsRemote implements IKdfOperations {
     if (response.statusCode == 200) {
       return json.decode(response.body) as Map<String, dynamic>;
     } else {
-      throw Exception('Failed to perform RPC call');
+      throw Exception('Failed to perform RPC request: ${response.body}');
     }
   }
 
