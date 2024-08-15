@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+
 // ignore: one_member_abstracts
 abstract class SecurityUtils {
   static String securePassword(
@@ -21,16 +23,20 @@ String _generateSecurePassword(
   const upperCaseLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const lowerCaseLetters = 'abcdefghijklmnopqrstuvwxyz';
   const digits = '0123456789';
-  const specialCharacters = r'!@#$%^&*()-_=+[]{}|;:,.<>?/`~';
-  const specialCharactersExtended =
-      r'±÷×‰∞∑∆€£¥₹©®™♠♥♦♣☺☻♀♂•○◘◙©®™°µ²³½¼¾¿¡†‡±÷×√∞∫∂∑∆π$¢£¥€`~!@#\$%^&*()-_=+[]{}|;:\,.<>?/«»‹›©®™¤¬¦§¶‡';
+
+  // Standard special characters that are generally safe in most contexts, including JSON
+  const specialCharacters = '!@#%^&*()-_=+[]{}|;:,<>.?';
+
+  // Optionally include extended special characters if requested
+  const extendedSpecial = r'~`$^*+=<>?';
+
+  final availableSpecialCharacters = extendedSpecialCharacters
+      ? specialCharacters + extendedSpecial
+      : specialCharacters;
 
   // Combine all the characters
-  final allCharacters = upperCaseLetters +
-      lowerCaseLetters +
-      digits +
-      specialCharacters +
-      (extendedSpecialCharacters == true ? specialCharactersExtended : '');
+  final allCharacters =
+      upperCaseLetters + lowerCaseLetters + digits + availableSpecialCharacters;
 
   // Ensure the password length is at least 8 characters
   if (length < 8) {
@@ -41,12 +47,13 @@ String _generateSecurePassword(
   final random = Random.secure();
 
   // Pick one character from each category to ensure password strength
-  final password = <String>[]
-    // ignore: prefer_inlined_adds
-    ..add(upperCaseLetters[random.nextInt(upperCaseLetters.length)])
-    ..add(lowerCaseLetters[random.nextInt(lowerCaseLetters.length)])
-    ..add(digits[random.nextInt(digits.length)])
-    ..add(specialCharacters[random.nextInt(specialCharacters.length)]);
+  final password = <String>[
+    upperCaseLetters[random.nextInt(upperCaseLetters.length)],
+    lowerCaseLetters[random.nextInt(lowerCaseLetters.length)],
+    digits[random.nextInt(digits.length)],
+    availableSpecialCharacters[
+        random.nextInt(availableSpecialCharacters.length)],
+  ];
 
   // Fill the rest of the password length with random characters from the pool
   for (var i = 4; i < length; i++) {
@@ -60,11 +67,35 @@ String _generateSecurePassword(
   return password.join();
 }
 
+extension CensoredJsonMap on JsonMap {
+  Map<String, dynamic> censor() {
+    // Search recursively for the following keys and replace their values
+    // with "*" characters.
+    const sensitive = [
+      'seed',
+      'userpass',
+      'passphrase',
+      'password',
+      'mnemonic',
+      'private_key',
+      'wif',
+      'view_key',
+      'spend_key',
+      'address',
+      'pubkey',
+      'privkey',
+      'userpass',
+    ];
+
+    return censorKeys(sensitive);
+  }
+}
+
 // Example Test
 void main() {
-  final password = SecurityUtils.securePassword(48);
+  final password = SecurityUtils.securePassword(24);
   final extendedPassword =
-      SecurityUtils.securePassword(48, extendedSpecialCharacters: true);
+      SecurityUtils.securePassword(24, extendedSpecialCharacters: true);
 
   // ignore: avoid_print
   print('Password: $password');

@@ -5,7 +5,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 extension HttpExtensions on http.Client {
   Future<JsonMap> getJsonMap(String url) async {

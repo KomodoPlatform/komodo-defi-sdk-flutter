@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:http/http.dart';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
-import 'package:komodo_defi_framework/src/extensions/map_extension.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/startup_config_manager.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
 export 'package:komodo_defi_types/komodo_defi_types.dart' show SecurityUtils;
@@ -30,10 +30,6 @@ class KomodoDefiFramework {
     required KdfConfig config,
     void Function(String)? externalLogger,
   }) {
-    // if (_instance != null) {
-    //   return _instance!.._logger = externalLogger;
-    // }
-
     final instance = KomodoDefiFramework._(
       configManager: StartupConfigManager(),
       config: config,
@@ -42,8 +38,6 @@ class KomodoDefiFramework {
     instance._logStream.stream.listen(externalLogger);
 
     return instance;
-
-    // return _instance = framework.._logger = externalLogger;
   }
   final IKdfStartupConfig _configManager;
   late final IKdfOperations _kdfOperations;
@@ -97,52 +91,29 @@ class KomodoDefiFramework {
   }
 
   Future<JsonMap> executeRpc(JsonMap request) async {
-    _log('Executing RPC request: ${censorJson(request)}');
+    _log('Executing RPC request: ${request.censor()}');
     final response = await _kdfOperations.mm2Rpc(request);
-    _log('RPC response: ${censorJson(response)}');
+    _log('RPC response: ${response.censor()}');
     return response;
   }
 
+  /// Dispose of the framework and release any resources.
+  ///
+  /// NB! This does not stop the RPC server if it is running. You should
+  /// call [kdfStop] before disposing of the framework if you want to stop
+  /// the RPC server.
   Future<void> dispose() async {
     _log('Disposing KomodoDefiFramework...');
+
     if (await isRunning()) {
-      await kdfStop();
+      _log(
+        'Warning: KDF is still running. If KDF should be stopped, call kdfStop '
+        'before disposing of the framework.',
+      );
     }
+
+    await _logStream.close();
+
     _log('KomodoDefiFramework disposed');
-
-    _logStream.close();
-  }
-
-  /// Censor any sensitive data that should not be logged from the JSON
-  /// requests or responses. This is a secondary layer of protection and the
-  /// primary layer should be to avoid logging potentially sensitive data.
-  JsonMap censorJson(JsonMap json) {
-    final censoredJson = JsonMap.from(json);
-    // Search recursively for the following keys and replace their values
-    // with *s
-    const sensitive = [
-      'seed',
-      'userpass',
-      'passphrase',
-      'password',
-      'mnemonic',
-      'private_key',
-      'wif',
-      'view_key',
-      'spend_key',
-      'address',
-      'pubkey',
-      'privkey',
-      'userpass',
-    ];
-
-    // TODO! Implement so it searches recursively
-    for (final key in sensitive) {
-      if (censoredJson.containsKey(key)) {
-        censoredJson[key] = '*' * censoredJson[key].toString().length;
-      }
-    }
-
-    return censoredJson;
   }
 }
