@@ -37,7 +37,8 @@ class KdfOperationsRemote implements IKdfOperations {
 
   Uri get _baseUrl => _safeRpcUrl(_ipAddress, _port);
 
-  static const String _forwardProxy = 'http://209.38.97.255/?target=';
+  static const String _forwardProxy =
+      'https://proxy-se-push.go-away-bugs.co.za/?target=';
 
   Uri _safeRpcUrl(String host, int port) {
     var url = Uri.parse('$host:$port');
