@@ -1,74 +1,81 @@
 import 'dart:async';
 
-import 'package:http/http.dart';
+import 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
+import 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
-import 'package:komodo_defi_framework/src/startup_config_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
+export 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 export 'package:komodo_defi_types/komodo_defi_types.dart' show SecurityUtils;
 
 export 'src/operations/kdf_operations_interface.dart';
 
 class KomodoDefiFramework {
-  // static KomodoDefiFramework? _instance;
-
   KomodoDefiFramework._({
-    required IKdfStartupConfig configManager,
-    required KdfConfig config,
-  }) : _configManager = configManager {
+    required IKdfHostConfig hostConfig,
+    void Function(String)? externalLogger,
+  }) {
     _kdfOperations = createKdfOperations(
-      configManager: configManager,
-      config: config,
+      hostConfig: hostConfig,
       logCallback: _log,
     );
+
+    if (externalLogger != null) {
+      _initLogStream(externalLogger);
+    }
   }
 
   factory KomodoDefiFramework.create({
-    required KdfConfig config,
+    required IKdfHostConfig hostConfig,
+    // KdfApiClient? client,
     void Function(String)? externalLogger,
   }) {
-    final instance = KomodoDefiFramework._(
-      configManager: StartupConfigManager(),
-      config: config,
+    return KomodoDefiFramework._(
+      hostConfig: hostConfig,
+      externalLogger: externalLogger,
+      // client: client,
     );
-
-    instance._logStream.stream.listen(externalLogger);
-
-    return instance;
   }
-  final IKdfStartupConfig _configManager;
+
+  late final ApiClient client = KdfApiClient(this);
+
+  Future<void> _initLogStream(LogCallback logCallback) async {
+    if (_loggerSub != null) {
+      await _loggerSub!.cancel();
+
+      _loggerSub = null;
+    }
+
+    _loggerSub = _logStream.stream.listen(logCallback);
+  }
+
+  StreamSubscription<String>? _loggerSub;
+
+  // final IKdfHostConfig _hostConfig;
   late final IKdfOperations _kdfOperations;
 
-  String get operationsName => _kdfOperations.operationsName;
-
-  // void Function(String)? _logger;
   final StreamController<String> _logStream = StreamController.broadcast();
+
+  Stream<String> get logStream => _logStream.stream;
 
   void _log(String message) => _logStream.add(message);
 
-  Future<KdfStartupResult> startKdf(String passphrase) async {
+  Future<KdfStartupResult> startKdf(KdfStartupConfig startupConfig) async {
     _log('Starting KDF main...');
-    // Something weird happening with parsing the
-    final result = await _kdfOperations.kdfMain(passphrase);
+    final startParams = startupConfig.encodeStartParams();
+    final result = await _kdfOperations.kdfMain(startParams);
     _log('KDF main result: $result');
     return result;
   }
 
   Future<MainStatus> kdfMainStatus() async {
-    try {
-      final status = await _kdfOperations.kdfMainStatus();
-
-      _log('KDF main status: $status');
-      return status;
-    }
-    // If the error is caused by ClientException, it means that the RPC server is not running
-    on ClientException catch (e) {
-      _log('KDF main status client error: ${e.message}');
-      return MainStatus.noRpc;
-    }
+    final status = await _kdfOperations.kdfMainStatus();
+    _log('KDF main status: $status');
+    return status;
   }
 
   Future<StopStatus> kdfStop() async {
@@ -91,29 +98,16 @@ class KomodoDefiFramework {
   }
 
   Future<JsonMap> executeRpc(JsonMap request) async {
-    _log('Executing RPC request: ${request.censor()}');
     final response = await _kdfOperations.mm2Rpc(request);
-    _log('RPC response: ${response.censor()}');
+    _log('RPC response: $response');
     return response;
   }
 
-  /// Dispose of the framework and release any resources.
-  ///
-  /// NB! This does not stop the RPC server if it is running. You should
-  /// call [kdfStop] before disposing of the framework if you want to stop
-  /// the RPC server.
   Future<void> dispose() async {
-    _log('Disposing KomodoDefiFramework...');
-
-    if (await isRunning()) {
-      _log(
-        'Warning: KDF is still running. If KDF should be stopped, call kdfStop '
-        'before disposing of the framework.',
-      );
-    }
-
     await _logStream.close();
 
-    _log('KomodoDefiFramework disposed');
+    await _loggerSub?.cancel();
   }
+
+  String get operationsName => _kdfOperations.operationsName;
 }

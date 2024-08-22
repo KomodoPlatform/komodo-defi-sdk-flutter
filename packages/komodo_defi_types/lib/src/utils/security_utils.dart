@@ -4,7 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // ignore: one_member_abstracts
 abstract class SecurityUtils {
-  static String securePassword(
+  static String generatePasswordSecure(
     int length, {
     bool extendedSpecialCharacters = false,
   }) =>
@@ -24,19 +24,18 @@ String _generateSecurePassword(
   const lowerCaseLetters = 'abcdefghijklmnopqrstuvwxyz';
   const digits = '0123456789';
 
-  // Standard special characters that are generally safe in most contexts, including JSON
-  const specialCharacters = '!@#%^&*()-_=+[]{}|;:,<>.?';
+  // Standard special characters that are generally safe in most contexts,
+  // including JSON
+  const specialCharacters = '@';
+  // const specialCharacters = r"*.!@#$%^(){}:;',.?/~`_+-=|";
 
-  // Optionally include extended special characters if requested
   const extendedSpecial = r'~`$^*+=<>?';
 
-  final availableSpecialCharacters = extendedSpecialCharacters
-      ? specialCharacters + extendedSpecial
-      : specialCharacters;
-
-  // Combine all the characters
-  final allCharacters =
-      upperCaseLetters + lowerCaseLetters + digits + availableSpecialCharacters;
+  final allCharacters = upperCaseLetters +
+      lowerCaseLetters +
+      digits +
+      specialCharacters +
+      (extendedSpecialCharacters ? extendedSpecial : '');
 
   // Ensure the password length is at least 8 characters
   if (length < 8) {
@@ -51,8 +50,9 @@ String _generateSecurePassword(
     upperCaseLetters[random.nextInt(upperCaseLetters.length)],
     lowerCaseLetters[random.nextInt(lowerCaseLetters.length)],
     digits[random.nextInt(digits.length)],
-    availableSpecialCharacters[
-        random.nextInt(availableSpecialCharacters.length)],
+    specialCharacters[random.nextInt(specialCharacters.length)],
+    if (extendedSpecialCharacters)
+      extendedSpecial[random.nextInt(extendedSpecial.length)],
   ];
 
   // Fill the rest of the password length with random characters from the pool
@@ -68,7 +68,7 @@ String _generateSecurePassword(
 }
 
 extension CensoredJsonMap on JsonMap {
-  Map<String, dynamic> censor() {
+  Map<String, dynamic> censored() {
     // Search recursively for the following keys and replace their values
     // with "*" characters.
     const sensitive = [
@@ -93,9 +93,9 @@ extension CensoredJsonMap on JsonMap {
 
 // Example Test
 void main() {
-  final password = SecurityUtils.securePassword(24);
+  final password = SecurityUtils.generatePasswordSecure(24);
   final extendedPassword =
-      SecurityUtils.securePassword(24, extendedSpecialCharacters: true);
+      SecurityUtils.generatePasswordSecure(24, extendedSpecialCharacters: true);
 
   // ignore: avoid_print
   print('Password: $password');

@@ -1,7 +1,3 @@
-#
-# To learn more about a Podspec see http://guides.cocoapods.org/syntax/podspec.html.
-# Run `pod lib lint komodo_defi_framework.podspec` to validate before publishing.
-#
 Pod::Spec.new do |s|
   s.name             = 'komodo_defi_framework'
   s.version          = '0.0.1'
@@ -14,26 +10,68 @@ A new Flutter FFI plugin project.
   s.author           = { 'Your Company' => 'email@example.com' }
   s.public_header_files = 'Classes/**/*.h'
 
-  # This will ensure the source files in Classes/ are included in the native
-  # builds of apps using this FFI plugin. Podspec does not support relative
-  # paths, so Classes contains a forwarder C file that relatively imports
-  # `../src/*` so that the C sources can be shared among all target platforms.
+  # Ensure source files are included
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'FlutterMacOS'
-  # s.vendored_libraries = 'Frameworks/libmm2.a'
-  # s.vendored_libraries = ['Frameworks/libkdflib.a']
-  s.vendored_libraries = ['Frameworks/*.a']
-  # Exclude i386 and arm64 from iOS Simulator build
+
+  s.resource_bundles = {
+    'kdf_resources' => 'bin/kdf'
+  }
+
+  # Prepare the executable in the `bin/kdf` folder
+  s.prepare_command = <<-CMD
+    if [ ! -f "bin/kdf" ]; then
+      echo "Error: kdf executable not found in bin/kdf"
+      echo "Searching for files with similar names..."
+
+      # Recursively search for files with names similar to 'kdf'
+      suggestions=$(find . -type f -iname '*kdf*')
+
+      if [ -z "$suggestions" ]; then
+        echo "No similar files found in the project directories."
+      else
+        echo "Found similar files:"
+        echo "$suggestions"
+      fi
+
+      exit 1
+    fi
+    chmod +x "bin/kdf"
+  CMD
+
+  s.script_phase = {
+    :name => 'Install kdf executable',
+    :execution_position => :before_compile,
+    :script => <<-SCRIPT
+      # Get the application support directory for macOS
+      APP_SUPPORT_DIR="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Library/Application Support"
+      
+      # Ensure the application support directory exists
+      if [ ! -d "$APP_SUPPORT_DIR" ]; then
+        mkdir -p "$APP_SUPPORT_DIR"
+      fi
   
-  # s.pod_target_xcconfig = { "OTHER_LDFLAGS" => "$(inherited) -force_load $(PODS_TARGET_SRCROOT)/Frameworks/libkdflib.a -lstdc++" }
-  s.pod_target_xcconfig = {
-    'DEFINES_MODULE' => 'YES',
-    'EXCLUDED_ARCHS[sdk=macosx*]' => 'i386 x86_64',
-    'OTHER_LDFLAGS' => '-force_load $(PODS_TARGET_SRCROOT)/Frameworks/libkdflib.a -lstdc++ -framework SystemConfiguration'
+      # Check if the kdf executable exists before attempting to copy
+      if [ -f "${PODS_TARGET_SRCROOT}/bin/kdf" ]; then
+        echo "kdf executable found, copying..."
+        cp "${PODS_TARGET_SRCROOT}/bin/kdf" "$APP_SUPPORT_DIR/kdf"
+        chmod +x "$APP_SUPPORT_DIR/kdf"
+      else
+        echo "Error: kdf executable not found in bin/kdf"
+        exit 1
+      fi
+    SCRIPT
   }
   
 
-  s.platform = :osx, '14.0'
+  # Correct configuration for macOS build
+  s.pod_target_xcconfig = {
+    'DEFINES_MODULE' => 'YES',
+    'EXCLUDED_ARCHS[sdk=macosx*]' => 'i386 x86_64',
+    'OTHER_LDFLAGS' => '-framework SystemConfiguration'
+  }
+
+  s.platform = :osx, '10.14'
   s.swift_version = '5.0'
 end

@@ -5,7 +5,7 @@ class SetAccountNameRequest
     extends BaseRequest<SetAccountNameResponse, GeneralErrorResponse>
     with RequestHandlingMixin<SetAccountNameResponse, GeneralErrorResponse> {
   SetAccountNameRequest({required this.accountId, required this.name})
-      : super(method: 'set_account_name');
+      : super(method: 'gui_storage::set_account_name');
   final AccountId accountId;
   final String name;
 

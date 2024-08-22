@@ -1,53 +1,56 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
-import 'package:komodo_defi_framework/src/startup_config_manager.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class KdfOperationsRemote implements IKdfOperations {
+  // TODO! Add wallet password and name or add the config object
   factory KdfOperationsRemote.create({
     required void Function(String) logCallback,
-    required IKdfStartupConfig configManager,
-    required String ipAddress,
-    required int port,
+    // required String ipAddress,
+    // required int port,
+    required Uri rpcUrl,
     required String userpass,
   }) {
     return KdfOperationsRemote._(
       logCallback,
-      configManager,
-      ipAddress,
-      port,
+      rpcUrl,
       userpass,
     );
   }
 
   KdfOperationsRemote._(
     this._logCallback,
-    this._configManager,
-    this._ipAddress,
-    this._port,
+    this._rpcUrl,
     this._userpass,
   );
   final void Function(String) _logCallback;
-  final IKdfStartupConfig _configManager;
-  final String _ipAddress;
-  final int _port;
   final String _userpass;
 
-  Uri get _baseUrl => _safeRpcUrl(_ipAddress, _port);
+  final Uri _rpcUrl;
+
+  Uri get _baseUrl => _safeRpcUrl(_rpcUrl);
 
   static const String _forwardProxy =
       'https://proxy-se-push.go-away-bugs.co.za/?target=';
 
-  Uri _safeRpcUrl(String host, int port) {
-    var url = Uri.parse('$host:$port');
+  static const bool _proxyRequests = false;
+
+  Uri _safeRpcUrl(Uri rpcUrl) {
+    var url = rpcUrl;
     // If the scheme is not provided, default to http
     url = url.scheme.isEmpty ? url.replace(scheme: 'http') : url;
 
-    if (!kIsWeb) {
+    // If it's localhost, return the url as is
+    if (url.host.contains('localhost') || url.host.contains('127.0.0.1')) {
       return url;
     }
+
+    // if (!kIsWeb) {
+    //   return url;
+    // }
 
     // NB: The code below is for a workaround to avoid CORS issues when
     // running in the browser. This is needed at least until the time when
@@ -63,7 +66,21 @@ class KdfOperationsRemote implements IKdfOperations {
     // forward proxy 134.122.60.102
     // TODO:
 
-    return Uri.parse('$_forwardProxy$url');
+    return Uri.parse('${_proxyRequests ? _forwardProxy : ''}$url');
+  }
+
+  @override
+  Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
+    // Check if the remote server is reachable
+    try {
+      final uri = Uri.parse(
+        'http://${(hostConfig as RemoteConfig).ipAddress}:${hostConfig.port}',
+      );
+      final response = await http.get(uri);
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
   void _log(String message) => _logCallback(message);
@@ -77,12 +94,13 @@ class KdfOperationsRemote implements IKdfOperations {
   }
 
   @override
-  Future<KdfStartupResult> kdfMain(String passphrase) async {
+  Future<KdfStartupResult> kdfMain(JsonMap startParams, {int? logLevel}) async {
     const message = 'KDF cannot be started using Remote client. '
         'Please start the KDF on the remote server manually.';
     _log(message);
+
     // return KdfStartupResult.invalidParams;
-    throw Exception(message);
+    throw UnimplementedError(message);
   }
 
   @override
@@ -134,21 +152,20 @@ class KdfOperationsRemote implements IKdfOperations {
 
   @override
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
+    _logCallback('mm2Rpc request: ${json.encode(request)}');
     request['userpass'] = _userpass;
 
-    final response = await http.post(
-      _baseUrl,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: json.encode(request),
-    );
+    final response = await http.post(_baseUrl, body: json.encode(request));
 
-    if (response.statusCode == 200) {
-      return json.decode(response.body) as Map<String, dynamic>;
-    } else {
-      throw Exception('Failed to perform RPC request: ${response.body}');
+    if (response.statusCode != 200) {
+      return JsonRpcErrorResponse(
+        code: response.statusCode,
+        error: 'HTTP Error',
+        message: response.body,
+      );
     }
+
+    return json.decode(response.body) as Map<String, dynamic>;
   }
 
   @override
@@ -161,24 +178,11 @@ class KdfOperationsRemote implements IKdfOperations {
 
   @override
   Future<String?> version() async {
-    final response = await http.post(
-      _baseUrl,
-      headers: {
-        'Content-Type': 'application/json',
-        // 'Access-Control-Allow-Origin': '*',
-      },
-      body: json.encode({
-        'method': 'version',
-        'userpass': _userpass,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final result =
-          (json.decode(response.body) as Map).cast<String, dynamic>();
-      return result['result'] as String?;
+    try {
+      final response = await mm2Rpc({'method': 'version'});
+      return response.value<String?>('result');
+    } on http.ClientException {
+      return null;
     }
-
-    return null;
   }
 }

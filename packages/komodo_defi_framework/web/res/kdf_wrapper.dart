@@ -54,13 +54,13 @@ class KdfPlugin {
 
     final script =
         js.context['document'].callMethod('createElement', ['script']);
-    script['src'] = 'kdf/mm2lib.js';
+    script['src'] = 'kdf/kdflib.js';
     script['onload'] = js.allowInterop(() {
       _libraryLoaded = true;
       completer.complete();
     });
     script['onerror'] = js.allowInterop((event) {
-      completer.completeError('Failed to load mm2lib.js');
+      completer.completeError('Failed to load kdflib.js');
     });
 
     js.context['document']['head'].callMethod('appendChild', [script]);

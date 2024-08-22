@@ -68,6 +68,11 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
     });
   }
 
+  bool _passwordVisible = false;
+  void _togglePasswordVisibility() {
+    setState(() => _passwordVisible = !_passwordVisible);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -109,8 +114,14 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
               ),
               TextField(
                 controller: _walletPasswordController,
-                decoration: const InputDecoration(labelText: 'Wallet Password'),
-                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Wallet Password',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.remove_red_eye),
+                    onPressed: _togglePasswordVisibility,
+                  ),
+                ),
+                obscureText: _passwordVisible,
               ),
               if (_selectedHostType != 'remote')
                 TextField(
@@ -222,15 +233,11 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
           onPressed: () async {
-            IKdfHostConfig config;
             await _saveConfiguration();
+            IKdfHostConfig config;
 
-            // Determine host config based on the selected host type.
+            // Determine the host configuration.
             switch (_selectedHostType) {
               case 'remote':
                 config = RemoteConfig(
@@ -259,12 +266,15 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                 break;
             }
 
-            // Return both the IKdfHostConfig and startup-related fields.
             Navigator.of(context).pop({
               'config': config,
               'walletName': _walletNameController.text,
               'walletPassword': _walletPasswordController.text,
               'passphrase': _passphraseController.text,
+              'hostType': _selectedHostType,
+              'ipAddress': _ipController.text,
+              'port': _portController.text,
+              'protocol': _selectedProtocol,
             });
           },
           child: const Text('Save'),
@@ -329,9 +339,14 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
 
   Future<void> _loadSavedConfiguration() async {
     final prefs = await SharedPreferences.getInstance();
-    String? savedHostType = prefs.getString('hostType');
-    String? savedUserpass = prefs.getString('userpass');
+    // TODO: Fix. host type is stored in 'lastUsedConfig' key with the rest of the host config.
+    String? savedHostType = prefs.getString('hostType') == null
+        ? null
+        : prefs.getString('lastUsedConfig') == null
+            ? null
+            : jsonDecode(prefs.getString('lastUsedConfig')!)['hostType'];
     String? savedIp = prefs.getString('ipAddress');
+    String? savedWalletPassword = prefs.getString('walletPassword');
     String? savedPort = prefs.getString('port');
     String? savedProtocol = prefs.getString('protocol');
     String? savedAwsRegion = prefs.getString('awsRegion');
@@ -343,8 +358,7 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
     setState(() {
       _selectedHostType = savedHostType ?? 'local';
       _passphraseController.text = '';
-      _walletPasswordController.text =
-          savedUserpass ?? _generateDefaultRpcPassword();
+      _walletPasswordController.text = savedWalletPassword ?? '';
       _ipController.text = savedIp ?? '';
       _portController.text = savedPort ?? '7783';
       _selectedProtocol = savedProtocol ?? 'https';
@@ -353,14 +367,14 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
       _awsSecretKeyController.text = savedAwsSecretKey ?? '';
       _awsInstanceTypeController.text = savedAwsInstanceType ?? '';
       _rpcPasswordController.text =
-          savedRpcPassword ?? _generateDefaultRpcPassword(); // Add this line
+          savedRpcPassword ?? _generateDefaultRpcPassword();
     });
   }
 
   Future<void> _saveConfiguration() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('hostType', _selectedHostType);
-    await prefs.setString('userpass', _walletPasswordController.text);
+    await prefs.setString('walletPassword', _walletPasswordController.text);
     await prefs.setString('ipAddress', _ipController.text);
     await prefs.setString('port', _portController.text);
     await prefs.setString('protocol', _selectedProtocol);
@@ -368,10 +382,7 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
     await prefs.setString('awsAccessKey', _awsAccessKeyController.text);
     await prefs.setString('awsSecretKey', _awsSecretKeyController.text);
     await prefs.setString('awsInstanceType', _awsInstanceTypeController.text);
-    await prefs.setString(
-      'rpcPassword',
-      _rpcPasswordController.text,
-    ); // Add this line
+    await prefs.setString('rpcPassword', _rpcPasswordController.text);
 
     //! IMPORTANT: Replace SharedPreferences with a more secure solution before using this in production.
   }
@@ -733,7 +744,9 @@ class _MyAppState extends State<MyApp> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       'lastUsedConfig',
-      jsonEncode(config.getConnectionParams()),
+      jsonEncode(
+        config.getConnectionParams(),
+      ),
     );
   }
 
@@ -762,19 +775,22 @@ class _MyAppState extends State<MyApp> {
     final walletPassword = prefs.getString('walletPassword') ?? '';
     final passphrase = prefs.getString('passphrase');
 
-    final KdfStartupConfig startupConfig =
-        await KdfStartupConfig.generateWithDefaults(
-      walletName: walletName,
-      walletPassword: walletPassword,
-      rpcPassword: _kdfHostConfig!.rpcPassword,
-      seed: passphrase,
-    );
-
     try {
+      final KdfStartupConfig startupConfig =
+          await KdfStartupConfig.generateWithDefaults(
+        walletName: walletName,
+        walletPassword: walletPassword, // This is the wallet account password
+        rpcPassword: _kdfHostConfig!.rpcPassword, // RPC password
+        seed: (passphrase?.isNotEmpty ?? false)
+            ? passphrase
+            : null, // Optional passphrase
+      );
+
       final result = await _kdfFramework!.startKdf(startupConfig);
+
       setState(() {
         _statusMessage = 'KDF running: $result';
-        _isRunning = true;
+        _isRunning = result.isRunning();
       });
 
       if (!result.isRunning()) {

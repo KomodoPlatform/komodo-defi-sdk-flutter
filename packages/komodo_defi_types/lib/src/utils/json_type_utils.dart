@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 typedef JsonMap = Map<String, dynamic>;
-typedef JsonList = List<dynamic>;
+typedef JsonList = List<JsonMap>;
 
 JsonMap jsonFromString(String json) {
   final decode = jsonDecode(json);
@@ -12,6 +12,17 @@ JsonMap jsonFromString(String json) {
   );
 
   return decode as JsonMap;
+}
+
+List<JsonMap> jsonListFromString(String json) {
+  final decode = jsonDecode(json);
+
+  assert(
+    decode is List,
+    'Tried to parse API response as a List, but got a ${decode.runtimeType}',
+  );
+
+  return (decode as List).cast<JsonMap>();
 }
 
 String jsonToString(dynamic json) => jsonEncode(json);
@@ -38,6 +49,22 @@ T _traverseJson<T>(
     return defaultValue;
   }
 
+  if (T is num && value is String) {
+    final parsed = num.tryParse(value);
+
+    if (parsed != null) {
+      return parsed as T;
+    }
+  }
+
+  if (T == JsonMap && value is String) {
+    return jsonFromString(value) as T;
+  }
+
+  if (T == JsonList && value is String) {
+    return jsonListFromString(value) as T;
+  }
+
   if (value != null && value is! T) {
     throw ArgumentError(
       'Traversed JSON and expected value of type $T, but got ${value.runtimeType}',
@@ -48,30 +75,40 @@ T _traverseJson<T>(
 }
 
 extension JsonMapExtension<T extends JsonMap> on T {
-  TVal nestedValue<TVal>(List<String> keys, {TVal? defaultValue}) =>
+  TVal valueVArgs<TVal>(List<String> keys, {TVal? defaultValue}) =>
       _traverseJson<TVal>(this, keys, defaultValue: defaultValue);
 
   V value<V>(
     String key, [
-    dynamic key2,
-    dynamic key3,
-    dynamic key4,
-    dynamic key5,
+    String? key2,
+    String? key3,
+    String? key4,
+    String? key5,
   ]) {
     final keys = [key, key2, key3, key4, key5].whereType<String>().toList();
     return _traverseJson<V>(this, keys);
   }
 
-  static JsonMap fromJsonString(String jsonString) =>
-      jsonDecode(jsonString) as JsonMap;
+  JsonMap jsonFromString(String json) {
+    final decode = jsonDecode(json);
 
-  static JsonMap? fromJsonStringOrNull(String jsonString) {
-    try {
-      return fromJsonString(jsonString);
-    } catch (e) {
-      return null;
+    if (decode is Map) {
+      // Ensure all keys are strings and the value is dynamic
+      return decode.map((key, value) => MapEntry(key.toString(), value));
+    } else {
+      throw ArgumentError(
+        'Tried to parse API response as a Map, but got a ${decode.runtimeType}',
+      );
     }
   }
+
+  // static JsonMap? fromJsonStringOrNull(String jsonString) {
+  //   try {
+  //     return fromJsonString(jsonString);
+  //   } catch (e) {
+  //     return null;
+  //   }
+  // }
 
   String toJsonString() => jsonEncode(this);
 }
@@ -91,19 +128,22 @@ extension ListExtensions<T extends JsonList> on T {
   }
 }
 
-extension JsonMapCensoring<T extends JsonMap> on T {
+extension JsonMapCensoring<T extends Map<dynamic, dynamic>> on T {
   T censorKeys(
     List<String> keys, {
     bool recursive = true,
     String obscuringCharacter = '*',
     bool ensureJsonSerialization = true,
   }) {
-    return censorMap(
+    final censoredMap = censorMap(
       keys,
       recursive: recursive,
       obscuringCharacter: obscuringCharacter,
       ensureJsonSerialization: ensureJsonSerialization,
-    ) as T;
+    );
+
+    // Safely cast censoredMap back to T by ensuring type conformity
+    return Map<String, dynamic>.from(censoredMap) as T;
   }
 }
 

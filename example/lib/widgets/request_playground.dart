@@ -341,9 +341,11 @@ class HistoryDetailScreen extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(item['response']),
+            Card(
+              child: Container(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(item['response']),
+              ),
             ),
           ],
         ),

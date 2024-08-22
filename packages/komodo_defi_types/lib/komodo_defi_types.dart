@@ -3,6 +3,11 @@
 /// More dartdocs go here.
 library;
 
+export 'src/api/api_client.dart';
+export 'src/auth/auth_result.dart';
+// export 'src/auth/exceptions/incorrect_password_exception.dart';
+export 'src/auth/exceptions/auth_exception.dart';
+export 'src/auth/user.dart';
 export 'src/komodo_defi_types_base.dart';
 
 // TODO: Consider moving utils to a separate package. The rationale for

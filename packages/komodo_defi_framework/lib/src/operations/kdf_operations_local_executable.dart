@@ -1,0 +1,211 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+import 'package:komodo_defi_framework/src/config/kdf_config.dart';
+import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
+import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
+class KdfOperationsLocalExecutable implements IKdfOperations {
+  KdfOperationsLocalExecutable._(
+    this._logCallback,
+    this._config,
+    this._kdfRemote,
+  );
+
+  factory KdfOperationsLocalExecutable.create({
+    required void Function(String) logCallback,
+    required LocalConfig config,
+  }) {
+    return KdfOperationsLocalExecutable._(
+      logCallback,
+      config,
+      KdfOperationsRemote.create(
+        logCallback: logCallback,
+        rpcUrl: _url,
+        userpass: config.rpcPassword,
+      ),
+    );
+  }
+
+  final void Function(String) _logCallback;
+  final LocalConfig _config;
+
+  Process? _process;
+  late StreamSubscription<List<int>>? stdoutSub;
+  late StreamSubscription<List<int>>? stderrSub;
+
+  final KdfOperationsRemote _kdfRemote;
+
+  @override
+  String get operationsName => 'Local Executable';
+
+  @override
+  Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
+    try {
+      return await _getExecutable() != null;
+    } catch (e) {
+      _logCallback('Error checking availability: $e');
+      return false;
+    }
+  }
+
+  static final Uri _url = Uri.parse('http://127.0.0.1:7783');
+  final http.Client _client = http.Client();
+
+  Future<Process> _startKdf(List<String> args) async {
+    final executablePath = (await _getExecutable())?.absolute.path;
+
+    if (executablePath == null) {
+      throw Exception('No executable found.');
+    }
+
+    try {
+      final newProcess = await Process.start(
+        executablePath,
+        args,
+      );
+
+      _logCallback('Launched executable: $executablePath');
+      _attachProcessListeners(newProcess);
+
+      return newProcess;
+    } catch (e) {
+      throw Exception('Failed to start executable: $e');
+    }
+  }
+
+  void _attachProcessListeners(Process newProcess) {
+    stdoutSub = newProcess.stdout.listen((event) {
+      _logCallback('[INFO]: ${String.fromCharCodes(event)}');
+    });
+
+    stderrSub = newProcess.stderr.listen((event) {
+      _logCallback('[ERROR]: ${String.fromCharCodes(event)}');
+    });
+
+    newProcess.exitCode.then((exitCode) async {
+      await stdoutSub?.cancel();
+      await stderrSub?.cancel();
+      _logCallback('Process exited with code: $exitCode');
+    }).ignore();
+  }
+
+  Future<File?> _getExecutable() async {
+    final macosKdfResourcePath = p.joinAll([
+      p.dirname(p.dirname(Platform.resolvedExecutable)),
+      'Frameworks',
+      'komodo_defi_framework.framework',
+      'Resources',
+      'kdf_resources.bundle',
+      'Contents',
+      'Resources',
+      'kdf',
+    ]);
+
+    final files = [
+      '/usr/local/bin/kdf',
+      '/usr/bin/kdf',
+      'bin/kdf_executable',
+      p.join(Directory.current.path, 'kdf_executable'),
+      p.join((await getApplicationSupportDirectory()).path, 'kdf'),
+      macosKdfResourcePath,
+    ].map((path) => File(p.normalize(path))).toList();
+
+    for (final file in files) {
+      if (file.existsSync()) {
+        _logCallback('Found executable: ${file.path}');
+        return file.absolute;
+      }
+    }
+
+    _logCallback(
+      'Executable not found in paths: ${files.map((e) => e.absolute.path).join('\n')}. '
+      'If you are using the KDF Flutter SDK, open an issue on GitHub.',
+    );
+
+    return null;
+  }
+
+  @override
+  Future<KdfStartupResult> kdfMain(JsonMap params, {int? logLevel}) async {
+    if (_process != null && _process!.pid != 0 && await isRunning()) {
+      return KdfStartupResult.alreadyRunning;
+    }
+
+    // TODO: Log level
+
+    _logCallback('Starting KDF with parameters (Coins Removed): ${{
+      ...params,
+      'coins': <JsonMap>[],
+    }.censored().toJsonString()}');
+
+    _process = await _startKdf([params.toJsonString()]);
+
+    final timer = Stopwatch()..start();
+
+    int? exitCode;
+    unawaited(_process?.exitCode.then((code) => exitCode = code));
+
+    while (exitCode == null && timer.elapsed.inSeconds < 30) {
+      if (await isRunning()) {
+        return KdfStartupResult.ok;
+      }
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+
+    throw Exception(
+      'Executable not started. Exit code: $exitCode, '
+      'isRunning: ${await isRunning()}',
+    );
+  }
+
+  @override
+  Future<MainStatus> kdfMainStatus() async {
+    if (_process != null && _process!.pid > 0 && await _kdfRemote.isRunning()) {
+      return MainStatus.rpcIsUp;
+    }
+    return MainStatus.notRunning;
+  }
+
+  @override
+  Future<StopStatus> kdfStop() async {
+    if (_process == null) {
+      return StopStatus.notRunning;
+    }
+
+    final stopResult = await _kdfRemote.kdfStop();
+    _process!.kill();
+
+    return stopResult;
+  }
+
+  @override
+  Future<bool> isRunning() async {
+    return (await kdfMainStatus()) == MainStatus.rpcIsUp;
+  }
+
+  @override
+  Future<String?> version() => _kdfRemote.version();
+
+  @override
+  Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) =>
+      _kdfRemote.mm2Rpc(request);
+
+  @override
+  Future<void> validateSetup() async {
+    if (_process == null) {
+      throw Exception('Executable is not running. Please start it first.');
+    }
+  }
+
+  void dispose() {
+    _process?.kill();
+    stdoutSub?.cancel();
+    stderrSub?.cancel();
+    _logCallback('Process killed and resources cleaned up.');
+  }
+}

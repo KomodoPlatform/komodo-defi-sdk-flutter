@@ -1,48 +1,80 @@
-import 'package:komodo_defi_framework/komodo_defi_framework.dart';
-import 'package:komodo_defi_framework/src/operations/kdf_operations_aws.dart';
-import 'package:komodo_defi_framework/src/operations/kdf_operations_digital_ocean.dart';
+import 'package:komodo_defi_framework/src/config/kdf_config.dart';
+import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_wasm.dart'
     if (dart.library.io) 'package:komodo_defi_framework/src/operations/kdf_operations_native.dart'
     as local;
-import 'package:komodo_defi_framework/src/startup_config_manager.dart';
 
 IKdfOperations createKdfOperations({
   required void Function(String)? logCallback,
-  required IKdfStartupConfig configManager,
-  required KdfConfig config,
+  required IKdfHostConfig hostConfig,
 }) {
-  assert(config.runtimeType is! String);
+  return _selectKdfImplementation(
+    logCallback: logCallback,
+    hostConfig: hostConfig,
+  );
+}
 
-  switch (config.runtimeType) {
-    case const (LocalConfig):
+Future<IKdfOperations> createKdfOperationsAsync({
+  required void Function(String)? logCallback,
+  required IKdfHostConfig hostConfig,
+}) async {
+  final implementation = await _selectKdfImplementationAsync(
+    logCallback: logCallback,
+    hostConfig: hostConfig,
+  );
+  if (await implementation.isAvailable(hostConfig)) {
+    return implementation;
+  }
+  throw ArgumentError(
+    'No available KDF operations found for ${hostConfig.runtimeType}',
+  );
+}
+
+IKdfOperations _selectKdfImplementation({
+  required void Function(String)? logCallback,
+  required IKdfHostConfig hostConfig,
+}) {
+  switch (hostConfig.runtimeType) {
+    case LocalConfig:
       return local.createLocalKdfOperations(
         logCallback: logCallback ?? print,
-        configManager: configManager,
-        config: config as LocalConfig,
+        config: hostConfig as LocalConfig,
       );
-
-    case const (RemoteConfig):
+    case RemoteConfig:
       return KdfOperationsRemote.create(
         logCallback: logCallback ?? print,
-        configManager: configManager,
-        ipAddress: (config as RemoteConfig).ipAddress,
-        port: config.port,
-        userpass: config.userpass,
-      );
-    case const (AwsConfig):
-      return KdfOperationsAWS.createFromConfig(
-        logCallback: logCallback ?? print,
-        configManager: configManager,
-        config: config as AwsConfig,
-      );
-    case const (DigitalOceanConfig):
-      return KdfOperationsDigitalOcean.create(
-        logCallback: logCallback ?? print,
-        configManager: configManager,
-        config: config as DigitalOceanConfig,
+        rpcUrl: (hostConfig as RemoteConfig).rpcUrl,
+        userpass: hostConfig.rpcPassword,
       );
     default:
-      throw ArgumentError('Unsupported host type: ${config.runtimeType}');
+      throw ArgumentError('Unsupported host type: ${hostConfig.runtimeType}');
+  }
+}
+
+Future<IKdfOperations> _selectKdfImplementationAsync({
+  required void Function(String)? logCallback,
+  required IKdfHostConfig hostConfig,
+}) async {
+  switch (hostConfig.runtimeType) {
+    case LocalConfig:
+      return local.createLocalKdfOperations(
+        logCallback: logCallback ?? print,
+        config: hostConfig as LocalConfig,
+      );
+
+    case RemoteConfig:
+      return KdfOperationsRemote.create(
+        logCallback: logCallback ?? print,
+        rpcUrl: Uri.parse(
+          '${(hostConfig as RemoteConfig).https == true ? 'https' : 'http'}://${hostConfig.ipAddress}:${hostConfig.port}',
+        ),
+        userpass: hostConfig.rpcPassword,
+      );
+
+    // TOOD: Other implementations (AWS, DigitalOcean)
+
+    default:
+      throw ArgumentError('Unsupported host type: ${hostConfig.runtimeType}');
   }
 }

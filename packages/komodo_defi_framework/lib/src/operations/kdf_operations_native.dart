@@ -9,34 +9,51 @@ import 'package:http/http.dart';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/native/komodo_defi_framework_bindings_generated.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
-import 'package:komodo_defi_framework/src/startup_config_manager.dart';
+import 'package:komodo_defi_framework/src/operations/kdf_operations_local_executable.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 typedef NativeLogCallback = ffi.Void Function(ffi.Pointer<ffi.Char>);
 
-KdfOperationsNativeLibrary createLocalKdfOperations({
+IKdfOperations createLocalKdfOperations({
   required void Function(String) logCallback,
-  required IKdfStartupConfig configManager,
   required LocalConfig config,
 }) {
-  return KdfOperationsNativeLibrary.create(
-    logCallback: logCallback,
-    configManager: configManager,
-    config: config,
-  );
+  try {
+    return KdfOperationsNativeLibrary.create(
+      logCallback: logCallback,
+      config: config,
+    );
+  } catch (e) {
+    final executable = KdfOperationsLocalExecutable.create(
+      logCallback: logCallback,
+      config: config,
+    );
+
+    // TODO: Refactor or consider a different approach that allows us to
+    // determine if the executable is available before returning it using the
+    // async `isAvailable` method.
+    // scheduleMicrotask(() async {
+    //   if (!await executable.isAvailable(config)) {
+    //     throw Exception(
+    //       'No valid KDF operations found. KdfOperationsLocalExecutable was '
+    //       'returned but was not available.',
+    //     );
+    //   }
+    // });
+
+    return executable;
+  }
 }
 
 class KdfOperationsNativeLibrary implements IKdfOperations {
   @override
   factory KdfOperationsNativeLibrary.create({
     required void Function(String)? logCallback,
-    required IKdfStartupConfig configManager,
     required LocalConfig config,
   }) {
     final nativeLogCallback = ffi.NativeCallable<NativeLogCallback>.listener(
       (ffi.Pointer<ffi.Char> messagePtr) {
         try {
-          // final message = messagePtr.cast<Utf8>().toDartString();
           final message = utf8.decode(
             messagePtr
                 .cast<ffi.Uint8>()
@@ -56,15 +73,14 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     );
 
     return KdfOperationsNativeLibrary._(
-      configManager,
       KomodoDefiFrameworkBindings(_library),
       nativeLogCallback,
       config,
       logCallback ?? print,
     );
   }
+
   KdfOperationsNativeLibrary._(
-    this._configManager,
     this._bindings,
     this._logCallback,
     this._config,
@@ -72,7 +88,6 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   );
 
   void Function(String) _log;
-  final IKdfStartupConfig _configManager;
   final KomodoDefiFrameworkBindings _bindings;
   final ffi.NativeCallable<NativeLogCallback> _logCallback;
   LocalConfig _config;
@@ -81,11 +96,25 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   String operationsName = 'Local Native Library';
 
   @override
-  Future<KdfStartupResult> kdfMain(String passphrase) async {
-    final startParams = await _configManager
-        .generateStartParamsFromDefault(passphrase, userpass: _config.userpass);
+  Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
+    // Check if the native dynamic library is available on the device.
+    try {
+      final dylib = _library;
+      assert(
+        dylib.providesSymbol('mm2_main'),
+        'Symbol mm2_main not found in library',
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<KdfStartupResult> kdfMain(JsonMap startParams, {int? logLevel}) async {
     final startParamsPtr =
         startParams.toJsonString().toNativeUtf8().cast<ffi.Char>();
+    // TODO: Implement log level
 
     try {
       final result = await compute(
@@ -124,12 +153,10 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
     _log('mm2 config: ${_config.toJson()}');
     _log('mm2Rpc request (pre-process): $request');
-    request['userpass'] = _config.userpass;
+    request['userpass'] = _config.rpcPassword;
     final response = await _client.post(
       _url,
-      body:
-          // json.encode(request..putIfAbsent('userpass', () => _config.userpass)),
-          json.encode(request),
+      body: json.encode(request),
       headers: {'Content-Type': 'application/json'},
     );
     return json.decode(response.body) as Map<String, dynamic>;
@@ -148,10 +175,9 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   Future<String?> version() async {
     try {
       final response = await mm2Rpc({'method': 'version'});
-
       return response['result'] as String?;
     } on Exception catch (e) {
-      'Error getting KDF version: $e';
+      _log('Error getting KDF version: $e');
       return null;
     }
   }
@@ -241,4 +267,4 @@ List<String> _getLibraryPaths() {
   }
 }
 
-final ffi.DynamicLibrary _library = _loadLibrary();
+ffi.DynamicLibrary get _library => _loadLibrary();

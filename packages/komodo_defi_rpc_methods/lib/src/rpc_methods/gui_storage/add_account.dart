@@ -4,7 +4,8 @@ import 'package:komodo_defi_rpc_methods/src/rpc_methods/gui_storage/models.dart'
 class AddAccountRequest
     extends BaseRequest<AddAccountResponse, GeneralErrorResponse>
     with RequestHandlingMixin<AddAccountResponse, GeneralErrorResponse> {
-  AddAccountRequest({required this.account}) : super(method: 'add_account');
+  AddAccountRequest({required this.account})
+      : super(method: 'gui_storage::add_account');
   final NewAccount<AccountId> account;
 
   @override

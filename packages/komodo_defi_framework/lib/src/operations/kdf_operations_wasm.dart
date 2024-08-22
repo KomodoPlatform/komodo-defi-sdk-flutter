@@ -6,21 +6,18 @@ import 'dart:js_util' as js_util;
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:http/http.dart';
-import 'package:komodo_defi_framework/src/config/kdf_config.dart';
-import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
-import 'package:komodo_defi_framework/src/startup_config_manager.dart';
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 const _kdfAsstsPath = 'kdf';
 const _kdfJsBootstrapperPath = '$_kdfAsstsPath/res/kdflib_bootstrapper.js';
 
 IKdfOperations createLocalKdfOperations({
   required void Function(String)? logCallback,
-  required IKdfStartupConfig configManager,
   required LocalConfig config,
 }) {
   return KdfOperationsWasm.create(
     logCallback: logCallback ?? print,
-    configManager: configManager,
     config: config,
   );
 }
@@ -28,20 +25,28 @@ IKdfOperations createLocalKdfOperations({
 class KdfOperationsWasm implements IKdfOperations {
   @override
   factory KdfOperationsWasm.create({
-    required IKdfStartupConfig configManager,
     required LocalConfig config,
     void Function(String)? logCallback,
   }) {
-    return KdfOperationsWasm._(configManager, config).._logger = logCallback;
+    return KdfOperationsWasm._(config).._logger = logCallback;
   }
 
-  KdfOperationsWasm._(this._configManager, this._config);
+  KdfOperationsWasm._(this._config);
 
-  final IKdfStartupConfig _configManager;
   final LocalConfig _config;
   bool _libraryLoaded = false;
   js_interop.JSObject? _kdfModule;
   void Function(String)? _logger;
+
+  @override
+  Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
+    try {
+      await _ensureLoaded();
+      return _areFunctionsLoaded();
+    } catch (_) {
+      return false;
+    }
+  }
 
   bool get _isWasmInitialized {
     return _kdfModule
@@ -63,19 +68,19 @@ class KdfOperationsWasm implements IKdfOperations {
   // operation or also for waiting for the operation to complete.
   // Likely, it is the former, and then additional logic on top of this
   // can be handled by [KomoDefiFramework] or the caller.
-  Future<KdfStartupResult> kdfMain(String passphrase) async {
+  Future<KdfStartupResult> kdfMain(JsonMap config, {int? logLevel}) async {
     await _ensureLoaded();
-    final startParams = await _configManager.generateStartParamsFromDefault(
-      passphrase,
-      userpass: _config.userpass,
-    );
+    // final startParams = await _configManager.generateStartParamsFromDefault(
+    //   passphrase,
+    //   userpass: _config.userpass,
+    // );
 
-    final config = {
-      'conf': startParams,
-      'log_level': 3,
+    final mm2Config = {
+      'conf': config,
+      'log_level': logLevel ?? 3,
     };
 
-    final jsConfig = js_util.jsify(config) as js_interop.JSObject;
+    final jsConfig = js_util.jsify(mm2Config) as js_interop.JSObject;
 
     try {
       final result = js_util.dartify(
@@ -147,7 +152,7 @@ class KdfOperationsWasm implements IKdfOperations {
     try {
       await _ensureLoaded();
 
-      request['userpass'] = _config.userpass;
+      request['userpass'] = _config.rpcPassword;
 
       final jsResponse = await js_util.promiseToFuture<js_interop.JSObject>(
         _kdfModule!.callMethod(
@@ -181,7 +186,7 @@ class KdfOperationsWasm implements IKdfOperations {
 
     try {
       final response = await mm2Rpc({
-        'userpass': _config.userpass,
+        'userpass': _config.rpcPassword,
         'method': 'version',
       });
 
@@ -214,12 +219,6 @@ class KdfOperationsWasm implements IKdfOperations {
         : throw Exception('Failed to load KDF library: functions not found');
   }
 
-  // void _ensureLoadedSync() {
-  //   if (!_libraryLoaded) {
-  //     throw Exception('KDF library not loaded. Call kdfMain() first.');
-  //   }
-  // }
-
   Future<void> _initWasm() async {
     final initWasmPromise =
         _kdfModule?.callMethod('init_wasm'.toJS) as js_interop.JSPromise?;
@@ -230,11 +229,9 @@ class KdfOperationsWasm implements IKdfOperations {
 
   Future<void> _injectLibrary() async {
     try {
-      _kdfModule = (await js_interop
-              // .importModule('./$_kdfJsBootstrapperPath'.toJS)
-              .importModule('./$_kdfJsBootstrapperPath')
-              .toDart)
-          .getProperty('kdf'.toJS);
+      _kdfModule =
+          (await js_interop.importModule('./$_kdfJsBootstrapperPath').toDart)
+              .getProperty('kdf'.toJS);
 
       final debugProperties = Map<String, String>.fromIterable(
         <String>[

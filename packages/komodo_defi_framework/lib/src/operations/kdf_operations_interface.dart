@@ -1,4 +1,8 @@
 import 'dart:async';
+import 'dart:collection';
+
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 enum MainStatus {
   notRunning,
@@ -32,6 +36,8 @@ enum KdfStartupResult {
   // or KdfStartupResult.alreadyRunning
   bool isRunning() =>
       this == KdfStartupResult.ok || this == KdfStartupResult.alreadyRunning;
+
+  bool get isAlreadyRunning => this == KdfStartupResult.alreadyRunning;
 
   // Int values
   // Ok = 0,
@@ -77,7 +83,7 @@ enum StopStatus {
   }
 }
 
-abstract class IKdfOperations {
+abstract interface class IKdfOperations {
   // IKdfOperations.create({
   //   required ILogger logger,
   //   required IConfigManager configManager,
@@ -85,11 +91,50 @@ abstract class IKdfOperations {
 
   String get operationsName;
 
-  Future<KdfStartupResult> kdfMain(String passphrase);
+  Future<KdfStartupResult> kdfMain(JsonMap startParams, {int? logLevel});
   Future<MainStatus> kdfMainStatus();
   Future<StopStatus> kdfStop();
   Future<bool> isRunning();
   Future<String?> version();
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request);
   Future<void> validateSetup();
+
+  Future<bool> isAvailable(IKdfHostConfig hostConfig);
+}
+
+class JsonRpcErrorResponse extends MapBase<String, dynamic> {
+  JsonRpcErrorResponse({
+    required int? code,
+    required String error,
+    required String message,
+  }) : _map = {
+          'code': code,
+          'error': error,
+          'message': message,
+        };
+
+  final Map<String, dynamic> _map;
+
+  int? get code => _map.value<int?>('code');
+
+  String get error => _map.value<String>('error');
+
+  String get message => _map.value<String>('message');
+
+  @override
+  dynamic operator [](Object? key) => _map[key];
+
+  @override
+  void operator []=(String key, dynamic value) {
+    _map[key] = value;
+  }
+
+  @override
+  void clear() => _map.clear();
+
+  @override
+  Iterable<String> get keys => _map.keys;
+
+  @override
+  dynamic remove(Object? key) => _map.remove(key);
 }

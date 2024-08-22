@@ -77,8 +77,11 @@ libmm2.dylib
 libkdflib.a
 libkdflib.dylib
 windows/**/mm2.exe
-linux/mm2/mm2
-macos/mm2
+windows/**/exe/
+linux/**/mm2
+macos/**/mm2
+macos/x86/
+macos/bin/
 **/.api_last_updated*
 
 # Android C++ files
