@@ -476,19 +476,31 @@ class FetchDefiApiStep extends BuildStep {
     final bytes = File(zipFilePath).readAsBytesSync();
     final archive = ZipDecoder().decodeBytes(bytes);
 
+    if (archive.isEmpty) {
+      throw Exception('No files found in $zipFilePath');
+    }
+
+    if (!Directory(destinationFolder).existsSync()) {
+      log.info('Creating directory: $destinationFolder');
+      Directory(destinationFolder).createSync(recursive: true);
+    }
+
+    log.fine('Extracting $zipFilePath to $destinationFolder');
     for (final file in archive) {
       final filename = file.name;
       if (file.isFile) {
+        log.finest('Extracting file: $filename to $destinationFolder');
         final data = file.content as List<int>;
         File(path.join(destinationFolder, filename))
           ..createSync(recursive: true)
           ..writeAsBytesSync(data);
       } else {
+        log.finest('Creating directory: $filename');
         Directory(path.join(destinationFolder, filename))
             .create(recursive: true);
       }
     }
-    _logMessage('Extraction completed.');
+    log.info('Extraction completed.');
   }
 
   void _updateDocumentationIfExists() {
