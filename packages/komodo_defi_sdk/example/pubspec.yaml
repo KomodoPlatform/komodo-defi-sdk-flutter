@@ -1,0 +1,28 @@
+name: example
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.4.4 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_secure_storage: ^9.2.2
+
+  komodo_defi_sdk:
+    path: ../
+
+  komodo_defi_types:
+    path: ../../komodo_defi_types
+
+dev_dependencies:
+  flutter_lints: ^3.0.0
+  flutter_test:
+    sdk: flutter
+
+  very_good_analysis: ^6.0.0
+
+flutter:
+  uses-material-design: true

@@ -8,7 +8,6 @@ import 'package:json_editor_flutter/json_editor_flutter.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_framework_example/widgets/request_playground.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 void main() async {
@@ -32,14 +31,16 @@ class MyApp extends StatefulWidget {
 }
 
 /// Generate a random 32 character password for the RPC userpass
-String _generateDefaultRpcPassword() => SecurityUtils.securePassword(32);
+String _generateDefaultRpcPassword() =>
+    SecurityUtils.generatePasswordSecure(32);
 
 class _ConfigureDialogState extends State<ConfigureDialog> {
   String _selectedHostType = 'local';
   String _selectedProtocol = 'https';
+  final TextEditingController _walletNameController = TextEditingController();
+  final TextEditingController _walletPasswordController =
+      TextEditingController();
   final TextEditingController _passphraseController = TextEditingController();
-  final TextEditingController _userpassController =
-      TextEditingController(text: _generateDefaultRpcPassword());
   final TextEditingController _ipController = TextEditingController();
   final TextEditingController _portController = TextEditingController();
   final TextEditingController _awsRegionController = TextEditingController();
@@ -47,6 +48,25 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
   final TextEditingController _awsSecretKeyController = TextEditingController();
   final TextEditingController _awsInstanceTypeController =
       TextEditingController();
+  final TextEditingController _rpcPasswordController =
+      TextEditingController(text: _generateDefaultRpcPassword());
+
+  void _hostTypeChanged(String? value) {
+    if (value == null) {
+      return;
+    }
+
+    setState(() {
+      // If current is local and changed to anything else, clear the RPC password
+      if (_selectedHostType == 'local' && value != 'local') {
+        _rpcPasswordController.text = '';
+      } else if (_selectedHostType != 'local' && value == 'local') {
+        _rpcPasswordController.text = _generateDefaultRpcPassword();
+      }
+
+      _selectedHostType = value;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,11 +81,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
             children: [
               DropdownButton<String>(
                 value: _selectedHostType,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedHostType = value!;
-                  });
-                },
+                onChanged: _hostTypeChanged,
                 items: const [
                   DropdownMenuItem(
                     value: 'local',
@@ -87,27 +103,25 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   ),
                 ],
               ),
-              if (_selectedHostType != 'remote') ...[
+              TextField(
+                controller: _walletNameController,
+                decoration: const InputDecoration(labelText: 'Wallet Name'),
+              ),
+              TextField(
+                controller: _walletPasswordController,
+                decoration: const InputDecoration(labelText: 'Wallet Password'),
+                obscureText: true,
+              ),
+              if (_selectedHostType != 'remote')
                 TextField(
                   controller: _passphraseController,
-                  maxLines: 6,
-                  minLines: 1,
                   decoration: const InputDecoration(
-                    labelText: 'Seed',
-                  ),
+                      labelText: 'Passphrase/Seed (Optional)'),
                 ),
-              ],
               if (_selectedHostType == 'remote') ...[
                 DropdownButtonFormField<String>(
                   value: _selectedProtocol,
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedProtocol = value!;
-                      if (_selectedProtocol == 'http') {
-                        _showHttpWarning(context);
-                      }
-                    });
-                  },
+                  onChanged: (value) => _selectedProtocolChanged(value!),
                   decoration: const InputDecoration(
                     labelText: 'Protocol',
                   ),
@@ -123,7 +137,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   ],
                 ),
                 TextField(
-                  controller: _userpassController,
+                  controller: _rpcPasswordController,
                   decoration: const InputDecoration(
                     labelText: 'RPC Password (userpass)',
                   ),
@@ -208,42 +222,64 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
           child: const Text('Cancel'),
         ),
         TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
           onPressed: () async {
-            KdfConfig config;
+            IKdfHostConfig config;
             await _saveConfiguration();
+
+            // Determine host config based on the selected host type.
             switch (_selectedHostType) {
               case 'remote':
                 config = RemoteConfig(
-                  userpass: _userpassController.text,
-                  ipAddress: '$_selectedProtocol://${_ipController.text}',
+                  rpcPassword: _rpcPasswordController.text,
+                  ipAddress: _ipController.text,
                   port: int.parse(_portController.text),
+                  https: _selectedProtocol == 'https',
                 );
                 break;
               case 'aws':
                 config = AwsConfig(
-                  userpass: _userpassController.text,
+                  rpcPassword: _rpcPasswordController.text,
                   region: _awsRegionController.text,
                   accessKey: _awsAccessKeyController.text,
                   secretKey: _awsSecretKeyController.text,
                   instanceType: _awsInstanceTypeController.text,
+                  https: _selectedProtocol == 'https',
                 );
                 break;
               case 'local':
-                config = LocalConfig(userpass: _userpassController.text);
-                break;
               default:
-                throw Exception(
-                  'Invalid/unsupported host type: $_selectedHostType',
+                config = LocalConfig(
+                  rpcPassword: _rpcPasswordController.text,
+                  https: _selectedProtocol == 'https',
                 );
+                break;
             }
-            Navigator.of(context).pop(
-              {'config': config, 'passphrase': _passphraseController.text},
-            );
+
+            // Return both the IKdfHostConfig and startup-related fields.
+            Navigator.of(context).pop({
+              'config': config,
+              'walletName': _walletNameController.text,
+              'walletPassword': _walletPasswordController.text,
+              'passphrase': _passphraseController.text,
+            });
           },
           child: const Text('Save'),
         ),
       ],
     );
+  }
+
+  void _selectedProtocolChanged(String value) {
+    if (value == 'http') {
+      _showHttpWarning(context);
+    }
+    setState(() {
+      _selectedProtocol = value;
+    });
   }
 
   void _showHttpWarning(BuildContext context) {
@@ -302,11 +338,13 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
     String? savedAwsAccessKey = prefs.getString('awsAccessKey');
     String? savedAwsSecretKey = prefs.getString('awsSecretKey');
     String? savedAwsInstanceType = prefs.getString('awsInstanceType');
+    String? savedRpcPassword = prefs.getString('rpcPassword'); // Add this line
 
     setState(() {
       _selectedHostType = savedHostType ?? 'local';
-      _passphraseController.text = generateMnemonic();
-      _userpassController.text = savedUserpass ?? _generateDefaultRpcPassword();
+      _passphraseController.text = '';
+      _walletPasswordController.text =
+          savedUserpass ?? _generateDefaultRpcPassword();
       _ipController.text = savedIp ?? '';
       _portController.text = savedPort ?? '7783';
       _selectedProtocol = savedProtocol ?? 'https';
@@ -314,13 +352,15 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
       _awsAccessKeyController.text = savedAwsAccessKey ?? '';
       _awsSecretKeyController.text = savedAwsSecretKey ?? '';
       _awsInstanceTypeController.text = savedAwsInstanceType ?? '';
+      _rpcPasswordController.text =
+          savedRpcPassword ?? _generateDefaultRpcPassword(); // Add this line
     });
   }
 
   Future<void> _saveConfiguration() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('hostType', _selectedHostType);
-    await prefs.setString('userpass', _userpassController.text);
+    await prefs.setString('userpass', _walletPasswordController.text);
     await prefs.setString('ipAddress', _ipController.text);
     await prefs.setString('port', _portController.text);
     await prefs.setString('protocol', _selectedProtocol);
@@ -328,6 +368,10 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
     await prefs.setString('awsAccessKey', _awsAccessKeyController.text);
     await prefs.setString('awsSecretKey', _awsSecretKeyController.text);
     await prefs.setString('awsInstanceType', _awsInstanceTypeController.text);
+    await prefs.setString(
+      'rpcPassword',
+      _rpcPasswordController.text,
+    ); // Add this line
 
     //! IMPORTANT: Replace SharedPreferences with a more secure solution before using this in production.
   }
@@ -338,10 +382,10 @@ class _MyAppState extends State<MyApp> {
   String? _statusMessage;
   String? _version;
   bool _isRunning = false;
-  String? _passphrase; // Add this line
+  IKdfHostConfig? _kdfHostConfig;
   final _logController = StreamController<String>.broadcast();
   final ScrollController _scrollController = ScrollController();
-  final List<String> _logMessages = []; // List to store log messages
+  final List<String> _logMessages = [];
 
   Map<String, dynamic> rpcInput = {
     'userpass': '********',
@@ -354,10 +398,8 @@ class _MyAppState extends State<MyApp> {
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // TODO: More specific name
   bool get _canInteract => _kdfFramework != null;
 
-  // Open end drawer on start
   @override
   void initState() {
     super.initState();
@@ -379,7 +421,6 @@ class _MyAppState extends State<MyApp> {
             children: [
               const Text('Komodo DeFi Framework Flutter SDK Example'),
               const SizedBox(width: 16),
-              // Button to the project's GitHub repository
               IconButton(
                 icon: const Icon(Icons.code),
                 onPressed: () {
@@ -405,12 +446,7 @@ class _MyAppState extends State<MyApp> {
                   ),
                   horizontalSpacerSmall,
                   FilledButton.icon(
-                    onPressed:
-                        _isRunning || !_canInteract || _passphrase == null
-                            ? null
-                            : () => _startKdf(
-                                  _passphrase!,
-                                ), // Pass the stored passphrase
+                    onPressed: _isRunning || !_canInteract ? null : _startKdf,
                     label: const Text('Start KDF'),
                     icon: const Icon(Icons.play_arrow),
                   ),
@@ -537,56 +573,6 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  KdfConfig _configFromMap(Map<String, dynamic> map) {
-    switch (map['hostType']) {
-      case 'local':
-        return LocalConfig(userpass: map['userpass']);
-      case 'remote':
-        return RemoteConfig(
-          userpass: map['userpass'],
-          ipAddress: map['ipAddress'],
-          port: map['port'],
-        );
-      case 'aws':
-        return AwsConfig(
-          userpass: map['userpass'],
-          region: map['region'],
-          accessKey: map['accessKey'],
-          secretKey: map['secretKey'],
-          instanceType: map['instanceType'],
-        );
-      default:
-        throw Exception('Invalid/unsupported host type: ${map['hostType']}');
-    }
-  }
-
-  Map<String, dynamic> _configToMap(KdfConfig config) {
-    if (config is RemoteConfig) {
-      return {
-        'hostType': config.hostType,
-        'userpass': config.userpass,
-        'ipAddress': config.ipAddress,
-        'port': config.port,
-      };
-    } else if (config is AwsConfig) {
-      return {
-        'hostType': config.hostType,
-        'userpass': config.userpass,
-        'region': config.region,
-        'accessKey': config.accessKey,
-        'secretKey': config.secretKey,
-        'instanceType': config.instanceType,
-      };
-    } else if (config is LocalConfig) {
-      return {
-        'hostType': config.hostType,
-        'userpass': config.userpass,
-      };
-    } else {
-      return {};
-    }
-  }
-
   void _configure() async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -597,32 +583,30 @@ class _MyAppState extends State<MyApp> {
       return;
     }
 
-    setState(() => _kdfFramework = null);
-
-    final KdfConfig config = result['config'];
+    final IKdfHostConfig config = result['config'];
+    final String walletName = result['walletName'];
+    final String walletPassword = result['walletPassword'];
     final String passphrase = result['passphrase'];
 
     setState(() {
+      _kdfHostConfig = config;
       _kdfFramework = KomodoDefiFramework.create(
-        config: config,
+        hostConfig: config,
         externalLogger: _logController.add,
       );
-      _passphrase = passphrase;
     });
 
     await _saveConfig(config);
+
+    // Save startup config-related fields as needed in SharedPreferences or elsewhere.
+    await _saveStartupData(walletName, walletPassword, passphrase);
   }
 
   void _executeRpc() async {
-    // For now, we can hide this feature since it's a bit redundant now that
-    // we have the RequestPlayground widget.
-
-    // Open the RequestPlayground widget instead
     if (_scaffoldKey.currentState != null) {
       return _scaffoldKey.currentState?.openEndDrawer();
     }
 
-    // ignore: dead_code
     if (_kdfFramework == null || !_isRunning) {
       _showMessage('KDF is not running.');
       return;
@@ -684,6 +668,17 @@ class _MyAppState extends State<MyApp> {
     _showMessage('RPC Response: ${rpcResponse.toString()}');
   }
 
+  Future<void> _saveStartupData(
+    String walletName,
+    String walletPassword,
+    String passphrase,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('walletName', walletName);
+    await prefs.setString('walletPassword', walletPassword);
+    await prefs.setString('passphrase', passphrase);
+  }
+
   Future<void> _loadSavedData() async {
     final prefs = await SharedPreferences.getInstance();
     String? savedRpcInput = prefs.getString('rpcInput');
@@ -695,10 +690,10 @@ class _MyAppState extends State<MyApp> {
 
     if (savedConfig != null) {
       final configMap = jsonDecode(savedConfig) as Map<String, dynamic>;
-      final config = _configFromMap(configMap);
+      _kdfHostConfig = _configFromMap(configMap);
       setState(() {
         _kdfFramework = KomodoDefiFramework.create(
-          config: config,
+          hostConfig: _kdfHostConfig!,
           externalLogger: _logController.add,
         );
       });
@@ -706,18 +701,45 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  Future<void> _saveConfig(KdfConfig config) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('lastUsedConfig', jsonEncode(_configToMap(config)));
+  IKdfHostConfig _configFromMap(Map<String, dynamic> map) {
+    switch (map['hostType']) {
+      case 'local':
+        return LocalConfig(
+          rpcPassword: map['rpcPassword'],
+          https: map['https'],
+        );
+      case 'remote':
+        return RemoteConfig(
+          rpcPassword: map['rpcPassword'],
+          ipAddress: map['ipAddress'],
+          port: map['port'],
+          https: map['https'],
+        );
+      case 'aws':
+        return AwsConfig(
+          rpcPassword: map['rpcPassword'],
+          region: map['region'],
+          accessKey: map['accessKey'],
+          secretKey: map['secretKey'],
+          instanceType: map['instanceType'],
+          https: map['https'],
+        );
+      default:
+        throw Exception('Invalid/unsupported host type: ${map['hostType']}');
+    }
+  }
 
-    //! IMPORTANT: Replace SharedPreferences with a more secure solution before using this in production.
+  Future<void> _saveConfig(IKdfHostConfig config) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'lastUsedConfig',
+      jsonEncode(config.getConnectionParams()),
+    );
   }
 
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('rpcInput', jsonEncode(rpcInput));
-
-    //! IMPORTANT: Replace SharedPreferences with a more secure solution before using this in production.
   }
 
   void _showMessage(String message) {
@@ -726,16 +748,30 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
-  void _startKdf(String passphrase) async {
+  void _startKdf() async {
     _statusMessage = null;
 
-    if (_kdfFramework == null) {
+    if (_kdfFramework == null || _kdfHostConfig == null) {
       _showMessage('Please configure the framework first.');
       return;
     }
 
+    // Load saved startup data
+    final prefs = await SharedPreferences.getInstance();
+    final walletName = prefs.getString('walletName') ?? '';
+    final walletPassword = prefs.getString('walletPassword') ?? '';
+    final passphrase = prefs.getString('passphrase');
+
+    final KdfStartupConfig startupConfig =
+        await KdfStartupConfig.generateWithDefaults(
+      walletName: walletName,
+      walletPassword: walletPassword,
+      rpcPassword: _kdfHostConfig!.rpcPassword,
+      seed: passphrase,
+    );
+
     try {
-      final result = await _kdfFramework!.startKdf(passphrase);
+      final result = await _kdfFramework!.startKdf(startupConfig);
       setState(() {
         _statusMessage = 'KDF running: $result';
         _isRunning = true;
@@ -743,13 +779,10 @@ class _MyAppState extends State<MyApp> {
 
       if (!result.isRunning()) {
         _showMessage('Failed to start KDF: $result');
-        // return;
       }
     } catch (e) {
       _showMessage('Failed to start KDF: $e');
     }
-
-    await _saveData();
   }
 
   void _stopKdf() async {
