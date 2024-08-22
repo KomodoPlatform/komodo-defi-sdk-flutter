@@ -6,7 +6,7 @@
 // import 'package:komodo_defi_framework/src/extensions/http_extensions.dart';
 // import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-// // TODO: Future refactoring to minimize time that seed is in memory
+// // `TODO`: Future refactoring to minimize time that seed is in memory
 // // ignore: one_member_abstracts
 // abstract class IKdfStartupConfig {
 //   Future<JsonMap> generateStartParams(IKdfConfig config);

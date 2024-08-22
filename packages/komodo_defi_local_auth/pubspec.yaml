@@ -21,6 +21,7 @@ dependencies:
   local_auth: ^2.3.0
   uuid: ^4.4.2
 
+  komodo_defi_rpc_methods: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

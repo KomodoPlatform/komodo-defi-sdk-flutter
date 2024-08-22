@@ -4,10 +4,6 @@
 
 // ignore_for_file: library_private_types_in_public_api, unused_field
 
-library rpc_methods;
-
-import 'gui_storage/add_account.dart';
-
 export 'eth/enable-eth-with-tokens.dart';
 export 'gui_storage/activate_coins.dart';
 export 'gui_storage/add_account.dart';

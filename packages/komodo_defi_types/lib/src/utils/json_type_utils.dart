@@ -158,15 +158,15 @@ extension MapCensoring<K, V> on Map<K, V> {
     String obscuringCharacter = '*',
     bool ensureJsonSerialization = false,
   }) {
-    Map<K, V> targetMap = this;
+    var targetMap = this;
 
     if (ensureJsonSerialization) {
       final jsonString = jsonEncode(targetMap);
       targetMap = jsonDecode(jsonString) as Map<K, V>;
     }
 
-    final Map<K, V> censoredMap = {};
-    final List<_CensorTask<K, V>> stack = [
+    final censoredMap = <K, V>{};
+    final stack = <_CensorTask<K, V>>[
       _CensorTask(targetMap, censoredMap),
     ];
 

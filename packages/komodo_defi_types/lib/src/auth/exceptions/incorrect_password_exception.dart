@@ -13,5 +13,5 @@
 //   bool doesMatchLog(String log) {
 //     return matchingPatterns.any((pattern) => log.contains(pattern));
 //   }
-  
+
 // }

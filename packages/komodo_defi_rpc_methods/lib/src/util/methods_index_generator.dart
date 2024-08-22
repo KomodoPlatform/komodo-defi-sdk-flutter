@@ -74,12 +74,16 @@ void main(List<String> arguments) {
   buffer.writeln('// ignore_for_file: unused_field, unused_element');
   buffer.writeln();
   buffer.writeln(
-      "import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';");
+    "import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';",
+  );
   buffer.writeln();
   buffer.writeln('abstract class RpcMethods {');
 
   void generateNestedClasses(
-      Map<String, dynamic> currentMap, String indent, bool isRoot) {
+    Map<String, dynamic> currentMap,
+    String indent,
+    bool isRoot,
+  ) {
     currentMap.forEach((segment, data) {
       final children = (data['children'] as Map? ?? {}).cast<String, dynamic>();
       final classes = (data['classes'] as Map? ?? {}).cast<String, dynamic>();
@@ -88,7 +92,8 @@ void main(List<String> arguments) {
       if (isRoot) {
         buffer.writeln('$indent// ignore: library_private_types_in_public_api');
         buffer.writeln(
-            '${indent}static const $className ${segment.camelCase} = $className();');
+          '${indent}static const $className ${segment.camelCase} = $className();',
+        );
       } else {
         buffer.writeln('${indent}class $className {');
         buffer.writeln('$indent  const $className();');
@@ -101,7 +106,8 @@ void main(List<String> arguments) {
         final positionalParams = extractPositionalParams(constructorParams);
 
         buffer.writeln(
-            '$indent  $requestClassName ${requestClassName.camelCase}({$formattedParams}) =>');
+          '$indent  $requestClassName ${requestClassName.camelCase}({$formattedParams}) =>',
+        );
         buffer.writeln('$indent      $requestClassName($positionalParams);');
         buffer.writeln();
       });

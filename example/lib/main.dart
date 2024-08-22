@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:bip39/bip39.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:json_editor_flutter/json_editor_flutter.dart';
@@ -127,7 +126,8 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                 TextField(
                   controller: _passphraseController,
                   decoration: const InputDecoration(
-                      labelText: 'Passphrase/Seed (Optional)'),
+                    labelText: 'Passphrase/Seed (Optional)',
+                  ),
                 ),
               if (_selectedHostType == 'remote') ...[
                 DropdownButtonFormField<String>(

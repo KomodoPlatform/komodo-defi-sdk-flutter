@@ -24,5 +24,7 @@ dev_dependencies:
 
   very_good_analysis: ^6.0.0
 
+  flutter_web_plugins: any
+  js: any
 flutter:
   uses-material-design: true

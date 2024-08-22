@@ -32,6 +32,7 @@ dependencies:
 
 
 
+  path: any
 dev_dependencies:
   build_runner: ^2.4.11
   # build_web_compilers: ^4.0.10
@@ -44,6 +45,7 @@ dev_dependencies:
 
 
 
+  js: any
 flutter:
   plugin:
     platforms:
