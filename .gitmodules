@@ -1,0 +1,3 @@
+[submodule "packages/dragon_logs_flutter"]
+	path = packages/dragon_logs_flutter
+	url = https://CharlVS@github.com/KomodoPlatform/dragon_logs_flutter.git
