@@ -67,7 +67,8 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
-  flutter_web_plugins: any
+  flutter_web_plugins:
+    sdk: flutter
   js: any
 flutter:
 

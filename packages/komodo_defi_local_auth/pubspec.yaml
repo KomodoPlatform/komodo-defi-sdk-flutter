@@ -16,12 +16,16 @@ dependencies:
 
   komodo_defi_framework:
     path: ../komodo_defi_framework
+
+  komodo_defi_rpc_methods:
+    path: ../komodo_defi_rpc_methods
+
   komodo_defi_types:
     path: ../komodo_defi_types
+    
   local_auth: ^2.3.0
   uuid: ^4.4.2
 
-  komodo_defi_rpc_methods: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

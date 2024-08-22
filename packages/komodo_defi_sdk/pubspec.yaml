@@ -25,7 +25,8 @@ dependencies:
   komodo_defi_types:
     path: ../komodo_defi_types
 
-  flutter: any
+  flutter:
+    sdk: flutter
 dev_dependencies:
   mocktail: ^1.0.4
   # test: ^1.25.7
