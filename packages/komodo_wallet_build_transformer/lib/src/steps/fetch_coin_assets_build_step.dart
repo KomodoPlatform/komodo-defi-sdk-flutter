@@ -9,10 +9,12 @@ import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/coin_ci_co
 import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_file.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_file_downloader.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/result.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 class FetchCoinAssetsBuildStep extends BuildStep {
   final File buildConfigOutput;
+  final log = Logger('fetch_coin_assets_build_step');
 
   FetchCoinAssetsBuildStep({
     required this.artifactOutputDirectory,
@@ -107,16 +109,16 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       // exception to indicate that the build process should be re-run. We can
       // skip this check for debug builds if we already had coin assets.
       if (!isDebugBuild || !alreadyHadCoinAssets) {
-        stderr.writeln(errorMessage);
+        log.severe(errorMessage);
         receivePort?.close();
         throw BuildStepWithoutRevertException(errorMessage);
       }
 
-      stdout.writeln('\n[WARN] $errorMessage\n');
+      log.info('\n[WARN] $errorMessage\n');
     }
 
     receivePort?.close();
-    stdout.writeln('\nCoin assets fetched successfully');
+    log.info('\nCoin assets fetched successfully');
   }
 
   @override
@@ -143,8 +145,9 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   @override
   Future<void> revert([Exception? e]) async {
     if (e is BuildStepWithoutRevertException) {
-      print(
+      log.severe(
         'Step not reverted because the build process was completed with changes',
+        e,
       );
 
       return;
@@ -172,7 +175,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
         remoteFile,
       );
       if (!canSkipFile.success) {
-        print('Cannot skip build step: ${canSkipFile.error}');
+        log.warning('Cannot skip build step: ${canSkipFile.error}');
         return false;
       }
     }

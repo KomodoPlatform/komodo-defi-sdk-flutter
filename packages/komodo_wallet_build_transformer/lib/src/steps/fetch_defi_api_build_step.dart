@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:html/parser.dart' as parser;
 import 'package:http/http.dart' as http;
 import 'package:komodo_wallet_build_transformer/src/build_step.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 class FetchDefiApiStep extends BuildStep {
@@ -43,6 +44,7 @@ class FetchDefiApiStep extends BuildStep {
 
   @override
   final String id = idStatic;
+  final log = Logger('FetchDefiApiStep');
 
   static const idStatic = 'fetch_defi_api';
 
@@ -60,13 +62,13 @@ class FetchDefiApiStep extends BuildStep {
   @override
   Future<void> build() async {
     if (!enabled) {
-      _logMessage('API update is not enabled in the configuration.');
+      log.info('API update is not enabled in the configuration.');
       return;
     }
     try {
       await updateAPI();
-    } catch (e) {
-      stderr.writeln('Error updating API: $e');
+    } catch (e, s) {
+      log.severe('Error updating API', e, s);
       rethrow;
     }
   }
@@ -76,12 +78,12 @@ class FetchDefiApiStep extends BuildStep {
 
   @override
   Future<void> revert([Exception? e]) async {
-    _logMessage('Reverting changes made by UpdateAPIStep...');
+    log.warning('Reverting changes made by UpdateAPIStep...');
   }
 
   Future<void> updateAPI() async {
     if (!enabled) {
-      _logMessage('API update is not enabled in the configuration.');
+      log.info('API update is not enabled in the configuration.');
       return;
     }
 
@@ -90,14 +92,14 @@ class FetchDefiApiStep extends BuildStep {
         ? [selectedPlatform!]
         : platformsConfig.keys.toList();
 
-    stdout.writeln('=====================');
+    log.info('=====================');
     for (final platform in platformsToUpdate) {
       final progressString =
           '${(platformsToUpdate.indexOf(platform) + 1)}/${platformsToUpdate.length}';
-      stdout.writeln('[$progressString] Updating $platform platform...');
+      log.info('[$progressString] Updating $platform platform...');
       await _updatePlatform(platform, platformsConfig);
     }
-    stdout.writeln('=====================');
+    log.info('=====================');
     _updateDocumentationIfExists();
   }
 
@@ -143,7 +145,7 @@ class FetchDefiApiStep extends BuildStep {
         : null;
 
     if (updateMessage != null) {
-      stdout.writeln(updateMessage);
+      log.info(updateMessage);
     }
 
     final destinationFolder = _getPlatformDestinationFolder(platform);
@@ -151,7 +153,7 @@ class FetchDefiApiStep extends BuildStep {
         await _checkIfOutdated(platform, destinationFolder, config);
 
     if (!_shouldUpdate(isOutdated)) {
-      _logMessage('$platform platform is up to date.');
+      log.info('$platform platform is up to date.');
       await _postUpdateActions(platform, destinationFolder);
       return;
     }
@@ -165,11 +167,10 @@ class FetchDefiApiStep extends BuildStep {
         if (await _verifyChecksum(zipFilePath, platform)) {
           await _extractZipFile(zipFilePath, destinationFolder);
           _updateLastUpdatedFile(platform, destinationFolder, zipFilePath);
-          _logMessage('$platform platform update completed.');
+          log.info('$platform platform update completed.');
           break; // Exit loop if update is successful
         } else {
-          stdout
-              .writeln('SHA256 Checksum verification failed for $zipFilePath');
+          log.warning('SHA256 Checksum verification failed for $zipFilePath');
           if (sourceUrl == sourceUrls.last) {
             throw Exception(
               'API fetch failed for all source URLs: $sourceUrls',
@@ -177,7 +178,7 @@ class FetchDefiApiStep extends BuildStep {
           }
         }
       } catch (e) {
-        stdout.writeln('Error updating from source $sourceUrl: $e');
+        log.severe('Error updating from source $sourceUrl: $e');
         if (sourceUrl == sourceUrls.last) {
           rethrow;
         }
@@ -185,9 +186,9 @@ class FetchDefiApiStep extends BuildStep {
         if (zipFilePath != null) {
           try {
             File(zipFilePath).deleteSync();
-            _logMessage('Deleted zip file $zipFilePath');
+            log.info('Deleted zip file $zipFilePath');
           } catch (e) {
-            _logMessage('Error deleting zip file: $e', error: true);
+            log.severe('Error deleting zip file', e);
           }
         }
       }
@@ -202,7 +203,7 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   Future<String> _downloadFile(String url, String destinationFolder) async {
-    _logMessage('Downloading $url...');
+    log.info('Downloading $url...');
     final response = await http.get(Uri.parse(url));
     _checkResponseSuccess(response);
 
@@ -218,11 +219,11 @@ class FetchDefiApiStep extends BuildStep {
     try {
       await zipFile.writeAsBytes(response.bodyBytes);
     } catch (e) {
-      _logMessage('Error writing file: $e', error: true);
+      log.info('Error writing file', e);
       rethrow;
     }
 
-    _logMessage('Downloaded $zipFileName');
+    log.info('Downloaded $zipFileName');
     return zipFilePath;
   }
 
@@ -231,16 +232,16 @@ class FetchDefiApiStep extends BuildStep {
       platformsConfig[platform]['valid_zip_sha256_checksums'],
     );
 
-    _logMessage('validChecksums: $validChecksums');
+    log.info('validChecksums: $validChecksums');
 
     final fileBytes = await File(filePath).readAsBytes();
     final fileSha256Checksum = sha256.convert(fileBytes).toString();
 
     if (validChecksums.contains(fileSha256Checksum)) {
-      stdout.writeln('Checksum validated for $filePath');
+      log.info('Checksum validated for $filePath');
       return true;
     } else {
-      stderr.writeln(
+      log.severe(
         'SHA256 Checksum mismatch for $filePath: expected any of '
         '$validChecksums, got $fileSha256Checksum',
       );
@@ -265,7 +266,7 @@ class FetchDefiApiStep extends BuildStep {
         'checksums': [fileChecksum],
       }),
     );
-    stdout.writeln('Updated last updated file for $platform.');
+    log.info('Updated last updated file for $platform.');
   }
 
   Future<bool> _checkIfOutdated(
@@ -290,15 +291,12 @@ class FetchDefiApiStep extends BuildStep {
             List<String>.from(config[platform]['valid_zip_sha256_checksums']);
 
         if (storedChecksums.toSet().containsAll(targetChecksums)) {
-          _logMessage("version: $apiCommitHash and SHA256 checksum match.");
+          log.info("version: $apiCommitHash and SHA256 checksum match.");
           return false;
         }
       }
-    } catch (e) {
-      _logMessage(
-        'Error reading or parsing .api_last_updated_$platform: $e',
-        error: true,
-      );
+    } catch (e, s) {
+      log.severe('Error reading or parsing .api_last_updated_$platform', e, s);
       lastUpdatedFile.deleteSync();
       rethrow;
     }
@@ -333,7 +331,7 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   void _setExecutablePermissions(String destinationFolder) {
-    _logMessage('Setting executable permissions for $destinationFolder...');
+    log.info('Setting executable permissions for $destinationFolder...');
     // Update the file permissions to make it executable. As part of the
     // transition from mm2 naming to kdf, update whichever file is present.
     // ignore: unused_local_variable
@@ -556,14 +554,4 @@ class FetchDefiApiStep extends BuildStep {
 //     config['api']['api_commit_hash'] = apiVersion;
 //     configFile.writeAsStringSync(json.encode(config));
 //   }
-}
-
-void _logMessage(String message, {bool error = false}) {
-  final prefix = error ? 'ERROR' : 'INFO';
-  final output = '[$prefix]: $message';
-  if (error) {
-    stderr.writeln(output);
-  } else {
-    stdout.writeln(output);
-  }
 }

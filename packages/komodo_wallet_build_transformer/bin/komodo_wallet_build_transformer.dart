@@ -7,6 +7,8 @@ import 'package:komodo_wallet_build_transformer/src/steps/copy_platform_assets_b
 import 'package:komodo_wallet_build_transformer/src/steps/fetch_coin_assets_build_step.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/fetch_defi_api_build_step.dart';
 import 'package:komodo_wallet_build_transformer/src/util/cli_util.dart';
+import 'package:komodo_wallet_build_transformer/src/util/logging.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 // TODO! Get dynamically
@@ -16,6 +18,7 @@ const outputOptionName = 'output';
 
 late final ArgResults _argResults;
 final Directory _projectRoot = Directory.current.absolute;
+final log = Logger('komodo_wallet_build_transformer');
 
 /// Defines the build steps that should be executed. Only the build steps that
 /// pass the command line flags will be executed. For Flutter transformers,
@@ -67,6 +70,13 @@ ArgParser buildParser() {
     )
     ..addOption(inputOptionName, mandatory: true, abbr: 'i')
     ..addOption(outputOptionName, mandatory: true, abbr: 'o')
+    ..addOption(
+      'log_level',
+      abbr: 'l',
+      help: 'Set log level. E.g. --log_level=info',
+      defaultsTo: 'info',
+      allowed: allowedLogLevels,
+    )
     ..addFlag(
       'concurrent',
       negatable: false,
@@ -107,7 +117,7 @@ void printUsage(ArgParser argParser) {
 Map<String, dynamic> loadJsonFile(String path) {
   final file = File(path);
   if (!file.existsSync()) {
-    _logMessage('Json file not found: $path', error: true);
+    log.warning('Json file not found: $path');
     throw Exception('Json file not found: $path');
   }
   final content = file.readAsStringSync();
@@ -119,12 +129,14 @@ void main(List<String> arguments) async {
   try {
     _argResults = argParser.parse(arguments);
 
+    configureLogToConsole(_argResults.option('log_level')!);
+
     if (_argResults.flag('help')) {
       printUsage(argParser);
       return;
     }
     if (_argResults.flag('version')) {
-      _logMessage('komodo_wallet_build_transformer version: $version');
+      log.info('komodo_wallet_build_transformer version: $version');
       return;
     }
 
@@ -154,7 +166,7 @@ void main(List<String> arguments) async {
       );
     }
 
-    _logMessage('Build config found at ${configFile.absolute.path}');
+    log.info('Build config found at ${configFile.absolute.path}');
 
     final config = json.decode(configFile.readAsStringSync());
 
@@ -169,7 +181,7 @@ void main(List<String> arguments) async {
         .where((step) => _argResults.flag('all') || _argResults.flag(step.id))
         .map((step) => _runStep(step, config));
 
-    _logMessage('${buildStepFutures.length} build steps to run');
+    log.info('${buildStepFutures.length} build steps to run');
 
     if (canRunConcurrent) {
       await Future.wait(buildStepFutures);
@@ -181,47 +193,44 @@ void main(List<String> arguments) async {
 
     _writeSuccessStatus();
 
-    _logMessage('SUCCESS: Build steps completed successfully');
+    log.info('SUCCESS: Build steps completed successfully');
     exit(0);
-  } on FormatException catch (e) {
-    _logMessage(e.message, error: true);
-    _logMessage('');
+  } on FormatException catch (e, s) {
+    log.severe('Error parsing arguments', e, s);
     printUsage(argParser);
     exit(64);
-  } catch (e) {
-    _logMessage('Error running build steps: ${e.toString()}', error: true);
+  } catch (e, s) {
+    log.shout('Error running build steps', e, s);
     exit(1);
   }
-
-  // _writeSuccessStatus();
 }
 
 Future<void> _runStep(BuildStep step, Map<String, dynamic> config) async {
   final stepName = step.runtimeType.toString();
 
   if (await step.canSkip()) {
-    _logMessage('$stepName: Skipping build step');
+    log.info('$stepName: Skipping build step');
     return;
   }
 
   try {
-    _logMessage('$stepName: Running build step');
+    log.info('$stepName: Running build step');
     final timer = Stopwatch()..start();
 
     await step.build();
 
-    _logMessage(
+    log.info(
       '$stepName: Build step completed in ${timer.elapsedMilliseconds}ms',
     );
   } catch (e) {
-    _logMessage(
+    log.severe(
       '$stepName: Error running build step $stepName: ${e.toString()}',
-      error: true,
+      e,
     );
 
     if (e is! BuildStepWithoutRevertException) {
       await step.revert((e is Exception) ? e : null).catchError(
-            (revertError) => _logMessage(
+            (revertError) => log.severe(
               '$stepName: Error reverting build step: $revertError',
             ),
           );
@@ -229,13 +238,6 @@ Future<void> _runStep(BuildStep step, Map<String, dynamic> config) async {
 
     rethrow;
   }
-}
-
-// TODO: Consider how the verbose flag should influence logging
-void _logMessage(String message, {bool error = false}) {
-  final prefix = error ? 'ERROR' : 'INFO';
-  final output = error ? stderr : stdout;
-  output.writeln('[$prefix] $message');
 }
 
 /// A function that signals the Flutter asset transformer completed
@@ -250,7 +252,7 @@ void _logMessage(String message, {bool error = false}) {
 ///
 void _writeSuccessStatus() {
   final input = File(_argResults.option(inputOptionName)!).readAsStringSync();
-  _logMessage(
+  log.info(
     'Writing success status to ${_argResults.option(outputOptionName)}',
   );
 
