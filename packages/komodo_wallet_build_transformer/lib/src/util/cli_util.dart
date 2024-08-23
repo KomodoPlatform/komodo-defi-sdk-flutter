@@ -69,3 +69,18 @@ Directory? getDependencyDirectory(String projectPath, String dependencyName) {
   log.warning('Dependency $dependencyName not found in package_config.json');
   return null;
 }
+
+/// Resolves the package directory from the [projectPackageDir] and the
+/// [packageRootUri]. If the [packageRootUri] is a relative path, it will be
+/// resolved from the [projectPackageDir]. Otherwise, it will be joined with
+/// the [projectPackageDir].
+Directory resolvePackageDirectory(
+  Directory projectPackageDir,
+  String packageRootUri,
+) {
+  String normalizedProjectPath = path.normalize(projectPackageDir.path);
+  String resolvedPath =
+      path.normalize(path.join(normalizedProjectPath, packageRootUri));
+
+  return Directory(resolvedPath).absolute;
+}

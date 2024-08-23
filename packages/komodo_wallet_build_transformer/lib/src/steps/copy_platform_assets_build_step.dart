@@ -120,6 +120,15 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
         return;
       }
 
+      if (sourceDir.path == destDir.path) {
+        _log.info(
+          "Source and destination directories are the same. Skipping copy.",
+        );
+        _log.fine("Source directory (absolute): ${sourceDir.absolute}");
+        _log.fine("Destination directory (absolute): ${destDir.absolute}");
+        return;
+      }
+
       if (_shouldClearDestFolder(sourceDir, destDir)) {
         if (destDir.existsSync()) {
           destDir.deleteSync(recursive: true);
