@@ -147,6 +147,7 @@ void main(List<String> arguments) async {
           _argResults.option('artifact_output_package')!,
         )?.absolute ??
         (throw Exception('Artifact output package not found'));
+    log.info('Artifact output package: ${artifactOutputPackage.path}');
 
     final configOutputPath = _argResults.option('config_output_path')!;
 

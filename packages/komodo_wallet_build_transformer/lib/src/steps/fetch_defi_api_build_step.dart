@@ -10,6 +10,23 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 class FetchDefiApiStep extends BuildStep {
+  @override
+  final String id = idStatic;
+  final _log = Logger('FetchDefiApiStep');
+
+  static const idStatic = 'fetch_defi_api';
+
+  // final String projectRoot;
+  final String apiCommitHash;
+  final Map<String, dynamic> platformsConfig;
+  final List<String> sourceUrls;
+  final String apiBranch;
+  final String artifactOutputPath;
+  final File buildConfigFile;
+  String? selectedPlatform;
+  bool forceUpdate;
+  bool enabled;
+
   factory FetchDefiApiStep.withBuildConfig(
     Map<String, dynamic> buildConfig,
     Directory artifactOutputPath,
@@ -43,32 +60,15 @@ class FetchDefiApiStep extends BuildStep {
   });
 
   @override
-  final String id = idStatic;
-  final log = Logger('FetchDefiApiStep');
-
-  static const idStatic = 'fetch_defi_api';
-
-  // final String projectRoot;
-  final String apiCommitHash;
-  final Map<String, dynamic> platformsConfig;
-  final List<String> sourceUrls;
-  final String apiBranch;
-  final String artifactOutputPath;
-  final File buildConfigFile;
-  String? selectedPlatform;
-  bool forceUpdate;
-  bool enabled;
-
-  @override
   Future<void> build() async {
     if (!enabled) {
-      log.info('API update is not enabled in the configuration.');
+      _log.info('API update is not enabled in the configuration.');
       return;
     }
     try {
       await updateAPI();
     } catch (e, s) {
-      log.severe('Error updating API', e, s);
+      _log.severe('Error updating API', e, s);
       rethrow;
     }
   }
@@ -78,12 +78,12 @@ class FetchDefiApiStep extends BuildStep {
 
   @override
   Future<void> revert([Exception? e]) async {
-    log.warning('Reverting changes made by UpdateAPIStep...');
+    _log.warning('Reverting changes made by UpdateAPIStep...');
   }
 
   Future<void> updateAPI() async {
     if (!enabled) {
-      log.info('API update is not enabled in the configuration.');
+      _log.info('API update is not enabled in the configuration.');
       return;
     }
 
@@ -92,14 +92,14 @@ class FetchDefiApiStep extends BuildStep {
         ? [selectedPlatform!]
         : platformsConfig.keys.toList();
 
-    log.info('=====================');
+    _log.info('=====================');
     for (final platform in platformsToUpdate) {
       final progressString =
           '${(platformsToUpdate.indexOf(platform) + 1)}/${platformsToUpdate.length}';
-      log.info('[$progressString] Updating $platform platform...');
+      _log.info('[$progressString] Updating $platform platform...');
       await _updatePlatform(platform, platformsConfig);
     }
-    log.info('=====================');
+    _log.info('=====================');
     _updateDocumentationIfExists();
   }
 
@@ -145,7 +145,7 @@ class FetchDefiApiStep extends BuildStep {
         : null;
 
     if (updateMessage != null) {
-      log.info(updateMessage);
+      _log.info(updateMessage);
     }
 
     final destinationFolder = _getPlatformDestinationFolder(platform);
@@ -153,7 +153,7 @@ class FetchDefiApiStep extends BuildStep {
         await _checkIfOutdated(platform, destinationFolder, config);
 
     if (!_shouldUpdate(isOutdated)) {
-      log.info('$platform platform is up to date.');
+      _log.info('$platform platform is up to date.');
       await _postUpdateActions(platform, destinationFolder);
       return;
     }
@@ -167,10 +167,10 @@ class FetchDefiApiStep extends BuildStep {
         if (await _verifyChecksum(zipFilePath, platform)) {
           await _extractZipFile(zipFilePath, destinationFolder);
           _updateLastUpdatedFile(platform, destinationFolder, zipFilePath);
-          log.info('$platform platform update completed.');
+          _log.info('$platform platform update completed.');
           break; // Exit loop if update is successful
         } else {
-          log.warning('SHA256 Checksum verification failed for $zipFilePath');
+          _log.warning('SHA256 Checksum verification failed for $zipFilePath');
           if (sourceUrl == sourceUrls.last) {
             throw Exception(
               'API fetch failed for all source URLs: $sourceUrls',
@@ -178,7 +178,7 @@ class FetchDefiApiStep extends BuildStep {
           }
         }
       } catch (e) {
-        log.severe('Error updating from source $sourceUrl: $e');
+        _log.severe('Error updating from source $sourceUrl: $e');
         if (sourceUrl == sourceUrls.last) {
           rethrow;
         }
@@ -186,9 +186,9 @@ class FetchDefiApiStep extends BuildStep {
         if (zipFilePath != null) {
           try {
             File(zipFilePath).deleteSync();
-            log.info('Deleted zip file $zipFilePath');
+            _log.info('Deleted zip file $zipFilePath');
           } catch (e) {
-            log.severe('Error deleting zip file', e);
+            _log.severe('Error deleting zip file', e);
           }
         }
       }
@@ -203,7 +203,7 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   Future<String> _downloadFile(String url, String destinationFolder) async {
-    log.info('Downloading $url...');
+    _log.info('Downloading $url...');
     final response = await http.get(Uri.parse(url));
     _checkResponseSuccess(response);
 
@@ -219,11 +219,11 @@ class FetchDefiApiStep extends BuildStep {
     try {
       await zipFile.writeAsBytes(response.bodyBytes);
     } catch (e) {
-      log.info('Error writing file', e);
+      _log.info('Error writing file', e);
       rethrow;
     }
 
-    log.info('Downloaded $zipFileName');
+    _log.info('Downloaded $zipFileName');
     return zipFilePath;
   }
 
@@ -232,16 +232,16 @@ class FetchDefiApiStep extends BuildStep {
       platformsConfig[platform]['valid_zip_sha256_checksums'],
     );
 
-    log.info('validChecksums: $validChecksums');
+    _log.info('validChecksums: $validChecksums');
 
     final fileBytes = await File(filePath).readAsBytes();
     final fileSha256Checksum = sha256.convert(fileBytes).toString();
 
     if (validChecksums.contains(fileSha256Checksum)) {
-      log.info('Checksum validated for $filePath');
+      _log.info('Checksum validated for $filePath');
       return true;
     } else {
-      log.severe(
+      _log.severe(
         'SHA256 Checksum mismatch for $filePath: expected any of '
         '$validChecksums, got $fileSha256Checksum',
       );
@@ -266,7 +266,7 @@ class FetchDefiApiStep extends BuildStep {
         'checksums': [fileChecksum],
       }),
     );
-    log.info('Updated last updated file for $platform.');
+    _log.info('Updated last updated file for $platform.');
   }
 
   Future<bool> _checkIfOutdated(
@@ -291,12 +291,12 @@ class FetchDefiApiStep extends BuildStep {
             List<String>.from(config[platform]['valid_zip_sha256_checksums']);
 
         if (storedChecksums.toSet().containsAll(targetChecksums)) {
-          log.info("version: $apiCommitHash and SHA256 checksum match.");
+          _log.info("version: $apiCommitHash and SHA256 checksum match.");
           return false;
         }
       }
     } catch (e, s) {
-      log.severe('Error reading or parsing .api_last_updated_$platform', e, s);
+      _log.severe('Error reading or parsing .api_last_updated_$platform', e, s);
       lastUpdatedFile.deleteSync();
       rethrow;
     }
@@ -331,7 +331,7 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   void _setExecutablePermissions(String destinationFolder) {
-    log.info('Setting executable permissions for $destinationFolder...');
+    _log.info('Setting executable permissions for $destinationFolder...');
     // Update the file permissions to make it executable. As part of the
     // transition from mm2 naming to kdf, update whichever file is present.
     // ignore: unused_local_variable
@@ -481,26 +481,26 @@ class FetchDefiApiStep extends BuildStep {
     }
 
     if (!Directory(destinationFolder).existsSync()) {
-      log.info('Creating directory: $destinationFolder');
+      _log.info('Creating directory: $destinationFolder');
       Directory(destinationFolder).createSync(recursive: true);
     }
 
-    log.fine('Extracting $zipFilePath to $destinationFolder');
+    _log.fine('Extracting $zipFilePath to $destinationFolder');
     for (final file in archive) {
       final filename = file.name;
       if (file.isFile) {
-        log.finest('Extracting file: $filename to $destinationFolder');
+        _log.finest('Extracting file: $filename to $destinationFolder');
         final data = file.content as List<int>;
         File(path.join(destinationFolder, filename))
           ..createSync(recursive: true)
           ..writeAsBytesSync(data);
       } else {
-        log.finest('Creating directory: $filename');
+        _log.finest('Creating directory: $filename');
         Directory(path.join(destinationFolder, filename))
             .create(recursive: true);
       }
     }
-    log.info('Extraction completed.');
+    _log.info('Extraction completed.');
   }
 
   void _updateDocumentationIfExists() {

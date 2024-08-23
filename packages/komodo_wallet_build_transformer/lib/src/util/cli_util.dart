@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 /// Returns the absolute directory of a project's dependency.
@@ -7,6 +9,7 @@ import 'package:path/path.dart' as path;
 /// [projectPath] is the directory of the specified project.
 /// [dependencyName] is the name of the dependency to look up.
 Directory? getDependencyDirectory(String projectPath, String dependencyName) {
+  final log = Logger('komodo_wallet_build_transformer');
   final packageConfigFile =
       File(path.join(projectPath, '.dart_tool', 'package_config.json'))
           .absolute;
@@ -42,7 +45,7 @@ Directory? getDependencyDirectory(String projectPath, String dependencyName) {
         path.normalize(path.join(packageRoot, package['packageUri'])),
       );
 
-      print('Found package $dependencyName at $projectPackageDir');
+      log.info('Found package $dependencyName at $projectPackageDir');
     }
 
     if (package['name'] == dependencyName) {
@@ -51,6 +54,7 @@ Directory? getDependencyDirectory(String projectPath, String dependencyName) {
       }
 
       packageRootUri = package['rootUri'] as String;
+      log.info('Found package $dependencyName at $packageRootUri');
     }
 
     if (projectPackageDir != null && packageRootUri != null) {
@@ -59,9 +63,9 @@ Directory? getDependencyDirectory(String projectPath, String dependencyName) {
   }
 
   if (packageRootUri != null && projectPackageDir != null) {
-    return Directory(
-      path.join(path.normalize(projectPackageDir.path), packageRootUri),
-    ).absolute;
+    return resolvePackageDirectory(projectPackageDir, packageRootUri);
   }
+
+  log.warning('Dependency $dependencyName not found in package_config.json');
   return null;
 }

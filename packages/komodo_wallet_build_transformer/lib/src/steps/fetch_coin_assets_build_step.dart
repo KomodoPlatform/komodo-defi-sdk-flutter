@@ -12,9 +12,19 @@ import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/result.dar
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
+/// A build step that fetches coin assets from a GitHub repository.
 class FetchCoinAssetsBuildStep extends BuildStep {
   final File buildConfigOutput;
-  final log = Logger('fetch_coin_assets_build_step');
+  final Map<String, dynamic>? originalBuildConfig;
+  final String artifactOutputDirectory;
+  final CoinCIConfig config;
+  final GitHubFileDownloader downloader;
+  final ReceivePort? receivePort;
+  final _log = Logger('FetchCoinAssetsBuildStep');
+
+  @override
+  final String id = idStatic;
+  static const idStatic = 'fetch_coin_assets';
 
   FetchCoinAssetsBuildStep({
     required this.artifactOutputDirectory,
@@ -61,15 +71,6 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   }
 
   @override
-  final String id = idStatic;
-  static const idStatic = 'fetch_coin_assets';
-  final Map<String, dynamic>? originalBuildConfig;
-  final String artifactOutputDirectory;
-  final CoinCIConfig config;
-  final GitHubFileDownloader downloader;
-  final ReceivePort? receivePort;
-
-  @override
   Future<void> build() async {
     // Check if the coin assets already exist in the artifact directory
     final alreadyHadCoinAssets =
@@ -109,16 +110,16 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       // exception to indicate that the build process should be re-run. We can
       // skip this check for debug builds if we already had coin assets.
       if (!isDebugBuild || !alreadyHadCoinAssets) {
-        log.severe(errorMessage);
+        _log.shout(errorMessage);
         receivePort?.close();
         throw BuildStepWithoutRevertException(errorMessage);
       }
 
-      log.info('\n[WARN] $errorMessage\n');
+      _log.warning('$errorMessage\n');
     }
 
     receivePort?.close();
-    log.info('\nCoin assets fetched successfully');
+    _log.info('Coin assets fetched successfully. Build step completed.');
   }
 
   @override
@@ -145,9 +146,8 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   @override
   Future<void> revert([Exception? e]) async {
     if (e is BuildStepWithoutRevertException) {
-      log.severe(
+      _log.warning(
         'Step not reverted because the build process was completed with changes',
-        e,
       );
 
       return;
@@ -175,7 +175,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
         remoteFile,
       );
       if (!canSkipFile.success) {
-        log.warning('Cannot skip build step: ${canSkipFile.error}');
+        _log.info('Cannot skip build step: ${canSkipFile.error}');
         return false;
       }
     }
@@ -196,7 +196,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       );
 
       if (!canSkipFolder.success) {
-        print('Cannot skip build step: ${canSkipFolder.error}');
+        _log.info('Cannot skip build step: ${canSkipFolder.error}');
         return false;
       }
     }
@@ -209,10 +209,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     final String fileMetadataUrl =
         '${config.coinsRepoApiUrl}/contents/${mappedFile.value}?ref=${config.bundledCoinsRepoCommit}';
 
-    final http.Response fileContentResponse = await http.get(
-      Uri.parse(fileMetadataUrl),
-    );
-
+    final fileContentResponse = await http.get(Uri.parse(fileMetadataUrl));
     if (fileContentResponse.statusCode != 200) {
       throw Exception(
         'Failed to fetch remote file metadata at $fileMetadataUrl: '
@@ -296,22 +293,25 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       (key, value) => MapEntry(path.join(artifactOutputDirectory, key), value),
     );
   }
-}
 
-void onProgressError(dynamic error) {
-  print('\nError: $error');
+  void onProgressError(dynamic error) {
+    _log.severe('\nError: $error');
 
-  // throw Exception('An error occurred during the coin fetch build step');
-}
+    // throw Exception('An error occurred during the coin fetch build step');
+  }
 
-void onProgressData(dynamic message, ReceivePort? recevePort) {
-  if (message is BuildProgressMessage) {
-    stdout.write(
-      '\r${message.message} - Progress: ${message.progress.toStringAsFixed(2)}% \x1b[K',
-    );
+  void onProgressData(dynamic message, ReceivePort? recevePort) {
+    if (message is BuildProgressMessage) {
+      _log.info(
+        '\r${message.message} - Progress: ${message.progress.toStringAsFixed(2)}% \x1b[K',
+      );
 
-    if (message.progress == 100 && message.finished) {
-      recevePort?.close();
+      if (message.progress == 100 && message.finished) {
+        _log.info('Progress: 100% - Done. Closing receive port');
+        recevePort?.close();
+      }
+    } else {
+      _log.warning('Received unknown message: $message');
     }
   }
 }
