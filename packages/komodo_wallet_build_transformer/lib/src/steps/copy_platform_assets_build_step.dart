@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:komodo_wallet_build_transformer/src/build_step.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/build_config.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
@@ -11,7 +12,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
     required this.artifactOutputDirectory,
   });
 
-  final Map<String, dynamic> buildConfig;
+  final BuildConfig buildConfig;
   final Directory projectRoot;
   final Directory artifactOutputDirectory;
 
@@ -57,7 +58,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }
 
   Future<void> _copyKdfWebFiles() async {
-    final kdfWebPath = buildConfig['api']['platforms']['web']['path'] as String;
+    final kdfWebPath = buildConfig.apiConfig.platforms['web']!.path;
     final sourceDir =
         Directory(path.join(artifactOutputDirectory.path, kdfWebPath));
     final destDir = Directory(path.joinAll([projectRoot.path, kdfWebPath]));
@@ -68,7 +69,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }
 
   Future<void> _copyOtherWebFiles() async {
-    final kdfWebPath = buildConfig['api']['platforms']['web']['path'] as String;
+    final kdfWebPath = buildConfig.apiConfig.platforms['web']!.path;
     final kdfLibDestDirectory =
         Directory(path.join(projectRoot.path, kdfWebPath));
     final sourceDir = Directory(path.join(artifactOutputDirectory.path, 'web'));
@@ -194,7 +195,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }
 
   bool _canSkipKdfWebFiles() {
-    final kdfWebPath = buildConfig['api']['platforms']['web']['path'] as String;
+    final kdfWebPath = buildConfig.apiConfig.platforms['web']!.path;
     final sourceDir = Directory(
       path.join(
         projectRoot.path,

@@ -6,43 +6,55 @@ import 'package:crypto/crypto.dart';
 import 'package:html/parser.dart' as parser;
 import 'package:http/http.dart' as http;
 import 'package:komodo_wallet_build_transformer/src/build_step.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/github/github_api_provider.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/api/api_build_platform_config.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/build_config.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 class FetchDefiApiStep extends BuildStep {
   @override
   final String id = idStatic;
-  final _log = Logger('FetchDefiApiStep');
-
   static const idStatic = 'fetch_defi_api';
+
+  final _log = Logger('FetchDefiApiStep');
 
   // final String projectRoot;
   final String apiCommitHash;
-  final Map<String, dynamic> platformsConfig;
+  final Map<String, ApiBuildPlatformConfig> platformsConfig;
   final List<String> sourceUrls;
   final String apiBranch;
   final String artifactOutputPath;
   final File buildConfigFile;
+  final GithubApiProvider githubApiProvider;
   String? selectedPlatform;
   bool forceUpdate;
   bool enabled;
 
   factory FetchDefiApiStep.withBuildConfig(
-    Map<String, dynamic> buildConfig,
+    BuildConfig buildConfig,
     Directory artifactOutputPath,
-    File buildConfigFile,
-  ) {
-    final apiConfig = buildConfig['api'] as Map<String, dynamic>;
+    File buildConfigFile, {
+    String? githubToken,
+  }) {
+    // Assumption here is that the first uri will always be the GitHub API.
+    final apiProvider = GithubApiProvider.withBaseUrl(
+      baseUrl: buildConfig.apiConfig.sourceUrls.first,
+      branch: buildConfig.apiConfig.branch,
+      token: githubToken,
+    );
+
     return FetchDefiApiStep(
       // projectRoot: Directory.current.path,
-      apiCommitHash: apiConfig['api_commit_hash'],
-      platformsConfig: apiConfig['platforms'],
-      sourceUrls: List<String>.from(apiConfig['source_urls']),
-      apiBranch: apiConfig['branch'],
+      apiCommitHash: buildConfig.apiConfig.apiCommitHash,
+      platformsConfig: buildConfig.apiConfig.platforms,
+      sourceUrls: buildConfig.apiConfig.sourceUrls,
+      apiBranch: buildConfig.apiConfig.branch,
       // TODO: Change type to Directory?
       artifactOutputPath: artifactOutputPath.path,
-      enabled: apiConfig['fetch_at_build_enabled'],
+      enabled: buildConfig.apiConfig.fetchAtBuildEnabled,
       buildConfigFile: buildConfigFile,
+      githubApiProvider: apiProvider,
     );
   }
 
@@ -54,6 +66,7 @@ class FetchDefiApiStep extends BuildStep {
     required this.apiBranch,
     required this.artifactOutputPath,
     required this.buildConfigFile,
+    required this.githubApiProvider,
     this.selectedPlatform,
     this.forceUpdate = false,
     this.enabled = true,
@@ -138,7 +151,7 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<void> _updatePlatform(
     String platform,
-    Map<String, dynamic> config,
+    Map<String, ApiBuildPlatformConfig> config,
   ) async {
     final updateMessage = overrideDefiApiDownload != null
         ? '${overrideDefiApiDownload! ? 'FORCING' : 'SKIPPING'} update of $platform platform because OVERRIDE_DEFI_API_DOWNLOAD is set to $overrideDefiApiDownload'
@@ -229,7 +242,7 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<bool> _verifyChecksum(String filePath, String platform) async {
     final validChecksums = List<String>.from(
-      platformsConfig[platform]['valid_zip_sha256_checksums'],
+      platformsConfig[platform]!.validZipSha256Checksums,
     );
 
     _log.info('validChecksums: $validChecksums');
@@ -272,7 +285,7 @@ class FetchDefiApiStep extends BuildStep {
   Future<bool> _checkIfOutdated(
     String platform,
     String destinationFolder,
-    Map<String, dynamic> config,
+    Map<String, ApiBuildPlatformConfig> config,
   ) async {
     final lastUpdatedFilePath =
         path.join(destinationFolder, '.api_last_updated_$platform');
@@ -288,7 +301,7 @@ class FetchDefiApiStep extends BuildStep {
         final storedChecksums =
             List<String>.from(lastUpdatedData['checksums'] ?? []);
         final targetChecksums =
-            List<String>.from(config[platform]['valid_zip_sha256_checksums']);
+            List<String>.from(config[platform]!.validZipSha256Checksums);
 
         if (storedChecksums.toSet().containsAll(targetChecksums)) {
           _log.info("version: $apiCommitHash and SHA256 checksum match.");
@@ -304,22 +317,23 @@ class FetchDefiApiStep extends BuildStep {
     return true;
   }
 
-  // ignore: unused_element
   Future<void> _updateWebPackages() async {
-    // _logMessage('Updating Web platform...');
-    // final installResult =
-    //     await Process.run('npm', ['install'], workingDirectory: projectRoot);
-    // if (installResult.exitCode != 0) {
-    //   throw Exception('npm install failed: ${installResult.stderr}');
-    // }
+    _log.info('Updating Web platform...');
+    _log.fine('Running npm install in $artifactOutputPath');
+    final installResult = await Process.run('npm', ['install'],
+        workingDirectory: artifactOutputPath);
+    if (installResult.exitCode != 0) {
+      throw Exception('npm install failed: ${installResult.stderr}');
+    }
 
-    // final buildResult = await Process.run('npm', ['run', 'build'],
-    //     workingDirectory: projectRoot);
-    // if (buildResult.exitCode != 0) {
-    //   throw Exception('npm run build failed: ${buildResult.stderr}');
-    // }
+    _log.fine('Running npm run build in $artifactOutputPath');
+    final buildResult = await Process.run('npm', ['run', 'build'],
+        workingDirectory: artifactOutputPath);
+    if (buildResult.exitCode != 0) {
+      throw Exception('npm run build failed: ${buildResult.stderr}');
+    }
 
-    // _logMessage('Web platform updated successfully.');
+    _log.info('Web platform updated successfully.');
   }
 
   void setFilePermissions(File file) {
@@ -343,7 +357,7 @@ class FetchDefiApiStep extends BuildStep {
 
   String _getPlatformDestinationFolder(String platform) {
     if (platformsConfig.containsKey(platform)) {
-      return path.join(artifactOutputPath, platformsConfig[platform]['path']);
+      return path.join(artifactOutputPath, platformsConfig[platform]!.path);
     } else {
       throw ArgumentError('Invalid platform: $platform');
     }
@@ -351,7 +365,7 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<String> _findZipFileUrl(
     String platform,
-    Map<String, dynamic> config,
+    Map<String, ApiBuildPlatformConfig> config,
     String sourceUrl,
   ) async {
     if (sourceUrl.startsWith('https://api.github.com/repos/')) {
@@ -363,34 +377,22 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<String> _fetchFromGitHub(
     String platform,
-    Map<String, dynamic> config,
+    Map<String, ApiBuildPlatformConfig> config,
     String sourceUrl,
   ) async {
-    final repoMatch = RegExp(r'^https://api\.github\.com/repos/([^/]+)/([^/]+)')
-        .firstMatch(sourceUrl);
-    if (repoMatch == null) {
-      throw ArgumentError('Invalid GitHub repository URL: $sourceUrl');
-    }
-
-    final owner = repoMatch.group(1)!;
-    final repo = repoMatch.group(2)!;
-    final releasesUrl = 'https://api.github.com/repos/$owner/$repo/releases';
-    final response = await http.get(Uri.parse(releasesUrl));
-    _checkResponseSuccess(response);
-
-    final releases = json.decode(response.body) as List<dynamic>;
+    final releases = await githubApiProvider.getReleases();
     final apiVersionShortHash = apiCommitHash.substring(0, 7);
-    final matchingKeyword = config[platform]['matching_keyword'];
+    final matchingKeyword = config[platform]!.matchingKeyword;
 
     for (final release in releases) {
-      final assets = release['assets'] as List<dynamic>;
-      for (final asset in assets) {
-        final url = asset['browser_download_url'] as String;
+      for (final asset in release.assets) {
+        final url = asset.browserDownloadUrl;
 
         if (url.contains(matchingKeyword) &&
             url.contains(apiVersionShortHash)) {
-          final commitHash =
-              await _getCommitHashForRelease(release['tag_name'], owner, repo);
+          final commitHash = await githubApiProvider.getLatestCommitHash(
+            branch: release.tagName,
+          );
           if (commitHash == apiCommitHash) {
             return url;
           }
@@ -401,19 +403,6 @@ class FetchDefiApiStep extends BuildStep {
     throw Exception(
       'Zip file not found for platform $platform in GitHub releases',
     );
-  }
-
-  Future<String> _getCommitHashForRelease(
-    String tag,
-    String owner,
-    String repo,
-  ) async {
-    final commitsUrl = 'https://api.github.com/repos/$owner/$repo/commits/$tag';
-    final response = await http.get(Uri.parse(commitsUrl));
-    _checkResponseSuccess(response);
-
-    final commit = json.decode(response.body);
-    return commit['sha'];
   }
 
   Future<String> _fetchFromBaseUrl(
@@ -459,7 +448,7 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<void> _postUpdateActions(String platform, String destinationFolder) {
     if (platform == 'web') {
-      // return _updateWebPackages();
+      return _updateWebPackages();
       // TODO: Consider adding npm if it makes a significant difference to
       // file build size or if it is required for cache-busting.
     }

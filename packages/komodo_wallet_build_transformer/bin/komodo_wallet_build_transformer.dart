@@ -6,6 +6,7 @@ import 'package:komodo_wallet_build_transformer/src/build_step.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/copy_platform_assets_build_step.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/fetch_coin_assets_build_step.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/fetch_defi_api_build_step.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/build_config.dart';
 import 'package:komodo_wallet_build_transformer/src/util/cli_util.dart';
 import 'package:komodo_wallet_build_transformer/src/util/logging.dart';
 import 'package:logging/logging.dart';
@@ -15,6 +16,7 @@ import 'package:path/path.dart' as path;
 const String version = '0.0.1';
 const inputOptionName = 'input';
 const outputOptionName = 'output';
+const githubTokenEnvName = 'GITHUB_API_PUBLIC_READONLY_TOKEN';
 
 late final ArgResults _argResults;
 final Directory _projectRoot = Directory.current.absolute;
@@ -25,20 +27,23 @@ final log = Logger('komodo_wallet_build_transformer');
 /// this is configured in the root project's `pubspec.yaml` file.
 /// The steps are executed in the order they are defined in this list.
 List<BuildStep> _buildStepBootstrapper(
-  Map<String, dynamic> buildConfig,
+  BuildConfig buildConfig,
   Directory artifactOutputDirectory,
   File buildConfigFile,
+  String? githubToken,
 ) =>
     [
       FetchDefiApiStep.withBuildConfig(
         buildConfig,
         artifactOutputDirectory,
         buildConfigFile,
+        githubToken: githubToken,
       ),
       FetchCoinAssetsBuildStep.withBuildConfig(
         buildConfig,
         buildConfigFile,
         artifactOutputDirectory: artifactOutputDirectory,
+        githubToken: githubToken,
       ),
       CopyPlatformAssetsBuildStep(
         projectRoot: _projectRoot,
@@ -140,6 +145,8 @@ void main(List<String> arguments) async {
       return;
     }
 
+    final githubToken = Platform.environment[githubTokenEnvName];
+
     final canRunConcurrent = _argResults.flag('concurrent');
 
     final artifactOutputPackage = getDependencyDirectory(
@@ -156,23 +163,19 @@ void main(List<String> arguments) async {
     );
 
     if (!configFile.existsSync()) {
-      final files = _projectRoot
-          .listSync(recursive: true)
-          .where(
-            (file) => file is File && file.path.endsWith('build_config.json'),
-          )
-          .map((file) => '${file.path}\n');
-      throw Exception(
-        'Config file not found in ${configFile.path} (abs: ${configFile.absolute.path}). \nProject root abs (${_projectRoot.absolute.path}).\n Did you mean one of these? \n$files',
-      );
+      throwMissingConfigException(configFile);
     }
-
     log.info('Build config found at ${configFile.absolute.path}');
 
-    final config = json.decode(configFile.readAsStringSync());
+    final config =
+        BuildConfig.fromJson(jsonDecode(configFile.readAsStringSync()));
 
-    final steps =
-        _buildStepBootstrapper(config, artifactOutputPackage, configFile);
+    final steps = _buildStepBootstrapper(
+      config,
+      artifactOutputPackage,
+      configFile,
+      githubToken,
+    );
 
     if (steps.length != _knownBuildStepIds.length) {
       throw Exception('Mismatch between build steps and known build step ids');
@@ -180,7 +183,7 @@ void main(List<String> arguments) async {
 
     final buildStepFutures = steps
         .where((step) => _argResults.flag('all') || _argResults.flag(step.id))
-        .map((step) => _runStep(step, config));
+        .map((step) => _runStep(step));
 
     log.info('${buildStepFutures.length} build steps to run');
 
@@ -206,7 +209,19 @@ void main(List<String> arguments) async {
   }
 }
 
-Future<void> _runStep(BuildStep step, Map<String, dynamic> config) async {
+void throwMissingConfigException(File configFile) {
+  final files = _projectRoot
+      .listSync(recursive: true)
+      .where(
+        (file) => file is File && file.path.endsWith('build_config.json'),
+      )
+      .map((file) => '${file.path}\n');
+  throw Exception(
+    'Config file not found in ${configFile.path} (abs: ${configFile.absolute.path}). \nProject root abs (${_projectRoot.absolute.path}).\n Did you mean one of these? \n$files',
+  );
+}
+
+Future<void> _runStep(BuildStep step) async {
   final stepName = step.runtimeType.toString();
 
   if (await step.canSkip()) {

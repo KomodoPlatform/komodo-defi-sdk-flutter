@@ -6,25 +6,17 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/build_progress_message.dart';
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_download_event.dart';
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_file.dart';
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_file_download_event.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/github/github_api_provider.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/build_progress_message.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/coin_assets/github_download_event.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/github/github_file.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/coin_assets/github_file_download_event.dart';
 import 'package:path/path.dart' as path;
 import 'package:logging/logging.dart';
 
 /// A class that handles downloading files from a GitHub repository.
 class GitHubFileDownloader {
-  /// The [GitHubFileDownloader] class requires the [repoApiUrl] and [repoContentUrl]
-  /// parameters to be provided during initialization. These parameters specify the
-  /// API URL and content URL of the GitHub repository from which files will be downloaded.
-  GitHubFileDownloader({
-    required this.repoApiUrl,
-    required this.repoContentUrl,
-    this.sendPort,
-  });
-
-  final String repoApiUrl;
+  final GithubApiProvider apiProvider;
   final String repoContentUrl;
   final SendPort? sendPort;
   static final _log = Logger('GitHubFileDownloader');
@@ -39,6 +31,15 @@ class GitHubFileDownloader {
   String get downloadStats =>
       'Downloaded $_downloadedFiles files, skipped $_skippedFiles files';
 
+  /// The [GitHubFileDownloader] class requires the [repoApiUrl] and [repoContentUrl]
+  /// parameters to be provided during initialization. These parameters specify the
+  /// API URL and content URL of the GitHub repository from which files will be downloaded.
+  GitHubFileDownloader({
+    required this.apiProvider,
+    required this.repoContentUrl,
+    this.sendPort,
+  });
+
   Future<void> download(
     String repoCommit,
     Map<String, String> mappedFiles,
@@ -48,26 +49,7 @@ class GitHubFileDownloader {
     await downloadMappedFolders(repoCommit, mappedFolders);
   }
 
-  /// Retrieves the latest commit hash for a given branch from the repository API.
-  ///
-  /// The [branch] parameter specifies the branch name for which to retrieve the latest commit hash.
-  /// By default, it is set to 'master'.
-  ///
-  /// Returns a [Future] that completes with a [String] representing the latest commit hash.
-  Future<String> getLatestCommitHash({
-    String branch = 'master',
-  }) async {
-    final apiUrl = '$repoApiUrl/commits/$branch';
-    final response = await http.get(Uri.parse(apiUrl));
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Failed to retrieve latest commit hash. Status code: ${response.statusCode}',
-      );
-    }
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    return data['sha'] as String;
-  }
-
+  
   /// Downloads and saves multiple files from a remote repository.
   ///
   /// The [repoCommit] parameter specifies the commit hash of the repository.
@@ -201,46 +183,12 @@ class GitHubFileDownloader {
       final String localPath = entry.key;
       final String repoPath = entry.value;
       final List<GitHubFile> coins =
-          await getGitHubDirectoryContents(repoPath, repoCommit);
+          await apiProvider.getDirectoryContents(repoPath, repoCommit);
 
       _totalFiles += coins.length;
       folderContents[localPath] = coins;
     }
     return folderContents;
-  }
-
-  /// Retrieves the contents of a GitHub directory for a given repository and commit.
-  ///
-  /// The [repoPath] parameter specifies the path of the directory within the repository.
-  /// The [repoCommit] parameter specifies the commit hash or branch name.
-  ///
-  /// Returns a [Future] that completes with a list of [GitHubFile] objects representing the files in the directory.
-  Future<List<GitHubFile>> getGitHubDirectoryContents(
-    String repoPath,
-    String repoCommit,
-  ) async {
-    final Map<String, String> headers = <String, String>{
-      'Accept': 'application/vnd.github.v3+json',
-    };
-    final apiUrl = '$repoApiUrl/contents/$repoPath?ref=$repoCommit';
-    final response = await http.get(Uri.parse(apiUrl), headers: headers);
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Failed to retrieve directory contents: $repoPath'
-        '[${response.statusCode}]: ${response.reasonPhrase}',
-      );
-    }
-
-    final respString = response.body;
-    final data = jsonDecode(respString) as List<dynamic>;
-    return data
-        .where(
-          (dynamic item) => (item as Map<String, dynamic>)['type'] == 'file',
-        )
-        .map(
-          (dynamic file) => GitHubFile.fromJson(file as Map<String, dynamic>),
-        )
-        .toList();
   }
 
   /// Sends a progress message to the specified [sendPort].
