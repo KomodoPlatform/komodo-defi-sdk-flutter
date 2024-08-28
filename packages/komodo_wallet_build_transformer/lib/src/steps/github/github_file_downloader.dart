@@ -9,10 +9,10 @@ import 'package:http/http.dart' as http;
 import 'package:komodo_wallet_build_transformer/src/steps/github/github_api_provider.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/models/build_progress_message.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/models/coin_assets/github_download_event.dart';
-import 'package:komodo_wallet_build_transformer/src/steps/models/github/github_file.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/models/coin_assets/github_file_download_event.dart';
-import 'package:path/path.dart' as path;
+import 'package:komodo_wallet_build_transformer/src/steps/models/github/github_file.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as path;
 
 /// A class that handles downloading files from a GitHub repository.
 class GitHubFileDownloader {
@@ -49,7 +49,6 @@ class GitHubFileDownloader {
     await downloadMappedFolders(repoCommit, mappedFolders);
   }
 
-  
   /// Downloads and saves multiple files from a remote repository.
   ///
   /// The [repoCommit] parameter specifies the commit hash of the repository.

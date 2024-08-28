@@ -320,15 +320,21 @@ class FetchDefiApiStep extends BuildStep {
   Future<void> _updateWebPackages() async {
     _log.info('Updating Web platform...');
     _log.fine('Running npm install in $artifactOutputPath');
-    final installResult = await Process.run('npm', ['install'],
-        workingDirectory: artifactOutputPath);
+    final installResult = await Process.run(
+      'npm',
+      ['install'],
+      workingDirectory: artifactOutputPath,
+    );
     if (installResult.exitCode != 0) {
       throw Exception('npm install failed: ${installResult.stderr}');
     }
 
     _log.fine('Running npm run build in $artifactOutputPath');
-    final buildResult = await Process.run('npm', ['run', 'build'],
-        workingDirectory: artifactOutputPath);
+    final buildResult = await Process.run(
+      'npm',
+      ['run', 'build'],
+      workingDirectory: artifactOutputPath,
+    );
     if (buildResult.exitCode != 0) {
       throw Exception('npm run build failed: ${buildResult.stderr}');
     }

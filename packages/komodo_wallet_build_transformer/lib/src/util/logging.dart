@@ -15,7 +15,7 @@ const allowedLogLevels = [
   'trace',
   'shout',
   'all',
-  'off'
+  'off',
 ];
 
 /// Converts a string to a logging [Level] object.

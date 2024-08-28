@@ -91,9 +91,11 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     final latestCommitHash = await githubApiProvider.getLatestCommitHash(
       branch: config.coinsRepoBranch,
     );
+    _log.fine('Latest commit hash: $latestCommitHash');
     CoinBuildConfig configWithUpdatedCommit = config;
 
     if (config.updateCommitOnBuild) {
+      _log.info('Updating commit hash in build config');
       configWithUpdatedCommit =
           config.copyWith(bundledCoinsRepoCommit: latestCommitHash);
       await configWithUpdatedCommit.save(
@@ -138,14 +140,21 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     );
 
     if (latestCommitHash != config.bundledCoinsRepoCommit) {
+      _log.fine(
+        'Cannot skip build step: '
+        'Latest commit hash: $latestCommitHash, '
+        'config commit hash: ${config.bundledCoinsRepoCommit}',
+      );
       return false;
     }
 
     if (!await _canSkipMappedFiles(config.mappedFiles)) {
+      _log.fine('Cannot skip build step: mapped files check failed');
       return false;
     }
 
     if (!await _canSkipMappedFolders(config.mappedFolders)) {
+      _log.fine('Cannot skip build step: mapped folders check failed');
       return false;
     }
 
@@ -161,6 +170,9 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
       return;
     }
+
+    _log.info('Reverting fetch coin assets build step. '
+        'Reverting or deleting downloaded files.');
 
     // Try `git checkout` to revert changes instead of deleting all files
     // because there may be mapped files/folders that are tracked by git
