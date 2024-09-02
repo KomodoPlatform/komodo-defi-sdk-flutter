@@ -1,4 +1,4 @@
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/links.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/coin_assets/links.dart';
 
 /// Represents a file on GitHub.
 class GitHubFile {

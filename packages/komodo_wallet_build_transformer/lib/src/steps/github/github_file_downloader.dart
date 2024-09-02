@@ -6,26 +6,20 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/build_progress_message.dart';
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_download_event.dart';
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_file.dart';
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_file_download_event.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/github/github_api_provider.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/build_progress_message.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/coin_assets/github_download_event.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/coin_assets/github_file_download_event.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/github/github_file.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 /// A class that handles downloading files from a GitHub repository.
 class GitHubFileDownloader {
-  /// The [GitHubFileDownloader] class requires the [repoApiUrl] and [repoContentUrl]
-  /// parameters to be provided during initialization. These parameters specify the
-  /// API URL and content URL of the GitHub repository from which files will be downloaded.
-  GitHubFileDownloader({
-    required this.repoApiUrl,
-    required this.repoContentUrl,
-    this.sendPort,
-  });
-
-  final String repoApiUrl;
+  final GithubApiProvider apiProvider;
   final String repoContentUrl;
   final SendPort? sendPort;
+  static final _log = Logger('GitHubFileDownloader');
 
   int _totalFiles = 0;
   int _downloadedFiles = 0;
@@ -37,6 +31,15 @@ class GitHubFileDownloader {
   String get downloadStats =>
       'Downloaded $_downloadedFiles files, skipped $_skippedFiles files';
 
+  /// The [GitHubFileDownloader] class requires the [repoApiUrl] and [repoContentUrl]
+  /// parameters to be provided during initialization. These parameters specify the
+  /// API URL and content URL of the GitHub repository from which files will be downloaded.
+  GitHubFileDownloader({
+    required this.apiProvider,
+    required this.repoContentUrl,
+    this.sendPort,
+  });
+
   Future<void> download(
     String repoCommit,
     Map<String, String> mappedFiles,
@@ -44,27 +47,6 @@ class GitHubFileDownloader {
   ) async {
     await downloadMappedFiles(repoCommit, mappedFiles);
     await downloadMappedFolders(repoCommit, mappedFolders);
-  }
-
-  /// Retrieves the latest commit hash for a given branch from the repository API.
-  ///
-  /// The [branch] parameter specifies the branch name for which to retrieve the latest commit hash.
-  /// By default, it is set to 'master'.
-  ///
-  /// Returns a [Future] that completes with a [String] representing the latest commit hash.
-  Future<String> getLatestCommitHash({
-    String branch = 'master',
-  }) async {
-    final String apiUrl = '$repoApiUrl/commits/$branch';
-    final http.Response response = await http.get(Uri.parse(apiUrl));
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Failed to retrieve latest commit hash. Status code: ${response.statusCode}',
-      );
-    }
-    final Map<String, dynamic> data =
-        jsonDecode(response.body) as Map<String, dynamic>;
-    return data['sha'] as String;
   }
 
   /// Downloads and saves multiple files from a remote repository.
@@ -85,10 +67,13 @@ class GitHubFileDownloader {
     Map<String, String> mappedFiles,
   ) async {
     _totalFiles += mappedFiles.length;
+    _log.fine('Downloading ${mappedFiles.length} files');
+    _log.fine('Processed files: $_downloadedFiles/$_totalFiles');
 
     createFolders(mappedFiles.keys.toList());
     for (final MapEntry<String, String> entry in mappedFiles.entries) {
       final String localPath = entry.key;
+      _log.finer('Downloading file: $localPath');
 
       final isRawContentUrl =
           entry.value.startsWith('https://raw.githubusercontent.com');
@@ -99,7 +84,7 @@ class GitHubFileDownloader {
             : '$repoContentUrl/${entry.value}',
       );
 
-      final http.Response fileContent = await http.get(fileContentUrl);
+      final fileContent = await http.get(fileContentUrl);
       if (fileContent.statusCode != 200) {
         throw Exception(
           'Failed to download file: ${fileContentUrl.toString()}'
@@ -107,6 +92,7 @@ class GitHubFileDownloader {
         );
       }
 
+      _log.finer('Downloaded file: $localPath');
       await File(localPath).writeAsString(fileContent.body);
 
       _downloadedFiles++;
@@ -143,8 +129,8 @@ class GitHubFileDownloader {
     final Map<String, List<GitHubFile>> folderContents =
         await _getMappedFolderContents(mappedFolders, repoCommit);
 
-    for (final MapEntry<String, List<GitHubFile>> entry
-        in folderContents.entries) {
+    for (final entry in folderContents.entries) {
+      _log.fine('Downloading ${entry.value.length} files from ${entry.key}');
       await _downloadFolderContents(entry.key, entry.value);
     }
 
@@ -196,7 +182,7 @@ class GitHubFileDownloader {
       final String localPath = entry.key;
       final String repoPath = entry.value;
       final List<GitHubFile> coins =
-          await getGitHubDirectoryContents(repoPath, repoCommit);
+          await apiProvider.getDirectoryContents(repoPath, repoCommit);
 
       _totalFiles += coins.length;
       folderContents[localPath] = coins;
@@ -204,42 +190,12 @@ class GitHubFileDownloader {
     return folderContents;
   }
 
-  /// Retrieves the contents of a GitHub directory for a given repository and commit.
-  ///
-  /// The [repoPath] parameter specifies the path of the directory within the repository.
-  /// The [repoCommit] parameter specifies the commit hash or branch name.
-  ///
-  /// Returns a [Future] that completes with a list of [GitHubFile] objects representing the files in the directory.
-  Future<List<GitHubFile>> getGitHubDirectoryContents(
-    String repoPath,
-    String repoCommit,
-  ) async {
-    final Map<String, String> headers = <String, String>{
-      'Accept': 'application/vnd.github.v3+json',
-    };
-    final String apiUrl = '$repoApiUrl/contents/$repoPath?ref=$repoCommit';
-
-    final http.Request req = http.Request('GET', Uri.parse(apiUrl));
-    req.headers.addAll(headers);
-    final http.StreamedResponse response = await http.Client().send(req);
-    final String respString = await response.stream.bytesToString();
-    final List<dynamic> data = jsonDecode(respString) as List<dynamic>;
-
-    return data
-        .where(
-          (dynamic item) => (item as Map<String, dynamic>)['type'] == 'file',
-        )
-        .map(
-          (dynamic file) => GitHubFile.fromJson(file as Map<String, dynamic>),
-        )
-        .toList();
-  }
-
   /// Sends a progress message to the specified [sendPort].
   ///
   /// The [message] parameter is the content of the progress message.
   /// The [success] parameter indicates whether the progress was successful or not.
   void sendProgressMessage(String message, {bool success = false}) {
+    _log.fine(message);
     sendPort?.send(
       BuildProgressMessage(
         message: message,
@@ -271,10 +227,10 @@ class GitHubFileDownloader {
     GitHubFile item,
     String localDir,
   ) async {
-    final String coinName = path.basenameWithoutExtension(item.name);
-    final String outputPath = path.join(localDir, item.name);
+    final coinName = path.basenameWithoutExtension(item.name);
+    final outputPath = path.join(localDir, item.name);
 
-    final File localFile = File(outputPath);
+    final localFile = File(outputPath);
     if (localFile.existsSync()) {
       final String localFileSha = calculateGithubSha1(outputPath);
       if (localFileSha == item.sha) {
@@ -287,6 +243,9 @@ class GitHubFileDownloader {
 
     try {
       final String fileResponse = await http.read(Uri.parse(item.downloadUrl));
+      if (fileResponse.isEmpty) {
+        throw Exception('Failed to download file: ${item.downloadUrl}');
+      }
 
       await File(outputPath).writeAsBytes(fileResponse.codeUnits);
       return GitHubFileDownloadEvent(
@@ -294,7 +253,7 @@ class GitHubFileDownloader {
         localPath: outputPath,
       );
     } catch (e) {
-      stderr.writeln('Failed to download icon for $coinName: $e');
+      _log.severe('Failed to download icon for $coinName: $e');
       rethrow;
     }
   }
@@ -330,10 +289,10 @@ class GitHubFileDownloader {
         await Process.run('git', <String>['checkout', filePath]);
 
     if (result.exitCode != 0) {
-      stderr.writeln('Failed to revert changes to $filePath');
+      _log.severe('Failed to revert changes to $filePath');
       return false;
     } else {
-      stdout.writeln('Reverted changes to $filePath');
+      _log.info('Reverted changes to $filePath');
       return true;
     }
   }
@@ -350,7 +309,7 @@ class GitHubFileDownloader {
   static Future<void> revertOrDeleteGitFile(String filePath) async {
     final bool result = await revertChangesToGitFile(filePath);
     if (!result && File(filePath).existsSync()) {
-      stdout.writeln('Deleting $filePath');
+      _log.info('Deleting $filePath');
       await File(filePath).delete();
     }
   }

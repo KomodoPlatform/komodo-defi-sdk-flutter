@@ -4,13 +4,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_file_downloader.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/github/github_file_downloader.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/build_config.dart';
 import 'package:path/path.dart' as path;
 
 /// Represents the build configuration for fetching coin assets.
-class CoinCIConfig {
-  /// Creates a new instance of [CoinCIConfig].
-  CoinCIConfig({
+class CoinBuildConfig {
+  /// Creates a new instance of [CoinBuildConfig].
+  CoinBuildConfig({
     required this.bundledCoinsRepoCommit,
     required this.updateCommitOnBuild,
     required this.coinsRepoApiUrl,
@@ -21,9 +22,9 @@ class CoinCIConfig {
     required this.mappedFolders,
   });
 
-  /// Creates a new instance of [CoinCIConfig] from a JSON object.
-  factory CoinCIConfig.fromJson(Map<String, dynamic> json) {
-    return CoinCIConfig(
+  /// Creates a new instance of [CoinBuildConfig] from a JSON object.
+  factory CoinBuildConfig.fromJson(Map<String, dynamic> json) {
+    return CoinBuildConfig(
       updateCommitOnBuild: json['update_commit_on_build'] as bool,
       bundledCoinsRepoCommit: json['bundled_coins_repo_commit'].toString(),
       coinsRepoApiUrl: json['coins_repo_api_url'].toString(),
@@ -74,7 +75,7 @@ class CoinCIConfig {
   /// corresponding paths in the GitHub repository.
   final Map<String, String> mappedFolders;
 
-  CoinCIConfig copyWith({
+  CoinBuildConfig copyWith({
     String? bundledCoinsRepoCommit,
     bool? updateCommitOnBuild,
     String? coinsRepoApiUrl,
@@ -84,7 +85,7 @@ class CoinCIConfig {
     Map<String, String>? mappedFiles,
     Map<String, String>? mappedFolders,
   }) {
-    return CoinCIConfig(
+    return CoinBuildConfig(
       updateCommitOnBuild: updateCommitOnBuild ?? this.updateCommitOnBuild,
       bundledCoinsRepoCommit:
           bundledCoinsRepoCommit ?? this.bundledCoinsRepoCommit,
@@ -98,7 +99,7 @@ class CoinCIConfig {
     );
   }
 
-  /// Converts the [CoinCIConfig] instance to a JSON object.
+  /// Converts the [CoinBuildConfig] instance to a JSON object.
   Map<String, dynamic> toJson() => <String, dynamic>{
         'update_commit_on_build': updateCommitOnBuild,
         'bundled_coins_repo_commit': bundledCoinsRepoCommit,
@@ -115,8 +116,8 @@ class CoinCIConfig {
   /// Prints the path from which the configuration is being loaded.
   /// Reads the contents of the file at the specified path and decodes it as JSON.
   /// If the 'coins' key is not present in the decoded data, prints an error message and exits with code 1.
-  /// Returns a [CoinCIConfig] object created from the decoded 'coins' data.
-  static CoinCIConfig loadSync(String path) {
+  /// Returns a [CoinBuildConfig] object created from the decoded 'coins' data.
+  static CoinBuildConfig loadSync(String path) {
     print('Loading coins updates config from $path');
 
     try {
@@ -125,7 +126,7 @@ class CoinCIConfig {
       final Map<String, dynamic> data =
           jsonDecode(contents) as Map<String, dynamic>;
 
-      return CoinCIConfig.fromJson(data['coins']);
+      return CoinBuildConfig.fromJson(data['coins']);
     } catch (e) {
       print('Error loading coins updates config: $e');
       throw Exception('Error loading coins update config');
@@ -144,14 +145,14 @@ class CoinCIConfig {
   /// Throws an exception if any error occurs during the saving process.
   Future<void> save({
     required String assetPath,
-    Map<String, dynamic>? originalBuildConfig,
+    BuildConfig? originalBuildConfig,
   }) async {
     final List<String> foldersToCreate = <String>[
       path.dirname(assetPath),
     ];
     createFolders(foldersToCreate);
 
-    final mergedConfig = (originalBuildConfig ?? {})
+    final mergedConfig = (originalBuildConfig?.toJson() ?? {})
       ..addAll({'coins': toJson()});
 
     print('Saving coin assets config to $assetPath');

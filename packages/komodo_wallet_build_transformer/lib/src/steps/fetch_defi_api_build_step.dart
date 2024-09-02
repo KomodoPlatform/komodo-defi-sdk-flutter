@@ -6,25 +6,55 @@ import 'package:crypto/crypto.dart';
 import 'package:html/parser.dart' as parser;
 import 'package:http/http.dart' as http;
 import 'package:komodo_wallet_build_transformer/src/build_step.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/github/github_api_provider.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/api/api_build_platform_config.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/build_config.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 class FetchDefiApiStep extends BuildStep {
+  @override
+  final String id = idStatic;
+  static const idStatic = 'fetch_defi_api';
+
+  final _log = Logger('FetchDefiApiStep');
+
+  // final String projectRoot;
+  final String apiCommitHash;
+  final Map<String, ApiBuildPlatformConfig> platformsConfig;
+  final List<String> sourceUrls;
+  final String apiBranch;
+  final String artifactOutputPath;
+  final File buildConfigFile;
+  final GithubApiProvider githubApiProvider;
+  String? selectedPlatform;
+  bool forceUpdate;
+  bool enabled;
+
   factory FetchDefiApiStep.withBuildConfig(
-    Map<String, dynamic> buildConfig,
+    BuildConfig buildConfig,
     Directory artifactOutputPath,
-    File buildConfigFile,
-  ) {
-    final apiConfig = buildConfig['api'] as Map<String, dynamic>;
+    File buildConfigFile, {
+    String? githubToken,
+  }) {
+    // Assumption here is that the first uri will always be the GitHub API.
+    final apiProvider = GithubApiProvider.withBaseUrl(
+      baseUrl: buildConfig.apiConfig.sourceUrls.first,
+      branch: buildConfig.apiConfig.branch,
+      token: githubToken,
+    );
+
     return FetchDefiApiStep(
       // projectRoot: Directory.current.path,
-      apiCommitHash: apiConfig['api_commit_hash'],
-      platformsConfig: apiConfig['platforms'],
-      sourceUrls: List<String>.from(apiConfig['source_urls']),
-      apiBranch: apiConfig['branch'],
+      apiCommitHash: buildConfig.apiConfig.apiCommitHash,
+      platformsConfig: buildConfig.apiConfig.platforms,
+      sourceUrls: buildConfig.apiConfig.sourceUrls,
+      apiBranch: buildConfig.apiConfig.branch,
       // TODO: Change type to Directory?
       artifactOutputPath: artifactOutputPath.path,
-      enabled: apiConfig['fetch_at_build_enabled'],
+      enabled: buildConfig.apiConfig.fetchAtBuildEnabled,
       buildConfigFile: buildConfigFile,
+      githubApiProvider: apiProvider,
     );
   }
 
@@ -36,37 +66,22 @@ class FetchDefiApiStep extends BuildStep {
     required this.apiBranch,
     required this.artifactOutputPath,
     required this.buildConfigFile,
+    required this.githubApiProvider,
     this.selectedPlatform,
     this.forceUpdate = false,
     this.enabled = true,
   });
 
   @override
-  final String id = idStatic;
-
-  static const idStatic = 'fetch_defi_api';
-
-  // final String projectRoot;
-  final String apiCommitHash;
-  final Map<String, dynamic> platformsConfig;
-  final List<String> sourceUrls;
-  final String apiBranch;
-  final String artifactOutputPath;
-  final File buildConfigFile;
-  String? selectedPlatform;
-  bool forceUpdate;
-  bool enabled;
-
-  @override
   Future<void> build() async {
     if (!enabled) {
-      _logMessage('API update is not enabled in the configuration.');
+      _log.info('API update is not enabled in the configuration.');
       return;
     }
     try {
       await updateAPI();
-    } catch (e) {
-      stderr.writeln('Error updating API: $e');
+    } catch (e, s) {
+      _log.severe('Error updating API', e, s);
       rethrow;
     }
   }
@@ -76,12 +91,12 @@ class FetchDefiApiStep extends BuildStep {
 
   @override
   Future<void> revert([Exception? e]) async {
-    _logMessage('Reverting changes made by UpdateAPIStep...');
+    _log.warning('Reverting changes made by UpdateAPIStep...');
   }
 
   Future<void> updateAPI() async {
     if (!enabled) {
-      _logMessage('API update is not enabled in the configuration.');
+      _log.info('API update is not enabled in the configuration.');
       return;
     }
 
@@ -90,14 +105,14 @@ class FetchDefiApiStep extends BuildStep {
         ? [selectedPlatform!]
         : platformsConfig.keys.toList();
 
-    stdout.writeln('=====================');
+    _log.info('=====================');
     for (final platform in platformsToUpdate) {
       final progressString =
           '${(platformsToUpdate.indexOf(platform) + 1)}/${platformsToUpdate.length}';
-      stdout.writeln('[$progressString] Updating $platform platform...');
+      _log.info('[$progressString] Updating $platform platform...');
       await _updatePlatform(platform, platformsConfig);
     }
-    stdout.writeln('=====================');
+    _log.info('=====================');
     _updateDocumentationIfExists();
   }
 
@@ -136,14 +151,14 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<void> _updatePlatform(
     String platform,
-    Map<String, dynamic> config,
+    Map<String, ApiBuildPlatformConfig> config,
   ) async {
     final updateMessage = overrideDefiApiDownload != null
         ? '${overrideDefiApiDownload! ? 'FORCING' : 'SKIPPING'} update of $platform platform because OVERRIDE_DEFI_API_DOWNLOAD is set to $overrideDefiApiDownload'
         : null;
 
     if (updateMessage != null) {
-      stdout.writeln(updateMessage);
+      _log.info(updateMessage);
     }
 
     final destinationFolder = _getPlatformDestinationFolder(platform);
@@ -151,7 +166,7 @@ class FetchDefiApiStep extends BuildStep {
         await _checkIfOutdated(platform, destinationFolder, config);
 
     if (!_shouldUpdate(isOutdated)) {
-      _logMessage('$platform platform is up to date.');
+      _log.info('$platform platform is up to date.');
       await _postUpdateActions(platform, destinationFolder);
       return;
     }
@@ -165,11 +180,10 @@ class FetchDefiApiStep extends BuildStep {
         if (await _verifyChecksum(zipFilePath, platform)) {
           await _extractZipFile(zipFilePath, destinationFolder);
           _updateLastUpdatedFile(platform, destinationFolder, zipFilePath);
-          _logMessage('$platform platform update completed.');
+          _log.info('$platform platform update completed.');
           break; // Exit loop if update is successful
         } else {
-          stdout
-              .writeln('SHA256 Checksum verification failed for $zipFilePath');
+          _log.warning('SHA256 Checksum verification failed for $zipFilePath');
           if (sourceUrl == sourceUrls.last) {
             throw Exception(
               'API fetch failed for all source URLs: $sourceUrls',
@@ -177,7 +191,7 @@ class FetchDefiApiStep extends BuildStep {
           }
         }
       } catch (e) {
-        stdout.writeln('Error updating from source $sourceUrl: $e');
+        _log.severe('Error updating from source $sourceUrl: $e');
         if (sourceUrl == sourceUrls.last) {
           rethrow;
         }
@@ -185,9 +199,9 @@ class FetchDefiApiStep extends BuildStep {
         if (zipFilePath != null) {
           try {
             File(zipFilePath).deleteSync();
-            _logMessage('Deleted zip file $zipFilePath');
+            _log.info('Deleted zip file $zipFilePath');
           } catch (e) {
-            _logMessage('Error deleting zip file: $e', error: true);
+            _log.severe('Error deleting zip file', e);
           }
         }
       }
@@ -202,7 +216,7 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   Future<String> _downloadFile(String url, String destinationFolder) async {
-    _logMessage('Downloading $url...');
+    _log.info('Downloading $url...');
     final response = await http.get(Uri.parse(url));
     _checkResponseSuccess(response);
 
@@ -218,29 +232,29 @@ class FetchDefiApiStep extends BuildStep {
     try {
       await zipFile.writeAsBytes(response.bodyBytes);
     } catch (e) {
-      _logMessage('Error writing file: $e', error: true);
+      _log.info('Error writing file', e);
       rethrow;
     }
 
-    _logMessage('Downloaded $zipFileName');
+    _log.info('Downloaded $zipFileName');
     return zipFilePath;
   }
 
   Future<bool> _verifyChecksum(String filePath, String platform) async {
     final validChecksums = List<String>.from(
-      platformsConfig[platform]['valid_zip_sha256_checksums'],
+      platformsConfig[platform]!.validZipSha256Checksums,
     );
 
-    _logMessage('validChecksums: $validChecksums');
+    _log.info('validChecksums: $validChecksums');
 
     final fileBytes = await File(filePath).readAsBytes();
     final fileSha256Checksum = sha256.convert(fileBytes).toString();
 
     if (validChecksums.contains(fileSha256Checksum)) {
-      stdout.writeln('Checksum validated for $filePath');
+      _log.info('Checksum validated for $filePath');
       return true;
     } else {
-      stderr.writeln(
+      _log.severe(
         'SHA256 Checksum mismatch for $filePath: expected any of '
         '$validChecksums, got $fileSha256Checksum',
       );
@@ -265,13 +279,13 @@ class FetchDefiApiStep extends BuildStep {
         'checksums': [fileChecksum],
       }),
     );
-    stdout.writeln('Updated last updated file for $platform.');
+    _log.info('Updated last updated file for $platform.');
   }
 
   Future<bool> _checkIfOutdated(
     String platform,
     String destinationFolder,
-    Map<String, dynamic> config,
+    Map<String, ApiBuildPlatformConfig> config,
   ) async {
     final lastUpdatedFilePath =
         path.join(destinationFolder, '.api_last_updated_$platform');
@@ -287,18 +301,15 @@ class FetchDefiApiStep extends BuildStep {
         final storedChecksums =
             List<String>.from(lastUpdatedData['checksums'] ?? []);
         final targetChecksums =
-            List<String>.from(config[platform]['valid_zip_sha256_checksums']);
+            List<String>.from(config[platform]!.validZipSha256Checksums);
 
         if (storedChecksums.toSet().containsAll(targetChecksums)) {
-          _logMessage("version: $apiCommitHash and SHA256 checksum match.");
+          _log.info("version: $apiCommitHash and SHA256 checksum match.");
           return false;
         }
       }
-    } catch (e) {
-      _logMessage(
-        'Error reading or parsing .api_last_updated_$platform: $e',
-        error: true,
-      );
+    } catch (e, s) {
+      _log.severe('Error reading or parsing .api_last_updated_$platform', e, s);
       lastUpdatedFile.deleteSync();
       rethrow;
     }
@@ -306,22 +317,29 @@ class FetchDefiApiStep extends BuildStep {
     return true;
   }
 
-  // ignore: unused_element
   Future<void> _updateWebPackages() async {
-    // _logMessage('Updating Web platform...');
-    // final installResult =
-    //     await Process.run('npm', ['install'], workingDirectory: projectRoot);
-    // if (installResult.exitCode != 0) {
-    //   throw Exception('npm install failed: ${installResult.stderr}');
-    // }
+    _log.info('Updating Web platform...');
+    _log.fine('Running npm install in $artifactOutputPath');
+    final installResult = await Process.run(
+      'npm',
+      ['install'],
+      workingDirectory: artifactOutputPath,
+    );
+    if (installResult.exitCode != 0) {
+      throw Exception('npm install failed: ${installResult.stderr}');
+    }
 
-    // final buildResult = await Process.run('npm', ['run', 'build'],
-    //     workingDirectory: projectRoot);
-    // if (buildResult.exitCode != 0) {
-    //   throw Exception('npm run build failed: ${buildResult.stderr}');
-    // }
+    _log.fine('Running npm run build in $artifactOutputPath');
+    final buildResult = await Process.run(
+      'npm',
+      ['run', 'build'],
+      workingDirectory: artifactOutputPath,
+    );
+    if (buildResult.exitCode != 0) {
+      throw Exception('npm run build failed: ${buildResult.stderr}');
+    }
 
-    // _logMessage('Web platform updated successfully.');
+    _log.info('Web platform updated successfully.');
   }
 
   void setFilePermissions(File file) {
@@ -333,7 +351,7 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   void _setExecutablePermissions(String destinationFolder) {
-    _logMessage('Setting executable permissions for $destinationFolder...');
+    _log.info('Setting executable permissions for $destinationFolder...');
     // Update the file permissions to make it executable. As part of the
     // transition from mm2 naming to kdf, update whichever file is present.
     // ignore: unused_local_variable
@@ -345,7 +363,7 @@ class FetchDefiApiStep extends BuildStep {
 
   String _getPlatformDestinationFolder(String platform) {
     if (platformsConfig.containsKey(platform)) {
-      return path.join(artifactOutputPath, platformsConfig[platform]['path']);
+      return path.join(artifactOutputPath, platformsConfig[platform]!.path);
     } else {
       throw ArgumentError('Invalid platform: $platform');
     }
@@ -353,7 +371,7 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<String> _findZipFileUrl(
     String platform,
-    Map<String, dynamic> config,
+    Map<String, ApiBuildPlatformConfig> config,
     String sourceUrl,
   ) async {
     if (sourceUrl.startsWith('https://api.github.com/repos/')) {
@@ -365,34 +383,22 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<String> _fetchFromGitHub(
     String platform,
-    Map<String, dynamic> config,
+    Map<String, ApiBuildPlatformConfig> config,
     String sourceUrl,
   ) async {
-    final repoMatch = RegExp(r'^https://api\.github\.com/repos/([^/]+)/([^/]+)')
-        .firstMatch(sourceUrl);
-    if (repoMatch == null) {
-      throw ArgumentError('Invalid GitHub repository URL: $sourceUrl');
-    }
-
-    final owner = repoMatch.group(1)!;
-    final repo = repoMatch.group(2)!;
-    final releasesUrl = 'https://api.github.com/repos/$owner/$repo/releases';
-    final response = await http.get(Uri.parse(releasesUrl));
-    _checkResponseSuccess(response);
-
-    final releases = json.decode(response.body) as List<dynamic>;
+    final releases = await githubApiProvider.getReleases();
     final apiVersionShortHash = apiCommitHash.substring(0, 7);
-    final matchingKeyword = config[platform]['matching_keyword'];
+    final matchingKeyword = config[platform]!.matchingKeyword;
 
     for (final release in releases) {
-      final assets = release['assets'] as List<dynamic>;
-      for (final asset in assets) {
-        final url = asset['browser_download_url'] as String;
+      for (final asset in release.assets) {
+        final url = asset.browserDownloadUrl;
 
         if (url.contains(matchingKeyword) &&
             url.contains(apiVersionShortHash)) {
-          final commitHash =
-              await _getCommitHashForRelease(release['tag_name'], owner, repo);
+          final commitHash = await githubApiProvider.getLatestCommitHash(
+            branch: release.tagName,
+          );
           if (commitHash == apiCommitHash) {
             return url;
           }
@@ -403,19 +409,6 @@ class FetchDefiApiStep extends BuildStep {
     throw Exception(
       'Zip file not found for platform $platform in GitHub releases',
     );
-  }
-
-  Future<String> _getCommitHashForRelease(
-    String tag,
-    String owner,
-    String repo,
-  ) async {
-    final commitsUrl = 'https://api.github.com/repos/$owner/$repo/commits/$tag';
-    final response = await http.get(Uri.parse(commitsUrl));
-    _checkResponseSuccess(response);
-
-    final commit = json.decode(response.body);
-    return commit['sha'];
   }
 
   Future<String> _fetchFromBaseUrl(
@@ -461,7 +454,7 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<void> _postUpdateActions(String platform, String destinationFolder) {
     if (platform == 'web') {
-      // return _updateWebPackages();
+      return _updateWebPackages();
       // TODO: Consider adding npm if it makes a significant difference to
       // file build size or if it is required for cache-busting.
     }
@@ -478,19 +471,31 @@ class FetchDefiApiStep extends BuildStep {
     final bytes = File(zipFilePath).readAsBytesSync();
     final archive = ZipDecoder().decodeBytes(bytes);
 
+    if (archive.isEmpty) {
+      throw Exception('No files found in $zipFilePath');
+    }
+
+    if (!Directory(destinationFolder).existsSync()) {
+      _log.info('Creating directory: $destinationFolder');
+      Directory(destinationFolder).createSync(recursive: true);
+    }
+
+    _log.fine('Extracting $zipFilePath to $destinationFolder');
     for (final file in archive) {
       final filename = file.name;
       if (file.isFile) {
+        _log.finest('Extracting file: $filename to $destinationFolder');
         final data = file.content as List<int>;
         File(path.join(destinationFolder, filename))
           ..createSync(recursive: true)
           ..writeAsBytesSync(data);
       } else {
+        _log.finest('Creating directory: $filename');
         Directory(path.join(destinationFolder, filename))
             .create(recursive: true);
       }
     }
-    _logMessage('Extraction completed.');
+    _log.info('Extraction completed.');
   }
 
   void _updateDocumentationIfExists() {
@@ -556,14 +561,4 @@ class FetchDefiApiStep extends BuildStep {
 //     config['api']['api_commit_hash'] = apiVersion;
 //     configFile.writeAsStringSync(json.encode(config));
 //   }
-}
-
-void _logMessage(String message, {bool error = false}) {
-  final prefix = error ? 'ERROR' : 'INFO';
-  final output = '[$prefix]: $message';
-  if (error) {
-    stderr.writeln(output);
-  } else {
-    stdout.writeln(output);
-  }
 }

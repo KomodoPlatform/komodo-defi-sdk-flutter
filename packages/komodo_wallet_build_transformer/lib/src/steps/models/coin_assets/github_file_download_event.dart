@@ -1,4 +1,4 @@
-import 'package:komodo_wallet_build_transformer/src/steps/coin_assets/github_download_event.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/coin_assets/github_download_event.dart';
 
 /// Represents an event for downloading a GitHub file.
 ///

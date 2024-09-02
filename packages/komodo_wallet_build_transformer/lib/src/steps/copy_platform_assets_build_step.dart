@@ -1,5 +1,8 @@
 import 'dart:io';
+
 import 'package:komodo_wallet_build_transformer/src/build_step.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/models/build_config.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 class CopyPlatformAssetsBuildStep extends BuildStep {
@@ -9,18 +12,20 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
     required this.artifactOutputDirectory,
   });
 
-  final Map<String, dynamic> buildConfig;
+  final BuildConfig buildConfig;
   final Directory projectRoot;
   final Directory artifactOutputDirectory;
 
   @override
   final String id = idStatic;
 
+  final _log = Logger('komodo_wallet_build_transformer');
+
   static const idStatic = 'copy_platform_assets';
 
   @override
   Future<void> build() async {
-    stdout.writeln('\nArtifact output directory: $artifactOutputDirectory\n');
+    _log.info('Artifact output directory: $artifactOutputDirectory\n');
     await _copyLinuxAssets();
     await _copyKdfWebFiles();
     await _copyOtherWebFiles();
@@ -33,6 +38,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
 
   @override
   Future<void> revert([Exception? e]) async {
+    _log.info('Reverting copy platform assets build step');
     // await _revertLinuxAssets();
 
     return;
@@ -52,7 +58,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }
 
   Future<void> _copyKdfWebFiles() async {
-    final kdfWebPath = buildConfig['api']['platforms']['web']['path'] as String;
+    final kdfWebPath = buildConfig.apiConfig.platforms['web']!.path;
     final sourceDir =
         Directory(path.join(artifactOutputDirectory.path, kdfWebPath));
     final destDir = Directory(path.joinAll([projectRoot.path, kdfWebPath]));
@@ -63,7 +69,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }
 
   Future<void> _copyOtherWebFiles() async {
-    final kdfWebPath = buildConfig['api']['platforms']['web']['path'] as String;
+    final kdfWebPath = buildConfig.apiConfig.platforms['web']!.path;
     final kdfLibDestDirectory =
         Directory(path.join(projectRoot.path, kdfWebPath));
     final sourceDir = Directory(path.join(artifactOutputDirectory.path, 'web'));
@@ -95,9 +101,9 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
           sourceFile.copySync(destFile.path);
         }
       }
-      print("Copying assets completed");
-    } catch (e) {
-      print("Failed to copy assets with error: $e");
+      _log.info("Copying assets completed");
+    } catch (e, s) {
+      _log.severe("Failed to copy assets with error", e, s);
       rethrow;
     }
   }
@@ -109,9 +115,18 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }) async {
     try {
       if (!sourceDir.existsSync()) {
-        print(
+        _log.info(
           "Source directory ${sourceDir.path} does not exist. Skipping copy.",
         );
+        return;
+      }
+
+      if (sourceDir.path == destDir.path) {
+        _log.info(
+          "Source and destination directories are the same. Skipping copy.",
+        );
+        _log.fine("Source directory (absolute): ${sourceDir.absolute}");
+        _log.fine("Destination directory (absolute): ${destDir.absolute}");
         return;
       }
 
@@ -142,11 +157,11 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
           entity.copySync(destFile.path);
         }
       }
-      print(
+      _log.info(
         "Copying assets from ${sourceDir.path} to ${destDir.path} completed",
       );
-    } catch (e) {
-      print("Failed to copy assets from directory with error: $e");
+    } catch (e, s) {
+      _log.severe("Failed to copy assets from directory with error", e, s);
       rethrow;
     }
   }
@@ -164,9 +179,9 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
           file.deleteSync();
         }
       }
-      print("Reverting assets completed");
-    } catch (e) {
-      print("Failed to revert assets with error: $e");
+      _log.info("Reverting assets completed");
+    } catch (e, s) {
+      _log.severe("Failed to revert assets with error", e, s);
       rethrow;
     }
   }
@@ -180,7 +195,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }
 
   bool _canSkipKdfWebFiles() {
-    final kdfWebPath = buildConfig['api']['platforms']['web']['path'] as String;
+    final kdfWebPath = buildConfig.apiConfig.platforms['web']!.path;
     final sourceDir = Directory(
       path.join(
         projectRoot.path,
@@ -190,7 +205,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
     final destDir = Directory(path.join(projectRoot.path, kdfWebPath));
 
     if (!sourceDir.existsSync()) {
-      print(
+      _log.info(
         "Source directory ${sourceDir.path} does not exist. Skipping check.",
       );
       return true;
