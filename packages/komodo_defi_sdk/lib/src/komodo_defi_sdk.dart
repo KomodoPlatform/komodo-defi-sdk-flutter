@@ -1,78 +1,101 @@
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
-import 'package:komodo_defi_sdk/src/client/kdf_api_client.dart';
+import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A high-level opinionated library that provides a simple way to build
 /// cross-platform Komodo Defi Framework applications (primarily focused on
 /// wallets).
-///
-/// Must be initialized before calling any other method in the [KomodoDefiSdk]
-/// class.
-class KomodoDefiSdk {
+class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Creates a new instance of the [KomodoDefiSdk] class.
   ///
-  /// Must be initialized before calling any other method in the [KomodoDefiSdk]
-  /// class.
+  /// This constructor is synchronous, but internal initialization is handled
+  /// asynchronously when needed.
   ///
   /// Defaults to a local instance unless [host] is provided.
   ///
   /// NB: This is not a singleton class. [TODO: elaborate on this]
-  factory KomodoDefiSdk({IKdfHostConfig? host}) => KomodoDefiSdk._default(host);
-
-  factory KomodoDefiSdk._default(IKdfHostConfig? hostConfig) {
-    final rpcPassword = SecurityUtils.generatePasswordSecure(16);
-    final kdf = KomodoDefiFramework.create(
-      hostConfig: hostConfig ??
-          LocalConfig(
-            https: true,
-            rpcPassword: rpcPassword,
-          ),
-      externalLogger: kDebugMode ? print : null,
-    );
-    final apiClient = KdfApiClient(kdf);
-
-    return KomodoDefiSdk._(
-      logCallback: kDebugMode ? print : null,
-      apiClient: apiClient,
-      kdfFramework: kdf,
-    );
+  factory KomodoDefiSdk({IKdfHostConfig? host}) {
+    return KomodoDefiSdk._(host);
   }
 
-  KomodoDefiSdk._({
-    required LogCallback? logCallback,
-    required ApiClient apiClient,
-    required KomodoDefiFramework kdfFramework,
-  })  : _logCallback = logCallback,
-        _apiClient = apiClient,
-        _kdfFramework = kdfFramework;
+  KomodoDefiSdk._(this._hostConfig);
 
-  KomodoDefiFramework _kdfFramework;
+  late final IKdfHostConfig? _hostConfig;
+  late final KomodoDefiFramework? _kdfFramework;
+  // ignore: unused_field
+  LogCallback? _logCallback;
 
-  ApiClient _apiClient;
-
-  final LogCallback? _logCallback;
-  // final IKdfHostConfig? _hostConfig;
-
+  late KomodoDefiLocalAuth? _auth;
   bool _isInitialized = false;
+  Future<void>? _initializationFuture;
 
-  /// Return a new instance of the [KomodoDefiLocalAuth] class.
-  ///
-  /// This class provides an abstraction layer on top of the
-  /// [KomodoDefiFramework] class to provide a simple way to authenticate
-  /// resembling a typical authentication service.
-  late final KomodoDefiLocalAuth auth = KomodoDefiLocalAuth(
-    kdf: _kdfFramework,
-  );
+  late final ApiClient? _apiClient;
+  ApiClient get apiClient {
+    if (!_isInitialized) {
+      throw StateError(
+        'KomodoDefiSdk is not initialized. Call initialize() or await ensureInitialized() first.',
+      );
+    }
+    return _apiClient!;
+  }
 
-  /// Initialize the [KomodoDefiSdk] instance.
-  /// This method must be called before any other method in the [KomodoDefiSdk]
-  /// class.
+  KomodoDefiLocalAuth get auth {
+    if (!_isInitialized) {
+      throw StateError(
+        'KomodoDefiSdk is not initialized. Call initialize() or await ensureInitialized() first.',
+      );
+    }
+    return _auth!;
+  }
+
+  /// Explicitly initialize the [KomodoDefiSdk] instance.
+  /// This method can be called to pre-initialize the SDK if desired.
   Future<void> initialize() async {
     if (_isInitialized) return;
+    if (_initializationFuture != null) {
+      await _initializationFuture;
+      return;
+    }
 
-    await auth.ensureInitialized();
+    _initializationFuture = _initialize();
+    await _initializationFuture;
+  }
+
+  /// Ensures that the SDK is initialized before performing any operation.
+  /// This method is called internally when needed, but can also be called
+  /// explicitly if pre-initialization is desired.
+  Future<void> ensureInitialized() async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+  }
+
+  Future<void> _initialize() async {
+    final rpcPassword = await ensureRpcPassword();
+
+    final hostConfig = _hostConfig ??
+        LocalConfig(
+          https: true,
+          rpcPassword: rpcPassword,
+        );
+
+    _kdfFramework = KomodoDefiFramework.create(
+      hostConfig: hostConfig,
+      externalLogger: kDebugMode ? print : null,
+    );
+
+    _apiClient = _kdfFramework!.client;
+
+    _auth = KomodoDefiLocalAuth(
+      kdf: _kdfFramework,
+      hostConfig: hostConfig,
+    );
+
+    _logCallback = kDebugMode ? print : null;
+
+    await _auth!.ensureInitialized();
 
     _isInitialized = true;
   }

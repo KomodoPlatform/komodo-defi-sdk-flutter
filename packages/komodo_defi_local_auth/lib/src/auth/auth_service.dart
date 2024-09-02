@@ -4,32 +4,31 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 abstract interface class IAuthService {
-  Future<KdfUser> signInOrRegister({
+  Future<List<KdfUser>> getUsers();
+
+  Future<KdfUser> signIn({
     required String walletName,
     required String password,
   });
 
-  Future<KdfUser> importWalletEncrypted({
+  Future<KdfUser> register({
     required String walletName,
     required String password,
-    required String encryptedMnemonic,
-  });
-
-  Future<KdfUser> importWalletPlaintext({
-    required String walletName,
-    required String password,
-    required String plaintextMnemonic,
+    Mnemonic? mnemonic,
   });
 
   Future<void> signOut();
 
   Future<bool> isSignedIn();
 
-  Future<KdfUser?> getCurrentUser();
+  Future<KdfUser?> getActiveUser();
 
-  Future<String> getMnemonic({
+  Future<Mnemonic> getMnemonic({
     required bool encrypted,
-    required String walletPassword,
+
+    /// Required if [encrypted] is false.
+    required String? walletPassword,
+    // required String walletName,
   });
 
   Stream<KdfUser?> get authStateChanges;
@@ -38,167 +37,215 @@ abstract interface class IAuthService {
 }
 
 class KdfAuthService implements IAuthService {
-  KdfAuthService(this._kdfFramework);
-
-  ApiClient get _client => _kdfFramework.client;
-
-  final methods = KomodoDefiRpcMethods.rpc;
+  KdfAuthService(this._kdfFramework, this._hostConfig);
 
   final KomodoDefiFramework _kdfFramework;
+  final IKdfHostConfig _hostConfig;
   final StreamController<KdfUser?> _authStateController =
       StreamController.broadcast();
-  KdfUser? _currentUser;
+
+  ApiClient get _client => _kdfFramework.client;
+  final methods = KomodoDefiRpcMethods.rpc;
+
+  Future<bool?> _assertWalletOrStop(String walletName) async {
+    if (!await _kdfFramework.isRunning()) return null;
+
+    final activeUser = await getActiveUser();
+    if (activeUser == null) {
+      await _stopKdf();
+      return false;
+    }
+
+    if (activeUser.walletName != walletName) {
+      await _stopKdf();
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> _stopKdf() async {
+    await _kdfFramework.kdfStop();
+    // _currentUser = null;
+    _authStateController.add(null);
+  }
+
+  Future<void> _ensureKdfRunning() async {
+    if (!await _kdfFramework.isRunning()) {
+      await _kdfFramework.startKdf(await _noAuthConfig);
+    }
+  }
 
   @override
-  Future<KdfUser> signInOrRegister({
+  Future<KdfUser> signIn({
     required String walletName,
     required String password,
   }) async {
-    final config = await KdfStartupConfig.generateWithDefaults(
+    final walletStatus = await _assertWalletOrStop(walletName);
+    if (walletStatus ?? false) {
+      // Wallet is already signed in
+      return (await getActiveUser())!;
+    }
+
+    final config = await _generateStartupConfig(
       walletName: walletName,
       walletPassword: password,
+      allowRegistrations: false,
     );
-
-    return await _startKdfWithConfig(config);
+    return _authenticateUser(config);
   }
 
-  Future<KdfUser> _startKdfWithConfig(KdfStartupConfig config) async {
-    try {
-      // Start the logStream listener
-      final logSubscription = _kdfFramework.logStream.listen(_processLog);
+  @override
+  Future<KdfUser> register({
+    required String walletName,
+    required String password,
+    Mnemonic? mnemonic,
+  }) async {
+    await _assertWalletOrStop(walletName);
+    final config = await _generateStartupConfig(
+      walletName: walletName,
+      walletPassword: password,
+      allowRegistrations: true,
+      plaintextMnemonic: mnemonic?.plaintextMnemonic,
+    );
+    return _authenticateUser(config);
+  }
 
+  Future<KdfUser> _authenticateUser(KdfStartupConfig config) async {
+    Exception? exception;
+    final foundAuthExceptions = <AuthException>[];
+
+    final sub = _kdfFramework.logStream.listen((log) {
+      foundAuthExceptions.addAll(AuthException.findExceptionsInLog(log));
+    });
+
+    try {
+      await _stopKdf();
       final kdfResult = await _kdfFramework.startKdf(config);
 
-      await logSubscription.cancel();
-
-      if (kdfResult.isAlreadyRunning) {
+      if (!kdfResult.isOk) {
         throw AuthException(
-          'Wallet is already running.',
-          type: AuthExceptionType.walletAlreadyRunning,
-        );
-      }
-
-      if (kdfResult.isRunning()) {
-        _currentUser = KdfUser(
-          uid: config.walletName.hashCode.toString(),
-          walletName: config.walletName,
-        );
-        _authStateController.add(_currentUser);
-        return _currentUser!;
-      } else {
-        throw AuthException(
-          'Failed to start KDF.',
-          type: AuthExceptionType.walletStartFailed,
-        );
-      }
-    } catch (e) {
-      if (e is AuthException) {
-        rethrow; // Rethrow the AuthException to the caller
-      } else {
-        throw AuthException(
-          e.toString(),
+          'Failed session creation: ${kdfResult.name}',
           type: AuthExceptionType.generalAuthError,
         );
       }
+    } on Exception catch (e) {
+      exception = e;
+    } finally {
+      await sub.cancel();
     }
-  }
+    if (foundAuthExceptions.isNotEmpty || exception != null) {
+      throw foundAuthExceptions.lastOrNull ?? exception!;
+    }
 
-  void _processLog(String log) {
-    final foundExceptions = AuthException.foundExceptions(log);
+    final currentUser = await getActiveUser();
 
-    if (foundExceptions.contains(AuthExceptionType.invalidWalletPassword)) {
+    if (currentUser == null) {
       throw AuthException(
-        'Failed to start wallet: Incorrect wallet password.',
-        type: AuthExceptionType.invalidWalletPassword,
+        'No user signed in',
+        type: AuthExceptionType.unauthorized,
       );
     }
-  }
 
-  @override
-  Future<KdfUser> importWalletPlaintext({
-    required String walletName,
-    required String password,
-    required String plaintextMnemonic,
-  }) async {
-    final config = await KdfStartupConfig.generateWithDefaults(
-      walletName: walletName,
-      walletPassword: password,
-      seed: plaintextMnemonic,
-    );
-    return _startKdfWithConfig(config);
-  }
-
-  @override
-  Future<KdfUser> importWalletEncrypted({
-    required String walletName,
-    required String password,
-    required String encryptedMnemonic,
-  }) async {
-    final config = await KdfStartupConfig.generateWithDefaults(
-      walletName: walletName,
-      walletPassword: password,
-      seed: encryptedMnemonic,
-    );
-    return _startKdfWithConfig(config);
+    return currentUser;
   }
 
   @override
   Future<void> signOut() async {
-    try {
-      await _kdfFramework.kdfStop();
-      _currentUser = null;
-      _authStateController.add(null);
-    } catch (e) {
-      throw AuthException(
-        "Couldn't sign out: $e",
-        type: AuthExceptionType.generalAuthError,
-      );
-    }
+    await _stopKdf();
   }
 
   @override
   Future<bool> isSignedIn() async {
-    return _currentUser != null;
+    return await getActiveUser() != null;
   }
 
   @override
-  Future<KdfUser?> getCurrentUser() async {
-    return _currentUser;
+  Future<KdfUser?> getActiveUser() async {
+    if (!await _kdfFramework.isRunning()) {
+      return null;
+    }
+    final activeUser =
+        (await _client.rpc.wallet.getWalletNames()).activatedWallet;
+    return activeUser != null ? KdfUser(walletName: activeUser) : null;
   }
 
   @override
-  Future<String> getMnemonic({
+  Future<Mnemonic> getMnemonic({
     required bool encrypted,
-    required String walletPassword,
+    required String? walletPassword,
   }) async {
-    if (_currentUser == null) {
+    assert(
+      encrypted || walletPassword != null,
+      'walletPassword is required to retrieve plaintext mnemonic.',
+    );
+
+    if (await getActiveUser() == null) {
       throw AuthException(
         'No user signed in',
+        type: AuthExceptionType.unauthorized,
+      );
+    }
+
+    final response = await _kdfFramework.client.executeRpc({
+      'mmrpc': '2.0',
+      'method': 'get_mnemonic',
+      'params': {
+        'format': encrypted ? 'encrypted' : 'plaintext',
+        if (!encrypted) 'password': walletPassword,
+      },
+    });
+
+    if (response is JsonRpcErrorResponse) {
+      throw AuthException(
+        response.error,
         type: AuthExceptionType.generalAuthError,
       );
     }
 
-    final result = await _kdfFramework.executeRpc({
-      'userpass': _currentUser!.walletName,
-      'method': 'get_mnemonic',
-      'params': {
-        'format': encrypted ? 'encrypted' : 'plaintext',
-        if (!encrypted) 'password': _currentUser!.walletName,
-      },
-    });
+    return Mnemonic.fromRpcJson(response.value<JsonMap>('result'));
+  }
 
-    if (encrypted) {
-      return result.value<String>('encrypted_mnemonic_data');
-    } else {
-      return result.value<String>('mnemonic');
-    }
+  @override
+  Future<List<KdfUser>> getUsers() async {
+    await _ensureKdfRunning();
+    final walletNames = await _client.rpc.wallet.getWalletNames();
+    return walletNames.walletNames.map((e) => KdfUser(walletName: e)).toList();
   }
 
   @override
   Stream<KdfUser?> get authStateChanges => _authStateController.stream;
 
   @override
-  void dispose() {
-    _authStateController.close();
+  // ignore: avoid_void_async
+  void dispose() async {
+    await _stopKdf();
+    await _authStateController.close();
+  }
+
+  late final Future<KdfStartupConfig> _noAuthConfig =
+      KdfStartupConfig.noAuthStartup(rpcPassword: _hostConfig.rpcPassword);
+
+  Future<KdfStartupConfig> _generateStartupConfig({
+    required String walletName,
+    required String walletPassword,
+    required bool allowRegistrations,
+    String? plaintextMnemonic,
+    String? encryptedMnemonic,
+  }) async {
+    if (plaintextMnemonic != null && encryptedMnemonic != null) {
+      throw AuthException(
+        'Both plaintext and encrypted mnemonics provided.',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+
+    return KdfStartupConfig.generateWithDefaults(
+      walletName: walletName,
+      walletPassword: walletPassword,
+      seed: plaintextMnemonic ?? encryptedMnemonic,
+      rpcPassword: _hostConfig.rpcPassword,
+      allowRegistrations: allowRegistrations,
+    );
   }
 }

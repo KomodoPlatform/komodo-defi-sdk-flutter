@@ -29,18 +29,6 @@ IKdfOperations createLocalKdfOperations({
       config: config,
     );
 
-    // TODO: Refactor or consider a different approach that allows us to
-    // determine if the executable is available before returning it using the
-    // async `isAvailable` method.
-    // scheduleMicrotask(() async {
-    //   if (!await executable.isAvailable(config)) {
-    //     throw Exception(
-    //       'No valid KDF operations found. KdfOperationsLocalExecutable was '
-    //       'returned but was not available.',
-    //     );
-    //   }
-    // });
-
     return executable;
   }
 }

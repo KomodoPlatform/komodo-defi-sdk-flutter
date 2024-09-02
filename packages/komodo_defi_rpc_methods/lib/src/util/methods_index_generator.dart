@@ -44,8 +44,11 @@ void main(List<String> arguments) {
             for (final segment in methodSegments) {
               current = (current.putIfAbsent(
                 segment,
-                () => {'classes': {}, 'children': {}},
-              )['children'] as Map)
+                () => {
+                  'classes': <dynamic, dynamic>{},
+                  'children': <dynamic, dynamic>{}
+                },
+              )['children'] as Map<dynamic, dynamic>)
                   .cast<String, dynamic>();
             }
 

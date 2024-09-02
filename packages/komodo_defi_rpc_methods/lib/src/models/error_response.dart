@@ -11,7 +11,8 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
     required this.errorData,
   });
 
-  factory GeneralErrorResponse.fromJson(Map<String, dynamic> json) {
+  @override
+  factory GeneralErrorResponse.parse(Map<String, dynamic> json) {
     return GeneralErrorResponse(
       mmrpc: json['mmrpc'] as String,
       error: json['error'] as String,
@@ -21,6 +22,7 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
       errorData: json['error_data'] as dynamic,
     );
   }
+
   final String error;
   final String errorPath;
   final String errorTrace;

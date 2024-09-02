@@ -7,7 +7,7 @@ extension BaseRequestApiClientExtension on ApiClient {
   Future<T> post<T extends BaseResponse, E extends GeneralErrorResponse>(
     BaseRequest<T, E> request,
   ) async {
-    final response = await sendRequest(request.toJson());
+    final response = await executeRpc(request.toJson());
 
     return request.parseResponse(jsonEncode(response));
   }
@@ -39,7 +39,7 @@ abstract class BaseRequest<T extends BaseResponse,
   Map<String, dynamic> toJson();
 
   Future<T> send(ApiClient client) async {
-    final response = await client.sendRequest(toJson());
+    final response = await client.executeRpc(toJson());
     return parseResponse(jsonEncode(response));
   }
 
@@ -60,11 +60,11 @@ mixin RequestHandlingMixin<T extends BaseResponse,
     final json = jsonFromString(responseBody);
 
     if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.fromJson(json);
+      throw GeneralErrorResponse.parse(json);
     }
 
-    return fromJson(json);
+    return parse(json);
   }
 
-  T fromJson(Map<String, dynamic> json);
+  T parse(Map<String, dynamic> json);
 }

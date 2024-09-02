@@ -4,24 +4,25 @@ import 'dart:async';
 
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+// ignore: one_member_abstracts
 abstract class ApiClient {
-  FutureOr<JsonMap> sendRequest(JsonMap request);
+  FutureOr<JsonMap> executeRpc(JsonMap request);
 
-  FutureOr<void> stop();
-  FutureOr<bool> isInitialized();
+  // FutureOr<void> stop();
+  // FutureOr<bool> isInitialized();
 }
 
 class ApiClientMock implements ApiClient {
   @override
-  Future<JsonMap> sendRequest(JsonMap request) async {
+  Future<JsonMap> executeRpc(JsonMap request) async {
     return <String, dynamic>{};
   }
 
-  @override
-  Future<void> stop() async {}
+  // @override
+  // Future<void> stop() async {}
 
-  @override
-  bool isInitialized() {
-    return true;
-  }
+  // @override
+  // bool isInitialized() {
+  //   return true;
+  // }
 }

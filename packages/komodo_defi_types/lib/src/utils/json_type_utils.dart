@@ -14,6 +14,14 @@ JsonMap jsonFromString(String json) {
   return decode as JsonMap;
 }
 
+JsonMap? tryParseJson(String json) {
+  try {
+    return jsonFromString(json);
+  } catch (e) {
+    return null;
+  }
+}
+
 List<JsonMap> jsonListFromString(String json) {
   final decode = jsonDecode(json);
 
@@ -89,7 +97,7 @@ extension JsonMapExtension<T extends JsonMap> on T {
     return _traverseJson<V>(this, keys);
   }
 
-  JsonMap jsonFromString(String json) {
+  static JsonMap jsonFromString(String json) {
     final decode = jsonDecode(json);
 
     if (decode is Map) {
@@ -102,15 +110,21 @@ extension JsonMapExtension<T extends JsonMap> on T {
     }
   }
 
-  // static JsonMap? fromJsonStringOrNull(String jsonString) {
-  //   try {
-  //     return fromJsonString(jsonString);
-  //   } catch (e) {
-  //     return null;
-  //   }
-  // }
+  static JsonMap? tryParseJson(String json) {
+    try {
+      return jsonFromString(json);
+    } catch (e) {
+      return null;
+    }
+  }
 
   String toJsonString() => jsonEncode(this);
+
+  void setIfAbsentOrEmpty(String key, dynamic value) {
+    if (!containsKey(key) || this[key] == '') {
+      this[key] = value;
+    }
+  }
 }
 
 extension ListExtensions<T extends JsonList> on T {
@@ -189,7 +203,7 @@ extension MapCensoring<K, V> on Map<K, V> {
           final nestedCensoredMap = <K, V>{};
           currentCensoredMap[key] = nestedCensoredMap as V;
           stack.add(_CensorTask(value as Map<K, V>, nestedCensoredMap));
-        } else if (recursive && value is List) {
+        } else if (recursive && value is Iterable) {
           final censoredList = <V>[];
           currentCensoredMap[key] = censoredList as V;
           for (final element in value) {

@@ -18,7 +18,8 @@ class NewTaskResponse extends BaseResponse {
     required this.taskId,
   });
 
-  factory NewTaskResponse.fromJson(Map<String, dynamic> json) {
+  @override
+  factory NewTaskResponse.parse(Map<String, dynamic> json) {
     return NewTaskResponse(
       mmrpc: json.value<String>('mmrpc'),
       taskId: json.value<int>('result', 'task_id'),

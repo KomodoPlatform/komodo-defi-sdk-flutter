@@ -123,14 +123,22 @@ class KdfOperationsWasm implements IKdfOperations {
     await _ensureLoaded();
 
     try {
-      _kdfModule!.callMethod('mm2_stop'.toJS);
+      final errorOrNull =
+          await (js_util.dartify(_kdfModule!.callMethod('mm2_stop'.toJS))!
+              as Future<Object?>);
+
+      if (errorOrNull is int) {
+        return StopStatus.fromDefaultInt(errorOrNull);
+      }
+
+      _logger?.call('KDF stop result: $errorOrNull');
 
       // Wait until the KDF is stopped. Timeout after 10 seconds
       await Future.doWhile(() async {
         final isStopped = (await kdfMainStatus()) == MainStatus.notRunning;
 
         if (!isStopped) {
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future<void>.delayed(const Duration(milliseconds: 300));
         }
         return !isStopped;
       }).timeout(

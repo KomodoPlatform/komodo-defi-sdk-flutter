@@ -31,8 +31,8 @@ class TaskEnableUtxoInit
   NewTaskResponse parseResponse(String responseBody) {
     final json = jsonFromString(responseBody);
     if (json['error'] != null) {
-      throw GeneralErrorResponse.fromJson(json);
+      throw GeneralErrorResponse.parse(json);
     }
-    return NewTaskResponse.fromJson(json);
+    return NewTaskResponse.parse(json);
   }
 }

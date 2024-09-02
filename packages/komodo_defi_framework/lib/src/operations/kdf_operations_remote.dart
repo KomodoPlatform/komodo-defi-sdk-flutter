@@ -152,8 +152,11 @@ class KdfOperationsRemote implements IKdfOperations {
 
   @override
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
+    if (request['userpass'] == null) {
+      request['userpass'] = _userpass;
+    }
+
     _logCallback('mm2Rpc request: ${json.encode(request)}');
-    request['userpass'] = _userpass;
 
     final response = await http.post(_baseUrl, body: json.encode(request));
 

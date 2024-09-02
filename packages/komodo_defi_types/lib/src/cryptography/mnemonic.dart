@@ -1,0 +1,185 @@
+import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
+
+class Mnemonic {
+  // TODO! Consider if the RPC parsing is appropriate here or if it should be
+  // moved to the RPC package.
+  /// Factory method to create Mnemonic from a RPC response
+  factory Mnemonic.fromRpcJson(Map<String, dynamic> result) {
+    final format = result.value<String>('format');
+
+    if (format == 'plaintext') {
+      assert(
+        result.value<dynamic>('mnemonic') is String,
+        'Expected mnemonic to be a string',
+      );
+
+      return Mnemonic._(
+        format: format,
+        plaintextMnemonic: result.value<String>('mnemonic'),
+      );
+    } else if (format == 'encrypted') {
+      return Mnemonic._(
+        format: format,
+        encryptedMnemonicData: EncryptedMnemonicData.fromJson(
+          result.value<JsonMap>('encrypted_mnemonic_data'),
+        ),
+      );
+    } else {
+      throw ArgumentError('Unsupported mnemonic format: $format');
+    }
+  }
+
+  Mnemonic._({this.format, this.plaintextMnemonic, this.encryptedMnemonicData});
+
+  Mnemonic.plaintext(this.plaintextMnemonic)
+      : format = 'plaintext',
+        encryptedMnemonicData = null;
+
+  Mnemonic.encrypted(this.encryptedMnemonicData)
+      : format = 'encrypted',
+        plaintextMnemonic = null;
+
+  final String? format;
+  final String? plaintextMnemonic;
+  final EncryptedMnemonicData? encryptedMnemonicData;
+
+  bool get isEncrypted => encryptedMnemonicData != null;
+
+  // Convert Mnemonic to JSON
+  Map<String, dynamic> toJson() {
+    final data = <String, dynamic>{};
+    data['format'] = format;
+
+    if (format == 'plaintext') {
+      data['mnemonic'] = plaintextMnemonic;
+    } else if (format == 'encrypted') {
+      data['encrypted_mnemonic_data'] = encryptedMnemonicData?.toJson();
+    }
+
+    return data;
+  }
+
+  static Mnemonic? tryParse(Map<String, dynamic> json) {
+    try {
+      return Mnemonic.fromRpcJson(json);
+    } catch (e) {
+      return null;
+    }
+  }
+}
+
+class EncryptedMnemonicData {
+  const EncryptedMnemonicData({
+    required this.encryptionAlgorithm,
+    required this.keyDerivationDetails,
+    required this.iv,
+    required this.ciphertext,
+    required this.tag,
+  });
+
+  // Factory method to create EncryptedMnemonicData from JSON
+  factory EncryptedMnemonicData.fromJson(Map<String, dynamic> json) {
+    return EncryptedMnemonicData(
+      encryptionAlgorithm: json.value<String>('encryption_algorithm'),
+      keyDerivationDetails:
+          Argon2Details.fromJson(json.value<JsonMap>('key_derivation_details')),
+      iv: json.value<String>('iv'),
+      ciphertext: json.value<String>('ciphertext'),
+      tag: json.value<String>('tag'),
+    );
+  }
+
+  final String encryptionAlgorithm;
+  final Argon2Details keyDerivationDetails;
+  final String iv;
+  final String ciphertext;
+  final String tag;
+
+  static EncryptedMnemonicData? tryParse(Map<String, dynamic> json) {
+    try {
+      return EncryptedMnemonicData.fromJson(json);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Example to show end-user for the correct format needed in the input
+  static const Map<String, dynamic> encryptedDataExample = {
+    'encryption_algorithm': 'AES256CBC',
+    'key_derivation_details': {
+      'Argon2': {
+        'params': {
+          'algorithm': 'Argon2id',
+          'version': '0x13',
+          'm_cost': 65536,
+          't_cost': 2,
+          'p_cost': 1,
+        },
+        'salt_aes': 'w5bTRBnymFmaqoA54JAAyQ',
+        'salt_hmac': 'icjb79YGPyLXOTYkJNEDgA',
+      },
+    },
+    'iv': 'CyGHB/PJWa4Tp+j+F6FKxQ==',
+    'ciphertext': '8XEB114+1hNhpsVfWrBakDYjjIoKu+W5T7CQVT6FImNS4Y2Y3BVTU677+'
+        'bYPuGc59qt8ZSXeqpM0cQh2NGJYQ2qRY5WZTEOcqqUakNah3Jg=',
+    'tag': '3P5vvw0+aid9VbCGmo8VyOZZn5vkGxFnTUFFeH51NJ0=',
+  };
+
+  // Convert EncryptedMnemonicData to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'encryption_algorithm': encryptionAlgorithm,
+      'key_derivation_details': keyDerivationDetails.toJson(),
+      'iv': iv,
+      'ciphertext': ciphertext,
+      'tag': tag,
+    };
+  }
+}
+
+class Argon2Details {
+  Argon2Details({
+    required this.algorithm,
+    required this.version,
+    required this.mCost,
+    required this.tCost,
+    required this.pCost,
+    required this.saltAes,
+    required this.saltHmac,
+  });
+
+  // Factory method to create Argon2Details from JSON
+  factory Argon2Details.fromJson(Map<String, dynamic> json) {
+    final argon2Params = json.value<JsonMap>('Argon2', 'params');
+    return Argon2Details(
+      algorithm: argon2Params.value<String>('algorithm'),
+      version: int.parse(argon2Params['version'].toString()),
+      mCost: argon2Params.value<int>('m_cost'),
+      tCost: argon2Params.value<int>('t_cost'),
+      pCost: argon2Params.value<int>('p_cost'),
+      saltAes: json.value<String>('Argon2', 'salt_aes'),
+      saltHmac: json.value<String>('Argon2', 'salt_hmac'),
+    );
+  }
+
+  final String algorithm;
+  final int version;
+  final int mCost;
+  final int tCost;
+  final int pCost;
+  final String saltAes;
+  final String saltHmac;
+
+  // Convert Argon2Details to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'algorithm': algorithm,
+      'version': version,
+      'm_cost': mCost,
+      't_cost': tCost,
+      'p_cost': pCost,
+      'salt_aes': saltAes,
+      'salt_hmac': saltHmac,
+    };
+  }
+}

@@ -39,6 +39,8 @@ enum KdfStartupResult {
 
   bool get isAlreadyRunning => this == KdfStartupResult.alreadyRunning;
 
+  bool get isOk => this == KdfStartupResult.ok;
+
   // Int values
   // Ok = 0,
   // AlreadyRuns = 1,
@@ -66,6 +68,8 @@ enum StopStatus {
   notRunning,
   errorStopping,
   stoppingAlready;
+
+  bool get isError => this == StopStatus.errorStopping;
 
   static StopStatus fromDefaultInt(int status) {
     switch (status) {

@@ -51,8 +51,8 @@ class GetNewAddressRequest
   }
 
   @override
-  GetNewAddressResponse fromJson(Map<String, dynamic> json) =>
-      GetNewAddressResponse.fromJson(json);
+  GetNewAddressResponse parse(Map<String, dynamic> json) =>
+      GetNewAddressResponse.parse(json);
 }
 
 // TODO! Create a type-safe new-address-info response class:
@@ -60,7 +60,8 @@ class GetNewAddressRequest
 class GetNewAddressResponse extends BaseResponse {
   GetNewAddressResponse({required super.mmrpc, required this.address});
 
-  factory GetNewAddressResponse.fromJson(Map<String, dynamic> json) {
+  @override
+  factory GetNewAddressResponse.parse(Map<String, dynamic> json) {
     return GetNewAddressResponse(
       mmrpc: json.value<String>('mmrpc'),
       address: json.value<String>('result', 'address'),

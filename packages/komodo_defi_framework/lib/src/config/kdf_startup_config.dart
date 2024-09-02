@@ -22,23 +22,27 @@ class KdfStartupConfig {
     required this.dbDir,
     required this.userHome,
     required this.rpcIp,
+    required this.rpcPort,
     required this.rpcLocalOnly,
     required this.hdAccountId,
+    required this.allowRegistrations,
   });
 
-  final String walletName;
-  final String walletPassword;
+  final String? walletName;
+  final String? walletPassword;
   final String? seed;
   final String rpcPassword;
   final String? dbDir;
   final String? userHome;
   final String? rpcIp;
+  final int? rpcPort;
   final bool? rpcLocalOnly;
   final bool allowWeakPassword;
   final int netid;
   final int? hdAccountId;
   final String gui;
   final bool https;
+  final bool allowRegistrations;
 
   // Either a list of coin JSON objects or a string of the path to a file
   // containing a list of coin JSON objects.
@@ -55,21 +59,22 @@ class KdfStartupConfig {
     String? rpcIp,
     int? hdAccountId,
     bool allowWeakPassword = false,
+    int rpcPort = 7783,
     int netid = 8762,
     String gui = 'komodo-defi-flutter-auth',
     bool https = false,
     bool rpcLocalOnly = true,
+    bool allowRegistrations = true,
   }) async {
     assert(
       !kIsWeb || userHome == null && dbDir == null,
       'Web does not support userHome or dbDir',
     );
-    final home = userHome ??
-        (kIsWeb ? null : (await getApplicationDocumentsDirectory()).path);
-
-    if (userHome != null && !Directory(userHome).existsSync()) {
-      Directory(userHome).createSync(recursive: true);
-    }
+    assert(
+      [walletName, walletPassword].every((e) => e.isNotEmpty),
+      'Wallet name and password must not be empty',
+    );
+    final home = userHome ?? await _getAndSetupUserHome();
 
     return KdfStartupConfig._(
       walletName: walletName,
@@ -84,8 +89,46 @@ class KdfStartupConfig {
       coins: coinsPath ?? await _fetchCoinsData(),
       https: https,
       rpcIp: rpcIp,
+      rpcPort: rpcPort,
       rpcLocalOnly: rpcLocalOnly,
       hdAccountId: hdAccountId,
+      allowRegistrations: allowRegistrations,
+    );
+  }
+
+  static Future<String?> _getAndSetupUserHome() async {
+    final home =
+        (kIsWeb ? null : (await getApplicationDocumentsDirectory()).path);
+
+    if (home != null && !Directory(home).existsSync()) {
+      Directory(home).createSync(recursive: true);
+    }
+    return home;
+  }
+
+  static Future<KdfStartupConfig> noAuthStartup({
+    String? rpcPassword,
+    String? rpcIp,
+    int rpcPort = 7783,
+  }) async {
+    final home = await _getAndSetupUserHome();
+    return KdfStartupConfig._(
+      walletName: null,
+      walletPassword: null,
+      seed: null,
+      rpcPassword: rpcPassword ?? generatePassword(),
+      userHome: home,
+      dbDir: null,
+      allowWeakPassword: true,
+      netid: 8762,
+      gui: 'komodo-defi-flutter-auth',
+      coins: await _fetchCoinsData(),
+      https: false,
+      rpcIp: rpcIp,
+      rpcPort: rpcPort,
+      rpcLocalOnly: true,
+      hdAccountId: null,
+      allowRegistrations: false,
     );
   }
 
@@ -96,18 +139,23 @@ class KdfStartupConfig {
       'rpc_password': rpcPassword,
       'netid': netid,
       'gui': gui,
-      if (walletPassword.isNotEmpty) 'wallet_password': walletPassword,
-      if (walletName.isNotEmpty) 'wallet_name': walletName,
+      if (walletPassword?.isNotEmpty ?? false)
+        'wallet_password': walletPassword,
+      if (walletName?.isNotEmpty ?? false) 'wallet_name': walletName,
       if (seed?.isNotEmpty ?? false) 'passphrase': seed,
       if (dbDir != null) 'dbdir': dbDir,
       if (userHome != null) 'userhome': userHome,
       if (rpcIp != null) 'rpcip': rpcIp,
+      if (rpcPort != null) 'rpcport': rpcPort,
       if (rpcLocalOnly != null) 'rpc_local_only': rpcLocalOnly,
       if (hdAccountId != null) 'hd_account_id': hdAccountId,
+      'allow_registrations': allowRegistrations,
       'https': https,
       'coins': coins,
     };
   }
+
+  // static Future<KdfStartupConfig> noAuthConfig()
 
   // Map<String, dynamic> toJson() => {
   //       'wallet_name': walletName,
@@ -124,8 +172,12 @@ class KdfStartupConfig {
   static const coinsUrl = 'https://komodoplatform.github.io/coins/coins';
 
   static Future<JsonList> _fetchCoinsData() async {
-    return jsonListFromString((await http.get(Uri.parse(coinsUrl))).body);
+    if (_memoizedCoins != null) return _memoizedCoins!;
 
+    return _memoizedCoins =
+        jsonListFromString((await http.get(Uri.parse(coinsUrl))).body);
+
+    // TODO: Implement getting from local asset as a fallback
     // final coinsDataAssetOrEmpty = await rootBundle
     //     .loadString('assets/config/coins.json')
     //     .catchError((_) => '');
@@ -134,6 +186,8 @@ class KdfStartupConfig {
     //     ? ListExtensions.fromJsonString(coinsDataAssetOrEmpty).toJsonString()
     //     : (await http.get(Uri.parse(coinsUrl))).body;
   }
+
+  static JsonList? _memoizedCoins;
 
   static String generatePassword() {
     var result = '';

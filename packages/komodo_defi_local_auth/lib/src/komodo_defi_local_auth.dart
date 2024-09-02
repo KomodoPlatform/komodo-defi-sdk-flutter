@@ -5,21 +5,23 @@ import 'package:komodo_defi_local_auth/src/auth/storage/secure_storage.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class KomodoDefiLocalAuth {
-  /// Creates a new instance of [KomodoDefiLocalAuth].
-  /// Defaults to a local instance unless [kdf] is provided.
   KomodoDefiLocalAuth({
     required KomodoDefiFramework kdf,
-  }) {
+    required IKdfHostConfig hostConfig,
+    bool allowRegistrations = true,
+  }) : _allowRegistrations = allowRegistrations {
+    // ignore: unused_local_variable
     final secureStorage = IFlutterSecureStorage();
-    _authService = KdfAuthService(kdf);
+    _authService = KdfAuthService(kdf, hostConfig);
   }
 
+  final bool _allowRegistrations;
   late final IAuthService _authService;
   bool _initialized = false;
 
   Future<void> ensureInitialized() async {
     if (_initialized) return;
-    await _authService.getCurrentUser();
+    await _authService.getActiveUser();
     _initialized = true;
   }
 
@@ -31,14 +33,14 @@ class KomodoDefiLocalAuth {
     }
   }
 
-  Stream<KdfUser?> get authStateChanges {
-    unawaited(ensureInitialized());
-    return _authService.authStateChanges;
+  Stream<KdfUser?> get authStateChanges async* {
+    await ensureInitialized();
+    yield* _authService.authStateChanges;
   }
 
   Future<KdfUser?> get currentUser async {
     await ensureInitialized();
-    return _authService.getCurrentUser();
+    return _authService.getActiveUser();
   }
 
   Future<KdfUser> signIn({
@@ -46,18 +48,15 @@ class KomodoDefiLocalAuth {
     required String password,
   }) async {
     await ensureInitialized();
+    await _assertAuthState(false);
+
     try {
-      final user = await _authService.signInOrRegister(
+      return await _authService.signIn(
         walletName: walletName,
         password: password,
       );
-      // if (user == null) {
-      //   throw AuthException('Failed to sign in',
-      //       type: AuthExceptionType.generalAuthError);
-      // }
-      return user;
     } on AuthException {
-      rethrow; // Rethrow the AuthException to be handled by the caller
+      rethrow;
     } catch (e) {
       throw AuthException(
         'An unexpected error occurred: $e',
@@ -66,34 +65,51 @@ class KomodoDefiLocalAuth {
     }
   }
 
-  Future<void> importWallet({
+  Future<KdfUser> register({
     required String walletName,
     required String password,
-    required String encryptedMnemonic,
+    Mnemonic? mnemonic,
   }) async {
     await ensureInitialized();
+    await _assertAuthState(false);
+
+    if (!_allowRegistrations) {
+      throw AuthException(
+        'Registration is not allowed.',
+        type: AuthExceptionType.registrationNotAllowed,
+      );
+    }
+
     try {
-      await _authService.importWalletEncrypted(
+      return await _authService.register(
         walletName: walletName,
         password: password,
-        encryptedMnemonic: encryptedMnemonic,
+        mnemonic: mnemonic,
       );
     } on AuthException {
-      rethrow; // Rethrow the AuthException to be handled by the caller
+      rethrow;
     } catch (e) {
       throw AuthException(
         'An unexpected error occurred: $e',
         type: AuthExceptionType.generalAuthError,
       );
     }
+  }
+
+  Future<List<KdfUser>> getUsers() async {
+    await ensureInitialized();
+
+    return _authService.getUsers();
   }
 
   Future<void> signOut() async {
     await ensureInitialized();
+    await _assertAuthState(true);
+
     try {
       await _authService.signOut();
     } on AuthException {
-      rethrow; // Rethrow the AuthException to be handled by the caller
+      rethrow;
     } catch (e) {
       throw AuthException(
         'An unexpected error occurred while signing out: $e',
@@ -107,22 +123,53 @@ class KomodoDefiLocalAuth {
     return _authService.isSignedIn();
   }
 
-  Future<String> getMnemonic({
-    required bool encrypted,
-    required String walletPassword,
-  }) async {
+  Future<Mnemonic> getMnemonicEncrypted() async {
     await ensureInitialized();
+    await _assertAuthState(true);
+
     try {
       return await _authService.getMnemonic(
-        encrypted: encrypted,
-        walletPassword: walletPassword,
+        encrypted: true,
+        walletPassword: null,
       );
     } on AuthException {
-      rethrow; // Rethrow the AuthException to be handled by the caller
+      rethrow;
     } catch (e) {
       throw AuthException(
         'An unexpected error occurred while retrieving the mnemonic: $e',
         type: AuthExceptionType.generalAuthError,
+      );
+    }
+  }
+
+  Future<Mnemonic> getMnemonicPlainText(String walletPassword) async {
+    await ensureInitialized();
+    await _assertAuthState(true);
+
+    try {
+      return _authService.getMnemonic(
+        encrypted: false,
+        walletPassword: walletPassword,
+      );
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException(
+        'An unexpected error occurred while retrieving the mnemonic: $e',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+  }
+
+  Future<void> _assertAuthState(bool expected) async {
+    await ensureInitialized();
+    final signedIn = await isSignedIn();
+    if (signedIn != expected) {
+      throw AuthException(
+        'User is ${signedIn ? 'signed in' : 'not signed in'}.',
+        type: signedIn
+            ? AuthExceptionType.alreadySignedIn
+            : AuthExceptionType.unauthorized,
       );
     }
   }

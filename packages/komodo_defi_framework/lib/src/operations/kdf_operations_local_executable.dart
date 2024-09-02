@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart';
@@ -32,6 +31,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   }
 
   final void Function(String) _logCallback;
+  // ignore: unused_field
   final LocalConfig _config;
 
   Process? _process;
@@ -54,7 +54,6 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   }
 
   static final Uri _url = Uri.parse('http://127.0.0.1:7783');
-  final http.Client _client = http.Client();
 
   Future<Process> _startKdf(List<String> args) async {
     final executablePath = (await _getExecutable())?.absolute.path;
@@ -150,17 +149,22 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     int? exitCode;
     unawaited(_process?.exitCode.then((code) => exitCode = code));
 
-    while (exitCode == null && timer.elapsed.inSeconds < 30) {
-      if (await isRunning()) {
-        return KdfStartupResult.ok;
+    while (timer.elapsed.inSeconds < 30) {
+      if (await isRunning() || exitCode != null) {
+        break;
       }
-      await Future<void>.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
 
-    throw Exception(
-      'Executable not started. Exit code: $exitCode, '
-      'isRunning: ${await isRunning()}',
-    );
+    if (exitCode != null && exitCode != 0) {
+      throw Exception('Error starting KDF: Exit code: $exitCode');
+    }
+
+    if (await isRunning()) {
+      return KdfStartupResult.ok;
+    }
+
+    throw Exception('Error starting KDF: Process not running.');
   }
 
   @override
