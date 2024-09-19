@@ -78,8 +78,8 @@ Directory resolvePackageDirectory(
   Directory projectPackageDir,
   String packageRootUri,
 ) {
-  String normalizedProjectPath = path.normalize(projectPackageDir.path);
-  String resolvedPath =
+  final normalizedProjectPath = path.normalize(projectPackageDir.path);
+  final resolvedPath =
       path.normalize(path.join(normalizedProjectPath, packageRootUri));
 
   return Directory(resolvedPath).absolute;

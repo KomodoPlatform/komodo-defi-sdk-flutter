@@ -75,6 +75,8 @@ void configureLogToConsole(
 void logToConsole(LogRecord record) {
   final isError = record.level <= Level.SEVERE;
   final output = isError ? stderr : stdout;
+
+  // ignore: cascade_invocations
   output.writeln('${record.level.name}: ${record.time}: ${record.message}');
   if (record.error != null) {
     output.writeln(record.error);
