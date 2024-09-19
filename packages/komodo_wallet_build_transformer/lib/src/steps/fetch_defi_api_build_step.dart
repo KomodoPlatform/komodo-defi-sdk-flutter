@@ -468,34 +468,36 @@ class FetchDefiApiStep extends BuildStep {
     String zipFilePath,
     String destinationFolder,
   ) async {
-    final bytes = File(zipFilePath).readAsBytesSync();
-    final archive = ZipDecoder().decodeBytes(bytes);
-
-    if (archive.isEmpty) {
-      throw Exception('No files found in $zipFilePath');
-    }
-
-    if (!Directory(destinationFolder).existsSync()) {
-      _log.info('Creating directory: $destinationFolder');
-      Directory(destinationFolder).createSync(recursive: true);
-    }
-
-    _log.fine('Extracting $zipFilePath to $destinationFolder');
-    for (final file in archive) {
-      final filename = file.name;
-      if (file.isFile) {
-        _log.finest('Extracting file: $filename to $destinationFolder');
-        final data = file.content as List<int>;
-        File(path.join(destinationFolder, filename))
-          ..createSync(recursive: true)
-          ..writeAsBytesSync(data);
+    try {
+      // Determine the platform to use the appropriate extraction command
+      if (Platform.isMacOS || Platform.isLinux) {
+        // For macOS and Linux, use the `unzip` command
+        final result =
+            await Process.run('unzip', [zipFilePath, '-d', destinationFolder]);
+        if (result.exitCode != 0) {
+          throw Exception('Error extracting zip file: ${result.stderr}');
+        }
+      } else if (Platform.isWindows) {
+        // For Windows, use PowerShell's Expand-Archive command
+        final result = await Process.run('powershell', [
+          'Expand-Archive',
+          '-Path',
+          zipFilePath,
+          '-DestinationPath',
+          destinationFolder,
+        ]);
+        if (result.exitCode != 0) {
+          throw Exception('Error extracting zip file: ${result.stderr}');
+        }
       } else {
-        _log.finest('Creating directory: $filename');
-        Directory(path.join(destinationFolder, filename))
-            .create(recursive: true);
+        _log.severe('Unsupported platform: ${Platform.operatingSystem}');
+        throw UnsupportedError('Unsupported platform');
       }
+      _log.info('Extraction completed.');
+    } catch (e) {
+      _log.shout('Failed to extract zip file: $e');
+      rethrow;
     }
-    _log.info('Extraction completed.');
   }
 
   void _updateDocumentationIfExists() {
