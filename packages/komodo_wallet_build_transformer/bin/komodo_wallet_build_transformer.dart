@@ -64,8 +64,7 @@ ArgParser buildParser() {
       'config_output_path',
       mandatory: true,
       abbr: 'c',
-      help:
-          'Path to the build config file relative to the artifact '
+      help: 'Path to the build config file relative to the artifact '
           'output package.',
     )
     ..addOption(
@@ -266,41 +265,77 @@ Future<void> _runStep(BuildStep step) async {
 /// Flutter's asset transformer.
 ///
 void _writeSuccessStatus() {
-  final input = File(_argResults.option(inputOptionName)!).readAsStringSync();
+  final inputFile = File(_argResults.option(inputOptionName)!);
   log.info(
     'Writing success status to ${_argResults.option(outputOptionName)}',
   );
 
-  // Update or insert the LAST_RUN comment
-  final updatedInput = _prependLastRunTimestampToFile(input);
+  final updatedInput = _prependLastRunTimestampToFile(inputFile);
   File(_argResults.option(outputOptionName)!)
       .writeAsStringSync(updatedInput, flush: true);
 }
 
 String _prependLastRunTimestampToFile(
-  String inputFileContent, {
+  File inputFile, {
   DateTime? timestamp,
 }) {
+  final inputFileContent = inputFile.readAsStringSync();
   final lastRun = 'LAST_RUN: ${timestamp ?? DateTime.now().toIso8601String()}';
 
-  try {
-    if (inputFileContent.trim().startsWith('{')) {
-      final json = jsonDecode(inputFileContent);
-      if (json is Map<String, dynamic>) {
-        json['LAST_RUN'] = lastRun;
-        log.info('Updated JSON with LAST_RUN: $lastRun');
-        return jsonEncode(json);
-      }
+  if (_isJsonFile(inputFile)) {
+    try {
+      final updatedJson = _updateJsonWithLastRun(inputFileContent, lastRun);
+      log.info('Updated JSON with LAST_RUN: $lastRun');
+      return updatedJson;
+    } catch (e) {
+      log.severe(
+        'Warning: Failed to parse or update JSON. '
+        'Falling back to default behavior.',
+        e,
+      );
     }
-  } catch (e) {
+  }
+
+  if (inputFile.path.toLowerCase().endsWith('.json')) {
     log.severe(
-      'Warning: Failed to parse JSON. Falling back to default behavior.',
-      e,
+      'File extension is .json, but content is not JSON. '
+      'Skipping LAST_RUN update',
     );
+    return inputFileContent;
   }
 
   // Default behavior: prepend or replace the LAST_RUN comment
   return inputFileContent.contains('LAST_RUN:')
       ? inputFileContent.replaceFirst(RegExp('LAST_RUN:.*'), lastRun)
       : '$lastRun\n$inputFileContent';
+}
+
+bool _isJsonFile(File file) {
+  if (!file.path.toLowerCase().endsWith('.json')) {
+    return false;
+  }
+
+  try {
+    final content = file.readAsStringSync().trim();
+    json.decode(content);
+    return true;
+  } on FormatException catch (e) {
+    log.warning('Invalid JSON format in file: ${file.path}', e);
+    return false;
+  } on FileSystemException catch (e, s) {
+    log.warning('Error reading file: ${file.path}', e, s);
+    return false;
+  } catch (e, s) {
+    log.warning('Unexpected error processing file: ${file.path}', e, s);
+    return false;
+  }
+}
+
+String _updateJsonWithLastRun(String jsonContent, String lastRun) {
+  final json = jsonDecode(jsonContent);
+  if (json is Map<String, dynamic>) {
+    json['LAST_RUN'] = lastRun;
+    return jsonEncode(json);
+  }
+  throw const FormatException('JSON content is not an object');
 }
