@@ -273,12 +273,35 @@ void _writeSuccessStatus() {
   );
 
   // Update or insert the LAST_RUN comment
-  final lastRun = 'LAST_RUN: ${DateTime.now().toIso8601String()}';
-  final updatedInput = input.contains('LAST_RUN:')
-      ? input.replaceFirst(RegExp(r'LAST_RUN:.*'), lastRun)
-      : '$lastRun\n$input';
+  final updatedInput = _prependLastRunTimestampToFile(input);
+  File(_argResults.option(outputOptionName)!)
+      .writeAsStringSync(updatedInput, flush: true);
+}
 
-  final output = File(_argResults.option(outputOptionName)!);
+String _prependLastRunTimestampToFile(
+  String inputFileContent, {
+  DateTime? timestamp,
+}) {
+  final lastRun = 'LAST_RUN: ${timestamp ?? DateTime.now().toIso8601String()}';
 
-  output.writeAsStringSync(updatedInput, flush: true);
+  try {
+    if (inputFileContent.trim().startsWith('{')) {
+      final json = jsonDecode(inputFileContent);
+      if (json is Map<String, dynamic>) {
+        json['LAST_RUN'] = lastRun;
+        log.info('Updated JSON with LAST_RUN: $lastRun');
+        return jsonEncode(json);
+      }
+    }
+  } catch (e) {
+    log.severe(
+      'Warning: Failed to parse JSON. Falling back to default behavior.',
+      e,
+    );
+  }
+
+  // Default behavior: prepend or replace the LAST_RUN comment
+  return inputFileContent.contains('LAST_RUN:')
+      ? inputFileContent.replaceFirst(RegExp('LAST_RUN:.*'), lastRun)
+      : '$lastRun\n$inputFileContent';
 }
