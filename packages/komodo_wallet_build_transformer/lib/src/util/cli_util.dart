@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_dynamic_calls
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -42,7 +44,9 @@ Directory? getDependencyDirectory(String projectPath, String dependencyName) {
     // Check if packageConfigFile + rootUri is the same as the projectDir
     if (path.equals(packageRoot, projectDir.path)) {
       projectPackageDir = Directory(
-        path.normalize(path.join(packageRoot, package['packageUri'])),
+        path.normalize(
+          path.join(packageRoot, package['packageUri'] as String?),
+        ),
       );
 
       log.info('Found package $dependencyName at $projectPackageDir');

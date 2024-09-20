@@ -33,7 +33,8 @@ class ApiBuildConfig {
     final value = json[key];
     if (value is! String) {
       throw FormatException(
-          'Expected a string for "$key", but got ${value.runtimeType}');
+        'Expected a string for "$key", but got ${value.runtimeType}',
+      );
     }
     return value;
   }
@@ -42,7 +43,8 @@ class ApiBuildConfig {
     final value = json[key];
     if (value is! bool) {
       throw FormatException(
-          'Expected a boolean for "$key", but got ${value.runtimeType}');
+        'Expected a boolean for "$key", but got ${value.runtimeType}',
+      );
     }
     return value;
   }
@@ -51,13 +53,16 @@ class ApiBuildConfig {
     final value = json[key];
     if (value is! List) {
       throw FormatException(
-          'Expected a list for "$key", but got ${value.runtimeType}');
+        'Expected a list for "$key", but got ${value.runtimeType}',
+      );
     }
     return List<String>.from(
       value.map((e) {
         if (e is! String) {
           throw FormatException(
-              'Expected string elements in "$key" list, but found ${e.runtimeType}');
+            'Expected string elements in "$key" list, but found '
+            '${e.runtimeType}',
+          );
         }
         return e;
       }),
@@ -65,18 +70,22 @@ class ApiBuildConfig {
   }
 
   static Map<String, ApiBuildPlatformConfig> _parsePlatforms(
-      Map<String, dynamic> json) {
+    Map<String, dynamic> json,
+  ) {
     final platforms = json['platforms'];
     if (platforms is! Map<String, dynamic>) {
       throw FormatException(
-          'Expected a map for "platforms", but got ${platforms.runtimeType}');
+        'Expected a map for "platforms", but got ${platforms.runtimeType}',
+      );
     }
     return Map<String, ApiBuildPlatformConfig>.from(
       platforms.map(
         (key, value) {
           if (value is! Map<String, dynamic>) {
             throw FormatException(
-                'Expected a map for platform "$key", but got ${value.runtimeType}');
+              'Expected a map for platform "$key", but got '
+              '${value.runtimeType}',
+            );
           }
           return MapEntry(
             key,

@@ -2,10 +2,12 @@ import 'package:komodo_wallet_build_transformer/src/steps/models/coin_assets/git
 
 /// Represents an event for downloading a GitHub file.
 ///
-/// This event contains information about the download event and the local path where the file will be saved.
+/// This event contains information about the download event and the local path
+///  where the file will be saved.
 /// Represents an event for downloading a GitHub file.
 class GitHubFileDownloadEvent {
-  /// Creates a new [GitHubFileDownloadEvent] with the specified [event] and [localPath].
+  /// Creates a new [GitHubFileDownloadEvent] with the specified [event] and
+  /// [localPath].
   GitHubFileDownloadEvent({
     required this.event,
     required this.localPath,

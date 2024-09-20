@@ -118,6 +118,7 @@ class FetchDefiApiStep extends BuildStep {
 
   /// If set, the OVERRIDE_DEFI_API_DOWNLOAD environment variable will override
   /// any default behavior/configuration. e.g.
+  // ignore: lines_longer_than_80_chars
   /// `flutter build web --release --dart-define=OVERRIDE_DEFI_API_DOWNLOAD=true`
   ///  or `OVERRIDE_DEFI_API_DOWNLOAD=true && flutter build web --release`
   ///
