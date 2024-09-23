@@ -1,0 +1,51 @@
+# Runs unit tests on PRs to ensure the app is working as expected
+name: Run unit tests for packages on PR
+run-name: ${{ github.actor }} is running unit tests on PR 🚀
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "packages/**"
+
+jobs:
+  unit_tests_:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Setup GH Actions
+        uses: actions/checkout@v4
+
+      - name: Get stable flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+
+      - name: Fetch packages and generate assets
+        uses: ./.github/actions/generate-assets
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test unit_test (unix)
+        id: unit_tests
+        continue-on-error: false
+        timeout-minutes: 15
+        run: |
+          cd packages
+          for package in */; do
+            echo "Running tests for $package"
+            cd "$package"
+            if [ -d "test" ]; then
+              flutter clean
+              rm -rf build/*
+              rm -rf web/src/mm2/*
+              rm -rf web/src/kdfi/*
+              rm -rf web/dist/*
+
+              flutter test
+            else
+              echo "No test directory found in $package"
+            fi
+            cd ..
+          done

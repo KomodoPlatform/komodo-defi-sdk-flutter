@@ -1,0 +1,39 @@
+# Rule for running static analysis and code formatting checks on all PRs
+# Runs static analysis and code formatting checks on all PRs to ensure the codebase is clean and consistent
+name: Validate Packages Code Guidelines
+run-name: ${{ github.actor }} is validating code guidelines 🚀
+
+on:
+  pull_request:
+    branches:
+      - "*"
+    paths:
+      - "packages/**"
+
+jobs:
+  validate_packages_code_guidelines:
+    runs-on: macos-latest
+
+    steps:
+      - name: Setup GH Actions
+        uses: actions/checkout@v4
+
+      - name: Get stable flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+
+      - name: Fetch packages and generate assets
+        uses: ./.github/actions/generate-assets
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate dart code
+        run: |
+          cd packages
+          for package in */; do
+            echo "Analyzing package: $package"
+            cd "$package"
+            flutter analyze
+            cd ..
+          done
