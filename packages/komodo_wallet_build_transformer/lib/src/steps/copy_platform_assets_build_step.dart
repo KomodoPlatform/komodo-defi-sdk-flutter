@@ -74,7 +74,6 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
         Directory(path.join(projectRoot.path, kdfWebPath));
     final sourceDir = Directory(path.join(artifactOutputDirectory.path, 'web'));
     // TODO: Make configurable with a pubspec.yaml setting (cli parameter)
-    // final destDir = Directory(path.join(projectRoot.path, 'web', 'kdf', 'res'));
     final destDir = kdfLibDestDirectory.parent;
 
     await _copyAssetsFromDir(
@@ -101,9 +100,9 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
           sourceFile.copySync(destFile.path);
         }
       }
-      _log.info("Copying assets completed");
+      _log.info('Copying assets completed');
     } catch (e, s) {
-      _log.severe("Failed to copy assets with error", e, s);
+      _log.severe('Failed to copy assets with error', e, s);
       rethrow;
     }
   }
@@ -116,17 +115,18 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
     try {
       if (!sourceDir.existsSync()) {
         _log.info(
-          "Source directory ${sourceDir.path} does not exist. Skipping copy.",
+          'Source directory ${sourceDir.path} does not exist. Skipping copy.',
         );
         return;
       }
 
       if (sourceDir.path == destDir.path) {
-        _log.info(
-          "Source and destination directories are the same. Skipping copy.",
-        );
-        _log.fine("Source directory (absolute): ${sourceDir.absolute}");
-        _log.fine("Destination directory (absolute): ${destDir.absolute}");
+        _log
+          ..info(
+            'Source and destination directories are the same. Skipping copy.',
+          )
+          ..fine('Source directory (absolute): ${sourceDir.absolute}')
+          ..fine('Destination directory (absolute): ${destDir.absolute}');
         return;
       }
 
@@ -137,7 +137,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
         destDir.createSync(recursive: true);
       }
 
-      await for (var entity in sourceDir.list(recursive: true)) {
+      await for (final entity in sourceDir.list(recursive: true)) {
         if (entity is File) {
           final relativePath = path.relative(entity.path, from: sourceDir.path);
           final destFile = File(path.join(destDir.path, relativePath));
@@ -158,10 +158,10 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
         }
       }
       _log.info(
-        "Copying assets from ${sourceDir.path} to ${destDir.path} completed",
+        'Copying assets from ${sourceDir.path} to ${destDir.path} completed',
       );
     } catch (e, s) {
-      _log.severe("Failed to copy assets from directory with error", e, s);
+      _log.severe('Failed to copy assets from directory with error', e, s);
       rethrow;
     }
   }
@@ -179,9 +179,9 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
           file.deleteSync();
         }
       }
-      _log.info("Reverting assets completed");
+      _log.info('Reverting assets completed');
     } catch (e, s) {
-      _log.severe("Failed to revert assets with error", e, s);
+      _log.severe('Failed to revert assets with error', e, s);
       rethrow;
     }
   }
@@ -206,7 +206,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
 
     if (!sourceDir.existsSync()) {
       _log.info(
-        "Source directory ${sourceDir.path} does not exist. Skipping check.",
+        'Source directory ${sourceDir.path} does not exist. Skipping check.',
       );
       return true;
     }
@@ -268,32 +268,32 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }
 
   File _sourceIcon(String appName) =>
-      File(path.joinAll([projectRoot.path, "linux", "$appName.svg"]));
+      File(path.joinAll([projectRoot.path, 'linux', '$appName.svg']));
 
   File _destIcon(String appName) => File(
         path.joinAll([
           projectRoot.path,
-          "build",
-          "linux",
-          "x64",
-          "release",
-          "bundle",
-          "$appName.svg",
+          'build',
+          'linux',
+          'x64',
+          'release',
+          'bundle',
+          '$appName.svg',
         ]),
       );
 
   File _sourceDesktop(String appName) =>
-      File(path.joinAll([projectRoot.path, "linux", "$appName.desktop"]));
+      File(path.joinAll([projectRoot.path, 'linux', '$appName.desktop']));
 
   File _destDesktop(String appName) => File(
         path.joinAll([
           projectRoot.path,
-          "build",
-          "linux",
-          "x64",
-          "release",
-          "bundle",
-          "$appName.desktop",
+          'build',
+          'linux',
+          'x64',
+          'release',
+          'bundle',
+          '$appName.desktop',
         ]),
       );
 }

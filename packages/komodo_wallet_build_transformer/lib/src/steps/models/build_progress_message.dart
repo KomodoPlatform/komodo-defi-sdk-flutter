@@ -4,7 +4,7 @@ class BuildProgressMessage {
   ///
   /// The [message] parameter represents the message of the progress.
   /// The [progress] parameter represents the progress value.
-  /// The [success] parameter indicates whether the progress was successful or not.
+  /// The [success] parameter indicates whether the progress was successful.
   /// The [finished] parameter indicates whether the progress is finished.
   const BuildProgressMessage({
     required this.message,

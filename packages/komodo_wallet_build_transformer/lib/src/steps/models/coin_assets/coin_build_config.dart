@@ -26,16 +26,16 @@ class CoinBuildConfig {
   factory CoinBuildConfig.fromJson(Map<String, dynamic> json) {
     return CoinBuildConfig(
       updateCommitOnBuild: json['update_commit_on_build'] as bool,
-      bundledCoinsRepoCommit: json['bundled_coins_repo_commit'].toString(),
-      coinsRepoApiUrl: json['coins_repo_api_url'].toString(),
-      coinsRepoContentUrl: json['coins_repo_content_url'].toString(),
-      coinsRepoBranch: json['coins_repo_branch'].toString(),
+      bundledCoinsRepoCommit: json['bundled_coins_repo_commit'] as String,
+      coinsRepoApiUrl: json['coins_repo_api_url'] as String,
+      coinsRepoContentUrl: json['coins_repo_content_url'] as String,
+      coinsRepoBranch: json['coins_repo_branch'] as String,
       runtimeUpdatesEnabled: json['runtime_updates_enabled'] as bool,
       mappedFiles: Map<String, String>.from(
-        json['mapped_files'] as Map<String, dynamic>,
+        json['mapped_files'] as Map<String, dynamic>? ?? {},
       ),
       mappedFolders: Map<String, String>.from(
-        json['mapped_folders'] as Map<String, dynamic>,
+        json['mapped_folders'] as Map<String, dynamic>? ?? {},
       ),
     );
   }
@@ -111,43 +111,46 @@ class CoinBuildConfig {
         'mapped_folders': mappedFolders,
       };
 
-  /// Loads the coins runtime update configuration synchronously from the specified [path].
+  /// Loads the coins runtime update configuration synchronously from the
+  /// specified [path].
   ///
   /// Prints the path from which the configuration is being loaded.
-  /// Reads the contents of the file at the specified path and decodes it as JSON.
-  /// If the 'coins' key is not present in the decoded data, prints an error message and exits with code 1.
+  /// Reads the contents of the file at the specified path and decodes it as
+  /// JSON.
+  /// If the 'coins' key is not present in the decoded data, prints an error
+  /// message and exits with code 1.
   /// Returns a [CoinBuildConfig] object created from the decoded 'coins' data.
   static CoinBuildConfig loadSync(String path) {
     print('Loading coins updates config from $path');
 
     try {
-      final File file = File(path);
-      final String contents = file.readAsStringSync();
-      final Map<String, dynamic> data =
-          jsonDecode(contents) as Map<String, dynamic>;
+      final file = File(path);
+      final contents = file.readAsStringSync();
+      final data = jsonDecode(contents) as Map<String, dynamic>;
 
-      return CoinBuildConfig.fromJson(data['coins']);
+      return CoinBuildConfig.fromJson(
+        data['coins'] as Map<String, dynamic>? ?? {},
+      );
     } catch (e) {
       print('Error loading coins updates config: $e');
       throw Exception('Error loading coins update config');
     }
   }
 
-  /// Saves the coins configuration to the specified asset path and optionally updates the build configuration file.
+  /// Saves the coins configuration to the specified asset path and optionally
+  /// updates the build configuration file.
   ///
-  /// The [assetPath] parameter specifies the path where the coins configuration will be saved.
-  /// The [updateBuildConfig] parameter indicates whether to update the build configuration file or not.
-  ///
-  /// If [updateBuildConfig] is `true`, the coins configuration will also be saved to the build configuration file specified by [buildConfigPath].
-  ///
-  /// If [originalBuildConfig] is provided, the coins configuration will be merged with the original build configuration before saving.
+  /// The [assetPath] parameter specifies the path where the coins configuration
+  /// will be saved.
+  /// If [originalBuildConfig] is provided, the coins configuration will be
+  /// merged with the original build configuration before saving.
   ///
   /// Throws an exception if any error occurs during the saving process.
   Future<void> save({
     required String assetPath,
     BuildConfig? originalBuildConfig,
   }) async {
-    final List<String> foldersToCreate = <String>[
+    final foldersToCreate = <String>[
       path.dirname(assetPath),
     ];
     createFolders(foldersToCreate);
@@ -156,9 +159,9 @@ class CoinBuildConfig {
       ..addAll({'coins': toJson()});
 
     print('Saving coin assets config to $assetPath');
-    const encoder = JsonEncoder.withIndent("    ");
+    const encoder = JsonEncoder.withIndent('    ');
 
-    final String data = encoder.convert(mergedConfig);
+    final data = encoder.convert(mergedConfig);
     await File(assetPath).writeAsString(data, flush: true);
   }
 }

@@ -2,9 +2,6 @@ import 'package:komodo_wallet_build_transformer/src/steps/models/api/api_build_c
 import 'package:komodo_wallet_build_transformer/src/steps/models/coin_assets/coin_build_config.dart';
 
 class BuildConfig {
-  final ApiBuildConfig apiConfig;
-  final CoinBuildConfig coinCIConfig;
-
   BuildConfig({
     required this.apiConfig,
     required this.coinCIConfig,
@@ -17,6 +14,9 @@ class BuildConfig {
           CoinBuildConfig.fromJson(json['coins'] as Map<String, dynamic>),
     );
   }
+
+  final ApiBuildConfig apiConfig;
+  final CoinBuildConfig coinCIConfig;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'api': apiConfig.toJson(),

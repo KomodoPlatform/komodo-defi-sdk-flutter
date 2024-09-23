@@ -14,19 +14,6 @@ import 'package:path/path.dart' as path;
 
 /// A build step that fetches coin assets from a GitHub repository.
 class FetchCoinAssetsBuildStep extends BuildStep {
-  final File buildConfigOutput;
-  final BuildConfig? originalBuildConfig;
-  final String artifactOutputDirectory;
-  final CoinBuildConfig config;
-  final GitHubFileDownloader downloader;
-  final ReceivePort? receivePort;
-  final GithubApiProvider githubApiProvider;
-  final _log = Logger('FetchCoinAssetsBuildStep');
-
-  @override
-  final String id = idStatic;
-  static const idStatic = 'fetch_coin_assets';
-
   FetchCoinAssetsBuildStep({
     required this.artifactOutputDirectory,
     required this.config,
@@ -64,7 +51,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       token: githubToken,
     );
 
-    final GitHubFileDownloader downloader = GitHubFileDownloader(
+    final downloader = GitHubFileDownloader(
       apiProvider: provider,
       repoContentUrl: config.coinsRepoContentUrl,
     );
@@ -76,8 +63,22 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       originalBuildConfig: buildConfig,
       buildConfigOutput: outputBuildConfigFile,
       githubApiProvider: provider,
+      receivePort: receivePort,
     );
   }
+
+  final File buildConfigOutput;
+  final BuildConfig? originalBuildConfig;
+  final String artifactOutputDirectory;
+  final CoinBuildConfig config;
+  final GitHubFileDownloader downloader;
+  final ReceivePort? receivePort;
+  final GithubApiProvider githubApiProvider;
+  final _log = Logger('FetchCoinAssetsBuildStep');
+
+  @override
+  final String id = idStatic;
+  static const idStatic = 'fetch_coin_assets';
 
   @override
   Future<void> build() async {
@@ -92,7 +93,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       branch: config.coinsRepoBranch,
     );
     _log.fine('Latest commit hash: $latestCommitHash');
-    CoinBuildConfig configWithUpdatedCommit = config;
+    var configWithUpdatedCommit = config;
 
     if (config.updateCommitOnBuild) {
       _log.info('Updating commit hash in build config');
@@ -110,7 +111,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       _adjustPaths(configWithUpdatedCommit.mappedFolders),
     );
 
-    final bool wasCommitHashUpdated = config.bundledCoinsRepoCommit !=
+    final wasCommitHashUpdated = config.bundledCoinsRepoCommit !=
         configWithUpdatedCommit.bundledCoinsRepoCommit;
 
     if (wasCommitHashUpdated || !alreadyHadCoinAssets) {
@@ -135,7 +136,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
   @override
   Future<bool> canSkip() async {
-    final String latestCommitHash = await githubApiProvider.getLatestCommitHash(
+    final latestCommitHash = await githubApiProvider.getLatestCommitHash(
       branch: config.coinsRepoBranch,
     );
 
@@ -165,7 +166,8 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   Future<void> revert([Exception? e]) async {
     if (e is BuildStepWithoutRevertException) {
       _log.warning(
-        'Step not reverted because the build process was completed with changes',
+        'Step not reverted because the build process was completed with '
+        'changes',
       );
 
       return;
@@ -176,23 +178,22 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
     // Try `git checkout` to revert changes instead of deleting all files
     // because there may be mapped files/folders that are tracked by git
-    final List<String> mappedFilePaths = config.mappedFiles.keys.toList();
-    final List<String> mappedFolderPaths = config.mappedFolders.keys.toList();
+    final mappedFilePaths = config.mappedFiles.keys.toList();
+    final mappedFolderPaths = config.mappedFolders.keys.toList();
 
-    final Iterable<List<String>> mappedFolderFilePaths =
-        mappedFolderPaths.map(_getFilesInFolder);
+    final mappedFolderFilePaths = mappedFolderPaths.map(_getFilesInFolder);
 
-    final List<String> allFiles = mappedFilePaths +
+    final allFiles = mappedFilePaths +
         mappedFolderFilePaths.expand((List<String> x) => x).toList();
 
     await GitHubFileDownloader.revertOrDeleteGitFiles(allFiles);
   }
 
   Future<bool> _canSkipMappedFiles(Map<String, String> files) async {
-    for (final MapEntry<String, String> mappedFile in files.entries) {
-      final GitHubFile remoteFile =
+    for (final mappedFile in files.entries) {
+      final remoteFile =
           await githubApiProvider.getFileMetadata(mappedFile.value);
-      final Result canSkipFile = await _canSkipFile(
+      final canSkipFile = await _canSkipFile(
         path.join(artifactOutputDirectory, mappedFile.key),
         remoteFile,
       );
@@ -206,13 +207,12 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   }
 
   Future<bool> _canSkipMappedFolders(Map<String, String> folders) async {
-    for (final MapEntry<String, String> mappedFolder in folders.entries) {
-      final List<GitHubFile> remoteFolderContents =
-          await githubApiProvider.getDirectoryContents(
+    for (final mappedFolder in folders.entries) {
+      final remoteFolderContents = await githubApiProvider.getDirectoryContents(
         mappedFolder.value,
         config.bundledCoinsRepoCommit,
       );
-      final Result canSkipFolder = await _canSkipDirectory(
+      final canSkipFolder = await _canSkipDirectory(
         path.join(artifactOutputDirectory, mappedFolder.key),
         remoteFolderContents,
       );
@@ -229,7 +229,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     String localFilePath,
     GitHubFile remoteFile,
   ) async {
-    final File localFile = File(localFilePath);
+    final localFile = File(localFilePath);
 
     if (!localFile.existsSync()) {
       return Result.error(
@@ -237,7 +237,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       );
     }
 
-    final int localFileSize = await localFile.length();
+    final localFileSize = await localFile.length();
     if (remoteFile.size != localFileSize) {
       return Result.error(
         '$localFilePath size mismatch: '
@@ -245,7 +245,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       );
     }
 
-    final String localFileSha = calculateGithubSha1(localFilePath);
+    final localFileSha = calculateGithubSha1(localFilePath);
     if (localFileSha != remoteFile.sha) {
       return Result.error(
         '$localFilePath sha mismatch: '
@@ -260,15 +260,15 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     String directory,
     List<GitHubFile> remoteDirectoryContents,
   ) async {
-    final Directory localFolder = Directory(directory);
+    final localFolder = Directory(directory);
 
     if (!localFolder.existsSync()) {
       return Result.error('$directory does not exist');
     }
 
-    for (final GitHubFile remoteFile in remoteDirectoryContents) {
-      final String localFilePath = path.join(directory, remoteFile.name);
-      final Result canSkipFile = await _canSkipFile(
+    for (final remoteFile in remoteDirectoryContents) {
+      final localFilePath = path.join(directory, remoteFile.name);
+      final canSkipFile = await _canSkipFile(
         localFilePath,
         remoteFile,
       );
@@ -281,9 +281,8 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   }
 
   List<String> _getFilesInFolder(String folderPath) {
-    final Directory localFolder = Directory(folderPath);
-    final List<FileSystemEntity> localFolderContents =
-        localFolder.listSync(recursive: true);
+    final localFolder = Directory(folderPath);
+    final localFolderContents = localFolder.listSync(recursive: true);
     return localFolderContents
         .map((FileSystemEntity file) => file.path)
         .toList();
@@ -304,7 +303,8 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   void onProgressData(dynamic message, ReceivePort? recevePort) {
     if (message is BuildProgressMessage) {
       _log.info(
-        '\r${message.message} - Progress: ${message.progress.toStringAsFixed(2)}% \x1b[K',
+        '\r${message.message} - Progress: '
+        '${message.progress.toStringAsFixed(2)}% \x1b[K',
       );
 
       if (message.progress == 100 && message.finished) {

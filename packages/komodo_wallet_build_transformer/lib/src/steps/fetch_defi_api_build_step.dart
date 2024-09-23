@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
 import 'package:html/parser.dart' as parser;
 import 'package:http/http.dart' as http;
@@ -13,23 +12,19 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 class FetchDefiApiStep extends BuildStep {
-  @override
-  final String id = idStatic;
-  static const idStatic = 'fetch_defi_api';
-
-  final _log = Logger('FetchDefiApiStep');
-
-  // final String projectRoot;
-  final String apiCommitHash;
-  final Map<String, ApiBuildPlatformConfig> platformsConfig;
-  final List<String> sourceUrls;
-  final String apiBranch;
-  final String artifactOutputPath;
-  final File buildConfigFile;
-  final GithubApiProvider githubApiProvider;
-  String? selectedPlatform;
-  bool forceUpdate;
-  bool enabled;
+  FetchDefiApiStep({
+    // required this.projectRoot,
+    required this.apiCommitHash,
+    required this.platformsConfig,
+    required this.sourceUrls,
+    required this.apiBranch,
+    required this.artifactOutputPath,
+    required this.buildConfigFile,
+    required this.githubApiProvider,
+    this.selectedPlatform,
+    this.forceUpdate = false,
+    this.enabled = true,
+  });
 
   factory FetchDefiApiStep.withBuildConfig(
     BuildConfig buildConfig,
@@ -57,20 +52,23 @@ class FetchDefiApiStep extends BuildStep {
       githubApiProvider: apiProvider,
     );
   }
+  @override
+  final String id = idStatic;
+  static const idStatic = 'fetch_defi_api';
 
-  FetchDefiApiStep({
-    // required this.projectRoot,
-    required this.apiCommitHash,
-    required this.platformsConfig,
-    required this.sourceUrls,
-    required this.apiBranch,
-    required this.artifactOutputPath,
-    required this.buildConfigFile,
-    required this.githubApiProvider,
-    this.selectedPlatform,
-    this.forceUpdate = false,
-    this.enabled = true,
-  });
+  final _log = Logger('FetchDefiApiStep');
+
+  // final String projectRoot;
+  final String apiCommitHash;
+  final Map<String, ApiBuildPlatformConfig> platformsConfig;
+  final List<String> sourceUrls;
+  final String apiBranch;
+  final String artifactOutputPath;
+  final File buildConfigFile;
+  final GithubApiProvider githubApiProvider;
+  String? selectedPlatform;
+  bool forceUpdate;
+  bool enabled;
 
   @override
   Future<void> build() async {
@@ -108,7 +106,7 @@ class FetchDefiApiStep extends BuildStep {
     _log.info('=====================');
     for (final platform in platformsToUpdate) {
       final progressString =
-          '${(platformsToUpdate.indexOf(platform) + 1)}/${platformsToUpdate.length}';
+          '${platformsToUpdate.indexOf(platform) + 1}/${platformsToUpdate.length}';
       _log.info('[$progressString] Updating $platform platform...');
       await _updatePlatform(platform, platformsConfig);
     }
@@ -120,6 +118,7 @@ class FetchDefiApiStep extends BuildStep {
 
   /// If set, the OVERRIDE_DEFI_API_DOWNLOAD environment variable will override
   /// any default behavior/configuration. e.g.
+  // ignore: lines_longer_than_80_chars
   /// `flutter build web --release --dart-define=OVERRIDE_DEFI_API_DOWNLOAD=true`
   ///  or `OVERRIDE_DEFI_API_DOWNLOAD=true && flutter build web --release`
   ///
@@ -154,7 +153,9 @@ class FetchDefiApiStep extends BuildStep {
     Map<String, ApiBuildPlatformConfig> config,
   ) async {
     final updateMessage = overrideDefiApiDownload != null
-        ? '${overrideDefiApiDownload! ? 'FORCING' : 'SKIPPING'} update of $platform platform because OVERRIDE_DEFI_API_DOWNLOAD is set to $overrideDefiApiDownload'
+        ? '${overrideDefiApiDownload! ? 'FORCING' : 'SKIPPING'} update of '
+            '$platform platform because OVERRIDE_DEFI_API_DOWNLOAD is set to '
+            '$overrideDefiApiDownload'
         : null;
 
     if (updateMessage != null) {
@@ -211,8 +212,7 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   bool _shouldUpdate(bool isOutdated) {
-    return overrideDefiApiDownload == true ||
-        (overrideDefiApiDownload != false && (forceUpdate || isOutdated));
+    return overrideDefiApiDownload ?? (forceUpdate || isOutdated);
   }
 
   Future<String> _downloadFile(String url, String destinationFolder) async {
@@ -224,7 +224,7 @@ class FetchDefiApiStep extends BuildStep {
     final zipFilePath = path.join(destinationFolder, zipFileName);
 
     final directory = Directory(destinationFolder);
-    if (!await directory.exists()) {
+    if (!directory.existsSync()) {
       await directory.create(recursive: true);
     }
 
@@ -296,15 +296,17 @@ class FetchDefiApiStep extends BuildStep {
     }
 
     try {
-      final lastUpdatedData = json.decode(lastUpdatedFile.readAsStringSync());
+      final lastUpdatedData = json.decode(lastUpdatedFile.readAsStringSync())
+              as Map<String, dynamic>? ??
+          {};
       if (lastUpdatedData['api_commit_hash'] == apiCommitHash) {
         final storedChecksums =
-            List<String>.from(lastUpdatedData['checksums'] ?? []);
+            List<String>.from(lastUpdatedData['checksums'] as List? ?? []);
         final targetChecksums =
             List<String>.from(config[platform]!.validZipSha256Checksums);
 
         if (storedChecksums.toSet().containsAll(targetChecksums)) {
-          _log.info("version: $apiCommitHash and SHA256 checksum match.");
+          _log.info('version: $apiCommitHash and SHA256 checksum match.');
           return false;
         }
       }
@@ -318,8 +320,9 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   Future<void> _updateWebPackages() async {
-    _log.info('Updating Web platform...');
-    _log.fine('Running npm install in $artifactOutputPath');
+    _log
+      ..info('Updating Web platform...')
+      ..fine('Running npm install in $artifactOutputPath');
     final installResult = await Process.run(
       'npm',
       ['install'],
@@ -358,7 +361,7 @@ class FetchDefiApiStep extends BuildStep {
     final binaryName = ['mm2', 'kdf']
         .map((e) => File(path.join(destinationFolder, e)))
         .where((filePath) => filePath.existsSync())
-      ..forEach((filePath) => setFilePermissions(filePath));
+      ..forEach(setFilePermissions);
   }
 
   String _getPlatformDestinationFolder(String platform) {
@@ -375,9 +378,9 @@ class FetchDefiApiStep extends BuildStep {
     String sourceUrl,
   ) async {
     if (sourceUrl.startsWith('https://api.github.com/repos/')) {
-      return await _fetchFromGitHub(platform, config, sourceUrl);
+      return _fetchFromGitHub(platform, config, sourceUrl);
     } else {
-      return await _fetchFromBaseUrl(platform, config, sourceUrl);
+      return _fetchFromBaseUrl(platform, config, sourceUrl);
     }
   }
 
@@ -413,15 +416,19 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<String> _fetchFromBaseUrl(
     String platform,
-    Map<String, dynamic> config,
+    Map<String, ApiBuildPlatformConfig> config,
     String sourceUrl,
   ) async {
+    if (!config.containsKey(platform)) {
+      throw ArgumentError('Invalid platform: $platform');
+    }
+
     final url = '$sourceUrl/$apiBranch/';
     final response = await http.get(Uri.parse(url));
     _checkResponseSuccess(response);
 
     final document = parser.parse(response.body);
-    final matchingKeyword = config[platform]['matching_keyword'];
+    final matchingKeyword = config[platform]!.matchingKeyword;
     final extensions = ['.zip'];
     final apiVersionShortHash = apiCommitHash.substring(0, 7);
 
@@ -429,7 +436,7 @@ class FetchDefiApiStep extends BuildStep {
       final href = element.attributes['href'];
       if (href != null &&
           href.contains(matchingKeyword) &&
-          extensions.any((extension) => href.endsWith(extension)) &&
+          extensions.any(href.endsWith) &&
           href.contains(apiVersionShortHash)) {
         return '$sourceUrl/$apiBranch/$href';
       }
@@ -468,34 +475,36 @@ class FetchDefiApiStep extends BuildStep {
     String zipFilePath,
     String destinationFolder,
   ) async {
-    final bytes = File(zipFilePath).readAsBytesSync();
-    final archive = ZipDecoder().decodeBytes(bytes);
-
-    if (archive.isEmpty) {
-      throw Exception('No files found in $zipFilePath');
-    }
-
-    if (!Directory(destinationFolder).existsSync()) {
-      _log.info('Creating directory: $destinationFolder');
-      Directory(destinationFolder).createSync(recursive: true);
-    }
-
-    _log.fine('Extracting $zipFilePath to $destinationFolder');
-    for (final file in archive) {
-      final filename = file.name;
-      if (file.isFile) {
-        _log.finest('Extracting file: $filename to $destinationFolder');
-        final data = file.content as List<int>;
-        File(path.join(destinationFolder, filename))
-          ..createSync(recursive: true)
-          ..writeAsBytesSync(data);
+    try {
+      // Determine the platform to use the appropriate extraction command
+      if (Platform.isMacOS || Platform.isLinux) {
+        // For macOS and Linux, use the `unzip` command
+        final result =
+            await Process.run('unzip', [zipFilePath, '-d', destinationFolder]);
+        if (result.exitCode != 0) {
+          throw Exception('Error extracting zip file: ${result.stderr}');
+        }
+      } else if (Platform.isWindows) {
+        // For Windows, use PowerShell's Expand-Archive command
+        final result = await Process.run('powershell', [
+          'Expand-Archive',
+          '-Path',
+          zipFilePath,
+          '-DestinationPath',
+          destinationFolder,
+        ]);
+        if (result.exitCode != 0) {
+          throw Exception('Error extracting zip file: ${result.stderr}');
+        }
       } else {
-        _log.finest('Creating directory: $filename');
-        Directory(path.join(destinationFolder, filename))
-            .create(recursive: true);
+        _log.severe('Unsupported platform: ${Platform.operatingSystem}');
+        throw UnsupportedError('Unsupported platform');
       }
+      _log.info('Extraction completed.');
+    } catch (e) {
+      _log.shout('Failed to extract zip file: $e');
+      rethrow;
     }
-    _log.info('Extraction completed.');
   }
 
   void _updateDocumentationIfExists() {
@@ -512,53 +521,4 @@ class FetchDefiApiStep extends BuildStep {
     //   _logMessage('Updated API version in documentation.');
     // }
   }
-
-  // late final ArgResults _argResults;
-
-// void main(List<String> arguments) async {
-//   final parser = ArgParser()
-//     ..addOption('platform', abbr: 'p', help: 'Specify the platform to update')
-//     ..addOption('api-version',
-//         abbr: 'a', help: 'Specify the API version to update to')
-//     ..addFlag('force',
-//         abbr: 'f', negatable: false, help: 'Force update the API module')
-//     ..addFlag('help',
-//         abbr: 'h', negatable: false, help: 'Display usage information');
-
-//   _argResults = parser.parse(arguments);
-
-//   if (_argResults['help']) {
-//     _logMessage('Usage: dart app_build/build_steps.dart [options]');
-//     _logMessage(parser.usage);
-//     return;
-//   }
-
-//   // final projectRoot = Directory.current.path;
-//   // final configFile = File('$projectRoot/app_build/build_config.json');
-//   final config = json.decode(configFile.readAsStringSync());
-
-//   final platform = _argResults['platform'] as String?;
-//   final apiVersion =
-//       _argResults['api-version'] as String? ?? config['api']['api_commit_hash'];
-//   final forceUpdate = _argResults['force'] as bool;
-
-//   final fetchDefiApiStep = FetchDefiApiStep(
-//     // projectRoot: projectRoot,
-//     apiCommitHash: apiVersion,
-//     platformsConfig: config['api']['platforms'],
-//     sourceUrls: List<String>.from(config['api']['source_urls']),
-//     apiBranch: config['api']['branch'],
-//     artifactOutputPath: config['artifact_output_path'],
-//     buildConfigFile: configFile,
-//     selectedPlatform: platform,
-//     forceUpdate: forceUpdate,
-//     enabled: true,
-//   );
-
-//   await fetchDefiApiStep.build();
-
-//   if (_argResults.wasParsed('api-version')) {
-//     config['api']['api_commit_hash'] = apiVersion;
-//     configFile.writeAsStringSync(json.encode(config));
-//   }
 }

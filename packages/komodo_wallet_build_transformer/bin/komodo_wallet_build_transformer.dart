@@ -59,14 +59,13 @@ const List<String> _knownBuildStepIds = [
 ];
 
 ArgParser buildParser() {
-  final parser = ArgParser();
-  parser
+  final parser = ArgParser()
     ..addOption(
       'config_output_path',
       mandatory: true,
       abbr: 'c',
-      help:
-          'Path to the build config file relative to the artifact output package.',
+      help: 'Path to the build config file relative to the artifact '
+          'output package.',
     )
     ..addOption(
       'artifact_output_package',
@@ -106,8 +105,8 @@ ArgParser buildParser() {
     parser.addFlag(
       id,
       negatable: false,
-      help:
-          'Run the $id build step. Must provide at least one build step flag or specify -all.',
+      help: 'Run the $id build step. Must provide at least one build step flag '
+          'or specify -all.',
     );
   }
 
@@ -115,22 +114,15 @@ ArgParser buildParser() {
 }
 
 void printUsage(ArgParser argParser) {
-  print('Usage: dart komodo_wallet_build_transformer.dart <flags> [arguments]');
-  print(argParser.usage);
-}
-
-Map<String, dynamic> loadJsonFile(String path) {
-  final file = File(path);
-  if (!file.existsSync()) {
-    log.warning('Json file not found: $path');
-    throw Exception('Json file not found: $path');
-  }
-  final content = file.readAsStringSync();
-  return jsonDecode(content);
+  log
+    ..info(
+      'Usage: dart komodo_wallet_build_transformer.dart <flags> [arguments]',
+    )
+    ..info(argParser.usage);
 }
 
 void main(List<String> arguments) async {
-  final ArgParser argParser = buildParser();
+  final argParser = buildParser();
   try {
     _argResults = argParser.parse(arguments);
 
@@ -167,8 +159,11 @@ void main(List<String> arguments) async {
     }
     log.info('Build config found at ${configFile.absolute.path}');
 
-    final config =
-        BuildConfig.fromJson(jsonDecode(configFile.readAsStringSync()));
+    final config = BuildConfig.fromJson(
+      // The [BuildConfig] fromJson methods throw exceptions if the input is
+      // invalid, so we can safely pass an empty map as the default value.
+      jsonDecode(configFile.readAsStringSync()) as Map<String, dynamic>? ?? {},
+    );
 
     final steps = _buildStepBootstrapper(
       config,
@@ -183,7 +178,7 @@ void main(List<String> arguments) async {
 
     final buildStepFutures = steps
         .where((step) => _argResults.flag('all') || _argResults.flag(step.id))
-        .map((step) => _runStep(step));
+        .map(_runStep);
 
     log.info('${buildStepFutures.length} build steps to run');
 
@@ -217,7 +212,9 @@ void throwMissingConfigException(File configFile) {
       )
       .map((file) => '${file.path}\n');
   throw Exception(
-    'Config file not found in ${configFile.path} (abs: ${configFile.absolute.path}). \nProject root abs (${_projectRoot.absolute.path}).\n Did you mean one of these? \n$files',
+    'Config file not found in ${configFile.path} '
+    '(abs: ${configFile.absolute.path}). \nProject root abs '
+    '(${_projectRoot.absolute.path}).\n Did you mean one of these? \n$files',
   );
 }
 
@@ -240,14 +237,15 @@ Future<void> _runStep(BuildStep step) async {
     );
   } catch (e) {
     log.severe(
-      '$stepName: Error running build step $stepName: ${e.toString()}',
+      '$stepName: Error running build step $stepName: $e',
       e,
     );
 
     if (e is! BuildStepWithoutRevertException) {
       await step.revert((e is Exception) ? e : null).catchError(
-            (revertError) => log.severe(
-              '$stepName: Error reverting build step: $revertError',
+            (Object revertError) => log.severe(
+              '$stepName: Error reverting build step',
+              revertError,
             ),
           );
     }
@@ -267,18 +265,77 @@ Future<void> _runStep(BuildStep step) async {
 /// Flutter's asset transformer.
 ///
 void _writeSuccessStatus() {
-  final input = File(_argResults.option(inputOptionName)!).readAsStringSync();
+  final inputFile = File(_argResults.option(inputOptionName)!);
   log.info(
     'Writing success status to ${_argResults.option(outputOptionName)}',
   );
 
-  // Update or insert the LAST_RUN comment
-  final lastRun = 'LAST_RUN: ${DateTime.now().toIso8601String()}';
-  final updatedInput = input.contains('LAST_RUN:')
-      ? input.replaceFirst(RegExp(r'LAST_RUN:.*'), lastRun)
-      : '$lastRun\n$input';
+  final updatedInput = _prependLastRunTimestampToFile(inputFile);
+  File(_argResults.option(outputOptionName)!)
+      .writeAsStringSync(updatedInput, flush: true);
+}
 
-  final output = File(_argResults.option(outputOptionName)!);
+String _prependLastRunTimestampToFile(
+  File inputFile, {
+  DateTime? timestamp,
+}) {
+  final inputFileContent = inputFile.readAsStringSync();
+  final lastRun = 'LAST_RUN: ${timestamp ?? DateTime.now().toIso8601String()}';
 
-  output.writeAsStringSync(updatedInput, flush: true);
+  if (_isJsonFile(inputFile)) {
+    try {
+      final updatedJson = _updateJsonWithLastRun(inputFileContent, lastRun);
+      log.info('Updated JSON with LAST_RUN: $lastRun');
+      return updatedJson;
+    } catch (e) {
+      log.severe(
+        'Warning: Failed to parse or update JSON. '
+        'Falling back to default behavior.',
+        e,
+      );
+    }
+  }
+
+  if (inputFile.path.toLowerCase().endsWith('.json')) {
+    log.severe(
+      'File extension is .json, but content is not JSON. '
+      'Skipping LAST_RUN update',
+    );
+    return inputFileContent;
+  }
+
+  // Default behavior: prepend or replace the LAST_RUN comment
+  return inputFileContent.contains('LAST_RUN:')
+      ? inputFileContent.replaceFirst(RegExp('LAST_RUN:.*'), lastRun)
+      : '$lastRun\n$inputFileContent';
+}
+
+bool _isJsonFile(File file) {
+  if (!file.path.toLowerCase().endsWith('.json')) {
+    return false;
+  }
+
+  try {
+    final content = file.readAsStringSync().trim();
+    json.decode(content);
+    return true;
+  } on FormatException catch (e) {
+    log.warning('Invalid JSON format in file: ${file.path}', e);
+    return false;
+  } on FileSystemException catch (e, s) {
+    log.warning('Error reading file: ${file.path}', e, s);
+    return false;
+  } catch (e, s) {
+    log.warning('Unexpected error processing file: ${file.path}', e, s);
+    return false;
+  }
+}
+
+String _updateJsonWithLastRun(String jsonContent, String lastRun) {
+  final json = jsonDecode(jsonContent);
+  if (json is Map<String, dynamic>) {
+    json['LAST_RUN'] = lastRun;
+    return jsonEncode(json);
+  }
+  throw const FormatException('JSON content is not an object');
 }

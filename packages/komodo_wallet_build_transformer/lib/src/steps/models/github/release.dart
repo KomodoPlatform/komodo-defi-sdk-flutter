@@ -1,12 +1,4 @@
 class Release {
-  final String url;
-  final String htmlUrl;
-  final String assetsUrl;
-  final String tagName;
-  final String targetCommitish;
-  final SimpleUser author;
-  final List<ReleaseAsset> assets;
-
   const Release({
     required this.url,
     required this.htmlUrl,
@@ -28,9 +20,16 @@ class Release {
             .map((e) => ReleaseAsset.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
+  final String url;
+  final String htmlUrl;
+  final String assetsUrl;
+  final String tagName;
+  final String targetCommitish;
+  final SimpleUser author;
+  final List<ReleaseAsset> assets;
 
   Map<String, dynamic> toJson() => {
-    'url': url,
+        'url': url,
         'html_url': htmlUrl,
         'assets_url': assetsUrl,
         'tag_name': tagName,
@@ -61,33 +60,19 @@ class Release {
 }
 
 class ReleaseAsset {
-  final String url;
-  final String browserDownloadUrl;
-  final int id;
-  final String nodeId;
-  final String name;
-  final String? label;
-  final String state;
-  final String contentType;
-  final int size;
-  final int downloadCount;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final SimpleUser? uploader;
-
   const ReleaseAsset({
     required this.url,
     required this.browserDownloadUrl,
     required this.id,
     required this.nodeId,
     required this.name,
-    this.label,
     required this.state,
     required this.contentType,
     required this.size,
     required this.downloadCount,
     required this.createdAt,
     required this.updatedAt,
+    this.label,
     this.uploader,
   });
 
@@ -108,6 +93,19 @@ class ReleaseAsset {
             ? SimpleUser.fromJson(json['uploader'] as Map<String, dynamic>)
             : null,
       );
+  final String url;
+  final String browserDownloadUrl;
+  final int id;
+  final String nodeId;
+  final String name;
+  final String? label;
+  final String state;
+  final String contentType;
+  final int size;
+  final int downloadCount;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final SimpleUser? uploader;
 
   Map<String, dynamic> toJson() => {
         'url': url,
@@ -159,36 +157,11 @@ class ReleaseAsset {
 }
 
 class SimpleUser {
-  final String? name;
-  final String? email;
-  final String login;
-  final int id;
-  final String nodeId;
-  final String avatarUrl;
-  final String? gravatarId;
-  final String url;
-  final String htmlUrl;
-  final String followersUrl;
-  final String followingUrl;
-  final String gistsUrl;
-  final String starredUrl;
-  final String subscriptionsUrl;
-  final String organizationsUrl;
-  final String reposUrl;
-  final String eventsUrl;
-  final String receivedEventsUrl;
-  final String type;
-  final bool siteAdmin;
-  final String? starredAt;
-
   const SimpleUser({
-    this.name,
-    this.email,
     required this.login,
     required this.id,
     required this.nodeId,
     required this.avatarUrl,
-    this.gravatarId,
     required this.url,
     required this.htmlUrl,
     required this.followersUrl,
@@ -202,6 +175,9 @@ class SimpleUser {
     required this.receivedEventsUrl,
     required this.type,
     required this.siteAdmin,
+    this.name,
+    this.email,
+    this.gravatarId,
     this.starredAt,
   });
 
@@ -228,6 +204,28 @@ class SimpleUser {
         siteAdmin: json['site_admin'] as bool,
         starredAt: json['starred_at'] as String?,
       );
+
+  final String? name;
+  final String? email;
+  final String login;
+  final int id;
+  final String nodeId;
+  final String avatarUrl;
+  final String? gravatarId;
+  final String url;
+  final String htmlUrl;
+  final String followersUrl;
+  final String followingUrl;
+  final String gistsUrl;
+  final String starredUrl;
+  final String subscriptionsUrl;
+  final String organizationsUrl;
+  final String reposUrl;
+  final String eventsUrl;
+  final String receivedEventsUrl;
+  final String type;
+  final bool siteAdmin;
+  final String? starredAt;
 
   Map<String, dynamic> toJson() => {
         'name': name,

@@ -8,11 +8,11 @@ class GitHubFile {
     required this.path,
     required this.sha,
     required this.size,
+    required this.downloadUrl,
+    required this.type,
     this.url,
     this.htmlUrl,
     this.gitUrl,
-    required this.downloadUrl,
-    required this.type,
     this.links,
   });
 

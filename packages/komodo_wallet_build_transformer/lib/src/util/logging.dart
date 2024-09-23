@@ -49,7 +49,7 @@ Level logLevelFromString(String level) {
 }
 
 /// Configures the root (default) logger to log to the console.
-/// The [loggingLevel] is the minimum level of log messages that will be printed.
+/// The [loggingLevel] is the minimum level of log messages that will be printed
 /// The [allowStackTracesFromLevel] is the minimum level of log messages that
 /// will have their stack traces printed.
 /// By default, stack traces are only printed for log messages at the
@@ -75,6 +75,8 @@ void configureLogToConsole(
 void logToConsole(LogRecord record) {
   final isError = record.level <= Level.SEVERE;
   final output = isError ? stderr : stdout;
+
+  // ignore: cascade_invocations
   output.writeln('${record.level.name}: ${record.time}: ${record.message}');
   if (record.error != null) {
     output.writeln(record.error);
