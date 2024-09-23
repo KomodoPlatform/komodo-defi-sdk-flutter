@@ -485,9 +485,11 @@ class FetchDefiApiStep extends BuildStep {
     try {
       // Determine the platform to use the appropriate extraction command
       if (Platform.isMacOS || Platform.isLinux) {
-        // For macOS and Linux, use the `unzip` command
-        final result =
-            await Process.run('unzip', [zipFilePath, '-d', destinationFolder]);
+        // For macOS and Linux, use the `unzip` command with overwrite option
+        final result = await Process.run(
+          'unzip',
+          ['-o', zipFilePath, '-d', destinationFolder],
+        );
         if (result.exitCode != 0) {
           throw Exception('Error extracting zip file: ${result.stderr}');
         }
