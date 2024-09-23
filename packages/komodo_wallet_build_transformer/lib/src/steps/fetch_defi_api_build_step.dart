@@ -320,6 +320,13 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   Future<void> _updateWebPackages() async {
+    // First check for a `package.json` file in the root of the project
+    final packageJsonFile = File(path.join(artifactOutputPath, 'package.json'));
+    if (!packageJsonFile.existsSync()) {
+      _log.info('No package.json file found in $artifactOutputPath');
+      return;
+    }
+
     _log
       ..info('Updating Web platform...')
       ..fine('Running npm install in $artifactOutputPath');

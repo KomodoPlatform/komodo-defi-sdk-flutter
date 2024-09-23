@@ -65,7 +65,7 @@ flutter:
         fileName: web/kdf_plugin_web.dart
 
   assets:
-    - assets/config/coins.json
+    - assets/config/
     
     - path: assets/.transformer_invoker
       transformers:
