@@ -320,6 +320,13 @@ class FetchDefiApiStep extends BuildStep {
   }
 
   Future<void> _updateWebPackages() async {
+    // First check for a `package.json` file in the root of the project
+    final packageJsonFile = File(path.join(artifactOutputPath, 'package.json'));
+    if (!packageJsonFile.existsSync()) {
+      _log.info('No package.json file found in $artifactOutputPath');
+      return;
+    }
+
     _log
       ..info('Updating Web platform...')
       ..fine('Running npm install in $artifactOutputPath');
@@ -478,9 +485,11 @@ class FetchDefiApiStep extends BuildStep {
     try {
       // Determine the platform to use the appropriate extraction command
       if (Platform.isMacOS || Platform.isLinux) {
-        // For macOS and Linux, use the `unzip` command
-        final result =
-            await Process.run('unzip', [zipFilePath, '-d', destinationFolder]);
+        // For macOS and Linux, use the `unzip` command with overwrite option
+        final result = await Process.run(
+          'unzip',
+          ['-o', zipFilePath, '-d', destinationFolder],
+        );
         if (result.exitCode != 0) {
           throw Exception('Error extracting zip file: ${result.stderr}');
         }

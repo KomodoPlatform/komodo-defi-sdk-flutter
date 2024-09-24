@@ -237,9 +237,10 @@ class KdfOperationsWasm implements IKdfOperations {
 
   Future<void> _injectLibrary() async {
     try {
-      _kdfModule =
-          (await js_interop.importModule('./$_kdfJsBootstrapperPath').toDart)
-              .getProperty('kdf'.toJS);
+      _kdfModule = (await js_interop
+              .importModule('./$_kdfJsBootstrapperPath'.toJS)
+              .toDart)
+          .getProperty('kdf'.toJS);
 
       final debugProperties = Map<String, String>.fromIterable(
         <String>[
