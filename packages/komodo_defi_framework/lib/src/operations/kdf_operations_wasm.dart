@@ -242,6 +242,12 @@ class KdfOperationsWasm implements IKdfOperations {
               .toDart)
           .getProperty('kdf'.toJS);
 
+      _logger?.call('KDF library loaded successfully');
+    } catch (e) {
+      final message =
+          'Failed to load and import script $_kdfJsBootstrapperPath\n$e';
+      _logger?.call(message);
+
       final debugProperties = Map<String, String>.fromIterable(
         <String>[
           'isInitialized',
@@ -262,11 +268,7 @@ class KdfOperationsWasm implements IKdfOperations {
       );
 
       _logger?.call('KDF Has properties: $debugProperties');
-      _logger?.call('KDF library loaded successfully');
-    } catch (e) {
-      final message =
-          'Failed to load and import script $_kdfJsBootstrapperPath\n$e';
-      _logger?.call(message);
+
       throw Exception(message);
     }
   }
