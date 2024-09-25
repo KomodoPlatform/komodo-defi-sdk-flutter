@@ -330,8 +330,13 @@ class FetchDefiApiStep extends BuildStep {
     _log
       ..info('Updating Web platform...')
       ..fine('Running npm install in $artifactOutputPath');
+    var npmPath = 'npm';
+    if (Platform.isWindows) {
+      npmPath = path.join('C:', 'Program Files', 'nodejs', 'npm.cmd');
+      _log.info('Using npm path: $npmPath');
+    }
     final installResult = await Process.run(
-      'npm',
+      npmPath,
       ['install'],
       workingDirectory: artifactOutputPath,
     );
@@ -341,7 +346,7 @@ class FetchDefiApiStep extends BuildStep {
 
     _log.fine('Running npm run build in $artifactOutputPath');
     final buildResult = await Process.run(
-      'npm',
+      npmPath,
       ['run', 'build'],
       workingDirectory: artifactOutputPath,
     );
@@ -365,10 +370,16 @@ class FetchDefiApiStep extends BuildStep {
     // Update the file permissions to make it executable. As part of the
     // transition from mm2 naming to kdf, update whichever file is present.
     // ignore: unused_local_variable
-    final binaryName = ['mm2', 'kdf']
+    final binaryNames = ['mm2', 'kdf']
         .map((e) => File(path.join(destinationFolder, e)))
-        .where((filePath) => filePath.existsSync())
-      ..forEach(setFilePermissions);
+        .where((filePath) => filePath.existsSync());
+
+
+      if (!Platform.isWindows) {
+      for (final filePath in binaryNames) {
+        Process.run('chmod', ['+x', filePath.path]);
+      }
+    }
   }
 
   String _getPlatformDestinationFolder(String platform) {
