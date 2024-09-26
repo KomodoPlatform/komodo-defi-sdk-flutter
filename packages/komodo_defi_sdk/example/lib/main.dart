@@ -93,7 +93,10 @@ class _KomodoAppState extends State<KomodoApp> {
 
     try {
       final user = await _komodoDefiSdk.auth.register(
-          walletName: walletName, password: password, mnemonic: mnemonic);
+        walletName: walletName,
+        password: password,
+        mnemonic: mnemonic,
+      );
       setState(() {
         _currentUser = user;
         _statusMessage =
@@ -270,7 +273,8 @@ class _KomodoAppState extends State<KomodoApp> {
                     ),
                     const SizedBox(height: 4),
                     SelectableText(
-                        EncryptedMnemonicData.encryptedDataExample.toString()),
+                      EncryptedMnemonicData.encryptedDataExample.toString(),
+                    ),
                     const SizedBox(height: 16),
                   ],
                   TextFormField(

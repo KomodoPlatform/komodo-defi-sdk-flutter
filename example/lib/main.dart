@@ -790,10 +790,10 @@ class _MyAppState extends State<MyApp> {
 
       setState(() {
         _statusMessage = 'KDF running: $result';
-        _isRunning = result.isRunning();
+        _isRunning = result.isStartingOrAlreadyRunning();
       });
 
-      if (!result.isRunning()) {
+      if (!result.isStartingOrAlreadyRunning()) {
         _showMessage('Failed to start KDF: $result');
       }
     } catch (e) {

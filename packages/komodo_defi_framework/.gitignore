@@ -45,6 +45,8 @@ web/dist/*.wasm
 web/dist/*LICENSE.txt
 web/src/mm2/
 web/src/kdf/
+web/kdf/
+
 
 # Symbolication related
 app.*.symbols

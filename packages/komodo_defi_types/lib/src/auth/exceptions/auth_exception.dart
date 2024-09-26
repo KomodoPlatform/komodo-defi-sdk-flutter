@@ -52,9 +52,12 @@ class AuthException implements Exception {
   static List<AuthException> _findExceptionsInLine(String line) {
     final exceptions = <AuthException>[];
 
+    // Convert the log line to lowercase for case-insensitive matching
+    final lowerCaseLine = line.toLowerCase();
+
     for (final type in AuthExceptionType.values) {
       for (final pattern in AuthException._getMatchingPatterns(type)) {
-        if (line.contains(pattern)) {
+        if (lowerCaseLine.contains(pattern.toLowerCase())) {
           exceptions.add(AuthException(line, type: type));
           break; // Stop searching after finding the first match for this type
         }
@@ -91,6 +94,7 @@ class AuthException implements Exception {
           'Error decrypting mnemonic: HMAC error: MAC tag mismatch',
           'Incorrect wallet password',
           'Error generating or decrypting mnemonic',
+          'HMAC',
         ],
         AuthExceptionType.walletAlreadyRunning: [
           'Wallet is already running',

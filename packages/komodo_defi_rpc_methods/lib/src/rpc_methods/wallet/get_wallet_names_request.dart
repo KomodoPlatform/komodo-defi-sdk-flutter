@@ -10,13 +10,6 @@ class GetWalletNamesRequest
       : super(rpcPass: rpcPass, method: 'get_wallet_names');
 
   @override
-  Map<String, dynamic> toJson() => {
-        'userpass': rpcPass,
-        'mmrpc': mmrpc,
-        'method': method,
-      };
-
-  @override
   GetWalletNamesResponse parse(Map<String, dynamic> json) =>
       GetWalletNamesResponse.parse(json);
 }

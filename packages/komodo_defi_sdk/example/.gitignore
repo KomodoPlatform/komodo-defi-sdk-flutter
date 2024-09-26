@@ -41,3 +41,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# KDF Web related
+web/dist/*.js
+web/dist/*.wasm
+web/dist/*LICENSE.txt
+web/src/mm2/
+web/src/kdf/
+web/kdf/

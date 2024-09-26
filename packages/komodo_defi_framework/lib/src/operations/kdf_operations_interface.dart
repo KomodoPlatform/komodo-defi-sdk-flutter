@@ -24,6 +24,9 @@ enum MainStatus {
         throw ArgumentError('Unknown MainStatus code: $value');
     }
   }
+
+  bool get isTerminal =>
+      this == MainStatus.notRunning || this == MainStatus.rpcIsUp;
 }
 
 enum KdfStartupResult {
@@ -34,7 +37,7 @@ enum KdfStartupResult {
 
   // Getter for if the KDF is running successfully e.g. KdfStartupResult.ok
   // or KdfStartupResult.alreadyRunning
-  bool isRunning() =>
+  bool isStartingOrAlreadyRunning() =>
       this == KdfStartupResult.ok || this == KdfStartupResult.alreadyRunning;
 
   bool get isAlreadyRunning => this == KdfStartupResult.alreadyRunning;

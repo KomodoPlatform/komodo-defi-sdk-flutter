@@ -35,31 +35,35 @@ List<JsonMap> jsonListFromString(String json) {
 
 String jsonToString(dynamic json) => jsonEncode(json);
 
-// Method to take a JSON map and list of keys to traverse and return the value
+/// Method to take a JSON map and list of keys to traverse and return the value
 T _traverseJson<T>(
-  JsonMap json,
+  dynamic json,
   List<dynamic> keys, {
   T? defaultValue,
 }) {
   dynamic value = json;
 
   for (final key in keys) {
-    if (value is! JsonMap) {
+    if (value is! Map) {
       throw ArgumentError('Cannot traverse a non-Map value');
     }
 
-    value = value[key];
+    if (!value.containsKey(key)) {
+      if (defaultValue != null) {
+        return defaultValue;
+      }
+      throw ArgumentError('Key "$key" not found in Map');
+    }
 
-    // TODO: Fuzzy-type matching for keys
+    value = value[key];
   }
 
   if (value == null && defaultValue != null) {
     return defaultValue;
   }
 
-  if (T is num && value is String) {
+  if (T == num && value is String) {
     final parsed = num.tryParse(value);
-
     if (parsed != null) {
       return parsed as T;
     }
@@ -73,6 +77,18 @@ T _traverseJson<T>(
     return jsonListFromString(value) as T;
   }
 
+  // New: Handle map type conversion
+  if (T != dynamic && value is Map && T.toString().startsWith('Map<')) {
+    try {
+      // Attempt to convert the map to the expected type
+      return _convertMap<T>(value);
+    } catch (e) {
+      throw ArgumentError(
+        'Failed to convert map to expected type $T: ${e.toString()}',
+      );
+    }
+  }
+
   if (value != null && value is! T) {
     throw ArgumentError(
       'Traversed JSON and expected value of type $T, but got ${value.runtimeType}',
@@ -80,6 +96,18 @@ T _traverseJson<T>(
   }
 
   return value as T;
+}
+
+T _convertMap<T>(Map sourceMap) {
+  if (T == Map<String, dynamic>) {
+    return Map<String, dynamic>.from(sourceMap) as T;
+  } else if (T == Map<String, Object?>) {
+    return Map<String, Object?>.from(sourceMap) as T;
+  } else if (T == JsonMap) {
+    return JsonMap.from(sourceMap) as T;
+  } else {
+    throw ArgumentError('Unsupported map type: $T');
+  }
 }
 
 extension JsonMapExtension<T extends JsonMap> on T {
@@ -124,6 +152,12 @@ extension JsonMapExtension<T extends JsonMap> on T {
     if (!containsKey(key) || this[key] == '') {
       this[key] = value;
     }
+  }
+
+  // Ensure the entire map has been serialized to JSON types and that no
+  // non-serializable types are present
+  JsonMap ensureJson() {
+    return jsonFromString(jsonEncode(this));
   }
 }
 

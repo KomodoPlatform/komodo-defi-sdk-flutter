@@ -9,15 +9,15 @@ class GetWalletRequest
       // merged into the KDF's `dev` branch.
       : super(method: 'get_wallet');
 
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'method': method,
-      'params': <String, dynamic>{
-        //
-      },
-    };
-  }
+  // @override
+  // Map<String, dynamic> toJson() {
+  //   return {
+  //     'method': method,
+  //     'params': <String, dynamic>{
+  //       //
+  //     },
+  //   };
+  // }
 
   @override
   GetWalletResponse parse(Map<String, dynamic> json) {
@@ -35,7 +35,6 @@ class GetWalletResponse extends BaseResponse {
       walletName: json.value<String>('wallet_name'),
     );
   }
-
   final String walletName;
 
   @override

@@ -14,19 +14,19 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
   @override
   factory GeneralErrorResponse.parse(Map<String, dynamic> json) {
     return GeneralErrorResponse(
-      mmrpc: json['mmrpc'] as String,
-      error: json['error'] as String,
-      errorPath: json['error_path'] as String,
-      errorTrace: json['error_trace'] as String,
-      errorType: json['error_type'] as String,
+      mmrpc: json['mmrpc'] as String? ?? '',
+      error: json['error'] as String?,
+      errorPath: json['error_path'] as String?,
+      errorTrace: json['error_trace'] as String?,
+      errorType: json['error_type'] as String?,
       errorData: json['error_data'] as dynamic,
     );
   }
 
-  final String error;
-  final String errorPath;
-  final String errorTrace;
-  final String errorType;
+  final String? error;
+  final String? errorPath;
+  final String? errorTrace;
+  final String? errorType;
   final dynamic errorData;
 
   static bool isErrorResponse(Map<String, dynamic> json) {
