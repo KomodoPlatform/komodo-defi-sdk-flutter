@@ -73,7 +73,7 @@ class _KomodoAppState extends State<KomodoApp> {
       });
     } on AuthException catch (e) {
       setState(() {
-        _statusMessage = 'Auth Error: ${e.message}';
+        _statusMessage = 'Auth Error: (${e.type}) ${e.message}';
       });
     } catch (e) {
       setState(() {
