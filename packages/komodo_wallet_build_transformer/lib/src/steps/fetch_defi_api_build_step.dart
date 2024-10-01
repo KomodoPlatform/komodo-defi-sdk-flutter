@@ -105,6 +105,11 @@ class FetchDefiApiStep extends BuildStep {
 
     _log.info('=====================');
     for (final platform in platformsToUpdate) {
+      if (_isTargetIphone() && platform != 'ios') {
+        _log.info('Skipping build for $platform, since target is iOS');
+        continue;
+      }
+
       final progressString =
           '${platformsToUpdate.indexOf(platform) + 1}/${platformsToUpdate.length}';
       _log.info('[$progressString] Updating $platform platform...');
@@ -330,11 +335,7 @@ class FetchDefiApiStep extends BuildStep {
     _log
       ..info('Updating Web platform...')
       ..fine('Running npm install in $artifactOutputPath');
-    var npmPath = 'npm';
-    if (Platform.isWindows) {
-      npmPath = path.join('C:', 'Program Files', 'nodejs', 'npm.cmd');
-      _log.info('Using npm path: $npmPath');
-    }
+    final npmPath = findNode();
     final installResult = await Process.run(
       npmPath,
       ['install'],
@@ -374,8 +375,7 @@ class FetchDefiApiStep extends BuildStep {
         .map((e) => File(path.join(destinationFolder, e)))
         .where((filePath) => filePath.existsSync());
 
-
-      if (!Platform.isWindows) {
+    if (!Platform.isWindows) {
       for (final filePath in binaryNames) {
         Process.run('chmod', ['+x', filePath.path]);
       }
@@ -540,5 +540,96 @@ class FetchDefiApiStep extends BuildStep {
     //   documentationFile.writeAsStringSync(content);
     //   _logMessage('Updated API version in documentation.');
     // }
+  }
+
+  bool _isTargetIphone() {
+    return Platform.environment['TARGET_DEVICE_PLATFORM_NAME'] == 'iphoneos' ||
+        Platform.environment['TARGET_DEVICE_PLATFORM_NAME'] ==
+            'iphonesimulator' ||
+        Platform.environment['SWIFT_PLATFORM_TARGET_PREFIX'] == 'ios';
+  }
+
+  String findNode() {
+    if (Platform.isWindows) {
+      return findNodeWindows();
+    } else if (Platform.isLinux || Platform.isMacOS) {
+      return findNodeUnix();
+    } else {
+      return 'npm';
+    }
+  }
+
+  String findNodeUnix() {
+    // Common npm locations on macOS
+    final commonLocations = [
+      '/usr/local/bin/npm',
+      '/usr/bin/npm',
+      '/opt/homebrew/bin/npm',
+    ];
+
+    // Check common locations
+    for (final location in commonLocations) {
+      if (File(location).existsSync()) {
+        return location;
+      }
+    }
+
+    // Check PATH environment variable
+    final pathEnv = Platform.environment['PATH'];
+    if (pathEnv != null) {
+      final paths = pathEnv.split(':');
+      for (final path in paths) {
+        final npmPath = '$path/npm';
+        if (File(npmPath).existsSync()) {
+          return npmPath;
+        }
+      }
+    }
+
+    // Check NVM_BIN environment variable
+    final nvmBin = Platform.environment['NVM_BIN'];
+    if (nvmBin != null) {
+      final npmPath = '$nvmBin/npm';
+      if (File(npmPath).existsSync()) {
+        return npmPath;
+      }
+    }
+
+    // Check NODE_PATH environment variable
+    final nodePath = Platform.environment['NODE_PATH'];
+    if (nodePath != null) {
+      final npmPath = '$nodePath/npm';
+      if (File(npmPath).existsSync()) {
+        return npmPath;
+      }
+    }
+
+    // If npm is not found, throw an exception
+    throw Exception(
+      'npm not found in common locations or environment variables. '
+      'Please ensure npm is installed and accessible.',
+    );
+  }
+
+  String findNodeWindows() {
+    final commonLocations = [
+      'C:/Program Files/nodejs/npm',
+      'C:/Program Files/nodejs/npm.cmd',
+      'C:/Program Files (x86)/nodejs/npm',
+      'C:/Program Files (x86)/nodejs/npm.cmd',
+    ];
+
+    for (final location in commonLocations) {
+      if (File(location).existsSync()) {
+        return location;
+      }
+    }
+
+    final nodePath = Platform.environment['PATH'];
+    if (nodePath != null) {
+      return nodePath;
+    }
+
+    throw Exception('NODE_PATH not found in environment variables.');
   }
 }
