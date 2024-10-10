@@ -10,4 +10,11 @@ class EvmNode {
         'url': url,
         'gui_auth': guiAuth,
       };
+
+  factory EvmNode.fromJson(Map<String, dynamic> json) {
+    return EvmNode(
+      url: json['url'] as String,
+      guiAuth: json['gui_auth'] as bool? ?? false,
+    );
+  }
 }

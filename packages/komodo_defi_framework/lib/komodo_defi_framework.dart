@@ -40,6 +40,19 @@ class KomodoDefiFramework implements ApiClient {
     );
   }
 
+  /// TODO: Test if this factory method works as expected.
+  factory KomodoDefiFramework.createWithOperations({
+    required IKdfHostConfig hostConfig,
+    required IKdfOperations kdfOperations,
+    void Function(String)? externalLogger,
+  }) {
+    return KomodoDefiFramework._(
+      hostConfig: hostConfig,
+      externalLogger: externalLogger,
+      // client: KdfApiClient(this, rpcPassword: hostConfig.rpcPassword),
+    ).._kdfOperations = kdfOperations;
+  }
+
   // late final ApiClient client;
   final IKdfHostConfig _hostConfig;
 

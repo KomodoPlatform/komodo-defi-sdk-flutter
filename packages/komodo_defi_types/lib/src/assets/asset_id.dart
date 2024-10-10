@@ -1,6 +1,9 @@
+import 'package:equatable/equatable.dart';
+import 'package:komodo_defi_types/src/assets/asset_symbol.dart';
 import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
+import 'package:komodo_defi_types/types.dart';
 
-class AssetId {
+class AssetId extends Equatable {
   const AssetId({
     required this.id,
     required this.name,
@@ -8,20 +11,115 @@ class AssetId {
     required this.chainId,
   });
 
-  // FromJSON
-  factory AssetId.fromJson(Map<String, dynamic> json) {
+  factory AssetId.fromConfig(Map<String, dynamic> json) {
     return AssetId(
-      id: json.value<String>('id'),
-      name: json.value<String>('name'),
-      symbol: json.value<String>('symbol'),
-      chainId: json.value<String>('chain_id'),
+      id: json.value<String>('coin'),
+      name: json.value<String>('fname'),
+      symbol: AssetSymbol.fromConfig(json),
+      chainId: ChainId.parse(json),
     );
   }
 
   final String id;
   final String name;
-  final String symbol;
+  final AssetSymbol symbol;
+  // TODO: Consider moving chainId to `Chain` class
+  final ChainId chainId;
 
-  // TODO! Replace with `Chain` type
+  @override
+  List<Object?> get props => [id, name, symbol, chainId];
+}
+
+abstract interface class ChainId {
+  ChainId.fromConfig();
+
+  static ChainId parse(JsonMap json) {
+    final chainParseAttempts = [
+      () => parseOrNull(() => AssetChainId.fromConfig(json)),
+      () => parseOrNull(() => TendermintChainId.fromConfig(json)),
+      () => parseOrNull(() => ProtocolChainId.fromConfig(json)),
+    ];
+
+    for (final parseAttempt in chainParseAttempts) {
+      final chainId = parseAttempt();
+      if (chainId != null) {
+        return chainId;
+      }
+    }
+
+    throw Exception('Unsupported chain ID type');
+  }
+
+  String get formattedChainId;
+
+  static ChainId? parseOrNull(
+    ChainId? Function() fromConfig,
+  ) {
+    try {
+      return fromConfig();
+    } catch (e) {
+      return null;
+    }
+  }
+}
+
+class AssetChainId implements ChainId {
+  AssetChainId({
+    required this.chainId,
+  });
+
+  @override
+  factory AssetChainId.fromConfig(JsonMap json) {
+    return AssetChainId(
+      chainId: json.value<int>('chain_id'),
+    );
+  }
+  final int chainId;
+
+  @override
+  String get formattedChainId => chainId.toString();
+}
+
+class TendermintChainId implements ChainId {
+  TendermintChainId({
+    required this.accountPrefix,
+    required this.chainId,
+    required this.chainRegistryName,
+  });
+
+  @override
+  factory TendermintChainId.fromConfig(JsonMap json) {
+    final protocolData = json.value<JsonMap>('protocol', 'protocol_data');
+    return TendermintChainId(
+      accountPrefix: protocolData.value<String>('account_prefix'),
+      chainId: protocolData.value<String>('chain_id'),
+      chainRegistryName: protocolData.value<String>('chain_registry_name'),
+    );
+  }
+
+  final String accountPrefix;
   final String chainId;
+  final String chainRegistryName;
+
+  @override
+  String get formattedChainId => '$chainRegistryName:$chainId';
+}
+
+class ProtocolChainId implements ChainId {
+  ProtocolChainId({
+    required ProtocolClass protocol,
+  }) : _protocol = protocol;
+
+  @override
+  factory ProtocolChainId.fromConfig(JsonMap json) {
+    final protocol = ProtocolClass.fromJson(json);
+    return ProtocolChainId(
+      protocol: protocol,
+    );
+  }
+
+  final ProtocolClass _protocol;
+
+  @override
+  String get formattedChainId => _protocol.runtimeType.toString();
 }

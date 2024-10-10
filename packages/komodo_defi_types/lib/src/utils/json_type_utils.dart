@@ -36,11 +36,18 @@ List<JsonMap> jsonListFromString(String json) {
 String jsonToString(dynamic json) => jsonEncode(json);
 
 /// Method to take a JSON map and list of keys to traverse and return the value
-T _traverseJson<T>(
+T? _traverseJson<T>(
   dynamic json,
   List<dynamic> keys, {
   T? defaultValue,
+  bool lossyCast = false,
+  bool nullIfAbsent = false,
 }) {
+  assert(
+    !(defaultValue != null && nullIfAbsent),
+    'Cannot provide a default value if nullIfAbsent is true',
+  );
+
   dynamic value = json;
 
   for (final key in keys) {
@@ -49,6 +56,13 @@ T _traverseJson<T>(
     }
 
     if (!value.containsKey(key)) {
+      if (nullIfAbsent) {
+        return null;
+      }
+      if (T == dynamic || T == Null) {
+        return null; // Return null for nullable types //TODO! Fix or remove
+      }
+      // Check if T is nullable and return null if the key is not found
       if (defaultValue != null) {
         return defaultValue;
       }
@@ -69,6 +83,12 @@ T _traverseJson<T>(
     }
   }
 
+  // Whether to do casts that may result in data loss, such as casting a number
+  // to a string.
+  if (lossyCast && T == String && value is num) {
+    return value.toString() as T;
+  }
+
   if (T == JsonMap && value is String) {
     return jsonFromString(value) as T;
   }
@@ -77,7 +97,12 @@ T _traverseJson<T>(
     return jsonListFromString(value) as T;
   }
 
-  // New: Handle map type conversion
+  if (T == JsonList && value is List && value is! JsonList) {
+    // ignore: unnecessary_cast
+    return (value as List).cast<JsonMap>() as T;
+  }
+
+  // Handle map type conversion
   if (T != dynamic && value is Map && T.toString().startsWith('Map<')) {
     try {
       // Attempt to convert the map to the expected type
@@ -111,18 +136,29 @@ T _convertMap<T>(Map sourceMap) {
 }
 
 extension JsonMapExtension<T extends JsonMap> on T {
-  TVal valueVArgs<TVal>(List<String> keys, {TVal? defaultValue}) =>
-      _traverseJson<TVal>(this, keys, defaultValue: defaultValue);
+  TVal? valueVArgs<TVal>(List<String> keys, {TVal? defaultValue}) =>
+      _traverseJson<TVal?>(this, keys, defaultValue: defaultValue);
 
   V value<V>(
-    String key, [
+    String key1, [
     String? key2,
     String? key3,
     String? key4,
     String? key5,
   ]) {
-    final keys = [key, key2, key3, key4, key5].whereType<String>().toList();
-    return _traverseJson<V>(this, keys);
+    final keys = [key1, key2, key3, key4, key5].whereType<String>().toList();
+    return _traverseJson<V>(this, keys) as V;
+  }
+
+  V? valueOrNull<V>(
+    String key1, [
+    String? key2,
+    String? key3,
+    String? key4,
+    String? key5,
+  ]) {
+    final keys = [key1, key2, key3, key4, key5].whereType<String>().toList();
+    return _traverseJson<V?>(this, keys, nullIfAbsent: true);
   }
 
   static JsonMap jsonFromString(String json) {
@@ -264,4 +300,9 @@ class _CensorTask<K, V> {
 
   final Map<K, V> sourceMap;
   final Map<K, V> targetMap;
+}
+
+// Extension on String/String? to make null if empty
+extension StringNullIfNullOrEmpty on String? {
+  String? get nullIfEmpty => this?.isEmpty == true ? null : this;
 }

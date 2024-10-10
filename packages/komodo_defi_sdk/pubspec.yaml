@@ -16,6 +16,13 @@ environment:
   flutter: '>=3.22.0 <3.23.0'
 
 dependencies:
+
+  flutter:
+    sdk: flutter
+  flutter_secure_storage: ^9.2.2
+  
+  komodo_coins:
+    path: ../komodo_coins
   komodo_defi_framework:
     path: ../komodo_defi_framework
   komodo_defi_local_auth:
@@ -25,10 +32,8 @@ dependencies:
   komodo_defi_types:
     path: ../komodo_defi_types
 
-  flutter:
-    sdk: flutter
-  flutter_secure_storage: ^9.2.2
   shared_preferences: ^2.3.2
+
 dev_dependencies:
   mocktail: ^1.0.4
   # test: ^1.25.7

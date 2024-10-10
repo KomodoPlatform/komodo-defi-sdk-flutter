@@ -28,22 +28,41 @@ class _KomodoAppState extends State<KomodoApp> {
 
   List<KdfUser> _knownUsers = [];
 
+  List<Asset> activeAssets = [];
+  StreamSubscription<List<Asset>>? _activeAssetsSub;
+
+  StreamSubscription<KdfUser?>? sub;
+
   @override
+  // ignore: avoid_void_async
   void initState() {
     super.initState();
-    _komodoDefiSdk.auth.authStateChanges.listen((user) {
-      setState(() {
-        _currentUser = user;
-        _statusMessage =
-            user != null ? 'Signed in as ${user.walletName}' : 'Not signed in';
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      sub = _komodoDefiSdk.auth.authStateChanges.listen(updateUser);
+      await _fetchKnownUsers();
+      await updateUser();
+      _activeAssetsSub =
+          _komodoDefiSdk.assets.activeAssets().listen((newAssets) {
+        setState(() {
+          activeAssets.addAll(newAssets);
+        });
       });
-    });
-    _fetchKnownUsers();
 
-    _refreshUsersTimer = Timer.periodic(
-      const Duration(seconds: 10),
-      (_) => _fetchKnownUsers(),
-    );
+      _refreshUsersTimer = Timer.periodic(
+        const Duration(seconds: 10),
+        (_) => _fetchKnownUsers(),
+      );
+    });
+  }
+
+  Future<void> updateUser([KdfUser? user]) async {
+    final userOrRefresh = user ?? await _komodoDefiSdk.auth.currentUser;
+    setState(() {
+      _currentUser = userOrRefresh;
+      _statusMessage = userOrRefresh != null
+          ? 'Signed in as ${userOrRefresh.walletName}'
+          : 'Not signed in';
+    });
   }
 
   late Timer? _refreshUsersTimer;
@@ -148,93 +167,151 @@ class _KomodoAppState extends State<KomodoApp> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(_statusMessage),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_statusMessage),
+            const SizedBox(height: 16),
+            if (_currentUser == null) ...[
+              _buildKnownUsersList(),
               const SizedBox(height: 16),
-              if (_currentUser == null) ...[
-                _buildKnownUsersList(),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _walletNameController,
-                  decoration: const InputDecoration(labelText: 'Wallet Name'),
-                  validator: notEmptyValidator,
-                ),
-                TextFormField(
-                  controller: _passwordController,
-                  validator: notEmptyValidator,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                      ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
+              TextFormField(
+                controller: _walletNameController,
+                decoration: const InputDecoration(labelText: 'Wallet Name'),
+                validator: notEmptyValidator,
+              ),
+              TextFormField(
+                controller: _passwordController,
+                validator: notEmptyValidator,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
+                    onPressed: () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
                   ),
-                  obscureText: _obscurePassword,
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    FilledButton.tonal(
-                      onPressed: () => _signIn(_walletName, _password),
-                      child: const Text('Sign In'),
-                    ),
-                    FilledButton(
-                      onPressed: () => _showSeedDialog(context),
-                      child: const Text('Register'),
-                    ),
-                  ],
-                ),
-              ] else
-                Column(
-                  children: [
-                    FilledButton.tonalIcon(
-                      onPressed: _signOut,
-                      label: const Text('Sign Out'),
-                      icon: const Icon(Icons.logout),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () => _getMnemonic(encrypted: false),
-                          child: const Text('Get Plaintext Mnemonic'),
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton(
-                          onPressed: () => _getMnemonic(encrypted: true),
-                          child: const Text('Get Encrypted Mnemonic'),
-                        ),
-                      ],
-                    ),
-                    if (_mnemonic != null) ...[
-                      const SizedBox(height: 16),
-                      Text('Mnemonic: $_mnemonic'),
+                obscureText: _obscurePassword,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  FilledButton.tonal(
+                    onPressed: () => _signIn(_walletName, _password),
+                    child: const Text('Sign In'),
+                  ),
+                  FilledButton(
+                    onPressed: () => _showSeedDialog(context),
+                    child: const Text('Register'),
+                  ),
+                ],
+              ),
+            ] else
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: _signOut,
+                    label: const Text('Sign Out'),
+                    icon: const Icon(Icons.logout),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => _getMnemonic(encrypted: false),
+                        child: const Text('Get Plaintext Mnemonic'),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: () => _getMnemonic(encrypted: true),
+                        child: const Text('Get Encrypted Mnemonic'),
+                      ),
                     ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (_mnemonic != null) ...[
+                    Card(child: Text('Mnemonic: $_mnemonic')),
+                    const SizedBox(height: 16),
                   ],
+
+                  // ListView(
+                  //   shrinkWrap: true,
+                  //   children: _komodoDefiSdk.assets.all
+                  //       .map((asset) => ListTile(
+                  //             title: Text(asset.id.symbol),
+                  //             subtitle: Text(asset.id.name),
+                  //           ))
+                  //       .toList(),
+                  // ),
+                ],
+              ),
+
+            // SizedBox(height: 16),
+
+            if (_currentUser != null) ...[
+              Text('Active Assets (${activeAssets.length}):'),
+              SizedBox(height: 4),
+              if (activeAssets.isEmpty) const Text('No active assets'),
+              Text('${activeAssets.map((a) => a.id.id).join(', ')}'),
+              SizedBox(height: 16),
+
+              // Show list of all coins
+              Text('Coins List (${_komodoDefiSdk.assets.all.length})'),
+              Flexible(
+                child: ListView.builder(
+                  itemCount: _komodoDefiSdk.assets.all.length,
+                  itemBuilder: (context, index) {
+                    final asset = _komodoDefiSdk.assets.all.elementAt(index);
+                    final id = asset.id;
+                    return ListTile(
+                      key: Key(id.id),
+                      title: Text(id.id),
+                      subtitle: Text(id.name),
+                      tileColor:
+                          index.isEven ? Colors.grey[200] : Colors.grey[100],
+                      // trailing: Text(asset.balance.toString()),
+                      leading: CircleAvatar(
+                        child: Text(id.id.substring(0, 2)),
+                        // TODO! Add sdk Image provider
+                        foregroundImage: NetworkImage(
+                          // https://komodoplatform.github.io/coins/icons/kmd.png
+                          'https://komodoplatform.github.io/coins/icons/${id.symbol.configSymbol.toLowerCase()}.png',
+                        ),
+                      ),
+                      trailing:
+                          // If activated then show a checkmark, otherwise show
+                          // the activation button
+                          CoinActivationButton(
+                        key: Key(asset.id.id),
+                        asset: asset,
+                      ),
+                    );
+                  },
                 ),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
   }
+
+  // TODO: Refactor/clean-up example project
 
   // bool isMnemonicEncrypted = false;
 
@@ -424,6 +501,49 @@ class _KomodoAppState extends State<KomodoApp> {
   @override
   void dispose() {
     _refreshUsersTimer?.cancel();
+    sub?.cancel();
+    _activeAssetsSub?.cancel();
     super.dispose();
+  }
+}
+
+class CoinActivationButton extends StatefulWidget {
+  const CoinActivationButton({
+    required this.asset,
+    super.key,
+  });
+
+  final Asset asset;
+
+  @override
+  State<CoinActivationButton> createState() => _CoinActivationButtonState();
+}
+
+class _CoinActivationButtonState extends State<CoinActivationButton> {
+  ActivationProgress? progress;
+
+  bool get isBusy => progress != null && !progress!.isComplete;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: isBusy
+          ? null
+          : () async {
+              // Stream: asset.activate();
+              await for (final progress in widget.asset.activate()) {
+                print('Activation progress: $progress');
+              }
+            },
+      label: Text('Activate ${widget.asset.id.name}'),
+      icon: isBusy
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(),
+            )
+          // : const Icon(Icons.check),
+          : null,
+    );
   }
 }

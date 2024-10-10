@@ -6,11 +6,11 @@ publish_to: 'none'
 
 environment:
   sdk: ^3.4.4
-  
+
 dependencies:
+  equatable: ^2.0.5
   komodo_defi_rpc_methods:
     path: ../komodo_defi_rpc_methods
-  # path: ^1.8.0
 
 dev_dependencies:
   test: ^1.25.2

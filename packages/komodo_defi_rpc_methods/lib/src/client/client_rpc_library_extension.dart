@@ -5,11 +5,11 @@ import 'package:komodo_defi_rpc_methods/src/rpc_methods_library.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 extension ApiClientExtension on ApiClient {
-  RpcMethodsLibrary get rpc => RpcMethodsLibrary(this);
+  KomodoDefiRpcMethods get rpc => KomodoDefiRpcMethods(this);
 }
 
 abstract class BaseRpcMethodNamespace {
-  BaseRpcMethodNamespace(this._client);
+  const BaseRpcMethodNamespace(this._client);
 
   final ApiClient? _client;
 

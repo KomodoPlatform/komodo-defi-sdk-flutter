@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:meta/meta.dart';
 
 extension BaseRequestApiClientExtension on ApiClient {
   Future<T> post<T extends BaseResponse, E extends GeneralErrorResponse>(
@@ -37,7 +38,7 @@ abstract class BaseRequest<T extends BaseResponse,
 
   /// Convert request to JSON as per the API specification:
   /// https://komodoplatform.com/en/docs/komodo-defi-framework/api/
-  // @mustCallSuper
+  @mustCallSuper
   Map<String, dynamic> toJson() {
     return {
       'method': method,

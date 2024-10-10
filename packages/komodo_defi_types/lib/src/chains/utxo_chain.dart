@@ -75,21 +75,22 @@ class UtxoChain extends Chain {
               .toList(),
         ),
       ),
-      requiredConfirmations: json.value<int>('required_confirmations'),
-      requiresNotarization: json.value<bool?>('requires_notarization') ?? false,
-      avgBlocktime: json.value<int>('avg_blocktime'),
-      txVersion: json.value<int>('txversion'),
-      txFee: json.value<int>('txfee'),
-      pubtype: json.value<int>('pubtype'),
-      p2shtype: json.value<int>('p2shtype'),
-      wiftype: json.value<int>('wiftype'),
-      overwintered: json.value<int>('overwintered'),
-      isTestnet: json.value<bool?>('is_testnet') ?? false,
-      isClaimable: json.value<bool?>('is_claimable') ?? false,
-      minimalClaimAmount: json.value<String>('minimal_claim_amount'),
-      signMessagePrefix: json.value<String>('sign_message_prefix'),
-      derivationPath: json.value<String>('derivation_path'),
-      trezorCoin: json.value<String>('trezor_coin'),
+      requiredConfirmations: json.valueOrNull<int>('required_confirmations'),
+      requiresNotarization:
+          json.valueOrNull<bool>('requires_notarization') ?? false,
+      avgBlocktime: json.valueOrNull<int>('avg_blocktime'),
+      txVersion: json.valueOrNull<int>('txversion'),
+      txFee: json.valueOrNull<int>('txfee'),
+      pubtype: json.valueOrNull<int>('pubtype'),
+      p2shtype: json.valueOrNull<int>('p2shtype'),
+      wiftype: json.valueOrNull<int>('wiftype'),
+      overwintered: json.valueOrNull<int>('overwintered'),
+      isTestnet: json.valueOrNull<bool?>('is_testnet') ?? false,
+      isClaimable: json.valueOrNull<bool?>('is_claimable') ?? false,
+      minimalClaimAmount: json.valueOrNull<String>('minimal_claim_amount'),
+      signMessagePrefix: json.valueOrNull<String>('sign_message_prefix'),
+      derivationPath: json.valueOrNull<String>('derivation_path'),
+      trezorCoin: json.valueOrNull<String>('trezor_coin'),
     );
   }
 
@@ -115,5 +116,7 @@ class UtxoChain extends Chain {
         'sign_message_prefix': signMessagePrefix,
         'derivation_path': derivationPath,
         'trezor_coin': trezorCoin,
+        'servers':
+            mode.rpcData!.electrum!.map((e) => e.toJsonRequest()).toList(),
       };
 }

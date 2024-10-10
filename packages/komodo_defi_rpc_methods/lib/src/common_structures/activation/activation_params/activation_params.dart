@@ -77,6 +77,8 @@ class ActivationRpcData {
           'light_wallet_d_servers': lightWalletDServers,
         if (electrumServers != null)
           'servers': electrumServers!.map((e) => e.toJsonRequest()).toList(),
+        if (electrum != null)
+          'servers': electrum!.map((e) => e.toJsonRequest()).toList(),
         if (syncParams != null) 'sync_params': syncParams,
       };
 }
@@ -92,10 +94,10 @@ class ActivationServers {
   factory ActivationServers.fromJsonConfig(Map<String, dynamic> config) {
     return ActivationServers(
       url: config.value<String>('url'),
-      wsUrl: config.value<String>('ws_url'),
-      protocol: config.value<String?>('protocol') ?? 'TCP',
+      wsUrl: config.valueOrNull<String>('ws_url'),
+      protocol: config.valueOrNull<String>('protocol') ?? 'TCP',
       disableCertVerification:
-          config.value<bool?>('disable_cert_verification') ?? false,
+          config.valueOrNull<bool>('disable_cert_verification') ?? false,
     );
   }
 

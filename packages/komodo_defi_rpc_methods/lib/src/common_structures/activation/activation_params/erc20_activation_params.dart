@@ -1,6 +1,5 @@
 import 'package:komodo_defi_rpc_methods/src/common_structures/activation/activation_params/activation_params.dart';
 
-@Deprecated('Which is better???')
 class Erc20ActivationParams extends ActivationParams {
   Erc20ActivationParams({
     required this.nodes,

@@ -51,6 +51,9 @@ dependencies:
   postman_collection: ^0.0.9
   flutter_json_view: ^1.1.2
   url_launcher: ^6.3.0
+  shelf: ^1.4.1
+  flutter_inappwebview: ^6.1.4
+  shelf_proxy: ^1.0.4
 
 dev_dependencies:
   flutter_test:
@@ -79,6 +82,7 @@ flutter:
 
   assets:
     - assets/komodo_defi.postman_collection.json
+    - web/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

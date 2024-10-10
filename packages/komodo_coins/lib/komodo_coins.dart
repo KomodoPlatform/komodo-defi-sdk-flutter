@@ -1,4 +1,7 @@
+/// TODO! Library description
 library komodo_coins;
+
+export 'src/komodo_coins_base.dart';
 
 /// A Calculator.
 class Calculator {

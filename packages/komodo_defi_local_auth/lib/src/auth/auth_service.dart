@@ -46,7 +46,7 @@ class KdfAuthService implements IAuthService {
       StreamController.broadcast();
 
   ApiClient get _client => _kdfFramework.client;
-  final methods = KomodoDefiRpcMethods.rpc;
+  late final methods = KomodoDefiRpcMethods(_client);
 
   final ReadWriteMutex _authMutex = ReadWriteMutex();
 

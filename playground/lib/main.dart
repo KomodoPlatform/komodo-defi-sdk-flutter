@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:json_editor_flutter/json_editor_flutter.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
+import 'package:komodo_defi_framework_example/kdf_operations_wasm_server.dart';
 import 'package:komodo_defi_framework_example/widgets/request_playground.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -36,6 +38,7 @@ String _generateDefaultRpcPassword() =>
 class _ConfigureDialogState extends State<ConfigureDialog> {
   String _selectedHostType = 'local';
   String _selectedProtocol = 'https';
+  bool _exposeHttp = false;
   final TextEditingController _walletNameController = TextEditingController();
   final TextEditingController _walletPasswordController =
       TextEditingController();
@@ -129,6 +132,20 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                     labelText: 'Passphrase/Seed (Optional)',
                   ),
                 ),
+              if (_selectedHostType == 'local' && kIsWeb) ...[
+                CheckboxListTile(
+                  value: _exposeHttp,
+                  onChanged: (value) {
+                    setState(() {
+                      _exposeHttp = value!;
+                    });
+                  },
+                  title: const Text('Expose WASM via HTTP'),
+                  subtitle: const Text(
+                      'Enable this to access the WASM instance through a REST API. '
+                      'Accessible at http://localhost:3777'),
+                ),
+              ],
               if (_selectedHostType == 'remote') ...[
                 DropdownButtonFormField<String>(
                   value: _selectedProtocol,
@@ -275,6 +292,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
               'ipAddress': _ipController.text,
               'port': _portController.text,
               'protocol': _selectedProtocol,
+              'exposeHttp': _exposeHttp,
             });
           },
           child: const Text('Save'),
@@ -598,19 +616,35 @@ class _MyAppState extends State<MyApp> {
     final String walletName = result['walletName'];
     final String walletPassword = result['walletPassword'];
     final String passphrase = result['passphrase'];
+    final bool exposeHttp = result['exposeHttp'];
 
     setState(() {
       _kdfHostConfig = config;
-      _kdfFramework = KomodoDefiFramework.create(
-        hostConfig: config,
-        externalLogger: _logController.add,
-      );
+      _kdfFramework = exposeHttp && !kIsWeb
+          ? KomodoDefiFramework.createWithOperations(
+              hostConfig: config,
+              kdfOperations: KdfWasmHttpServerOperations(config as LocalConfig),
+              externalLogger: _logController.add,
+            )
+          : KomodoDefiFramework.create(
+              hostConfig: config,
+              externalLogger: _logController.add,
+            );
     });
 
     await _saveConfig(config);
-
-    // Save startup config-related fields as needed in SharedPreferences or elsewhere.
     await _saveStartupData(walletName, walletPassword, passphrase);
+  }
+
+  void _startHttpServer() {
+    if (_kdfFramework == null) {
+      _showMessage('KDF is not configured.');
+      return;
+    }
+
+    // Start the HTTP server with the KDF instance
+    // final KdfServer kdfServer = KdfServer(_kdfFramework!.operations);
+    // kdfServer.start();
   }
 
   void _executeRpc() async {

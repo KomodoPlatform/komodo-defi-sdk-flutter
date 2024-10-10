@@ -1,8 +1,15 @@
 import 'package:flutter/foundation.dart';
+import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_sdk/src/assets/assets.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+
+// Export coin activation extension
+export 'package:komodo_defi_sdk/src/assets/assets.dart'
+    show ApiClientCoinActivation, AssetActivation;
 
 /// A high-level opinionated library that provides a simple way to build
 /// cross-platform Komodo Defi Framework applications (primarily focused on
@@ -72,6 +79,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     }
   }
 
+  // TODO: Bootstrapper system with concurrency similar to KW
   Future<void> _initialize() async {
     final rpcPassword = await ensureRpcPassword();
 
@@ -81,10 +89,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
           rpcPassword: rpcPassword,
         );
 
+    // TODO!: Pass in Komodo coin config to KDF instance?
+
     _kdfFramework = KomodoDefiFramework.create(
       hostConfig: hostConfig,
       externalLogger: kDebugMode ? print : null,
     );
+
+    await assets.init();
 
     _apiClient = _kdfFramework!.client;
 
@@ -93,10 +105,18 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       hostConfig: hostConfig,
     );
 
+    // TODO: Log storage
     _logCallback = kDebugMode ? print : null;
 
     await _auth!.ensureInitialized();
 
     _isInitialized = true;
   }
+
+  late final Assets assets = Assets(_kdfFramework!);
+}
+
+/// RPC library extension of API client
+extension KomodoDefiSdkRpc on ApiClient {
+  KomodoDefiRpcMethods get rpc => KomodoDefiRpcMethods(this);
 }

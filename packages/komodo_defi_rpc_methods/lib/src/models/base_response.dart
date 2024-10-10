@@ -8,7 +8,9 @@ abstract class BaseResponse {
   // ignore: avoid_unused_constructor_parameters
   BaseResponse parse(Map<String, dynamic> json) => throw UnimplementedError();
 
-  final String mmrpc;
+  // Null/empty signifies a legacy response. Non-legacy responses will have a
+  // value of '2.0', but there may be other values in the future.
+  final String? mmrpc;
 
   final String? id;
 
