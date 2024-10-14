@@ -15,7 +15,7 @@ class KomodoCoins {
 
   static bool get isInitialized => _assets != null;
 
-  List<Asset> get all {
+  Map<String, Asset> get all {
     if (_assets == null) {
       throw StateError(
         'Assets have not been initialized. Call initialize() first.',
@@ -25,7 +25,7 @@ class KomodoCoins {
     return _assets!;
   }
 
-  static Future<List<Asset>> fetchAssets() async {
+  static Future<Map<String, Asset>> fetchAssets() async {
     if (_assets != null) {
       return _assets!;
     }
@@ -43,30 +43,50 @@ class KomodoCoins {
       // Decode the JSON response
       final jsonData = jsonFromString(response.body);
 
+      final supportedAssets = Map<String, Asset>();
       // TODO: Make supported coin logic self-contained in the Asset/Protocol
       // classes
-      final supportedAssets = jsonData.entries
-          .map((entry) {
-            final coinData = entry.value as JsonMap;
-            try {
-              final maybeProtocol =
-                  // ProtocolClass.fromJson(coinData.value<JsonMap>('protocol'));
-                  ProtocolClass.tryParse(coinData);
-              return maybeProtocol == null
-                  ? null
-                  : Asset(
-                      id: AssetId.fromConfig(coinData),
-                      protocol: maybeProtocol!,
-                    );
-            } catch (e) {
-              print("Couldn't parse coin data: ${e.toString()}: $coinData");
-              return null;
-            }
-          })
-          // TODO: Some symbols missing!
-          .where((element) => element != null)
-          .cast<Asset>()
-          .toList();
+      for (final entry in jsonData.entries) {
+        final coinData = entry.value as JsonMap;
+        try {
+          final maybeProtocol = ProtocolClass.tryParse(coinData);
+          if (maybeProtocol == null) {
+            // print("Couldn't parse unsupported coin data: ${entry.key}");
+            continue;
+          }
+          supportedAssets[entry.key] = Asset(
+            id: AssetId.fromConfig(coinData),
+            protocol: maybeProtocol,
+          );
+        } catch (e) {
+          print("Couldn't parse coin data: ${e.toString()}: $coinData");
+        }
+      }
+      // final supportedAssets = jsonData.entries
+      //     .map((entry) {
+      //       final coinData = entry.value as JsonMap;
+      //       try {
+      //         final maybeProtocol =
+      //             // ProtocolClass.fromJson(coinData.value<JsonMap>('protocol'));
+      //             ProtocolClass.tryParse(coinData);
+      //         return maybeProtocol == null
+      //             ? null
+      //             : MapEntry<String, Asset>(
+      //                 entry.key,
+      //                 Asset(
+      //                   id: AssetId.fromConfig(coinData),
+      //                   protocol: maybeProtocol!,
+      //                 ),
+      //               );
+      //       } catch (e) {
+      //         print("Couldn't parse coin data: ${e.toString()}: $coinData");
+      //         return null;
+      //       }
+      //     })
+      //     // TODO: Some symbols missing!
+      //     .where((element) => element != null)
+      // .cast<MapEntry<String, Asset>>();
+      // .cast<Asset>();
 
       return _assets = supportedAssets;
     } else {
@@ -75,7 +95,8 @@ class KomodoCoins {
     }
   }
 
-  static List<Asset>? _assets;
+  // TODO: Make Asset ID equality comparison safe and use it as the map key.
+  static Map<String, Asset>? _assets;
 }
 
 // // Asset activation extension

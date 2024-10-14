@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -144,4 +145,29 @@ class JsonRpcErrorResponse extends MapBase<String, dynamic> {
 
   @override
   dynamic remove(Object? key) => _map.remove(key);
+
+  @mustCallSuper
+  Map<String, dynamic> toJson() => _map;
+}
+
+class ConnectionError extends JsonRpcErrorResponse {
+  ConnectionError(
+    String message, {
+    this.originalException,
+    super.code = -1,
+  }) : super(
+          error: 'ConnectionError',
+          message: message,
+        );
+
+  Exception? originalException;
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = super.toJson();
+    if (originalException != null) {
+      json['originalException'] = originalException.toString();
+    }
+    return json;
+  }
 }

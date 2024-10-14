@@ -158,7 +158,16 @@ class KdfOperationsRemote implements IKdfOperations {
 
     _logCallback('mm2Rpc request: ${json.encode(request)}');
 
-    final response = await http.post(_baseUrl, body: json.encode(request));
+    late final http.Response response;
+
+    try {
+      response = await http.post(_baseUrl, body: json.encode(request));
+    } on http.ClientException catch (e) {
+      return ConnectionError(
+        e.message,
+        originalException: e,
+      );
+    }
 
     if (response.statusCode != 200) {
       return JsonRpcErrorResponse(
@@ -183,6 +192,14 @@ class KdfOperationsRemote implements IKdfOperations {
   Future<String?> version() async {
     try {
       final response = await mm2Rpc({'method': 'version'});
+
+      final maybeError = response.valueOrNull<String>('error');
+
+      if (maybeError != null) {
+        print('Error getting version: ${response['error']}');
+        return null;
+      }
+
       return response.value<String?>('result');
     } on http.ClientException {
       return null;

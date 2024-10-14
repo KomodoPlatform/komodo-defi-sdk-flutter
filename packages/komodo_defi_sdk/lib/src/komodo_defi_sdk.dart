@@ -1,15 +1,17 @@
 import 'package:flutter/foundation.dart';
-import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/assets/assets.dart';
+import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 
 // Export coin activation extension
 export 'package:komodo_defi_sdk/src/assets/assets.dart'
-    show ApiClientCoinActivation, AssetActivation;
+    show
+        // ApiClientCoinActivation,
+        AssetActivation;
 
 /// A high-level opinionated library that provides a simple way to build
 /// cross-platform Komodo Defi Framework applications (primarily focused on
@@ -39,7 +41,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   Future<void>? _initializationFuture;
 
   late final ApiClient? _apiClient;
-  ApiClient get apiClient {
+  ApiClient get client {
     if (!_isInitialized) {
       throw StateError(
         'KomodoDefiSdk is not initialized. Call initialize() or await ensureInitialized() first.',
@@ -49,12 +51,17 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   }
 
   KomodoDefiLocalAuth get auth {
-    if (!_isInitialized) {
+    return _assertSdkInitialized(_auth);
+  }
+
+  T _assertSdkInitialized<T>(T? val) {
+    if (!_isInitialized || val == null) {
       throw StateError(
         'KomodoDefiSdk is not initialized. Call initialize() or await ensureInitialized() first.',
       );
     }
-    return _auth!;
+
+    return val;
   }
 
   /// Explicitly initialize the [KomodoDefiSdk] instance.
@@ -96,8 +103,6 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       externalLogger: kDebugMode ? print : null,
     );
 
-    await assets.init();
-
     _apiClient = _kdfFramework!.client;
 
     _auth = KomodoDefiLocalAuth(
@@ -110,10 +115,18 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
     await _auth!.ensureInitialized();
 
+    _assets = AssetManager(_apiClient!, _auth!);
+    await _assets!.init();
+
     _isInitialized = true;
   }
 
-  late final Assets assets = Assets(_kdfFramework!);
+  AssetManager get assets => _assertSdkInitialized(_assets);
+  AssetManager? _assets;
+
+  late final PubkeyManager pubkeys =
+      _assertSdkInitialized(PubkeyManager(client));
+  // PubkeyManager? _pubkeyManager;
 }
 
 /// RPC library extension of API client

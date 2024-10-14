@@ -22,3 +22,5 @@ export 'src/coin_classes/protocol_class.dart';
 export 'src/coin_classes/protocol_classes/utxo_protocol.dart';
 export 'src/cryptography/mnemonic.dart';
 export 'src/komodo_defi_types_base.dart';
+export 'src/pubkeys/pubkey.dart';
+export 'src/transactions/transaction.dart';

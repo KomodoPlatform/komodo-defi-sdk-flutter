@@ -28,7 +28,7 @@ class _KomodoAppState extends State<KomodoApp> {
 
   List<KdfUser> _knownUsers = [];
 
-  List<Asset> activeAssets = [];
+  List<Asset> _preActivatedAssets = [];
   StreamSubscription<List<Asset>>? _activeAssetsSub;
 
   StreamSubscription<KdfUser?>? sub;
@@ -41,12 +41,11 @@ class _KomodoAppState extends State<KomodoApp> {
       sub = _komodoDefiSdk.auth.authStateChanges.listen(updateUser);
       await _fetchKnownUsers();
       await updateUser();
-      _activeAssetsSub =
-          _komodoDefiSdk.assets.activeAssets().listen((newAssets) {
-        setState(() {
-          activeAssets.addAll(newAssets);
-        });
-      });
+      // _activeAssetsSub = _komodoDefiSdk.assets.all().listen((newAssets) {
+      //   setState(() {
+      //     activeAssets.addAll(newAssets);
+      //   });
+      // });
 
       _refreshUsersTimer = Timer.periodic(
         const Duration(seconds: 10),
@@ -264,10 +263,10 @@ class _KomodoAppState extends State<KomodoApp> {
             // SizedBox(height: 16),
 
             if (_currentUser != null) ...[
-              Text('Active Assets (${activeAssets.length}):'),
-              SizedBox(height: 4),
-              if (activeAssets.isEmpty) const Text('No active assets'),
-              Text('${activeAssets.map((a) => a.id.id).join(', ')}'),
+              // Text('Active Assets (${activeAssets.length}):'),
+              // SizedBox(height: 4),
+              // if (activeAssets.isEmpty) const Text('No active assets'),
+              // Text('${activeAssets.map((a) => a.id.id).join(', ')}'),
               SizedBox(height: 16),
 
               // Show list of all coins
@@ -276,7 +275,8 @@ class _KomodoAppState extends State<KomodoApp> {
                 child: ListView.builder(
                   itemCount: _komodoDefiSdk.assets.all.length,
                   itemBuilder: (context, index) {
-                    final asset = _komodoDefiSdk.assets.all.elementAt(index);
+                    final asset =
+                        _komodoDefiSdk.assets.all.values.elementAt(index);
                     final id = asset.id;
                     return ListTile(
                       key: Key(id.id),
@@ -531,11 +531,11 @@ class _CoinActivationButtonState extends State<CoinActivationButton> {
           ? null
           : () async {
               // Stream: asset.activate();
-              await for (final progress in widget.asset.activate()) {
+              await for (final progress in widget.asset.preActivate()) {
                 print('Activation progress: $progress');
               }
             },
-      label: Text('Activate ${widget.asset.id.name}'),
+      label: Text('Force activate ${widget.asset.id.name}'),
       icon: isBusy
           ? const SizedBox(
               width: 16,

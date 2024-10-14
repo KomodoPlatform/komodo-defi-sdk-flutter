@@ -30,8 +30,8 @@ class AssetId extends Equatable {
   List<Object?> get props => [id, name, symbol, chainId];
 }
 
-abstract interface class ChainId {
-  ChainId.fromConfig();
+abstract class ChainId with EquatableMixin {
+  // const ChainId.fromConfig();
 
   static ChainId parse(JsonMap json) {
     final chainParseAttempts = [
@@ -63,7 +63,7 @@ abstract interface class ChainId {
   }
 }
 
-class AssetChainId implements ChainId {
+class AssetChainId extends ChainId {
   AssetChainId({
     required this.chainId,
   });
@@ -78,9 +78,12 @@ class AssetChainId implements ChainId {
 
   @override
   String get formattedChainId => chainId.toString();
+
+  @override
+  List<Object?> get props => [chainId];
 }
 
-class TendermintChainId implements ChainId {
+class TendermintChainId extends ChainId {
   TendermintChainId({
     required this.accountPrefix,
     required this.chainId,
@@ -103,9 +106,12 @@ class TendermintChainId implements ChainId {
 
   @override
   String get formattedChainId => '$chainRegistryName:$chainId';
+
+  @override
+  List<Object?> get props => [accountPrefix, chainId, chainRegistryName];
 }
 
-class ProtocolChainId implements ChainId {
+class ProtocolChainId extends ChainId {
   ProtocolChainId({
     required ProtocolClass protocol,
   }) : _protocol = protocol;
@@ -122,4 +128,7 @@ class ProtocolChainId implements ChainId {
 
   @override
   String get formattedChainId => _protocol.runtimeType.toString();
+
+  @override
+  List<Object?> get props => [_protocol];
 }

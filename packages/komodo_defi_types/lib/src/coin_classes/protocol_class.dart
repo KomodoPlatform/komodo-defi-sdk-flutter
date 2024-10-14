@@ -1,11 +1,12 @@
 // ignore_for_file: avoid_unused_constructor_parameters
 
+import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
 import 'package:komodo_defi_types/types.dart';
 
 // Base protocol class
-abstract class ProtocolClass {
+abstract class ProtocolClass /*with EquatableMixin*/ {
   ProtocolClass(this.subClass, this.activationStrategy);
 
   static ProtocolClass? tryParse(JsonMap json) {

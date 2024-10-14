@@ -13,6 +13,8 @@ class ActivationProgress {
   final bool isComplete;
   final String? errorMessage;
 
+  bool get isSuccess => isComplete && errorMessage == null;
+
   JsonMap toJson() {
     return {
       'status': status,
