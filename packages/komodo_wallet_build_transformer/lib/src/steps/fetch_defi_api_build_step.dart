@@ -613,10 +613,10 @@ class FetchDefiApiStep extends BuildStep {
 
   String findNodeWindows() {
     final commonLocations = [
-      'C:/Program Files/nodejs/npm',
       'C:/Program Files/nodejs/npm.cmd',
-      'C:/Program Files (x86)/nodejs/npm',
       'C:/Program Files (x86)/nodejs/npm.cmd',
+      'C:/Program Files/nodejs/npm',
+      'C:/Program Files (x86)/nodejs/npm',
     ];
 
     for (final location in commonLocations) {
