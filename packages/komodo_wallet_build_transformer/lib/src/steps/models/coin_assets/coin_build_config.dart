@@ -12,6 +12,7 @@ import 'package:path/path.dart' as path;
 class CoinBuildConfig {
   /// Creates a new instance of [CoinBuildConfig].
   CoinBuildConfig({
+    required this.fetchAtBuildEnabled,
     required this.bundledCoinsRepoCommit,
     required this.updateCommitOnBuild,
     required this.coinsRepoApiUrl,
@@ -25,6 +26,7 @@ class CoinBuildConfig {
   /// Creates a new instance of [CoinBuildConfig] from a JSON object.
   factory CoinBuildConfig.fromJson(Map<String, dynamic> json) {
     return CoinBuildConfig(
+      fetchAtBuildEnabled: json['fetch_at_build_enabled'] as bool,
       updateCommitOnBuild: json['update_commit_on_build'] as bool,
       bundledCoinsRepoCommit: json['bundled_coins_repo_commit'] as String,
       coinsRepoApiUrl: json['coins_repo_api_url'] as String,
@@ -39,6 +41,9 @@ class CoinBuildConfig {
       ),
     );
   }
+
+  /// Indicates whether fetching updates of the coins assets are enabled.
+  final bool fetchAtBuildEnabled;
 
   /// The commit hash or branch coins repository to use when fetching coin
   /// assets.
@@ -77,6 +82,7 @@ class CoinBuildConfig {
 
   CoinBuildConfig copyWith({
     String? bundledCoinsRepoCommit,
+    bool? fetchAtBuildEnabled,
     bool? updateCommitOnBuild,
     String? coinsRepoApiUrl,
     String? coinsRepoContentUrl,
@@ -86,6 +92,7 @@ class CoinBuildConfig {
     Map<String, String>? mappedFolders,
   }) {
     return CoinBuildConfig(
+      fetchAtBuildEnabled: fetchAtBuildEnabled ?? this.fetchAtBuildEnabled,
       updateCommitOnBuild: updateCommitOnBuild ?? this.updateCommitOnBuild,
       bundledCoinsRepoCommit:
           bundledCoinsRepoCommit ?? this.bundledCoinsRepoCommit,
@@ -101,6 +108,7 @@ class CoinBuildConfig {
 
   /// Converts the [CoinBuildConfig] instance to a JSON object.
   Map<String, dynamic> toJson() => <String, dynamic>{
+        'fetch_at_build_enabled': fetchAtBuildEnabled,
         'update_commit_on_build': updateCommitOnBuild,
         'bundled_coins_repo_commit': bundledCoinsRepoCommit,
         'coins_repo_api_url': coinsRepoApiUrl,

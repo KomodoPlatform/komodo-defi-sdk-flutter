@@ -22,6 +22,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     required this.buildConfigOutput,
     required this.githubApiProvider,
     this.receivePort,
+    this.enabled = true,
   }) {
     receivePort?.listen(
       (dynamic message) => onProgressData(message, receivePort),
@@ -64,6 +65,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       buildConfigOutput: outputBuildConfigFile,
       githubApiProvider: provider,
       receivePort: receivePort,
+      enabled: config.fetchAtBuildEnabled,
     );
   }
 
@@ -79,6 +81,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   @override
   final String id = idStatic;
   static const idStatic = 'fetch_coin_assets';
+  final bool enabled;
 
   @override
   Future<void> build() async {
@@ -136,6 +139,10 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
   @override
   Future<bool> canSkip() async {
+    if (!enabled) {
+      return true;
+    }
+
     final latestCommitHash = await githubApiProvider.getLatestCommitHash(
       branch: config.coinsRepoBranch,
     );
