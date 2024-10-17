@@ -13,23 +13,43 @@ export 'package:komodo_defi_sdk/src/assets/assets.dart'
         // ApiClientCoinActivation,
         AssetActivation;
 
+KomodoDefiSdk? _instance;
+
+// TODO! Ensure the lazy initialization of the SDK instance works reliably
+// for all all public properties, or otherwise make initialization required.
 /// A high-level opinionated library that provides a simple way to build
 /// cross-platform Komodo Defi Framework applications (primarily focused on
 /// wallets).
 class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Creates a new instance of the [KomodoDefiSdk] class.
   ///
+  /// NB: This is a singleton class. Use the [KomodoDefiSdk.newInstance]
+  /// constructor to create a new instance.
+  ///
   /// This constructor is synchronous, but internal initialization is handled
   /// asynchronously when needed.
   ///
   /// Defaults to a local instance unless [host] is provided.
-  ///
-  /// NB: This is not a singleton class. [TODO: elaborate on this]
   factory KomodoDefiSdk({IKdfHostConfig? host}) {
+    if (_instance != null && host != null && _instance!._hostConfig != host) {
+      throw StateError(
+        'KomodoDefiSdk is a singleton and has already been initialized. '
+        'The host cannot be changed after initialization.',
+      );
+    }
+    return _instance ??= KomodoDefiSdk._(host);
+  }
+
+  // KomodoDefiSdk get global => _instance!;
+
+  /// Creates a new instance of the [KomodoDefiSdk] class.
+  factory KomodoDefiSdk.newInstance({IKdfHostConfig? host}) {
     return KomodoDefiSdk._(host);
   }
 
   KomodoDefiSdk._(this._hostConfig);
+
+  KomodoDefiSdk get global => _instance!;
 
   late final IKdfHostConfig? _hostConfig;
   late final KomodoDefiFramework? _kdfFramework;
@@ -130,6 +150,11 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 }
 
 /// RPC library extension of API client
-extension KomodoDefiSdkRpc on ApiClient {
-  KomodoDefiRpcMethods get rpc => KomodoDefiRpcMethods(this);
+// extension KomodoDefiSdkRpc on ApiClient {
+//   KomodoDefiRpcMethods get rpc => KomodoDefiRpcMethods(this);
+// }
+
+extension AssetPubkeysExtension on Asset {
+  Future<AssetPubkeys> getPubkey() =>
+      PubkeyManager(_instance!._apiClient!).getPubkey(this);
 }

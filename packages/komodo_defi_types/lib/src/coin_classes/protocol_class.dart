@@ -1,12 +1,11 @@
 // ignore_for_file: avoid_unused_constructor_parameters
 
-import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
 import 'package:komodo_defi_types/types.dart';
 
 // Base protocol class
-abstract class ProtocolClass /*with EquatableMixin*/ {
+sealed class ProtocolClass /*with EquatableMixin*/ {
   ProtocolClass(this.subClass, this.activationStrategy);
 
   static ProtocolClass? tryParse(JsonMap json) {
@@ -59,9 +58,16 @@ class UtxoProtocol extends ProtocolClass {
 
   factory UtxoProtocol.fromJson(JsonMap json) {
     return ProtocolClass.fromJson(json) as UtxoProtocol;
-    const subClass = CoinSubClass.utxo;
+  }
+}
+
+class QtumProtocol extends ProtocolClass {
+  QtumProtocol(super.subClass, super.activationStrategy);
+
+  factory QtumProtocol.fromJson(JsonMap json) {
+    final subClass = CoinSubClass.parse(json.value<String>('type'));
     final activationStrategy = PlaceholderStrategy(); //TODO!
-    return UtxoProtocol(subClass, activationStrategy);
+    return QtumProtocol(subClass, activationStrategy);
   }
 }
 

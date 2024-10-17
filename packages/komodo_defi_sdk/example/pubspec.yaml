@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_bloc: ^8.1.6
   flutter_secure_storage: ^9.2.2
 
   komodo_defi_sdk:

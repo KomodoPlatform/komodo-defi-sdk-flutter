@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -35,18 +37,8 @@ abstract class BaseTaskActivationStrategy implements ActivationStrategy {
         status: 'Task started (ID: $taskId)',
       );
 
-      // Optionally check status immediately after starting
       yield* checkStatus(apiClient, coin);
     } catch (e) {
-      final isGeneralError = e is GeneralErrorResponse;
-
-      if (isGeneralError && e.errorType == 'CoinIsAlreadyActivated') {
-        yield ActivationProgress(
-          status: 'Coin activated (was already active)',
-          isComplete: true,
-        );
-      }
-
       yield ActivationProgress(
         status: 'Task initialization failed: $e',
         errorMessage: (e is GeneralErrorResponse)
@@ -54,6 +46,8 @@ abstract class BaseTaskActivationStrategy implements ActivationStrategy {
             : e.toString(),
         isComplete: true,
       );
+
+      return;
     }
   }
 
@@ -74,20 +68,26 @@ abstract class BaseTaskActivationStrategy implements ActivationStrategy {
       status: 'Checking task status...',
     );
 
-    try {
-      // Query the status using the task ID
-      final statusResponse = await _checkTaskStatus(apiClient, taskId!);
+    // final controller = StreamController<ActivationProgress>();
 
-      if (statusResponse.isCompleted) {
-        yield ActivationProgress(status: 'Task completed', isComplete: true);
-      } else {
-        yield ActivationProgress(
-          status: 'Task in progress: ${statusResponse.details}',
-        );
+    try {
+      // while (!controller.isClosed) {
+      ActivationProgress? status;
+      // TODO: Test whether
+      while (status?.isComplete != true) {
+        // Query the status using the task ID
+        yield status = await _checkTaskStatus(apiClient, taskId!);
+
+        if (status.isComplete) {
+          break;
+        }
+
+        await Future<void>.delayed(const Duration(seconds: 1));
       }
     } catch (e) {
       yield ActivationProgress(
         status: 'Failed to check task status: $e',
+        errorMessage: e.toString(),
         isComplete: true,
       );
     }
@@ -98,11 +98,31 @@ abstract class BaseTaskActivationStrategy implements ActivationStrategy {
     return request.send(apiClient);
   }
 
-  Future<TaskStatusResponse> _checkTaskStatus(
+  Future<ActivationProgress> _checkTaskStatus(
     ApiClient apiClient,
     int taskId,
   ) async {
-    final request = createStatusRequest(taskId);
-    return request.send(apiClient);
+    try {
+      final response = await createStatusRequest(taskId).send(apiClient);
+
+      return ActivationProgress(
+        status: response.status,
+        isComplete: response.isCompleted,
+      );
+    } on GeneralErrorResponse catch (e) {
+      if (e.errorType == 'CoinIsAlreadyActivated') {
+        return ActivationProgress(
+          status: 'Coin activated (was already active)',
+          isComplete: true,
+        );
+      }
+      rethrow;
+    } catch (e) {
+      return ActivationProgress(
+        status: 'Failed to check task status: $e',
+        errorMessage: e.toString(),
+        isComplete: true,
+      );
+    }
   }
 }

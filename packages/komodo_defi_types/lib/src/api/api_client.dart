@@ -2,6 +2,7 @@
 
 import 'dart:async';
 
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // ignore: one_member_abstracts
@@ -12,6 +13,10 @@ abstract class ApiClient {
   // FutureOr<void> stop();
   // FutureOr<bool> isInitialized();
 }
+
+// extension KomodoDefiRpcMethodsExtension on ApiClient {
+//   KomodoDefiRpcMethods get rpc => KomodoDefiRpcMethods(this);
+// }
 
 class ApiClientMock implements ApiClient {
   @override
@@ -29,4 +34,8 @@ class ApiClientMock implements ApiClient {
   // bool isInitialized() {
   //   return true;
   // }
+}
+
+extension KomodoDefiRpcMethodsExtension on ApiClient {
+  KomodoDefiRpcMethods get rpc => KomodoDefiRpcMethods(this);
 }

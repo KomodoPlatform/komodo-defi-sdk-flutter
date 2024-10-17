@@ -26,6 +26,7 @@ class KdfStartupConfig {
     required this.rpcLocalOnly,
     required this.hdAccountId,
     required this.allowRegistrations,
+    required this.enableHd,
   });
 
   final String? walletName;
@@ -43,6 +44,7 @@ class KdfStartupConfig {
   final String gui;
   final bool https;
   final bool allowRegistrations;
+  final bool? enableHd;
 
   // Either a list of coin JSON objects or a string of the path to a file
   // containing a list of coin JSON objects.
@@ -65,6 +67,7 @@ class KdfStartupConfig {
     bool https = false,
     bool rpcLocalOnly = true,
     bool allowRegistrations = true,
+    bool enableHd = true,
   }) async {
     assert(
       !kIsWeb || userHome == null && dbDir == null,
@@ -93,6 +96,7 @@ class KdfStartupConfig {
       rpcLocalOnly: rpcLocalOnly,
       hdAccountId: hdAccountId,
       allowRegistrations: allowRegistrations,
+      enableHd: enableHd,
     );
   }
 
@@ -129,6 +133,7 @@ class KdfStartupConfig {
       rpcLocalOnly: true,
       hdAccountId: null,
       allowRegistrations: false,
+      enableHd: true,
     );
   }
 
@@ -150,6 +155,7 @@ class KdfStartupConfig {
       if (rpcLocalOnly != null) 'rpc_local_only': rpcLocalOnly,
       if (hdAccountId != null) 'hd_account_id': hdAccountId,
       'allow_registrations': allowRegistrations,
+      if (enableHd != null) 'enable_hd': enableHd,
       'https': https,
       'coins': coins,
     };

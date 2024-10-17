@@ -1,13 +1,13 @@
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class SyncStatus {
-  SyncStatus({
+class SyncStatusResponse {
+  SyncStatusResponse({
     required this.state,
     this.additional,
   });
 
-  factory SyncStatus.fromJson(Map<String, dynamic> json) {
-    return SyncStatus(
+  factory SyncStatusResponse.fromJson(Map<String, dynamic> json) {
+    return SyncStatusResponse(
       state: json.value<String>('state'),
       additional: json.value<JsonMap>('additional'),
     );

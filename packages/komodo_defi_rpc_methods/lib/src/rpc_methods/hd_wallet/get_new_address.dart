@@ -1,3 +1,4 @@
+import 'package:komodo_defi_rpc_methods/src/common_structures/general/new_address_info.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -7,7 +8,6 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// ```dart
 /// void main() async {
 ///   final request = GetNewAddressRequest(
-///     client: ApiClientMock(), # Use a real client here
 ///     rpcPass: 'rpcPass',
 ///     coin: 'KMD',
 ///   );
@@ -15,7 +15,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 ///   try {
 ///     final response = await request.send();
 ///
-///     print(response.address);
+///     print(response.newAddress.address);
 ///   } on GeneralErrorResponse catch (e) {
 ///     print("Error fetching new address: ${e.error}");
 ///   }
@@ -24,28 +24,31 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 class GetNewAddressRequest
     extends BaseRequest<GetNewAddressResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  // TODO: Add the other parameters. It's not urgent since they are optional
-  // in the API and we are unlikely to use them.
-  // https://komodoplatform.com/en/docs/komodo-defi-framework/api/v20-dev/hd_address_management/#arguments
   GetNewAddressRequest({
     required super.rpcPass,
-    // required super.client,
     required this.coin,
+    this.accountId,
+    this.chain,
     this.gapLimit,
   }) : super(method: 'get_new_address');
 
   final String coin;
+  final int? accountId;
+  final String? chain;
   final int? gapLimit;
 
   @override
   Map<String, dynamic> toJson() {
     return {
+      ...super.toJson(),
       'userpass': rpcPass,
       'method': method,
       'mmrpc': mmrpc,
       'params': {
         'coin': coin,
-        if (gapLimit != null) 'gaplimit': gapLimit,
+        if (accountId != null) 'account_id': accountId,
+        if (chain != null) 'chain': chain,
+        if (gapLimit != null) 'gap_limit': gapLimit,
       },
     };
   }
@@ -55,26 +58,26 @@ class GetNewAddressRequest
       GetNewAddressResponse.parse(json);
 }
 
-// TODO! Create a type-safe new-address-info response class:
-// https://komodoplatform.com/en/docs/komodo-defi-framework/api/v20/#new-address-info
 class GetNewAddressResponse extends BaseResponse {
-  GetNewAddressResponse({required super.mmrpc, required this.address});
+  GetNewAddressResponse({required super.mmrpc, required this.newAddress});
 
   @override
   factory GetNewAddressResponse.parse(Map<String, dynamic> json) {
     return GetNewAddressResponse(
-      mmrpc: json.value<String>('mmrpc'),
-      address: json.value<String>('result', 'address'),
+      mmrpc: json.valueOrNull<String>('mmrpc'),
+      newAddress: NewAddressInfo.fromJson(
+        json.value<Map<String, dynamic>>('result', 'new_address'),
+      ),
     );
   }
 
-  final String address;
+  final NewAddressInfo newAddress;
 
   @override
   Map<String, dynamic> toJson() {
     return {
       'mmrpc': mmrpc,
-      'result': {'address': address},
+      'result': {'new_address': newAddress.toJson()},
     };
   }
 }

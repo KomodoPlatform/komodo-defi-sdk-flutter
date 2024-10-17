@@ -42,6 +42,11 @@ class UtxoActivationParams extends ActivationParams
       p2shtype: config.valueOrNull<int?>('p2shtype'),
       wiftype: config.valueOrNull<int?>('wiftype'),
       overwintered: config.valueOrNull<int?>('overwintered'),
+
+      // // HD wallet params
+      // scanPolicy: 'scan_if_new_wallet',
+      // minAddressesNumber: 3,
+      // gapLimit: 20,
     );
   }
 
@@ -73,7 +78,8 @@ class UtxoActivationParams extends ActivationParams
         if (p2shtype != null) 'p2shtype': p2shtype,
         if (wiftype != null) 'wiftype': wiftype,
         if (overwintered != null) 'overwintered': overwintered,
-        // 'servers':
-        //     mode!.rpcData!.electrum!.map((e) => e.toJsonRequest()).toList(),
+        if (mode!.rpcData!.electrum != null)
+          'servers':
+              mode!.rpcData!.electrum!.map((e) => e.toJsonRequest()).toList(),
       };
 }

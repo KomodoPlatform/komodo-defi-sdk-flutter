@@ -69,11 +69,21 @@ mixin RequestHandlingMixin<T extends BaseResponse,
   T parseResponse(String responseBody) {
     final json = jsonFromString(responseBody);
 
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
+    // TODO!
+    final maybeErrorResponse = tryParseErrorResponse(json);
+    if (maybeErrorResponse != null) {
+      throw maybeErrorResponse;
     }
 
     return parse(json);
+  }
+
+  @mustCallSuper
+  GeneralErrorResponse? tryParseErrorResponse(JsonMap json) {
+    if (GeneralErrorResponse.isErrorResponse(json)) {
+      return GeneralErrorResponse.parse(json);
+    }
+    return null;
   }
 
   T parse(Map<String, dynamic> json);

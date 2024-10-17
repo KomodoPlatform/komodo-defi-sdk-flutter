@@ -17,6 +17,7 @@ class GetMnemonicRequest
 
   @override
   Map<String, dynamic> toJson() => {
+        ...super.toJson(),
         'userpass': rpcPass,
         'mmrpc': mmrpc,
         'method': method,

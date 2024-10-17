@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:example/screens/asset_page.dart';
 import 'package:flutter/material.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -7,7 +8,9 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _komodoDefiSdk.initialize();
-  runApp(const MaterialApp(home: Scaffold(body: KomodoApp())));
+  runApp(
+    const MaterialApp(home: Scaffold(body: KomodoApp())),
+  );
 }
 
 final KomodoDefiSdk _komodoDefiSdk = KomodoDefiSdk();
@@ -28,7 +31,7 @@ class _KomodoAppState extends State<KomodoApp> {
 
   List<KdfUser> _knownUsers = [];
 
-  List<Asset> _preActivatedAssets = [];
+  final List<Asset> _preActivatedAssets = [];
   StreamSubscription<List<Asset>>? _activeAssetsSub;
 
   StreamSubscription<KdfUser?>? sub;
@@ -172,7 +175,6 @@ class _KomodoAppState extends State<KomodoApp> {
         key: _formKey,
         autovalidateMode: AutovalidateMode.onUserInteraction,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -267,7 +269,7 @@ class _KomodoAppState extends State<KomodoApp> {
               // SizedBox(height: 4),
               // if (activeAssets.isEmpty) const Text('No active assets'),
               // Text('${activeAssets.map((a) => a.id.id).join(', ')}'),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Show list of all coins
               Text('Coins List (${_komodoDefiSdk.assets.all.length})'),
@@ -285,21 +287,29 @@ class _KomodoAppState extends State<KomodoApp> {
                       tileColor:
                           index.isEven ? Colors.grey[200] : Colors.grey[100],
                       // trailing: Text(asset.balance.toString()),
+                      // leading: CircleAvatar(
+                      //   foregroundImage: NetworkImage(
+                      //     // https://komodoplatform.github.io/coins/icons/kmd.png
+                      //     'https://komodoplatform.github.io/coins/icons/${id.symbol.configSymbol.toLowerCase()}.png',
+                      //   ),
+                      //   child: Text(id.id.substring(0, 2)),
+                      // ),
                       leading: CircleAvatar(
-                        child: Text(id.id.substring(0, 2)),
-                        // TODO! Add sdk Image provider
                         foregroundImage: NetworkImage(
                           // https://komodoplatform.github.io/coins/icons/kmd.png
                           'https://komodoplatform.github.io/coins/icons/${id.symbol.configSymbol.toLowerCase()}.png',
                         ),
+                        child: Text(id.id.substring(0, 2)),
                       ),
-                      trailing:
-                          // If activated then show a checkmark, otherwise show
-                          // the activation button
-                          CoinActivationButton(
-                        key: Key(asset.id.id),
-                        asset: asset,
-                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () => _onNavigateToAsset(asset),
+                      // trailing:
+                      //     // If activated then show a checkmark, otherwise show
+                      //     // the activation button
+                      //     CoinActivationButton(
+                      //   key: Key(asset.id.id),
+                      //   asset: asset,
+                      // ),
                     );
                   },
                 ),
@@ -307,6 +317,15 @@ class _KomodoAppState extends State<KomodoApp> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _onNavigateToAsset(Asset asset) {
+    // Navigator.of(context).pushNamed('/asset', arguments: asset);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => AssetPage(asset),
       ),
     );
   }
@@ -320,7 +339,7 @@ class _KomodoAppState extends State<KomodoApp> {
       return;
     }
     final mnemonicController = TextEditingController();
-    bool isMnemonicEncrypted = false;
+    var isMnemonicEncrypted = false;
     String? errorMessage;
 
     final didProvideImport = await showDialog<bool?>(

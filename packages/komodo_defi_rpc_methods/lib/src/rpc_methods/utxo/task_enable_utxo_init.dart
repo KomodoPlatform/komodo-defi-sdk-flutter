@@ -14,10 +14,13 @@ class TaskEnableUtxoInit
         );
 
   final String ticker;
+
+  @override
   final UtxoActivationParams params;
 
   @override
   Map<String, dynamic> toJson() => {
+        ...super.toJson(),
         'userpass': rpcPass,
         'mmrpc': mmrpc,
         'method': method,
@@ -30,7 +33,7 @@ class TaskEnableUtxoInit
   @override
   NewTaskResponse parseResponse(String responseBody) {
     final json = jsonFromString(responseBody);
-    if (json['error'] != null) {
+    if (GeneralErrorResponse.isErrorResponse(json)) {
       throw GeneralErrorResponse.parse(json);
     }
     return NewTaskResponse.parse(json);

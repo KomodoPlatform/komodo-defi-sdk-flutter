@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:komodo_defi_types/types.dart';
 
 abstract class ActivationStrategy {
@@ -18,7 +20,9 @@ class PlaceholderStrategy implements ActivationStrategy {
 
   @override
   Stream<ActivationProgress> checkStatus(
-      ApiClient apiClient, Asset coin) async* {
+    ApiClient apiClient,
+    Asset coin,
+  ) async* {
     yield ActivationProgress(status: 'Placeholder status check');
   }
 

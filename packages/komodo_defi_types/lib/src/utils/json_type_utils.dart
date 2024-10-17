@@ -50,12 +50,20 @@ T? _traverseJson<T>(
 
   dynamic value = json;
 
-  for (final key in keys) {
+  for (int i = 0; i < keys.length; i++) {
+    final key = keys[i];
+    final isLast = i == keys.length - 1;
+
     if (value is! Map) {
+      // if (value is! Map && !isLast) {
+      if (nullIfAbsent) {
+        return null;
+      }
+
       throw ArgumentError('Cannot traverse a non-Map value');
     }
 
-    if (!value.containsKey(key)) {
+    if (value.containsKey(key) == false) {
       if (nullIfAbsent) {
         return null;
       }
@@ -93,6 +101,10 @@ T? _traverseJson<T>(
     return jsonFromString(value) as T;
   }
 
+  if (T == String && value is JsonMap) {
+    return jsonToString(value) as T;
+  }
+
   if (T == JsonList && value is String) {
     return jsonListFromString(value) as T;
   }
@@ -106,7 +118,7 @@ T? _traverseJson<T>(
   if (T != dynamic && value is Map && T.toString().startsWith('Map<')) {
     try {
       // Attempt to convert the map to the expected type
-      return _convertMap<T>(value);
+      return _convertMap(value);
     } catch (e) {
       throw ArgumentError(
         'Failed to convert map to expected type $T: ${e.toString()}',
@@ -116,22 +128,27 @@ T? _traverseJson<T>(
 
   if (value != null && value is! T) {
     throw ArgumentError(
-      'Traversed JSON and expected value of type $T, but got ${value.runtimeType}',
+      'Traversed JSON and expected value of type $T for ${keys.last}, '
+      'but got ${value.runtimeType}',
     );
   }
 
   return value as T;
 }
 
-T _convertMap<T>(Map sourceMap) {
-  if (T == Map<String, dynamic>) {
+T _convertMap<T>(Map<dynamic, dynamic> sourceMap) {
+  if (T is JsonMap? || T is Map<String, dynamic>) {
     return Map<String, dynamic>.from(sourceMap) as T;
   } else if (T == Map<String, Object?>) {
     return Map<String, Object?>.from(sourceMap) as T;
-  } else if (T == JsonMap) {
-    return JsonMap.from(sourceMap) as T;
-  } else {
-    throw ArgumentError('Unsupported map type: $T');
+  }
+
+  try {
+    return sourceMap as T;
+  } catch (e) {
+    throw ArgumentError(
+      'Failed to convert map of "${sourceMap.runtimeType}" to expected type ${T.toString()}',
+    );
   }
 }
 
@@ -158,7 +175,7 @@ extension JsonMapExtension<T extends JsonMap> on T {
     String? key5,
   ]) {
     final keys = [key1, key2, key3, key4, key5].whereType<String>().toList();
-    return _traverseJson<V?>(this, keys, nullIfAbsent: true);
+    return _traverseJson<V>(this, keys, nullIfAbsent: true);
   }
 
   static JsonMap jsonFromString(String json) {

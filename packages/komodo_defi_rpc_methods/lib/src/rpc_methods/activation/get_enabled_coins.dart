@@ -7,7 +7,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 class GetEnabledCoinsRequest
     extends BaseRequest<GetEnabledCoinsResponse, GeneralErrorResponse> {
   GetEnabledCoinsRequest({super.rpcPass})
-      : super(method: 'get_enabled_coins', mmrpc: null);
+      : super(method: 'get_enabled_coins', mmrpc: '2.0');
 
   @override
   GetEnabledCoinsResponse parseResponse(String responseBody) {
@@ -24,8 +24,10 @@ class GetEnabledCoinsResponse extends BaseResponse {
   factory GetEnabledCoinsResponse.fromJson(Map<String, dynamic> json) {
     return GetEnabledCoinsResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
-      result:
-          json.value<JsonList>('result').map(EnabledCoinInfo.fromJson).toList(),
+      result: json
+          .value<JsonList>('result', 'coins')
+          .map(EnabledCoinInfo.fromJson)
+          .toList(),
     );
   }
 
@@ -38,24 +40,21 @@ class GetEnabledCoinsResponse extends BaseResponse {
 }
 
 // TODO? Move to common structures?
+
 class EnabledCoinInfo {
   EnabledCoinInfo({
-    required this.address,
     required this.ticker,
   });
 
   factory EnabledCoinInfo.fromJson(Map<String, dynamic> json) {
     return EnabledCoinInfo(
-      address: json.value<String>('address'),
       ticker: json.value<String>('ticker'),
     );
   }
 
-  final String address;
   final String ticker;
 
   Map<String, dynamic> toJson() => {
-        'address': address,
         'ticker': ticker,
       };
 }

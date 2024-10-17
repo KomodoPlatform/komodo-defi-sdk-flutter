@@ -4,8 +4,12 @@
 library rpc_methods;
 
 export 'activation/get_enabled_coins.dart';
+export 'activation/legacy_get_enabled_coins.dart';
 export 'eth/enable_eth_with_tokens.dart';
+export 'hd_wallet/account_balance.dart';
 export 'hd_wallet/get_new_address.dart';
+export 'hd_wallet/scan_for_new_addresses_init.dart';
+export 'hd_wallet/scan_for_new_addresses_status.dart';
 export 'methods.dart';
 export 'utxo/task_enable_utxo_init.dart';
 export 'wallet/get_mnemonic_request.dart';

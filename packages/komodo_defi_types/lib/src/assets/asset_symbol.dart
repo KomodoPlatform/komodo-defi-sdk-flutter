@@ -66,6 +66,13 @@ class AssetSymbol {
     _configToSymbolCache[ticker] = ticker;
     return ticker;
   }
+
+  JsonMap toJson() => {
+        'coinpaprika_id': coinPaprikaId,
+        'coingecko_id': coinGeckoId,
+        'livecoinwatch_id': liveCoinWatchId,
+        'binance_id': binanceId,
+      };
 }
 
 final Map<String, String> _configToSymbolCache = {};

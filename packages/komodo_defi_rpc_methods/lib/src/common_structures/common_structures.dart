@@ -26,6 +26,8 @@ export 'general/scan_address_info.dart';
 export 'general/sync_status.dart';
 export 'general/wallet_info.dart';
 export 'general/withdraw_fee.dart';
+export 'hd_wallet/address_balance_info.dart';
+export 'hd_wallet/address_info.dart';
 export 'networks/lightning/activation_params.dart';
 export 'networks/lightning/channel/channels_index.dart';
 export 'networks/lightning/channel/lightning_channel_amount.dart';

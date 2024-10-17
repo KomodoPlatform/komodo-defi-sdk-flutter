@@ -14,10 +14,11 @@ class UtxoActivationStrategy extends BaseTaskActivationStrategy {
     Map<String, dynamic> json,
   ) {
     final rpcData = ActivationRpcData(
-        electrum: (json['electrum'] as List<dynamic>?)
-            ?.cast<JsonMap>()
-            .map(ActivationServers.fromJsonConfig)
-            .toList());
+      electrum: (json['electrum'] as List<dynamic>?)
+          ?.cast<JsonMap>()
+          .map(ActivationServers.fromJsonConfig)
+          .toList(),
+    );
 
     return UtxoActivationStrategy(
       // apiClient, // Pass your API client instance here

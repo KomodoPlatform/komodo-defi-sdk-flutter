@@ -14,21 +14,22 @@ class TaskStatusRequest
   final int taskId;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'userpass': rpcPass,
-        'mmrpc': mmrpc,
-        'method': method,
-        'params': {
-          'task_id': taskId,
-          'forget_if_finished':
-              false, // Default value as per your documentation
-        },
-      };
+  Map<String, dynamic> toJson() => super.toJson()
+    ..addAll({
+      'userpass': rpcPass,
+      'mmrpc': mmrpc,
+      'method': method,
+      'params': {
+        'task_id': taskId,
+        'forget_if_finished': false,
+      },
+    });
 
   @override
   TaskStatusResponse parseResponse(String responseBody) {
     final json = jsonFromString(responseBody);
-    if (json['error'] != null) {
+
+    if (GeneralErrorResponse.isErrorResponse(json)) {
       throw GeneralErrorResponse.parse(json);
     }
     return TaskStatusResponse.parse(json);
@@ -51,6 +52,20 @@ class TaskStatusResponse extends BaseResponse {
       details: json.value<String>('result', 'details'),
       isCompleted: json.value<String>('result', 'status') ==
           'Ok', // Check if task is completed
+    );
+  }
+
+  factory TaskStatusResponse.copyWith({
+    required String mmrpc,
+    required String status,
+    required String details,
+    required bool isCompleted,
+  }) {
+    return TaskStatusResponse(
+      mmrpc: mmrpc,
+      status: status,
+      details: details,
+      isCompleted: isCompleted,
     );
   }
 

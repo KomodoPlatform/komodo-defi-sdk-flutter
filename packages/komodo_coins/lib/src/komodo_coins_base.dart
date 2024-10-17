@@ -43,50 +43,38 @@ class KomodoCoins {
       // Decode the JSON response
       final jsonData = jsonFromString(response.body);
 
-      final supportedAssets = Map<String, Asset>();
+      final supportedAssets = <String, Asset>{};
       // TODO: Make supported coin logic self-contained in the Asset/Protocol
       // classes
       for (final entry in jsonData.entries) {
         final coinData = entry.value as JsonMap;
+
         try {
-          final maybeProtocol = ProtocolClass.tryParse(coinData);
-          if (maybeProtocol == null) {
-            // print("Couldn't parse unsupported coin data: ${entry.key}");
+          if (ProtocolClass.tryParse(coinData) == null) {
             continue;
           }
-          supportedAssets[entry.key] = Asset(
-            id: AssetId.fromConfig(coinData),
-            protocol: maybeProtocol,
-          );
+
+          final asset = Asset.fromJson(coinData);
+
+          // TODO! Remove temporary workaround when all coins have derivation
+          // paths
+          // Skip it if it is a multi-address coin but doesn't have a
+          // derivation path. This approach may need to be changed if we
+          // refactor to use the mult-address strategy for single-address coins.
+          if (asset.pubkeyStrategy.supportsMultipleAddresses &&
+              asset.id.derivationPath == null) {
+            print(
+              'Skipping multi-address coin without '
+              'derivation path: ${entry.key}',
+            );
+            continue;
+          }
+
+          supportedAssets[entry.key] = asset;
         } catch (e) {
-          print("Couldn't parse coin data: ${e.toString()}: $coinData");
+          print("Couldn't parse coin data: $e: $coinData");
         }
       }
-      // final supportedAssets = jsonData.entries
-      //     .map((entry) {
-      //       final coinData = entry.value as JsonMap;
-      //       try {
-      //         final maybeProtocol =
-      //             // ProtocolClass.fromJson(coinData.value<JsonMap>('protocol'));
-      //             ProtocolClass.tryParse(coinData);
-      //         return maybeProtocol == null
-      //             ? null
-      //             : MapEntry<String, Asset>(
-      //                 entry.key,
-      //                 Asset(
-      //                   id: AssetId.fromConfig(coinData),
-      //                   protocol: maybeProtocol!,
-      //                 ),
-      //               );
-      //       } catch (e) {
-      //         print("Couldn't parse coin data: ${e.toString()}: $coinData");
-      //         return null;
-      //       }
-      //     })
-      //     // TODO: Some symbols missing!
-      //     .where((element) => element != null)
-      // .cast<MapEntry<String, Asset>>();
-      // .cast<Asset>();
 
       return _assets = supportedAssets;
     } else {
@@ -98,9 +86,3 @@ class KomodoCoins {
   // TODO: Make Asset ID equality comparison safe and use it as the map key.
   static Map<String, Asset>? _assets;
 }
-
-// // Asset activation extension
-// extension AssetActivation on Asset {
-//   Stream<ActivationProgress> activate() =>
-//       protocol.activationStrategy.activate(this);
-// }

@@ -9,6 +9,7 @@ class AssetId extends Equatable {
     required this.name,
     required this.symbol,
     required this.chainId,
+    required this.derivationPath,
   });
 
   factory AssetId.fromConfig(Map<String, dynamic> json) {
@@ -17,6 +18,7 @@ class AssetId extends Equatable {
       name: json.value<String>('fname'),
       symbol: AssetSymbol.fromConfig(json),
       chainId: ChainId.parse(json),
+      derivationPath: json.valueOrNull<String>('derivation_path'),
     );
   }
 
@@ -25,9 +27,20 @@ class AssetId extends Equatable {
   final AssetSymbol symbol;
   // TODO: Consider moving chainId to `Chain` class
   final ChainId chainId;
+  final String? derivationPath;
+
+  JsonMap toJson() {
+    return {
+      'coin': id,
+      'fname': name,
+      'symbol': symbol.toJson(),
+      'chain_id': chainId.formattedChainId,
+      'derivation_path': derivationPath,
+    };
+  }
 
   @override
-  List<Object?> get props => [id, name, symbol, chainId];
+  List<Object?> get props => [id, name, symbol, chainId, derivationPath];
 }
 
 abstract class ChainId with EquatableMixin {
