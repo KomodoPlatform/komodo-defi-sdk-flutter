@@ -26,12 +26,15 @@ class Asset extends Equatable {
 
   /// Some assets have multiple supported pubkey strategies. Certain strategies
   /// may be preferred over others as they offer better features or performance.
+  // TODO: Consider moving this logic to the Strategy class to keep it
+  // encapsulated.
   static PubkeyStrategy preferredPubkeyStrategy(ProtocolClass protocol) {
     return switch (protocol) {
       UtxoProtocol() => HDWalletStrategy(),
       QtumProtocol() => HDWalletStrategy(),
       Erc20Protocol() => SingleAddressStrategy(),
       EthProtocol() => SingleAddressStrategy(),
+      SlpProtocol() => SingleAddressStrategy(),
     };
   }
 

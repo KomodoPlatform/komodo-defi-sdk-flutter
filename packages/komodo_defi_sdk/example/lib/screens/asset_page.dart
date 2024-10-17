@@ -22,14 +22,28 @@ class _AssetPageState extends State<AssetPage> {
   @override
   void initState() {
     super.initState();
-    _loadPubkey();
+    _loadPubkeys();
   }
 
-  Future<void> _loadPubkey() async {
+  Future<void> _loadPubkeys() async {
     setState(() => _isLoading = true);
     try {
-      final pubkey = await widget.asset.getPubkey();
-      setState(() => _pubkeys = pubkey);
+      final pubkeys = await _sdk.pubkeys.getPubkeys(widget.asset);
+      setState(() => _pubkeys = pubkeys);
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _generateNewAddress() async {
+    setState(() => _isLoading = true);
+    try {
+      final newPubkey = await _sdk.pubkeys.createNewPubkey(widget.asset);
+      setState(() {
+        _pubkeys?.addresses.add(newPubkey);
+      });
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
@@ -39,47 +53,86 @@ class _AssetPageState extends State<AssetPage> {
 
   @override
   Widget build(BuildContext context) {
+    final supportsMultipleAddresses =
+        widget.asset.pubkeyStrategy.supportsMultipleAddresses;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.asset.id.name),
-      ),
-      body: Column(
-        children: [
-          if (_error != null)
-            Text('Error: $_error')
-          else if (_isLoading)
-            const LinearProgressIndicator()
-          else if (_pubkeys != null)
-            _AddressesSection(_pubkeys!),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadPubkeys,
+          ),
         ],
       ),
+      body: _error != null
+          ? Center(child: Text('Error: $_error'))
+          : _AddressesSection(
+              pubkeys: _pubkeys == null
+                  ? AssetPubkeys(
+                      addresses: [],
+                      assetId: widget.asset.id,
+                      availableAddressesCount: 0,
+                      syncStatus: SyncStatus.inProgress,
+                    )
+                  : _pubkeys!,
+              onGenerateNewAddress:
+                  supportsMultipleAddresses ? _generateNewAddress : null,
+              supportsMultipleAddresses: supportsMultipleAddresses,
+            ),
     );
   }
 }
 
 class _AddressesSection extends StatelessWidget {
-  const _AddressesSection(this.pubkeys);
+  const _AddressesSection({
+    required this.pubkeys,
+    required this.onGenerateNewAddress,
+    required this.supportsMultipleAddresses,
+  });
 
   final AssetPubkeys pubkeys;
+  final VoidCallback? onGenerateNewAddress;
+  final bool supportsMultipleAddresses;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Text('Addresses'),
-        for (final key in pubkeys.addresses)
-          ListTile(
-            title: Text(pubkeys.addresses.indexOf(key).toString()),
-            // subtitle: Text(key.address),
-            subtitle: Text(key.toJson().toJsonString()),
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: key.address));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Copied to clipboard')),
-              );
-            },
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              const Text('Addresses'),
+              if (supportsMultipleAddresses)
+                ElevatedButton(
+                  onPressed: onGenerateNewAddress,
+                  child: const Text('Generate New Address'),
+                ),
+            ],
           ),
-      ],
+          Expanded(
+            child: ListView.builder(
+              itemCount: pubkeys.addresses.length,
+              itemBuilder: (context, index) => ListTile(
+                title: Text(index.toString()),
+                subtitle:
+                    Text(pubkeys.addresses[index].toJson().toJsonString()),
+                onTap: () {
+                  Clipboard.setData(
+                    ClipboardData(text: pubkeys.addresses[index].address),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Copied to clipboard')),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

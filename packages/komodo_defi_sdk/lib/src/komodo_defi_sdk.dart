@@ -156,5 +156,5 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
 extension AssetPubkeysExtension on Asset {
   Future<AssetPubkeys> getPubkey() =>
-      PubkeyManager(_instance!._apiClient!).getPubkey(this);
+      PubkeyManager(_instance!._apiClient!).getPubkeys(this);
 }

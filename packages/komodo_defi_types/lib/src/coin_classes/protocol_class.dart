@@ -61,6 +61,16 @@ class UtxoProtocol extends ProtocolClass {
   }
 }
 
+class SlpProtocol extends ProtocolClass {
+  SlpProtocol(super.subClass, super.activationStrategy);
+
+  factory SlpProtocol.fromJson(JsonMap json) {
+    throw UnimplementedError();
+    // TODO! Implement pro
+    return ProtocolClass.fromJson(json) as SlpProtocol;
+  }
+}
+
 class QtumProtocol extends ProtocolClass {
   QtumProtocol(super.subClass, super.activationStrategy);
 

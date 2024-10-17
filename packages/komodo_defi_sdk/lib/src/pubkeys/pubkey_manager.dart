@@ -29,17 +29,12 @@ class PubkeyManager {
         .last
         .then((status) => status.details.data!);
 
-    // generalActivation.getEnabledCoins().
-    //     );
-
     return balances.addresses.map((e) => e.address).toList();
   }
 
-  Future<AssetPubkeys> getPubkey(Asset asset) async {
+  Future<void> _ensureAssetActive(Asset asset) async {
     final isAssetActive = (await _activeAssets()).contains(asset.id.id);
 
-    // TODO: Make resilient to race conditions or repeated calls. Perhaps a
-    // shared task manager?
     if (!isAssetActive) {
       // TODO! Exception handling
       // final result = await asset.preActivate().firstWhere((e) => e.isComplete);
@@ -50,7 +45,20 @@ class PubkeyManager {
         throw Exception(result.errorMessage);
       }
     }
+  }
+
+  Future<AssetPubkeys> getPubkeys(Asset asset) async {
+    await _ensureAssetActive(asset);
 
     return asset.pubkeyStrategy.getPubkeys(asset.id, _client);
+  }
+
+  Future<PubkeyInfo> createNewPubkey(Asset asset) async {
+    await _ensureAssetActive(asset);
+
+    final newAddress =
+        await asset.pubkeyStrategy.getNewAddress(asset.id, _client);
+
+    return newAddress;
   }
 }

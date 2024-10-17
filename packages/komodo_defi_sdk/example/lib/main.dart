@@ -274,44 +274,41 @@ class _KomodoAppState extends State<KomodoApp> {
               // Show list of all coins
               Text('Coins List (${_komodoDefiSdk.assets.all.length})'),
               Flexible(
-                child: ListView.builder(
-                  itemCount: _komodoDefiSdk.assets.all.length,
-                  itemBuilder: (context, index) {
-                    final asset =
-                        _komodoDefiSdk.assets.all.values.elementAt(index);
-                    final id = asset.id;
-                    return ListTile(
-                      key: Key(id.id),
-                      title: Text(id.id),
-                      subtitle: Text(id.name),
-                      tileColor:
-                          index.isEven ? Colors.grey[200] : Colors.grey[100],
-                      // trailing: Text(asset.balance.toString()),
-                      // leading: CircleAvatar(
-                      //   foregroundImage: NetworkImage(
-                      //     // https://komodoplatform.github.io/coins/icons/kmd.png
-                      //     'https://komodoplatform.github.io/coins/icons/${id.symbol.configSymbol.toLowerCase()}.png',
-                      //   ),
-                      //   child: Text(id.id.substring(0, 2)),
-                      // ),
-                      leading: CircleAvatar(
-                        foregroundImage: NetworkImage(
-                          // https://komodoplatform.github.io/coins/icons/kmd.png
-                          'https://komodoplatform.github.io/coins/icons/${id.symbol.configSymbol.toLowerCase()}.png',
+                child: Material(
+                  child: ListView.builder(
+                    itemCount: _komodoDefiSdk.assets.all.length,
+                    itemBuilder: (context, index) {
+                      final asset =
+                          _komodoDefiSdk.assets.all.values.elementAt(index);
+                      final id = asset.id;
+                      return ListTile(
+                        key: Key(id.id),
+                        title: Text(id.id),
+                        subtitle: Text(id.name),
+                        tileColor:
+                            index.isEven ? Colors.grey[200] : Colors.grey[100],
+                        // trailing: Text(asset.balance.toString()),
+                        // leading: CircleAvatar(
+                        //   foregroundImage: NetworkImage(
+                        //     // https://komodoplatform.github.io/coins/icons/kmd.png
+                        //     'https://komodoplatform.github.io/coins/icons/${id.symbol.configSymbol.toLowerCase()}.png',
+                        //   ),
+                        //   child: Text(id.id.substring(0, 2)),
+                        // ),
+                        leading: CircleAvatar(
+                          foregroundImage: NetworkImage(
+                            // https://komodoplatform.github.io/coins/icons/kmd.png
+                            'https://komodoplatform.github.io/coins/icons/${id.symbol.configSymbol.toLowerCase()}.png',
+                          ),
+                          // child: Text(id.id.substring(0, 2)),
+                          // backgroundColor: Colors.transparent,
+                          backgroundColor: Colors.white70,
                         ),
-                        child: Text(id.id.substring(0, 2)),
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios),
-                      onTap: () => _onNavigateToAsset(asset),
-                      // trailing:
-                      //     // If activated then show a checkmark, otherwise show
-                      //     // the activation button
-                      //     CoinActivationButton(
-                      //   key: Key(asset.id.id),
-                      //   asset: asset,
-                      // ),
-                    );
-                  },
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                        onTap: () => _onNavigateToAsset(asset),
+                      );
+                    },
+                  ),
                 ),
               ),
             ],

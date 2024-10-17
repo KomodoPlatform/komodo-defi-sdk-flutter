@@ -1,15 +1,19 @@
-import 'package:decimal/decimal.dart';
+import 'dart:async';
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/types.dart';
 
 class HDWalletStrategy extends PubkeyStrategy {
   HDWalletStrategy();
 
+  int get _gapLimit => 20;
+
   @override
   bool get supportsMultipleAddresses => true;
 
-  static bool protocolSupported(ProtocolClass protocol) {
-    return protocol is UtxoProtocol;
+  @override
+  bool protocolSupported(ProtocolClass protocol, ApiClient client) {
+    return protocol is UtxoProtocol || protocol is SlpProtocol;
   }
 
   @override
@@ -19,13 +23,21 @@ class HDWalletStrategy extends PubkeyStrategy {
   }
 
   @override
-  Future<String> getNewAddress(AssetId assetId, ApiClient client) async {
-    final response = await client.rpc.hdWallet.getNewAddress(
+  Future<PubkeyInfo> getNewAddress(AssetId assetId, ApiClient client) async {
+    final newAddress = (await client.rpc.hdWallet.getNewAddress(
       assetId.id,
       accountId: 0,
       chain: 'External',
+      gapLimit: _gapLimit,
+    ))
+        .newAddress;
+
+    return PubkeyInfo(
+      address: newAddress.address,
+      derivationPath: newAddress.derivationPath,
+      chain: newAddress.chain,
+      balance: newAddress.balance,
     );
-    return response.newAddress.address;
   }
 
   @override
@@ -50,46 +62,54 @@ class HDWalletStrategy extends PubkeyStrategy {
       );
       result = (status.details..throwIfError).data;
 
-      await Future<void>.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
     }
     return result;
   }
 
-  AssetPubkeys _convertBalanceInfoToAssetPubkeys(
+  Future<AssetPubkeys> _convertBalanceInfoToAssetPubkeys(
     AssetId assetId,
     AccountBalanceInfo balanceInfo,
-  ) {
+  ) async {
     final addresses = balanceInfo.addresses
         .map(
           (addr) => PubkeyInfo(
             address: addr.address,
             derivationPath: addr.derivationPath,
             chain: addr.chain,
-            spendableBalance: addr.balance.spendable,
-            unspendableBalance: addr.balance.unspendable,
+            balance: addr.balance,
           ),
         )
         .toList();
 
+    // TODO! This is a temporary simple solution because it's incorrect
+    // to assume an address with 0 balance is unused since it could have
+    // been used in the past and emptied.
+
     return AssetPubkeys(
       assetId: assetId,
       addresses: addresses,
-      usedAddressesCount: addresses
-          .where(
-            (addr) =>
-                addr.spendableBalance > Decimal.zero ||
-                addr.unspendableBalance > Decimal.zero,
-          )
-          .length,
-      availableAddressesCount: addresses.length -
-          addresses
-              .where(
-                (addr) =>
-                    addr.spendableBalance > Decimal.zero ||
-                    addr.unspendableBalance > Decimal.zero,
-              )
-              .length,
+      // usedAddressesCount: addresses
+      //     .where(
+      //       (addr) =>
+      //           addr.spendableBalance > Decimal.zero ||
+      //           addr.unspendableBalance > Decimal.zero,
+      //     )
+      //     .length,
+      availableAddressesCount:
+          await availableNewAddressesCount(addresses).then((value) => value),
       syncStatus: SyncStatus.success,
     );
+  }
+
+  Future<int> availableNewAddressesCount(
+    List<PubkeyInfo> addresses,
+  ) {
+    final gapFromLastUsed = addresses.lastIndexWhere(
+          (addr) => addr.balance.hasBalance,
+        ) +
+        1;
+
+    return Future.value((_gapLimit - gapFromLastUsed).clamp(0, _gapLimit));
   }
 }

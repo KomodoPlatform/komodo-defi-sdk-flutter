@@ -5,9 +5,9 @@ import 'package:komodo_defi_types/types.dart';
 // be done.
 abstract class PubkeyStrategy {
   Future<AssetPubkeys> getPubkeys(AssetId assetId, ApiClient client);
-  Future<String> getNewAddress(AssetId assetId, ApiClient client);
+  Future<PubkeyInfo> getNewAddress(AssetId assetId, ApiClient client);
   Future<void> scanForNewAddresses(AssetId assetId, ApiClient client);
-  // bool protocolSupported(ProtocolClass protocol, ApiClient client);
+  bool protocolSupported(ProtocolClass protocol, ApiClient client);
 
   // TODO: Add interfaces for getting number of addresses used and
   // available addresses.
