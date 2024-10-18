@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:json_editor_flutter/json_editor_flutter.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
-import 'package:komodo_defi_framework_example/kdf_operations_wasm_server.dart';
+import 'package:komodo_defi_framework_example/kdf_operations/kdf_operations_server.dart';
 import 'package:komodo_defi_framework_example/widgets/request_playground.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -623,7 +623,7 @@ class _MyAppState extends State<MyApp> {
       _kdfFramework = exposeHttp && !kIsWeb
           ? KomodoDefiFramework.createWithOperations(
               hostConfig: config,
-              kdfOperations: KdfWasmHttpServerOperations(config as LocalConfig),
+              kdfOperations: KdfHttpServerOperations(config as LocalConfig),
               externalLogger: _logController.add,
             )
           : KomodoDefiFramework.create(
