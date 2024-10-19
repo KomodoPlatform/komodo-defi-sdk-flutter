@@ -92,14 +92,23 @@ class KdfOperationsWasm implements IKdfOperations {
           }.toJS,
         ),
       );
-      print('mm2_main result: $result');
 
       (_logger ?? print).call('mm2_main called: $result');
+
+      // Similar logic to the local executable implementation: wait for kdf to
+      // start before returning, and assume failure instead of success if no
+      // response is received from the isRunning function.
+      final timer = Stopwatch()..start();
+      while (timer.elapsed.inSeconds < 30) {
+        if (await isRunning()) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
     } on int catch (e) {
       _logger?.call('Error starting KDF: $e');
       return KdfStartupResult.fromDefaultInt(e);
     } catch (e) {
-      print('Error starting KDF: $e');
       _logger?.call('Unknown error starting KDF: $e');
 
       if (e.toString().contains('error')) {
@@ -108,7 +117,11 @@ class KdfOperationsWasm implements IKdfOperations {
       return KdfStartupResult.invalidParams;
     }
 
-    return KdfStartupResult.ok;
+    if (await isRunning()) {
+      return KdfStartupResult.ok;
+    }
+
+    throw Exception('Error starting KDF: process not running.');
   }
 
   @override
