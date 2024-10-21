@@ -135,11 +135,10 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       return KdfStartupResult.alreadyRunning;
     }
 
-    // TODO: Log level
-
     _logCallback('Starting KDF with parameters (Coins Removed): ${{
       ...params,
       'coins': <JsonMap>[],
+      'log_level': logLevel ?? 3,
     }.censored().toJsonString()}');
 
     _process = await _startKdf([params.toJsonString()]);

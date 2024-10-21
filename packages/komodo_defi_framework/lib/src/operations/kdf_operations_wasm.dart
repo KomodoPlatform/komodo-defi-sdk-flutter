@@ -38,6 +38,8 @@ class KdfOperationsWasm implements IKdfOperations {
   js_interop.JSObject? _kdfModule;
   void Function(String)? _logger;
 
+  void _log(String message) => (_logger ?? print).call(message);  
+
   @override
   Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
     try {
@@ -88,28 +90,28 @@ class KdfOperationsWasm implements IKdfOperations {
           'mm2_main'.toJS,
           jsConfig,
           (int level, String message) {
-            _logger?.call('[$level] KDF: $message');
+            _log('[$level] KDF: $message');
           }.toJS,
         ),
       );
 
-      (_logger ?? print).call('mm2_main called: $result');
+      _log('mm2_main called: $result');
 
       // Similar logic to the local executable implementation: wait for kdf to
       // start before returning, and assume failure instead of success if no
       // response is received from the isRunning function.
       final timer = Stopwatch()..start();
-      while (timer.elapsed.inSeconds < 30) {
+      while (timer.elapsed.inSeconds < 15) {
         if (await isRunning()) {
           break;
         }
         await Future<void>.delayed(const Duration(milliseconds: 100));
       }
     } on int catch (e) {
-      _logger?.call('Error starting KDF: $e');
+      _log('Error starting KDF: $e');
       return KdfStartupResult.fromDefaultInt(e);
     } catch (e) {
-      _logger?.call('Unknown error starting KDF: $e');
+      _log('Unknown error starting KDF: $e');
 
       if (e.toString().contains('error')) {
         throw ClientException('Failed to call KDF main: $e');
@@ -144,7 +146,7 @@ class KdfOperationsWasm implements IKdfOperations {
         return StopStatus.fromDefaultInt(errorOrNull);
       }
 
-      _logger?.call('KDF stop result: $errorOrNull');
+      _log('KDF stop result: $errorOrNull');
 
       // Wait until the KDF is stopped. Timeout after 10 seconds
       await Future.doWhile(() async {
@@ -161,7 +163,7 @@ class KdfOperationsWasm implements IKdfOperations {
     } on int catch (e) {
       return StopStatus.fromDefaultInt(e);
     } catch (e) {
-      _logger?.call('Error stopping KDF: $e');
+      _log('Error stopping KDF: $e');
       return StopStatus.errorStopping;
     }
 
@@ -191,7 +193,7 @@ class KdfOperationsWasm implements IKdfOperations {
       return response;
     } catch (e) {
       final message = 'Error calling mm2Rpc: $e. ${request['method']}';
-      _logger?.call(message);
+      _log(message);
       throw Exception(message);
     }
   }
@@ -213,7 +215,7 @@ class KdfOperationsWasm implements IKdfOperations {
 
       return response['result'] as String?;
     } catch (e) {
-      _logger?.call("Couldn't get KDF version: $e");
+      _log("Couldn't get KDF version: $e");
       return null;
     }
   }
@@ -255,11 +257,11 @@ class KdfOperationsWasm implements IKdfOperations {
               .toDart)
           .getProperty('kdf'.toJS);
 
-      _logger?.call('KDF library loaded successfully');
+      _log('KDF library loaded successfully');
     } catch (e) {
       final message =
           'Failed to load and import script $_kdfJsBootstrapperPath\n$e';
-      _logger?.call(message);
+      _log(message);
 
       final debugProperties = Map<String, String>.fromIterable(
         <String>[
@@ -280,7 +282,7 @@ class KdfOperationsWasm implements IKdfOperations {
             '${_kdfModule!.getProperty(key.toJS).runtimeType}',
       );
 
-      _logger?.call('KDF Has properties: $debugProperties');
+      _log('KDF Has properties: $debugProperties');
 
       throw Exception(message);
     }
