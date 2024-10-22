@@ -53,6 +53,7 @@ class KdfStartupConfig {
   static Future<KdfStartupConfig> generateWithDefaults({
     required String walletName,
     required String walletPassword,
+    required bool? enableHd,
     String? rpcPassword,
     String? coinsPath,
     String? seed,
@@ -67,7 +68,6 @@ class KdfStartupConfig {
     bool https = false,
     bool rpcLocalOnly = true,
     bool allowRegistrations = true,
-    bool enableHd = true,
   }) async {
     assert(
       !kIsWeb || userHome == null && dbDir == null,
@@ -78,6 +78,8 @@ class KdfStartupConfig {
       'Wallet name and password must not be empty',
     );
     final home = userHome ?? await _getAndSetupUserHome();
+
+    assert(hdAccountId == null, 'HD Account ID is not supported yet.');
 
     return KdfStartupConfig._(
       walletName: walletName,
@@ -133,7 +135,7 @@ class KdfStartupConfig {
       rpcLocalOnly: true,
       hdAccountId: null,
       allowRegistrations: false,
-      enableHd: true,
+      enableHd: false,
     );
   }
 
@@ -153,9 +155,10 @@ class KdfStartupConfig {
       if (rpcIp != null) 'rpcip': rpcIp,
       if (rpcPort != null) 'rpcport': rpcPort,
       if (rpcLocalOnly != null) 'rpc_local_only': rpcLocalOnly,
-      if (hdAccountId != null) 'hd_account_id': hdAccountId,
       'allow_registrations': allowRegistrations,
       if (enableHd != null) 'enable_hd': enableHd,
+      if (hdAccountId != null) 'hd_account_id': hdAccountId,
+      // 'enable_hd': false,
       'https': https,
       'coins': coins,
     };

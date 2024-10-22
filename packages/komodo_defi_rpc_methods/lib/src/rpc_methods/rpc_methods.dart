@@ -17,3 +17,4 @@ export 'wallet/get_mnemonic_response.dart';
 export 'wallet/get_wallet.dart';
 export 'wallet/get_wallet_names_request.dart';
 export 'wallet/get_wallet_names_response.dart';
+export 'wallet/my_balance.dart';

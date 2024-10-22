@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/assets/assets.dart';
+import 'package:komodo_defi_sdk/src/input/mnemonic_validator.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -132,11 +132,13 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
     // TODO: Log storage
     _logCallback = kDebugMode ? print : null;
-
-    await _auth!.ensureInitialized();
-
     _assets = AssetManager(_apiClient!, _auth!);
-    await _assets!.init();
+
+    await Future.wait([
+      _auth!.ensureInitialized(),
+      _assets!.init(),
+      MnemonicValidator.init(),
+    ]);
 
     _isInitialized = true;
   }

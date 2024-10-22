@@ -812,6 +812,7 @@ class _MyAppState extends State<MyApp> {
     try {
       final KdfStartupConfig startupConfig =
           await KdfStartupConfig.generateWithDefaults(
+        enableHd: false, // TODO: Add as checkbox
         walletName: walletName,
         walletPassword: walletPassword, // This is the wallet account password
         rpcPassword: _kdfHostConfig!.rpcPassword, // RPC password

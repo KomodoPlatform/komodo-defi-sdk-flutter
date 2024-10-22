@@ -30,25 +30,28 @@ class _KomodoAppState extends State<KomodoApp> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   List<KdfUser> _knownUsers = [];
-
   final List<Asset> _preActivatedAssets = [];
   StreamSubscription<List<Asset>>? _activeAssetsSub;
-
   StreamSubscription<KdfUser?>? sub;
 
+  // New properties for search functionality
+  TextEditingController _searchController = TextEditingController();
+  List<Asset> _filteredAssets = [];
+  late List<Asset> _allAssets;
+
   @override
-  // ignore: avoid_void_async
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       sub = _komodoDefiSdk.auth.authStateChanges.listen(updateUser);
       await _fetchKnownUsers();
       await updateUser();
-      // _activeAssetsSub = _komodoDefiSdk.assets.all().listen((newAssets) {
-      //   setState(() {
-      //     activeAssets.addAll(newAssets);
-      //   });
-      // });
+
+      // Initialize the search functionality
+      _allAssets = _komodoDefiSdk.assets.all.values.toList();
+      _filterAssets(); // Initial filtering with sorting
+
+      _searchController.addListener(_filterAssets);
 
       _refreshUsersTimer = Timer.periodic(
         const Duration(seconds: 10),
@@ -57,12 +60,38 @@ class _KomodoAppState extends State<KomodoApp> {
     });
   }
 
+  // Filtering logic based on search input
+  void _filterAssets() {
+    final query = _searchController.text.toLowerCase();
+
+    setState(() {
+      _filteredAssets = _allAssets.where((asset) {
+        final assetName = asset.id.name.toLowerCase();
+        final assetTicker = asset.id.id.toLowerCase();
+        return assetName.contains(query) || assetTicker.contains(query);
+      }).toList();
+
+      // Sort to place KMD, BTC, ETH at the top
+      _filteredAssets.sort((a, b) {
+        const List<String> priorityAssets = ['KMD', 'BTC', 'ETH'];
+        final aPriority = priorityAssets.contains(a.id.id) ? 0 : 1;
+        final bPriority = priorityAssets.contains(b.id.id) ? 0 : 1;
+
+        if (aPriority == bPriority) {
+          return a.id.name.compareTo(b.id.name);
+        }
+
+        return aPriority.compareTo(bPriority);
+      });
+    });
+  }
+
   Future<void> updateUser([KdfUser? user]) async {
     final userOrRefresh = user ?? await _komodoDefiSdk.auth.currentUser;
     setState(() {
       _currentUser = userOrRefresh;
-      _statusMessage = userOrRefresh != null
-          ? 'Signed in as ${userOrRefresh.walletName}'
+      _statusMessage = _currentUser != null
+          ? 'Current wallet: ${_currentUser!.walletName}'
           : 'Not signed in';
     });
   }
@@ -516,6 +545,7 @@ class _KomodoAppState extends State<KomodoApp> {
 
   @override
   void dispose() {
+    _searchController.dispose(); // Clean up the search controller
     _refreshUsersTimer?.cancel();
     sub?.cancel();
     _activeAssetsSub?.cancel();

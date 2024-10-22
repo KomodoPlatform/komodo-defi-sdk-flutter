@@ -39,6 +39,17 @@ class WalletMethods extends BaseRpcMethodNamespace {
 
   Future<GetWalletNamesResponse> getWalletNames([String? rpcPass]) =>
       execute(GetWalletNamesRequest(rpcPass));
+
+  Future<MyBalanceResponse> myBalance({
+    required String coin,
+    String? rpcPass,
+  }) =>
+      execute(
+        MyBalanceRequest(
+          rpcPass: rpcPass ?? '',
+          coin: coin,
+        ),
+      );
 }
 
 class GeneralActivationMethods extends BaseRpcMethodNamespace {

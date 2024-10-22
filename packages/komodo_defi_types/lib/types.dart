@@ -25,6 +25,7 @@ export 'src/generic/result.dart';
 export 'src/generic/sync_status.dart';
 export 'src/komodo_defi_types_base.dart';
 export 'src/pubkey/asset_pubkeys.dart';
+export 'src/pubkey/derivation_method.dart';
 export 'src/pubkey/pubkey.dart';
 export 'src/pubkey/pubkey_strategy.dart';
 export 'src/transactions/transaction.dart';

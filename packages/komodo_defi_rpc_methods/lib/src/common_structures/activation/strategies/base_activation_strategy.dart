@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-abstract class BaseTaskActivationStrategy implements ActivationStrategy {
+abstract class GenericTaskActivationStrategy implements ActivationStrategy {
   // BaseTaskActivationStrategy(this.apiClient);
-  BaseTaskActivationStrategy();
+  GenericTaskActivationStrategy();
 
   @override
   int? taskId; // The task ID for checking the status

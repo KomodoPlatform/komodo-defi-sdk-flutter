@@ -2,29 +2,32 @@ import 'dart:async';
 
 import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
-import 'package:komodo_defi_sdk/src/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class AssetManager {
-  AssetManager(this._kdf, this._auth);
+class AssetManager extends _Assets {
+  AssetManager(super._kdf, super._auth);
 
-  final ApiClient _kdf;
-  final KomodoDefiLocalAuth _auth;
+  // final ApiClient _kdf;
+  // final KomodoDefiLocalAuth _auth;
 
   final Map<String, Completer<void>> _activationCompleters = {};
   final Set<String> _activeAssetIds = {};
 
-  late final _Assets _assets = _Assets(_kdf, _auth);
+  // late final _Assets _assets = _Assets(_kdf, _auth);
 
+  @override
+
+  /// Initializes the asset manager by fetching assets and checking enabled coins.
   Future<void> init() async {
-    await _assets.init();
-    // Initialize with currently enabled coins
+    await super.init();
     final enabledCoins = await _enabledCoins();
     _activeAssetIds.addAll(enabledCoins);
   }
 
+  /// Returns all assets.
   Map<String, Asset> get all => _assets.all;
 
+  /// Ensures that an asset is activated before performing any actions on it.
   Future<T> _ensureActivated<T>(
     AssetId assetId,
     Future<T> Function() action,
@@ -32,40 +35,47 @@ class AssetManager {
     if (!_activeAssetIds.contains(assetId.id)) {
       if (!_activationCompleters.containsKey(assetId.id)) {
         _activationCompleters[assetId.id] = Completer<void>();
-        _activateAsset(assetId);
+        await _activateAsset(assetId);
       }
+
+      // Wait for asset activation to complete
       await _activationCompleters[assetId.id]!.future;
     }
     return action();
   }
 
+  /// Activates an asset if not already activated.
   Future<void> _activateAsset(AssetId assetId) async {
     try {
-      final asset = _assets.all[assetId.id]!;
+      final asset = _assets.all[assetId.id];
+      if (asset == null) {
+        throw ArgumentError('Asset not found for ID: ${assetId.id}');
+      }
+
       await for (final progress in asset.preActivate()) {
         if (progress.isComplete) {
           _activeAssetIds.add(assetId.id);
-          _activationCompleters[assetId.id]!.complete();
+          _activationCompleters[assetId.id]?.complete();
           break;
         }
       }
     } catch (e) {
-      _activationCompleters[assetId.id]!.completeError(e);
+      _activationCompleters[assetId.id]?.completeError(e);
+      rethrow;
     } finally {
       _activationCompleters.remove(assetId.id);
     }
   }
 
+  /// Retrieves the enabled coins from the API, checking the user's authentication status.
   Future<Set<String>> _enabledCoins() async {
     final isAuthed = await _auth.isSignedIn();
-
-    // TODO: Throw or return empty?
-
-    return !isAuthed
-        ? {}
-        : _kdf.rpc.generalActivation
-            .getEnabledCoins()
-            .then((r) => r.result.map((e) => e.ticker).toSet());
+    if (!isAuthed) {
+      return {};
+    }
+    return _kdf.rpc.generalActivation
+        .getEnabledCoins()
+        .then((r) => r.result.map((e) => e.ticker).toSet());
   }
 
   // Example methods that ensure asset activation before performing actions
@@ -79,7 +89,7 @@ class AssetManager {
   Future<double> getBalance(AssetId assetId) {
     return _ensureActivated(assetId, () async {
       // Implement balance retrieval logic here
-      return 100;
+      return 100.0;
     });
   }
 
@@ -100,27 +110,24 @@ class AssetManager {
   }
 }
 
-class _Assets extends KomodoCoins {
+abstract class _Assets {
   _Assets(this._kdf, this._auth);
 
   final ApiClient _kdf;
   final KomodoDefiLocalAuth _auth;
+  final KomodoCoins _assets = KomodoCoins();
 
-  @override
   Future<void> init() async {
-    await super.init();
+    await _assets.init();
     _kdfClientInstance = _kdf;
   }
 
-  /// Yields a list of all enabled assets and then listens for any new assets
+  /// Streams a list of active assets, updating as more are enabled.
   Stream<List<Asset>> activeAssets() {
-    // TODO: (Important) Refactor to use KDF streaming interface
-    // if/when available because this method is expensive
     final controller = StreamController<List<Asset>>();
-    final inactiveAssets = all.values.toList();
+    final inactiveAssets = _assets.all.values.toList();
 
     scheduleMicrotask(() async {
-      // Poll for new assets as long as the stream is active and emit only new assets
       while (!controller.isClosed) {
         final enabledAssetIds = await _enabledCoins();
 
@@ -130,7 +137,7 @@ class _Assets extends KomodoCoins {
               .toList(),
         );
 
-        // remove enabled assets from the inactive list
+        // Remove enabled assets from inactive list
         inactiveAssets.removeWhere((a) => enabledAssetIds.contains(a.id.id));
 
         await Future<void>.delayed(const Duration(seconds: 5));
@@ -146,8 +153,6 @@ class _Assets extends KomodoCoins {
         .getEnabledCoins()
         .then((r) => r.result.map((e) => e.ticker).toSet());
   }
-
-  // ApiClient
 }
 
 // extension ApiClientCoinActivation on ApiClient {

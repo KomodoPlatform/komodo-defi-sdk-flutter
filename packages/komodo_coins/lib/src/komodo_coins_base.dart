@@ -1,10 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-// Assuming your Asset and AssetId models are already defined as you provided
 
 class KomodoCoins {
-  const KomodoCoins();
+  // Singleton pattern to ensure a single instance of KomodoCoins
+  static final KomodoCoins _instance = KomodoCoins._internal();
+  factory KomodoCoins() => _instance;
+  KomodoCoins._internal();
+
+  static Map<String, Asset>? _assets;
 
   /// Optional init to pre-fetch assets. Either call this method or
   /// [fetchAssets] before accessing the assets synchronously.
@@ -13,76 +17,62 @@ class KomodoCoins {
     await fetchAssets();
   }
 
+  // Checks if assets are initialized
   static bool get isInitialized => _assets != null;
 
+  // Provides access to all assets after initialization
   Map<String, Asset> get all {
-    if (_assets == null) {
+    if (!isInitialized) {
       throw StateError(
-        'Assets have not been initialized. Call initialize() first.',
+        'Assets have not been initialized. Call init() first.',
       );
     }
-
     return _assets!;
   }
 
+  /// Fetches assets from a remote source
   static Future<Map<String, Asset>> fetchAssets() async {
+    // Return cached assets if already fetched
     if (_assets != null) {
       return _assets!;
     }
 
     final url = Uri.parse(
-      // 'https://komodoplatform.github.io/coins/utils/coins_config_tcp.json',
       'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
     );
 
-    // Fetch the JSON from the URL
-    final response = await http.get(url);
+    try {
+      final response = await http.get(url);
 
-    // Check for a successful response
-    if (response.statusCode == 200) {
-      // Decode the JSON response
-      final jsonData = jsonFromString(response.body);
+      if (response.statusCode == 200) {
+        final jsonData = jsonFromString(response.body);
+        final supportedAssets = <String, Asset>{};
 
-      final supportedAssets = <String, Asset>{};
-      // TODO: Make supported coin logic self-contained in the Asset/Protocol
-      // classes
-      for (final entry in jsonData.entries) {
-        final coinData = entry.value as JsonMap;
+        // Move coin filtering logic to Asset/ProtocolClass for better encapsulation
+        for (final entry in jsonData.entries) {
+          final coinData = entry.value as JsonMap;
 
-        try {
-          if (ProtocolClass.tryParse(coinData) == null) {
-            continue;
+          // Ensure asset is valid and supported based on protocol and derivation path logic
+          if (Asset.isSupported(coinData)) {
+            final asset = Asset.fromJson(coinData);
+
+            // Filter out multi-address coins without a derivation path (handled in Asset)
+            if (!asset.isFilteredOut()) {
+              supportedAssets[entry.key] = asset;
+            }
           }
-
-          final asset = Asset.fromJson(coinData);
-
-          // TODO! Remove temporary workaround when all coins have derivation
-          // paths
-          // Skip it if it is a multi-address coin but doesn't have a
-          // derivation path. This approach may need to be changed if we
-          // refactor to use the mult-address strategy for single-address coins.
-          if (asset.pubkeyStrategy.supportsMultipleAddresses &&
-              asset.id.derivationPath == null) {
-            print(
-              'Skipping multi-address coin without '
-              'derivation path: ${entry.key}',
-            );
-            continue;
-          }
-
-          supportedAssets[entry.key] = asset;
-        } catch (e) {
-          print("Couldn't parse coin data: $e: $coinData");
         }
-      }
 
-      return _assets = supportedAssets;
-    } else {
-      // Handle errors accordingly
-      throw Exception('Failed to fetch assets');
+        _assets = supportedAssets;
+        return supportedAssets;
+      } else {
+        throw Exception(
+            'Failed to fetch assets with status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Log and handle errors gracefully
+      print("Error fetching assets: $e");
+      throw Exception('Error fetching assets: $e');
     }
   }
-
-  // TODO: Make Asset ID equality comparison safe and use it as the map key.
-  static Map<String, Asset>? _assets;
 }

@@ -42,7 +42,7 @@ class _AssetPageState extends State<AssetPage> {
     try {
       final newPubkey = await _sdk.pubkeys.createNewPubkey(widget.asset);
       setState(() {
-        _pubkeys?.addresses.add(newPubkey);
+        _pubkeys?.keys.add(newPubkey);
       });
     } catch (e) {
       setState(() => _error = e.toString());
@@ -68,19 +68,90 @@ class _AssetPageState extends State<AssetPage> {
       ),
       body: _error != null
           ? Center(child: Text('Error: $_error'))
-          : _AddressesSection(
-              pubkeys: _pubkeys == null
-                  ? AssetPubkeys(
-                      addresses: [],
-                      assetId: widget.asset.id,
-                      availableAddressesCount: 0,
-                      syncStatus: SyncStatus.inProgress,
-                    )
-                  : _pubkeys!,
-              onGenerateNewAddress:
-                  supportsMultipleAddresses ? _generateNewAddress : null,
-              supportsMultipleAddresses: supportsMultipleAddresses,
+          : Column(
+              children: [
+                SizedBox(height: 32),
+                AssetHeader(widget.asset, _pubkeys),
+                SizedBox(height: 32),
+                Expanded(
+                  child: _AddressesSection(
+                    pubkeys: _pubkeys == null
+                        ? AssetPubkeys(
+                            keys: [],
+                            assetId: widget.asset.id,
+                            availableAddressesCount: 0,
+                            syncStatus: SyncStatus.inProgress,
+                          )
+                        : _pubkeys!,
+                    onGenerateNewAddress:
+                        supportsMultipleAddresses ? _generateNewAddress : null,
+                    supportsMultipleAddresses: supportsMultipleAddresses,
+                  ),
+                ),
+              ],
             ),
+    );
+  }
+}
+
+class AssetHeader extends StatefulWidget {
+  const AssetHeader(this.asset, this.pubkeys, {super.key});
+
+  final Asset asset;
+  final AssetPubkeys? pubkeys;
+
+  @override
+  State<AssetHeader> createState() => _AssetHeaderState();
+}
+
+class _AssetHeaderState extends State<AssetHeader> {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _buildActions(context),
+        SizedBox(height: 16),
+        _buildBalanceOverview(context),
+      ],
+    );
+  }
+
+  Widget _buildBalanceOverview(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text('Total', style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              // TODO: Stream-based
+              (widget.pubkeys?.syncStatus == SyncStatus.inProgress)
+                  ? 'Loading...'
+                  : (widget.pubkeys?.balance ?? Balance.zero()).toString(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  //TODO: Eradicate this widget helper function
+  Widget _buildActions(BuildContext context) {
+    return Wrap(
+      alignment: WrapAlignment.spaceEvenly,
+      spacing: 8,
+      children: [
+        FilledButton.icon(
+          onPressed: () {},
+          icon: const Icon(Icons.send),
+          label: const Text('Send'),
+        ),
+        FilledButton.tonalIcon(
+          onPressed: () {},
+          icon: const Icon(Icons.qr_code),
+          label: const Text('Receive'),
+        ),
+      ],
     );
   }
 }
@@ -107,22 +178,22 @@ class _AddressesSection extends StatelessWidget {
             children: [
               const Text('Addresses'),
               if (supportsMultipleAddresses)
-                ElevatedButton(
+                ElevatedButton.icon(
                   onPressed: onGenerateNewAddress,
-                  child: const Text('Generate New Address'),
+                  label: const Text('New'),
+                  icon: const Icon(Icons.add),
                 ),
             ],
           ),
           Expanded(
             child: ListView.builder(
-              itemCount: pubkeys.addresses.length,
+              itemCount: pubkeys.keys.length,
               itemBuilder: (context, index) => ListTile(
                 title: Text(index.toString()),
-                subtitle:
-                    Text(pubkeys.addresses[index].toJson().toJsonString()),
+                subtitle: Text(pubkeys.keys[index].toJson().toJsonString()),
                 onTap: () {
                   Clipboard.setData(
-                    ClipboardData(text: pubkeys.addresses[index].address),
+                    ClipboardData(text: pubkeys.keys[index].address),
                   );
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Copied to clipboard')),

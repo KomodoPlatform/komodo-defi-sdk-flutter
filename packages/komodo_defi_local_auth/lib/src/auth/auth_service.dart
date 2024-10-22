@@ -54,7 +54,7 @@ class KdfAuthService implements IAuthService {
     return _authMutex.protectRead(operation);
   }
 
-  Future<T> _runWriteOperation<T>(Future<T> Function() operation) async {
+  Future<T> _lockWriteOperation<T>(Future<T> Function() operation) async {
     return _authMutex.protectWrite(operation);
   }
 
@@ -71,11 +71,13 @@ class KdfAuthService implements IAuthService {
       return activeUser!;
     }
 
-    return _runWriteOperation(() async {
+    return _lockWriteOperation(() async {
       final config = await _generateStartupConfig(
         walletName: walletName,
         walletPassword: password,
         allowRegistrations: false,
+
+        hdEnabled: true, //TODO!
       );
       return _authenticateUser(config);
     });
@@ -97,12 +99,13 @@ class KdfAuthService implements IAuthService {
         await _runReadOperation(() => _assertWalletOrStop(walletName));
 
     // Proceed with the write operation if necessary
-    return _runWriteOperation(() async {
+    return _lockWriteOperation(() async {
       final config = await _generateStartupConfig(
         walletName: walletName,
         walletPassword: password,
         allowRegistrations: true,
         plaintextMnemonic: mnemonic?.plaintextMnemonic,
+        hdEnabled: true, //TODO!
       );
       return _authenticateUser(config);
     });
@@ -183,7 +186,7 @@ class KdfAuthService implements IAuthService {
 
   @override
   Future<void> signOut() async {
-    return _runWriteOperation(_stopKdf);
+    return _lockWriteOperation(_stopKdf);
   }
 
   @override
@@ -261,7 +264,7 @@ class KdfAuthService implements IAuthService {
 
   @override
   Future<void> dispose() async {
-    return _runWriteOperation(() async {
+    return _lockWriteOperation(() async {
       await _stopKdf();
       await _authStateController.close();
     });
@@ -302,6 +305,7 @@ class KdfAuthService implements IAuthService {
     required String walletName,
     required String walletPassword,
     required bool allowRegistrations,
+    required bool hdEnabled,
     String? plaintextMnemonic,
     String? encryptedMnemonic,
   }) async {
@@ -318,6 +322,7 @@ class KdfAuthService implements IAuthService {
       seed: plaintextMnemonic ?? encryptedMnemonic,
       rpcPassword: _hostConfig.rpcPassword,
       allowRegistrations: allowRegistrations,
+      enableHd: hdEnabled,
     );
   }
 }

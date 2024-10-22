@@ -88,7 +88,7 @@ class HDWalletStrategy extends PubkeyStrategy {
 
     return AssetPubkeys(
       assetId: assetId,
-      addresses: addresses,
+      keys: addresses,
       // usedAddressesCount: addresses
       //     .where(
       //       (addr) =>

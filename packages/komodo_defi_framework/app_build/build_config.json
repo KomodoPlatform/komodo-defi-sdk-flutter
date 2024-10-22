@@ -69,7 +69,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "7d2ca04e250b59362641da69f752aec8cbd83838",
+        "bundled_coins_repo_commit": "875ae0d35552119d38e749b84a99c5ad9e71bee7",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://komodoplatform.github.io/coins",
         "coins_repo_branch": "master",

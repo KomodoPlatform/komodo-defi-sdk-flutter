@@ -12,15 +12,17 @@ class NewAddressInfo {
   factory NewAddressInfo.fromJson(Map<String, dynamic> json) {
     return NewAddressInfo(
       address: json.value<String>('address'),
-      derivationPath: json.value<String>('derivation_path'),
-      chain: json.value<String>('chain'),
+      derivationPath: json.valueOrNull<String>('derivation_path'),
+      chain: json.valueOrNull<String>('chain'),
       balance: BalanceInfo.fromJson(json.value<JsonMap>('balance')),
     );
   }
   final String address;
-  final String derivationPath;
-  final String chain;
   final BalanceInfo balance;
+
+  // HD Wallet properties (Null if not HD Wallet)
+  final String? derivationPath;
+  final String? chain;
 
   Map<String, dynamic> toJson() {
     return {

@@ -1,18 +1,36 @@
-import 'package:decimal/decimal.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class SingleAddressStrategy extends HDWalletStrategy {
+class SingleAddressStrategy extends PubkeyStrategy {
   SingleAddressStrategy();
 
   @override
   bool get supportsMultipleAddresses => false;
 
   @override
-  Future<int> availableNewAddressesCount(
-    List<PubkeyInfo> addresses,
-  ) {
-    return Future.value(addresses.isEmpty ? 1 : 0);
+  Future<AssetPubkeys> getPubkeys(AssetId assetId, ApiClient client) async {
+    final balanceInfo = await client.rpc.wallet.myBalance(coin: assetId.id);
+
+    return AssetPubkeys(
+      assetId: assetId,
+      keys: [
+        PubkeyInfo(
+          address: balanceInfo.address,
+          balance: balanceInfo.balance,
+          derivationPath: null,
+          chain: null,
+        ),
+      ],
+      availableAddressesCount: 0,
+      syncStatus: SyncStatus.success,
+    );
+  }
+
+  @override
+  bool protocolSupported(ProtocolClass protocol, ApiClient client) {
+    // All protocols are supported, but coins capable of HD/multi-address
+    // should use the HDWalletStrategy instead if launched in HD mode. This
+    // strategy has to be used for HD coins if launched in non-HD mode.
+    return true;
   }
 
   @override

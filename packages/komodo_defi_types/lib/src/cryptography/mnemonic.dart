@@ -3,6 +3,7 @@ import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
 class Mnemonic {
   // TODO! Consider if the RPC parsing is appropriate here or if it should be
   // moved to the RPC package.
+
   /// Factory method to create Mnemonic from a RPC response
   factory Mnemonic.fromRpcJson(Map<String, dynamic> result) {
     final format = result.value<String>('format');
@@ -29,7 +30,11 @@ class Mnemonic {
     }
   }
 
-  Mnemonic._({this.format, this.plaintextMnemonic, this.encryptedMnemonicData});
+  Mnemonic._({
+    this.format,
+    this.plaintextMnemonic,
+    this.encryptedMnemonicData,
+  });
 
   Mnemonic.plaintext(this.plaintextMnemonic)
       : format = 'plaintext',
