@@ -6,11 +6,19 @@ import 'package:flutter/services.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+final GlobalKey<ScaffoldMessengerState> _scaffoldKey =
+    GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _komodoDefiSdk.initialize();
   runApp(
-    const MaterialApp(home: Scaffold(body: KomodoApp())),
+    MaterialApp(
+      scaffoldMessengerKey: _scaffoldKey,
+      navigatorKey: _navigatorKey,
+      home: const Scaffold(body: KomodoApp()),
+    ),
   );
 }
 
@@ -54,7 +62,6 @@ class _KomodoAppState extends State<KomodoApp> {
 
       // Initialize the search functionality
       _allAssets = _komodoDefiSdk.assets.available.values.toList();
-      _filterAssets(); // Initial filtering with sorting
 
       _searchController.addListener(_filterAssets);
 
@@ -222,7 +229,8 @@ class _KomodoAppState extends State<KomodoApp> {
             if (_currentUser != null) ...[
               Text(
                 'Wallet Mode: ${_currentUser!.authOptions.derivationMethod == DerivationMethod.hdWallet ? 'HD' : 'Legacy'}',
-                style: Theme.of(context).textTheme.bodySmall,
+                style:
+                    Theme.of(_scaffoldKey.currentContext!).textTheme.bodySmall,
               ),
             ],
             const SizedBox(height: 16),
@@ -315,16 +323,18 @@ class _KomodoAppState extends State<KomodoApp> {
                     Card(
                       child: ListTile(
                         subtitle: Text('Mnemonic: $_mnemonic'),
-                        leading: Icon(Icons.copy),
+                        leading: const Icon(Icons.copy),
                         trailing: IconButton(
-                          icon: Icon(Icons.close),
+                          icon: const Icon(Icons.close),
                           onPressed: () => setState(() => _mnemonic = null),
                         ),
                         onTap: () {
                           Clipboard.setData(ClipboardData(text: _mnemonic!));
-                          ScaffoldMessenger.of(context).showSnackBar(
+
+                          _scaffoldKey.currentState?.showSnackBar(
                             const SnackBar(
-                                content: Text('Mnemonic copied to clipboard')),
+                              content: Text('Mnemonic copied to clipboard'),
+                            ),
                           );
                         },
                       ),
@@ -400,8 +410,8 @@ class _KomodoAppState extends State<KomodoApp> {
   }
 
   void _onNavigateToAsset(Asset asset) {
-    // Navigator.of(context).pushNamed('/asset', arguments: asset);
-    Navigator.of(context).push(
+    // _navigatorKey.currentState? .pushNamed('/asset', arguments: asset);
+    _navigatorKey.currentState?.push(
       MaterialPageRoute<void>(
         builder: (context) => AssetPage(asset),
       ),
@@ -568,7 +578,7 @@ class _KomodoAppState extends State<KomodoApp> {
               ),
               actions: <Widget>[
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => _navigatorKey.currentState?.pop(),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
@@ -611,7 +621,7 @@ class _KomodoAppState extends State<KomodoApp> {
       }
     }
 
-    Navigator.of(context).pop(true);
+    _navigatorKey.currentState?.pop(true);
 
     try {
       await _register(
@@ -621,14 +631,15 @@ class _KomodoAppState extends State<KomodoApp> {
         isHd: _isHdMode,
       );
     } on AuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      _scaffoldKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(
             e.type == AuthExceptionType.invalidWalletPassword
                 ? 'HD mode requires a valid BIP39 seed phrase. The imported encrypted seed is not compatible.'
                 : 'Registration failed: ${e.message}',
           ),
-          backgroundColor: Theme.of(context).colorScheme.error,
+          backgroundColor:
+              Theme.of(_scaffoldKey.currentContext!).colorScheme.error,
         ),
       );
     }
@@ -675,7 +686,7 @@ class _KomodoAppState extends State<KomodoApp> {
       children: [
         Text(
           'Saved Wallets:',
-          style: Theme.of(context).textTheme.titleMedium,
+          style: Theme.of(_scaffoldKey.currentContext!).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -727,7 +738,7 @@ class _KomodoAppState extends State<KomodoApp> {
 
   final TextEditingController _walletNameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isHdMode = false;
+  bool _isHdMode = true;
 
   @override
   void dispose() {
