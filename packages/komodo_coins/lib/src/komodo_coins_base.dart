@@ -46,25 +46,25 @@ class KomodoCoins {
 
       if (response.statusCode == 200) {
         final jsonData = jsonFromString(response.body);
-        final supportedAssets = <String, Asset>{};
+        final knownAssets = <String, Asset>{};
 
         // Move coin filtering logic to Asset/ProtocolClass for better encapsulation
         for (final entry in jsonData.entries) {
           final coinData = entry.value as JsonMap;
 
           // Ensure asset is valid and supported based on protocol and derivation path logic
-          if (Asset.isSupported(coinData)) {
-            final asset = Asset.fromJson(coinData);
+          // if (Asset.isSupported(coinData)) {
+          final asset = Asset.tryParse(coinData);
 
-            // Filter out multi-address coins without a derivation path (handled in Asset)
-            if (!asset.isFilteredOut()) {
-              supportedAssets[entry.key] = asset;
-            }
+          if (asset == null) {
+            continue;
           }
+
+          knownAssets[entry.key] = asset;
         }
 
-        _assets = supportedAssets;
-        return supportedAssets;
+        _assets = knownAssets;
+        return knownAssets;
       } else {
         throw Exception(
             'Failed to fetch assets with status code: ${response.statusCode}');

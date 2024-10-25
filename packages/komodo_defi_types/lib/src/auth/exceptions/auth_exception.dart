@@ -8,6 +8,7 @@ enum AuthExceptionType {
   walletNotFound,
   walletAlreadyExists,
   registrationNotAllowed,
+  internalError,
 }
 
 class AuthException implements Exception {
@@ -85,6 +86,7 @@ class AuthException implements Exception {
       case AuthExceptionType.generalAuthError:
       case AuthExceptionType.unauthorized:
       case AuthExceptionType.alreadySignedIn:
+      case AuthExceptionType.internalError:
         return [];
     }
   }

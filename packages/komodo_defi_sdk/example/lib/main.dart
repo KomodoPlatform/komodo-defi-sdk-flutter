@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:example/screens/asset_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -13,7 +14,11 @@ void main() async {
   );
 }
 
-final KomodoDefiSdk _komodoDefiSdk = KomodoDefiSdk();
+final KomodoDefiSdk _komodoDefiSdk = KomodoDefiSdk(
+  config: const KomodoDefiSdkConfig(
+    defaultAssets: {'KMD', 'BTC', 'ETH'},
+  ),
+);
 
 class KomodoApp extends StatefulWidget {
   const KomodoApp({super.key});
@@ -35,7 +40,7 @@ class _KomodoAppState extends State<KomodoApp> {
   StreamSubscription<KdfUser?>? sub;
 
   // New properties for search functionality
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   List<Asset> _filteredAssets = [];
   late List<Asset> _allAssets;
 
@@ -48,7 +53,7 @@ class _KomodoAppState extends State<KomodoApp> {
       await updateUser();
 
       // Initialize the search functionality
-      _allAssets = _komodoDefiSdk.assets.all.values.toList();
+      _allAssets = _komodoDefiSdk.assets.available.values.toList();
       _filterAssets(); // Initial filtering with sorting
 
       _searchController.addListener(_filterAssets);
@@ -73,7 +78,7 @@ class _KomodoAppState extends State<KomodoApp> {
 
       // Sort to place KMD, BTC, ETH at the top
       _filteredAssets.sort((a, b) {
-        const List<String> priorityAssets = ['KMD', 'BTC', 'ETH'];
+        const priorityAssets = <String>['KMD', 'BTC', 'ETH'];
         final aPriority = priorityAssets.contains(a.id.id) ? 0 : 1;
         final bPriority = priorityAssets.contains(b.id.id) ? 0 : 1;
 
@@ -91,8 +96,17 @@ class _KomodoAppState extends State<KomodoApp> {
     setState(() {
       _currentUser = userOrRefresh;
       _statusMessage = _currentUser != null
-          ? 'Current wallet: ${_currentUser!.walletName}'
+          ? 'Current wallet: ${_currentUser!.walletId.name}'
           : 'Not signed in';
+    });
+  }
+
+  void _onSelectKnownUser(KdfUser user) {
+    setState(() {
+      _walletNameController.text = user.walletId.name;
+      _passwordController.text = '';
+      _isHdMode =
+          user.authOptions.derivationMethod == DerivationMethod.hdWallet;
     });
   }
 
@@ -115,11 +129,17 @@ class _KomodoAppState extends State<KomodoApp> {
     }
 
     try {
-      final user = await _komodoDefiSdk.auth
-          .signIn(walletName: walletName, password: password);
+      final user = await _komodoDefiSdk.auth.signIn(
+        walletName: walletName,
+        password: password,
+        options: AuthOptions(
+          derivationMethod:
+              _isHdMode ? DerivationMethod.hdWallet : DerivationMethod.iguana,
+        ),
+      );
       setState(() {
         _currentUser = user;
-        _statusMessage = 'Signed in as ${_currentUser?.walletName}';
+        _statusMessage = 'Signed in as ${_currentUser?.walletId.name}';
       });
     } on AuthException catch (e) {
       setState(() {
@@ -135,32 +155,23 @@ class _KomodoAppState extends State<KomodoApp> {
   Future<void> _register(
     String walletName,
     String password, {
+    required bool isHd,
     Mnemonic? mnemonic,
   }) async {
-    if (_formKey.currentState?.validate() == false) {
-      return;
-    }
+    final user = await _komodoDefiSdk.auth.register(
+      walletName: walletName,
+      password: password,
+      options: AuthOptions(
+        derivationMethod:
+            isHd ? DerivationMethod.hdWallet : DerivationMethod.iguana,
+      ),
+      mnemonic: mnemonic,
+    );
 
-    try {
-      final user = await _komodoDefiSdk.auth.register(
-        walletName: walletName,
-        password: password,
-        mnemonic: mnemonic,
-      );
-      setState(() {
-        _currentUser = user;
-        _statusMessage =
-            'Registered and signed in as ${_currentUser?.walletName}';
-      });
-    } on AuthException catch (e) {
-      setState(() {
-        _statusMessage = 'Registration Error: ${e.message}';
-      });
-    } catch (e) {
-      setState(() {
-        _statusMessage = 'An unexpected error occurred: $e';
-      });
-    }
+    setState(() {
+      _currentUser = user;
+      _statusMessage = 'Registered and signed in as ${user.walletId.name}';
+    });
   }
 
   Future<void> _signOut() async {
@@ -208,6 +219,12 @@ class _KomodoAppState extends State<KomodoApp> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(_statusMessage),
+            if (_currentUser != null) ...[
+              Text(
+                'Wallet Mode: ${_currentUser!.authOptions.derivationMethod == DerivationMethod.hdWallet ? 'HD' : 'Legacy'}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: 16),
             if (_currentUser == null) ...[
               _buildKnownUsersList(),
@@ -234,6 +251,26 @@ class _KomodoAppState extends State<KomodoApp> {
                   ),
                 ),
                 obscureText: _obscurePassword,
+              ),
+              SwitchListTile(
+                title: const Row(
+                  children: [
+                    Text('HD Wallet Mode'),
+                    SizedBox(width: 8),
+                    Tooltip(
+                      message:
+                          'HD wallets require a valid BIP39 seed phrase. \n'
+                          'NB! Your addresses and balances will be different '
+                          'in HD mode.',
+                      child: Icon(Icons.info, size: 16),
+                    ),
+                  ],
+                ),
+                subtitle: const Text('Enable HD multi-address mode'),
+                value: _isHdMode,
+                onChanged: (value) {
+                  setState(() => _isHdMode = value);
+                },
               ),
               const SizedBox(height: 16),
               Row(
@@ -275,7 +312,23 @@ class _KomodoAppState extends State<KomodoApp> {
                   ),
                   const SizedBox(height: 16),
                   if (_mnemonic != null) ...[
-                    Card(child: Text('Mnemonic: $_mnemonic')),
+                    Card(
+                      child: ListTile(
+                        subtitle: Text('Mnemonic: $_mnemonic'),
+                        leading: Icon(Icons.copy),
+                        trailing: IconButton(
+                          icon: Icon(Icons.close),
+                          onPressed: () => setState(() => _mnemonic = null),
+                        ),
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: _mnemonic!));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Mnemonic copied to clipboard')),
+                          );
+                        },
+                      ),
+                    ),
                     const SizedBox(height: 16),
                   ],
 
@@ -301,29 +354,25 @@ class _KomodoAppState extends State<KomodoApp> {
               const SizedBox(height: 16),
 
               // Show list of all coins
-              Text('Coins List (${_komodoDefiSdk.assets.all.length})'),
+              Text('Coins List (${_komodoDefiSdk.assets.available.length})'),
               Flexible(
                 child: Material(
                   child: ListView.builder(
-                    itemCount: _komodoDefiSdk.assets.all.length,
+                    itemCount: _komodoDefiSdk.assets.available.length,
                     itemBuilder: (context, index) {
-                      final asset =
-                          _komodoDefiSdk.assets.all.values.elementAt(index);
+                      final asset = _komodoDefiSdk.assets.available.values
+                          .elementAt(index);
                       final id = asset.id;
+                      final isSupported = asset.isSupported(
+                        isHdWallet: _currentUser?.isHd ?? false,
+                      );
                       return ListTile(
                         key: Key(id.id),
                         title: Text(id.id),
                         subtitle: Text(id.name),
                         tileColor:
                             index.isEven ? Colors.grey[200] : Colors.grey[100],
-                        // trailing: Text(asset.balance.toString()),
-                        // leading: CircleAvatar(
-                        //   foregroundImage: NetworkImage(
-                        //     // https://komodoplatform.github.io/coins/icons/kmd.png
-                        //     'https://komodoplatform.github.io/coins/icons/${id.symbol.configSymbol.toLowerCase()}.png',
-                        //   ),
-                        //   child: Text(id.id.substring(0, 2)),
-                        // ),
+                        enabled: isSupported,
                         leading: CircleAvatar(
                           foregroundImage: NetworkImage(
                             // https://komodoplatform.github.io/coins/icons/kmd.png
@@ -333,7 +382,10 @@ class _KomodoAppState extends State<KomodoApp> {
                           // backgroundColor: Colors.transparent,
                           backgroundColor: Colors.white70,
                         ),
-                        trailing: const Icon(Icons.arrow_forward_ios),
+                        trailing: _AssetItemTrailing(
+                          asset: asset,
+                          isSupported: isSupported,
+                        ),
                         onTap: () => _onNavigateToAsset(asset),
                       );
                     },
@@ -359,20 +411,98 @@ class _KomodoAppState extends State<KomodoApp> {
   // TODO: Refactor/clean-up example project
 
   // bool isMnemonicEncrypted = false;
+  bool allowCustomSeed = false;
 
   Future<void> _showSeedDialog(BuildContext context) async {
     if (_formKey.currentState?.validate() == false) {
       return;
     }
+
     final mnemonicController = TextEditingController();
     var isMnemonicEncrypted = false;
+    var allowCustomSeed = false;
     String? errorMessage;
+    bool? isBip39;
 
     final didProvideImport = await showDialog<bool?>(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            void validateInput() {
+              if (mnemonicController.text.isEmpty) {
+                setState(() {
+                  errorMessage = null;
+                  isBip39 = null;
+                });
+                return;
+              }
+
+              if (isMnemonicEncrypted) {
+                final parsedMnemonic = EncryptedMnemonicData.tryParse(
+                  tryParseJson(mnemonicController.text) ?? {},
+                );
+                if (parsedMnemonic == null) {
+                  setState(() {
+                    errorMessage = 'Invalid encrypted mnemonic format';
+                    isBip39 = null;
+                  });
+                } else {
+                  setState(() {
+                    errorMessage = null;
+                    // We'll verify BIP39 status after decryption
+                    isBip39 = null;
+                  });
+                }
+                return;
+              }
+
+              // Only validate plaintext mnemonics
+              final failedReason =
+                  _komodoDefiSdk.mnemonicValidator.validateMnemonic(
+                mnemonicController.text,
+                isHd: _isHdMode,
+                allowCustomSeed: allowCustomSeed && !_isHdMode,
+              );
+
+              setState(() {
+                switch (failedReason) {
+                  case MnemonicFailedReason.empty:
+                    errorMessage = 'Mnemonic cannot be empty';
+                    isBip39 = null;
+                  case MnemonicFailedReason.customNotSupportedForHd:
+                    errorMessage =
+                        'HD wallets require a valid BIP39 seed phrase';
+                    isBip39 = false;
+                  case MnemonicFailedReason.customNotAllowed:
+                    errorMessage =
+                        'Custom seeds are not allowed. Enable custom seeds or use a valid BIP39 seed phrase';
+                    isBip39 = false;
+                  case MnemonicFailedReason.invalidLength:
+                    errorMessage =
+                        'Invalid seed length. Must be 12 or 24 words';
+                    isBip39 = false;
+                  case null:
+                    errorMessage = null;
+                    isBip39 = _komodoDefiSdk.mnemonicValidator.validateBip39(
+                      mnemonicController.text,
+                    );
+                }
+              });
+            }
+
+            // Allow submission if:
+            // 1. No error message AND
+            // 2. Either:
+            //    a. Input is empty (generate new seed) OR
+            //    b. Using encrypted seed (validate after decrypt) OR
+            //    c. Using plaintext seed that passes BIP39 check in HD mode
+            final canSubmit = errorMessage == null &&
+                (mnemonicController.text.isEmpty ||
+                    isMnemonicEncrypted ||
+                    !_isHdMode ||
+                    isBip39 == true);
+
             return AlertDialog(
               title: const Text('Import Existing Seed?'),
               content: Column(
@@ -383,37 +513,30 @@ class _KomodoAppState extends State<KomodoApp> {
                     'Enter it below or leave empty to generate a new seed.',
                   ),
                   const SizedBox(height: 16),
-                  if (errorMessage != null) ...[
-                    Text(
-                      errorMessage!,
-                      style: const TextStyle(color: Colors.red),
+                  if (_isHdMode && !isMnemonicEncrypted) ...[
+                    const Text(
+                      'HD wallets require a valid BIP39 seed phrase.',
+                      style: TextStyle(fontStyle: FontStyle.italic),
                     ),
                     const SizedBox(height: 8),
+                  ],
+                  if (_isHdMode && isMnemonicEncrypted) ...[
                     const Text(
-                      'Example of a valid encrypted format:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      'Note: Encrypted seeds will be verified for BIP39 compatibility after import.',
+                      style: TextStyle(fontStyle: FontStyle.italic),
                     ),
-                    const SizedBox(height: 4),
-                    SelectableText(
-                      EncryptedMnemonicData.encryptedDataExample.toString(),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
                   ],
                   TextFormField(
                     minLines: isMnemonicEncrypted ? 3 : 1,
                     maxLines: isMnemonicEncrypted ? 4 : 1,
                     controller: mnemonicController,
                     obscureText: !isMnemonicEncrypted,
-                    decoration: const InputDecoration(
+                    onChanged: (_) => validateInput(),
+                    decoration: InputDecoration(
                       hintText: 'Enter your seed or leave empty for a new one',
+                      errorText: errorMessage,
                     ),
-                    // validator: (input) =>
-                    //     !isMnemonicEncrypted || (input?.isEmpty ?? true)
-                    //         ? null
-                    //         : validateEncryptedMnemonic(
-                    //             input,
-                    //             isEncrypted: isMnemonicEncrypted,
-                    //           ),
                   ),
                   const SizedBox(height: 16),
                   SwitchListTile(
@@ -422,50 +545,41 @@ class _KomodoAppState extends State<KomodoApp> {
                     onChanged: (value) {
                       setState(() {
                         isMnemonicEncrypted = value;
+                        validateInput();
                       });
                     },
                   ),
+                  if (!_isHdMode && !isMnemonicEncrypted) ...[
+                    SwitchListTile(
+                      title: const Text('Allow Custom Seed'),
+                      subtitle: const Text(
+                        'Enable to use a non-BIP39 compatible seed phrase',
+                      ),
+                      value: allowCustomSeed,
+                      onChanged: (value) {
+                        setState(() {
+                          allowCustomSeed = value;
+                          validateInput();
+                        });
+                      },
+                    ),
+                  ],
                 ],
               ),
               actions: <Widget>[
                 TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
                 ),
                 FilledButton(
+                  onPressed: canSubmit
+                      ? () => _handleRegistration(
+                            context,
+                            mnemonicController.text,
+                            isMnemonicEncrypted,
+                          )
+                      : null,
                   child: const Text('Register'),
-                  onPressed: () {
-                    Mnemonic? mnemonic;
-                    if (mnemonicController.text.isNotEmpty) {
-                      if (isMnemonicEncrypted) {
-                        final parsedMnemonic = EncryptedMnemonicData.tryParse(
-                          tryParseJson(mnemonicController.text) ?? {},
-                        );
-
-                        if (parsedMnemonic == null) {
-                          setState(() {
-                            errorMessage =
-                                'Invalid encrypted mnemonic format. Please ensure it is correctly formatted.';
-                          });
-                          return;
-                        } else {
-                          mnemonic = Mnemonic.encrypted(parsedMnemonic);
-                        }
-                      } else {
-                        mnemonic = Mnemonic.plaintext(mnemonicController.text);
-                      }
-                    }
-                    Navigator.of(context).pop(true);
-
-                    // Call the register method with the mnemonic
-                    _register(
-                      _walletName,
-                      _password,
-                      mnemonic: mnemonic,
-                    );
-                  },
                 ),
               ],
             );
@@ -474,11 +588,81 @@ class _KomodoAppState extends State<KomodoApp> {
       },
     );
 
-    if (didProvideImport != null && didProvideImport) {
+    if (didProvideImport != true) return;
+  }
+
+  Future<void> _handleRegistration(
+    BuildContext context,
+    String input,
+    bool isEncrypted,
+  ) async {
+    Mnemonic? mnemonic;
+
+    if (input.isNotEmpty) {
+      if (isEncrypted) {
+        final parsedMnemonic = EncryptedMnemonicData.tryParse(
+          tryParseJson(input) ?? {},
+        );
+        if (parsedMnemonic != null) {
+          mnemonic = Mnemonic.encrypted(parsedMnemonic);
+        }
+      } else {
+        mnemonic = Mnemonic.plaintext(input);
+      }
+    }
+
+    Navigator.of(context).pop(true);
+
+    try {
       await _register(
         _walletName,
         _password,
+        mnemonic: mnemonic,
+        isHd: _isHdMode,
       );
+    } on AuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.type == AuthExceptionType.invalidWalletPassword
+                ? 'HD mode requires a valid BIP39 seed phrase. The imported encrypted seed is not compatible.'
+                : 'Registration failed: ${e.message}',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  void _validateMnemonic(
+    String input,
+    StateSetter setState, {
+    required void Function(String?) setError,
+  }) {
+    if (input.isEmpty) {
+      setError(null);
+      return;
+    }
+
+    final failedReason = _komodoDefiSdk.mnemonicValidator.validateMnemonic(
+      input,
+      isHd: _isHdMode,
+      allowCustomSeed: !_isHdMode && allowCustomSeed,
+    );
+
+    switch (failedReason) {
+      case MnemonicFailedReason.empty:
+        setError('Mnemonic cannot be empty');
+      case MnemonicFailedReason.customNotSupportedForHd:
+        setError('HD wallets require a valid BIP39 seed phrase');
+      case MnemonicFailedReason.customNotAllowed:
+        setError(
+          'Custom seeds are not allowed. Enable custom seeds or use a valid BIP39 seed phrase',
+        );
+      case MnemonicFailedReason.invalidLength:
+        setError('Invalid seed length. Must be 12 or 24 words');
+      case null:
+        setError(null);
     }
   }
 
@@ -490,7 +674,7 @@ class _KomodoAppState extends State<KomodoApp> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Known Wallets:',
+          'Saved Wallets:',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
@@ -498,13 +682,14 @@ class _KomodoAppState extends State<KomodoApp> {
           spacing: 8,
           runSpacing: 8,
           children: _knownUsers.map((user) {
+            return ActionChip(
+              key: Key(user.walletId.compoundId),
+              onPressed: () => _onSelectKnownUser(user),
+              label: Text(user.walletId.name),
+            );
             return ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _walletNameController.text = user.walletName;
-                });
-              },
-              child: Text(user.walletName),
+              onPressed: () => _onSelectKnownUser(user),
+              child: Text(user.walletId.name),
             );
           }).toList(),
         ),
@@ -542,10 +727,11 @@ class _KomodoAppState extends State<KomodoApp> {
 
   final TextEditingController _walletNameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isHdMode = false;
 
   @override
   void dispose() {
-    _searchController.dispose(); // Clean up the search controller
+    _searchController.dispose();
     _refreshUsersTimer?.cancel();
     sub?.cancel();
     _activeAssetsSub?.cancel();
@@ -553,43 +739,39 @@ class _KomodoAppState extends State<KomodoApp> {
   }
 }
 
-class CoinActivationButton extends StatefulWidget {
-  const CoinActivationButton({
+class _AssetItemTrailing extends StatelessWidget {
+  const _AssetItemTrailing({
     required this.asset,
-    super.key,
+    required this.isSupported,
   });
+
+  final bool isSupported;
 
   final Asset asset;
 
   @override
-  State<CoinActivationButton> createState() => _CoinActivationButtonState();
-}
-
-class _CoinActivationButtonState extends State<CoinActivationButton> {
-  ActivationProgress? progress;
-
-  bool get isBusy => progress != null && !progress!.isComplete;
-
-  @override
   Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: isBusy
-          ? null
-          : () async {
-              // Stream: asset.activate();
-              await for (final progress in widget.asset.preActivate()) {
-                print('Activation progress: $progress');
-              }
-            },
-      label: Text('Force activate ${widget.asset.id.name}'),
-      icon: isBusy
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(),
-            )
-          // : const Icon(Icons.check),
-          : null,
-    );
+    return isSupported
+        ? const Icon(Icons.arrow_forward_ios)
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (unsupportedMessage != null) ...[
+                Text(unsupportedMessage ?? ''),
+                const SizedBox(width: 8),
+              ],
+              const Icon(Icons.lock),
+            ],
+          );
+  }
+
+  // TODO: Change to an enum and move to the SDK.
+  String? get unsupportedMessage {
+    if (isSupported) return null;
+
+    if (!asset.protocol.toJson().containsKey('derivation_path')) {
+      return 'Missing derivation path';
+    }
+    return null;
   }
 }

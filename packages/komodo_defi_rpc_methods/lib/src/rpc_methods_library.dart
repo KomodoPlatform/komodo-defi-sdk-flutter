@@ -50,6 +50,9 @@ class WalletMethods extends BaseRpcMethodNamespace {
           coin: coin,
         ),
       );
+
+  Future<GetPublicKeyHashResponse> getPublicKeyHash([String? rpcPass]) =>
+      execute(GetPublicKeyHashRequest(rpcPass: rpcPass));
 }
 
 class GeneralActivationMethods extends BaseRpcMethodNamespace {

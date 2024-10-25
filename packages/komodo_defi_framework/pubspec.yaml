@@ -28,7 +28,7 @@ dependencies:
   logging: ^1.2.0
   path_provider: ^2.1.4
   plugin_platform_interface: ^2.0.2
-  web: ^1.0.0
+  web: ^1.1.0
 
 
 

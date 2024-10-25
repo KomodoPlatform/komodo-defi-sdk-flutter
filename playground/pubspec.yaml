@@ -73,6 +73,14 @@ dev_dependencies:
   flutter_web_plugins:
     sdk: flutter
   js: any
+
+dependency_overrides:
+  flutter_secure_storage_web:
+     git:
+      url: https://github.com/mogol/flutter_secure_storage.git
+      ref: develop
+      path: flutter_secure_storage_web
+
 flutter:
 
   # The following line ensures that the Material Icons font is

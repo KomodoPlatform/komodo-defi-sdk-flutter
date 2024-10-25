@@ -4,15 +4,18 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 abstract class GenericTaskActivationStrategy implements ActivationStrategy {
-  // BaseTaskActivationStrategy(this.apiClient);
-  GenericTaskActivationStrategy();
+  GenericTaskActivationStrategy({
+    required this.activationParams,
+    this.taskId,
+  });
 
   @override
   int? taskId; // The task ID for checking the status
 
   // final ApiClient apiClient;
 
-  // final ActivationRpcData rpcData;
+  @override
+  final ActivationParams activationParams;
 
   /// Method to create the RPC request for task initialization.
   BaseRequest<NewTaskResponse, GeneralErrorResponse> createInitRequest(

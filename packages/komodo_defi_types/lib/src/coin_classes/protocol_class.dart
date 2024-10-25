@@ -5,9 +5,13 @@ import 'package:komodo_defi_types/types.dart';
 
 // Updated Protocol Class without direct dependency on strategies
 abstract class ProtocolClass {
-  ProtocolClass(this.subClass, this.activationStrategy);
+  ProtocolClass(this.subClass, this.activationStrategy, this._originalJson);
   final ActivationStrategy activationStrategy;
   final CoinSubClass subClass;
+
+  final JsonMap _originalJson;
+
+  JsonMap toJson() => _originalJson;
 
   static ProtocolClass fromJson(JsonMap json) {
     return ProtocolFactory.fromJson(json);
@@ -23,6 +27,8 @@ abstract class ProtocolClass {
 }
 
 class ProtocolFactory {
+  // TODO: Refactor to be able to parse un-supported protocols so they can
+  // still be shown in the UI.
   static ProtocolClass fromJson(JsonMap json) {
     final subClass = CoinSubClass.tryParse(json.value<String>('type'));
     final protocolClass = json.value<String?>('protocol', 'type');
@@ -31,12 +37,13 @@ class ProtocolFactory {
       throw Exception('Unsupported protocol type: $protocolClass');
     }
 
-    final activationStrategy = ActivationStrategyFactory.create(subClass, json);
+    final activationStrategy =
+        ActivationStrategyFactory.fromJsonConfig(subClass, json);
 
     switch (subClass) {
       case CoinSubClass.utxo:
       case CoinSubClass.smartChain:
-        return UtxoProtocol(subClass, activationStrategy);
+        return UtxoProtocol(subClass, activationStrategy, json);
       // Handle other cases similarly
       default:
         throw ArgumentError(
@@ -46,23 +53,27 @@ class ProtocolFactory {
 }
 
 class UtxoProtocol extends ProtocolClass {
-  UtxoProtocol(super.subClass, super.activationStrategy);
+  UtxoProtocol(super.subClass, super.activationStrategy, super._originalJson);
 }
 
 class SlpProtocol extends ProtocolClass {
-  SlpProtocol(super.subClass, super.activationStrategy);
+  SlpProtocol(super.subClass, super.activationStrategy, super._originalJson);
 }
 
 class QtumProtocol extends ProtocolClass {
-  QtumProtocol(super.subClass, super.activationStrategy);
+  QtumProtocol(super.subClass, super.activationStrategy, super._originalJson);
 }
 
 class Erc20Protocol extends ProtocolClass {
-  Erc20Protocol(super.subClass, super.activationStrategy);
+  Erc20Protocol(super.subClass, super.activationStrategy, super._originalJson);
 }
 
 class EthProtocol extends ProtocolClass {
-  EthProtocol(super.subClass, super.activationStrategy);
+  EthProtocol(super.subClass, super.activationStrategy, super._originalJson);
+}
+
+class ZhtlcProtocol extends ProtocolClass {
+  ZhtlcProtocol(super.subClass, super.activationStrategy, super._originalJson);
 }
 
 

@@ -1,17 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
-import 'package:komodo_defi_sdk/src/assets/assets.dart';
-import 'package:komodo_defi_sdk/src/input/mnemonic_validator.dart';
+import 'package:komodo_defi_sdk/src/assets/asset_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
+import 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-
-// Export coin activation extension
-export 'package:komodo_defi_sdk/src/assets/assets.dart'
-    show
-        // ApiClientCoinActivation,
-        AssetActivation;
 
 KomodoDefiSdk? _instance;
 
@@ -30,28 +24,38 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// asynchronously when needed.
   ///
   /// Defaults to a local instance unless [host] is provided.
-  factory KomodoDefiSdk({IKdfHostConfig? host}) {
+  factory KomodoDefiSdk({
+    IKdfHostConfig? host,
+    KomodoDefiSdkConfig? config,
+  }) {
     if (_instance != null && host != null && _instance!._hostConfig != host) {
       throw StateError(
-        'KomodoDefiSdk is a singleton and has already been initialized. '
-        'The host cannot be changed after initialization.',
+        'KomodoDefiSdk is a singleton and has already been initialized.',
       );
     }
-    return _instance ??= KomodoDefiSdk._(host);
+    return _instance ??= KomodoDefiSdk._(
+      host,
+      config ?? const KomodoDefiSdkConfig(),
+    );
   }
 
   // KomodoDefiSdk get global => _instance!;
 
   /// Creates a new instance of the [KomodoDefiSdk] class.
-  factory KomodoDefiSdk.newInstance({IKdfHostConfig? host}) {
-    return KomodoDefiSdk._(host);
+  factory KomodoDefiSdk.newInstance({
+    IKdfHostConfig? host,
+    KomodoDefiSdkConfig? config,
+  }) {
+    return KomodoDefiSdk._(host, config ?? const KomodoDefiSdkConfig());
   }
 
-  KomodoDefiSdk._(this._hostConfig);
+  KomodoDefiSdk._(this._hostConfig, this._config);
 
-  KomodoDefiSdk get global => _instance!;
+  final IKdfHostConfig? _hostConfig;
+  final KomodoDefiSdkConfig _config;
 
-  late final IKdfHostConfig? _hostConfig;
+  static KomodoDefiSdk get global => _instance!;
+
   late final KomodoDefiFramework? _kdfFramework;
   // ignore: unused_field
   LogCallback? _logCallback;
@@ -116,8 +120,6 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
           rpcPassword: rpcPassword,
         );
 
-    // TODO!: Pass in Komodo coin config to KDF instance?
-
     _kdfFramework = KomodoDefiFramework.create(
       hostConfig: hostConfig,
       externalLogger: kDebugMode ? print : null,
@@ -130,25 +132,37 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       hostConfig: hostConfig,
     );
 
-    // TODO: Log storage
-    _logCallback = kDebugMode ? print : null;
-    _assets = AssetManager(_apiClient!, _auth!);
+    _assets = AssetManager(_apiClient!, _auth!, _config);
+
+    _mnemonicValidator = MnemonicValidator();
 
     await Future.wait([
       _auth!.ensureInitialized(),
       _assets!.init(),
-      MnemonicValidator.init(),
+      _mnemonicValidator!.init(),
     ]);
 
     _isInitialized = true;
   }
 
-  AssetManager get assets => _assertSdkInitialized(_assets);
-  AssetManager? _assets;
+  // Helper extension methods
+  Future<AuthOptions?> currentUserAuthOptions() async {
+    final user = await auth.currentUser;
+    return user == null
+        ? null
+        : KomodoDefiLocalAuth.storedAuthOptions(user.walletId.name);
+  }
 
-  late final PubkeyManager pubkeys =
-      _assertSdkInitialized(PubkeyManager(client));
-  // PubkeyManager? _pubkeyManager;
+  late final AssetManager? _assets;
+  AssetManager get assets => _assertSdkInitialized(_assets);
+
+  late final PubkeyManager pubkeys = _assertSdkInitialized(
+    PubkeyManager(_apiClient!),
+  );
+
+  late final MnemonicValidator? _mnemonicValidator;
+  MnemonicValidator get mnemonicValidator =>
+      _assertSdkInitialized(_mnemonicValidator);
 }
 
 /// RPC library extension of API client
@@ -157,6 +171,24 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 // }
 
 extension AssetPubkeysExtension on Asset {
-  Future<AssetPubkeys> getPubkey() =>
-      PubkeyManager(_instance!._apiClient!).getPubkeys(this);
+  Future<AssetPubkeys> getPubkeys() => KomodoDefiSdk().pubkeys.getPubkeys(this);
+}
+
+extension PubkeyExtension on Asset {
+  Future<PubkeyStrategy> get pubkeyStrategy async =>
+      Asset.preferredPubkeyStrategy(
+        protocol,
+        isHdWallet: await _currentUsersAuthOptions().then(
+              (options) =>
+                  options?.derivationMethod == DerivationMethod.hdWallet,
+            ) ??
+            true,
+      );
+
+  Future<AuthOptions?> _currentUsersAuthOptions() async {
+    final user = await _instance?.auth.currentUser;
+    return user == null
+        ? null
+        : KomodoDefiLocalAuth.storedAuthOptions(user.walletId.name);
+  }
 }

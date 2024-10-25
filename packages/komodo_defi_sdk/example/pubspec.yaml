@@ -29,5 +29,13 @@ dev_dependencies:
     sdk: flutter
     
   js: any
+
+dependency_overrides:
+  flutter_secure_storage_web:
+     git:
+      url: https://github.com/mogol/flutter_secure_storage.git
+      ref: develop
+      path: flutter_secure_storage_web
+
 flutter:
   uses-material-design: true

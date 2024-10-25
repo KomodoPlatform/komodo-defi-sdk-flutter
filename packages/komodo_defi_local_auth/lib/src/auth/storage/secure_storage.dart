@@ -1,23 +1,41 @@
 // lib/src/auth/secure_storage.dart
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-abstract class SecureStorage {
+abstract class Storage {
   Future<void> write(String key, String value);
   Future<String?> read(String key);
   Future<void> delete(String key);
 }
 
-class IFlutterSecureStorage implements SecureStorage {
+class SecureLocalStorage {
+  factory SecureLocalStorage() => _instance;
+  SecureLocalStorage._();
+  static final SecureLocalStorage _instance = SecureLocalStorage._();
+
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  @override
-  Future<void> write(String key, String value) =>
-      _storage.write(key: key, value: value);
+  static const _userPrefix = 'user_';
 
-  @override
-  Future<String?> read(String key) => _storage.read(key: key);
+  /// Save user data
+  Future<void> saveUser(KdfUser user) async {
+    final jsonString = user.toJson().toJsonString();
+    await _storage.write(
+      key: '$_userPrefix${user.walletId.name}',
+      value: jsonString,
+    );
+  }
 
-  @override
-  Future<void> delete(String key) => _storage.delete(key: key);
+  /// Get user data
+  Future<KdfUser?> getUser(String walletName) async {
+    final jsonString = await _storage.read(key: '$_userPrefix$walletName');
+    if (jsonString == null) return null;
+    return KdfUser.fromJson(jsonFromString(jsonString));
+  }
+
+  /// Delete user data
+  Future<void> deleteUser(String walletName) async {
+    await _storage.delete(key: '$_userPrefix$walletName');
+  }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
+import 'package:komodo_defi_local_auth/src/auth/storage/secure_storage.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mutex/mutex.dart';
@@ -10,30 +11,25 @@ abstract interface class IAuthService {
   Future<KdfUser> signIn({
     required String walletName,
     required String password,
+    required AuthOptions options,
   });
 
   Future<KdfUser> register({
     required String walletName,
     required String password,
+    required AuthOptions options,
     Mnemonic? mnemonic,
   });
 
   Future<void> signOut();
-
   Future<bool> isSignedIn();
-
   Future<KdfUser?> getActiveUser();
-
   Future<Mnemonic> getMnemonic({
     required bool encrypted,
-
-    /// Required if [encrypted] is false.
     required String? walletPassword,
-    // required String walletName,
   });
 
   Stream<KdfUser?> get authStateChanges;
-
   void dispose();
 }
 
@@ -44,11 +40,11 @@ class KdfAuthService implements IAuthService {
   final IKdfHostConfig _hostConfig;
   final StreamController<KdfUser?> _authStateController =
       StreamController.broadcast();
+  final SecureLocalStorage _secureStorage = SecureLocalStorage();
+  final ReadWriteMutex _authMutex = ReadWriteMutex();
 
   ApiClient get _client => _kdfFramework.client;
   late final methods = KomodoDefiRpcMethods(_client);
-
-  final ReadWriteMutex _authMutex = ReadWriteMutex();
 
   Future<T> _runReadOperation<T>(Future<T> Function() operation) async {
     return _authMutex.protectRead(operation);
@@ -58,65 +54,11 @@ class KdfAuthService implements IAuthService {
     return _authMutex.protectWrite(operation);
   }
 
-  @override
-  Future<KdfUser> signIn({
-    required String walletName,
-    required String password,
-  }) async {
-    final walletStatus =
-        await _runReadOperation(() => _getWalletStatus(walletName));
-
-    if (walletStatus) {
-      final activeUser = await _runReadOperation(_getActiveUserInternal);
-      return activeUser!;
-    }
-
-    return _lockWriteOperation(() async {
-      final config = await _generateStartupConfig(
-        walletName: walletName,
-        walletPassword: password,
-        allowRegistrations: false,
-
-        hdEnabled: true, //TODO!
-      );
-      return _authenticateUser(config);
-    });
-  }
-
-  Future<bool> _getWalletStatus(String walletName) async {
-    return await _assertWalletOrStop(walletName) ?? false;
-  }
-
-  @override
-  @override
-  Future<KdfUser> register({
-    required String walletName,
-    required String password,
-    Mnemonic? mnemonic,
-  }) async {
-    // Perform the read operation outside the write lock
-    final walletExists =
-        await _runReadOperation(() => _assertWalletOrStop(walletName));
-
-    // Proceed with the write operation if necessary
-    return _lockWriteOperation(() async {
-      final config = await _generateStartupConfig(
-        walletName: walletName,
-        walletPassword: password,
-        allowRegistrations: true,
-        plaintextMnemonic: mnemonic?.plaintextMnemonic,
-        hdEnabled: true, //TODO!
-      );
-      return _authenticateUser(config);
-    });
-  }
-
   Future<KdfUser> _authenticateUser(KdfStartupConfig config) async {
     final foundAuthExceptions = <AuthException>[];
     late StreamSubscription<String> sub;
 
     sub = _kdfFramework.logStream.listen((log) {
-      // Capture authentication exceptions from the logs
       final exceptions = AuthException.findExceptionsInLog(log);
       if (exceptions.isNotEmpty) {
         foundAuthExceptions.addAll(exceptions);
@@ -134,35 +76,21 @@ class KdfAuthService implements IAuthService {
         );
       }
 
-      // Wait for the KDF to fully start, checking status periodically
       for (var i = 0; i < 50; i++) {
         final status = await _kdfFramework.kdfMainStatus();
         if (status == MainStatus.rpcIsUp) {
           break;
         }
-
         await Future<void>.delayed(const Duration(milliseconds: 100));
       }
 
-      // Re-throw any captured auth exceptions from the logs
       if (foundAuthExceptions.isNotEmpty) {
         throw foundAuthExceptions.first;
-      }
-    } catch (e) {
-      if (e is AuthException) {
-        rethrow; // Re-throw the authentication-specific exception
-      } else if (foundAuthExceptions.isNotEmpty) {
-        // If general exception caught, but we have auth exceptions in logs, throw those
-        throw foundAuthExceptions.last;
-      } else {
-        // For other types of exceptions, rethrow the original one
-        rethrow;
       }
     } finally {
       await sub.cancel();
     }
 
-    // Check the API status to ensure it's fully running
     final status = await _kdfFramework.kdfMainStatus();
     if (status != MainStatus.rpcIsUp) {
       throw AuthException(
@@ -171,8 +99,7 @@ class KdfAuthService implements IAuthService {
       );
     }
 
-    // Ensure the user is properly authenticated
-    final currentUser = await _getActiveUserInternal();
+    var currentUser = await _getActiveUserInternal();
     if (currentUser == null) {
       throw AuthException(
         'No user signed in',
@@ -180,13 +107,200 @@ class KdfAuthService implements IAuthService {
       );
     }
 
+    // For HD wallets, verify BIP39 compatibility if not already verified
+    if (currentUser.isHd && !currentUser.isBip39Seed) {
+      bool isBip39;
+      try {
+        // Use the password from the config to verify the seed
+        final plaintext = await getMnemonic(
+          encrypted: false,
+          walletPassword: config.walletPassword,
+        );
+
+        if (plaintext.plaintextMnemonic == null) {
+          throw AuthException(
+            'Failed to decrypt seed for verification',
+            type: AuthExceptionType.generalAuthError,
+          );
+        }
+
+        await MnemonicValidator().init();
+        isBip39 =
+            MnemonicValidator().validateBip39(plaintext.plaintextMnemonic!);
+
+        if (!isBip39) {
+          await _stopKdf();
+          throw AuthException(
+            'HD wallets require a valid BIP39 seed phrase',
+            type: AuthExceptionType.invalidWalletPassword,
+          );
+        }
+
+        // Update stored user with verified BIP39 status
+        final updatedUser = currentUser.copyWith(isBip39Seed: true);
+        await _secureStorage.saveUser(updatedUser);
+        currentUser = updatedUser;
+      } catch (e) {
+        await _stopKdf();
+        throw AuthException(
+          'Failed to verify seed compatibility: $e',
+          type: AuthExceptionType.generalAuthError,
+        );
+      }
+    }
+
     _authStateController.add(currentUser);
     return currentUser;
   }
 
   @override
+  Future<KdfUser> signIn({
+    required String walletName,
+    required String password,
+    AuthOptions options = const AuthOptions(
+      derivationMethod: DerivationMethod.hdWallet,
+    ),
+  }) async {
+    final walletStatus =
+        await _runReadOperation(() => _getWalletStatus(walletName));
+
+    if (walletStatus) {
+      final activeUser = await _runReadOperation(_getActiveUserInternal);
+      return activeUser!;
+    }
+
+    return _lockWriteOperation(() async {
+      final storedUser = await _secureStorage.getUser(walletName);
+
+      // If we know this is not a BIP39 seed, don't allow HD mode
+      if (storedUser?.isBip39Seed == false &&
+          options.derivationMethod == DerivationMethod.hdWallet) {
+        throw AuthException(
+          'Cannot use HD mode with non-BIP39 seed',
+          type: AuthExceptionType.generalAuthError,
+        );
+      }
+
+      final config = await _generateStartupConfig(
+        walletName: walletName,
+        walletPassword: password,
+        allowRegistrations: false,
+        hdEnabled: options.derivationMethod == DerivationMethod.hdWallet,
+      );
+
+      // _authenticateUser will handle BIP39 verification for HD wallets
+      return await _authenticateUser(config);
+    });
+  }
+
+  @override
+  Future<KdfUser> register({
+    required String walletName,
+    required String password,
+    AuthOptions options = const AuthOptions(
+      derivationMethod: DerivationMethod.hdWallet,
+    ),
+    Mnemonic? mnemonic,
+  }) async {
+    final walletExists =
+        await _runReadOperation(() => _assertWalletOrStop(walletName));
+
+    return _lockWriteOperation(() async {
+      bool? isBip39;
+
+      // Verify BIP39 status for plaintext mnemonics
+      if (mnemonic?.plaintextMnemonic != null) {
+        await MnemonicValidator().init();
+        isBip39 =
+            MnemonicValidator().validateBip39(mnemonic!.plaintextMnemonic!);
+
+        if (!isBip39 && options.derivationMethod == DerivationMethod.hdWallet) {
+          throw AuthException(
+            'HD wallets require a valid BIP39 seed phrase',
+            type: AuthExceptionType.generalAuthError,
+          );
+        }
+      }
+
+      final config = await _generateStartupConfig(
+        walletName: walletName,
+        walletPassword: password,
+        allowRegistrations: true,
+        plaintextMnemonic: mnemonic?.plaintextMnemonic,
+        hdEnabled: options.derivationMethod == DerivationMethod.hdWallet,
+      );
+
+      final user = await _authenticateUser(config);
+
+      // Store initial user with BIP39 status if known
+      if (isBip39 != null) {
+        final userWithBip39 = user.copyWith(isBip39Seed: isBip39);
+        await _secureStorage.saveUser(userWithBip39);
+        return userWithBip39;
+      }
+
+      await _secureStorage.saveUser(user);
+      return user;
+    });
+  }
+
+  @override
+  Future<List<KdfUser>> getUsers() async {
+    return _runReadOperation(() async {
+      await _ensureKdfRunning();
+      final walletNames = await _client.rpc.wallet.getWalletNames();
+
+      return Future.wait(
+        walletNames.walletNames.map((name) async {
+          final user = await _secureStorage.getUser(name);
+          if (user != null) return user;
+
+          // Create new user record if none exists
+          final newUser = KdfUser(
+            walletId: WalletId.fromName(name),
+            authOptions: _fallbackAuthOptions,
+            isBip39Seed: true, // Default to true until verified otherwise
+          );
+          await _secureStorage.saveUser(newUser);
+          return newUser;
+        }),
+      );
+    });
+  }
+
+  Future<void> updateUserBip39Status(String walletName, bool isBip39) async {
+    final existingUser = await _secureStorage.getUser(walletName);
+    if (existingUser == null) return;
+
+    // Don't allow switching to HD if not BIP39
+    if (!isBip39 && existingUser.isHd) {
+      throw AuthException(
+        'Cannot use non-BIP39 seed with HD wallet',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+
+    final updatedUser = existingUser.copyWith(isBip39Seed: isBip39);
+    await _secureStorage.saveUser(updatedUser);
+  }
+
+  Future<String?> _getPubkeyHash() async {
+    try {
+      final response = await _client.rpc.wallet.getPublicKeyHash();
+      return response.publicKeyHash;
+    } catch (_) {
+      // If we can't get the pubkey hash, return null and continue with partial ID
+      return null;
+    }
+  }
+
+  Future<bool> _getWalletStatus(String walletName) async {
+    return await _assertWalletOrStop(walletName) ?? false;
+  }
+
+  @override
   Future<void> signOut() async {
-    return _lockWriteOperation(_stopKdf);
+    await _lockWriteOperation(_stopKdf);
   }
 
   @override
@@ -205,10 +319,19 @@ class KdfAuthService implements IAuthService {
     if (!await _kdfFramework.isRunning()) {
       return null;
     }
-    final activeUser =
+
+    final activeWallet =
         (await _client.rpc.wallet.getWalletNames()).activatedWallet;
-    return activeUser != null ? KdfUser(walletName: activeUser) : null;
+    if (activeWallet == null) {
+      return null;
+    }
+
+    return _secureStorage.getUser(activeWallet);
   }
+
+  AuthOptions get _fallbackAuthOptions => const AuthOptions(
+        derivationMethod: DerivationMethod.hdWallet,
+      );
 
   @override
   Future<Mnemonic> getMnemonic({
@@ -249,17 +372,6 @@ class KdfAuthService implements IAuthService {
   }
 
   @override
-  Future<List<KdfUser>> getUsers() async {
-    return _runReadOperation(() async {
-      await _ensureKdfRunning();
-      final walletNames = await _client.rpc.wallet.getWalletNames();
-      return walletNames.walletNames
-          .map((e) => KdfUser(walletName: e))
-          .toList();
-    });
-  }
-
-  @override
   Stream<KdfUser?> get authStateChanges => _authStateController.stream;
 
   @override
@@ -279,7 +391,7 @@ class KdfAuthService implements IAuthService {
       return false;
     }
 
-    if (activeUser.walletName != walletName) {
+    if (activeUser.walletId.name != walletName) {
       await _stopKdf();
       return false;
     }
@@ -324,5 +436,31 @@ class KdfAuthService implements IAuthService {
       allowRegistrations: allowRegistrations,
       enableHd: hdEnabled,
     );
+  }
+
+  Future<bool> verifyEncryptedSeedBip39Compatibility(
+    String password,
+  ) async {
+    final mnemonic = await getMnemonic(
+      encrypted: false,
+      walletPassword: password,
+    );
+
+    if (mnemonic.plaintextMnemonic == null) {
+      throw AuthException(
+        'Failed to decrypt seed for verification',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+
+    return MnemonicValidator().init().then((_) {
+      final result = MnemonicValidator().validateMnemonic(
+        mnemonic.plaintextMnemonic!,
+        isHd: false,
+        allowCustomSeed: true,
+      );
+
+      return result == null;
+    });
   }
 }

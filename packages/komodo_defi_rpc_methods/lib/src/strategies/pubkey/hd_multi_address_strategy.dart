@@ -12,7 +12,7 @@ class HDWalletStrategy extends PubkeyStrategy {
   bool get supportsMultipleAddresses => true;
 
   @override
-  bool protocolSupported(ProtocolClass protocol, ApiClient client) {
+  bool protocolSupported(ProtocolClass protocol) {
     return protocol is UtxoProtocol || protocol is SlpProtocol;
   }
 

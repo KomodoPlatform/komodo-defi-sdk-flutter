@@ -3,50 +3,41 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class Asset extends Equatable {
-  const Asset({
-    required this.id,
-    required this.protocol,
-    required this.pubkeyStrategy,
-  });
+  const Asset({required this.id, required this.protocol});
 
-  factory Asset.fromJson(
-    Map<String, dynamic> json,
-    // { required bool isHdWallet,}
-  ) {
+  factory Asset.fromJson(Map<String, dynamic> json) {
     final assetId = AssetId.fromConfig(json);
-    final protocol = ProtocolClass.fromJson(
-      // json.value<Map<String, dynamic>>('protocol'),
-      json,
-    );
+    final protocol = ProtocolClass.fromJson(json);
 
-    // // TODO: Consider if this logic is more appropriate elsewhere as this feels
-    // // like a hack.
-    // // TODO! Take into account whether we are runnning HD mode or not.
-    // final isHd = assetId.derivationPath != null;
-    const isHd = true;
-
-    return Asset(
-      id: assetId,
-      protocol: protocol,
-      pubkeyStrategy: preferredPubkeyStrategy(protocol, isHdWallet: isHd),
-    );
+    return Asset(id: assetId, protocol: protocol);
   }
 
-  // Checks if the coin data represents a supported asset
-  static bool isSupported(JsonMap coinData) {
-    return ProtocolClass.tryParse(coinData) != null;
+  static Asset? tryParse(Map<String, dynamic> json) {
+    try {
+      return Asset.fromJson(json);
+    } catch (e) {
+      return null;
+    }
   }
 
-  // Determines if an asset should be filtered out based on its strategy
-  bool isFilteredOut() {
-    return pubkeyStrategy.supportsMultipleAddresses &&
-        id.derivationPath == null;
+  // // Checks if the coin data represents a supported asset
+  // static bool isSupported(JsonMap coinData) {
+  //   return ProtocolClass.tryParse(coinData) != null;
+  // }
+
+  // TODO: Refactor so that this doesn't need to be passed in if using the
+  // main SDK package.
+  PubkeyStrategy pubkeyStrategy({
+    required bool isHdWallet,
+  }) {
+    return preferredPubkeyStrategy(protocol, isHdWallet: isHdWallet);
   }
 
   /// Some assets have multiple supported pubkey strategies. Certain strategies
   /// may be preferred over others as they offer better features or performance.
   // TODO: Consider moving this logic to the Strategy class to keep it
   // encapsulated.
+  @Deprecated('Use `PubkeyStrategyFactory` instead.')
   static PubkeyStrategy preferredPubkeyStrategy(
     ProtocolClass protocol, {
     required bool isHdWallet,
@@ -66,7 +57,6 @@ class Asset extends Equatable {
 
   final AssetId id;
   final ProtocolClass protocol;
-  final PubkeyStrategy pubkeyStrategy;
 
   @override
   List<Object?> get props => [id, protocol];

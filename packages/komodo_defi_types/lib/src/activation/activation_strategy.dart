@@ -3,7 +3,11 @@ import 'dart:async';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+// typedef ActivationMode = ActivationMode;
+
 abstract class ActivationStrategy {
+  ActivationParams get activationParams;
+
   int? taskId; // For task-based activation processes (if needed)
 
   // Initiates the activation process and streams progress updates
@@ -14,7 +18,10 @@ abstract class ActivationStrategy {
 }
 
 class ActivationStrategyFactory {
-  static ActivationStrategy create(CoinSubClass subClass, JsonMap json) {
+  static ActivationStrategy fromJsonConfig(
+    CoinSubClass subClass,
+    JsonMap json,
+  ) {
     switch (subClass) {
       case CoinSubClass.utxo:
       case CoinSubClass.smartChain:
@@ -27,7 +34,14 @@ class ActivationStrategyFactory {
   }
 }
 
-class PlaceholderStrategy implements ActivationStrategy {
+class PlaceholderStrategy extends ActivationStrategy {
+  // PlaceholderStrategy({
+  //   required this.activationParams,
+  // });
+
+  @override
+  ActivationParams get activationParams => throw UnimplementedError();
+
   @override
   Stream<ActivationProgress> activate(ApiClient apiClient, Asset coin) async* {
     yield ActivationProgress(status: 'Placeholder activation started');

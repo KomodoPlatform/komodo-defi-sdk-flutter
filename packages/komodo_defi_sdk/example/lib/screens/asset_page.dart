@@ -54,7 +54,7 @@ class _AssetPageState extends State<AssetPage> {
   @override
   Widget build(BuildContext context) {
     final supportsMultipleAddresses =
-        widget.asset.pubkeyStrategy.supportsMultipleAddresses;
+        widget.asset.pubkeyStrategy(isHdWallet: true).supportsMultipleAddresses;
 
     return Scaffold(
       appBar: AppBar(
@@ -70,9 +70,9 @@ class _AssetPageState extends State<AssetPage> {
           ? Center(child: Text('Error: $_error'))
           : Column(
               children: [
-                SizedBox(height: 32),
+                // const SizedBox(height: 32),
                 AssetHeader(widget.asset, _pubkeys),
-                SizedBox(height: 32),
+                const SizedBox(height: 32),
                 Expanded(
                   child: _AddressesSection(
                     pubkeys: _pubkeys == null
@@ -109,9 +109,9 @@ class _AssetHeaderState extends State<AssetHeader> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildActions(context),
-        SizedBox(height: 16),
         _buildBalanceOverview(context),
+        const SizedBox(height: 16),
+        _buildActions(context),
       ],
     );
   }
@@ -122,12 +122,50 @@ class _AssetHeaderState extends State<AssetHeader> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Text('Total', style: Theme.of(context).textTheme.bodySmall),
+            Text('Total', style: Theme.of(context).textTheme.bodyMedium),
             Text(
               // TODO: Stream-based
               (widget.pubkeys?.syncStatus == SyncStatus.inProgress)
                   ? 'Loading...'
-                  : (widget.pubkeys?.balance ?? Balance.zero()).toString(),
+                  : (widget.pubkeys?.balance.total.toDouble() ?? 0.0)
+                      .toString(),
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 8),
+            const SizedBox(width: 128, child: Divider()),
+            const SizedBox(height: 8),
+            Row(
+              // mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      'Available',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Text(
+                      widget.pubkeys?.balance.spendable.toDouble().toString() ??
+                          '0.0',
+                    ),
+                  ],
+                ),
+                SizedBox(width: 16),
+                Column(
+                  children: [
+                    Text(
+                      'Locked',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Text(
+                      widget.pubkeys?.balance.unspendable
+                              .toDouble()
+                              .toString() ??
+                          '0.0',
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -189,8 +227,10 @@ class _AddressesSection extends StatelessWidget {
             child: ListView.builder(
               itemCount: pubkeys.keys.length,
               itemBuilder: (context, index) => ListTile(
-                title: Text(index.toString()),
-                subtitle: Text(pubkeys.keys[index].toJson().toJsonString()),
+                leading: Text(index.toString()),
+                title: Text(pubkeys.keys[index].toJson().toJsonString()),
+                trailing: Text(
+                    pubkeys.keys[index].balance.total.toStringAsPrecision(2)),
                 onTap: () {
                   Clipboard.setData(
                     ClipboardData(text: pubkeys.keys[index].address),

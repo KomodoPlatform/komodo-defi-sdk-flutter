@@ -14,6 +14,7 @@ export 'methods.dart';
 export 'utxo/task_enable_utxo_init.dart';
 export 'wallet/get_mnemonic_request.dart';
 export 'wallet/get_mnemonic_response.dart';
+export 'wallet/get_public_key_hash.dart';
 export 'wallet/get_wallet.dart';
 export 'wallet/get_wallet_names_request.dart';
 export 'wallet/get_wallet_names_response.dart';

@@ -15,4 +15,15 @@ enum DerivationMethod {
         throw ArgumentError('Invalid derivation method: $value');
     }
   }
+
+  // TO String
+  @override
+  String toString() {
+    switch (this) {
+      case DerivationMethod.iguana:
+        return 'Iguana';
+      case DerivationMethod.hdWallet:
+        return 'HDWallet';
+    }
+  }
 }

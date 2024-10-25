@@ -40,7 +40,14 @@ dev_dependencies:
   test: ^1.25.2
   very_good_analysis: ^6.0.0
 
+dependency_overrides:
+  flutter_secure_storage_web:
+     git:
+      url: https://github.com/mogol/flutter_secure_storage.git
+      ref: develop
+      path: flutter_secure_storage_web
+
 # TODO: Move to a separate sub-package?
-flutter:
-  assets:
-    - assets/bip-0039/english-wordlist.txt
+# flutter:
+  # assets:
+  #   - assets/bip-0039/english-wordlist.txt

@@ -28,11 +28,27 @@ class AssetManager extends _Assets {
   Map<String, Asset> get all => _assets.all;
 
   /// Ensures that an asset is activated before performing any actions on it.
-  Future<T> _ensureActivated<T>(
-    AssetId assetId,
-    Future<T> Function() action,
-  ) async {
-    if (!_activeAssetIds.contains(assetId.id)) {
+  // Future<T> _ensureActivated<T>(
+  //   AssetId assetId,
+  //   Future<T> Function() action,
+  // ) async {
+  //   if (!_activeAssetIds.contains(assetId.id)) {
+  //     if (!_activationCompleters.containsKey(assetId.id)) {
+  //       _activationCompleters[assetId.id] = Completer<void>();
+  //       await _activateAsset(assetId);
+  //     }
+
+  //     // Wait for asset activation to complete
+  //     await _activationCompleters[assetId.id]!.future;
+  //   }
+  //   return action();
+  // }
+  Future<void> ensureActivated(AssetId assetId) {
+    if (_activeAssetIds.contains(assetId.id)) {
+      return Future.value();
+    }
+
+    return Future(() async {
       if (!_activationCompleters.containsKey(assetId.id)) {
         _activationCompleters[assetId.id] = Completer<void>();
         await _activateAsset(assetId);
@@ -40,8 +56,7 @@ class AssetManager extends _Assets {
 
       // Wait for asset activation to complete
       await _activationCompleters[assetId.id]!.future;
-    }
-    return action();
+    });
   }
 
   /// Activates an asset if not already activated.
@@ -52,7 +67,8 @@ class AssetManager extends _Assets {
         throw ArgumentError('Asset not found for ID: ${assetId.id}');
       }
 
-      await for (final progress in asset.preActivate()) {
+      await for (final progress
+          in asset.protocol.activationStrategy.activate(_kdf, asset)) {
         if (progress.isComplete) {
           _activeAssetIds.add(assetId.id);
           _activationCompleters[assetId.id]?.complete();
@@ -78,36 +94,36 @@ class AssetManager extends _Assets {
         .then((r) => r.result.map((e) => e.ticker).toSet());
   }
 
-  // Example methods that ensure asset activation before performing actions
-  Future<String> getAddress(AssetId assetId) {
-    return _ensureActivated(assetId, () async {
-      // Implement address retrieval logic here
-      return 'sample_address';
-    });
-  }
+  // // Example methods that ensure asset activation before performing actions
+  // Future<String> getAddress(AssetId assetId) {
+  //   return ensureActivated(assetId, () async {
+  //     // Implement address retrieval logic here
+  //     return 'sample_address';
+  //   });
+  // }
 
-  Future<double> getBalance(AssetId assetId) {
-    return _ensureActivated(assetId, () async {
-      // Implement balance retrieval logic here
-      return 100.0;
-    });
-  }
+  // Future<double> getBalance(AssetId assetId) {
+  //   return ensureActivated(assetId, () async {
+  //     // Implement balance retrieval logic here
+  //     return 100.0;
+  //   });
+  // }
 
-  Stream<List<Transaction>> getTransactions(AssetId assetId) {
-    return Stream.fromFuture(
-      _ensureActivated(assetId, () async {
-        // Implement transaction retrieval logic here
-        return [Transaction()];
-      }),
-    ).asyncExpand(Stream.value);
-  }
+  // Stream<List<Transaction>> getTransactions(AssetId assetId) {
+  //   return Stream.fromFuture(
+  //     ensureActivated(assetId, () async {
+  //       // Implement transaction retrieval logic here
+  //       return [Transaction()];
+  //     }),
+  //   ).asyncExpand(Stream.value);
+  // }
 
-  Future<String> send(AssetId assetId, String toAddress, double amount) {
-    return _ensureActivated(assetId, () async {
-      // Implement send logic here
-      return 'transaction_hash';
-    });
-  }
+  // Future<String> send(AssetId assetId, String toAddress, double amount) {
+  //   return ensureActivated(assetId, () async {
+  //     // Implement send logic here
+  //     return 'transaction_hash';
+  //   });
+  // }
 }
 
 abstract class _Assets {
@@ -117,9 +133,9 @@ abstract class _Assets {
   final KomodoDefiLocalAuth _auth;
   final KomodoCoins _assets = KomodoCoins();
 
+  /// Initializes the assets.
   Future<void> init() async {
     await _assets.init();
-    _kdfClientInstance = _kdf;
   }
 
   /// Streams a list of active assets, updating as more are enabled.
@@ -130,7 +146,6 @@ abstract class _Assets {
     scheduleMicrotask(() async {
       while (!controller.isClosed) {
         final enabledAssetIds = await _enabledCoins();
-
         controller.add(
           inactiveAssets
               .where((a) => enabledAssetIds.contains(a.id.id))
@@ -170,9 +185,9 @@ extension AssetActivation on Asset {
   /// NB: This is not necessary for most cases as the activation process is
   /// handled internally when performing operations on the asset that
   /// require activation.
-  Stream<ActivationProgress> preActivate() =>
-      protocol.activationStrategy.activate(_kdfClientInstance, this);
+  // Stream<ActivationProgress> preActivate([ApiClient? client]) =>
+  //     protocol.activationStrategy.activate(client ?? _kdfClientInstance, this);
 }
 
-// TODO: Refactor to avoid singleton use
-late ApiClient _kdfClientInstance;
+// // TODO: Refactor to avoid singleton use
+// late ApiClient _kdfClientInstance;

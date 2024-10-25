@@ -8,6 +8,12 @@ class ActivationProgress {
     this.errorMessage,
   });
 
+  ActivationProgress.success()
+      : status = 'success',
+        progressPercentage = 100,
+        isComplete = true,
+        errorMessage = null;
+
   final String status;
   final double? progressPercentage; // Nullable, for protocols like ZHTLC
   final bool isComplete;

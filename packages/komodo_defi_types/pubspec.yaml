@@ -6,13 +6,24 @@ publish_to: 'none'
 
 environment:
   sdk: ^3.4.4
+  # TODO: Consider a different approach to fetching the BIP-0039 wordlist besides
+  # including it as an asset. This will allow us to drop Flutter as a
+  # dependency and keep it pure Dart.
+  flutter: '>=3.22.0 <3.25.0'
 
 dependencies:
+
   decimal: ^3.0.2
   equatable: ^2.0.5
+  flutter:
+    sdk: flutter
   komodo_defi_rpc_methods:
     path: ../komodo_defi_rpc_methods
 
 dev_dependencies:
   test: ^1.25.2
   very_good_analysis: ^6.0.0
+
+flutter:
+  assets:
+    - assets/bip-0039/english-wordlist.txt

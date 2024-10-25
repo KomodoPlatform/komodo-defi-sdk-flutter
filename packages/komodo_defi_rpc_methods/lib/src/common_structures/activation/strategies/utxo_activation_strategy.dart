@@ -2,39 +2,23 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class UtxoActivationStrategy extends GenericTaskActivationStrategy {
-  UtxoActivationStrategy(
-      // super.apiClient,
-      {
-    required this.rpcData,
+  UtxoActivationStrategy({
     required this.activationParams,
-  });
+  }) : super(activationParams: activationParams);
 
-  factory UtxoActivationStrategy.fromJsonConfig(
-    // ApiClient apiClient,
-    Map<String, dynamic> json,
-  ) {
-    final rpcData = ActivationRpcData(
-      electrum: (json['electrum'] as List<dynamic>?)
-          ?.cast<JsonMap>()
-          .map(ActivationServers.fromJsonConfig)
-          .toList(),
-    );
-
+  factory UtxoActivationStrategy.fromJsonConfig(Map<String, dynamic> json) {
     return UtxoActivationStrategy(
-      // apiClient, // Pass your API client instance here
-      rpcData: rpcData,
       activationParams: UtxoActivationParams.fromJsonConfig(json),
     );
   }
 
-  final ActivationRpcData rpcData;
+  @override
   final UtxoActivationParams activationParams;
 
   @override
   BaseRequest<NewTaskResponse, GeneralErrorResponse> createInitRequest(
     Asset coin,
   ) {
-    // final utxoParams = UtxoActivationParams.fromJsonConfig(coin.toJson());
     return TaskEnableUtxoInit(
       ticker: coin.id.id,
       params: activationParams,
