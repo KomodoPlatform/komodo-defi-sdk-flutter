@@ -38,7 +38,7 @@ class KdfOperationsWasm implements IKdfOperations {
   js_interop.JSObject? _kdfModule;
   void Function(String)? _logger;
 
-  void _log(String message) => (_logger ?? print).call(message);  
+  void _log(String message) => (_logger ?? print).call(message);
 
   @override
   Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
@@ -171,7 +171,7 @@ class KdfOperationsWasm implements IKdfOperations {
   }
 
   @override
-  Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
+  Future<JsonMap> mm2Rpc(JsonMap request) async {
     try {
       await _ensureLoaded();
 
@@ -186,9 +186,9 @@ class KdfOperationsWasm implements IKdfOperations {
 
       print('Response pre-cast: ${js_util.dartify(jsResponse)}');
 
-      // Convert the JS object to a Dart map and ensure it's a Map<String, dynamic>
+      // Convert the JS object to a Dart map and ensure it's a JsonMap
       final response =
-          Map<String, dynamic>.from(js_util.dartify(jsResponse)! as Map);
+          JsonMap.from((jsResponse.dartify()! as Map).cast<String, dynamic>());
 
       return response;
     } catch (e) {

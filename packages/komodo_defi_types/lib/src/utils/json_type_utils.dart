@@ -50,7 +50,7 @@ T? _traverseJson<T>(
 
   dynamic value = json;
 
-  for (int i = 0; i < keys.length; i++) {
+  for (var i = 0; i < keys.length; i++) {
     final key = keys[i];
     final isLast = i == keys.length - 1;
 
@@ -121,7 +121,7 @@ T? _traverseJson<T>(
       return _convertMap(value);
     } catch (e) {
       throw ArgumentError(
-        'Failed to convert map to expected type $T: ${e.toString()}',
+        'Failed to convert map to expected type $T: $e',
       );
     }
   }
@@ -136,18 +136,45 @@ T? _traverseJson<T>(
   return value as T;
 }
 
+// Helper method to handle lists that might contain maps
+dynamic _convertList(List<dynamic> list) {
+  return list.map((item) {
+    if (item is Map) {
+      return _convertMap<Map<String, dynamic>>(item);
+    } else if (item is List) {
+      return _convertList(item);
+    }
+    return item;
+  }).toList();
+}
+
 T _convertMap<T>(Map<dynamic, dynamic> sourceMap) {
-  if (T is JsonMap? || T is Map<String, dynamic>) {
-    return Map<String, dynamic>.from(sourceMap) as T;
-  } else if (T == Map<String, Object?>) {
-    return Map<String, Object?>.from(sourceMap) as T;
+  // First, sanitize the map to ensure all keys are strings
+  final sanitizedMap = <String, dynamic>{};
+  sourceMap.forEach((key, value) {
+    final stringKey = key?.toString() ?? '';
+    if (value is Map) {
+      // Recursively convert nested maps
+      sanitizedMap[stringKey] = _convertMap<Map<String, dynamic>>(value);
+    } else if (value is List) {
+      // Handle lists and convert any maps within them
+      sanitizedMap[stringKey] = _convertList(value);
+    } else {
+      sanitizedMap[stringKey] = value;
+    }
+  });
+
+  if (T is JsonMap || T is Map<String, dynamic> || T is Map<String, dynamic>?) {
+    return sanitizedMap as T;
+  } else if ((T is Map<String, Object?>) || (T is Map<String, Object?>?)) {
+    return Map<String, Object?>.from(sanitizedMap) as T;
   }
 
   try {
-    return sourceMap as T;
+    return sanitizedMap as T;
   } catch (e) {
     throw ArgumentError(
-      'Failed to convert map of "${sourceMap.runtimeType}" to expected type ${T.toString()}',
+      'Failed to convert map to expected type $T: $e',
     );
   }
 }
