@@ -108,7 +108,10 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       );
     }
 
-    await downloader.download(
+    final downloadMethod = config.concurrentDownloadsEnabled
+        ? downloader.download
+        : downloader.downloadSync;
+    await downloadMethod(
       configWithUpdatedCommit.bundledCoinsRepoCommit,
       _adjustPaths(configWithUpdatedCommit.mappedFiles),
       _adjustPaths(configWithUpdatedCommit.mappedFolders),
