@@ -93,7 +93,7 @@ android/app/.cxx/
 assets/config/coins.json
 assets/config/coins_config.json
 assets/config/coins_ci.json
-assets/coin_icons/
+assets/coin_icons/png/*.png
 
 
 # MacOS
