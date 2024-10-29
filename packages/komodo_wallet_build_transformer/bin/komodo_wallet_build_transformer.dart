@@ -138,6 +138,12 @@ void main(List<String> arguments) async {
     }
 
     final githubToken = Platform.environment[githubTokenEnvName];
+    if (githubToken == null) {
+      log.warning(
+        'GitHub token not set. Some build steps may fail. '
+        'Set the $githubTokenEnvName environment variable to fix this.',
+      );
+    }
 
     final canRunConcurrent = _argResults.flag('concurrent');
 
