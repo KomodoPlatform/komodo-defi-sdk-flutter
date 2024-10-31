@@ -5,6 +5,7 @@ class ApiBuildConfig {
     required this.apiCommitHash,
     required this.branch,
     required this.fetchAtBuildEnabled,
+    required this.concurrentDownloadsEnabled,
     required this.sourceUrls,
     required this.platforms,
   });
@@ -15,6 +16,8 @@ class ApiBuildConfig {
         apiCommitHash: _parseString(json, 'api_commit_hash'),
         branch: _parseString(json, 'branch'),
         fetchAtBuildEnabled: _parseBool(json, 'fetch_at_build_enabled'),
+        concurrentDownloadsEnabled:
+            json['concurrent_downloads_enabled'] as bool? ?? true,
         sourceUrls: _parseStringList(json, 'source_urls'),
         platforms: _parsePlatforms(json),
       );
@@ -26,6 +29,7 @@ class ApiBuildConfig {
   String apiCommitHash;
   String branch;
   bool fetchAtBuildEnabled;
+  final bool concurrentDownloadsEnabled;
   List<String> sourceUrls;
   Map<String, ApiBuildPlatformConfig> platforms;
 
@@ -101,6 +105,7 @@ class ApiBuildConfig {
       'api_commit_hash': apiCommitHash,
       'branch': branch,
       'fetch_at_build_enabled': fetchAtBuildEnabled,
+      'concurrent_downloads_enabled': concurrentDownloadsEnabled,
       'source_urls': sourceUrls,
       'platforms': platforms.map((key, value) => MapEntry(key, value.toJson())),
     };
@@ -110,6 +115,7 @@ class ApiBuildConfig {
     String? apiCommitHash,
     String? branch,
     bool? fetchAtBuildEnabled,
+    bool? concurrentDownloadsEnabled,
     List<String>? sourceUrls,
     Map<String, ApiBuildPlatformConfig>? platforms,
   }) {
@@ -117,6 +123,8 @@ class ApiBuildConfig {
       apiCommitHash: apiCommitHash ?? this.apiCommitHash,
       branch: branch ?? this.branch,
       fetchAtBuildEnabled: fetchAtBuildEnabled ?? this.fetchAtBuildEnabled,
+      concurrentDownloadsEnabled:
+          concurrentDownloadsEnabled ?? this.concurrentDownloadsEnabled,
       sourceUrls: sourceUrls ?? this.sourceUrls,
       platforms: platforms ?? this.platforms,
     );

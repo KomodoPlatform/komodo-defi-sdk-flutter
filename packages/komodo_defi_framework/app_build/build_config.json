@@ -3,6 +3,7 @@
         "api_commit_hash": "df3d39c1ab4017ff8498a4028bc66b551b0c9c3f",
         "branch": "dev",
         "fetch_at_build_enabled": true,
+        "concurrent_downloads_enabled": true,
         "source_urls": [
             "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework",
             "https://sdk.devbuilds.komodo.earth"
