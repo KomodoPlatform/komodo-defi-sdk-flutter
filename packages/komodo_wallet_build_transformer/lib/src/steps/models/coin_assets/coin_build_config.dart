@@ -21,18 +21,21 @@ class CoinBuildConfig {
     required this.runtimeUpdatesEnabled,
     required this.mappedFiles,
     required this.mappedFolders,
+    required this.concurrentDownloadsEnabled,
   });
 
   /// Creates a new instance of [CoinBuildConfig] from a JSON object.
   factory CoinBuildConfig.fromJson(Map<String, dynamic> json) {
     return CoinBuildConfig(
-      fetchAtBuildEnabled: json['fetch_at_build_enabled'] as bool,
-      updateCommitOnBuild: json['update_commit_on_build'] as bool,
+      fetchAtBuildEnabled: json['fetch_at_build_enabled'] as bool? ?? true,
+      updateCommitOnBuild: json['update_commit_on_build'] as bool? ?? true,
       bundledCoinsRepoCommit: json['bundled_coins_repo_commit'] as String,
       coinsRepoApiUrl: json['coins_repo_api_url'] as String,
       coinsRepoContentUrl: json['coins_repo_content_url'] as String,
       coinsRepoBranch: json['coins_repo_branch'] as String,
-      runtimeUpdatesEnabled: json['runtime_updates_enabled'] as bool,
+      runtimeUpdatesEnabled: json['runtime_updates_enabled'] as bool? ?? true,
+      concurrentDownloadsEnabled:
+          json['concurrent_downloads_enabled'] as bool? ?? true,
       mappedFiles: Map<String, String>.from(
         json['mapped_files'] as Map<String, dynamic>? ?? {},
       ),
@@ -54,6 +57,11 @@ class CoinBuildConfig {
   /// If `false`, the commit hash will not be updated and the configured commit
   /// hash will be used.
   final bool updateCommitOnBuild;
+
+  /// Indicates whether concurrent downloads of coin assets are enabled.
+  /// If `true`, multiple coin assets will be downloaded concurrently.
+  /// If `false`, coin assets will be downloaded sequentially.
+  final bool concurrentDownloadsEnabled;
 
   /// The GitHub API of the coins repository used to fetch directory contents
   /// with SHA hashes from the GitHub API.
@@ -88,6 +96,7 @@ class CoinBuildConfig {
     String? coinsRepoContentUrl,
     String? coinsRepoBranch,
     bool? runtimeUpdatesEnabled,
+    bool? concurrentDownloadsEnabled,
     Map<String, String>? mappedFiles,
     Map<String, String>? mappedFolders,
   }) {
@@ -101,6 +110,8 @@ class CoinBuildConfig {
       coinsRepoBranch: coinsRepoBranch ?? this.coinsRepoBranch,
       runtimeUpdatesEnabled:
           runtimeUpdatesEnabled ?? this.runtimeUpdatesEnabled,
+      concurrentDownloadsEnabled:
+          concurrentDownloadsEnabled ?? this.concurrentDownloadsEnabled,
       mappedFiles: mappedFiles ?? this.mappedFiles,
       mappedFolders: mappedFolders ?? this.mappedFolders,
     );
@@ -117,6 +128,7 @@ class CoinBuildConfig {
         'runtime_updates_enabled': runtimeUpdatesEnabled,
         'mapped_files': mappedFiles,
         'mapped_folders': mappedFolders,
+        'concurrent_downloads_enabled': concurrentDownloadsEnabled,
       };
 
   /// Loads the coins runtime update configuration synchronously from the

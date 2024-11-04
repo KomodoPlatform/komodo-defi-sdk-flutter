@@ -24,6 +24,7 @@ class FetchDefiApiStep extends BuildStep {
     this.selectedPlatform,
     this.forceUpdate = false,
     this.enabled = true,
+    this.concurrent = true,
   });
 
   factory FetchDefiApiStep.withBuildConfig(
@@ -50,11 +51,13 @@ class FetchDefiApiStep extends BuildStep {
       enabled: buildConfig.apiConfig.fetchAtBuildEnabled,
       buildConfigFile: buildConfigFile,
       githubApiProvider: apiProvider,
+      concurrent: buildConfig.coinCIConfig.concurrentDownloadsEnabled,
     );
   }
   @override
   final String id = idStatic;
   static const idStatic = 'fetch_defi_api';
+  static const String _overrideEnvName = 'OVERRIDE_DEFI_API_DOWNLOAD';
 
   final _log = Logger('FetchDefiApiStep');
 
@@ -69,6 +72,12 @@ class FetchDefiApiStep extends BuildStep {
   String? selectedPlatform;
   bool forceUpdate;
   bool enabled;
+  final bool concurrent;
+
+  List<String> get platformsToUpdate =>
+      selectedPlatform != null && platformsConfig.containsKey(selectedPlatform)
+          ? [selectedPlatform!]
+          : platformsConfig.keys.toList();
 
   @override
   Future<void> build() async {
@@ -98,28 +107,27 @@ class FetchDefiApiStep extends BuildStep {
       return;
     }
 
-    final platformsToUpdate = selectedPlatform != null &&
-            platformsConfig.containsKey(selectedPlatform)
-        ? [selectedPlatform!]
-        : platformsConfig.keys.toList();
-
     _log.info('=====================');
-    for (final platform in platformsToUpdate) {
-      if (_isTargetIphone() && platform != 'ios') {
-        _log.info('Skipping build for $platform, since target is iOS');
-        continue;
-      }
-
-      final progressString =
-          '${platformsToUpdate.indexOf(platform) + 1}/${platformsToUpdate.length}';
-      _log.info('[$progressString] Updating $platform platform...');
-      await _updatePlatform(platform, platformsConfig);
+    if (concurrent) {
+      await Future.wait(platformsToUpdate.map(updatePlatformWithProgress));
+    } else {
+      await Future.forEach(platformsToUpdate, updatePlatformWithProgress);
     }
     _log.info('=====================');
     _updateDocumentationIfExists();
   }
 
-  static const String _overrideEnvName = 'OVERRIDE_DEFI_API_DOWNLOAD';
+  Future<void> updatePlatformWithProgress(String platform) async {
+    if (_isTargetIphone() && platform != 'ios') {
+      _log.info('Skipping build for $platform, since target is iOS');
+      return;
+    }
+
+    final progressString =
+        '${platformsToUpdate.indexOf(platform) + 1}/${platformsToUpdate.length}';
+    _log.info('[$progressString] Updating $platform platform...');
+    await _updatePlatform(platform, platformsConfig);
+  }
 
   /// If set, the OVERRIDE_DEFI_API_DOWNLOAD environment variable will override
   /// any default behavior/configuration. e.g.

@@ -24,6 +24,7 @@ class GitHubFileDownloader {
     required this.repoContentUrl,
     this.sendPort,
   });
+
   final GithubApiProvider apiProvider;
   final String repoContentUrl;
   final SendPort? sendPort;
@@ -39,13 +40,32 @@ class GitHubFileDownloader {
   String get downloadStats =>
       'Downloaded $_downloadedFiles files, skipped $_skippedFiles files';
 
+  /// Asynchronously downloads the mapped files and folders for the [repoCommit]
+  /// from the GitHub repository.
   Future<void> download(
     String repoCommit,
     Map<String, String> mappedFiles,
     Map<String, String> mappedFolders,
   ) async {
-    await downloadMappedFiles(repoCommit, mappedFiles);
-    await downloadMappedFolders(repoCommit, mappedFolders);
+    final futures = [
+      // ignore: avoid_redundant_argument_values
+      downloadMappedFiles(repoCommit, mappedFiles, sequential: false),
+      downloadMappedFolders(repoCommit, mappedFolders),
+    ];
+    await Future.wait(futures);
+  }
+
+  /// Downloads the mapped files and folders for the [repoCommit] synchronously.
+  /// This method is expected to take significantly longer than the [download]
+  /// method, as it performs the downloads sequentially, and is affected by
+  /// network latency.
+  Future<void> downloadSync(
+    String repoCommit,
+    Map<String, String> mappedFiles,
+    Map<String, String> mappedFolders,
+  ) async {
+    await downloadMappedFiles(repoCommit, mappedFiles, sequential: true);
+    await downloadMappedFoldersSync(repoCommit, mappedFolders);
   }
 
   /// Downloads and saves multiple files from a remote repository.
@@ -54,6 +74,9 @@ class GitHubFileDownloader {
   /// The [mappedFiles] parameter is a map where the keys represent the local
   /// paths where the files will be saved, and the values represent the relative
   /// paths of the files in the repository.
+  /// The [sequential] parameter determines whether the files should be
+  /// downloaded sequentially or concurrently. By default, the files are
+  /// downloaded concurrently.
   ///
   /// This method creates the necessary folders for the local paths and then
   /// iterates over each entry in the [mappedFiles] map. For each entry, it
@@ -65,47 +88,67 @@ class GitHubFileDownloader {
   /// saving process.
   Future<void> downloadMappedFiles(
     String repoCommit,
-    Map<String, String> mappedFiles,
-  ) async {
+    Map<String, String> mappedFiles, {
+    bool sequential = false,
+  }) async {
     _totalFiles += mappedFiles.length;
     _log
       ..fine('Downloading ${mappedFiles.length} files')
       ..fine('Processed files: $_downloadedFiles/$_totalFiles');
 
     createFolders(mappedFiles.keys.toList());
-    for (final entry in mappedFiles.entries) {
+
+    Future<void> downloadFile(MapEntry<String, String> entry) async {
       final localPath = entry.key;
       _log.finer('Downloading file: $localPath');
 
-      final isRawContentUrl =
-          entry.value.startsWith('https://raw.githubusercontent.com');
+      try {
+        final fileContent = await _fetchFileContent(entry.value, repoCommit);
 
-      final fileContentUrl = Uri.parse(
-        isRawContentUrl
-            ? '$repoContentUrl/$repoCommit/${entry.value}'
-            : '$repoContentUrl/${entry.value}',
-      );
+        _log.finer('Downloaded file: $localPath');
+        await File(localPath).writeAsString(fileContent);
 
-      final fileContent = await http.get(fileContentUrl);
-      if (fileContent.statusCode != 200) {
-        throw Exception(
-          'Failed to download file: $fileContentUrl'
-          '[${fileContent.statusCode}]: ${fileContent.reasonPhrase}',
+        _downloadedFiles++;
+        sendPort?.send(
+          BuildProgressMessage(
+            message: 'Downloading file: $localPath',
+            progress: progress,
+            success: true,
+          ),
         );
+      } catch (e) {
+        _log.severe('Failed to download file: $localPath', e);
+        rethrow;
       }
+    }
 
-      _log.finer('Downloaded file: $localPath');
-      await File(localPath).writeAsString(fileContent.body);
+    if (sequential) {
+      await Future.forEach(mappedFiles.entries, downloadFile);
+    } else {
+      final downloadFutures = mappedFiles.entries.map(downloadFile);
+      await Future.wait(downloadFutures);
+    }
+  }
 
-      _downloadedFiles++;
-      sendPort?.send(
-        BuildProgressMessage(
-          message: 'Downloading file: $localPath',
-          progress: progress,
-          success: true,
-        ),
+  Future<String> _fetchFileContent(String fileUrl, String repoCommit) async {
+    final isRawContentUrl =
+        fileUrl.startsWith('https://raw.githubusercontent.com');
+
+    final fileContentUrl = Uri.parse(
+      isRawContentUrl
+          ? '$repoContentUrl/$repoCommit/$fileUrl'
+          : '$repoContentUrl/$fileUrl',
+    );
+
+    final response = await http.get(fileContentUrl);
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to download file: $fileContentUrl'
+        '[${response.statusCode}]: ${response.reasonPhrase}',
       );
     }
+
+    return response.body;
   }
 
   /// Downloads the mapped folders from a GitHub repository at a specific commit
@@ -131,9 +174,34 @@ class GitHubFileDownloader {
     final folderContents =
         await _getMappedFolderContents(mappedFolders, repoCommit);
 
-    for (final entry in folderContents.entries) {
+    final List<Future<void>> downloadFutures =
+        folderContents.entries.map((entry) async {
       _log.fine('Downloading ${entry.value.length} files from ${entry.key}');
       await _downloadFolderContents(entry.key, entry.value);
+    }).toList();
+
+    await Future.wait(downloadFutures);
+
+    sendPort?.send(
+      const BuildProgressMessage(
+        message: '\nDownloaded all files',
+        progress: 100,
+        success: true,
+        finished: true,
+      ),
+    );
+  }
+
+  Future<void> downloadMappedFoldersSync(
+    String repoCommit,
+    Map<String, String> mappedFolders, {
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    final folderContents =
+        await _getMappedFolderContents(mappedFolders, repoCommit);
+    for (final entry in folderContents.entries) {
+      _log.fine('Downloading ${entry.value.length} files from ${entry.key}');
+      await _downloadFolderContentsSync(entry.key, entry.value);
     }
 
     sendPort?.send(
@@ -146,7 +214,7 @@ class GitHubFileDownloader {
     );
   }
 
-  Future<void> _downloadFolderContents(
+  Future<void> _downloadFolderContentsSync(
     String key,
     List<GitHubFile> value,
   ) async {
@@ -171,6 +239,37 @@ class GitHubFileDownloader {
           );
       }
     }
+  }
+
+  Future<void> _downloadFolderContents(
+    String key,
+    List<GitHubFile> value,
+  ) async {
+    final List<Future<void>> downloadFutures = value.map((file) async {
+      await for (final GitHubFileDownloadEvent event
+          in downloadFiles([file], key)) {
+        switch (event.event) {
+          case GitHubDownloadEvent.downloaded:
+            _downloadedFiles++;
+            sendProgressMessage(
+              'Downloading file: ${event.localPath}',
+              success: true,
+            );
+          case GitHubDownloadEvent.skipped:
+            _skippedFiles++;
+            sendProgressMessage(
+              'Skipped file: ${event.localPath}',
+              success: true,
+            );
+          case GitHubDownloadEvent.failed:
+            sendProgressMessage(
+              'Failed to download file: ${event.localPath}',
+            );
+        }
+      }
+    }).toList();
+
+    await Future.wait(downloadFutures);
   }
 
   Future<Map<String, List<GitHubFile>>> _getMappedFolderContents(

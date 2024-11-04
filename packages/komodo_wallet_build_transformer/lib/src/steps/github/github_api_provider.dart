@@ -43,12 +43,15 @@ class GithubApiProvider {
       _headers['Authorization'] = 'Bearer $token';
     }
   }
+
   final String _baseUrl;
   final String _branch;
   final Map<String, String> _headers = {
     'Accept': 'application/vnd.github.v3+json',
   };
   final _log = Logger('GithubApiProvider');
+
+  bool get hasToken => _headers.containsKey('Authorization');
 
   /// Retrieves the contents of a file from the repository API. The [filePath]
   /// parameter specifies the path of the file within the repository.
