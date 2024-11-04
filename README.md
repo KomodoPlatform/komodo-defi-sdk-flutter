@@ -6,13 +6,15 @@
 
 # Komodo Defi Framework SDK for Flutter
 
-This is a series of Flutter packages for integrating the [Komodo DeFi Framework](https://komodoplatform.com/en/komodo-defi-framework.html) into Flutter applications. This enhances devex by providing an intuitive abstraction layer and handling all binary/media file fetching, reducing what previously would have taken weeks/months to understand the API and build a Flutter dApp with KDF integration into a few days.
+This is a series of Flutter packages for integrating the [Komodo DeFi Framework](https://komodoplatform.com/en/komodo-defi-framework.html) into Flutter applications. This enhances devex by providing an intuitive abstraction layer and handling all binary/media file fetching, reducing what previously would have taken months to understand the API and build a Flutter dApp with KDF integration into a few days.
 
-See the Komodo DeFi Framework source repository at [KomodoPlatform/komodo-defi-framework](https://github.com/KomodoPlatform/komodo-defi-framework) and view the demo site (source in [example](.example)) project at [https://komodo-playground.web.app](https://komodo-playground.web.app).
+See the Komodo DeFi Framework (API) source repository at [KomodoPlatform/komodo-defi-framework](https://github.com/KomodoPlatform/komodo-defi-framework) and view the demo site (source in [example](./example)) project at [https://komodo-playground.web.app](https://komodo-playground.web.app).
+
+The recommended entry point ([komodo_defi_sdk](/packages/komodo_defi_sdk/README.md)) is a high-level opinionated library that provides a simple way to build cross-platform Komodo Defi Framework applications (primarily focused on wallets). This repository consists of multiple other child packages in the [packages](./packages) folder, which is orchestrated by the [komodo_defi_sdk](/packages/komodo_defi_sdk/README.md) package.
+
+Note: Most of this README focuses on the lower-level `komodo-defi-framework` package and still needs to be updated to focus on the primary package, `komodo_defi_sdk`.
 
 This project supports building for macOS (more native platforms coming soon) and the web. KDF can either be run as a local Rust binary or you can connect to a remote instance. 1-Click setup for DigitalOcean and AWS deployment is in progress.
-
-The primary entry point ([komodo_defi_sdk](/packages/komodo_defi_sdk/README.md)) is a high-level opinionated library that provides a simple way to build cross-platform Komodo Defi Framework applications (primarily focused on wallets). This repository consists of multiple other child packages in the [packages](.packages) folder, which is orchestrated by the [komodo_defi_sdk](/packages/komodo_defi_sdk/README.md) package.
 
 Use the [komodo_defi_framework](packages/komodo_defi_sdk) package for an unopinionated implementation that gives access to the underlying KDF methods.
 
