@@ -1,8 +1,11 @@
-// asset_manager.dart
+// lib/src/assets/asset_manager.dart
+
 import 'dart:async';
 import 'dart:collection';
+
 import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_extensions.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
@@ -13,12 +16,14 @@ class AssetManager {
     this._client,
     this._auth,
     this._config,
-  ) : _assetHistory = AssetHistoryStorage();
+  )   : _assetHistory = AssetHistoryStorage(),
+        _activationManager = ActivationManager(_client);
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final KomodoDefiSdkConfig _config;
   final AssetHistoryStorage _assetHistory;
+  final ActivationManager _activationManager;
 
   final Map<String, Completer<void>> _activationCompleters = {};
   final Set<String> _activeAssetIds = {};
@@ -29,21 +34,10 @@ class AssetManager {
   // Replace direct KomodoCoins instance with SplayTreeMap wrapper
   late final SplayTreeMap<String, Asset> _orderedCoins;
 
-  /// Initialize asset manager and handle pre-activation
   Future<void> init() async {
-    // 1. Initialize coins first
     await _coins.init();
 
-    // 2. Set up ordered coins structure
     _orderedCoins = SplayTreeMap<String, Asset>((keyA, keyB) {
-      final assetA = _coins.all[keyA];
-      final assetB = _coins.all[keyB];
-
-      if (assetA == null || assetB == null) {
-        return keyA.compareTo(keyB);
-      }
-
-      // Pre-activated/default assets first
       final isDefaultA = _config.defaultAssets.contains(keyA);
       final isDefaultB = _config.defaultAssets.contains(keyB);
 
@@ -51,140 +45,34 @@ class AssetManager {
         return isDefaultA ? -1 : 1;
       }
 
-      // Then alphabetically by name
-      return assetA.id.name.compareTo(assetB.id.name);
+      return keyA.compareTo(keyB);
     });
 
-    // 3. Populate ordered map
     _orderedCoins.addAll(_coins.all);
 
-    // 4. Get current user and handle initial state
     final currentUser = await _auth.currentUser;
     await _onAuthStateChanged(currentUser);
 
-    // 5. Set up subscription for future changes
     _authSubscription = _auth.authStateChanges.listen(_onAuthStateChanged);
   }
 
-  Future<void> _onAuthStateChanged(KdfUser? user) async {
-    // Clear state on logout
-    if (user == null) {
-      _activeAssetIds.clear();
-      return;
-    }
+  Asset? fromId(AssetId id) => _coins.isInitialized
+      ? available[id.id]
+      : throw StateError(
+          'Assets have not been initialized. Call init() first.',
+        );
 
-    // Get enabled coins first to know current state
-    final enabledCoins = await _getEnabledCoins();
-    _activeAssetIds.addAll(enabledCoins);
-
-    // Then handle pre-activation of missing coins
-    await _handlePreActivation(user);
-  }
-
-  /// Handle pre-activation of assets
-  Future<void> _handlePreActivation(KdfUser user) async {
-    final assetsToActivate = <String>{};
-
-    // Add default assets if configured and not already active
-    if (_config.preActivateDefaultAssets) {
-      assetsToActivate.addAll(
-        _config.defaultAssets.where((id) => !_activeAssetIds.contains(id)),
-      );
-    }
-
-    // Add historical assets if configured and not already active
-    if (_config.preActivateHistoricalAssets) {
-      final historical = await _assetHistory.getWalletAssets(user.walletId);
-      assetsToActivate.addAll(
-        historical.where((id) => !_activeAssetIds.contains(id)),
-      );
-    }
-
-    // Filter for available and compatible assets
-    final validAssets = assetsToActivate
-        .where(
-          (id) =>
-              available[id]?.isCompatibleWith(options: user.authOptions) ??
-              false,
-        )
-        .toList();
-
-    // Attempt activation with retries
-    for (final assetString in validAssets) {
-      final asset = available[assetString] ??
-          (throw ArgumentError('Asset not found for ID: $assetString'));
-
-      var attempts = 0;
-      while (attempts < _config.maxPreActivationAttempts) {
-        try {
-          await activateAsset(asset).last; // Wait for stream completion
-          break;
-        } catch (e) {
-          attempts++;
-          if (attempts < _config.maxPreActivationAttempts) {
-            await Future<void>.delayed(_config.activationRetryDelay);
-          }
-        }
-      }
-    }
-  }
-
-  /// Get all available assets in ordered form
-  /// Assets are ordered by:
-  /// 1. Pre-activated/default assets first
-  /// 2. Alphabetically within each group
   Map<String, Asset> get available => _orderedCoins;
-
-  // Update the getter to be more explicit about ordering
   Map<String, Asset> get availableOrdered => available;
 
-  //  // Replace the old getFilteredAssets method
-  // @Deprecated('Use getFilteredOrderedAssets() instead')
-  // Future<Map<String, Asset>> getFilteredAssets() async {
-  //   return getFilteredOrderedAssets();
-  // }
-
-  /// Get assets sorted with default assets first
-  // Future<Map<String, Asset>> getFilteredAssets() async {
-  //   final filteredAssets = <String, Asset>{};
-
-  //   Future<bool> shouldIncludeAsset(Asset asset) async {
-  //     return !await asset.shouldBeFiltered;
-  //   }
-
-  //   // Add default assets first if they pass filtering
-  //   for (final id in _config.defaultAssets) {
-  //     final asset = available[id];
-  //     if (asset != null && await shouldIncludeAsset(asset)) {
-  //       filteredAssets[id] = asset;
-  //     }
-  //   }
-
-  //   // Add remaining filtered assets
-  //   for (final entry in available.entries) {
-  //     if (!filteredAssets.containsKey(entry.key) &&
-  //         await shouldIncludeAsset(entry.value)) {
-  //       filteredAssets[entry.key] = entry.value;
-  //     }
-  //   }
-
-  //   return filteredAssets;
-  // }
-
-  /// Get list of currently activated assets
-  Future<Set<Asset>> getActivatedAssets() async {
-    if (!await _auth.isSignedIn()) return {};
+  @Deprecated('This logic is handled internally.')
+  Future<List<Asset>> getActivatedAssets() async {
+    if (!await _auth.isSignedIn()) return [];
 
     final enabled = await _getEnabledCoins();
-    return enabled.map((id) => available[id]).whereType<Asset>().toSet();
+    return enabled.map((id) => available[id]).whereType<Asset>().toList();
   }
 
-  /// Activate an asset and return a stream of activation progress
-  /// The stream will complete after the asset is fully activated. If an error
-  /// occurs, the stream will emit an error event and complete.
-  /// Activate an asset and return a stream of activation progress
-  /// The stream will complete after the asset is fully activated. If an error
-  /// occurs, the stream will emit an error event and complete.
   Stream<ActivationProgress> activateAsset(Asset asset) async* {
     if (_activeAssetIds.contains(asset.id.id) ||
         (await getActivatedAssets()).contains(asset)) {
@@ -192,9 +80,8 @@ class AssetManager {
       return;
     }
 
-    // Check compatibility
     final isCompatible = await asset.isCompatible;
-    if (isCompatible == false) {
+    if (!isCompatible) {
       throw UnsupportedError(
         'Asset ${asset.id.name} is not compatible with current wallet mode',
       );
@@ -206,14 +93,13 @@ class AssetManager {
     );
 
     try {
-      await for (final progress in _activateAssetStream(asset)) {
+      await for (final progress in _activationManager.activateAsset(asset)) {
         yield progress;
 
         if (progress.isComplete) {
           if (progress.isSuccess) {
             _activeAssetIds.add(asset.id.id);
 
-            // Record successful activation in history
             final user = await _auth.currentUser;
             if (user != null) {
               await _assetHistory.addAssetToWallet(user.walletId, asset.id.id);
@@ -222,13 +108,15 @@ class AssetManager {
               completer.complete();
             }
           } else {
-            // Don't throw here - just complete the completer with error
-            completer.completeError(progress.errorMessage ?? 'Unknown error');
+            if (!completer.isCompleted) {
+              completer.completeError(progress.errorMessage ?? 'Unknown error');
+            }
           }
         }
       }
+
+      yield ActivationProgress.success();
     } catch (e) {
-      // Complete with error if not already completed
       if (!completer.isCompleted) {
         completer.completeError(e);
       }
@@ -238,24 +126,88 @@ class AssetManager {
     }
   }
 
-  Stream<ActivationProgress> _activateAssetStream(Asset asset) async* {
-    final strategy = ActivationStrategyFactory.fromJsonConfig(
-      asset.protocol.subClass,
-      asset.protocol.toJson(),
-    );
+  Future<void> _handlePreActivation(KdfUser user) async {
+    final assetsToActivate = <String>{};
 
-    yield* strategy.activate(_client, asset);
+    if (_config.preActivateDefaultAssets) {
+      assetsToActivate.addAll(
+        _config.defaultAssets.where((id) => !_activeAssetIds.contains(id)),
+      );
+    }
+
+    if (_config.preActivateHistoricalAssets) {
+      final historical = await _assetHistory.getWalletAssets(user.walletId);
+      assetsToActivate.addAll(
+        historical.where((id) => !_activeAssetIds.contains(id)),
+      );
+    }
+
+    final validAssets = assetsToActivate
+        .where(
+          (id) => available[id]?.isCompatibleWith(user.authOptions) ?? false,
+        )
+        .map((id) => available[id]!)
+        .toSet();
+
+    await for (final progress
+        in _activationManager.activateAssets(validAssets.toList())) {
+      if (progress.isComplete && !progress.isSuccess) {
+        final assetId = validAssets.firstWhere(
+          (id) => !_activeAssetIds.contains(id.id.id),
+          orElse: () => throw StateError('No asset found for retry'),
+        );
+
+        var attempts = 0;
+        while (attempts < _config.maxPreActivationAttempts) {
+          try {
+            final asset = available[assetId.id.id]!;
+            await activateAsset(asset).last;
+            break;
+          } catch (e) {
+            attempts++;
+            if (attempts < _config.maxPreActivationAttempts) {
+              await Future<void>.delayed(_config.activationRetryDelay);
+            }
+          }
+        }
+      }
+    }
   }
 
-  /// Check if an asset is currently activated
-  bool isAssetActive(Asset asset) => _activeAssetIds.contains(asset.id.id);
+  Future<void> _onAuthStateChanged(KdfUser? user) async {
+    if (user == null) {
+      _activeAssetIds.clear();
+      return;
+    }
 
-  /// Get list of enabled coins from API
+    final enabledCoins = await _getEnabledCoins();
+    _activeAssetIds.addAll(enabledCoins);
+
+    await _handlePreActivation(user);
+  }
+
+  bool isAssetActive(AssetId assetId) => _activeAssetIds.contains(assetId.id);
+
   Future<Set<String>> _getEnabledCoins() async {
     if (!await _auth.isSignedIn()) return {};
 
     final enabled = await _client.rpc.generalActivation.getEnabledCoins();
     return enabled.result.map((e) => e.ticker).toSet();
+  }
+
+  Set<AssetId> childIdsOf(AssetId parentId) {
+    return available.values
+        .where((asset) => asset.id.parentId == parentId)
+        .map((asset) => asset.id)
+        .toSet();
+  }
+
+  Map<AssetId, Asset> childAssetsOf(AssetId parentId) {
+    return Map.fromEntries(
+      available.values
+          .where((asset) => asset.id.parentId == parentId)
+          .map((asset) => MapEntry(asset.id, asset)),
+    );
   }
 
   void dispose() {
@@ -264,107 +216,12 @@ class AssetManager {
   }
 }
 
-// /// Manages assets and their activation states
-// class AssetManager {
-//   AssetManager(this._client, this._auth);
+class _AssetGroup {
+  _AssetGroup({
+    required this.primary,
+    required this.children,
+  });
 
-//   final ApiClient _client;
-//   final KomodoDefiLocalAuth _auth;
-
-//   // Track activation state
-//   final Map<String, Completer<void>> _activationCompleters = {};
-//   final Set<String> _activeAssetIds = {};
-
-//   // Coin configuration
-//   final KomodoCoins _coins = KomodoCoins();
-
-//   StreamSubscription<AuthOptions?>? _authSubscription;
-//   AuthOptions? _currentAuthOptions;
-
-//   /// Initialize asset manager
-//   Future<void> init() async {
-//     await _coins.init();
-//     final enabledCoins = await _getEnabledCoins();
-//     _activeAssetIds.addAll(enabledCoins);
-
-//     _authSubscription = _auth.authStateChanges
-//         .map((user) => user?.authOptions)
-//         .listen((options) {
-//       _currentAuthOptions = options;
-//     });
-//   }
-
-//   /// Get all available assets
-//   Map<String, Asset> get all => _filterAssets(_coins.all, _currentAuthOptions);
-
-//   /// Get all currently activated assets
-//   Future<Set<Asset>> getActivatedAssets() async {
-//     final enabled = await _getEnabledCoins();
-//     return enabled.map((id) => _coins.all[id]).whereType<Asset>().toSet();
-//   }
-
-//   /// Filter assets based on current auth state
-//   Map<String, Asset> _filterAssets(
-//     Map<String, Asset> assets,
-//     AuthOptions? options,
-//   ) {
-//     return Map.fromEntries(
-//       assets.entries.where((entry) {
-//         // Get current HD wallet status
-
-//         final isHdWallet =
-//             options?.derivationMethod == DerivationMethod.hdWallet;
-
-//         return !entry.value.isFilteredOut(isHdWallet: isHdWallet);
-//       }),
-//     );
-//   }
-
-//   /// Activate an asset if not already active
-//   Future<void> activateAsset(Asset asset) async {
-//     if (_activeAssetIds.contains(asset.id.id)) return;
-
-//     final completer = _activationCompleters.putIfAbsent(
-//       asset.id.id,
-//       () => Completer<void>(),
-//     );
-
-//     final activationStream = asset.activation(isHdWallet: true).preActivate(asset, _client);
-
-//     try {
-//       await for (final progress in activationStream) {
-//         if (progress.isComplete) {
-//           if (progress.isSuccess) {
-//             _activeAssetIds.add(asset.id.id);
-//             completer.complete();
-//           } else {
-//             completer.completeError(progress.errorMessage ?? 'Unknown error');
-//           }
-//           break;
-//         }
-//       }
-//     } catch (e) {
-//       completer.completeError(e);
-//       rethrow;
-//     } finally {
-//       _activationCompleters.remove(asset.id.id);
-//     }
-//   }
-
-//   /// Deactivate an asset
-//   Future<void> deactivateAsset(Asset asset) async {
-//     // TODO: Implement deactivation when API supports it
-//     throw UnimplementedError();
-//   }
-
-//   /// Get list of enabled coins
-//   Future<Set<String>> _getEnabledCoins() async {
-//     if (!await _auth.isSignedIn()) return {};
-
-//     final enabled = await _client.rpc.generalActivation.getEnabledCoins();
-//     return enabled.result.map((e) => e.ticker).toSet();
-//   }
-
-//   /// Check if an asset is currently activated
-//   bool isAssetActive(Asset asset) => _activeAssetIds.contains(asset.id.id);
-// }
+  final Asset primary;
+  final List<Asset> children;
+}

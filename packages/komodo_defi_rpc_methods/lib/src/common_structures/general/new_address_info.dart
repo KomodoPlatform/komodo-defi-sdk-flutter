@@ -14,7 +14,9 @@ class NewAddressInfo {
       address: json.value<String>('address'),
       derivationPath: json.valueOrNull<String>('derivation_path'),
       chain: json.valueOrNull<String>('chain'),
-      balance: BalanceInfo.fromJson(json.value<JsonMap>('balance')),
+      balance: BalanceInfo.fromJson(
+        json.value<JsonMap>('balance').entries.single.value as JsonMap,
+      ),
     );
   }
   final String address;

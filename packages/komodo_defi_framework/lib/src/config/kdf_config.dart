@@ -102,10 +102,10 @@ class AwsConfig extends IKdfHostConfig {
       accessKey: json.value<String>('access_key'),
       secretKey: json.value<String>('secret_key'),
       instanceType: json.value<String>('instance_type'),
-      instanceId: json.value<String?>('instance_id'),
-      keyName: json.value<String?>('key_name'),
-      securityGroup: json.value<String?>('security_group'),
-      amiId: json.value<String?>('ami_id'),
+      instanceId: json.valueOrNull<String?>('instance_id'),
+      keyName: json.valueOrNull<String?>('key_name'),
+      securityGroup: json.valueOrNull<String?>('security_group'),
+      amiId: json.valueOrNull<String?>('ami_id'),
       rpcPassword: json.value<String>('rpc_password'),
       https: json.value<bool>('https'),
     );
@@ -166,10 +166,10 @@ class DigitalOceanConfig extends IKdfHostConfig {
   factory DigitalOceanConfig.fromJson(JsonMap json) {
     return DigitalOceanConfig(
       apiToken: json.value<String>('api_token'),
-      dropletId: json.value<String?>('droplet_id'),
+      dropletId: json.valueOrNull<String?>('droplet_id'),
       dropletRegion: json.value<String>('droplet_region', 'nyc1'),
       dropletSize: json.value<String>('droplet_size', 's-1vcpu-1gb'),
-      sshKeyId: json.value<String?>('ssh_key_id'),
+      sshKeyId: json.valueOrNull<String?>('ssh_key_id'),
       image: json.value<String>('image', 'ubuntu-20-04-x64'),
       rpcPassword: json.value<String>('rpc_password'),
       https: json.value<bool>('https'),

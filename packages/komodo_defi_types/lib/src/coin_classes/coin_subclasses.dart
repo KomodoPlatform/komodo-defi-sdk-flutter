@@ -29,7 +29,18 @@ enum CoinSubClass {
     const filteredChars = ['_', '-', ' '];
     final regex = RegExp('(${filteredChars.join('|')})');
 
-    switch (value.toLowerCase().replaceAll(regex, '')) {
+    final sanitizedValue = value.toLowerCase().replaceAll(regex, '');
+
+    return CoinSubClass.values.firstWhere(
+      (e) => e.toString().toLowerCase().contains(sanitizedValue),
+      // orElse: () => CoinSubClass.unknown,
+    );
+
+    switch (sanitizedValue) {
+      case 'smartbch':
+        return CoinSubClass.smartBch;
+      case 'erc20':
+        return CoinSubClass.erc20;
       case 'moonbeam':
         return CoinSubClass.moonbeam;
       case 'ftm20':

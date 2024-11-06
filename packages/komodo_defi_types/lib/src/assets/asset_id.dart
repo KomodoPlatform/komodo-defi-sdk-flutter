@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:komodo_defi_types/src/assets/asset_symbol.dart';
 import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
 import 'package:komodo_defi_types/types.dart';
 
@@ -10,24 +9,35 @@ class AssetId extends Equatable {
     required this.symbol,
     required this.chainId,
     required this.derivationPath,
+    // required this.children,
+    this.parentId,
   });
 
-  factory AssetId.fromConfig(Map<String, dynamic> json) {
+  factory AssetId.fromConfig(JsonMap json, {Map<String, AssetId>? knownIds}) {
+    final parentCoin = json.valueOrNull<String>('parent_coin');
+
     return AssetId(
       id: json.value<String>('coin'),
       name: json.value<String>('fname'),
       symbol: AssetSymbol.fromConfig(json),
       chainId: ChainId.parse(json),
       derivationPath: json.valueOrNull<String>('derivation_path'),
+      parentId:
+          parentCoin != null && knownIds != null ? knownIds[parentCoin] : null,
     );
   }
 
   final String id;
   final String name;
   final AssetSymbol symbol;
-  // TODO: Consider moving chainId to `Chain` class
   final ChainId chainId;
   final String? derivationPath;
+  final AssetId? parentId;
+
+  // final Set<AssetId> children;
+
+  bool get isChildAsset => parentId != null;
+  // bool get isPlatformAsset => parentId == null;
 
   JsonMap toJson() {
     return {
@@ -36,11 +46,24 @@ class AssetId extends Equatable {
       'symbol': symbol.toJson(),
       'chain_id': chainId.formattedChainId,
       'derivation_path': derivationPath,
+      if (parentId != null) 'parent_coin': parentId!.id,
     };
   }
 
   @override
-  List<Object?> get props => [id, name, symbol, chainId, derivationPath];
+  List<Object?> get props => [
+        id,
+        // name, symbol, chainId, derivationPath, parentId
+      ];
+
+  bool isSameAsset(AssetId other) {
+    return id == other.id &&
+        chainId.formattedChainId == other.chainId.formattedChainId;
+  }
+
+  @override
+  String toString() =>
+      'AssetId(id: $id${parentId != null ? ', parent: ${parentId!.id}' : ''})';
 }
 
 abstract class ChainId with EquatableMixin {
@@ -50,7 +73,7 @@ abstract class ChainId with EquatableMixin {
     final chainParseAttempts = [
       () => parseOrNull(() => AssetChainId.fromConfig(json)),
       () => parseOrNull(() => TendermintChainId.fromConfig(json)),
-      () => parseOrNull(() => ProtocolChainId.fromConfig(json)),
+      () => ProtocolChainId.fromConfig(json),
     ];
 
     for (final parseAttempt in chainParseAttempts) {

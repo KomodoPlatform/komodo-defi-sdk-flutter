@@ -20,3 +20,6 @@ export 'src/utils/json_type_utils.dart';
 export 'src/utils/mnemonic_validator.dart';
 export 'src/utils/security_utils.dart';
 export 'types.dart';
+
+// Export activation params types
+// export 'packages:komodo_defi_rpc_methods/lib/src/common_structures/activation/activation_params/activation_params_index.dart

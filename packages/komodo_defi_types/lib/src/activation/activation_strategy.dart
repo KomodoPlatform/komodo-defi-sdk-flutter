@@ -1,60 +1,59 @@
 import 'dart:async';
 
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-// typedef ActivationMode = ActivationMode;
-
+/// Base interface for asset activation strategies
 abstract class ActivationStrategy {
-  ActivationParams get activationParams;
+  const ActivationStrategy();
 
-  int? taskId; // For task-based activation processes (if needed)
+  /// Perform the activation and stream progress updates
+  Stream<ActivationProgress> activate(
+    ApiClient client,
+    Asset asset, [
+    List<Asset>? childAssets,
+  ]);
 
-  // Initiates the activation process and streams progress updates
-  Stream<ActivationProgress> activate(ApiClient apiClient, Asset coin);
+  /// Check if asset type is supported by this strategy
+  bool supportsAssetType(Asset asset);
 
-  // Checks the current status of an already initiated activation
-  Stream<ActivationProgress> checkStatus(ApiClient apiClient, Asset coin);
+  /// Whether strategy supports batch activation with children
+  bool get supportsBatchActivation;
 }
 
-class ActivationStrategyFactory {
-  static ActivationStrategy fromJsonConfig(
-    CoinSubClass subClass,
-    JsonMap json,
-  ) {
-    switch (subClass) {
-      case CoinSubClass.utxo:
-      case CoinSubClass.smartChain:
-        return UtxoActivationStrategy.fromJsonConfig(json);
-      //TODO! Add more cases for other CoinSubClasses
+/// Base class for batch-capable strategies
+abstract class BatchActivationStrategy extends ActivationStrategy {
+  const BatchActivationStrategy();
 
-      default:
-        throw ArgumentError('Unsupported coin subclass: $subClass');
-    }
-  }
+  @override
+  bool get supportsBatchActivation => true;
+}
+
+/// Base class for single-asset strategies
+abstract class SingleAssetStrategy extends ActivationStrategy {
+  const SingleAssetStrategy();
+
+  @override
+  bool get supportsBatchActivation => false;
 }
 
 class PlaceholderStrategy extends ActivationStrategy {
-  // PlaceholderStrategy({
-  //   required this.activationParams,
-  // });
+  const PlaceholderStrategy();
 
   @override
-  ActivationParams get activationParams => throw UnimplementedError();
-
-  @override
-  Stream<ActivationProgress> activate(ApiClient apiClient, Asset coin) async* {
-    yield ActivationProgress(status: 'Placeholder activation started');
+  Stream<ActivationProgress> activate(
+    ApiClient client,
+    Asset asset, [
+    List<Asset>? childAssets,
+  ]) async* {
+    yield ActivationProgress(
+      status: 'Placeholder strategy for ${asset.id.id}',
+      isComplete: true,
+    );
   }
 
   @override
-  Stream<ActivationProgress> checkStatus(
-    ApiClient apiClient,
-    Asset coin,
-  ) async* {
-    yield ActivationProgress(status: 'Placeholder status check');
-  }
+  bool supportsAssetType(Asset asset) => true;
 
   @override
-  int? taskId;
+  bool get supportsBatchActivation => true;
 }

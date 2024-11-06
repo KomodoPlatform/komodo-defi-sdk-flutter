@@ -13,16 +13,17 @@ class LightningChannelConfig {
 
   factory LightningChannelConfig.fromJson(Map<String, dynamic> json) {
     return LightningChannelConfig(
-      counterpartyLocktime: json.value<int?>('counterparty_locktime'),
-      ourHtlcMinimumMsat: json.value<int?>('our_htlc_minimum_msat'),
-      negotiateScidPrivacy: json.value<bool?>('negotiate_scid_privacy'),
+      counterpartyLocktime: json.valueOrNull<int?>('counterparty_locktime'),
+      ourHtlcMinimumMsat: json.valueOrNull<int?>('our_htlc_minimum_msat'),
+      negotiateScidPrivacy: json.valueOrNull<bool?>('negotiate_scid_privacy'),
       maxInboundInFlightHtlcPercent:
-          json.value<double?>('max_inbound_in_flight_htlc_percent'),
+          json.valueOrNull<double?>('max_inbound_in_flight_htlc_percent'),
       commitUpfrontShutdownPubkey:
-          json.value<bool?>('commit_upfront_shutdown_pubkey'),
+          json.valueOrNull<bool?>('commit_upfront_shutdown_pubkey'),
       inboundChannelsConfirmations:
-          json.value<int?>('inbound_channels_confirmations'),
-      theirChannelReserveSats: json.value<int?>('their_channel_reserve_sats'),
+          json.valueOrNull<int?>('inbound_channels_confirmations'),
+      theirChannelReserveSats:
+          json.valueOrNull<int?>('their_channel_reserve_sats'),
     );
   }
   final int? counterpartyLocktime;

@@ -275,6 +275,22 @@ extension JsonMapCensoring<T extends Map<dynamic, dynamic>> on T {
   }
 }
 
+extension JsonMapDeepMerge on JsonMap {
+  JsonMap deepMerge(JsonMap other) {
+    final mergedMap = JsonMap.from(this);
+
+    other.forEach((key, value) {
+      if (value is JsonMap && containsKey(key) && this[key] is JsonMap) {
+        mergedMap[key] = (this[key] as JsonMap).deepMerge(value);
+      } else {
+        mergedMap[key] = value;
+      }
+    });
+
+    return mergedMap;
+  }
+}
+
 extension MapCensoring<K, V> on Map<K, V> {
   /// Searches for the keys in the map and replaces the values with the
   /// obscured character. If [recursive] is set to true, it will also search

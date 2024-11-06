@@ -175,15 +175,13 @@ extension AssetPubkeysExtension on Asset {
 }
 
 extension PubkeyExtension on Asset {
-  Future<PubkeyStrategy> get pubkeyStrategy async =>
-      Asset.preferredPubkeyStrategy(
-        protocol,
-        isHdWallet: await _currentUsersAuthOptions().then(
-              (options) =>
-                  options?.derivationMethod == DerivationMethod.hdWallet,
-            ) ??
-            true,
-      );
+  // Future<PubkeyStrategy> get pubkeyStrategy async => preferredPubkeyStrategy(
+  //       isHd: await _currentUsersAuthOptions().then(
+  //             (options) =>
+  //                 options?.derivationMethod == DerivationMethod.hdWallet,
+  //           ) ??
+  //           true,
+  //     );
 
   Future<AuthOptions?> _currentUsersAuthOptions() async {
     final user = await _instance?.auth.currentUser;

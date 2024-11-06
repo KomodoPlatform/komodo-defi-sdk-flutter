@@ -3,7 +3,7 @@ library;
 
 export 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
 
-export 'src/assets/asset_extensions.dart' show AssetSupport;
+export 'src/assets/asset_extensions.dart' show AssetValidation;
 // // Export coin activation extension
 // export 'package:komodo_defi_sdk/src/assets/asset_manager.dart'
 //     show AssetActivation;

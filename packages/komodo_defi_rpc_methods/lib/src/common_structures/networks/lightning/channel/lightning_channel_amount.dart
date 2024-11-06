@@ -9,7 +9,7 @@ class LightningChannelAmount {
   factory LightningChannelAmount.fromJson(Map<String, dynamic> json) {
     return LightningChannelAmount(
       type: json.value<String>('type'),
-      value: json.value<double?>('value'),
+      value: json.valueOrNull<double?>('value'),
     );
   }
   final String type;

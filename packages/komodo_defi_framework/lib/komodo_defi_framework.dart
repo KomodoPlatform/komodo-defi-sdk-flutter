@@ -140,26 +140,31 @@ class KomodoDefiFramework implements ApiClient {
     final response = await _kdfOperations.mm2Rpc(
       request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
     );
-    _log('RPC response: $response');
+    _log('RPC response: ${response.toJsonString()}');
     return response;
   }
 
   void _assertHostConfigMatchesStartupConfig(
-      KdfStartupConfig startupConfig, IKdfHostConfig hostConfig) {
+    KdfStartupConfig startupConfig,
+    IKdfHostConfig hostConfig,
+  ) {
     if (startupConfig.rpcPassword != hostConfig.rpcPassword) {
       throw ArgumentError(
-          'RPC password mismatch between startup and host configs.');
+        'RPC password mismatch between startup and host configs.',
+      );
     }
 
     if (hostConfig is RemoteConfig) {
       if (startupConfig.rpcIp != hostConfig.ipAddress) {
         throw ArgumentError(
-            'RPC IP mismatch between startup and host configs.');
+          'RPC IP mismatch between startup and host configs.',
+        );
       }
 
       if (startupConfig.rpcPort != hostConfig.port) {
         throw ArgumentError(
-            'RPC port mismatch between startup and host configs.');
+          'RPC port mismatch between startup and host configs.',
+        );
       }
     }
   }

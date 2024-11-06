@@ -123,7 +123,7 @@ class JsonRpcErrorResponse extends MapBase<String, dynamic> {
 
   final Map<String, dynamic> _map;
 
-  int? get code => _map.value<int?>('code');
+  int? get code => _map.valueOrNull<int?>('code');
 
   String get error => _map.value<String>('error');
 

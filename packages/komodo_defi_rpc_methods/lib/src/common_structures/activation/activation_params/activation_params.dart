@@ -1,6 +1,7 @@
+import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-abstract class ActivationParams {
+abstract class ActivationParams implements KdfRequestParams {
   ActivationParams({
     this.requiredConfirmations,
     this.requiresNotarization = false,
@@ -19,7 +20,21 @@ abstract class ActivationParams {
 
   final ActivationMode? mode;
 
-  Map<String, dynamic> toJson();
+  // JsonMap toJson();
+
+  JsonMap toJsonRequest() {
+    final json = <String, dynamic>{
+      'required_confirmations': requiredConfirmations,
+      'requires_notarization': requiresNotarization,
+      'priv_key_policy': privKeyPolicy.id,
+      'min_addresses_number': minAddressesNumber,
+      'scan_policy': scanPolicy,
+      'gap_limit': gapLimit,
+      if (mode != null) 'mode': mode!.toJsonRequest(),
+    };
+
+    return json;
+  }
 }
 
 enum PrivateKeyPolicy {
@@ -44,7 +59,7 @@ class ActivationMode {
   final String rpc;
   final ActivationRpcData? rpcData;
 
-  Map<String, dynamic> toJsonRequest() => {
+  JsonMap toJsonRequest() => {
         'rpc': rpc,
         if (rpcData != null) 'rpc_data': rpcData!.toJsonRequest(),
       };
@@ -62,7 +77,7 @@ class ActivationRpcData {
   final List<ActivationServers>? electrum;
   final dynamic syncParams;
 
-  // Map<String, dynamic> toJson() => {
+  // JsonMap toJson() => {
   //       if (lightWalletDServers != null)
   //         'light_wallet_d_servers': lightWalletDServers,
   //       if (electrumServers != null)
@@ -72,7 +87,7 @@ class ActivationRpcData {
   //       if (syncParams != null) 'sync_params': syncParams,
   //     };
 
-  Map<String, dynamic> toJsonRequest() => {
+  JsonMap toJsonRequest() => {
         if (lightWalletDServers != null)
           'light_wallet_d_servers': lightWalletDServers,
         if (electrumServers != null)
@@ -91,7 +106,7 @@ class ActivationServers {
     this.disableCertVerification = false,
   });
 
-  factory ActivationServers.fromJsonConfig(Map<String, dynamic> config) {
+  factory ActivationServers.fromJsonConfig(JsonMap config) {
     return ActivationServers(
       url: config.value<String>('url'),
       wsUrl: config.valueOrNull<String>('ws_url'),
@@ -106,7 +121,7 @@ class ActivationServers {
   final String protocol;
   final bool disableCertVerification;
 
-  Map<String, dynamic> toJsonRequest() => {
+  JsonMap toJsonRequest() => {
         'url': url,
         if (wsUrl != null) 'ws_url': wsUrl,
         'protocol': protocol,

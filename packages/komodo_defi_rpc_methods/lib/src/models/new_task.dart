@@ -6,8 +6,8 @@ class TaskStatusRequest
   TaskStatusRequest({
     required this.taskId,
     required super.rpcPass,
+    required super.method,
   }) : super(
-          method: 'task::enable_utxo::status',
           mmrpc: '2.0',
         );
 
@@ -50,8 +50,7 @@ class TaskStatusResponse extends BaseResponse {
       mmrpc: json.value<String>('mmrpc'),
       status: json.value<String>('result', 'status'),
       details: json.value<String>('result', 'details'),
-      isCompleted: json.value<String>('result', 'status') ==
-          'Ok', // Check if task is completed
+      isCompleted: json.value<String>('result', 'status') == 'Ok',
     );
   }
 

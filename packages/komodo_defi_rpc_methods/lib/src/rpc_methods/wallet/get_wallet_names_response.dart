@@ -12,7 +12,7 @@ class GetWalletNamesResponse extends BaseResponse {
     return GetWalletNamesResponse(
       mmrpc: json.value<String>('mmrpc'),
       walletNames: List<String>.from(json.value('result', 'wallet_names')),
-      activatedWallet: json.value<String?>('result', 'activated_wallet'),
+      activatedWallet: json.valueOrNull<String?>('result', 'activated_wallet'),
     );
   }
 

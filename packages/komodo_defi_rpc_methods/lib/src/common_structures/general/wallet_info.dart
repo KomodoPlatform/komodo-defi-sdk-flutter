@@ -16,7 +16,7 @@ class WalletInfo {
       derivationMethod:
           Map<String, String>.from(json.value('derivation_method')),
       pubkey: json.value<String>('pubkey'),
-      miningPubkey: json.value<String?>('mining_pubkey'),
+      miningPubkey: json.valueOrNull<String?>('mining_pubkey'),
     );
   }
   final String address;

@@ -31,10 +31,10 @@ class AssetSymbol {
   String get configSymbol => symbolFromConfigId(assetConfigId);
 
   List<String?> get symbolPriority => [
-        binanceId,
+        liveCoinWatchId,
         coinPaprikaId,
         coinGeckoId,
-        liveCoinWatchId,
+        binanceId,
         configSymbol,
       ];
 
@@ -44,27 +44,16 @@ class AssetSymbol {
     if (_configToSymbolCache.containsKey(configId)) {
       return _configToSymbolCache[configId]!;
     }
-    if (!configId.contains('-') && !configId.contains('_')) return configId;
+    String? symbol;
 
-    final filteredSuffixes = [
-      ...CoinSubClass.values.map((e) => e.formatted),
-      'IBC_IRIS',
-      'IBC-IRIS',
-      'IRIS',
-      'segwit',
-      'OLD',
-      'IBC_NUCLEUSTEST',
-    ];
+    if (!configId.contains('-') && !configId.contains('_')) {
+      return _configToSymbolCache[configId] = configId;
+    }
 
-    // Join the suffixes with '|' to form the regex pattern
-    final regexPattern = '(${filteredSuffixes.join('|')})';
+    // Remove the suffixes (Everything after the first '-')
+    symbol = configId.split('-').first;
 
-    final ticker = configId
-        .replaceAll(RegExp('-$regexPattern'), '')
-        .replaceAll(RegExp('_$regexPattern'), '');
-
-    _configToSymbolCache[ticker] = ticker;
-    return ticker;
+    return _configToSymbolCache[configId] = symbol;
   }
 
   JsonMap toJson() => {

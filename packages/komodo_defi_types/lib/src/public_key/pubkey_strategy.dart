@@ -34,6 +34,7 @@ class PubkeyStrategyFactory {
     // Otherwise choose based on protocol
     return switch (protocol) {
       UtxoProtocol() => HDWalletStrategy(),
+      Erc20Protocol() => HDWalletStrategy(),
       QtumProtocol() => HDWalletStrategy(),
       ZhtlcProtocol() => throw UnimplementedError(),
       // SlpProtocol() => HDWalletStrategy(),

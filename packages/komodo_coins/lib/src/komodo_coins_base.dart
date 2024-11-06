@@ -3,39 +3,30 @@ import 'package:http/http.dart' as http;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class KomodoCoins {
-  // Singleton pattern to ensure a single instance of KomodoCoins
-  static final KomodoCoins _instance = KomodoCoins._internal();
   factory KomodoCoins() => _instance;
   KomodoCoins._internal();
+  static final KomodoCoins _instance = KomodoCoins._internal();
 
   static Map<String, Asset>? _assets;
 
-  /// Optional init to pre-fetch assets. Either call this method or
-  /// [fetchAssets] before accessing the assets synchronously.
   @mustCallSuper
   Future<void> init() async {
     await fetchAssets();
   }
 
-  // Checks if assets are initialized
-  static bool get isInitialized => _assets != null;
+  bool get isInitialized => _assets != null;
 
-  // Provides access to all assets after initialization
   Map<String, Asset> get all {
     if (!isInitialized) {
-      throw StateError(
-        'Assets have not been initialized. Call init() first.',
-      );
+      throw StateError('Assets have not been initialized. Call init() first.');
     }
+    final hasAvax = _assets!.containsKey('AVAX');
     return _assets!;
   }
 
-  /// Fetches assets from a remote source
+  /// Fetches assets from a remote source using a two-pass approach to handle parent relationships
   static Future<Map<String, Asset>> fetchAssets() async {
-    // Return cached assets if already fetched
-    if (_assets != null) {
-      return _assets!;
-    }
+    if (_assets != null) return _assets!;
 
     final url = Uri.parse(
       'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
@@ -46,33 +37,61 @@ class KomodoCoins {
 
       if (response.statusCode == 200) {
         final jsonData = jsonFromString(response.body);
-        final knownAssets = <String, Asset>{};
 
-        // Move coin filtering logic to Asset/ProtocolClass for better encapsulation
+        // First pass: Create AssetIds for platform coins
+        final platformAssetIds = <String, AssetId>{};
+        for (final entry in jsonData.entries) {
+          final coinData = entry.value as JsonMap;
+          if (_isPlatformCoin(coinData)) {
+            try {
+              final assetId = AssetId.fromConfig(coinData);
+              platformAssetIds[entry.key] = assetId;
+            } catch (e) {
+              debugPrint('Error parsing platform coin ${entry.key}: $e');
+            }
+          }
+        }
+
+        // Second pass: Create all Assets with proper parent relationships
+        final assets = <String, Asset>{};
         for (final entry in jsonData.entries) {
           final coinData = entry.value as JsonMap;
 
-          // Ensure asset is valid and supported based on protocol and derivation path logic
-          // if (Asset.isSupported(coinData)) {
-          final asset = Asset.tryParse(coinData);
-
-          if (asset == null) {
+          // Skip if it's an NFT. They are not supported yet, and will likely
+          // belong elsewhere in the codebase.
+          if (coinData.valueOrNull<String>('protocol', 'type') == 'NFT') {
             continue;
           }
 
-          knownAssets[entry.key] = asset;
+          try {
+            final assetId =
+                AssetId.fromConfig(coinData, knownIds: platformAssetIds);
+            final asset = Asset.tryParse(coinData, assetId: assetId);
+
+            if (asset != null) {
+              assets[entry.key] = asset;
+            }
+          } catch (e) {
+            debugPrint('Error parsing asset ${entry.key}: $e');
+          }
         }
 
-        _assets = knownAssets;
-        return knownAssets;
+        _assets = assets;
+        return assets;
       } else {
         throw Exception(
-            'Failed to fetch assets with status code: ${response.statusCode}');
+          'Failed to fetch assets with status code: ${response.statusCode}',
+        );
       }
     } catch (e) {
-      // Log and handle errors gracefully
-      print("Error fetching assets: $e");
-      throw Exception('Error fetching assets: $e');
+      debugPrint('Error fetching assets: $e');
+      rethrow;
     }
+  }
+
+  static bool _isPlatformCoin(JsonMap coinData) {
+    // Check if it's a platform coin based on config properties
+    return !coinData.containsKey('parent_coin') ||
+        coinData.valueOrNull<String>('parent_coin') == null;
   }
 }

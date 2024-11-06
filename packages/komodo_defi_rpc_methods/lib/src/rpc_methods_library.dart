@@ -1,26 +1,35 @@
-// A class that provides a library of RPC methods used by the Komodo DeFi
-// Framework API. This class is used to group RPC methods together and provide
-// a namespace for all the methods.
+// TODO: Refactor RPC methods to be consistent that they accept a params
+// class object where we have a request params class.
+
 // ignore_for_file: unused_field, unused_element
 
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_rpc_methods/src/rpc_methods/rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+/// A class that provides a library of RPC methods used by the Komodo DeFi
+/// Framework API. This class is used to group RPC methods together and provide
+/// a namespace for all the methods.
+
 class KomodoDefiRpcMethods {
   KomodoDefiRpcMethods([this._client]);
 
   final ApiClient? _client;
 
+  // Common/general methods
   WalletMethods get wallet => WalletMethods(_client);
-
-  // ignore: library_private_types_in_public_api
   GeneralActivationMethods get generalActivation =>
       GeneralActivationMethods(_client);
-
   HdWalletMethods get hdWallet => HdWalletMethods(_client);
-
   TaskMethods get task => TaskMethods(_client);
+
+  // Protocol-specific namespaces
+  Erc20MethodsNamespace get erc20 => Erc20MethodsNamespace(_client);
+  UtxoMethodsNamespace get utxo => UtxoMethodsNamespace(_client);
+  SlpMethodsNamespace get slp => SlpMethodsNamespace(_client);
+  QtumMethodsNamespace get qtum => QtumMethodsNamespace(_client);
+  TendermintMethodsNamespace get tendermint =>
+      TendermintMethodsNamespace(_client);
 
   // Add other namespaces here, e.g.:
   // TradeNamespace get trade => TradeNamespace(_client);
@@ -30,8 +39,8 @@ class KomodoDefiRpcMethods {
 class TaskMethods extends BaseRpcMethodNamespace {
   TaskMethods(super.client);
 
-  Future<TaskStatusResponse> status(int taskId, [String? rpcPass]) =>
-      execute(TaskStatusRequest(taskId: taskId, rpcPass: rpcPass));
+  // Future<TaskStatusResponse> status(int taskId, [String? rpcPass]) =>
+  //     execute(TaskStatusRequest(taskId: taskId, rpcPass: rpcPass));
 }
 
 class WalletMethods extends BaseRpcMethodNamespace {

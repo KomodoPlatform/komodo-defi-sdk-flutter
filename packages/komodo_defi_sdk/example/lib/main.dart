@@ -24,7 +24,7 @@ void main() async {
 
 final KomodoDefiSdk _komodoDefiSdk = KomodoDefiSdk(
   config: const KomodoDefiSdkConfig(
-    defaultAssets: {'KMD', 'BTC', 'ETH'},
+    defaultAssets: {'KMD', 'BTC', 'ETH', 'DOC', 'MARTY'},
   ),
 );
 
@@ -50,20 +50,22 @@ class _KomodoAppState extends State<KomodoApp> {
   // New properties for search functionality
   final TextEditingController _searchController = TextEditingController();
   List<Asset> _filteredAssets = [];
-  late List<Asset> _allAssets;
+  late Map<String, Asset> _allAssets;
 
   @override
   void initState() {
     super.initState();
+    _allAssets = _komodoDefiSdk.assets.available;
+    _filterAssets();
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       sub = _komodoDefiSdk.auth.authStateChanges.listen(updateUser);
       await _fetchKnownUsers();
       await updateUser();
 
       // Initialize the search functionality
-      _allAssets = _komodoDefiSdk.assets.available.values.toList();
 
-      _searchController.addListener(_filterAssets);
+      // _searchController.addListener(_filterAssets);
 
       _refreshUsersTimer = Timer.periodic(
         const Duration(seconds: 10),
@@ -77,24 +79,26 @@ class _KomodoAppState extends State<KomodoApp> {
     final query = _searchController.text.toLowerCase();
 
     setState(() {
-      _filteredAssets = _allAssets.where((asset) {
-        final assetName = asset.id.name.toLowerCase();
-        final assetTicker = asset.id.id.toLowerCase();
-        return assetName.contains(query) || assetTicker.contains(query);
+      _filteredAssets = _allAssets.values.where((v) {
+        final asset = v.id.name;
+        final id = v.id.id;
+
+        return asset.toLowerCase().contains(query) ||
+            id.toLowerCase().contains(query);
       }).toList();
 
       // Sort to place KMD, BTC, ETH at the top
-      _filteredAssets.sort((a, b) {
-        const priorityAssets = <String>['KMD', 'BTC', 'ETH'];
-        final aPriority = priorityAssets.contains(a.id.id) ? 0 : 1;
-        final bPriority = priorityAssets.contains(b.id.id) ? 0 : 1;
+      // _filteredAssets.sort((a, b) {
+      //   const priorityAssets = <String>['KMD', 'BTC', 'ETH'];
+      //   final aPriority = priorityAssets.contains(a.id.id) ? 0 : 1;
+      //   final bPriority = priorityAssets.contains(b.id.id) ? 0 : 1;
 
-        if (aPriority == bPriority) {
-          return a.id.name.compareTo(b.id.name);
-        }
+      //   if (aPriority == bPriority) {
+      //     return a.id.name.compareTo(b.id.name);
+      //   }
 
-        return aPriority.compareTo(bPriority);
-      });
+      //   return aPriority.compareTo(bPriority);
+      // });
     });
   }
 
@@ -364,25 +368,49 @@ class _KomodoAppState extends State<KomodoApp> {
               const SizedBox(height: 16),
 
               // Show list of all coins
-              Text('Coins List (${_komodoDefiSdk.assets.available.length})'),
+              Row(
+                children: [
+                  Text(
+                    'Coins List (${_komodoDefiSdk.assets.available.length})',
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    height: 40,
+                    width: 200,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (_) => _filterAssets(),
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        labelText: 'Search',
+                        hintText: 'Search for an asset',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               Flexible(
                 child: Material(
                   child: ListView.builder(
-                    itemCount: _komodoDefiSdk.assets.available.length,
+                    itemCount: _filteredAssets.length,
                     itemBuilder: (context, index) {
-                      final asset = _komodoDefiSdk.assets.available.values
-                          .elementAt(index);
+                      final asset = _filteredAssets.elementAt(index);
                       final id = asset.id;
-                      final isSupported = asset.isSupported(
-                        isHdWallet: _currentUser?.isHd ?? false,
-                      );
+                      const isSupported = true;
+
+                      // TODO!
+                      // asset.isSupported(
+                      //   isHdWallet: _currentUser?.isHd ?? false,
+                      // );
                       return ListTile(
                         key: Key(id.id),
                         title: Text(id.id),
                         subtitle: Text(id.name),
                         tileColor:
                             index.isEven ? Colors.grey[200] : Colors.grey[100],
-                        enabled: isSupported,
                         leading: CircleAvatar(
                           foregroundImage: NetworkImage(
                             // https://komodoplatform.github.io/coins/icons/kmd.png

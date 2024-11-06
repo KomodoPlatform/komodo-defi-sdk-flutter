@@ -28,18 +28,18 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "concurrent_downloads_enabled": true,
-        "runtime_updates_enabled": true,
-        "bundled_coins_repo_commit": "875ae0d35552119d38e749b84a99c5ad9e71bee7",
+        "bundled_coins_repo_commit": "5e49096c30ece1fd0092e34261278be7632bc09e",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://komodoplatform.github.io/coins",
         "coins_repo_branch": "master",
+        "runtime_updates_enabled": true,
         "mapped_files": {
             "assets/config/coins_config.json": "utils/coins_config_unfiltered.json",
             "assets/config/coins.json": "coins"
         },
         "mapped_folders": {
             "assets/coin_icons/png/": "icons"
-        }
+        },
+        "concurrent_downloads_enabled": true
     }
 }

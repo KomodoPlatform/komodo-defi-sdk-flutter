@@ -9,7 +9,8 @@ class TokensRequest {
   factory TokensRequest.fromJson(JsonMap json) {
     return TokensRequest(
       ticker: json.value<String>('ticker'),
-      requiredConfirmations: json.value<int?>('required_confirmations') ?? 3,
+      requiredConfirmations:
+          json.valueOrNull<int?>('required_confirmations') ?? 3,
     );
   }
 

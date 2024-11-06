@@ -4,6 +4,7 @@
 library common_structures;
 
 export 'activation/activation_params/activation_params.dart';
+export 'activation/activation_params/activation_params_index.dart';
 export 'activation/activation_params/bch_activation_params.dart';
 export 'activation/activation_params/cosmos_activation_params.dart';
 export 'activation/activation_params/erc20_activation_params.dart';
@@ -16,17 +17,18 @@ export 'activation/activation_params/utxo_activation_params.dart';
 export 'activation/activation_params/zhtlc_activation_params.dart';
 export 'activation/coin_protocol.dart';
 export 'activation/evm_node.dart';
-export 'activation/strategies/base_activation_strategy.dart';
 export 'activation/strategies/utxo_activation_strategy.dart';
 export 'activation/tokens_request.dart';
 export 'activation/utxo_merge_params.dart';
+export 'general/address_format.dart';
 export 'general/balance_info.dart';
 export 'general/new_address_info.dart';
 export 'general/scan_address_info.dart';
 export 'general/sync_status.dart';
+export 'general/token_balance.dart';
 export 'general/wallet_info.dart';
 export 'general/withdraw_fee.dart';
-export 'hd_wallet/address_balance_info.dart';
+export 'hd_wallet/account_balance_info.dart';
 export 'hd_wallet/address_info.dart';
 export 'hd_wallet/derivation_method.dart';
 export 'networks/lightning/activation_params.dart';

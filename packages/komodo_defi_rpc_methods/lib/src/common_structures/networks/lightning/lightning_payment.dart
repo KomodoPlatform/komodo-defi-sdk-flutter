@@ -12,10 +12,10 @@ class LightningPayment {
   factory LightningPayment.fromJson(Map<String, dynamic> json) {
     return LightningPayment(
       type: json.value<String>('type'),
-      invoice: json.value<String?>('invoice'),
-      destination: json.value<String?>('destination'),
-      amountInMsat: json.value<int?>('amount_in_msat'),
-      expiry: json.value<int?>('expiry'),
+      invoice: json.valueOrNull<String?>('invoice'),
+      destination: json.valueOrNull<String?>('destination'),
+      amountInMsat: json.valueOrNull<int?>('amount_in_msat'),
+      expiry: json.valueOrNull<int?>('expiry'),
     );
   }
   final String type;

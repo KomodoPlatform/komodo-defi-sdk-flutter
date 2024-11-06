@@ -1,16 +1,10 @@
-import 'package:komodo_defi_rpc_methods/src/common_structures/common_structures.dart';
-
-class SlpActivationParams extends ActivationParams {
+class SlpActivationParams {
   SlpActivationParams({
-    required this.electrumServers,
-    required this.bchdUrls,
+    this.requiredConfirmations,
   });
-  final List<Map<String, dynamic>> electrumServers;
-  final List<String> bchdUrls;
+  final int? requiredConfirmations;
 
-  @override
   Map<String, dynamic> toJson() => {
-        'servers': electrumServers,
-        'bchd_urls': bchdUrls,
+        'required_confirmations': requiredConfirmations,
       };
 }

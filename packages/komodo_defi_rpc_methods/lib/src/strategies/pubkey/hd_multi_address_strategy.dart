@@ -13,7 +13,9 @@ class HDWalletStrategy extends PubkeyStrategy {
 
   @override
   bool protocolSupported(ProtocolClass protocol) {
-    return protocol is UtxoProtocol || protocol is SlpProtocol;
+    //TODO! (ETH?) return protocol is UtxoProtocol || protocol is SlpProtocol;
+    // return protocol is UtxoProtocol || protocol is SlpProtocol;
+    return true;
   }
 
   @override
@@ -77,25 +79,14 @@ class HDWalletStrategy extends PubkeyStrategy {
             address: addr.address,
             derivationPath: addr.derivationPath,
             chain: addr.chain,
-            balance: addr.balance,
+            balance: addr.balance.balanceOf(assetId.id),
           ),
         )
         .toList();
 
-    // TODO! This is a temporary simple solution because it's incorrect
-    // to assume an address with 0 balance is unused since it could have
-    // been used in the past and emptied.
-
     return AssetPubkeys(
       assetId: assetId,
       keys: addresses,
-      // usedAddressesCount: addresses
-      //     .where(
-      //       (addr) =>
-      //           addr.spendableBalance > Decimal.zero ||
-      //           addr.unspendableBalance > Decimal.zero,
-      //     )
-      //     .length,
       availableAddressesCount:
           await availableNewAddressesCount(addresses).then((value) => value),
       syncStatus: SyncStatus.success,

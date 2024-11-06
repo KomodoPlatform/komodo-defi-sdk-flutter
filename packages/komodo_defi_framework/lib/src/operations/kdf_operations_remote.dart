@@ -172,7 +172,8 @@ class KdfOperationsRemote implements IKdfOperations {
     if (response.statusCode != 200) {
       return JsonRpcErrorResponse(
         code: response.statusCode,
-        error: 'HTTP Error',
+        error: {'error': 'HTTP Error', 'status': response.statusCode}
+            .toJsonString(),
         message: response.body,
       );
     }
@@ -200,7 +201,7 @@ class KdfOperationsRemote implements IKdfOperations {
         return null;
       }
 
-      return response.value<String?>('result');
+      return response.valueOrNull<String?>('result');
     } on http.ClientException {
       return null;
     }

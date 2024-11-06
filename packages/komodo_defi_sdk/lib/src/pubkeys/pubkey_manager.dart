@@ -35,9 +35,6 @@ class PubkeyManager {
     final isHdWallet =
         authOptions?.derivationMethod == DerivationMethod.hdWallet;
 
-    return Asset.preferredPubkeyStrategy(
-      asset.protocol,
-      isHdWallet: isHdWallet,
-    );
+    return asset.pubkeyStrategy(isHdWallet: isHdWallet);
   }
 }

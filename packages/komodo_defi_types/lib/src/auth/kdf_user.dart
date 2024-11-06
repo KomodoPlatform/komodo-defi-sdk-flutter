@@ -36,6 +36,9 @@ class WalletId extends Equatable {
   /// (name + pubkey hash if available)
   String get compoundId => pubkeyHash == null ? name : '$name:$pubkeyHash';
 
+  bool isSameAs(WalletId other) =>
+      name == other.name && pubkeyHash == other.pubkeyHash;
+
   @override
   List<Object?> get props => [name, pubkeyHash];
 
