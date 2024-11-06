@@ -5,11 +5,7 @@ library _activation;
 
 export 'activation_manager.dart';
 export 'base_strategies/activation_strategy_factory.dart';
-export 'base_strategies/base_activation_strategy.dart';
 export 'base_strategies/batch_activation.dart';
-export 'base_strategies/composite_activation_strategy.dart';
-export 'base_strategies/protocol_activation_strategy.dart';
-export 'base_strategies/unified_activation_strategy.dart';
 export 'protocol_strategies/bch_with_tokens_batch_strategy.dart';
 export 'protocol_strategies/erc20_activation_strategy.dart';
 export 'protocol_strategies/eth_with_tokens_batch_strategy.dart';
