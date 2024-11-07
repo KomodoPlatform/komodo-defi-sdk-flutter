@@ -3,6 +3,7 @@ import 'dart:js_interop' as js_interop;
 import 'dart:js_interop_unsafe';
 import 'dart:js_util' as js_util;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:http/http.dart';
@@ -175,6 +176,7 @@ class KdfOperationsWasm implements IKdfOperations {
     try {
       await _ensureLoaded();
 
+      _log('mm2Rpc request (pre-process): $request');
       request['userpass'] = _config.rpcPassword;
 
       final jsResponse = await js_util.promiseToFuture<js_interop.JSObject>(
@@ -184,7 +186,7 @@ class KdfOperationsWasm implements IKdfOperations {
         ),
       );
 
-      print('Response pre-cast: ${js_util.dartify(jsResponse)}');
+      if (kDebugMode) _log('Response pre-cast: ${js_util.dartify(jsResponse)}');
 
       // Convert the JS object to a Dart map and ensure it's a JsonMap
       final response =
