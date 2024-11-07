@@ -1,5 +1,10 @@
+// ignore_for_file: avoid_dynamic_calls
+
 import 'dart:async';
+// This is a web-specific file, so it's safe to ignore this warning
+// ignore: avoid_web_libraries_in_flutter
 import 'dart:js' as js;
+
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:js/js_util.dart';
@@ -7,12 +12,12 @@ import 'package:js/js_util.dart';
 class KdfPlugin {
   static void registerWith(Registrar registrar) {
     final plugin = KdfPlugin();
+    // ignore: unused_local_variable
     final channel = MethodChannel(
       'komodo_defi_framework/kdf',
       const StandardMethodCodec(),
       registrar,
-    );
-    channel.setMethodCallHandler(plugin.handleMethodCall);
+    )..setMethodCallHandler(plugin.handleMethodCall);
   }
 
   Future<dynamic> handleMethodCall(MethodCall call) async {
