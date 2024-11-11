@@ -40,6 +40,7 @@ class EnableBchWithTokensRequest
     required String rpcPass,
     required this.ticker,
     required this.activationParams,
+    required this.slpTokensRequests,
     this.addressFormat,
     this.getBalances = true,
     this.utxoMergeParams,
@@ -55,21 +56,21 @@ class EnableBchWithTokensRequest
   final AddressFormat? addressFormat;
   final bool getBalances;
   final UtxoMergeParams? utxoMergeParams;
+  final List<TokensRequest> slpTokensRequests;
 
   @override
-  Map<String, dynamic> toJson() {
-    return {
-      ...super.toJson(),
-      'params': {
-        'ticker': ticker,
-        'activation_params': activationParams.toJson(),
-        if (addressFormat != null) 'address_format': addressFormat!.toJson(),
-        'get_balances': getBalances,
-        if (utxoMergeParams != null)
-          'utxo_merge_params': utxoMergeParams!.toJson(),
-      },
-    };
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          'ticker': ticker,
+          ...activationParams.toJsonRequestParams(),
+          'slp_tokens_requests':
+              slpTokensRequests.map((e) => e.toJson()).toList(),
+          if (addressFormat != null) 'address_format': addressFormat!.toJson(),
+          'get_balances': getBalances,
+          if (utxoMergeParams != null)
+            'utxo_merge_params': utxoMergeParams!.toJson(),
+        },
+      });
 
   @override
   EnableBchWithTokensResponse parse(Map<String, dynamic> json) =>

@@ -1,8 +1,12 @@
+// TODO! A method that returns the ticker symbol for a given coin subclass
+
 enum CoinSubClass {
   moonbeam,
   ftm20,
   arbitrum,
+  @Deprecated('No longer active. Will be removed in the future.')
   slp,
+  sia,
   qrc20,
   avx20,
   smartChain,
@@ -23,6 +27,61 @@ enum CoinSubClass {
   rskSmartBitcoin,
   zhtlc,
   unknown;
+
+  String get ticker {
+    switch (this) {
+      case CoinSubClass.moonbeam:
+        return 'MOON';
+      case CoinSubClass.ftm20:
+        return 'FTM';
+      case CoinSubClass.arbitrum:
+        return 'ARB';
+      case CoinSubClass.slp:
+        return 'SLP';
+      case CoinSubClass.sia:
+        return 'SC';
+      case CoinSubClass.qrc20:
+        return 'QTUM';
+      case CoinSubClass.avx20:
+        return 'AVAX';
+      case CoinSubClass.smartChain:
+        return 'BNB';
+      case CoinSubClass.moonriver:
+        return 'MOVR';
+      case CoinSubClass.ethereumClassic:
+        return 'ETC';
+      case CoinSubClass.tendermintToken:
+        return 'ATOM';
+      case CoinSubClass.ubiq:
+        return 'UBQ';
+      case CoinSubClass.bep20:
+        return 'BNB';
+      case CoinSubClass.matic:
+        return 'MATIC';
+      case CoinSubClass.utxo:
+        return 'BTC';
+      case CoinSubClass.smartBch:
+        return 'BCH';
+      case CoinSubClass.erc20:
+        return 'ETH';
+      case CoinSubClass.tendermint:
+        return 'TKN';
+      case CoinSubClass.krc20:
+        return 'KCS';
+      case CoinSubClass.ewt:
+        return 'EWT';
+      case CoinSubClass.hrc20:
+        return 'HT';
+      case CoinSubClass.hecoChain:
+        return 'HT';
+      case CoinSubClass.rskSmartBitcoin:
+        return 'RBTC';
+      case CoinSubClass.zhtlc:
+        return 'ARRR';
+      case CoinSubClass.unknown:
+        return 'UNKNOWN';
+    }
+  }
 
   // Parse
   static CoinSubClass parse(String value) {
@@ -94,6 +153,8 @@ enum CoinSubClass {
         return 'Arbitrum';
       case CoinSubClass.slp:
         return 'SLP';
+      case CoinSubClass.sia:
+        return 'Sia';
       case CoinSubClass.qrc20:
         return 'QRC20';
       case CoinSubClass.avx20:

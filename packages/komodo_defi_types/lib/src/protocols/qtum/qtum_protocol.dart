@@ -1,3 +1,4 @@
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class QtumProtocol extends ProtocolClass {
@@ -13,6 +14,12 @@ class QtumProtocol extends ProtocolClass {
       config: json,
     );
   }
+
+  @override
+  bool get supportsMultipleAddresses => true;
+
+  @override
+  bool get requiresHdWallet => false;
 
   static void _validateQtumConfig(JsonMap json) {
     final requiredFields = {
@@ -33,13 +40,28 @@ class QtumProtocol extends ProtocolClass {
     }
   }
 
-  int get pubtype => config.value<int>('pubtype');
-  int get p2shtype => config.value<int>('p2shtype');
-  int get wiftype => config.value<int>('wiftype');
-  int get txVersion => config.value<int>('txversion');
-  int get txFee => config.value<int>('txfee');
+  int? get pubtype => config.valueOrNull<int>('pubtype');
+  int? get p2shtype => config.valueOrNull<int>('p2shtype');
+  int? get wiftype => config.valueOrNull<int>('wiftype');
+  int? get txVersion => config.valueOrNull<int>('txversion');
+  int? get txFee => config.valueOrNull<int>('txfee');
+  bool get overwintered => config.valueOrNull<bool>('overwintered') ?? false;
 
+  // TODO!
   @override
-  List<String> get requiredServers =>
-      config.value<List<dynamic>>('electrum').cast<String>();
+  QtumActivationParams defaultActivationParams({
+    int? minAddressesNumber,
+    ScanPolicy? scanPolicy,
+    int? gapLimit,
+    // TODO! Cater for Trezor
+    PrivateKeyPolicy privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    List<ActivationServers>? electrum,
+  }) {
+    return QtumActivationParams.fromConfigJson(config).genericCopyWith(
+      minAddressesNumber: minAddressesNumber,
+      scanPolicy: scanPolicy,
+      gapLimit: gapLimit,
+      privKeyPolicy: privKeyPolicy,
+    );
+  }
 }

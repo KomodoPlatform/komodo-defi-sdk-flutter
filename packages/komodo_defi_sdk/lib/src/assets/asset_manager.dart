@@ -25,27 +25,26 @@ class AssetManager {
   final AssetHistoryStorage _assetHistory;
   final ActivationManager _activationManager;
 
-  final Map<String, Completer<void>> _activationCompleters = {};
-  final Set<String> _activeAssetIds = {};
+  final Map<AssetId, Completer<void>> _activationCompleters = {};
+  final Set<AssetId> _activeAssetIds = {};
   final KomodoCoins _coins = KomodoCoins();
 
   StreamSubscription<KdfUser?>? _authSubscription;
 
-  // Replace direct KomodoCoins instance with SplayTreeMap wrapper
-  late final SplayTreeMap<String, Asset> _orderedCoins;
+  late final SplayTreeMap<AssetId, Asset> _orderedCoins;
 
   Future<void> init() async {
     await _coins.init();
 
-    _orderedCoins = SplayTreeMap<String, Asset>((keyA, keyB) {
-      final isDefaultA = _config.defaultAssets.contains(keyA);
-      final isDefaultB = _config.defaultAssets.contains(keyB);
+    _orderedCoins = SplayTreeMap<AssetId, Asset>((keyA, keyB) {
+      final isDefaultA = _config.defaultAssets.contains(keyA.id);
+      final isDefaultB = _config.defaultAssets.contains(keyB.id);
 
       if (isDefaultA != isDefaultB) {
         return isDefaultA ? -1 : 1;
       }
 
-      return keyA.compareTo(keyB);
+      return keyA.toString().compareTo(keyB.toString());
     });
 
     _orderedCoins.addAll(_coins.all);
@@ -57,24 +56,16 @@ class AssetManager {
   }
 
   Asset? fromId(AssetId id) => _coins.isInitialized
-      ? available[id.id]
+      ? available[id]
       : throw StateError(
           'Assets have not been initialized. Call init() first.',
         );
 
-  Map<String, Asset> get available => _orderedCoins;
-  Map<String, Asset> get availableOrdered => available;
-
-  @Deprecated('This logic is handled internally.')
-  Future<List<Asset>> getActivatedAssets() async {
-    if (!await _auth.isSignedIn()) return [];
-
-    final enabled = await _getEnabledCoins();
-    return enabled.map((id) => available[id]).whereType<Asset>().toList();
-  }
+  Map<AssetId, Asset> get available => _orderedCoins;
+  Map<AssetId, Asset> get availableOrdered => available;
 
   Stream<ActivationProgress> activateAsset(Asset asset) async* {
-    if (_activeAssetIds.contains(asset.id.id) ||
+    if (_activeAssetIds.contains(asset.id) ||
         (await getActivatedAssets()).contains(asset)) {
       yield ActivationProgress.success();
       return;
@@ -88,7 +79,7 @@ class AssetManager {
     }
 
     final completer = _activationCompleters.putIfAbsent(
-      asset.id.id,
+      asset.id,
       Completer<void>.new,
     );
 
@@ -98,7 +89,7 @@ class AssetManager {
 
         if (progress.isComplete) {
           if (progress.isSuccess) {
-            _activeAssetIds.add(asset.id.id);
+            _activeAssetIds.add(asset.id);
 
             final user = await _auth.currentUser;
             if (user != null) {
@@ -122,46 +113,53 @@ class AssetManager {
       }
       rethrow;
     } finally {
-      _activationCompleters.remove(asset.id.id);
+      _activationCompleters.remove(asset.id);
     }
   }
 
+  Future<List<Asset>> getActivatedAssets() async {
+    if (!await _auth.isSignedIn()) return [];
+
+    final enabledCoins = await _getEnabledCoins();
+    return enabledCoins.expand(findAssetsByTicker).toList();
+  }
+
   Future<void> _handlePreActivation(KdfUser user) async {
-    final assetsToActivate = <String>{};
+    final assetsToActivate = <Asset>{};
 
     if (_config.preActivateDefaultAssets) {
-      assetsToActivate.addAll(
-        _config.defaultAssets.where((id) => !_activeAssetIds.contains(id)),
-      );
+      for (final ticker in _config.defaultAssets) {
+        final assets = findAssetsByTicker(ticker)
+            .where((asset) => !_activeAssetIds.contains(asset.id));
+        assetsToActivate.addAll(assets);
+      }
     }
 
     if (_config.preActivateHistoricalAssets) {
       final historical = await _assetHistory.getWalletAssets(user.walletId);
-      assetsToActivate.addAll(
-        historical.where((id) => !_activeAssetIds.contains(id)),
-      );
+      for (final ticker in historical) {
+        final assets = findAssetsByTicker(ticker)
+            .where((asset) => !_activeAssetIds.contains(asset.id));
+        assetsToActivate.addAll(assets);
+      }
     }
 
     final validAssets = assetsToActivate
-        .where(
-          (id) => available[id]?.isCompatibleWith(user.authOptions) ?? false,
-        )
-        .map((id) => available[id]!)
-        .toSet();
+        .where((asset) => asset.isCompatibleWith(user.authOptions))
+        .toList();
 
     await for (final progress
-        in _activationManager.activateAssets(validAssets.toList())) {
+        in _activationManager.activateAssets(validAssets)) {
       if (progress.isComplete && !progress.isSuccess) {
-        final assetId = validAssets.firstWhere(
-          (id) => !_activeAssetIds.contains(id.id.id),
+        final assetToRetry = validAssets.firstWhere(
+          (asset) => !_activeAssetIds.contains(asset.id),
           orElse: () => throw StateError('No asset found for retry'),
         );
 
         var attempts = 0;
         while (attempts < _config.maxPreActivationAttempts) {
           try {
-            final asset = available[assetId.id.id]!;
-            await activateAsset(asset).last;
+            await activateAsset(assetToRetry).last;
             break;
           } catch (e) {
             attempts++;
@@ -181,12 +179,16 @@ class AssetManager {
     }
 
     final enabledCoins = await _getEnabledCoins();
-    _activeAssetIds.addAll(enabledCoins);
+    for (final ticker in enabledCoins) {
+      _activeAssetIds.addAll(
+        findAssetsByTicker(ticker).map((asset) => asset.id),
+      );
+    }
 
     await _handlePreActivation(user);
   }
 
-  bool isAssetActive(AssetId assetId) => _activeAssetIds.contains(assetId.id);
+  bool isAssetActive(AssetId assetId) => _activeAssetIds.contains(assetId);
 
   Future<Set<String>> _getEnabledCoins() async {
     if (!await _auth.isSignedIn()) return {};
@@ -195,19 +197,16 @@ class AssetManager {
     return enabled.result.map((e) => e.ticker).toSet();
   }
 
-  Set<AssetId> childIdsOf(AssetId parentId) {
-    return available.values
-        .where((asset) => asset.id.parentId == parentId)
-        .map((asset) => asset.id)
-        .toSet();
+  Set<Asset> findAssetsByTicker(String ticker) {
+    return available.values.where((asset) => asset.id.id == ticker).toSet();
   }
 
-  Map<AssetId, Asset> childAssetsOf(AssetId parentId) {
-    return Map.fromEntries(
-      available.values
-          .where((asset) => asset.id.parentId == parentId)
-          .map((asset) => MapEntry(asset.id, asset)),
-    );
+  Set<Asset> childAssetsOf(AssetId parentId) {
+    return available.values
+        .where(
+          (asset) => asset.id.isChildAsset && asset.id.parentId == parentId,
+        )
+        .toSet();
   }
 
   void dispose() {

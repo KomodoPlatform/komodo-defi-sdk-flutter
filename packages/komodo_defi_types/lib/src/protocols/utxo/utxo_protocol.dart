@@ -5,30 +5,45 @@ class UtxoProtocol extends ProtocolClass {
   UtxoProtocol._({
     required super.subClass,
     required super.config,
+    super.supportedProtocols,
   });
 
-  factory UtxoProtocol.fromJson(JsonMap json) {
+  factory UtxoProtocol.fromJson(
+    JsonMap json, {
+    List<CoinSubClass> supportedProtocols = const [],
+  }) {
     _validateUtxoConfig(json);
     return UtxoProtocol._(
       subClass: CoinSubClass.parse(json.value('type')),
       config: json,
+      supportedProtocols: supportedProtocols,
     );
   }
 
+  @override
   UtxoActivationParams defaultActivationParams() {
-    return UtxoActivationParams.fromJsonConfig(config);
+    return UtxoActivationParams.fromJson(config);
   }
+
+  @override
+  bool get supportsMultipleAddresses => true;
+
+  @override
+  bool get requiresHdWallet => false;
 
   static void _validateUtxoConfig(JsonMap json) {
     if (json.value<bool>('is_testnet') == true) {
       return;
     }
 
-    final requiredFields = {
-      'pubtype': 'Public key type',
-      'p2shtype': 'P2SH type',
-      'wiftype': 'WIF type',
-      'txfee': 'Transaction fee',
+    final requiredFields = <String, String>{
+      // The validation below has been commented out as there are a few valid
+      // coins that don't have these fields. Consider removing these checks or
+      // adding the missing fields to the coins config.
+      // 'pubtype': 'Public key type',
+      // 'p2shtype': 'P2SH type',
+      // 'wiftype': 'WIF type',
+      // 'txfee': 'Transaction fee',
     };
 
     for (final field in requiredFields.entries) {
@@ -41,14 +56,10 @@ class UtxoProtocol extends ProtocolClass {
     }
   }
 
-  int get pubtype => config.value<int>('pubtype');
-  int get p2shtype => config.value<int>('p2shtype');
-  int get wiftype => config.value<int>('wiftype');
-  int get txVersion => config.value<int>('txversion');
-  int get txFee => config.value<int>('txfee');
+  int? get pubtype => config.valueOrNull<int>('pubtype');
+  int? get p2shtype => config.valueOrNull<int>('p2shtype');
+  int? get wiftype => config.valueOrNull<int>('wiftype');
+  int? get txVersion => config.valueOrNull<int>('txversion');
+  int? get txFee => config.valueOrNull<int>('txfee');
   bool get overwintered => config.valueOrNull<bool>('overwintered') ?? false;
-
-  @override
-  List<String> get requiredServers =>
-      config.value<List<dynamic>>('electrum').cast<String>();
 }

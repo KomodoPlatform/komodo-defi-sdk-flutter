@@ -28,17 +28,24 @@ class PubkeyStrategyFactory {
     ProtocolClass protocol, {
     required bool isHdWallet,
   }) {
-    // Default to single address if not HD enabled
-    if (!isHdWallet) return SingleAddressStrategy();
+    if (!isHdWallet && protocol.requiresHdWallet) {
+      throw UnsupportedProtocolException(
+        'Protocol ${protocol.runtimeType} '
+        'requires HD wallet but wallet is not in HD mode',
+      );
+    }
 
-    // Otherwise choose based on protocol
-    return switch (protocol) {
-      UtxoProtocol() => HDWalletStrategy(),
-      Erc20Protocol() => HDWalletStrategy(),
-      QtumProtocol() => HDWalletStrategy(),
-      ZhtlcProtocol() => throw UnimplementedError(),
-      // SlpProtocol() => HDWalletStrategy(),
-      _ => SingleAddressStrategy(),
-    };
+    return protocol.supportsMultipleAddresses
+        ? HDWalletStrategy()
+        : SingleAddressStrategy();
+  }
+}
+
+extension AssetPubkeyStrategy on Asset {
+  PubkeyStrategy pubkeyStrategy({required bool isHdWallet}) {
+    return PubkeyStrategyFactory.createStrategy(
+      protocol,
+      isHdWallet: isHdWallet,
+    );
   }
 }

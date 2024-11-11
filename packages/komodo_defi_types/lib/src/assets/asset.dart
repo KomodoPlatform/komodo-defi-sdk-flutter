@@ -2,31 +2,45 @@ import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class Asset extends Equatable {
-  const Asset({required this.id, required this.protocol});
+  const Asset({
+    required this.id,
+    required this.protocol,
+  });
 
-  factory Asset.fromJson(JsonMap json, {AssetId? assetId}) {
-    final id = assetId ?? AssetId.fromConfig(json);
-    final protocol = ProtocolClass.fromJson(json);
+  factory Asset.fromJsonWithId(JsonMap json, {required AssetId assetId}) {
+    // Create protocol of the type specified in the AssetId
+    final protocol = ProtocolClass.fromJson(
+      json,
+      requestedType: assetId.subClass,
+    );
 
-    return Asset(id: id, protocol: protocol);
+    return Asset(id: assetId, protocol: protocol);
   }
 
-  // TODO: Differentiate between failed parsing and unsupported assets to make
-  // debugging new assets easier
-  static Asset? tryParse(JsonMap json, {AssetId? assetId}) {
-    try {
-      return Asset.fromJson(json, assetId: assetId);
-    } catch (e) {
-      return null;
-    }
-  }
+  /// Creates a variant of this asset with a different protocol type
+  Asset? createVariant(CoinSubClass protocolType) {
+    if (!protocol.supportsProtocolType(protocolType)) return null;
 
-  PubkeyStrategy pubkeyStrategy({required bool isHdWallet}) {
-    return PubkeyStrategyFactory.createStrategy(
-      protocol,
-      isHdWallet: isHdWallet,
+    final variantProtocol = protocol.createProtocolVariant(protocolType);
+    if (variantProtocol == null) return null;
+
+    return Asset(
+      id: id.copyWith(subClass: protocolType),
+      protocol: variantProtocol,
     );
   }
+
+  /// Gets all supported protocol variants of this asset
+  Set<Asset> get protocolVariants {
+    return protocol.supportedProtocols
+        .map(createVariant)
+        .whereType<Asset>()
+        .toSet();
+  }
+
+  // /// Gets the appropriate activation strategy for this asset
+  // ActivationStrategy get activationStrategy =>
+  //     ActivationStrategyFactory.createForAsset(this);
 
   final AssetId id;
   final ProtocolClass protocol;
@@ -35,18 +49,5 @@ class Asset extends Equatable {
   List<Object?> get props => [id, protocol];
 
   @override
-  String toString() =>
-      'Asset(id: ${id.toJson()}, protocol: ${protocol.toJson()})';
-
-  // Override the equality operator to compare the asset ID only
-  @override
-  bool operator ==(Object other) {
-    if (other is Asset) {
-      return id == other.id;
-    }
-    return false;
-  }
-
-  @override
-  int get hashCode => id.hashCode;
+  String toString() => 'Asset($id)';
 }

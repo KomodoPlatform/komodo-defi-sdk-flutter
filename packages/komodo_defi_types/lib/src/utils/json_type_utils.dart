@@ -52,28 +52,15 @@ T? _traverseJson<T>(
 
   for (var i = 0; i < keys.length; i++) {
     final key = keys[i];
-    final isLast = i == keys.length - 1;
-
     if (value is! Map) {
-      // if (value is! Map && !isLast) {
-      if (nullIfAbsent) {
-        return null;
-      }
-
+      if (nullIfAbsent) return null;
       throw ArgumentError('Cannot traverse a non-Map value');
     }
 
     if (value.containsKey(key) == false) {
-      if (nullIfAbsent) {
-        return null;
-      }
-      if (T == dynamic || T == Null) {
-        return null; // Return null for nullable types //TODO! Fix or remove
-      }
-      // Check if T is nullable and return null if the key is not found
-      if (defaultValue != null) {
-        return defaultValue;
-      }
+      if (nullIfAbsent) return null;
+      if (T == dynamic || T == Null) return null;
+      if (defaultValue != null) return defaultValue;
       throw ArgumentError('Key "$key" not found in Map');
     }
 
@@ -84,68 +71,110 @@ T? _traverseJson<T>(
     return defaultValue;
   }
 
-  if (T == num && value is String) {
-    final parsed = num.tryParse(value);
-    if (parsed != null) {
-      return parsed as T;
+  // Handle various type conversions
+  try {
+    if (value != null) {
+      // Handle List<String> and other list types
+      if (T.toString().startsWith('List<') && value is List) {
+        final genericType = T.toString().substring(5, T.toString().length - 1);
+        switch (genericType) {
+          case 'String':
+            return value.cast<String>() as T;
+          case 'int':
+            return value.cast<int>() as T;
+          case 'double':
+            return value.cast<double>() as T;
+          case 'num':
+            return value.cast<num>() as T;
+          case 'bool':
+            return value.cast<bool>() as T;
+          default:
+            if (genericType == 'Map<String, dynamic>' ||
+                genericType == 'JsonMap') {
+              return value.cast<JsonMap>() as T;
+            }
+        }
+      }
+
+      // Handle number to string conversion
+      if (T == num && value is String) {
+        final parsed = num.tryParse(value);
+        if (parsed != null) return parsed as T;
+      }
+
+      // Handle lossy casts if allowed
+      if (lossyCast && T == String && value is num) {
+        return value.toString() as T;
+      }
+
+      // Handle Map conversions
+      if (T == JsonMap && value is String) {
+        // Instead of attempting to convert a String to a JsonMap,
+        // ensure that `value` is parsed as expected.
+        try {
+          return jsonFromString(value) as T;
+        } catch (e) {
+          throw ArgumentError(
+              'Expected a JSON string to parse, but got an invalid type: '
+              '${value.runtimeType}');
+        }
+      }
+
+      if (T == String && value is JsonMap) {
+        return jsonToString(value) as T;
+      }
+
+// In the list handling section:
+      if (T == JsonList && value is String) {
+        try {
+          return jsonListFromString(value) as T;
+        } catch (e) {
+          throw ArgumentError(
+            'Expected a JSON string representing a List, '
+            'but got an invalid type: ${value.runtimeType}',
+          );
+        }
+      }
+      if (T == JsonList && value is List && value is! JsonList) {
+        return value.cast<JsonMap>() as T;
+      }
+
+      // Handle general Map type conversion
+      if (T != dynamic && value is Map && T.toString().startsWith('Map<')) {
+        return _convertMap(value);
+      }
+
+      // Final type check
+      if (value is! T) {
+        throw ArgumentError(
+          'Expected type $T for ${keys.last}, but got ${value.runtimeType}',
+        );
+      }
     }
-  }
 
-  // Whether to do casts that may result in data loss, such as casting a number
-  // to a string.
-  if (lossyCast && T == String && value is num) {
-    return value.toString() as T;
+    return value as T;
+  } catch (e) {
+    if (nullIfAbsent) return null;
+    rethrow;
   }
-
-  if (T == JsonMap && value is String) {
-    return jsonFromString(value) as T;
-  }
-
-  if (T == String && value is JsonMap) {
-    return jsonToString(value) as T;
-  }
-
-  if (T == JsonList && value is String) {
-    return jsonListFromString(value) as T;
-  }
-
-  if (T == JsonList && value is List && value is! JsonList) {
-    // ignore: unnecessary_cast
-    return (value as List).cast<JsonMap>() as T;
-  }
-
-  // Handle map type conversion
-  if (T != dynamic && value is Map && T.toString().startsWith('Map<')) {
-    try {
-      // Attempt to convert the map to the expected type
-      return _convertMap(value);
-    } catch (e) {
-      throw ArgumentError(
-        'Failed to convert map to expected type $T: $e',
-      );
-    }
-  }
-
-  if (value != null && value is! T) {
-    throw ArgumentError(
-      'Traversed JSON and expected value of type $T for ${keys.last}, '
-      'but got ${value.runtimeType}',
-    );
-  }
-
-  return value as T;
 }
 
 // Helper method to handle lists that might contain maps
 dynamic _convertList(List<dynamic> list) {
-  return list.map((item) {
-    if (item is Map) {
-      return _convertMap<Map<String, dynamic>>(item);
-    } else if (item is List) {
-      return _convertList(item);
-    }
-    return item;
-  }).toList();
+  return list
+      .map(
+        (item) => switch (item) {
+          Map<dynamic, dynamic>() => _convertMap<Map<String, dynamic>>(item),
+          List<dynamic>() => _convertList(item),
+          String() => item, // Keep strings as is
+          int() => item, // Keep numbers as is
+          double() => item,
+          bool() => item, // Keep booleans as is
+          null => null, // Keep nulls as is
+          _ => item.toString(), // Convert other types to string
+        },
+      )
+      .toList();
 }
 
 T _convertMap<T>(Map<dynamic, dynamic> sourceMap) {
@@ -176,6 +205,16 @@ T _convertMap<T>(Map<dynamic, dynamic> sourceMap) {
     throw ArgumentError(
       'Failed to convert map to expected type $T: $e',
     );
+  }
+}
+
+// Add convenience method for handling List<String>
+extension JsonMapListExtension on JsonMap {
+  List<String>? tryGetStringList(String key) {
+    final value = this[key];
+    if (value == null) return null;
+    if (value is! List) return null;
+    return value.cast<String>();
   }
 }
 

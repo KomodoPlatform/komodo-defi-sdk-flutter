@@ -44,7 +44,7 @@ abstract class BaseRequest<T extends BaseResponse,
       'method': method,
       if (mmrpc?.isNotEmpty ?? false) 'mmrpc': mmrpc,
       if (rpcPass?.isNotEmpty ?? false) 'rpc_pass': rpcPass,
-      if (params != null) 'params': params!.toJson().ensureJson(),
+      if (params != null) 'params': params!.toJsonRequestParams().ensureJson(),
     };
   }
 

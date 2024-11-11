@@ -1,72 +1,97 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class EnableTendermintRequest
-    extends BaseRequest<EnableTendermintResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
-  EnableTendermintRequest({
-    required String rpcPass,
+class EnableTendermintWithAssetsRequest extends BaseRequest<
+    EnableTendermintWithAssetsResponse,
+    GeneralErrorResponse> with RequestHandlingMixin {
+  EnableTendermintWithAssetsRequest({
+    required super.rpcPass,
     required this.ticker,
-    required this.activationParams,
-    this.assetsRequests = const [],
+    required this.params,
   }) : super(
           method: 'enable_tendermint_with_assets',
-          rpcPass: rpcPass,
           mmrpc: '2.0',
         );
 
   final String ticker;
-  final CosmosActivationParams activationParams;
-  final List<TokensRequest> assetsRequests;
+  @override
+  final TendermintActivationParams params;
 
   @override
   Map<String, dynamic> toJson() => {
         ...super.toJson(),
         'params': {
           'ticker': ticker,
-          'activation_params': activationParams.toJson(),
-          'assets_requests': assetsRequests.map((e) => e.toJson()).toList(),
+          ...params.toJsonRequestParams(),
         },
       };
 
   @override
-  EnableTendermintResponse parse(Map<String, dynamic> json) =>
-      EnableTendermintResponse.parse(json);
+  EnableTendermintWithAssetsResponse parse(Map<String, dynamic> json) =>
+      EnableTendermintWithAssetsResponse.parse(json);
 }
 
-// lib/src/rpc_methods/tendermint/responses/enable_tendermint_response.dart
-
-class EnableTendermintResponse extends BaseResponse {
-  EnableTendermintResponse({
+// tendermint_response.dart
+class EnableTendermintWithAssetsResponse extends BaseResponse {
+  EnableTendermintWithAssetsResponse({
     required super.mmrpc,
-    required this.balance,
-    required this.assetBalances,
-    required this.chainInfo,
+    required this.ticker,
+    required this.address,
+    required this.currentBlock,
+    this.balance,
+    this.tokensBalances = const {},
+    this.tokensTickers = const [],
   });
 
-  factory EnableTendermintResponse.parse(Map<String, dynamic> json) {
-    return EnableTendermintResponse(
+  factory EnableTendermintWithAssetsResponse.parse(JsonMap json) {
+    final result = json.value<JsonMap>('result');
+    final hasBalances = result.containsKey('balance');
+
+    return EnableTendermintWithAssetsResponse(
       mmrpc: json.value<String>('mmrpc'),
-      balance: BalanceInfo.fromJson(json.value<JsonMap>('result', 'balance')),
-      assetBalances: json
-          .value<List<dynamic>>('result', 'asset_balances')
-          .map((e) => TokenBalance.fromJson(e as JsonMap))
-          .toList(),
-      chainInfo: json.value<Map<String, dynamic>>('result', 'chain_info'),
+      ticker: result.value<String>('ticker'),
+      address: result.value<String>('address'),
+      currentBlock: result.value<int>('current_block'),
+      balance: hasBalances
+          ? BalanceInfo.fromJson(result.value<JsonMap>('balance'))
+          : null,
+      tokensBalances: hasBalances
+          ? Map.fromEntries(
+              result.value<JsonMap>('tokens_balances').entries.map(
+                    (e) => MapEntry(
+                      e.key,
+                      BalanceInfo.fromJson(e.value as JsonMap),
+                    ),
+                  ),
+            )
+          : {},
+      tokensTickers: !hasBalances
+          ? result.value<List<dynamic>>('tokens_tickers').cast<String>()
+          : [],
     );
   }
 
-  final BalanceInfo balance;
-  final List<TokenBalance> assetBalances;
-  final Map<String, dynamic> chainInfo;
+  final String ticker;
+  final String address;
+  final int currentBlock;
+  final BalanceInfo? balance;
+  final Map<String, BalanceInfo> tokensBalances;
+  final List<String> tokensTickers;
 
   @override
   Map<String, dynamic> toJson() => {
         'mmrpc': mmrpc,
         'result': {
-          'balance': balance.toJson(),
-          'asset_balances': assetBalances.map((e) => e.toJson()).toList(),
-          'chain_info': chainInfo,
+          'ticker': ticker,
+          'address': address,
+          'current_block': currentBlock,
+          if (balance != null) 'balance': balance!.toJson(),
+          if (tokensBalances.isNotEmpty)
+            'tokens_balances': Map.fromEntries(
+              tokensBalances.entries
+                  .map((e) => MapEntry(e.key, e.value.toJson())),
+            ),
+          if (tokensTickers.isNotEmpty) 'tokens_tickers': tokensTickers,
         },
       };
 }

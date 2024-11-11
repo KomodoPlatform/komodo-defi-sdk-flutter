@@ -9,12 +9,20 @@ class AssetId extends Equatable {
     required this.symbol,
     required this.chainId,
     required this.derivationPath,
-    // required this.children,
+    required this.subClass,
     this.parentId,
   });
 
-  factory AssetId.fromConfig(JsonMap json, {Map<String, AssetId>? knownIds}) {
-    final parentCoin = json.valueOrNull<String>('parent_coin');
+  factory AssetId.parse(JsonMap json, {required Set<AssetId>? knownIds}) {
+    final subClass = CoinSubClass.parse(json.value('type'));
+
+    final parentCoinTicker = json.valueOrNull<String>('parent_coin');
+    final maybeParent = parentCoinTicker == null
+        ? null
+        : knownIds?.singleWhere(
+            (parent) =>
+                parent.id == parentCoinTicker && parent.subClass == subClass,
+          );
 
     return AssetId(
       id: json.value<String>('coin'),
@@ -22,8 +30,8 @@ class AssetId extends Equatable {
       symbol: AssetSymbol.fromConfig(json),
       chainId: ChainId.parse(json),
       derivationPath: json.valueOrNull<String>('derivation_path'),
-      parentId:
-          parentCoin != null && knownIds != null ? knownIds[parentCoin] : null,
+      subClass: subClass,
+      parentId: maybeParent,
     );
   }
 
@@ -32,38 +40,109 @@ class AssetId extends Equatable {
   final AssetSymbol symbol;
   final ChainId chainId;
   final String? derivationPath;
+  final CoinSubClass subClass;
   final AssetId? parentId;
 
-  // final Set<AssetId> children;
-
   bool get isChildAsset => parentId != null;
-  // bool get isPlatformAsset => parentId == null;
 
-  JsonMap toJson() {
-    return {
-      'coin': id,
-      'fname': name,
-      'symbol': symbol.toJson(),
-      'chain_id': chainId.formattedChainId,
-      'derivation_path': derivationPath,
-      if (parentId != null) 'parent_coin': parentId!.id,
-    };
+  AssetId copyWith({
+    String? id,
+    String? name,
+    AssetSymbol? symbol,
+    ChainId? chainId,
+    String? derivationPath,
+    CoinSubClass? subClass,
+    AssetId? parentId,
+  }) {
+    return AssetId(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      symbol: symbol ?? this.symbol,
+      chainId: chainId ?? this.chainId,
+      derivationPath: derivationPath ?? this.derivationPath,
+      subClass: subClass ?? this.subClass,
+      parentId: parentId ?? this.parentId,
+    );
   }
+
+  /// Method that parses a config object and returns a set of [AssetId] objects.
+  ///
+  /// For most coins, this will return a single [AssetId] object. However, for
+  /// coins that have `other_types` defined in the config, this will return
+  /// multiple [AssetId] objects.
+  static Set<AssetId> parseAllTypes(
+    JsonMap json, {
+    required Set<AssetId>? knownIds,
+  }) {
+    final assetIds = {AssetId.parse(json, knownIds: knownIds)};
+
+    return assetIds;
+
+    // Remove below if it is confirmed that we will never encounter a coin with
+    // multiple types which need to be treated as separate assets.
+
+    final otherTypes = json.valueOrNull<List<String>>('other_types') ?? [];
+
+    for (final otherType in otherTypes) {
+      final jsonCopy = JsonMap.from(json);
+      final otherTypesCopy = List<String>.from(otherTypes)
+        ..remove(otherType)
+        ..add(json.value('type'));
+
+      // TODO: Perhaps restructure so we can copy the protocol data from
+      // another coin with the same type
+      if (otherType == 'UTXO') {
+        // remove all fields except for protocol->type from the protocol data
+        jsonCopy['protocol'] = {'type': otherType};
+      }
+
+      jsonCopy['type'] = otherType;
+      jsonCopy['other_types'] = otherTypesCopy;
+
+      //! assetIds.add(AssetId.parse(jsonCopy));
+    }
+
+    return assetIds;
+  }
+
+  // // Used for string representation in maps/logs
+  // String get uniqueId => isChildAsset
+  //     ? '${parentId!.id}/${id}_${subClass.formatted}'
+  //     : '${id}_${subClass.formatted}';
+
+  JsonMap toJson() => {
+        'coin': id,
+        'fname': name,
+        'symbol': symbol.toJson(),
+        'chain_id': chainId.formattedChainId,
+        'derivation_path': derivationPath,
+        'type': subClass.formatted,
+        if (parentId != null) 'parent_coin': parentId!.id,
+      };
 
   @override
-  List<Object?> get props => [
-        id,
-        // name, symbol, chainId, derivationPath, parentId
-      ];
+  List<Object?> get props => [id, subClass.formatted];
 
-  bool isSameAsset(AssetId other) {
-    return id == other.id &&
-        chainId.formattedChainId == other.chainId.formattedChainId;
-  }
+  // @override
+  // bool operator ==(Object other) {
+  //   if (other is AssetId) {
+  //     return isSameAsset(other);
+  //   }
+  //   return false;
+  // }
+
+  // @override
+  // int get hashCode => id.hashCode ^ subClass.hashCode;
 
   @override
   String toString() =>
-      'AssetId(id: $id${parentId != null ? ', parent: ${parentId!.id}' : ''})';
+      '${isChildAsset ? "${parentId!.id}/" : ""}$id (${subClass.formatted})';
+
+  bool isSameAsset(AssetId other) {
+    return id == other.id &&
+        subClass == other.subClass &&
+        chainId.formattedChainId == other.chainId.formattedChainId;
+  }
 }
 
 abstract class ChainId with EquatableMixin {

@@ -4,10 +4,16 @@
 library _activation;
 
 export 'activation_manager.dart';
+export 'base_strategies/activation_strategy_base.dart';
 export 'base_strategies/activation_strategy_factory.dart';
-export 'base_strategies/batch_activation.dart';
+export 'progress_reporting.dart';
+export 'protocol_strategies/bch_activation_strategy.dart';
 export 'protocol_strategies/bch_with_tokens_batch_strategy.dart';
 export 'protocol_strategies/erc20_activation_strategy.dart';
 export 'protocol_strategies/eth_with_tokens_batch_strategy.dart';
+export 'protocol_strategies/protocol_error_handler.dart';
+export 'protocol_strategies/qtum_activation_strategy.dart';
 export 'protocol_strategies/slp_activation_strategy.dart';
+export 'protocol_strategies/tendermint_activation_strategy.dart';
 export 'protocol_strategies/utxo_activation_strategy.dart';
+export 'protocol_strategies/zhtlc_activation_strategy.dart';

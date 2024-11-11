@@ -16,6 +16,7 @@ class SlpMethodsNamespace extends BaseRpcMethodNamespace {
         rpcPass: rpcPass ?? '',
         ticker: ticker,
         activationParams: params,
+        slpTokensRequests: slpTokensRequests,
         addressFormat: addressFormat,
         getBalances: getBalances,
         utxoMergeParams: utxoMergeParams,

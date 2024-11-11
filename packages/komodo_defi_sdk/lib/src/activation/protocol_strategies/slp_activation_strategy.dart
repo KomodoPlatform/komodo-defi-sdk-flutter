@@ -1,108 +1,105 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-/// Strategy for activating single SLP tokens
-class SlpSingleActivationStrategy extends SingleAssetStrategy {
-  const SlpSingleActivationStrategy();
+@Deprecated('SLP is no longer supported it its authors')
+class SlpActivationStrategy extends ProtocolActivationStrategy {
+  @Deprecated('SLP is no longer supported it its authors')
+  const SlpActivationStrategy(super.client);
+
+  @override
+  Set<CoinSubClass> get supportedProtocols => {CoinSubClass.slp};
+
+  @override
+  bool get supportsBatchActivation => true;
 
   @override
   Stream<ActivationProgress> activate(
-    ApiClient client,
     Asset asset, [
     List<Asset>? children,
   ]) async* {
-    if (children != null) {
-      throw StateError(
-        'Single SLP activation does not support batch operations',
-      );
+    final isPlatformAsset = asset.id.parentId == null;
+    if (!isPlatformAsset && children?.isNotEmpty == true) {
+      throw StateError('Child assets cannot perform batch activation');
     }
 
     yield ActivationProgress(
-      status: 'Activating SLP token ${asset.id.id}...',
+      status: 'Starting BCH/SLP activation...',
+      progressDetails: ActivationProgressDetails(
+        currentStep: 'initialization',
+        stepCount: 3,
+        additionalInfo: {
+          'assetType': isPlatformAsset ? 'platform' : 'token',
+          'protocol': 'SLP',
+          'childCount': children?.length ?? 0,
+        },
+      ),
     );
 
     try {
-      await client.rpc.slp.enableSlpToken(
-        ticker: asset.id.id,
-        params: SlpActivationParams(),
-      );
-      yield ActivationProgress.success();
-    } catch (e) {
-      yield ActivationProgress(
-        status: 'Failed to activate SLP token',
-        errorMessage: e.toString(),
-        isComplete: true,
-      );
-    }
-  }
+      if (isPlatformAsset) {
+        final protocol = asset.protocol as SlpProtocol;
+        yield ActivationProgress(
+          status: 'Configuring BCH platform...',
+          progressPercentage: 33,
+          progressDetails: ActivationProgressDetails(
+            currentStep: 'platform_setup',
+            stepCount: 3,
+            additionalInfo: {
+              'bchdServers': protocol.bchdUrls.length,
+              'electrumServers': protocol.requiredServers,
+            },
+          ),
+        );
 
-  @override
-  bool supportsAssetType(Asset asset) => asset.protocol is SlpProtocol;
+        await client.rpc.slp.enableBchWithTokens(
+          ticker: asset.id.id,
+          params: BchActivationParams.fromJson(protocol.config),
+          slpTokensRequests: children
+                  ?.map(
+                    (child) => TokensRequest(ticker: child.id.id),
+                  )
+                  .toList() ??
+              [],
+        );
+      } else {
+        yield const ActivationProgress(
+          status: 'Activating SLP token...',
+          progressPercentage: 66,
+          progressDetails: ActivationProgressDetails(
+            currentStep: 'token_activation',
+            stepCount: 3,
+          ),
+        );
 
-  List<Map<String, dynamic>> _getElectrumServers(Asset asset) {
-    final protocol = asset.protocol as SlpProtocol;
-    return protocol.requiredServers
-        .map((server) => {'url': server, 'protocol': 'TCP'})
-        .toList();
-  }
-
-  List<String> _getBchdUrls(Asset asset) {
-    final protocol = asset.protocol as SlpProtocol;
-    return protocol.bchdUrls;
-  }
-}
-
-/// Strategy for activating BCH with multiple SLP tokens
-class SlpBatchActivationStrategy extends BatchActivationStrategy {
-  const SlpBatchActivationStrategy();
-
-  @override
-  Stream<ActivationProgress> activate(
-    ApiClient client,
-    Asset parent, [
-    List<Asset>? children = const [],
-  ]) async* {
-    final protocol = parent.protocol as SlpProtocol;
-
-    yield ActivationProgress(
-      status:
-          'Activating ${parent.id.id} with ${children?.length ?? 0} SLP tokens...',
-    );
-
-    try {
-      await client.rpc.slp.enableBchWithTokens(
-        ticker: parent.id.id,
-        params: BchActivationParams(
-          electrumServers: _getElectrumServers(parent),
-          bchdUrls: protocol.bchdUrls,
+        await client.rpc.slp.enableSlpToken(
+          ticker: asset.id.id,
+          params: SlpActivationParams(),
+        );
+      }
+      yield ActivationProgress.success(
+        details: ActivationProgressDetails(
+          currentStep: 'complete',
+          stepCount: 3,
+          additionalInfo: {
+            'activatedChain': asset.id.name,
+            'activationTime': DateTime.now().toIso8601String(),
+          },
         ),
-        slpTokensRequests: children
-                ?.map(
-                  (child) => TokensRequest(
-                    ticker: child.id.id,
-                  ),
-                )
-                .toList() ??
-            [],
       );
-      yield ActivationProgress.success();
-    } catch (e) {
+    } catch (e, stack) {
       yield ActivationProgress(
-        status: 'Batch activation failed',
+        status: 'Activation failed',
         errorMessage: e.toString(),
         isComplete: true,
+        progressDetails: ActivationProgressDetails(
+          currentStep: 'error',
+          stepCount: 3,
+          errorCode: 'SLP_ACTIVATION_ERROR',
+          errorDetails: e.toString(),
+          stackTrace: stack.toString(),
+        ),
       );
     }
-  }
-
-  @override
-  bool supportsAssetType(Asset asset) =>
-      asset.protocol is SlpProtocol && !asset.id.isChildAsset;
-
-  List<Map<String, dynamic>> _getElectrumServers(Asset asset) {
-    final protocol = asset.protocol as SlpProtocol;
-    return protocol.requiredServers
-        .map((server) => {'url': server, 'protocol': 'TCP'})
-        .toList();
   }
 }

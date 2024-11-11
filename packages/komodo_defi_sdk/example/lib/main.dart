@@ -50,7 +50,7 @@ class _KomodoAppState extends State<KomodoApp> {
   // New properties for search functionality
   final TextEditingController _searchController = TextEditingController();
   List<Asset> _filteredAssets = [];
-  late Map<String, Asset> _allAssets;
+  late Map<AssetId, Asset> _allAssets;
 
   @override
   void initState() {
@@ -104,6 +104,11 @@ class _KomodoAppState extends State<KomodoApp> {
 
   Future<void> updateUser([KdfUser? user]) async {
     final userOrRefresh = user ?? await _komodoDefiSdk.auth.currentUser;
+    if (userOrRefresh == null && _currentUser != null) {
+      // Redirect to the main page and clear navigation stack
+      _navigatorKey.currentState?.pushNamedAndRemoveUntil('/', (_) => false);
+      _mnemonic = null;
+    }
     setState(() {
       _currentUser = userOrRefresh;
       _statusMessage = _currentUser != null
@@ -188,16 +193,21 @@ class _KomodoAppState extends State<KomodoApp> {
   Future<void> _signOut() async {
     try {
       await _komodoDefiSdk.auth.signOut();
-      setState(() {
-        _currentUser = null;
-        _statusMessage = 'Signed out';
-        _mnemonic = null;
-      });
+    } on AuthException catch (e) {
+      if (e.type != AuthExceptionType.unauthorized) {
+        rethrow;
+      }
     } catch (e) {
       setState(() {
         _statusMessage = 'Error signing out: $e';
       });
     }
+
+    setState(() {
+      _currentUser = null;
+      _statusMessage = 'Signed out';
+      _mnemonic = null;
+    });
   }
 
   Future<void> _getMnemonic({required bool encrypted}) async {
@@ -398,32 +408,9 @@ class _KomodoAppState extends State<KomodoApp> {
                     itemCount: _filteredAssets.length,
                     itemBuilder: (context, index) {
                       final asset = _filteredAssets.elementAt(index);
-                      final id = asset.id;
-                      const isSupported = true;
-
-                      // TODO!
-                      // asset.isSupported(
-                      //   isHdWallet: _currentUser?.isHd ?? false,
-                      // );
-                      return ListTile(
-                        key: Key(id.id),
-                        title: Text(id.id),
-                        subtitle: Text(id.name),
-                        tileColor:
-                            index.isEven ? Colors.grey[200] : Colors.grey[100],
-                        leading: CircleAvatar(
-                          foregroundImage: NetworkImage(
-                            // https://komodoplatform.github.io/coins/icons/kmd.png
-                            'https://komodoplatform.github.io/coins/icons/${id.symbol.configSymbol.toLowerCase()}.png',
-                          ),
-                          // child: Text(id.id.substring(0, 2)),
-                          // backgroundColor: Colors.transparent,
-                          backgroundColor: Colors.white70,
-                        ),
-                        trailing: _AssetItemTrailing(
-                          asset: asset,
-                          isSupported: isSupported,
-                        ),
+                      return _AssetItemWidget(
+                        asset: asset,
+                        authOptions: _currentUser!.authOptions,
                         onTap: () => _onNavigateToAsset(asset),
                       );
                     },
@@ -778,39 +765,114 @@ class _KomodoAppState extends State<KomodoApp> {
   }
 }
 
-class _AssetItemTrailing extends StatelessWidget {
-  const _AssetItemTrailing({
-    required this.asset,
-    required this.isSupported,
+class AssetIcon extends StatelessWidget {
+  const AssetIcon({
+    required this.id,
+    super.key,
   });
 
-  final bool isSupported;
-
-  final Asset asset;
+  final AssetId id;
 
   @override
   Widget build(BuildContext context) {
-    return isSupported
-        ? const Icon(Icons.arrow_forward_ios)
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (unsupportedMessage != null) ...[
-                Text(unsupportedMessage ?? ''),
-                const SizedBox(width: 8),
-              ],
-              const Icon(Icons.lock),
-            ],
-          );
+    return CircleAvatar(
+      foregroundImage: NetworkImage(
+        // https://komodoplatform.github.io/coins/icons/kmd.png
+        'https://komodoplatform.github.io/coins/icons/${id.symbol.configSymbol.toLowerCase()}.png',
+      ),
+      // child: Text(id.id.substring(0, 2)),
+      // backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white70,
+    );
   }
+}
 
-  // TODO: Change to an enum and move to the SDK.
-  String? get unsupportedMessage {
-    if (isSupported) return null;
+class _AssetItemWidget extends StatelessWidget {
+  const _AssetItemWidget({
+    required this.asset,
+    required this.authOptions,
+    this.onTap,
+  });
 
-    if (!asset.protocol.toJson().containsKey('derivation_path')) {
-      return 'Missing derivation path';
-    }
-    return null;
+  final Asset asset;
+  final AuthOptions authOptions;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompatible = asset.isCompatibleWith(authOptions);
+    final disabledReason = asset.getDisabledReason(authOptions);
+
+    return ListTile(
+      key: Key(asset.id.id),
+      title: Text(asset.id.id),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(asset.id.name),
+          if (disabledReason != null)
+            Text(
+              disabledReason,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+            ),
+        ],
+      ),
+      tileColor: isCompatible ? null : Colors.grey[200],
+      leading: AssetIcon(id: asset.id),
+      trailing: _AssetItemTrailing(
+        asset: asset,
+        isEnabled: isCompatible,
+      ),
+      enabled: isCompatible,
+      onTap: isCompatible ? onTap : null,
+    );
+  }
+}
+
+class _AssetItemTrailing extends StatelessWidget {
+  const _AssetItemTrailing({
+    required this.asset,
+    required this.isEnabled,
+  });
+
+  final Asset asset;
+  final bool isEnabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!isEnabled) ...[
+          const Icon(Icons.lock, color: Colors.grey),
+          const SizedBox(width: 8),
+        ],
+        if (asset.supportsMultipleAddresses && isEnabled) ...[
+          const Tooltip(
+            message: 'Supports multiple addresses',
+            child: Icon(Icons.account_balance_wallet),
+          ),
+          const SizedBox(width: 8),
+        ],
+        if (asset.requiresHdWallet) ...[
+          const Tooltip(
+            message: 'Requires HD wallet',
+            child: Icon(Icons.key),
+          ),
+          const SizedBox(width: 8),
+        ],
+        CircleAvatar(
+          radius: 12,
+          foregroundImage: NetworkImage(
+            'https://komodoplatform.github.io/coins/icons/${asset.id.subClass.ticker.toLowerCase()}.png',
+          ),
+          backgroundColor: Colors.white70,
+        ),
+        const SizedBox(width: 8),
+        const Icon(Icons.arrow_forward_ios),
+      ],
+    );
   }
 }

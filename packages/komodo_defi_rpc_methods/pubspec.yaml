@@ -9,6 +9,7 @@ environment:
   sdk: ^3.4.0
 
 dependencies:
+  collection: ^1.18.0
   decimal: ^3.0.2
   komodo_defi_types:
     path: ../komodo_defi_types

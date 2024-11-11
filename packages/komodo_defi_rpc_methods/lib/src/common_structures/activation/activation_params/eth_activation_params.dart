@@ -11,20 +11,20 @@ class EthWithTokensActivationParams extends ActivationParams {
     super.requiresNotarization = false,
   });
 
-  factory EthWithTokensActivationParams.fromJsonConfig(JsonMap json) {
+  factory EthWithTokensActivationParams.fromJson(JsonMap json) {
+    final base = ActivationParams.fromConfigJson(json);
+
     return EthWithTokensActivationParams(
       nodes: json.value<List<JsonMap>>('nodes').map(EvmNode.fromJson).toList(),
       swapContractAddress: json.value<String>('swap_contract_address'),
       fallbackSwapContract: json.value<String>('fallback_swap_contract'),
-      erc20Tokens:
-          // json
-          //         .valueOrNull<List<JsonMap>>('erc20_tokens_requests')
-          //         ?.map(TokensRequest.fromJson)
-          //         .toList() ??
+      erc20Tokens: json
+              .valueOrNull<List<JsonMap>>('erc20_tokens_requests')
+              ?.map(TokensRequest.fromJson)
+              .toList() ??
           [],
-      requiredConfirmations: json.value<int>('required_confirmations'),
-      requiresNotarization:
-          json.valueOrNull<bool>('requires_notarization') ?? false,
+      requiredConfirmations: base.requiredConfirmations,
+      requiresNotarization: base.requiresNotarization,
     );
   }
 
@@ -53,13 +53,13 @@ class EthWithTokensActivationParams extends ActivationParams {
   }
 
   @override
-  Map<String, dynamic> toJson() => {
-        'nodes': nodes,
-        'swap_contract_address': swapContractAddress,
-        'fallback_swap_contract': fallbackSwapContract,
-        'erc20_tokens_requests': erc20Tokens.map((e) => e.toJson()).toList(),
-        if (requiredConfirmations != null)
-          'required_confirmations': requiredConfirmations,
-        'requires_notarization': requiresNotarization,
-      };
+  Map<String, dynamic> toJsonRequestParams() {
+    return {
+      ...super.toJsonRequestParams(),
+      'nodes': nodes.map((e) => e.toJson()).toList(),
+      'swap_contract_address': swapContractAddress,
+      'fallback_swap_contract': fallbackSwapContract,
+      'erc20_tokens_requests': erc20Tokens.map((e) => e.toJson()).toList(),
+    };
+  }
 }

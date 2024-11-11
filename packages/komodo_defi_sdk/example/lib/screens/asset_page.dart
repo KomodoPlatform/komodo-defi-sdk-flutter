@@ -150,7 +150,7 @@ class _AssetHeaderState extends State<AssetHeader> {
                     ),
                   ],
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Column(
                   children: [
                     Text(
@@ -230,7 +230,8 @@ class _AddressesSection extends StatelessWidget {
                 leading: Text(index.toString()),
                 title: Text(pubkeys.keys[index].toJson().toJsonString()),
                 trailing: Text(
-                    pubkeys.keys[index].balance.total.toStringAsPrecision(2)),
+                  pubkeys.keys[index].balance.total.toStringAsPrecision(2),
+                ),
                 onTap: () {
                   Clipboard.setData(
                     ClipboardData(text: pubkeys.keys[index].address),

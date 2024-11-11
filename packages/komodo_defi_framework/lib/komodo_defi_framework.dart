@@ -140,6 +140,14 @@ class KomodoDefiFramework implements ApiClient {
     final response = await _kdfOperations.mm2Rpc(
       request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
     );
+    // For string fields, try converting to JSON
+    for (final key in response.keys) {
+      if (response[key] is String) {
+        try {
+          response[key] = jsonFromString(response[key] as String);
+        } catch (_) {}
+      }
+    }
     _log('RPC response: ${response.toJsonString()}');
     return response;
   }

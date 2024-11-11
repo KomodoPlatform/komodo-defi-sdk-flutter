@@ -368,7 +368,7 @@ packages:
     source: path
     version: "0.1.0+1"
   komodo_defi_types:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../packages/komodo_defi_types"
       relative: true

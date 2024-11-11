@@ -14,9 +14,15 @@ class ZhtlcProtocol extends ProtocolClass {
     );
   }
 
+  @override
+  bool get supportsMultipleAddresses => false;
+
+  @override
+  bool get requiresHdWallet => false;
+
   static void _validateZhtlcConfig(JsonMap json) {
     final requiredFields = {
-      'zcash_params_path': 'Zcash parameters path',
+      // 'zcash_params_path': 'Zcash parameters path',
       'electrum': 'Electrum servers',
     };
 
@@ -30,9 +36,8 @@ class ZhtlcProtocol extends ProtocolClass {
     }
   }
 
-  String get zcashParamsPath => config.value<String>('zcash_params_path');
+  String get zcashParamsPath =>
 
-  @override
-  List<String> get requiredServers =>
-      config.value<List<dynamic>>('electrum').cast<String>();
+      //TODO! config.value<String>('zcash_params_path');
+      'PLACEHOLDER_STRING_FOR_ZCASH_PARAMS_PATH';
 }

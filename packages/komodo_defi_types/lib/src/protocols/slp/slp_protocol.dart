@@ -4,17 +4,33 @@ class SlpProtocol extends ProtocolClass {
   SlpProtocol._({
     required super.subClass,
     required super.config,
+    required super.supportedProtocols,
   });
 
-  factory SlpProtocol.fromJson(JsonMap json) {
+  factory SlpProtocol.fromJson(
+    JsonMap json, {
+    List<CoinSubClass> supportedProtocols = const [],
+  }) {
     _validateSlpConfig(json);
     return SlpProtocol._(
       subClass: CoinSubClass.parse(json.value('type')),
       config: json,
+      supportedProtocols: supportedProtocols,
     );
   }
 
+  @override
+  bool get supportsMultipleAddresses => true;
+
+  @override
+  bool get requiresHdWallet => false;
+
   static void _validateSlpConfig(JsonMap json) {
+    // Only required for parent assets
+    if (json.valueOrNull<String>('parent_coin') != null) {
+      return;
+    }
+
     final requiredFields = {
       'bchd_urls': 'BCHD URLs',
       'electrum': 'Electrum servers',
@@ -32,8 +48,4 @@ class SlpProtocol extends ProtocolClass {
 
   List<String> get bchdUrls =>
       config.value<List<dynamic>>('bchd_urls').cast<String>();
-
-  @override
-  List<String> get requiredServers =>
-      config.value<List<dynamic>>('electrum').cast<String>();
 }

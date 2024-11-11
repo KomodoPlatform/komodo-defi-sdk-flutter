@@ -7,7 +7,6 @@ enum SyncStatus {
   bool get isComplete => this == success || this == error;
 }
 
-
 /*
 0 =
 "mmrpc" -> "2.0"

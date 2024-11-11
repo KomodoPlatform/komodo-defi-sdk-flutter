@@ -10,7 +10,7 @@ class TokensRequest {
     return TokensRequest(
       ticker: json.value<String>('ticker'),
       requiredConfirmations:
-          json.valueOrNull<int?>('required_confirmations') ?? 3,
+          json.valueOrNull<int>('required_confirmations') ?? 3,
     );
   }
 

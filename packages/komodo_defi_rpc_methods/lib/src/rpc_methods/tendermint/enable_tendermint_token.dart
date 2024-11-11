@@ -5,29 +5,25 @@ class EnableTendermintTokenRequest
     extends BaseRequest<EnableTendermintTokenResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
   EnableTendermintTokenRequest({
-    required String rpcPass,
+    required super.rpcPass,
     required this.ticker,
-    required this.activationParams,
+    required this.params,
   }) : super(
           method: 'enable_tendermint_token',
-          rpcPass: rpcPass,
           mmrpc: '2.0',
-          params: activationParams,
         );
 
   final String ticker;
-  final CosmosActivationParams activationParams;
+  @override
+  final TendermintTokenActivationParams params;
 
   @override
-  Map<String, dynamic> toJson() {
-    return {
-      ...super.toJson(),
-      'params': {
-        'ticker': ticker,
-        'activation_params': activationParams.toJson(),
-      },
-    };
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          'ticker': ticker,
+          'activation_params': params.toJsonRequestParams(),
+        },
+      });
 
   @override
   EnableTendermintTokenResponse parse(Map<String, dynamic> json) =>
@@ -41,22 +37,28 @@ class EnableTendermintTokenResponse extends BaseResponse {
     required this.platformCoin,
   });
 
-  factory EnableTendermintTokenResponse.parse(Map<String, dynamic> json) {
+  factory EnableTendermintTokenResponse.parse(JsonMap json) {
     return EnableTendermintTokenResponse(
       mmrpc: json.value<String>('mmrpc'),
-      balances: json.value<Map<String, dynamic>>('result', 'balances'),
+      balances: Map.fromEntries(
+        json.value<JsonMap>('result', 'balances').entries.map(
+              (e) => MapEntry(e.key, BalanceInfo.fromJson(e.value as JsonMap)),
+            ),
+      ),
       platformCoin: json.value<String>('result', 'platform_coin'),
     );
   }
 
-  final Map<String, dynamic> balances;
+  final Map<String, BalanceInfo> balances;
   final String platformCoin;
 
   @override
   Map<String, dynamic> toJson() => {
         'mmrpc': mmrpc,
         'result': {
-          'balances': balances,
+          'balances': Map.fromEntries(
+            balances.entries.map((e) => MapEntry(e.key, e.value.toJson())),
+          ),
           'platform_coin': platformCoin,
         },
       };

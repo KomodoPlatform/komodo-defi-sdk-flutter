@@ -23,7 +23,7 @@ class LightningActivationParams extends ActivationParams {
   final LightningChannelConfig? ourChannelsConfig;
 
   @override
-  Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toJsonRequestParams() => {
         'name': name,
         'listening_port': listeningPort,
         'color': color,

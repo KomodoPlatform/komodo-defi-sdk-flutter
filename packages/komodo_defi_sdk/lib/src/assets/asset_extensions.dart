@@ -7,13 +7,21 @@ extension AssetValidation on Asset {
   /// A valid asset has all required protocol fields and configuration.
   bool get isValid {
     try {
-      // Check if we have all required fields
-      if (id.derivationPath == null && protocol.derivationPath == null) {
-        return false;
+      // For SLP tokens, we don't require a derivation path
+      if (protocol is SlpProtocol) {
+        return true;
+      }
+
+      // Other protocols require derivation paths for multiple addresses
+      if (protocol.supportsMultipleAddresses) {
+        final derivationPath = id.derivationPath ?? protocol.derivationPath;
+        if (derivationPath == null) {
+          return false;
+        }
       }
 
       // Ensure required servers are available
-      if (protocol.requiredServers?.isEmpty ?? true) {
+      if (protocol.requiredServers.isEmpty ?? true) {
         return false;
       }
 
@@ -39,7 +47,7 @@ extension AssetValidation on Asset {
     return _checkWalletCompatibility(authOptions);
   }
 
-  /// Checks compatibility with specific wallet options.
+  /// Check compatibility with specific wallet options.
   /// Useful for pre-checking compatibility before wallet mode changes.
   bool isCompatibleWith(AuthOptions options) {
     if (!isValid) return false;
@@ -50,82 +58,60 @@ extension AssetValidation on Asset {
   bool _checkWalletCompatibility(AuthOptions options) {
     final isHdWallet = options.derivationMethod == DerivationMethod.hdWallet;
 
+    // SLP tokens always use single address mode regardless of wallet mode
+    if (protocol is SlpProtocol) {
+      return true;
+    }
+
     // Check if protocol requires HD wallet
     if (protocol.requiresHdWallet && !isHdWallet) {
       return false;
     }
 
-    // Check derivation path requirements for HD mode
+    // For HD wallets, check derivation path requirements for multi-address protocols
     if (isHdWallet && protocol.supportsMultipleAddresses) {
-      final path = id.derivationPath ?? protocol.derivationPath;
-      if (path == null) return false;
+      final derivationPath = id.derivationPath ?? protocol.derivationPath;
+      if (derivationPath == null) {
+        return false;
+      }
     }
 
     return true;
   }
 
-  /// Determines if the asset should be displayed in the current context
-  Future<bool> get shouldDisplay async {
-    // Always hide invalid assets
-    if (!isValid) return false;
+  /// Get derivation path from either the asset ID or protocol
+  String? get derivationPath => id.derivationPath ?? protocol.derivationPath;
 
-    // Hide incompatible assets by default
-    if (!await isCompatible) return false;
+  /// Whether this asset supports multiple addresses
+  bool get supportsMultipleAddresses => protocol.supportsMultipleAddresses;
 
-    // Could add additional display filters here
+  /// Whether this asset requires HD wallet mode
+  bool get requiresHdWallet => protocol.requiresHdWallet;
 
-    return true;
+  /// Get human-readable reason why an asset might be disabled
+  String? getDisabledReason(AuthOptions options) {
+    if (!isValid) {
+      if (protocol.supportsMultipleAddresses && derivationPath == null) {
+        return 'Missing derivation path required for multiple addresses';
+      }
+      if (protocol.requiredServers.isEmpty ?? true) {
+        return 'No servers configured';
+      }
+      return 'Invalid configuration';
+    }
+
+    final isHdWallet = options.derivationMethod == DerivationMethod.hdWallet;
+
+    if (protocol.requiresHdWallet && !isHdWallet) {
+      return 'Requires HD wallet mode';
+    }
+
+    if (isHdWallet &&
+        protocol.supportsMultipleAddresses &&
+        derivationPath == null) {
+      return 'Missing derivation path for HD wallet';
+    }
+
+    return null;
   }
 }
-
-/// Extension for protocol-specific requirements and capabilities
-extension ProtocolRequirements on ProtocolClass {
-  /// Whether this protocol requires HD wallet support
-  bool get requiresHdWallet => switch (this) {
-        // Currently there are no protocols that do not work in legacy mode
-        _ => false,
-      };
-
-  /// Whether this protocol supports multiple addresses
-  bool get supportsMultipleAddresses => switch (this) {
-        UtxoProtocol() => true,
-        QtumProtocol() => true,
-        Erc20Protocol() => true,
-        _ => false,
-      };
-
-  /// The required derivation path format for this protocol
-  String? get requiredDerivationPath => switch (this) {
-        // UtxoProtocol() => "m/44'/0'/0'",
-        // Erc20Protocol() => "m/44'/60'/0'/0",
-        // SlpProtocol() => "m/44'/145'/0'",
-        // QtumProtocol() => "m/44'/2301'/0'",
-        _ => null,
-      };
-}
-
-/// Example usage:
-/// ```dart
-/// final asset = Asset(...);
-///
-/// // Basic validation
-/// if (!asset.isValid) {
-///   print('Asset is missing required configuration');
-///   return;
-/// }
-///
-/// // Compatibility check
-/// if (await asset.isCompatible) {
-///   // Asset can be used with current wallet
-/// }
-///
-/// // Display filtering
-/// if (await asset.shouldDisplay) {
-///   // Show asset in UI
-/// }
-///
-/// // Pre-check compatibility
-/// final hdCompatible = asset.isCompatibleWith(AuthOptions(
-///   derivationMethod: DerivationMethod.hdWallet,
-/// ));
-/// ```

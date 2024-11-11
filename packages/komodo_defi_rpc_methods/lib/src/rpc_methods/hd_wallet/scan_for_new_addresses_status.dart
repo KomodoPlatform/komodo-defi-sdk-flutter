@@ -1,4 +1,3 @@
-import 'package:komodo_defi_rpc_methods/src/common_structures/general/scan_address_info.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 

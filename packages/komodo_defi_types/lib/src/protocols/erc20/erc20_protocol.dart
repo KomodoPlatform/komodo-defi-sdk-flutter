@@ -15,10 +15,17 @@ class Erc20Protocol extends ProtocolClass {
     );
   }
 
+  @override
+  bool get supportsMultipleAddresses => true;
+
+  @override
+  bool get requiresHdWallet => false;
+
+  @override
   ActivationParams defaultActivationParams([List<Asset>? childTokens]) {
     return childTokens == null
         ? Erc20ActivationParams.fromJsonConfig(super.config)
-        : EthWithTokensActivationParams.fromJsonConfig(config).copyWith(
+        : EthWithTokensActivationParams.fromJson(config).copyWith(
             erc20Tokens: childTokens
                 .map((token) => TokensRequest(ticker: token.id.id))
                 .toList(),
@@ -53,7 +60,4 @@ class Erc20Protocol extends ProtocolClass {
 
   String get fallbackSwapContract =>
       config.value<String>('fallback_swap_contract');
-
-  @override
-  List<String> get requiredServers => nodes.map((node) => node.url).toList();
 }

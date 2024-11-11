@@ -46,7 +46,7 @@ void main(List<String> arguments) {
                 segment,
                 () => {
                   'classes': <dynamic, dynamic>{},
-                  'children': <dynamic, dynamic>{}
+                  'children': <dynamic, dynamic>{},
                 },
               )['children'] as Map<dynamic, dynamic>)
                   .cast<String, dynamic>();

@@ -55,6 +55,8 @@ dependencies:
   flutter_inappwebview: ^6.1.4
   shelf_proxy: ^1.0.4
 
+  komodo_defi_types:
+    path: ../packages/komodo_defi_types
 dev_dependencies:
   flutter_test:
     sdk: flutter

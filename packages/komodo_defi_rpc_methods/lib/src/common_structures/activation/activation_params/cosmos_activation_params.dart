@@ -10,7 +10,7 @@ class CosmosActivationParams extends ActivationParams {
   final bool isIrisToken;
 
   @override
-  Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toJsonRequestParams() => {
         'rpc_urls': rpcUrls,
         'is_iris_token': isIrisToken,
       };

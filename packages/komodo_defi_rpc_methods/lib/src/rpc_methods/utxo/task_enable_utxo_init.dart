@@ -1,4 +1,3 @@
-import 'package:komodo_defi_rpc_methods/src/common_structures/common_structures.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -26,7 +25,8 @@ class TaskEnableUtxoInit
         'method': method,
         'params': {
           'ticker': ticker,
-          'activation_params': params.toJson(),
+          // ...params.toJsonRequestParams(),
+          'activation_params': params.toJsonRequestParams(),
         },
       };
 

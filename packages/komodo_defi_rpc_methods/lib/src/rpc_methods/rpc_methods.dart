@@ -32,3 +32,4 @@ export 'wallet/get_wallet.dart';
 export 'wallet/get_wallet_names_request.dart';
 export 'wallet/get_wallet_names_response.dart';
 export 'wallet/my_balance.dart';
+export 'zhtlc/zhtlc_rpc_namespace.dart';

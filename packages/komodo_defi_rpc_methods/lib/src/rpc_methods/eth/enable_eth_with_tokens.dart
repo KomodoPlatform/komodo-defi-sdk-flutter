@@ -26,7 +26,7 @@ class EnableEthWithTokensRequest
     return super.toJson().deepMerge({
       'params': {
         'ticker': ticker,
-        ...activationParams.toJson(),
+        ...activationParams.toJsonRequestParams(),
         // 'erc20_tokens_requests':
         //     activationParams.erc20Tokens?.map((e) => e.toJson()).toList() ?? [],
         'get_balances': getBalances,

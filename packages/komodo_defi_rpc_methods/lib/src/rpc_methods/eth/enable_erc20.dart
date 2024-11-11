@@ -7,30 +7,20 @@ class EnableErc20Request
   EnableErc20Request({
     required String rpcPass,
     required this.ticker,
-    required List<EvmNode> nodes,
-    required String swapContractAddress,
-    required String fallbackSwapContract,
+    required this.activationParams,
   }) : super(
           method: 'enable_erc20',
           rpcPass: rpcPass,
           mmrpc: '2.0',
-          params: Erc20ActivationParams(
-            nodes: nodes,
-            swapContractAddress: swapContractAddress,
-            fallbackSwapContract: fallbackSwapContract,
-          ),
         );
 
   final String ticker;
-  // final Erc20ActivationParams activationParams;
+  final Erc20ActivationParams activationParams;
 
   @override
   Map<String, dynamic> toJson() {
     return super.toJson().deepMerge({
-      'params': {
-        'ticker': ticker,
-        'activation_params': params?.toJson(),
-      },
+      'params': {'ticker': ticker, ...activationParams.toJsonRequestParams()},
     });
   }
 

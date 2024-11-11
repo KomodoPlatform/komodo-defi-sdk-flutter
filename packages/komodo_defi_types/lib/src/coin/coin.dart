@@ -1,5 +1,3 @@
-import 'package:komodo_defi_types/types.dart';
-
 // class Coin {
 //   const Coin({
 //     required this.name,

@@ -3,30 +3,30 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 class TendermintMethodsNamespace extends BaseRpcMethodNamespace {
   TendermintMethodsNamespace(super.client);
 
-  Future<EnableTendermintResponse> enableTendermintWithAssets({
+  /// Enable Tendermint chain with optional IBC assets
+  Future<EnableTendermintWithAssetsResponse> enableTendermintWithAssets({
     required String ticker,
-    required CosmosActivationParams params,
-    List<TokensRequest> assetsRequests = const [],
+    required TendermintActivationParams params,
   }) {
     return execute(
-      EnableTendermintRequest(
+      EnableTendermintWithAssetsRequest(
         rpcPass: rpcPass ?? '',
         ticker: ticker,
-        activationParams: params,
-        assetsRequests: assetsRequests,
+        params: params,
       ),
     );
   }
 
+  /// Enable individual Tendermint token
   Future<EnableTendermintTokenResponse> enableTendermintToken({
     required String ticker,
-    required CosmosActivationParams params,
+    required TendermintTokenActivationParams params,
   }) {
     return execute(
       EnableTendermintTokenRequest(
         rpcPass: rpcPass ?? '',
         ticker: ticker,
-        activationParams: params,
+        params: params,
       ),
     );
   }

@@ -1,74 +1,166 @@
+import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-/// Strategy for activating UTXO-based coins
-class UtxoActivationStrategy extends SingleAssetStrategy {
-  const UtxoActivationStrategy();
+class UtxoActivationStrategy extends ProtocolActivationStrategy {
+  const UtxoActivationStrategy(super.client);
+
+  @override
+  Set<CoinSubClass> get supportedProtocols => {
+        CoinSubClass.utxo,
+        CoinSubClass.smartChain,
+        // CoinSubClass.smartBch,
+      };
+
+  @override
+  bool get supportsBatchActivation => false;
 
   @override
   Stream<ActivationProgress> activate(
-    ApiClient client,
     Asset asset, [
-    List<Asset>? childAssets,
+    List<Asset>? children,
   ]) async* {
-    if (childAssets?.isNotEmpty ?? false) {
-      throw StateError('UTXO activation does not support batch operations');
+    if (children?.isNotEmpty == true) {
+      throw UnsupportedError('UTXO protocol does not support batch activation');
     }
 
     final protocol = asset.protocol as UtxoProtocol;
 
     yield ActivationProgress(
-      status: 'Starting UTXO activation for ${asset.id.id}...',
+      status: 'Starting ${asset.id.name} activation...',
+      progressDetails: ActivationProgressDetails(
+        currentStep: 'initialization',
+        stepCount: 5,
+        additionalInfo: {
+          'chainType': protocol.subClass.formatted,
+          'mode': protocol.defaultActivationParams().mode?.rpc,
+          'txVersion': protocol.txVersion,
+          'pubtype': protocol.pubtype,
+        },
+      ),
     );
 
     try {
+      yield const ActivationProgress(
+        status: 'Validating protocol configuration...',
+        progressPercentage: 20,
+        progressDetails: ActivationProgressDetails(
+          currentStep: 'validation',
+          stepCount: 5,
+        ),
+      );
+
       final taskResponse = await client.rpc.utxo.enableUtxoInit(
         ticker: asset.id.id,
         params: protocol.defaultActivationParams(),
       );
 
       yield ActivationProgress(
-        status: 'Checking activation status...',
+        status: 'Establishing network connections...',
+        progressPercentage: 40,
+        progressDetails: ActivationProgressDetails(
+          currentStep: 'connection',
+          stepCount: 5,
+          additionalInfo: {
+            'electrumServers': protocol.requiredServers.toJsonRequest(),
+          },
+        ),
       );
 
       var isComplete = false;
       while (!isComplete) {
-        final status =
-            await client.rpc.utxo.taskEnableStatus(taskResponse.taskId);
+        final status = await client.rpc.utxo.taskEnableStatus(
+          taskResponse.taskId,
+        );
 
         if (status.isCompleted) {
           if (status.status == 'Ok') {
-            yield ActivationProgress.success();
+            yield ActivationProgress.success(
+              details: ActivationProgressDetails(
+                currentStep: 'complete',
+                stepCount: 5,
+                additionalInfo: {
+                  'activatedChain': asset.id.name,
+                  'activationTime': DateTime.now().toIso8601String(),
+                  'txFee': protocol.txFee,
+                  'overwintered': protocol.overwintered,
+                },
+              ),
+            );
           } else {
             yield ActivationProgress(
               status: 'Activation failed: ${status.details}',
               errorMessage: status.details,
               isComplete: true,
+              progressDetails: ActivationProgressDetails(
+                currentStep: 'error',
+                stepCount: 5,
+                errorCode: 'UTXO_ACTIVATION_ERROR',
+                errorDetails: status.details,
+              ),
             );
           }
           isComplete = true;
         } else {
+          final progress = _parseUtxoStatus(status.status);
           yield ActivationProgress(
-            status: status.status,
-            progressPercentage: _calculateProgress(status.status),
+            status: progress.status,
+            progressPercentage: progress.percentage,
+            progressDetails: ActivationProgressDetails(
+              currentStep: progress.step,
+              stepCount: 5,
+              additionalInfo: progress.info,
+            ),
           );
           await Future<void>.delayed(const Duration(milliseconds: 500));
         }
       }
-    } catch (e) {
+    } catch (e, stack) {
       yield ActivationProgress(
         status: 'Activation failed',
         errorMessage: e.toString(),
         isComplete: true,
+        progressDetails: ActivationProgressDetails(
+          currentStep: 'error',
+          stepCount: 5,
+          errorCode: 'UTXO_ACTIVATION_ERROR',
+          errorDetails: e.toString(),
+          stackTrace: stack.toString(),
+        ),
       );
     }
   }
 
-  double? _calculateProgress(String status) {
-    // Implement progress calculation based on status messages
-    // Return null if progress cannot be determined
-    return null;
+  ({String status, double percentage, String step, Map<String, dynamic> info})
+      _parseUtxoStatus(String status) {
+    switch (status) {
+      case 'ConnectingElectrum':
+        return (
+          status: 'Connecting to Electrum servers...',
+          percentage: 60,
+          step: 'electrum_connection',
+          info: {'connectionType': 'Electrum'},
+        );
+      case 'LoadingBlockchain':
+        return (
+          status: 'Loading blockchain data...',
+          percentage: 80,
+          step: 'blockchain_sync',
+          info: {'dataType': 'blockchain'},
+        );
+      case 'ScanningTransactions':
+        return (
+          status: 'Scanning transaction history...',
+          percentage: 90,
+          step: 'tx_scan',
+          info: {'dataType': 'transactions'},
+        );
+      default:
+        return (
+          status: 'Processing activation...',
+          percentage: 95,
+          step: 'processing',
+          info: {'status': status},
+        );
+    }
   }
-
-  @override
-  bool supportsAssetType(Asset asset) => asset.protocol is UtxoProtocol;
 }

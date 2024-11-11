@@ -9,7 +9,7 @@ class EnableSlpRequest
     required this.activationParams,
     super.rpcPass,
   }) : super(
-          method: 'enable_slp_token',
+          method: 'enable_slp',
           mmrpc: '2.0',
         );
 
@@ -21,7 +21,8 @@ class EnableSlpRequest
         ...super.toJson(),
         'params': {
           'ticker': ticker,
-          'activation_params': activationParams.toJson(),
+          ...activationParams.toJson(),
+          // 'activation_params': activationParams.toJson(),
         },
       };
 

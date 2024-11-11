@@ -20,7 +20,7 @@ class Erc20ActivationParams extends ActivationParams {
   final String fallbackSwapContract;
 
   @override
-  JsonMap toJson() => {
+  JsonMap toJsonRequestParams() => {
         'nodes': nodes,
         'swap_contract_address': swapContractAddress,
         'fallback_swap_contract': fallbackSwapContract,

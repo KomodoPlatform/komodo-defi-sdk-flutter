@@ -1,13 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:komodo_coins/src/config_transform.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+// lib/src/komodo_coins_base.dart
 class KomodoCoins {
   factory KomodoCoins() => _instance;
   KomodoCoins._internal();
   static final KomodoCoins _instance = KomodoCoins._internal();
 
-  static Map<String, Asset>? _assets;
+  static Map<AssetId, Asset>? _assets;
 
   @mustCallSuper
   Future<void> init() async {
@@ -16,16 +18,14 @@ class KomodoCoins {
 
   bool get isInitialized => _assets != null;
 
-  Map<String, Asset> get all {
+  Map<AssetId, Asset> get all {
     if (!isInitialized) {
       throw StateError('Assets have not been initialized. Call init() first.');
     }
-    final hasAvax = _assets!.containsKey('AVAX');
     return _assets!;
   }
 
-  /// Fetches assets from a remote source using a two-pass approach to handle parent relationships
-  static Future<Map<String, Asset>> fetchAssets() async {
+  static Future<Map<AssetId, Asset>> fetchAssets() async {
     if (_assets != null) return _assets!;
 
     final url = Uri.parse(
@@ -34,54 +34,65 @@ class KomodoCoins {
 
     try {
       final response = await http.get(url);
-
       if (response.statusCode == 200) {
         final jsonData = jsonFromString(response.body);
 
-        // First pass: Create AssetIds for platform coins
-        final platformAssetIds = <String, AssetId>{};
+        // First pass: Parse all platform coin AssetIds
+        final platformIds = <AssetId>{};
         for (final entry in jsonData.entries) {
-          final coinData = entry.value as JsonMap;
-          if (_isPlatformCoin(coinData)) {
+          // Apply transforms before processing
+          final coinData = (entry.value as JsonMap).applyTransforms;
+
+          if (_hasNoParent(coinData)) {
             try {
-              final assetId = AssetId.fromConfig(coinData);
-              platformAssetIds[entry.key] = assetId;
+              platformIds.addAll(AssetId.parseAllTypes(coinData, knownIds: {}));
             } catch (e) {
               debugPrint('Error parsing platform coin ${entry.key}: $e');
             }
           }
         }
 
-        // Second pass: Create all Assets with proper parent relationships
-        final assets = <String, Asset>{};
-        for (final entry in jsonData.entries) {
-          final coinData = entry.value as JsonMap;
+        // Second pass: Create assets with proper parent relationships
+        final assets = <AssetId, Asset>{};
 
-          // Skip if it's an NFT. They are not supported yet, and will likely
-          // belong elsewhere in the codebase.
-          if (coinData.valueOrNull<String>('protocol', 'type') == 'NFT') {
+        for (final entry in jsonData.entries) {
+          // Apply transforms before processing
+          final coinData = (entry.value as JsonMap).applyTransforms;
+
+          // Filter out excluded coins
+          if (const CoinFilter().shouldFilter(entry.value as JsonMap)) {
+            debugPrint('[Komodo Coins] Excluding coin ${entry.key}');
             continue;
           }
 
           try {
-            final assetId =
-                AssetId.fromConfig(coinData, knownIds: platformAssetIds);
-            final asset = Asset.tryParse(coinData, assetId: assetId);
+            // Parse all possible AssetIds for this coin
+            final assetIds =
+                AssetId.parseAllTypes(coinData, knownIds: platformIds).map(
+              (id) => id.isChildAsset
+                  ? AssetId.parse(coinData, knownIds: platformIds)
+                  : id,
+            );
 
-            if (asset != null) {
-              assets[entry.key] = asset;
+            // Create Asset instance for each valid AssetId
+            for (final assetId in assetIds) {
+              final asset = Asset.fromJsonWithId(coinData, assetId: assetId);
+              // if (asset != null) {
+              assets[assetId] = asset;
+              // }
             }
           } catch (e) {
-            debugPrint('Error parsing asset ${entry.key}: $e');
+            debugPrint(
+              'Error parsing asset ${entry.key}: $e , '
+              'with transformed data: \n${coinData.toJsonString()}\n',
+            );
           }
         }
 
         _assets = assets;
         return assets;
       } else {
-        throw Exception(
-          'Failed to fetch assets with status code: ${response.statusCode}',
-        );
+        throw Exception('Failed to fetch assets: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error fetching assets: $e');
@@ -89,9 +100,30 @@ class KomodoCoins {
     }
   }
 
-  static bool _isPlatformCoin(JsonMap coinData) {
-    // Check if it's a platform coin based on config properties
+  static bool _hasNoParent(JsonMap coinData) {
     return !coinData.containsKey('parent_coin') ||
         coinData.valueOrNull<String>('parent_coin') == null;
+  }
+
+  // Helper methods
+  Asset? findByTicker(String ticker, CoinSubClass subClass) {
+    return all.entries
+        .where((e) => e.key.id == ticker && e.key.subClass == subClass)
+        .map((e) => e.value)
+        .firstOrNull;
+  }
+
+  Set<Asset> findVariantsOfCoin(String ticker) {
+    return all.entries
+        .where((e) => e.key.id == ticker)
+        .map((e) => e.value)
+        .toSet();
+  }
+
+  Set<Asset> findChildAssets(AssetId parentId) {
+    return all.entries
+        .where((e) => e.key.isChildAsset && e.key.parentId == parentId)
+        .map((e) => e.value)
+        .toSet();
   }
 }

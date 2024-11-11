@@ -16,12 +16,13 @@ class UtxoMethodsNamespace extends BaseRpcMethodNamespace {
     );
   }
 
-  Future<TaskStatusResponse> taskEnableStatus(int taskId, [String? rpcPass]) =>
-      execute(
-        TaskStatusRequest(
-          taskId: taskId,
-          rpcPass: rpcPass,
-          method: 'task::enable_utxo::status',
-        ),
-      );
+  Future<TaskStatusResponse> taskEnableStatus(int taskId, [String? rpcPass]) {
+    return execute(
+      TaskStatusRequest(
+        taskId: taskId,
+        rpcPass: rpcPass,
+        method: 'task::enable_utxo::status',
+      ),
+    );
+  }
 }

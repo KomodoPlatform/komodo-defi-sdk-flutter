@@ -1,8 +1,18 @@
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+
 class EvmNode {
   EvmNode({
     required this.url,
     this.guiAuth = false,
   });
+
+  factory EvmNode.fromJson(JsonMap json) {
+    return EvmNode(
+      url: json.value<String>('url'),
+      guiAuth: json.valueOrNull<bool>('gui_auth') ?? false,
+    );
+  }
+
   final String url;
   final bool guiAuth;
 
@@ -10,11 +20,4 @@ class EvmNode {
         'url': url,
         'gui_auth': guiAuth,
       };
-
-  factory EvmNode.fromJson(Map<String, dynamic> json) {
-    return EvmNode(
-      url: json['url'] as String,
-      guiAuth: json['gui_auth'] as bool? ?? false,
-    );
-  }
 }
