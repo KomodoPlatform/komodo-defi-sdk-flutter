@@ -176,7 +176,7 @@ class KdfOperationsWasm implements IKdfOperations {
     try {
       await _ensureLoaded();
 
-      _log('mm2Rpc request (pre-process): $request');
+      if (kDebugMode) _log('mm2Rpc request (pre-process): $request');
       request['userpass'] = _config.rpcPassword;
 
       final jsResponse = await js_util.promiseToFuture<js_interop.JSObject>(
