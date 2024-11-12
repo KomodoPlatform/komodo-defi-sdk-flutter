@@ -1,7 +1,7 @@
 {
     "api": {
-        "api_commit_hash": "9c59062b0ee42bc4413a2649c4e59147963bd2a9",
-        "branch": "fix-evm-get-new-addr",
+        "api_commit_hash": "dfca6b753adad0535e2ad8728c0fa36b0a871b6c",
+        "branch": "dev",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
@@ -12,14 +12,14 @@
             "web": {
                 "matching_keyword": "wasm",
                 "valid_zip_sha256_checksums": [
-                    "5ca29a955a71c66fcafa4ba3bad620057323d50d4a82dff7a9611b44c2c84910"
+                    "1e64f4f4491ae07ff81bd218083eb95364698c355d6e3f883858167de187f8ab"
                 ],
                 "path": "web/kdf/bin"
             },
             "macos": {
                 "matching_keyword": "mac-arm64",
                 "valid_zip_sha256_checksums": [
-                    "478cf5dd2ceb88013c8ccf559ef8a452ab78dc2d5d830ce4e1c27ea303ff1da0"
+                    "ca71f3b8a51bdda2def0b8f18fe05e7e4a4dbdcae4d12f932c771643311892c3"
                 ],
                 "path": "macos/bin"
             }
