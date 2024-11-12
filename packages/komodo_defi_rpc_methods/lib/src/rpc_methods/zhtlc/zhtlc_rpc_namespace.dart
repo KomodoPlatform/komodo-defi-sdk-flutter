@@ -39,7 +39,7 @@ class TaskEnableZhtlcInit
     required this.params,
     super.rpcPass,
   }) : super(
-          method: 'task::enable_zhtlc::init',
+          method: 'task::enable_z_coin::init',
           mmrpc: '2.0',
         );
 
@@ -76,7 +76,7 @@ class TaskEnableZhtlcStatus
     this.forgetIfFinished = true,
     super.rpcPass,
   }) : super(
-          method: 'task::enable_zhtlc::status',
+          method: 'task::enable_z_coin::status',
           mmrpc: '2.0',
         );
 

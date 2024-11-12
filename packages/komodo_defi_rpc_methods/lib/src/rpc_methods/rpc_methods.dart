@@ -16,7 +16,6 @@ export 'hd_wallet/account_balance.dart';
 export 'hd_wallet/get_new_address.dart';
 export 'hd_wallet/scan_for_new_addresses_init.dart';
 export 'hd_wallet/scan_for_new_addresses_status.dart';
-export 'hd_wallet/token_balance_map.dart';
 export 'methods.dart';
 export 'qtum/enable_qtum.dart';
 export 'qtum/qtum_rpc_namespace.dart';

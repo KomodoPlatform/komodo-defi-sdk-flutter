@@ -35,9 +35,11 @@ class PubkeyStrategyFactory {
       );
     }
 
-    return protocol.supportsMultipleAddresses
-        ? HDWalletStrategy()
-        : SingleAddressStrategy();
+    if (isHdWallet && protocol.supportsMultipleAddresses) {
+      return HDWalletStrategy();
+    }
+
+    return SingleAddressStrategy();
   }
 }
 

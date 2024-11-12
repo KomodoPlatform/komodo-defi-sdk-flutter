@@ -14,9 +14,6 @@ class MyBalanceRequest
   @override
   Map<String, dynamic> toJson() {
     return super.toJson().deepMerge({
-      'userpass': rpcPass,
-      'method': method,
-      'mmrpc': mmrpc,
       'coin': coin,
     });
   }

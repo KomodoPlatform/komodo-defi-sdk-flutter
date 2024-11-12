@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
+import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/types.dart';
 
@@ -26,6 +28,10 @@ class ActivationManager {
         Completer<void>.new,
       );
 
+      final parentAsset = group.parentId != null
+          ? KomodoDefiSdk.global.assets.fromId(group.parentId!)
+          : null;
+
       yield ActivationProgress(
         status: 'Starting activation for ${group.primary.id.name}...',
         progressDetails: ActivationProgressDetails(
@@ -39,8 +45,10 @@ class ActivationManager {
       );
 
       try {
-        await for (final progress
-            in _activator.activate(group.primary, group.children?.toList())) {
+        await for (final progress in _activator.activate(
+          parentAsset ?? group.primary,
+          group.children?.toList(),
+        )) {
           yield progress;
 
           if (progress.isComplete) {
@@ -73,7 +81,7 @@ class ActivationManager {
     }
   }
 
-  bool isAssetActive(AssetId assetId) => _activeAssetIds.contains(assetId);
+  // bool isAssetActive(AssetId assetId) => _activeAssetIds.contains(assetId);
 
   void dispose() {
     _activationCompleters.clear();
@@ -85,10 +93,16 @@ class _AssetGroup {
   _AssetGroup({
     required this.primary,
     this.children,
-  });
+  }) : assert(
+          children == null || children.every((asset) => asset.id == primary.id),
+          'All child assets in a group must have the same parent',
+        );
 
   final Asset primary;
   final Set<Asset>? children;
+
+  AssetId? get parentId =>
+      children?.firstWhereOrNull((asset) => asset.id.isChildAsset)?.id.parentId;
 
   static List<_AssetGroup> _groupByPrimary(List<Asset> assets) {
     final groups = <AssetId, _AssetGroup>{};

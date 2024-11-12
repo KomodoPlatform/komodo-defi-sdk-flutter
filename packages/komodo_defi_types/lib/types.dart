@@ -38,4 +38,6 @@ export 'src/public_key/asset_pubkeys.dart';
 export 'src/public_key/derivation_method.dart';
 export 'src/public_key/pubkey.dart';
 export 'src/public_key/pubkey_strategy.dart';
+export 'src/public_key/token_balance_map.dart';
+export 'src/public_key/wallet_balance.dart';
 export 'src/transactions/transaction.dart';

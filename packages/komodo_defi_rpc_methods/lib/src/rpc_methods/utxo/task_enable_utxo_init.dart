@@ -15,6 +15,7 @@ class TaskEnableUtxoInit
   final String ticker;
 
   @override
+  // ignore: overridden_fields
   final UtxoActivationParams params;
 
   @override
@@ -25,7 +26,6 @@ class TaskEnableUtxoInit
         'method': method,
         'params': {
           'ticker': ticker,
-          // ...params.toJsonRequestParams(),
           'activation_params': params.toJsonRequestParams(),
         },
       };

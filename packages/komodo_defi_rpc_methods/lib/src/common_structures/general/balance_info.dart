@@ -38,39 +38,6 @@ class BalanceInfo {
         _spendable = Decimal.zero,
         _unspendable = Decimal.zero;
 
-  // factory BalanceInfo.fromValues({
-  //   Decimal? total,
-  //   Decimal? spendable,
-  //   Decimal? unspendable,
-  // }) {
-  //   // If any of the values are not provided, derive them accordingly.
-  //   if (total == null) {
-  //     if (spendable == null || unspendable == null) {
-  //       throw ArgumentError(
-  //         'If total is null, both spendable and unspendable must be provided',
-  //       );
-  //     }
-  //     total = spendable + unspendable;
-  //   }
-
-  //  else if (spendable == null) {
-  //     if (unspendable == null) {
-  //       throw ArgumentError(
-  //         'If spendable is null, unspendable must be provided',
-  //       );
-  //     }
-  //     spendable = total - unspendable;
-  //   }
-
-  //   unspendable ??= total - spendable;
-
-  //   return BalanceInfo(
-  //     total: total,
-  //     spendable: spendable,
-  //     unspendable: unspendable,
-  //   );
-  // }
-
   static Decimal? _parseDecimalKeywords(
     JsonMap json,
     List<String> keywords,

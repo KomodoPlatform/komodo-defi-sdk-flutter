@@ -9,7 +9,14 @@ class PubkeyManager {
 
   /// Get pubkeys for a given asset, handling HD/non-HD differences internally
   Future<AssetPubkeys> getPubkeys(Asset asset) async {
-    await KomodoDefiSdk.global.assets.activateAsset(asset).last;
+    final finalStatus =
+        await KomodoDefiSdk.global.assets.activateAsset(asset).last;
+
+    if (finalStatus.isComplete && !finalStatus.isSuccess) {
+      throw StateError(
+        'Failed to activate asset ${asset.id.name}. ${finalStatus.toJson()}',
+      );
+    }
 
     final strategy = await _resolvePubkeyStrategy(asset);
     return strategy.getPubkeys(asset.id, _client);

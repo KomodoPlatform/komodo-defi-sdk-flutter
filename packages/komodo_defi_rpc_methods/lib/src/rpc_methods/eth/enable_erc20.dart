@@ -20,7 +20,10 @@ class EnableErc20Request
   @override
   Map<String, dynamic> toJson() {
     return super.toJson().deepMerge({
-      'params': {'ticker': ticker, ...activationParams.toJsonRequestParams()},
+      'params': {
+        'ticker': ticker,
+        'activation_params': activationParams.toJsonRequestParams(),
+      },
     });
   }
 

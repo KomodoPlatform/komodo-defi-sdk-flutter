@@ -1,5 +1,6 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:meta/meta.dart';
 
 class ActivationParams implements KdfRequestParams {
   const ActivationParams({
@@ -67,6 +68,7 @@ class ActivationParams implements KdfRequestParams {
   final int? scanIntervalMs;
 
   @override
+  @mustCallSuper
   JsonMap toJsonRequestParams() {
     return {
       if (requiredConfirmations != null)

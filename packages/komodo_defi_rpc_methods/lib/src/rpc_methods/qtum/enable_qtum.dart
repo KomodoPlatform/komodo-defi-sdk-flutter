@@ -26,7 +26,6 @@ class TaskEnableQtumInit
         'method': method,
         'params': {
           'ticker': ticker,
-          // ...params.toJsonRequestParams(),
           'activation_params': params.toJsonRequestParams(),
         },
       };

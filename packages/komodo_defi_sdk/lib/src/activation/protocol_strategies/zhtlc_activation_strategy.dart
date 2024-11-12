@@ -19,7 +19,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
     Asset asset, [
     List<Asset>? children,
   ]) async* {
-    if (children?.isNotEmpty == true) {
+    if (children?.isNotEmpty ?? false) {
       throw UnsupportedError(
         'ZHTLC protocol does not support batch activation',
       );

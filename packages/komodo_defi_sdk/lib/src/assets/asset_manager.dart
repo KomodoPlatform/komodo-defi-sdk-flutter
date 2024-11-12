@@ -65,8 +65,7 @@ class AssetManager {
   Map<AssetId, Asset> get availableOrdered => available;
 
   Stream<ActivationProgress> activateAsset(Asset asset) async* {
-    if (_activeAssetIds.contains(asset.id) ||
-        (await getActivatedAssets()).contains(asset)) {
+    if ((await getActivatedAssets()).contains(asset)) {
       yield ActivationProgress.success();
       return;
     }
@@ -188,7 +187,7 @@ class AssetManager {
     await _handlePreActivation(user);
   }
 
-  bool isAssetActive(AssetId assetId) => _activeAssetIds.contains(assetId);
+  // bool isAssetActive(AssetId assetId) => _activeAssetIds.contains(assetId);
 
   Future<Set<String>> _getEnabledCoins() async {
     if (!await _auth.isSignedIn()) return {};
