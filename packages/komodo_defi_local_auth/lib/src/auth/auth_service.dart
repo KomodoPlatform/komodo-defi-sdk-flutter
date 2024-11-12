@@ -35,7 +35,9 @@ abstract interface class IAuthService {
 }
 
 class KdfAuthService implements IAuthService {
-  KdfAuthService(this._kdfFramework, this._hostConfig);
+  KdfAuthService(this._kdfFramework, this._hostConfig) {
+    _startHealthCheck();
+  }
 
   final KomodoDefiFramework _kdfFramework;
   final IKdfHostConfig _hostConfig;
@@ -43,6 +45,9 @@ class KdfAuthService implements IAuthService {
       StreamController.broadcast();
   final SecureLocalStorage _secureStorage = SecureLocalStorage();
   final ReadWriteMutex _authMutex = ReadWriteMutex();
+
+  KdfUser? _lastEmittedUser;
+  Timer? _healthCheckTimer;
 
   ApiClient get _client => _kdfFramework.client;
   late final methods = KomodoDefiRpcMethods(_client);
@@ -80,6 +85,48 @@ class KdfAuthService implements IAuthService {
 
     _authStateController.add(currentUser);
     return currentUser;
+  }
+
+  void _startHealthCheck() {
+    _healthCheckTimer?.cancel();
+    _healthCheckTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _checkKdfHealth(),
+    );
+  }
+
+  Future<void> _checkKdfHealth() async {
+    try {
+      final isRunning = await _kdfFramework.isRunning();
+      final currentUser = await _getActiveUserInternal();
+
+      // If KDF is not running or we're in no-auth mode but previously had a user,
+      // emit signed out state
+      if ((!isRunning || currentUser == null) && _lastEmittedUser != null) {
+        _emitAuthStateChange(null);
+      } else if (currentUser != null &&
+          currentUser.walletId != _lastEmittedUser?.walletId) {
+        // User state changed
+        _emitAuthStateChange(currentUser);
+      }
+    } catch (e) {
+      // If we can't check status, assume KDF is not running properly
+      if (_lastEmittedUser != null) {
+        _emitAuthStateChange(null);
+      }
+    }
+  }
+
+  void _emitAuthStateChange(KdfUser? user) {
+    if (!_authStateController.isClosed && user != _lastEmittedUser) {
+      _lastEmittedUser = user;
+      _authStateController.add(user);
+    }
+  }
+
+  Future<void> _cleanupAfterCrash() async {
+    // Clean up any state that needs to be reset
+    await _stopKdf(); // Ensure KDF is fully stopped
   }
 
   Future<KdfUser> _registerNewUser(
@@ -216,19 +263,20 @@ class KdfAuthService implements IAuthService {
   Future<KdfUser> signIn({
     required String walletName,
     required String password,
-    AuthOptions options = const AuthOptions(
-      derivationMethod: DerivationMethod.hdWallet,
-    ),
+    required AuthOptions options,
   }) async {
-    final walletStatus =
-        await _runReadOperation(() => _getWalletStatus(walletName));
+    final user = await _lockWriteOperation<KdfUser>(() async {
+      // Check if already signed in first
+      if (await _kdfFramework.isRunning()) {
+        final activeUser = await _getActiveUserInternal();
 
-    if (walletStatus) {
-      final activeUser = await _runReadOperation(_getActiveUserInternal);
-      return activeUser!;
-    }
+        if (activeUser?.walletId.name == walletName) {
+          return activeUser!;
+        }
+        // If running but wrong user, stop KDF
+        await _stopKdf();
+      }
 
-    return _lockWriteOperation(() async {
       final storedUser = await _secureStorage.getUser(walletName);
 
       // If we know this is not a BIP39 seed, don't allow HD mode
@@ -247,9 +295,12 @@ class KdfAuthService implements IAuthService {
         hdEnabled: options.derivationMethod == DerivationMethod.hdWallet,
       );
 
-      // _authenticateUser will handle BIP39 verification for HD wallets
-      return _authenticateUser(config);
+      final user = await _authenticateUser(config);
+      _emitAuthStateChange(user);
+      return user;
     });
+
+    return user;
   }
 
   @override
@@ -360,12 +411,30 @@ class KdfAuthService implements IAuthService {
   }
 
   Future<bool> _getWalletStatus(String walletName) async {
-    return await _assertWalletOrStop(walletName) ?? false;
+    // Use _getActiveUserInternal directly since we're already in a lock
+    if (!await _kdfFramework.isRunning()) return false;
+
+    final activeUser =
+        await _getActiveUserInternal(); // Don't try to get another lock
+    if (activeUser == null) {
+      await _stopKdf();
+      return false;
+    }
+
+    if (activeUser.walletId.name != walletName) {
+      await _stopKdf();
+      return false;
+    }
+
+    return true;
   }
 
   @override
   Future<void> signOut() async {
-    await _lockWriteOperation(_stopKdf);
+    await _lockWriteOperation(() async {
+      await _stopKdf();
+      _emitAuthStateChange(null);
+    });
   }
 
   @override
@@ -440,11 +509,13 @@ class KdfAuthService implements IAuthService {
   Stream<KdfUser?> get authStateChanges => _authStateController.stream;
 
   @override
-  Future<void> dispose() async {
-    return _lockWriteOperation(() async {
-      await _stopKdf();
+  void dispose() {
+    _lockWriteOperation(() async {
+      _healthCheckTimer?.cancel();
+      _stopKdf().ignore();
       await _authStateController.close();
-    });
+      _lastEmittedUser = null;
+    }).ignore();
   }
 
   Future<bool?> _assertWalletOrStop(String walletName) async {
