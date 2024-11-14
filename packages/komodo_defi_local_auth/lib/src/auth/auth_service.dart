@@ -24,7 +24,11 @@ abstract interface class IAuthService {
     Mnemonic? mnemonic,
   });
 
-  Future<void> signOut();
+  /// Signs the user out and clears the active user.
+  /// If [force] is true, the KDF framework will be stopped immediately.
+  /// Otherwise, the framework will be stopped after a short delay to allow
+  /// for any pending operations to complete
+  Future<void> signOut({bool force = false});
   Future<bool> isSignedIn();
   Future<KdfUser?> getActiveUser();
   Future<Mnemonic> getMnemonic({
@@ -54,6 +58,9 @@ class KdfAuthService implements IAuthService {
   ApiClient get _client => _kdfFramework.client;
   late final methods = KomodoDefiRpcMethods(_client);
 
+  // read&write locks cannot coexist, so use frugally to avoid deadlocks
+  // reads can continue while write lock waits, and there is no mention of the
+  // order in which locks are processed in the docs.
   Future<T> _runReadOperation<T>(Future<T> Function() operation) async {
     return _authMutex.protectRead(operation);
   }
@@ -72,7 +79,7 @@ class KdfAuthService implements IAuthService {
       );
     }
 
-    var currentUser = await _getActiveUserInternal();
+    var currentUser = await getActiveUser();
     if (currentUser == null) {
       throw AuthException(
         'No user signed in',
@@ -100,7 +107,7 @@ class KdfAuthService implements IAuthService {
   Future<void> _checkKdfHealth() async {
     try {
       final isRunning = await _kdfFramework.isRunning();
-      final currentUser = await _getActiveUserInternal();
+      final currentUser = await getActiveUser();
 
       // If KDF is not running or we're in no-auth mode but previously had a user,
       // emit signed out state
@@ -126,11 +133,8 @@ class KdfAuthService implements IAuthService {
     }
   }
 
-  Future<void> _cleanupAfterCrash() async {
-    // Clean up any state that needs to be reset
-    await _stopKdf(); // Ensure KDF is fully stopped
-  }
-
+  /// Creates, stores, and verifies the bip39 compatibility of a new user, if
+  /// HD wallet is enabled for the user.
   Future<KdfUser> _registerNewUser(
     KdfStartupConfig config,
     AuthOptions authOptions,
@@ -146,13 +150,22 @@ class KdfAuthService implements IAuthService {
     }
 
     final walletId = WalletId.fromName(config.walletName!);
-    final currentUser = KdfUser(
+    // ignore: omit_local_variable_types
+    KdfUser currentUser = KdfUser(
       walletId: walletId,
       authOptions: authOptions,
       isBip39Seed: isBip39Seed,
     );
-
+    await _secureStorage.saveUser(currentUser);
     _authStateController.add(currentUser);
+
+    if (currentUser.isHd && !currentUser.isBip39Seed) {
+      // Verify BIP39 compatibility for HD wallets after registration
+      // if verification fails, the user can still log into the wallet in legacy
+      // mode.
+      currentUser = await _verifyBip39Compatibility(config, currentUser);
+    }
+
     return currentUser;
   }
 
@@ -211,8 +224,12 @@ class KdfAuthService implements IAuthService {
     }
   }
 
-  /// Requires a user to be signed into a valid wallet in order to verify the 
-  /// seed phrase and 
+  /// Requires a user to be signed into a valid wallet in order to verify the
+  /// seed phrase and determine BIP39 compatibility.
+  /// Updates the stored user with the verified BIP39 status before returning
+  /// the modified [KdfUser].
+  /// NOTE: this function does not contain any write/read protected sections,
+  /// so any atomic requirements need to be handled by the calling function.
   /// Throws [AuthException] if the seed is not a valid BIP39 seed phrase.
   Future<KdfUser> _verifyBip39Compatibility(
     KdfStartupConfig config,
@@ -226,6 +243,7 @@ class KdfAuthService implements IAuthService {
       final plaintext = await getMnemonic(
         encrypted: false,
         walletPassword: config.walletPassword,
+        atomicProtected: false, // Protection is up to caller
       );
 
       if (plaintext.plaintextMnemonic == null) {
@@ -269,7 +287,7 @@ class KdfAuthService implements IAuthService {
     final user = await _lockWriteOperation<KdfUser>(() async {
       // Check if already signed in first
       if (await _kdfFramework.isRunning()) {
-        final activeUser = await _getActiveUserInternal();
+        final activeUser = await getActiveUser();
 
         if (activeUser?.walletId.name == walletName) {
           return activeUser!;
@@ -313,60 +331,30 @@ class KdfAuthService implements IAuthService {
     ),
     Mnemonic? mnemonic,
   }) async {
-    final walletExists =
-        await _runReadOperation(() => _assertWalletOrStop(walletName));
-    if (walletExists ?? false) {
+    bool? isBip39;
+    final walletExists = await _walletExists(walletName);
+    if (walletExists) {
       throw AuthException(
         'Wallet already exists',
         type: AuthExceptionType.generalAuthError,
       );
     }
 
+    if (await getActiveUser() != null) {
+      await signOut(force: true);
+    }
+
+    final config = await _generateStartupConfig(
+      walletName: walletName,
+      walletPassword: password,
+      allowRegistrations: true,
+      plaintextMnemonic: mnemonic?.plaintextMnemonic,
+      hdEnabled: options.derivationMethod == DerivationMethod.hdWallet,
+    );
+
+    // only lock modifications to the current state
     return _lockWriteOperation(() async {
-      bool? isBip39;
-
-      // Verify BIP39 status for plaintext mnemonics
-      if (mnemonic?.plaintextMnemonic != null) {
-        await MnemonicValidator().init();
-        isBip39 =
-            MnemonicValidator().validateBip39(mnemonic!.plaintextMnemonic!);
-
-        if (!isBip39 && options.derivationMethod == DerivationMethod.hdWallet) {
-          throw AuthException(
-            'HD wallets require a valid BIP39 seed phrase',
-            type: AuthExceptionType.generalAuthError,
-          );
-        }
-      }
-
-      final config = await _generateStartupConfig(
-        walletName: walletName,
-        walletPassword: password,
-        allowRegistrations: true,
-        plaintextMnemonic: mnemonic?.plaintextMnemonic,
-        hdEnabled: options.derivationMethod == DerivationMethod.hdWallet,
-      );
-
-      // ignore: omit_local_variable_types - // TODO: consider ignoring globally
-      KdfUser user = await _registerNewUser(config, options, isBip39 ?? false);
-
-      // Store initial user with BIP39 status if known
-      if (isBip39 != null) {
-        final userWithBip39 = user.copyWith(isBip39Seed: isBip39);
-        await _secureStorage.saveUser(userWithBip39);
-        return userWithBip39;
-      }
-
-      await _secureStorage.saveUser(user);
-
-      if (user.isHd && !user.isBip39Seed) {
-        // Verify BIP39 compatibility for HD wallets after registration
-        // Update user with verified BIP39 status
-        user = await _verifyBip39Compatibility(config, user);
-        await _secureStorage.saveUser(user);
-      }
-
-      return user;
+      return _registerNewUser(config, options, isBip39 ?? false);
     });
   }
 
@@ -410,37 +398,13 @@ class KdfAuthService implements IAuthService {
     await _secureStorage.saveUser(updatedUser);
   }
 
-  Future<String?> _getPubkeyHash() async {
-    try {
-      final response = await _client.rpc.wallet.getPublicKeyHash();
-      return response.publicKeyHash;
-    } catch (_) {
-      // If we can't get the pubkey hash, return null and continue with partial ID
-      return null;
-    }
-  }
-
-  Future<bool> _getWalletStatus(String walletName) async {
-    // Use _getActiveUserInternal directly since we're already in a lock
-    if (!await _kdfFramework.isRunning()) return false;
-
-    final activeUser =
-        await _getActiveUserInternal(); // Don't try to get another lock
-    if (activeUser == null) {
-      await _stopKdf();
-      return false;
-    }
-
-    if (activeUser.walletId.name != walletName) {
-      await _stopKdf();
-      return false;
-    }
-
-    return true;
-  }
-
   @override
-  Future<void> signOut() async {
+  Future<void> signOut({bool force = false}) async {
+    if (force) {
+      await _stopKdf();
+      return _emitAuthStateChange(null);
+    }
+
     await _lockWriteOperation(() async {
       await _stopKdf();
       _emitAuthStateChange(null);
@@ -449,17 +413,11 @@ class KdfAuthService implements IAuthService {
 
   @override
   Future<bool> isSignedIn() async {
-    return _runReadOperation(() async {
-      return await _getActiveUserInternal() != null;
-    });
+    return await getActiveUser() != null;
   }
 
   @override
   Future<KdfUser?> getActiveUser() async {
-    return _runReadOperation(_getActiveUserInternal);
-  }
-
-  Future<KdfUser?> _getActiveUserInternal() async {
     if (!await _kdfFramework.isRunning()) {
       return null;
     }
@@ -481,38 +439,50 @@ class KdfAuthService implements IAuthService {
   Future<Mnemonic> getMnemonic({
     required bool encrypted,
     required String? walletPassword,
+    bool atomicProtected = true,
   }) async {
+    assert(
+      encrypted || walletPassword != null,
+      'walletPassword is required to retrieve plaintext mnemonic.',
+    );
+
+    if (!atomicProtected) {
+      return _getMnemonicFromKdf(encrypted, walletPassword);
+    }
+
     return _runReadOperation(() async {
-      assert(
-        encrypted || walletPassword != null,
-        'walletPassword is required to retrieve plaintext mnemonic.',
-      );
-
-      if (await _getActiveUserInternal() == null) {
-        throw AuthException(
-          'No user signed in',
-          type: AuthExceptionType.unauthorized,
-        );
-      }
-
-      final response = await _kdfFramework.client.executeRpc({
-        'mmrpc': '2.0',
-        'method': 'get_mnemonic',
-        'params': {
-          'format': encrypted ? 'encrypted' : 'plaintext',
-          if (!encrypted) 'password': walletPassword,
-        },
-      });
-
-      if (response is JsonRpcErrorResponse) {
-        throw AuthException(
-          response.error,
-          type: AuthExceptionType.generalAuthError,
-        );
-      }
-
-      return Mnemonic.fromRpcJson(response.value<JsonMap>('result'));
+      return _getMnemonicFromKdf(encrypted, walletPassword);
     });
+  }
+
+  Future<Mnemonic> _getMnemonicFromKdf(
+    bool encrypted,
+    String? walletPassword,
+  ) async {
+    if (await getActiveUser() == null) {
+      throw AuthException(
+        'No user signed in',
+        type: AuthExceptionType.unauthorized,
+      );
+    }
+
+    final response = await _kdfFramework.client.executeRpc({
+      'mmrpc': '2.0',
+      'method': 'get_mnemonic',
+      'params': {
+        'format': encrypted ? 'encrypted' : 'plaintext',
+        if (!encrypted) 'password': walletPassword,
+      },
+    });
+
+    if (response is JsonRpcErrorResponse) {
+      throw AuthException(
+        response.error,
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+
+    return Mnemonic.fromRpcJson(response.value<JsonMap>('result'));
   }
 
   @override
@@ -520,6 +490,8 @@ class KdfAuthService implements IAuthService {
 
   @override
   void dispose() {
+    // Wait for running operations to complete before disposing. Write lock can
+    // only be acquired once the active read/write operations complete.
     _lockWriteOperation(() async {
       _healthCheckTimer?.cancel();
       _stopKdf().ignore();
@@ -528,21 +500,11 @@ class KdfAuthService implements IAuthService {
     }).ignore();
   }
 
-  Future<bool?> _assertWalletOrStop(String walletName) async {
-    if (!await _kdfFramework.isRunning()) return null;
+  Future<bool> _walletExists(String walletName) async {
+    if (!await _kdfFramework.isRunning()) return false;
 
-    final activeUser = await getActiveUser();
-    if (activeUser == null) {
-      await _stopKdf();
-      return false;
-    }
-
-    if (activeUser.walletId.name != walletName) {
-      await _stopKdf();
-      return false;
-    }
-
-    return true;
+    final users = await getUsers();
+    return users.any((user) => user.walletId.name == walletName);
   }
 
   Future<void> _stopKdf() async {
