@@ -15,6 +15,8 @@ abstract interface class IAuthService {
     required AuthOptions options,
   });
 
+  /// Throws [AuthException] if user creation fails, the wallet already exists,
+  /// or the seed phrase is not a valid BIP39 seed phrase.
   Future<KdfUser> register({
     required String walletName,
     required String password,
@@ -144,15 +146,11 @@ class KdfAuthService implements IAuthService {
     }
 
     final walletId = WalletId.fromName(config.walletName!);
-    var currentUser = KdfUser(
+    final currentUser = KdfUser(
       walletId: walletId,
       authOptions: authOptions,
       isBip39Seed: isBip39Seed,
     );
-
-    if (currentUser.isHd && !currentUser.isBip39Seed) {
-      currentUser = await _verifyBip39Compatibility(config, currentUser);
-    }
 
     _authStateController.add(currentUser);
     return currentUser;
@@ -213,6 +211,9 @@ class KdfAuthService implements IAuthService {
     }
   }
 
+  /// Requires a user to be signed into a valid wallet in order to verify the 
+  /// seed phrase and 
+  /// Throws [AuthException] if the seed is not a valid BIP39 seed phrase.
   Future<KdfUser> _verifyBip39Compatibility(
     KdfStartupConfig config,
     KdfUser currentUser,
@@ -346,7 +347,8 @@ class KdfAuthService implements IAuthService {
         hdEnabled: options.derivationMethod == DerivationMethod.hdWallet,
       );
 
-      final user = await _registerNewUser(config, options, isBip39 ?? false);
+      // ignore: omit_local_variable_types - // TODO: consider ignoring globally
+      KdfUser user = await _registerNewUser(config, options, isBip39 ?? false);
 
       // Store initial user with BIP39 status if known
       if (isBip39 != null) {
@@ -356,6 +358,14 @@ class KdfAuthService implements IAuthService {
       }
 
       await _secureStorage.saveUser(user);
+
+      if (user.isHd && !user.isBip39Seed) {
+        // Verify BIP39 compatibility for HD wallets after registration
+        // Update user with verified BIP39 status
+        user = await _verifyBip39Compatibility(config, user);
+        await _secureStorage.saveUser(user);
+      }
+
       return user;
     });
   }
