@@ -38,6 +38,7 @@ migrate_working_dir/
 .pub/
 /build/
 contrib/coins_config.json
+**/.plugin_symlinks/*
 
 # Web related
 web/dist/*.js

@@ -139,8 +139,8 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
 
   @override
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
-    _log('mm2 config: ${_config.toJson()}');
-    _log('mm2Rpc request (pre-process): $request');
+    if (kDebugMode) _log('mm2 config: ${_config.toJson()}');
+    if (kDebugMode) _log('mm2Rpc request (pre-process): $request');
     request['userpass'] = _config.rpcPassword;
     final response = await _client.post(
       _url,
