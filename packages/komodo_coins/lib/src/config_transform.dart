@@ -1,4 +1,5 @@
 // lib/src/assets/config_transform.dart
+import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // ignore: one_member_abstracts
@@ -17,6 +18,7 @@ class CoinConfigTransformer {
   const CoinConfigTransformer();
 
   static final _transforms = [
+    const WssWebsocketTransform(),
     const ParentCoinTransform(),
     // Add more transforms as needed
   ];
@@ -29,7 +31,7 @@ class CoinConfigTransformer {
       return config;
     }
 
-    return _transforms.fold(
+    return neededTransforms.fold(
       config,
 
       // Instantiating a new map for each transform is not ideal, given the
@@ -70,6 +72,37 @@ class CoinFilter {
     return _filteredCoins.containsKey(coin) ||
         _filteredProtocolTypes.containsKey(protocolClass) ||
         _filteredProtocolSubTypes.containsKey(protocolSubClass);
+  }
+}
+
+/// Filters out non-wss electrum/server URLs from the given coin config for
+/// the web platform as only wss connections are supported.
+class WssWebsocketTransform implements CoinConfigTransform {
+  const WssWebsocketTransform();
+
+  @override
+  bool needsTransform(JsonMap config) {
+    final electrum = config.valueOrNull<JsonList>('electrum');
+    return electrum != null && kIsWeb;
+  }
+
+  @override
+  JsonMap transform(JsonMap config) {
+    final electrum = config.value<JsonList>('electrum');
+    final filteredElectrums = _filterElectrumServers(electrum);
+
+    return config..['electrum'] = filteredElectrums;
+  }
+
+  JsonList _filterElectrumServers(JsonList electrums) {
+    final _electrumsCopy = JsonList.from(electrums);
+
+    for (final e in _electrumsCopy) {
+      if (e['protocol'] == 'WSS') {
+        e['ws_url'] = e['url'];
+      }
+    }
+    return electrums.where((JsonMap e) => e['ws_url'] != null).toList();
   }
 }
 
