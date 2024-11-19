@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:meta/meta.dart';
@@ -42,12 +41,10 @@ class BalanceInfo {
     JsonMap json,
     List<String> keywords,
   ) =>
-      Decimal.tryParse(
-        keywords
-                .map((e) => json.valueOrNull<String>(e))
-                .singleWhereOrNull((e) => e != null) ??
-            '',
-      );
+      keywords
+          .map((e) => json.valueOrNull<String>(e))
+          .singleWhere((e) => e != null, orElse: () => null)
+          ?.toDecimalOrNull;
 
   final Decimal? _total;
   late final Decimal total =

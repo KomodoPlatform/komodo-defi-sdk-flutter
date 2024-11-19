@@ -1,7 +1,6 @@
 // lib/src/rpc_methods/wallet/get_mnemonic_request.dart
 
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
-import 'package:komodo_defi_rpc_methods/src/rpc_methods/rpc_methods.dart';
 
 class GetMnemonicRequest
     extends BaseRequest<GetMnemonicResponse, GeneralErrorResponse>

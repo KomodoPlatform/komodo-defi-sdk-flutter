@@ -58,6 +58,7 @@ class Erc20ActivationStrategy extends ProtocolActivationStrategy {
             erc20Tokens:
                 children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
                     [],
+            txHistory: true,
           ),
         );
       } else {

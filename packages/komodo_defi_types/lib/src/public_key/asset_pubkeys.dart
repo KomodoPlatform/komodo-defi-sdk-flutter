@@ -13,7 +13,7 @@ class AssetPubkeys {
   final List<PubkeyInfo> keys;
   // final int usedAddressesCount;
   final int availableAddressesCount;
-  final SyncStatus syncStatus;
+  final SyncStatusEnum syncStatus;
 
   Balance get balance =>
       keys.fold(Balance.zero(), (prev, element) => prev + element.balance);

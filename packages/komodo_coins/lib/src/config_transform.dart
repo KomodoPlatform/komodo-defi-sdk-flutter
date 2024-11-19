@@ -88,22 +88,30 @@ class WssWebsocketTransform implements CoinConfigTransform {
 
   @override
   JsonMap transform(JsonMap config) {
-    final electrum = config.value<JsonList>('electrum');
-    final filteredElectrums = _filterElectrumServers(electrum);
+    final electrum = JsonList.from(config.value<JsonList>('electrum'));
+    // On native, only non-WSS servers are supported. On web, only WSS servers
+    // are supported.
+    final filteredElectrums = kIsWeb
+        ? _filterOutNonWssElectrums(electrum)
+        : _filterOutWssElectrums(electrum);
 
     return config..['electrum'] = filteredElectrums;
   }
 
-  JsonList _filterElectrumServers(JsonList electrums) {
-    final _electrumsCopy = JsonList.from(electrums);
+  JsonList _filterOutNonWssElectrums(JsonList electrums) {
+    final electrumsCopy = JsonList.from(electrums);
 
-    for (final e in _electrumsCopy) {
+    for (final e in electrumsCopy) {
       if (e['protocol'] == 'WSS') {
         e['ws_url'] = e['url'];
       }
     }
+
     return electrums.where((JsonMap e) => e['ws_url'] != null).toList();
   }
+
+  JsonList _filterOutWssElectrums(JsonList electrums) =>
+      electrums.where((JsonMap e) => e['protocol'] != 'WSS').toList();
 }
 
 class ParentCoinTransform implements CoinConfigTransform {

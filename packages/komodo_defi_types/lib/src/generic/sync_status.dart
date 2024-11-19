@@ -1,10 +1,29 @@
-enum SyncStatus {
+enum SyncStatusEnum {
   notStarted,
   inProgress,
   success,
   error;
 
   bool get isComplete => this == success || this == error;
+
+  static SyncStatusEnum? tryParse(String? value) {
+    if (value == null) {
+      return null;
+    }
+
+    switch (value) {
+      case 'NotStarted':
+        return SyncStatusEnum.notStarted;
+      case 'InProgress':
+        return SyncStatusEnum.inProgress;
+      case 'Success':
+        return SyncStatusEnum.success;
+      case 'Error':
+        return SyncStatusEnum.error;
+      default:
+        throw ArgumentError.value(value, 'value', 'Invalid sync status');
+    }
+  }
 }
 
 /*

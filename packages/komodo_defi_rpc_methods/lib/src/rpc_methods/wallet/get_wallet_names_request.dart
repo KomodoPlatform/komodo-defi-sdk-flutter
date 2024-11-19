@@ -1,7 +1,6 @@
 // lib/src/rpc_methods/wallet/get_wallet_names_request.dart
 
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
-import 'package:komodo_defi_rpc_methods/src/rpc_methods/wallet/get_wallet_names_response.dart';
 
 class GetWalletNamesRequest
     extends BaseRequest<GetWalletNamesResponse, GeneralErrorResponse>

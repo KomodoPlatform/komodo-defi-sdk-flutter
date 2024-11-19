@@ -89,7 +89,7 @@ class HDWalletStrategy extends PubkeyStrategy {
       keys: addresses,
       availableAddressesCount:
           await availableNewAddressesCount(addresses).then((value) => value),
-      syncStatus: SyncStatus.success,
+      syncStatus: SyncStatusEnum.success,
     );
   }
 

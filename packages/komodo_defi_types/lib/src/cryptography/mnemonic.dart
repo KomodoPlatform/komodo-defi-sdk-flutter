@@ -21,7 +21,7 @@ class Mnemonic {
     } else if (format == 'encrypted') {
       return Mnemonic._(
         format: format,
-        encryptedMnemonicData: EncryptedMnemonicData.fromJson(
+        encryptedMnemonic: EncryptedMnemonicData.fromJson(
           result.value<JsonMap>('encrypted_mnemonic_data'),
         ),
       );
@@ -33,22 +33,22 @@ class Mnemonic {
   Mnemonic._({
     this.format,
     this.plaintextMnemonic,
-    this.encryptedMnemonicData,
+    this.encryptedMnemonic,
   });
 
   Mnemonic.plaintext(this.plaintextMnemonic)
       : format = 'plaintext',
-        encryptedMnemonicData = null;
+        encryptedMnemonic = null;
 
-  Mnemonic.encrypted(this.encryptedMnemonicData)
+  Mnemonic.encrypted(this.encryptedMnemonic)
       : format = 'encrypted',
         plaintextMnemonic = null;
 
   final String? format;
   final String? plaintextMnemonic;
-  final EncryptedMnemonicData? encryptedMnemonicData;
+  final EncryptedMnemonicData? encryptedMnemonic;
 
-  bool get isEncrypted => encryptedMnemonicData != null;
+  bool get isEncrypted => encryptedMnemonic != null;
 
   // Convert Mnemonic to JSON
   Map<String, dynamic> toJson() {
@@ -58,7 +58,7 @@ class Mnemonic {
     if (format == 'plaintext') {
       data['mnemonic'] = plaintextMnemonic;
     } else if (format == 'encrypted') {
-      data['encrypted_mnemonic_data'] = encryptedMnemonicData?.toJson();
+      data['encrypted_mnemonic_data'] = encryptedMnemonic?.toJson();
     }
 
     return data;

@@ -4,7 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 class UtxoActivationParams extends ActivationParams {
   UtxoActivationParams({
     required super.mode,
-    this.txHistory,
+    required this.txHistory,
     super.requiredConfirmations,
     super.requiresNotarization,
     super.privKeyPolicy,
@@ -67,5 +67,41 @@ class UtxoActivationParams extends ActivationParams {
       if (wiftype != null) 'wiftype': wiftype,
       if (overwintered != null) 'overwintered': overwintered,
     };
+  }
+
+  UtxoActivationParams copyWith({
+    bool? txHistory,
+    int? txVersion,
+    int? txFee,
+    int? dustAmount,
+    int? pubtype,
+    int? p2shtype,
+    int? wiftype,
+    int? overwintered,
+    int? requiredConfirmations,
+    bool? requiresNotarization,
+    PrivateKeyPolicy? privKeyPolicy,
+    int? minAddressesNumber,
+    ScanPolicy? scanPolicy,
+    int? gapLimit,
+  }) {
+    return UtxoActivationParams(
+      mode: mode,
+      txHistory: txHistory ?? this.txHistory,
+      requiredConfirmations:
+          requiredConfirmations ?? super.requiredConfirmations,
+      requiresNotarization: requiresNotarization ?? super.requiresNotarization,
+      privKeyPolicy: privKeyPolicy ?? super.privKeyPolicy,
+      minAddressesNumber: minAddressesNumber ?? super.minAddressesNumber,
+      scanPolicy: scanPolicy ?? super.scanPolicy,
+      gapLimit: gapLimit ?? super.gapLimit,
+      txVersion: txVersion ?? this.txVersion,
+      txFee: txFee ?? this.txFee,
+      dustAmount: dustAmount ?? this.dustAmount,
+      pubtype: pubtype ?? this.pubtype,
+      p2shtype: p2shtype ?? this.p2shtype,
+      wiftype: wiftype ?? this.wiftype,
+      overwintered: overwintered ?? this.overwintered,
+    );
   }
 }

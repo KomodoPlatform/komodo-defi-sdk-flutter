@@ -278,8 +278,10 @@ class ActivationRpcData {
           'light_wallet_d_servers': lightWalletDServers,
         // if (electrumServers != null)
         //   'servers': electrumServers!.map((e) => e.toJsonRequest()).toList(),
-        if (electrum != null)
+        if (electrum != null) ...{
           'servers': electrum!.map((e) => e.toJsonRequest()).toList(),
+        },
+
         if (syncParams != null) 'sync_params': syncParams,
       };
 }
