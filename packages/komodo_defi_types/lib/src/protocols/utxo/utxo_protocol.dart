@@ -22,7 +22,9 @@ class UtxoProtocol extends ProtocolClass {
 
   @override
   UtxoActivationParams defaultActivationParams() {
-    return UtxoActivationParams.fromJson(config);
+    return UtxoActivationParams.fromJson(config).copyWith(
+      txHistory: true,
+    );
   }
 
   @override

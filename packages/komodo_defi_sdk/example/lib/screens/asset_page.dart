@@ -19,6 +19,8 @@ class _AssetPageState extends State<AssetPage> {
   bool _isLoading = false;
   String? _error;
 
+  final List<Transaction> _transactions = [];
+
   @override
   void initState() {
     super.initState();
@@ -29,11 +31,11 @@ class _AssetPageState extends State<AssetPage> {
     setState(() => _isLoading = true);
     try {
       final pubkeys = await _sdk.pubkeys.getPubkeys(widget.asset);
-      setState(() => _pubkeys = pubkeys);
+      _pubkeys = pubkeys;
     } catch (e) {
-      setState(() => _error = e.toString());
+      _error = e.toString();
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -73,14 +75,14 @@ class _AssetPageState extends State<AssetPage> {
                 // const SizedBox(height: 32),
                 AssetHeader(widget.asset, _pubkeys),
                 const SizedBox(height: 32),
-                Expanded(
+                Flexible(
                   child: _AddressesSection(
                     pubkeys: _pubkeys == null
                         ? AssetPubkeys(
                             keys: [],
                             assetId: widget.asset.id,
                             availableAddressesCount: 0,
-                            syncStatus: SyncStatus.inProgress,
+                            syncStatus: SyncStatusEnum.inProgress,
                           )
                         : _pubkeys!,
                     onGenerateNewAddress:
@@ -88,6 +90,7 @@ class _AssetPageState extends State<AssetPage> {
                     supportsMultipleAddresses: supportsMultipleAddresses,
                   ),
                 ),
+                Expanded(child: _TransactionsSection(widget.asset)),
               ],
             ),
     );
@@ -125,7 +128,7 @@ class _AssetHeaderState extends State<AssetHeader> {
             Text('Total', style: Theme.of(context).textTheme.bodyMedium),
             Text(
               // TODO: Stream-based
-              (widget.pubkeys?.syncStatus == SyncStatus.inProgress)
+              (widget.pubkeys?.syncStatus == SyncStatusEnum.inProgress)
                   ? 'Loading...'
                   : (widget.pubkeys?.balance.total.toDouble() ?? 0.0)
                       .toString(),
@@ -246,5 +249,65 @@ class _AddressesSection extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _TransactionsSection extends StatefulWidget {
+  // ignore: unused_element
+  const _TransactionsSection(this.asset, {super.key});
+
+  final Asset asset;
+
+  @override
+  State<_TransactionsSection> createState() => __TransactionsSectionState();
+}
+
+class __TransactionsSectionState extends State<_TransactionsSection> {
+  final _transactions = <Transaction>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTransactions();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        const Text('Transactions'),
+        const SizedBox(height: 16),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _transactions.length,
+            itemBuilder: (context, index) {
+              final transaction = _transactions[index];
+              return ListTile(
+                title: Text(transaction.amount.toString()),
+                subtitle: Text(transaction.toJson().toJsonString()),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool loading = false;
+
+  Future<void> _loadTransactions() async {
+    try {
+      final transactionsStream =
+          _sdk.transactions.getTransactionsStreamed(widget.asset);
+
+      await for (final transactions in transactionsStream) {
+        _transactions.addAll(transactions);
+        setState(() {});
+      }
+    } catch (e) {
+      print('FAILED TO FETCH TXs');
+      print(e);
+    }
   }
 }

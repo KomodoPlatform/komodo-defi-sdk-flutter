@@ -4,7 +4,6 @@
 // ignore_for_file: unused_field, unused_element
 
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
-import 'package:komodo_defi_rpc_methods/src/rpc_methods/rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A class that provides a library of RPC methods used by the Komodo DeFi
@@ -21,6 +20,9 @@ class KomodoDefiRpcMethods {
   GeneralActivationMethods get generalActivation =>
       GeneralActivationMethods(_client);
   HdWalletMethods get hdWallet => HdWalletMethods(_client);
+  TransactionHistoryMethods get transactionHistory =>
+      TransactionHistoryMethods(_client);
+
   TaskMethods get task => TaskMethods(_client);
 
   // Protocol-specific namespaces

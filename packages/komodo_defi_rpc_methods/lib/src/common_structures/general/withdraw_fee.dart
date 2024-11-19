@@ -12,10 +12,10 @@ class WithdrawFee {
   factory WithdrawFee.fromJson(Map<String, dynamic> json) {
     return WithdrawFee(
       type: json.value<String>('type'),
-      amount: json.value<String>('amount'),
-      gas: json.value<int>('gas'),
-      gasPrice: json.value<String>('gas_price'),
-      totalFee: json.value<String>('total_fee'),
+      amount: json.valueOrNull<String>('amount') ?? json.value('total_fee'),
+      gas: json.valueOrNull<int>('gas'),
+      gasPrice: json.valueOrNull<String>('gas_price'),
+      totalFee: json.valueOrNull<String>('total_fee'),
     );
   }
   final String type;

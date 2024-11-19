@@ -110,7 +110,8 @@ abstract interface class IKdfOperations {
   Future<bool> isAvailable(IKdfHostConfig hostConfig);
 }
 
-class JsonRpcErrorResponse extends MapBase<String, dynamic> {
+class JsonRpcErrorResponse extends MapBase<String, dynamic>
+    implements Exception {
   JsonRpcErrorResponse({
     required int? code,
     required String error,
@@ -120,6 +121,20 @@ class JsonRpcErrorResponse extends MapBase<String, dynamic> {
           'error': error,
           'message': message,
         };
+
+  /// Returns null if the response is not an error response,
+  /// otherwise returns a [JsonRpcErrorResponse] instance.
+  static JsonRpcErrorResponse? tryParse(JsonMap response) {
+    if (response.containsKey('error')) {
+      return JsonRpcErrorResponse(
+        code: response.valueOrNull<int>('code'),
+        error:
+            response.valueOrNull<String>('error_type') ?? 'UNKNOWN_ERROR_TYPE',
+        message: response.valueOrNull<String>('error') ?? 'NO ERROR MESSAGE',
+      );
+    }
+    return null;
+  }
 
   final Map<String, dynamic> _map;
 
@@ -148,6 +163,9 @@ class JsonRpcErrorResponse extends MapBase<String, dynamic> {
 
   @mustCallSuper
   Map<String, dynamic> toJson() => _map;
+
+  @override
+  String toString() => toJson().toJsonString();
 }
 
 class ConnectionError extends JsonRpcErrorResponse {

@@ -7,7 +7,7 @@ class TendermintActivationParams extends ActivationParams {
     required List<TokensRequest> tokensParams,
     required this.getBalances,
     required this.nodes,
-    this.txHistory = false,
+    required this.txHistory,
     super.requiredConfirmations = 3,
     super.requiresNotarization = false,
     super.privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
@@ -76,6 +76,7 @@ class TendermintActivationParams extends ActivationParams {
       'tokens_params': _tokensParams.map((e) => e.toJson()).toList(),
       'get_balances': getBalances,
       'nodes': nodes.map((e) => e.toJson()).toList(),
+      'tx_history': txHistory,
     };
   }
 }

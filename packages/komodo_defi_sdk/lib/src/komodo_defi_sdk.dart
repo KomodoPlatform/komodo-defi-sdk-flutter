@@ -5,6 +5,7 @@ import 'package:komodo_defi_sdk/src/assets/asset_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
+import 'package:komodo_defi_sdk/src/transaction_history/transaction_history_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 KomodoDefiSdk? _instance;
@@ -155,6 +156,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
   late final AssetManager? _assets;
   AssetManager get assets => _assertSdkInitialized(_assets);
+
+  TransactionHistoryManager get transactions =>
+      _assertSdkInitialized(_transactionHistory);
+  late final TransactionHistoryManager _transactionHistory =
+      TransactionHistoryManager(
+    _apiClient!,
+    _auth!,
+  );
 
   late final PubkeyManager pubkeys = _assertSdkInitialized(
     PubkeyManager(_apiClient!),

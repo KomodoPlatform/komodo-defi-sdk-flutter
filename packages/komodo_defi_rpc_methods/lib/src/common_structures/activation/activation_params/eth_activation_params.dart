@@ -7,6 +7,7 @@ class EthWithTokensActivationParams extends ActivationParams {
     required this.swapContractAddress,
     required this.fallbackSwapContract,
     required this.erc20Tokens,
+    required this.txHistory,
     super.requiredConfirmations,
     super.requiresNotarization = false,
   });
@@ -25,6 +26,7 @@ class EthWithTokensActivationParams extends ActivationParams {
           [],
       requiredConfirmations: base.requiredConfirmations,
       requiresNotarization: base.requiresNotarization,
+      txHistory: json.valueOrNull<bool>('tx_history'),
     );
   }
 
@@ -33,6 +35,8 @@ class EthWithTokensActivationParams extends ActivationParams {
   final String fallbackSwapContract;
   final List<TokensRequest> erc20Tokens;
 
+  final bool? txHistory;
+
   EthWithTokensActivationParams copyWith({
     List<EvmNode>? nodes,
     String? swapContractAddress,
@@ -40,6 +44,7 @@ class EthWithTokensActivationParams extends ActivationParams {
     List<TokensRequest>? erc20Tokens,
     int? requiredConfirmations,
     bool? requiresNotarization,
+    bool? txHistory,
   }) {
     return EthWithTokensActivationParams(
       nodes: nodes ?? this.nodes,
@@ -49,6 +54,7 @@ class EthWithTokensActivationParams extends ActivationParams {
       requiredConfirmations:
           requiredConfirmations ?? this.requiredConfirmations,
       requiresNotarization: requiresNotarization ?? this.requiresNotarization,
+      txHistory: txHistory ?? this.txHistory,
     );
   }
 
@@ -60,6 +66,7 @@ class EthWithTokensActivationParams extends ActivationParams {
       'swap_contract_address': swapContractAddress,
       'fallback_swap_contract': fallbackSwapContract,
       'erc20_tokens_requests': erc20Tokens.map((e) => e.toJson()).toList(),
+      if (txHistory != null) 'tx_history': txHistory,
     };
   }
 }

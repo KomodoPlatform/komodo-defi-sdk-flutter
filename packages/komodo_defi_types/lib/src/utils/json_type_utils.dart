@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:decimal/decimal.dart';
+
 typedef JsonMap = Map<String, dynamic>;
 typedef JsonList = List<JsonMap>;
 
@@ -16,7 +18,11 @@ JsonMap jsonFromString(String json) {
 
 JsonMap? tryParseJson(String json) {
   try {
-    return jsonFromString(json);
+    final decoded = jsonDecode(json);
+    if (decoded is! JsonMap) {
+      return null;
+    }
+    return decoded;
   } catch (e) {
     return null;
   }
@@ -151,6 +157,8 @@ T? _traverseJson<T>(
         );
       }
     }
+
+    if (nullIfAbsent && value == null) return null;
 
     return value as T;
   } catch (e) {
@@ -404,4 +412,10 @@ class _CensorTask<K, V> {
 // Extension on String/String? to make null if empty
 extension StringNullIfNullOrEmpty on String? {
   String? get nullIfEmpty => this?.isEmpty == true ? null : this;
+}
+
+extension StringToDecimal on String? {
+  Decimal? get toDecimalOrNull {
+    return this == null ? null : Decimal.tryParse(this!);
+  }
 }

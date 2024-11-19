@@ -144,7 +144,10 @@ class KomodoDefiFramework implements ApiClient {
     for (final key in response.keys) {
       if (response[key] is String) {
         try {
-          response[key] = jsonFromString(response[key] as String);
+          final maybeJson = tryParseJson(response[key] as String);
+          if (maybeJson != null) {
+            response[key] = maybeJson;
+          }
         } catch (_) {}
       }
     }

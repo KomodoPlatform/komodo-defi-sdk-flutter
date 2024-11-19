@@ -48,5 +48,8 @@ export 'nft/nft_metadata.dart';
 export 'nft/nft_transfer.dart';
 export 'nft/nft_transfer_filter.dart';
 export 'nft/withdraw_nft_data.dart';
+export 'pagination/history_target.dart';
 export 'pagination/pagination.dart';
 export 'primitive/numeric_value.dart';
+export 'transaction_history/transaction_info.dart';
+export 'transaction_history/transaction_sync_status.dart';

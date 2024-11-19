@@ -29,6 +29,7 @@ class Erc20Protocol extends ProtocolClass {
             erc20Tokens: childTokens
                 .map((token) => TokensRequest(ticker: token.id.id))
                 .toList(),
+            txHistory: true,
           );
   }
 

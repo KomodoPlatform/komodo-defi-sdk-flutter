@@ -110,14 +110,14 @@ class ResponseDetails<T, R extends GeneralErrorResponse> {
   }
 }
 
-SyncStatus? _statusFromTaskStatus(String status) {
+SyncStatusEnum? _statusFromTaskStatus(String status) {
   switch (status) {
     case 'Ok':
-      return SyncStatus.success;
+      return SyncStatusEnum.success;
     case 'InProgress':
-      return SyncStatus.inProgress;
+      return SyncStatusEnum.inProgress;
     case 'Error':
-      return SyncStatus.error;
+      return SyncStatusEnum.error;
     default:
       return null;
   }
@@ -141,20 +141,20 @@ class AccountBalanceStatusResponse extends BaseResponse {
       status: status!,
       // details: status == 'Ok' ? AccountBalanceInfo.fromJson(details) : details,
       details: ResponseDetails<AccountBalanceInfo, GeneralErrorResponse>(
-        data: status == SyncStatus.success
+        data: status == SyncStatusEnum.success
             ? AccountBalanceInfo.fromJson(result.value<JsonMap>('details'))
             : null,
-        error: status == SyncStatus.error
+        error: status == SyncStatusEnum.error
             ? GeneralErrorResponse.parse(result.value<JsonMap>('details'))
             : null,
-        description: status == SyncStatus.inProgress
+        description: status == SyncStatusEnum.inProgress
             ? result.value<String>('details')
             : null,
       ),
     );
   }
 
-  final SyncStatus status;
+  final SyncStatusEnum status;
   final ResponseDetails<AccountBalanceInfo, GeneralErrorResponse> details;
 
   @override

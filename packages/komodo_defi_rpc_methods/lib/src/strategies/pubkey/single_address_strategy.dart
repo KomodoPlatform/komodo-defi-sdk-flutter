@@ -21,7 +21,7 @@ class SingleAddressStrategy extends PubkeyStrategy {
         ),
       ],
       availableAddressesCount: 0,
-      syncStatus: SyncStatus.success,
+      syncStatus: SyncStatusEnum.success,
     );
   }
 

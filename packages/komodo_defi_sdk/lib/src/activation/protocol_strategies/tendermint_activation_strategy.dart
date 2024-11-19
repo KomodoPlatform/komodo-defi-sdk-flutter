@@ -72,6 +72,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
                     .toList() ??
                 [],
             getBalances: true,
+            txHistory: true,
           ),
         );
       } else {
