@@ -1,5 +1,4 @@
 import 'package:decimal/decimal.dart';
-import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class TransactionInfo {
@@ -79,6 +78,6 @@ class TransactionInfo {
         blockHeight: blockHeight,
         from: from,
         to: to,
-        fee: feeDetails != null ? Decimal.parse(feeDetails!.amount) : null,
+        fee: feeDetails?.amount,
       );
 }

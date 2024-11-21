@@ -45,3 +45,5 @@ export 'src/transactions/transaction.dart';
 export 'src/transactions/transaction_history_strategy.dart';
 export 'src/transactions/transaction_pagination_strategy.dart';
 export 'src/transactions/transaction_results_page.dart';
+export 'src/withdrawal/withdrawal_enums.dart';
+export 'src/withdrawal/withdrawal_types.dart';

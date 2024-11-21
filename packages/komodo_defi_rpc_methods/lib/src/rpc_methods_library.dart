@@ -17,11 +17,16 @@ class KomodoDefiRpcMethods {
 
   // Common/general methods
   WalletMethods get wallet => WalletMethods(_client);
+
   GeneralActivationMethods get generalActivation =>
       GeneralActivationMethods(_client);
+
   HdWalletMethods get hdWallet => HdWalletMethods(_client);
+
   TransactionHistoryMethods get transactionHistory =>
       TransactionHistoryMethods(_client);
+
+  WithdrawMethodsNamespace get withdraw => WithdrawMethodsNamespace(_client);
 
   TaskMethods get task => TaskMethods(_client);
 

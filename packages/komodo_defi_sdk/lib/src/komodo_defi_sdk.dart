@@ -6,6 +6,7 @@ import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/transaction_history/transaction_history_manager.dart';
+import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 KomodoDefiSdk? _instance;
@@ -74,6 +75,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   static KomodoDefiSdk get global => _instance!;
 
   KomodoDefiFramework? _kdfFramework;
+
   // ignore: unused_field
   LogCallback? _logCallback;
 
@@ -137,6 +139,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
           rpcPassword: rpcPassword,
         );
 
+    // Ensure _kdfFramework is initialized
     _kdfFramework ??= KomodoDefiFramework.create(
       hostConfig: hostConfig,
       externalLogger: kDebugMode ? print : null,
@@ -188,6 +191,9 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   late final MnemonicValidator? _mnemonicValidator;
   MnemonicValidator get mnemonicValidator =>
       _assertSdkInitialized(_mnemonicValidator);
+
+  WithdrawalManager get withdrawals => _assertSdkInitialized(_withdrawals);
+  late final WithdrawalManager _withdrawals = WithdrawalManager(_apiClient!);
 }
 
 /// RPC library extension of API client

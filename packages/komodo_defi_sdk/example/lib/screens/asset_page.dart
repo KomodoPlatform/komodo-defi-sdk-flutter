@@ -1,3 +1,4 @@
+import 'package:example/screens/withdrawal_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
@@ -183,7 +184,19 @@ class _AssetHeaderState extends State<AssetHeader> {
       spacing: 8,
       children: [
         FilledButton.icon(
-          onPressed: () {},
+          onPressed: widget.pubkeys == null
+              ? null
+              : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WithdrawalScreen(
+                        asset: widget.asset,
+                        pubkeys: widget.pubkeys!,
+                      ),
+                    ),
+                  );
+                },
           icon: const Icon(Icons.send),
           label: const Text('Send'),
         ),

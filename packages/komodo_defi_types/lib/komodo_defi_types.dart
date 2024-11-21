@@ -12,6 +12,8 @@ export 'src/auth/auth_result.dart';
 // export 'src/auth/exceptions/incorrect_password_exception.dart';
 export 'src/auth/exceptions/auth_exception.dart';
 export 'src/auth/kdf_user.dart';
+
+// Aliased/proxied types
 export 'src/komodo_defi_types_base.dart';
 // TODO: Consider moving utils to a separate package. The rationale for
 // including them here is that many are associated with the types in this

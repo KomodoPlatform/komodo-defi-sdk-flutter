@@ -49,10 +49,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
       for (final address in addresses) {
         final uri = url.replace(
           pathSegments: [...url.pathSegments, address.address],
-          queryParameters: {
-            // 'address': address.address,
-            if (asset.protocol.isTestnet) 'testnet': 'true',
-          },
+          queryParameters:
+              asset.protocol.isTestnet ? {'testnet': 'true'} : null,
         );
         // Add the address as the next path segment
 
