@@ -73,7 +73,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
   static KomodoDefiSdk get global => _instance!;
 
-  late final KomodoDefiFramework? _kdfFramework;
+  KomodoDefiFramework? _kdfFramework;
   // ignore: unused_field
   LogCallback? _logCallback;
 
@@ -145,7 +145,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _apiClient = _kdfFramework!.client;
 
     _auth = KomodoDefiLocalAuth(
-      kdf: _kdfFramework,
+      kdf: _kdfFramework!,
       hostConfig: hostConfig,
     );
 
