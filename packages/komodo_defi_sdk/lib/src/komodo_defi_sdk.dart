@@ -50,7 +50,23 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     return KomodoDefiSdk._(host, config ?? const KomodoDefiSdkConfig());
   }
 
-  KomodoDefiSdk._(this._hostConfig, this._config);
+  /// Creates a new instance of the [KomodoDefiSdk] class from an existing
+  /// [KomodoDefiFramework] instance.
+  ///
+  /// This may be useful when wanting to create a new SDK instance from a
+  /// pre-existing framework instance created in a different package/project.
+  factory KomodoDefiSdk.fromFramework(
+    KomodoDefiFramework framework, {
+    KomodoDefiSdkConfig? config,
+  }) {
+    return _instance ??= KomodoDefiSdk._(
+      null,
+      config ?? const KomodoDefiSdkConfig(),
+      framework,
+    );
+  }
+
+  KomodoDefiSdk._(this._hostConfig, this._config, [this._kdfFramework]);
 
   final IKdfHostConfig? _hostConfig;
   final KomodoDefiSdkConfig _config;
@@ -121,7 +137,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
           rpcPassword: rpcPassword,
         );
 
-    _kdfFramework = KomodoDefiFramework.create(
+    _kdfFramework ??= KomodoDefiFramework.create(
       hostConfig: hostConfig,
       externalLogger: kDebugMode ? print : null,
     );
