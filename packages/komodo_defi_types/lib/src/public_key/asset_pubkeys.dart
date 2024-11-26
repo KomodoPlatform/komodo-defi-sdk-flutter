@@ -32,7 +32,25 @@ class AssetPubkeys {
 /// Public type for the pubkeys info. Note that this is a separate type from the
 /// on in the RPC library even though they are similar because we want to keep
 /// the GUI types independent from the API types.
-typedef PubkeyInfo = NewAddressInfo;
+
+class PubkeyInfo extends NewAddressInfo {
+  PubkeyInfo({
+    required super.address,
+    required super.derivationPath,
+    required super.chain,
+    required super.balance,
+  });
+
+  // The coin is active for swap if it is non-HD or if it is HD and is the
+  // first address index. e.g. "m/44'/141'/0'/0/0", where the last 0 is the
+  // address index.
+  // NB: The intention is to add multi-address swap support in the future
+  // either as an abstraction in the SDK or as a feature in the API. For the
+  // former, the swap address will be locked to a single address when the
+  // asset has ongoing swaps.
+  bool get isActiveForSwap =>
+      derivationPath == null || derivationPath!.endsWith('/0');
+}
 
 typedef Balance = BalanceInfo;
 
