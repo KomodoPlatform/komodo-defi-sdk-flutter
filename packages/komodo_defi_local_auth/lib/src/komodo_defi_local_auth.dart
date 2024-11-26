@@ -94,6 +94,45 @@ abstract interface class KomodoDefiAuth {
   /// is signed in.
   Future<Mnemonic> getMnemonicPlainText(String walletPassword);
 
+  /// Sets the value of a single key in the active user's metadata.
+  ///
+  /// This preserves any existing metadata, and overwrites the value only for
+  /// the specified key.
+  ///
+  /// Throws an exception if there is no active user.
+  ///
+  /// Setting a value to `null` will remove the key from the metadata.
+  ///
+  /// This does not emit an auth state change event.
+  ///
+  ///
+  /// NB: This is intended to only be a short-term solution until the SDK
+  /// is fully integrated with KW. This may be deprecated in the future.
+  ///
+  /// Example:
+  /// final _komodoDefiSdk = KomodoDefiSdk.global;
+  ///
+  ///   await _komodoDefiSdk.auth.setOrRemoveActiveUserKeyValue(
+  ///   'custom_tokens',
+  ///   {
+  ///     'tokens': [
+  ///       {
+  ///         'foo': 'bar',
+  ///         'name': 'Foo Token',
+  // /        'symbol': 'FOO',
+  ///         // ...
+  ///       }
+  // /    ],
+  ///   }.toJsonString(),
+  /// );
+  /// final tokenJson = (await _komodoDefiSdk.auth.currentUser)
+  ///     ?.metadata
+  ///     .valueOrNull<JsonList>('custom_tokens', 'tokens');
+  ///
+  /// print('Custom tokens: $tokenJson');
+
+  Future<void> setOrRemoveActiveUserKeyValue(String key, dynamic value);
+
   /// Disposes of any resources held by the authentication service.
   ///
   /// This method should be called when the authentication service is no longer
@@ -211,11 +250,6 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     return user;
   }
 
-  // // Retrieve AuthOptions by wallet name when needed
-  // Future<AuthOptions?> getAuthOptions(String walletName) async {
-  //   return _secureStorage.getAuthOptions(walletName);
-  // }
-
   @override
   Stream<KdfUser?> get authStateChanges async* {
     await ensureInitialized();
@@ -296,6 +330,22 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
         type: AuthExceptionType.generalAuthError,
       );
     }
+  }
+
+  @override
+  Future<void> setOrRemoveActiveUserKeyValue(
+    String key,
+    dynamic value,
+  ) async {
+    final activeUser = await _authService.getActiveUser();
+
+    if (activeUser == null) throw AuthException.notFound();
+
+    final updatedMetadata = JsonMap.from(activeUser.metadata)..[key] = value;
+
+    if (value == null) updatedMetadata.remove(key);
+
+    await _authService.setActiveUserMetadata(updatedMetadata);
   }
 
   Future<void> _assertAuthState(bool expected) async {

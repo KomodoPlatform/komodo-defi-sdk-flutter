@@ -57,6 +57,16 @@ abstract interface class IAuthService {
     required String? walletPassword,
   });
 
+  /// Method to store custom metadata for the user.
+  ///
+  /// Overwrites any existing metadata.
+  ///
+  /// This does not emit an auth state change event.
+  ///
+  /// NB: This is intended to only be a short-term solution until the SDK
+  /// is fully integrated with KW. This may be deprecated in the future.
+  Future<void> setActiveUserMetadata(JsonMap metadata);
+
   Stream<KdfUser?> get authStateChanges;
   void dispose();
 }
@@ -295,5 +305,29 @@ class KdfAuthService implements IAuthService {
 
       return result == null;
     });
+  }
+
+  /// Returns the [KdfUser] associated with the active wallet if authenticated,
+  /// otherwise throws an [AuthException].
+  Future<KdfUser> _activeUserOrThrow() async {
+    final activeUser = await getActiveUser();
+    if (activeUser == null) {
+      throw AuthException.notSignedIn();
+    }
+    return activeUser;
+  }
+
+  @override
+  Future<void> setActiveUserMetadata(
+    Map<String, dynamic> metadata,
+  ) async {
+    final activeUser = await _activeUserOrThrow();
+    // TODO: Implement locks for this to avoid this method interfering with
+    // more sensitive operations.
+    final user = await _secureStorage.getUser(activeUser.walletId.name);
+    if (user == null) throw AuthException.notFound();
+
+    final updatedUser = user.copyWith(metadata: metadata);
+    await _secureStorage.saveUser(updatedUser);
   }
 }

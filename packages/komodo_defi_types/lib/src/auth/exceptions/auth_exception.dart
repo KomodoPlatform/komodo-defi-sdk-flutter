@@ -18,6 +18,12 @@ class AuthException implements Exception {
     this.details = const {},
   });
 
+  // Common exception constructors convenience methods
+  AuthException.notSignedIn()
+      : this('Not signed in', type: AuthExceptionType.unauthorized);
+  AuthException.notFound()
+      : this('Not found', type: AuthExceptionType.walletNotFound);
+
   /// The error message.
   final String message;
 

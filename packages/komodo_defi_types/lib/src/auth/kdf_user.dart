@@ -55,6 +55,7 @@ class KdfUser extends Equatable {
     required this.walletId,
     required this.authOptions,
     required this.isBip39Seed,
+    this.metadata = const {},
   });
 
   /// Create from JSON representation
@@ -62,11 +63,13 @@ class KdfUser extends Equatable {
         walletId: WalletId.fromJson(json.value<JsonMap>('wallet_id')),
         authOptions: AuthOptions.fromJson(json.value<JsonMap>('auth_options')),
         isBip39Seed: json.value<bool>('is_bip39_seed'),
+        metadata: json.valueOrNull<JsonMap>('metadata') ?? const {},
       );
 
   final WalletId walletId;
   final AuthOptions authOptions;
   final bool isBip39Seed;
+  final JsonMap metadata;
 
   bool get isHd => authOptions.derivationMethod == DerivationMethod.hdWallet;
 
@@ -75,20 +78,23 @@ class KdfUser extends Equatable {
     WalletId? walletId,
     AuthOptions? authOptions,
     bool? isBip39Seed,
+    JsonMap? metadata,
   }) {
     return KdfUser(
       walletId: walletId ?? this.walletId,
       authOptions: authOptions ?? this.authOptions,
       isBip39Seed: isBip39Seed ?? this.isBip39Seed,
+      metadata: metadata ?? this.metadata,
     );
   }
 
   @override
-  List<Object?> get props => [walletId, authOptions, isBip39Seed];
+  List<Object?> get props => [walletId, authOptions, isBip39Seed, metadata];
 
   JsonMap toJson() => {
         'wallet_id': walletId.toJson(),
         'auth_options': authOptions.toJson(),
         'is_bip39_seed': isBip39Seed,
+        if (metadata.isNotEmpty) 'metadata': metadata,
       };
 }
