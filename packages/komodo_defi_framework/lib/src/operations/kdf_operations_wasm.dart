@@ -159,29 +159,18 @@ class KdfOperationsWasm implements IKdfOperations {
 
   @override
   Future<JsonMap> mm2Rpc(JsonMap request) async {
-    return runZonedGuarded<Future<JsonMap>>(() async {
-      final oldCallback = FlutterError.onError;
-      FlutterError.onError = (_) {/** Ignore uncaught exceptions */};
-
-      try {
-        return _mm2RpcCall(request);
-      } catch (e) {
-        final message = 'Error calling mm2Rpc: $e. ${request['method']}';
-        _log(message);
-        throw Exception(message);
-      } finally {
-        FlutterError.onError = oldCallback;
-      }
-    }, (error, stack) {
-      _log('Uncaught error in mm2Rpc: $error\n$stack');
-      throw error as Exception;
-    })!;
-  }
-
-  Future<JsonMap> _mm2RpcCall(JsonMap request) async {
     await _ensureLoaded();
 
-    if (kDebugMode) _log('mm2Rpc request (pre-process): $request');
+    final jsResponse = await _makeJsCall(request);
+    final dartResponse = _parseDartResponse(jsResponse, request);
+    _validateResponse(dartResponse, request, jsResponse);
+
+    return JsonMap.from(dartResponse);
+  }
+
+  /// Makes the JavaScript RPC call and returns the raw JS response
+  Future<js_interop.JSObject> _makeJsCall(JsonMap request) async {
+    if (kDebugMode) _log('mm2Rpc request: $request');
     request['userpass'] = _config.rpcPassword;
 
     final jsRequest = request.jsify() as js_interop.JSObject?;
@@ -218,32 +207,41 @@ class KdfOperationsWasm implements IKdfOperations {
       );
     }
 
-    if (kDebugMode) _log('Response pre-cast: $jsResponse');
+    if (kDebugMode) _log('Raw JS response: $jsResponse');
+    return jsResponse as js_interop.JSObject;
+  }
 
-    Map<String, dynamic> dartResponse;
+  /// Converts JS response to Dart Map
+  JsonMap _parseDartResponse(
+    js_interop.JSObject jsResponse,
+    JsonMap request,
+  ) {
     try {
-      final dynamic converted = (jsResponse as js_interop.JSObject).dartify();
-      if (converted is! Map) {
-        dartResponse = _deepConvertMap(converted as Map);
+      final dynamic converted = jsResponse.dartify();
+      if (converted is! JsonMap) {
+        return _deepConvertMap(converted as Map);
       }
-      dartResponse = converted as Map<String, dynamic>;
+      return converted;
     } catch (e) {
-      throw Exception(
-        'Response is not a Map for method ${request['method']}: '
-        '\nRequest: $request',
-      );
+      _log('Response parsing error for method ${request['method']}:\n'
+          'Request: $request');
+      rethrow;
     }
+  }
 
-    // Validate response structure if needed
+  /// Validates the response structure
+  void _validateResponse(
+    JsonMap dartResponse,
+    JsonMap request,
+    js_interop.JSObject jsResponse,
+  ) {
     if (!dartResponse.containsKey('result') &&
         !dartResponse.containsKey('error')) {
       throw Exception(
-        'Failed to parse response for method ${request['method']}\n'
-        'Response was: $jsResponse\nRequest: $request',
+        'Invalid response format for method ${request['method']}\nResponse: '
+        '$dartResponse\nRaw JS Response: $jsResponse\nRequest: $request',
       );
     }
-
-    return JsonMap.from(dartResponse);
   }
 
   /// Recursively converts the provided map to JsonMap. This is required, as
