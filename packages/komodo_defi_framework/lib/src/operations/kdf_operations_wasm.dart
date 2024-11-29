@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:js_interop' as js_interop;
 import 'dart:js_interop_unsafe';
-import 'dart:js_util' as js_util;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -66,41 +65,29 @@ class KdfOperationsWasm implements IKdfOperations {
       (await kdfMainStatus()) == MainStatus.rpcIsUp;
 
   @override
-  // TODO! Ensure consistency accross implementations for behavior of kdMain
-  // and kdfStop wrt if the method is responsible only for initiating the
-  // operation or also for waiting for the operation to complete.
-  // Likely, it is the former, and then additional logic on top of this
-  // can be handled by [KomoDefiFramework] or the caller.
   Future<KdfStartupResult> kdfMain(JsonMap config, {int? logLevel}) async {
     await _ensureLoaded();
-    // final startParams = await _configManager.generateStartParamsFromDefault(
-    //   passphrase,
-    //   userpass: _config.userpass,
-    // );
 
     final mm2Config = {
       'conf': config,
       'log_level': logLevel ?? 3,
     };
 
-    final jsConfig = js_util.jsify(mm2Config) as js_interop.JSObject;
+    final jsConfig = mm2Config.jsify() as js_interop.JSObject?;
 
     try {
-      final result = js_util.dartify(
-        _kdfModule!.callMethod(
-          'mm2_main'.toJS,
-          jsConfig,
-          (int level, String message) {
-            _log('[$level] KDF: $message');
-          }.toJS,
-        ),
-      );
+      final result = _kdfModule!
+          .callMethod(
+            'mm2_main'.toJS,
+            jsConfig,
+            (int level, String message) {
+              _log('[$level] KDF: $message');
+            }.toJS,
+          )
+          .dartify();
 
       _log('mm2_main called: $result');
 
-      // Similar logic to the local executable implementation: wait for kdf to
-      // start before returning, and assume failure instead of success if no
-      // response is received from the isRunning function.
       final timer = Stopwatch()..start();
       while (timer.elapsed.inSeconds < 15) {
         if (await isRunning()) {
@@ -139,9 +126,9 @@ class KdfOperationsWasm implements IKdfOperations {
     await _ensureLoaded();
 
     try {
-      final errorOrNull =
-          await (js_util.dartify(_kdfModule!.callMethod('mm2_stop'.toJS))!
-              as Future<Object?>);
+      final errorOrNull = await (_kdfModule!
+          .callMethod('mm2_stop'.toJS)
+          .dartify()! as Future<Object?>);
 
       if (errorOrNull is int) {
         return StopStatus.fromDefaultInt(errorOrNull);
@@ -149,7 +136,6 @@ class KdfOperationsWasm implements IKdfOperations {
 
       _log('KDF stop result: $errorOrNull');
 
-      // Wait until the KDF is stopped. Timeout after 10 seconds
       await Future.doWhile(() async {
         final isStopped = (await kdfMainStatus()) == MainStatus.notRunning;
 
@@ -173,31 +159,112 @@ class KdfOperationsWasm implements IKdfOperations {
 
   @override
   Future<JsonMap> mm2Rpc(JsonMap request) async {
-    try {
-      await _ensureLoaded();
+    return runZonedGuarded<Future<JsonMap>>(() async {
+      final oldCallback = FlutterError.onError;
+      FlutterError.onError = (_) {/** Ignore uncaught exceptions */};
 
-      if (kDebugMode) _log('mm2Rpc request (pre-process): $request');
-      request['userpass'] = _config.rpcPassword;
+      try {
+        return _mm2RpcCall(request);
+      } catch (e) {
+        final message = 'Error calling mm2Rpc: $e. ${request['method']}';
+        _log(message);
+        throw Exception(message);
+      } finally {
+        FlutterError.onError = oldCallback;
+      }
+    }, (error, stack) {
+      _log('Uncaught error in mm2Rpc: $error\n$stack');
+      throw error as Exception;
+    })!;
+  }
 
-      final jsResponse = await js_util.promiseToFuture<js_interop.JSObject>(
-        _kdfModule!.callMethod(
-          'mm2_rpc'.toJS,
-          js_util.jsify(request) as js_interop.JSObject,
-        ),
+  Future<JsonMap> _mm2RpcCall(JsonMap request) async {
+    await _ensureLoaded();
+
+    if (kDebugMode) _log('mm2Rpc request (pre-process): $request');
+    request['userpass'] = _config.rpcPassword;
+
+    final jsRequest = request.jsify() as js_interop.JSObject?;
+    final jsPromise = _kdfModule!.callMethod('mm2_rpc'.toJS, jsRequest)
+        as js_interop.JSPromise?;
+
+    if (jsPromise == null || jsPromise.isUndefinedOrNull) {
+      throw Exception(
+        'mm2_rpc call returned null for method: ${request['method']}'
+        '\nRequest: $request',
       );
-
-      if (kDebugMode) _log('Response pre-cast: ${js_util.dartify(jsResponse)}');
-
-      // Convert the JS object to a Dart map and ensure it's a JsonMap
-      final response =
-          JsonMap.from((jsResponse.dartify()! as Map).cast<String, dynamic>());
-
-      return response;
-    } catch (e) {
-      final message = 'Error calling mm2Rpc: $e. ${request['method']}';
-      _log(message);
-      throw Exception(message);
     }
+
+    final jsResponse = await jsPromise.toDart
+        .then((value) => value)
+        .catchError((Object error) {
+      if (error.toString().contains('RethrownDartError')) {
+        final errorMessage = error.toString().split('\n')[0];
+        throw Exception(
+          'JavaScript error for method ${request['method']}: $errorMessage'
+          '\nRequest: $request',
+        );
+      }
+      throw Exception(
+        'Unknown error for method ${request['method']}: $error'
+        '\nRequest: $request',
+      );
+    });
+
+    if (jsResponse == null || jsResponse.isUndefinedOrNull) {
+      throw Exception(
+        'mm2_rpc response was null for method: ${request['method']}'
+        '\nRequest: $request',
+      );
+    }
+
+    if (kDebugMode) _log('Response pre-cast: $jsResponse');
+
+    Map<String, dynamic> dartResponse;
+    try {
+      final dynamic converted = (jsResponse as js_interop.JSObject).dartify();
+      if (converted is! Map) {
+        dartResponse = _deepConvertMap(converted as Map);
+      }
+      dartResponse = converted as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception(
+        'Response is not a Map for method ${request['method']}: '
+        '\nRequest: $request',
+      );
+    }
+
+    // Validate response structure if needed
+    if (!dartResponse.containsKey('result') &&
+        !dartResponse.containsKey('error')) {
+      throw Exception(
+        'Failed to parse response for method ${request['method']}\n'
+        'Response was: $jsResponse\nRequest: $request',
+      );
+    }
+
+    return JsonMap.from(dartResponse);
+  }
+
+  /// Recursively converts the provided map to JsonMap. This is required, as
+  /// many of the responses received from the sdk are
+  /// LinkedHashMap<Object?, Object?>
+  Map<String, dynamic> _deepConvertMap(Map<dynamic, dynamic> map) {
+    return map.map((key, value) {
+      if (value is Map) return MapEntry(key.toString(), _deepConvertMap(value));
+      if (value is List) {
+        return MapEntry(key.toString(), _deepConvertList(value));
+      }
+      return MapEntry(key.toString(), value);
+    });
+  }
+
+  List<dynamic> _deepConvertList(List<dynamic> list) {
+    return list.map((value) {
+      if (value is Map) return _deepConvertMap(value);
+      if (value is List) return _deepConvertList(value);
+      return value;
+    }).toList();
   }
 
   @override
