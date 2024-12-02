@@ -84,13 +84,18 @@ class EncryptedMnemonicData {
 
   // Factory method to create EncryptedMnemonicData from JSON
   factory EncryptedMnemonicData.fromJson(Map<String, dynamic> json) {
+    final encryptedData =
+        json.valueOrNull<JsonMap>('encrypted_mnemonic_data') ??
+            (throw ArgumentError('Invalid encrypted mnemonic data'));
+
     return EncryptedMnemonicData(
-      encryptionAlgorithm: json.value<String>('encryption_algorithm'),
-      keyDerivationDetails:
-          Argon2Details.fromJson(json.value<JsonMap>('key_derivation_details')),
-      iv: json.value<String>('iv'),
-      ciphertext: json.value<String>('ciphertext'),
-      tag: json.value<String>('tag'),
+      encryptionAlgorithm: encryptedData.value<String>('encryption_algorithm'),
+      keyDerivationDetails: Argon2Details.fromJson(
+        encryptedData.value<JsonMap>('key_derivation_details'),
+      ),
+      iv: encryptedData.value<String>('iv'),
+      ciphertext: encryptedData.value<String>('ciphertext'),
+      tag: encryptedData.value<String>('tag'),
     );
   }
 
@@ -155,15 +160,15 @@ class Argon2Details {
 
   // Factory method to create Argon2Details from JSON
   factory Argon2Details.fromJson(Map<String, dynamic> json) {
-    final argon2Params = json.value<JsonMap>('Argon2', 'params');
+    // final argon2Params = json.value<JsonMap>('Argon2', 'params');
     return Argon2Details(
-      algorithm: argon2Params.value<String>('algorithm'),
-      version: int.parse(argon2Params['version'].toString()),
-      mCost: argon2Params.value<int>('m_cost'),
-      tCost: argon2Params.value<int>('t_cost'),
-      pCost: argon2Params.value<int>('p_cost'),
-      saltAes: json.value<String>('Argon2', 'salt_aes'),
-      saltHmac: json.value<String>('Argon2', 'salt_hmac'),
+      algorithm: json.value<String>('algorithm'),
+      version: int.parse(json['version'].toString()),
+      mCost: json.value<int>('m_cost'),
+      tCost: json.value<int>('t_cost'),
+      pCost: json.value<int>('p_cost'),
+      saltAes: json.value<String>('salt_aes'),
+      saltHmac: json.value<String>('salt_hmac'),
     );
   }
 
