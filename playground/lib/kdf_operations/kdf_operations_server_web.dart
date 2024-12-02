@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:js_interop';
 // this warning is pointless, since `web` and `js_interop` fail to compile on
 // native platforms, so they aren't safe to import without conditional
 // imports either (yet)
 // ignore: avoid_web_libraries_in_flutter
-import 'dart:js_util' as js_util;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -37,10 +37,10 @@ class KdfHttpServerOperations implements IKdfOperations {
       throw Exception('WebView controller is not available.');
     }
 
-    final jsConfig = js_util.jsify({
+    final jsConfig = {
       'conf': startParams,
       'log_level': logLevel ?? 3,
-    });
+    }.jsify();
 
     try {
       final result = await controller.evaluateJavascript(
