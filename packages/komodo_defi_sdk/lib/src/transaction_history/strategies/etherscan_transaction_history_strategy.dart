@@ -147,6 +147,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
                 : null,
             coin: coinId,
             internalId: tx.value<String>('internal_id'),
+            memo: tx.valueOrNull<String>('memo'),
           ),
         )
         .toList();

@@ -14,7 +14,9 @@ class Transaction extends Equatable {
     required this.blockHeight,
     required this.from,
     required this.to,
-    this.fee,
+    required this.txHash,
+    required this.fee,
+    required this.memo,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) => Transaction(
@@ -30,9 +32,11 @@ class Transaction extends Equatable {
         blockHeight: json.value<int>('block_height'),
         from: List<String>.from(json.value('from')),
         to: List<String>.from(json.value('to')),
+        txHash: json.valueOrNull<String>('tx_hash'),
         fee: json.valueOrNull<String>('fee') != null
             ? Decimal.parse(json.value<String>('fee'))
             : null,
+        memo: json.valueOrNull<String>('memo'),
       );
 
   final String id;
@@ -44,7 +48,12 @@ class Transaction extends Equatable {
   final int blockHeight;
   final List<String> from;
   final List<String> to;
+
+  // Null for cases such as SIA coin. TODO: Consider if there is a better way
+  // represent this property usin
+  final String? txHash;
   final Decimal? fee;
+  final String? memo;
 
   bool get isIncoming => amount > Decimal.zero;
 
@@ -59,7 +68,9 @@ class Transaction extends Equatable {
         blockHeight,
         from,
         to,
+        txHash,
         fee,
+        memo,
       ];
 
   Map<String, dynamic> toJson() => {
@@ -72,6 +83,8 @@ class Transaction extends Equatable {
         'block_height': blockHeight,
         'from': from,
         'to': to,
-        if (fee != null) 'fee': fee.toString(),
+        'tx_hash': txHash,
+        'memo': memo,
+        'fee': fee.toString(),
       };
 }

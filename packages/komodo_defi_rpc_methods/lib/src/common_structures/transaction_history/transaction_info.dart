@@ -13,6 +13,7 @@ class TransactionInfo {
     required this.feeDetails,
     required this.coin,
     required this.internalId,
+    required this.memo,
     this.spentByMe,
     this.receivedByMe,
     this.transactionFee,
@@ -35,6 +36,7 @@ class TransactionInfo {
       internalId: json.value<String>('internal_id'),
       spentByMe: json.valueOrNull<String>('spent_by_me'),
       receivedByMe: json.valueOrNull<String>('received_by_me'),
+      memo: json.valueOrNull<String>('memo'),
     );
   }
 
@@ -51,6 +53,7 @@ class TransactionInfo {
   final String internalId;
   final String? spentByMe;
   final String? receivedByMe;
+  final String? memo;
 
   Map<String, dynamic> toJson() => {
         'tx_hash': txHash,
@@ -66,6 +69,7 @@ class TransactionInfo {
         if (spentByMe != null) 'spent_by_me': spentByMe,
         if (receivedByMe != null) 'received_by_me': receivedByMe,
         if (transactionFee != null) 'transaction_fee': transactionFee,
+        if (memo != null) 'memo': memo,
       };
 
   Transaction asTransaction(AssetId assetId) => Transaction(
@@ -79,5 +83,7 @@ class TransactionInfo {
         from: from,
         to: to,
         fee: feeDetails?.amount,
+        txHash: txHash,
+        memo: memo,
       );
 }
