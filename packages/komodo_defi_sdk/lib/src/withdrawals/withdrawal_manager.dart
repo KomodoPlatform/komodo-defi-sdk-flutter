@@ -54,7 +54,7 @@ class WithdrawalManager {
             amount: Decimal.parse(details.totalAmount),
             coin: parameters.asset,
             toAddress: parameters.toAddress,
-            fee: Decimal.parse(details.feeDetails.toString()),
+            fee: details.fee,
             kmdRewardsEligible: details.kmdRewards != null &&
                 (details.kmdRewards?.amount ?? '0') != '0',
           ),
@@ -100,7 +100,7 @@ class WithdrawalManager {
           amount: Decimal.parse(result.totalAmount),
           coin: result.coin,
           toAddress: result.to.first,
-          fee: result.feeDetails.amount,
+          fee: result.fee,
           kmdRewardsEligible: result.kmdRewards != null,
         ),
       );

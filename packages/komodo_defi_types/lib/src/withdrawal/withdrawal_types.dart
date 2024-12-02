@@ -15,7 +15,7 @@ class WithdrawResult {
     required this.myBalanceChange,
     required this.blockHeight,
     required this.timestamp,
-    required this.feeDetails,
+    required this.fee,
     required this.coin,
     this.internalId,
     this.kmdRewards,
@@ -34,7 +34,7 @@ class WithdrawResult {
       myBalanceChange: json.value<String>('my_balance_change'),
       blockHeight: json.value<int>('block_height'),
       timestamp: json.value<int>('timestamp'),
-      feeDetails: WithdrawFee.fromJson(json.value<JsonMap>('fee_details')),
+      fee: FeeInfo.fromJson(json.value<JsonMap>('fee_details')),
       coin: json.value<String>('coin'),
       internalId: json.valueOrNull<String>('internal_id'),
       kmdRewards: json.containsKey('kmd_rewards')
@@ -54,7 +54,7 @@ class WithdrawResult {
   final String myBalanceChange;
   final int blockHeight;
   final int timestamp;
-  final WithdrawFee feeDetails;
+  final FeeInfo fee;
   final String coin;
   final String? internalId;
   final KmdRewards? kmdRewards;
@@ -71,7 +71,7 @@ class WithdrawResult {
         'my_balance_change': myBalanceChange,
         'block_height': blockHeight,
         'timestamp': timestamp,
-        'fee_details': feeDetails.toJson(),
+        'fee_details': fee.toJson(),
         'coin': coin,
         if (internalId != null) 'internal_id': internalId,
         if (kmdRewards != null) 'kmd_rewards': kmdRewards!.toJson(),
@@ -110,7 +110,7 @@ class WithdrawalResult {
   final Decimal amount;
   final String coin;
   final String toAddress;
-  final Decimal fee;
+  final FeeInfo fee;
   final bool kmdRewardsEligible;
 }
 
@@ -160,7 +160,7 @@ class WithdrawParameters {
   final String asset;
   final String toAddress;
   final Decimal? amount;
-  final WithdrawFee? fee;
+  final FeeInfo? fee;
   final WithdrawalSource? from;
   final String? memo;
   final bool? ibcTransfer;

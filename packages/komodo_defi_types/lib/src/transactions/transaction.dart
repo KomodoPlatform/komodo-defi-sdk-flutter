@@ -33,8 +33,8 @@ class Transaction extends Equatable {
         from: List<String>.from(json.value('from')),
         to: List<String>.from(json.value('to')),
         txHash: json.valueOrNull<String>('tx_hash'),
-        fee: json.valueOrNull<String>('fee') != null
-            ? Decimal.parse(json.value<String>('fee'))
+        fee: json.containsKey('fee')
+            ? FeeInfo.fromJson(json.value('fee'))
             : null,
         memo: json.valueOrNull<String>('memo'),
       );
@@ -52,7 +52,7 @@ class Transaction extends Equatable {
   // Null for cases such as SIA coin. TODO: Consider if there is a better way
   // represent this property usin
   final String? txHash;
-  final Decimal? fee;
+  final FeeInfo? fee;
   final String? memo;
 
   bool get isIncoming => amount > Decimal.zero;

@@ -140,7 +140,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
             confirmations: tx.value<int>('confirmations'),
             timestamp: tx.value<int>('timestamp'),
             feeDetails: tx.valueOrNull<JsonMap>('fee_details') != null
-                ? WithdrawFee.fromJson(
+                ? FeeInfo.fromJson(
                     tx.value<JsonMap>('fee_details')
                       ..setIfAbsentOrEmpty('type', 'Eth'),
                   )

@@ -27,7 +27,7 @@ class WithdrawLegacyRequest
   final String coin;
   final String to;
   final Decimal amount;
-  final WithdrawFee? fee;
+  final FeeInfo? fee;
   final WithdrawalSource? from;
   final String? memo;
   final bool max;
@@ -82,7 +82,7 @@ class WithdrawInitRequest
   final String coin;
   final String to;
   final String? amount;
-  final WithdrawFee? fee;
+  final FeeInfo? fee;
   final WithdrawalSource? from;
   final String? memo;
   final bool max;

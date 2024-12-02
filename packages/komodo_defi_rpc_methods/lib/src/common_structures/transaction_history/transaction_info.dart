@@ -29,7 +29,7 @@ class TransactionInfo {
       confirmations: json.value<int>('confirmations'),
       timestamp: json.value<int>('timestamp'),
       feeDetails: json.containsKey('fee_details')
-          ? WithdrawFee.fromJson(json.value('fee_details'))
+          ? FeeInfo.fromJson(json.value('fee_details'))
           : null,
       transactionFee: json.valueOrNull<String>('transaction_fee'),
       coin: json.value<String>('coin'),
@@ -47,7 +47,7 @@ class TransactionInfo {
   final int blockHeight;
   final int confirmations;
   final int timestamp;
-  final WithdrawFee? feeDetails;
+  final FeeInfo? feeDetails;
   final String? transactionFee;
   final String coin;
   final String internalId;
@@ -82,7 +82,7 @@ class TransactionInfo {
         blockHeight: blockHeight,
         from: from,
         to: to,
-        fee: feeDetails?.amount,
+        fee: feeDetails,
         txHash: txHash,
         memo: memo,
       );

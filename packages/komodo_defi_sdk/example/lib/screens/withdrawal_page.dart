@@ -27,7 +27,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   PubkeyInfo? _selectedFromAddress;
   bool _isMaxAmount = false;
-  WithdrawFee? _selectedFee;
+  FeeInfo? _selectedFee;
   WithdrawalPreview? _preview;
   String? _error;
   bool _isIbcTransfer = false;
@@ -81,7 +81,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
       setState(() {
         _preview = preview;
-        _selectedFee = preview.feeDetails;
+        _selectedFee = preview.fee;
       });
 
       await _showPreviewDialog(params);
@@ -106,7 +106,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
             children: [
               Text('Amount: ${_preview!.totalAmount} ${widget.asset.id.id}'),
               Text('To: ${_preview!.to.first}'),
-              _buildFeeDetails(_preview!.feeDetails),
+              _buildFeeDetails(_preview!.fee),
               if (_preview!.kmdRewards != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -144,7 +144,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     }
   }
 
-  Widget _buildFeeDetails(WithdrawFee details) {
+  Widget _buildFeeDetails(FeeInfo details) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -247,7 +247,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                     final gasPrice = Decimal.tryParse(value);
                     if (gasPrice != null) {
                       setState(() {
-                        _selectedFee = WithdrawFee.erc20(
+                        _selectedFee = FeeInfo.erc20(
                           gasPrice,
                           _selectedFee?.gas ?? 21000,
                         );
@@ -269,7 +269,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                     final gasLimit = int.tryParse(value);
                     if (gasLimit != null) {
                       setState(() {
-                        _selectedFee = WithdrawFee.erc20(
+                        _selectedFee = FeeInfo.erc20(
                           Decimal.parse(_selectedFee?.gasPrice ?? '1'),
                           gasLimit,
                         );
@@ -314,7 +314,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 ? null
                 : (value) {
                     setState(() {
-                      _selectedFee = WithdrawFee.utxoFixed(value.first);
+                      _selectedFee = FeeInfo.utxoFixed(value.first);
                     });
                   },
           ),
