@@ -235,6 +235,9 @@ class KdfOperationsWasm implements IKdfOperations {
     JsonMap request,
     js_interop.JSObject jsResponse,
   ) {
+    // Legacy RPCs have no standard response format to validate
+    if (request.valueOrNull<String>('mmrpc') != '2.0') return;
+
     if (!dartResponse.containsKey('result') &&
         !dartResponse.containsKey('error')) {
       throw Exception(
