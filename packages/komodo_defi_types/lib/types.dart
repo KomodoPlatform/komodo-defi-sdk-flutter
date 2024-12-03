@@ -25,7 +25,6 @@ export 'src/exceptions/http_exceptions.dart';
 export 'src/generic/result.dart';
 export 'src/generic/sync_status.dart';
 export 'src/komodo_defi_types_base.dart';
-export 'src/legacy/legacy_coin_model.dart';
 export 'src/protocols/base/exceptions.dart';
 export 'src/protocols/base/protocol_class.dart';
 export 'src/protocols/erc20/erc20_protocol.dart';
