@@ -41,6 +41,7 @@ export 'src/public_key/pubkey.dart';
 export 'src/public_key/pubkey_strategy.dart';
 export 'src/public_key/token_balance_map.dart';
 export 'src/public_key/wallet_balance.dart';
+export 'src/transactions/balance_changes.dart';
 export 'src/transactions/transaction.dart';
 export 'src/transactions/transaction_history_strategy.dart';
 export 'src/transactions/transaction_pagination_strategy.dart';

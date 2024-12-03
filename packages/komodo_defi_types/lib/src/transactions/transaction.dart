@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:equatable/equatable.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Domain model for a transaction, decoupled from the API representation
@@ -8,15 +9,15 @@ class Transaction extends Equatable {
     required this.id,
     required this.internalId,
     required this.assetId,
-    required this.amount,
+    required this.balanceChanges,
     required this.timestamp,
     required this.confirmations,
     required this.blockHeight,
     required this.from,
     required this.to,
     required this.txHash,
-    required this.fee,
-    required this.memo,
+    this.fee,
+    this.memo,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) => Transaction(
@@ -26,7 +27,7 @@ class Transaction extends Equatable {
           json.value<JsonMap>('asset_id'),
           knownIds: null,
         ),
-        amount: Decimal.parse(json.value<String>('my_balance_change')),
+        balanceChanges: BalanceChanges.fromJson(json),
         timestamp: DateTime.parse(json.value<String>('timestamp')),
         confirmations: json.value<int>('confirmations'),
         blockHeight: json.value<int>('block_height'),
@@ -42,27 +43,28 @@ class Transaction extends Equatable {
   final String id;
   final String internalId;
   final AssetId assetId;
-  final Decimal amount;
+  final BalanceChanges balanceChanges;
   final DateTime timestamp;
   final int confirmations;
   final int blockHeight;
   final List<String> from;
   final List<String> to;
-
-  // Null for cases such as SIA coin. TODO: Consider if there is a better way
-  // represent this property usin
   final String? txHash;
   final FeeInfo? fee;
   final String? memo;
 
-  bool get isIncoming => amount > Decimal.zero;
+  /// Convenience getter for the net balance change
+  Decimal get amount => balanceChanges.netChange;
+
+  /// Convenience getter for whether transaction is incoming
+  bool get isIncoming => balanceChanges.isIncoming;
 
   @override
   List<Object?> get props => [
         id,
         internalId,
         assetId,
-        amount,
+        balanceChanges,
         timestamp,
         confirmations,
         blockHeight,
@@ -77,14 +79,43 @@ class Transaction extends Equatable {
         'id': id,
         'internal_id': internalId,
         'asset_id': assetId.toJson(),
-        'my_balance_change': amount.toString(),
+        ...balanceChanges.toJson(),
         'timestamp': timestamp.toIso8601String(),
         'confirmations': confirmations,
         'block_height': blockHeight,
         'from': from,
         'to': to,
-        'tx_hash': txHash,
-        'memo': memo,
-        'fee': fee.toString(),
+        if (txHash != null) 'tx_hash': txHash,
+        if (fee != null) 'fee': fee!.toJson(),
+        if (memo != null) 'memo': memo,
       };
+}
+
+extension TransactionInfoExtension on TransactionInfo {
+  Transaction asTransaction(AssetId assetId) => Transaction(
+        id: txHash,
+        internalId: internalId,
+        assetId: assetId,
+        balanceChanges: BalanceChanges(
+          netChange: Decimal.parse(myBalanceChange),
+          receivedByMe: receivedByMe != null
+              ? Decimal.parse(receivedByMe!)
+              : Decimal.zero,
+          spentByMe:
+              spentByMe != null ? Decimal.parse(spentByMe!) : Decimal.zero,
+          totalAmount: Decimal.parse(
+            // For historical transactions that don't have spent/received,
+            // use the absolute value of the balance change
+            receivedByMe ?? spentByMe ?? myBalanceChange.replaceAll('-', ''),
+          ),
+        ),
+        timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp * 1000),
+        confirmations: confirmations,
+        blockHeight: blockHeight,
+        from: from,
+        to: to,
+        txHash: txHash,
+        fee: feeDetails,
+        memo: memo,
+      );
 }

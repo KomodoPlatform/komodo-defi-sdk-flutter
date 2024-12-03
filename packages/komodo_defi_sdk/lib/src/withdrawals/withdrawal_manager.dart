@@ -36,7 +36,7 @@ class WithdrawalManager {
           .map(_mapStatusToProgress)
           .forEach(controller.add);
 
-      // Send the raw transaction to the network if
+      // Send the raw transaction to the network if successful
       if (lastProgress?.status == 'Ok' &&
           lastProgress?.details is WithdrawResult) {
         final details = lastProgress!.details as WithdrawResult;
@@ -51,12 +51,12 @@ class WithdrawalManager {
           message: 'Withdrawal complete',
           withdrawalResult: WithdrawalResult(
             txHash: response.txHash,
-            amount: Decimal.parse(details.totalAmount),
+            balanceChanges: details.balanceChanges,
             coin: parameters.asset,
             toAddress: parameters.toAddress,
             fee: details.fee,
             kmdRewardsEligible: details.kmdRewards != null &&
-                (details.kmdRewards?.amount ?? '0') != '0',
+                Decimal.parse(details.kmdRewards!.amount) > Decimal.zero,
           ),
         );
       }
@@ -97,11 +97,12 @@ class WithdrawalManager {
         message: 'Withdrawal generated. Sending transaction...',
         withdrawalResult: WithdrawalResult(
           txHash: result.txHash,
-          amount: Decimal.parse(result.totalAmount),
+          balanceChanges: result.balanceChanges,
           coin: result.coin,
           toAddress: result.to.first,
           fee: result.fee,
-          kmdRewardsEligible: result.kmdRewards != null,
+          kmdRewardsEligible: result.kmdRewards != null &&
+              Decimal.parse(result.kmdRewards!.amount) > Decimal.zero,
         ),
       );
     }

@@ -1,4 +1,3 @@
-import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class TransactionInfo {
@@ -71,19 +70,4 @@ class TransactionInfo {
         if (transactionFee != null) 'transaction_fee': transactionFee,
         if (memo != null) 'memo': memo,
       };
-
-  Transaction asTransaction(AssetId assetId) => Transaction(
-        id: txHash,
-        internalId: internalId,
-        assetId: assetId,
-        amount: Decimal.parse(myBalanceChange),
-        timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp * 1000),
-        confirmations: confirmations,
-        blockHeight: blockHeight,
-        from: from,
-        to: to,
-        fee: feeDetails,
-        txHash: txHash,
-        memo: memo,
-      );
 }

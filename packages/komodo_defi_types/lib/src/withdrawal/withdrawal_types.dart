@@ -1,18 +1,15 @@
-// TODO: Split the classes into separate files
-
 import 'package:decimal/decimal.dart';
+import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+/// Raw API response for a withdrawal operation
 class WithdrawResult {
   WithdrawResult({
     required this.txHex,
     required this.txHash,
     required this.from,
     required this.to,
-    required this.totalAmount,
-    required this.spentByMe,
-    required this.receivedByMe,
-    required this.myBalanceChange,
+    required this.balanceChanges,
     required this.blockHeight,
     required this.timestamp,
     required this.fee,
@@ -28,10 +25,7 @@ class WithdrawResult {
       txHash: json.value<String>('tx_hash'),
       from: List<String>.from(json.value('from')),
       to: List<String>.from(json.value('to')),
-      totalAmount: json.value<String>('total_amount'),
-      spentByMe: json.value<String>('spent_by_me'),
-      receivedByMe: json.value<String>('received_by_me'),
-      myBalanceChange: json.value<String>('my_balance_change'),
+      balanceChanges: BalanceChanges.fromJson(json),
       blockHeight: json.value<int>('block_height'),
       timestamp: json.value<int>('timestamp'),
       fee: FeeInfo.fromJson(json.value<JsonMap>('fee_details')),
@@ -48,10 +42,7 @@ class WithdrawResult {
   final String txHash;
   final List<String> from;
   final List<String> to;
-  final String totalAmount;
-  final String spentByMe;
-  final String receivedByMe;
-  final String myBalanceChange;
+  final BalanceChanges balanceChanges;
   final int blockHeight;
   final int timestamp;
   final FeeInfo fee;
@@ -65,10 +56,7 @@ class WithdrawResult {
         'tx_hash': txHash,
         'from': from,
         'to': to,
-        'total_amount': totalAmount,
-        'spent_by_me': spentByMe,
-        'received_by_me': receivedByMe,
-        'my_balance_change': myBalanceChange,
+        ...balanceChanges.toJson(),
         'block_height': blockHeight,
         'timestamp': timestamp,
         'fee_details': fee.toJson(),
@@ -79,8 +67,54 @@ class WithdrawResult {
       };
 }
 
-class WithdrawalProgress {
-  WithdrawalProgress({
+/// Domain model for a successful withdrawal operation
+class WithdrawalResult extends Equatable {
+  const WithdrawalResult({
+    required this.txHash,
+    required this.balanceChanges,
+    required this.coin,
+    required this.toAddress,
+    required this.fee,
+    this.kmdRewardsEligible = false,
+  });
+
+  /// Create a domain model from API response
+  factory WithdrawalResult.fromWithdrawResult(WithdrawResult result) {
+    return WithdrawalResult(
+      txHash: result.txHash,
+      balanceChanges: result.balanceChanges,
+      coin: result.coin,
+      toAddress: result.to.first,
+      fee: result.fee,
+      kmdRewardsEligible: result.kmdRewards != null &&
+          Decimal.parse(result.kmdRewards!.amount) > Decimal.zero,
+    );
+  }
+
+  final String txHash;
+  final BalanceChanges balanceChanges;
+  final String coin;
+  final String toAddress;
+  final FeeInfo fee;
+  final bool kmdRewardsEligible;
+
+  /// Convenience getter for the withdrawal amount (abs of net change)
+  Decimal get amount => balanceChanges.netChange.abs();
+
+  @override
+  List<Object?> get props => [
+        txHash,
+        balanceChanges,
+        coin,
+        toAddress,
+        fee,
+        kmdRewardsEligible,
+      ];
+}
+
+/// Progress tracking for withdrawal operations
+class WithdrawalProgress extends Equatable {
+  const WithdrawalProgress({
     required this.status,
     required this.message,
     this.withdrawalResult,
@@ -95,55 +129,21 @@ class WithdrawalProgress {
   final WithdrawalErrorCode? errorCode;
   final String? errorMessage;
   final String? taskId;
+
+  @override
+  List<Object?> get props => [
+        status,
+        message,
+        withdrawalResult,
+        errorCode,
+        errorMessage,
+        taskId,
+      ];
 }
 
-class WithdrawalResult {
-  WithdrawalResult({
-    required this.txHash,
-    required this.amount,
-    required this.coin,
-    required this.toAddress,
-    required this.fee,
-    this.kmdRewardsEligible = false,
-  });
-  final String txHash;
-  final Decimal amount;
-  final String coin;
-  final String toAddress;
-  final FeeInfo fee;
-  final bool kmdRewardsEligible;
-}
-
-typedef WithdrawalPreview = WithdrawResult;
-
-// class FeeDetails {
-//   FeeDetails({
-//     required this.type,
-//     required this.amount,
-//     this.coin,
-//   });
-
-//   factory FeeDetails.fromJson(Map<String, dynamic> json) {
-//     return FeeDetails(
-//       type: json.value<String>('type'),
-//       amount: json.value<String>('amount'),
-//       coin: json.valueOrNull<String>('coin'),
-//     );
-//   }
-
-//   final String type;
-//   final String amount;
-//   final String? coin;
-
-//   Map<String, dynamic> toJson() => {
-//         'type': type,
-//         'amount': amount,
-//         if (coin != null) 'coin': coin,
-//       };
-// }
-
-class WithdrawParameters {
-  WithdrawParameters({
+/// Parameters for initiating a withdrawal
+class WithdrawParameters extends Equatable {
+  const WithdrawParameters({
     required this.asset,
     required this.toAddress,
     required this.amount,
@@ -176,10 +176,26 @@ class WithdrawParameters {
         if (memo != null) 'memo': memo,
         if (ibcTransfer != null) 'ibc_transfer': ibcTransfer,
       };
+
+  @override
+  List<Object?> get props => [
+        asset,
+        toAddress,
+        amount,
+        fee,
+        from,
+        memo,
+        ibcTransfer,
+        isMax,
+      ];
 }
 
-class WithdrawalSource {
-  WithdrawalSource._({
+/// Preview of a withdrawal operation, using same structure as API response
+typedef WithdrawalPreview = WithdrawResult;
+
+/// Specifies the source of funds for a withdrawal
+class WithdrawalSource extends Equatable {
+  const WithdrawalSource._({
     required this.type,
     required this.params,
   });
@@ -197,6 +213,7 @@ class WithdrawalSource {
           'address_id': addressId,
         },
       );
+
   final WithdrawalSourceType type;
   final Map<String, dynamic> params;
 
@@ -204,45 +221,10 @@ class WithdrawalSource {
         'type': type.toString(),
         ...params,
       };
+
+  @override
+  List<Object?> get props => [type, params];
 }
-
-// class WithdrawFeeDetails {
-//   WithdrawFeeDetails({
-//     required this.type,
-//     required this.amount,
-//     this.coin,
-//     this.gas,
-//     this.gasPrice,
-//     this.totalFee,
-//   });
-
-//   factory WithdrawFeeDetails.fromJson(Map<String, dynamic> json) {
-//     return WithdrawFeeDetails(
-//       type: json.value<String>('type'),
-//       amount: json.value<String>('amount'),
-//       coin: json.valueOrNull<String>('coin'),
-//       gas: json.valueOrNull<int>('gas'),
-//       gasPrice: json.valueOrNull<String>('gas_price'),
-//       totalFee: json.valueOrNull<String>('total_fee'),
-//     );
-//   }
-
-//   final String type;
-//   final String amount;
-//   final String? coin;
-//   final int? gas;
-//   final String? gasPrice;
-//   final String? totalFee;
-
-//   Map<String, dynamic> toJson() => {
-//         'type': type,
-//         'amount': amount,
-//         if (coin != null) 'coin': coin,
-//         if (gas != null) 'gas': gas,
-//         if (gasPrice != null) 'gas_price': gasPrice,
-//         if (totalFee != null) 'total_fee': totalFee,
-//       };
-// }
 
 class KmdRewards {
   KmdRewards({

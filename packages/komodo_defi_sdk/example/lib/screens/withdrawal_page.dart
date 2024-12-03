@@ -104,8 +104,9 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Amount: ${_preview!.totalAmount} ${widget.asset.id.id}'),
-              Text('To: ${_preview!.to.first}'),
+              Text('Amount: ${_preview!.balanceChanges.netChange} '
+                  '${widget.asset.id.id}'),
+              Text('To: ${_preview!.to.join(', ')}'),
               _buildFeeDetails(_preview!.fee),
               if (_preview!.kmdRewards != null) ...[
                 const SizedBox(height: 8),
