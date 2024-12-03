@@ -249,6 +249,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                     if (gasPrice != null) {
                       setState(() {
                         _selectedFee = FeeInfo.erc20(
+                          widget.asset.id.id,
                           gasPrice,
                           _selectedFee?.gas ?? 21000,
                         );
@@ -271,6 +272,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                     if (gasLimit != null) {
                       setState(() {
                         _selectedFee = FeeInfo.erc20(
+                          widget.asset.id.id,
                           Decimal.parse(_selectedFee?.gasPrice ?? '1'),
                           gasLimit,
                         );
@@ -315,7 +317,8 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 ? null
                 : (value) {
                     setState(() {
-                      _selectedFee = FeeInfo.utxoFixed(value.first);
+                      _selectedFee =
+                          FeeInfo.utxoFixed(widget.asset.id.id, value.first);
                     });
                   },
           ),

@@ -34,8 +34,10 @@ class Transaction extends Equatable {
         from: List<String>.from(json.value('from')),
         to: List<String>.from(json.value('to')),
         txHash: json.valueOrNull<String>('tx_hash'),
-        fee: json.containsKey('fee')
-            ? FeeInfo.fromJson(json.value('fee'))
+        fee: json.containsKey('fee') || json.containsKey('fee_details')
+            ? FeeInfo.fromJson(
+                json.valueOrNull('fee') ?? json.value('fee_details'),
+              )
             : null,
         memo: json.valueOrNull<String>('memo'),
       );
@@ -79,7 +81,7 @@ class Transaction extends Equatable {
         'id': id,
         'internal_id': internalId,
         'asset_id': assetId.toJson(),
-        ...balanceChanges.toJson(),
+        'balance_changes': balanceChanges.toJson(),
         'timestamp': timestamp.toIso8601String(),
         'confirmations': confirmations,
         'block_height': blockHeight,
