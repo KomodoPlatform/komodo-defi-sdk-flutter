@@ -230,6 +230,7 @@ extension JsonMapExtension<T extends JsonMap> on T {
   TVal? valueVArgs<TVal>(List<String> keys, {TVal? defaultValue}) =>
       _traverseJson<TVal?>(this, keys, defaultValue: defaultValue);
 
+  // TODO! Documentation
   V value<V>(
     String key1, [
     String? key2,
@@ -241,6 +242,7 @@ extension JsonMapExtension<T extends JsonMap> on T {
     return _traverseJson<V>(this, keys) as V;
   }
 
+  // TODO! Documentation
   V? valueOrNull<V>(
     String key1, [
     String? key2,

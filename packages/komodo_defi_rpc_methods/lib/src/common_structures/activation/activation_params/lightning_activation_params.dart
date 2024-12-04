@@ -1,4 +1,5 @@
 import 'package:komodo_defi_rpc_methods/src/common_structures/common_structures.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class LightningActivationParams extends ActivationParams {
   LightningActivationParams({
@@ -23,12 +24,13 @@ class LightningActivationParams extends ActivationParams {
   final LightningChannelConfig? ourChannelsConfig;
 
   @override
-  Map<String, dynamic> toJsonRequestParams() => {
+  Map<String, dynamic> toJsonRequestParams() =>
+      super.toJsonRequestParams().deepMerge({
         'name': name,
         'listening_port': listeningPort,
         'color': color,
         'payment_retries': paymentRetries,
         'accept_inbound_channels': acceptInboundChannels,
         'accept_forwards_to_priv_channels': acceptForwardsToPrivChannels,
-      };
+      });
 }

@@ -4,8 +4,8 @@
 output_file="all_files_combined.txt"
 
 # Define included and excluded paths as variables
-included_extensions=("*.dart" "*.md" "*.yaml")
-excluded_paths=("./**/.dart_tool" "./**/build" "./**/.fvm")
+included_extensions=("*.dart" "*.md" "*.yaml" "*.go" "*.tsx" "*.rules")
+excluded_paths=(".dart_tool" "build" ".fvm" "node_modules" *_.dart)
 
 # Check if at least one file or directory is passed as an argument
 if [ $# -eq 0 ]; then
@@ -44,18 +44,27 @@ fi
 for input in "$@"; do
     if [ -d "$input" ]; then
         # Input is a directory, apply the find command
-        find "$input" \
-            \( -path "${excluded_paths[0]}" -o -path "${excluded_paths[1]}" -o -path "${excluded_paths[2]}" \) -prune -o \
-            \( -name "${included_extensions[0]}" -o -name "${included_extensions[1]}" \) -type f -print | \
-        while read -r file; do
+        find "$input" \( \
+            -name "${excluded_paths[0]}" -o \
+            -name "${excluded_paths[1]}" -o \
+            -name "${excluded_paths[2]}" \
+            \) -prune -o \( \
+            -name "${included_extensions[0]}" -o \
+            -name "${included_extensions[1]}" -o \
+            -name "${included_extensions[2]}" -o \
+            -name "${included_extensions[3]}" -o \
+            -name "${included_extensions[4]}" \
+            \) -type f -print0 | while IFS= read -r -d '' file; do
+            echo "Processing: $file"
             echo "===== $file =====" >> "$output_file"
             cat "$file" >> "$output_file"
             echo -e "\n" >> "$output_file"
         done
     elif [ -f "$input" ]; then
-        # Input is a file, check its extension and process it
+        # Input is a file, check its extension
         for ext in "${included_extensions[@]}"; do
-            if [[ "$input" == $ext ]]; then
+            if [[ "$input" == *${ext#\*} ]]; then
+                echo "Processing: $input"
                 echo "===== $input =====" >> "$output_file"
                 cat "$input" >> "$output_file"
                 echo -e "\n" >> "$output_file"
@@ -67,4 +76,4 @@ for input in "$@"; do
     fi
 done
 
-echo "Processing complete. Output written to $output_file."
+echo "Processing complete. Output written to $output_file"

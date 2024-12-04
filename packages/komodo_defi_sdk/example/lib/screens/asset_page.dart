@@ -189,7 +189,7 @@ class _AssetHeaderState extends State<AssetHeader> {
               : () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    MaterialPageRoute<void>(
                       builder: (context) => WithdrawalScreen(
                         asset: widget.asset,
                         pubkeys: widget.pubkeys!,
