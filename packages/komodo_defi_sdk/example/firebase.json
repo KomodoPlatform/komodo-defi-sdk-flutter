@@ -1,7 +1,6 @@
 {
   "hosting": {
-    "site": "kdf-sdk-dev",
-    "source": "build/web",
+    "source": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
