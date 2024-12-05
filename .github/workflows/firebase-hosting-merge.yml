@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm ci
-      - run: ci/pre_deploy.dart
+      # - run: ci/pre_deploy.dart
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
