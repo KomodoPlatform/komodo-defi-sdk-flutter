@@ -159,10 +159,20 @@ class _KomodoAppState extends State<KomodoApp> {
       });
     } on AuthException catch (e) {
       setState(() {
+        _scaffoldKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('Auth Error: (${e.type}) ${e.message}'),
+          ),
+        );
         _statusMessage = 'Auth Error: (${e.type}) ${e.message}';
       });
     } catch (e) {
       setState(() {
+        _scaffoldKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('An unexpected error occurred: $e'),
+          ),
+        );
         _statusMessage = 'An unexpected error occurred: $e';
       });
     }
