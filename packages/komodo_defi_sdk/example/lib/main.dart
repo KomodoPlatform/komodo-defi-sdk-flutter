@@ -159,10 +159,20 @@ class _KomodoAppState extends State<KomodoApp> {
       });
     } on AuthException catch (e) {
       setState(() {
+        _scaffoldKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('Auth Error: (${e.type}) ${e.message}'),
+          ),
+        );
         _statusMessage = 'Auth Error: (${e.type}) ${e.message}';
       });
     } catch (e) {
       setState(() {
+        _scaffoldKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('An unexpected error occurred: $e'),
+          ),
+        );
         _statusMessage = 'An unexpected error occurred: $e';
       });
     }
@@ -254,11 +264,11 @@ class _KomodoAppState extends State<KomodoApp> {
               TextFormField(
                 controller: _walletNameController,
                 decoration: const InputDecoration(labelText: 'Wallet Name'),
-                validator: notEmptyValidator,
+                validator: passwordValidator,
               ),
               TextFormField(
                 controller: _passwordController,
-                validator: notEmptyValidator,
+                validator: passwordValidator,
                 decoration: InputDecoration(
                   labelText: 'Password',
                   suffixIcon: IconButton(
@@ -723,10 +733,15 @@ class _KomodoAppState extends State<KomodoApp> {
     );
   }
 
-  String? notEmptyValidator(String? input, {String? fieldName}) {
+  String? passwordValidator(String? input, {String? fieldName}) {
     if (input == null || input.isEmpty) {
       return 'Please enter a ${fieldName ?? 'value'}.';
     }
+
+    if (input.contains(RegExp('[<>&]'))) {
+      return "Invalid password: contains '<', '>', or '&'";
+    }
+
     return null;
   }
 
