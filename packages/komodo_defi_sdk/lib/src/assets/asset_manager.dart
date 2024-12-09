@@ -64,6 +64,9 @@ class AssetManager {
   Map<AssetId, Asset> get available => _orderedCoins;
   Map<AssetId, Asset> get availableOrdered => available;
 
+  @Deprecated(
+      'This method will be removed from the public interface in the future. '
+      'It is intended for internal use only.')
   Stream<ActivationProgress> activateAsset(Asset asset) async* {
     if ((await getActivatedAssets()).contains(asset)) {
       yield ActivationProgress.success();

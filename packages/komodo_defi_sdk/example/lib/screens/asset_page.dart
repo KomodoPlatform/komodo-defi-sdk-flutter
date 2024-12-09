@@ -278,6 +278,8 @@ class _TransactionsSection extends StatefulWidget {
 class __TransactionsSectionState extends State<_TransactionsSection> {
   final _transactions = <Transaction>[];
 
+  String? error;
+
   @override
   void initState() {
     super.initState();
@@ -311,6 +313,7 @@ class __TransactionsSectionState extends State<_TransactionsSection> {
 
   Future<void> _loadTransactions() async {
     try {
+      error = null;
       final transactionsStream =
           _sdk.transactions.getTransactionsStreamed(widget.asset);
 
@@ -321,6 +324,9 @@ class __TransactionsSectionState extends State<_TransactionsSection> {
     } catch (e) {
       print('FAILED TO FETCH TXs');
       print(e);
+      setState(() {
+        error = e.toString();
+      });
     }
   }
 }

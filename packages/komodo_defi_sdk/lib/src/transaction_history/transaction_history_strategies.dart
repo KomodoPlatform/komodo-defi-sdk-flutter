@@ -1,4 +1,5 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -33,6 +34,9 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
         TransactionBasedPagination,
       };
 
+  // TODO: Consider for the future how multi-account support will be handled.
+  // The HistoryTarget could be added to the abstract strategy, but only if
+  // it's applicable to all/most strategies.
   @override
   Future<MyTxHistoryResponse> fetchTransactionHistory(
     ApiClient client,
@@ -41,19 +45,24 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
   ) async {
     validatePagination(pagination);
 
+    final isHdWallet =
+        (await KomodoDefiSdk.global.auth.currentUser)?.isHd ?? false;
+
     return switch (pagination) {
       final PagePagination p => client.rpc.transactionHistory.myTxHistory(
           coin: asset.id.id,
           limit: p.itemsPerPage,
           pagingOptions: Pagination(pageNumber: p.pageNumber),
-          target: HistoryTarget.accountId(0),
+          target:
+              isHdWallet ? HdHistoryTarget.accountId(0) : IguanaHistoryTarget(),
         ),
       final TransactionBasedPagination t =>
         client.rpc.transactionHistory.myTxHistory(
           coin: asset.id.id,
           limit: t.itemCount,
           pagingOptions: Pagination(fromId: int.parse(t.fromId)),
-          target: HistoryTarget.accountId(0),
+          target:
+              isHdWallet ? HdHistoryTarget.accountId(0) : IguanaHistoryTarget(),
         ),
       _ => throw UnsupportedError(
           'Pagination mode ${pagination.runtimeType} not supported',

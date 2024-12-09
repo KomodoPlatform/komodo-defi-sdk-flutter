@@ -34,9 +34,13 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
   final dynamic errorData;
 
   static bool isErrorResponse(Map<String, dynamic> json) {
-    return json.hasNestedKey('result', 'details', 'error') ||
+    final isError = json.hasNestedKey('result', 'details', 'error') ||
         json.hasNestedKey('error') ||
         json.valueOrNull<String>('result', 'status') == 'Error';
+
+    print('isErrorResponse: $isError, json: $json');
+
+    return isError;
   }
 
   @override

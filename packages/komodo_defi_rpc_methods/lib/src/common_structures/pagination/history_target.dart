@@ -1,3 +1,5 @@
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+
 enum HistoryTargetType {
   accountId,
   addressId;
@@ -30,11 +32,18 @@ enum HistoryTargetType {
   }
 }
 
+// ignore: one_member_abstracts
+abstract interface class HistoryTarget {
+  JsonMap? toJson();
+
+  String get value;
+}
+
 /// Specifies a HD wallet `account_id` or `address_id` for transaction history requests.
 ///
 /// This class is used to filter transaction history results based on either an account
 /// or specific address in a BIP44 derivation path (m/44'/COIN'/ACCOUNT_ID'/CHAIN/ADDRESS_ID').
-class HistoryTarget {
+class HdHistoryTarget implements HistoryTarget {
   /// Creates a new [HistoryTarget] instance.
   ///
   /// Parameters:
@@ -42,7 +51,7 @@ class HistoryTarget {
   /// - [accountId]: The account ID in the derivation path
   /// - [addressId]: Required only when type is 'address_id'
   /// - [chain]: Required only when type is 'address_id'. Must be 'Internal' or 'External'
-  HistoryTarget({
+  HdHistoryTarget({
     required this.type,
     required this.accountId,
     this.addressId,
@@ -62,17 +71,17 @@ class HistoryTarget {
     }
   }
 
-  HistoryTarget.accountId(this.accountId)
+  HdHistoryTarget.accountId(this.accountId)
       : type = HistoryTargetType.accountId,
         addressId = null,
         chain = null;
 
-  HistoryTarget.addressId(this.accountId, this.addressId, this.chain)
+  HdHistoryTarget.addressId(this.accountId, this.addressId, this.chain)
       : type = HistoryTargetType.addressId;
 
   /// Creates a [HistoryTarget] instance from a JSON map.
-  factory HistoryTarget.fromJson(Map<String, dynamic> json) {
-    return HistoryTarget(
+  factory HdHistoryTarget.fromJson(Map<String, dynamic> json) {
+    return HdHistoryTarget(
       type: HistoryTargetType.parse(json['type'] as String),
       accountId: json['account_id'] as int,
       addressId: json['address_id'] as int?,
@@ -98,7 +107,9 @@ class HistoryTarget {
   /// - Internal: Used for addresses not visible outside the wallet (e.g., change addresses)
   final String? chain;
 
-  /// Converts the [HistoryTarget] instance to a JSON map.
+  /// Converts the [HistoryTarget] instance to a JSON map in the format as
+  /// per the Komodo Defi API documentation.
+  @override
   Map<String, dynamic> toJson() {
     final data = <String, dynamic>{
       'type': type.value,
@@ -114,8 +125,21 @@ class HistoryTarget {
   }
 
   @override
+  String get value => type.value;
+
+  @override
   String toString() {
     return 'HistoryTarget(type: $type, accountId: $accountId, '
         'addressId: $addressId, chain: $chain)';
   }
+}
+
+class IguanaHistoryTarget implements HistoryTarget {
+  IguanaHistoryTarget();
+
+  @override
+  String get value => 'Iguana';
+
+  @override
+  JsonMap? toJson() => null;
 }

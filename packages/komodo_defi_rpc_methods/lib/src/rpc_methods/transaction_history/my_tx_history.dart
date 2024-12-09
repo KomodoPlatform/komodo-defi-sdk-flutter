@@ -27,7 +27,12 @@ class MyTxHistoryRequest
         'params': {
           'coin': coin,
           'limit': limit,
-          if (historyTarget != null) 'target': historyTarget!.toJson(),
+          if (historyTarget != null
+              // Bug in the API, it doesn't accept IguanaHistoryTarget. It is
+              // the default target, so we can just skip it.
+              &&
+              historyTarget is! IguanaHistoryTarget)
+            'target': historyTarget!.toJson() ?? historyTarget!.value,
           if (pagingOptions != null) 'paging_options': pagingOptions!.toJson(),
         },
       };
