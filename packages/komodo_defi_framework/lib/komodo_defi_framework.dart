@@ -137,20 +137,10 @@ class KomodoDefiFramework implements ApiClient {
 
   @override
   Future<JsonMap> executeRpc(JsonMap request) async {
-    final response = await _kdfOperations.mm2Rpc(
+    final response = (await _kdfOperations.mm2Rpc(
       request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
-    );
-    // For string fields, try converting to JSON
-    for (final key in response.keys) {
-      if (response[key] is String) {
-        try {
-          final maybeJson = tryParseJson(response[key] as String);
-          if (maybeJson != null) {
-            response[key] = maybeJson;
-          }
-        } catch (_) {}
-      }
-    }
+    ))
+        .ensureJson();
     _log('RPC response: ${response.toJsonString()}');
     return response;
   }

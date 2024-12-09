@@ -254,6 +254,16 @@ extension JsonMapExtension<T extends JsonMap> on T {
     return _traverseJson<V>(this, keys, nullIfAbsent: true);
   }
 
+  bool hasNestedKey(
+    String key1, [
+    String? key2,
+    String? key3,
+    String? key4,
+    String? key5,
+  ]) {
+    return valueOrNull<dynamic>(key1, key2, key3, key4, key5) != null;
+  }
+
   static JsonMap jsonFromString(String json) {
     final decode = jsonDecode(json);
 
@@ -278,7 +288,7 @@ extension JsonMapExtension<T extends JsonMap> on T {
   String toJsonString() => jsonEncode(this);
 
   void setIfAbsentOrEmpty(String key, dynamic value) {
-    if (!containsKey(key) || this[key] == '') {
+    if (!hasNestedKey(key) || this[key] == '') {
       this[key] = value;
     }
   }
@@ -286,7 +296,7 @@ extension JsonMapExtension<T extends JsonMap> on T {
   // Ensure the entire map has been serialized to JSON types and that no
   // non-serializable types are present
   JsonMap ensureJson() {
-    return jsonFromString(jsonEncode(this));
+    return jsonFromString(toJsonString());
   }
 }
 
