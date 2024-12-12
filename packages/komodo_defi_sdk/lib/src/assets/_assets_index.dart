@@ -7,3 +7,4 @@ export 'asset_extensions.dart';
 export 'asset_history_storage.dart';
 export 'asset_manager.dart';
 export 'balance_manager.dart';
+export 'legacy_asset_extensions.dart';

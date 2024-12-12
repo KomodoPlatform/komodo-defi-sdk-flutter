@@ -72,6 +72,13 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   final IKdfHostConfig? _hostConfig;
   final KomodoDefiSdkConfig _config;
 
+  /// The global instance of the [KomodoDefiSdk].
+  ///
+  /// Avoid using this unless the SDK instance is not available in the context
+  /// from which it is being accessed. This allows us to keep the flexibility
+  /// for future expansions to support multiple SDK instances at once. However,
+  /// there are no plans to support this at the moment, but it will reduce the
+  /// work needed to support it in the future.
   static KomodoDefiSdk get global => _instance!;
 
   KomodoDefiFramework? _kdfFramework;
