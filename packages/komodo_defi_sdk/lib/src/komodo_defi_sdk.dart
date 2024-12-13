@@ -202,29 +202,3 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   WithdrawalManager get withdrawals => _assertSdkInitialized(_withdrawals);
   late final WithdrawalManager _withdrawals = WithdrawalManager(_apiClient!);
 }
-
-/// RPC library extension of API client
-// extension KomodoDefiSdkRpc on ApiClient {
-//   KomodoDefiRpcMethods get rpc => KomodoDefiRpcMethods(this);
-// }
-
-extension AssetPubkeysExtension on Asset {
-  Future<AssetPubkeys> getPubkeys() => KomodoDefiSdk().pubkeys.getPubkeys(this);
-}
-
-extension PubkeyExtension on Asset {
-  // Future<PubkeyStrategy> get pubkeyStrategy async => preferredPubkeyStrategy(
-  //       isHd: await _currentUsersAuthOptions().then(
-  //             (options) =>
-  //                 options?.derivationMethod == DerivationMethod.hdWallet,
-  //           ) ??
-  //           true,
-  //     );
-
-  Future<AuthOptions?> _currentUsersAuthOptions() async {
-    final user = await _instance?.auth.currentUser;
-    return user == null
-        ? null
-        : KomodoDefiLocalAuth.storedAuthOptions(user.walletId.name);
-  }
-}

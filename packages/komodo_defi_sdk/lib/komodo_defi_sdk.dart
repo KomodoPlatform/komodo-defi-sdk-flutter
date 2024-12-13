@@ -9,3 +9,5 @@ export 'src/assets/asset_extensions.dart' show AssetValidation;
 //     show AssetActivation;
 
 export 'src/komodo_defi_sdk.dart';
+
+export 'src/assets/legacy_asset_extensions.dart';
