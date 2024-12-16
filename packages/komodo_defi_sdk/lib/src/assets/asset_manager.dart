@@ -9,6 +9,8 @@ import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+typedef AssetIdMap = SplayTreeMap<AssetId, Asset>;
+
 class AssetManager {
   AssetManager(
     this._client,
@@ -29,12 +31,12 @@ class AssetManager {
 
   StreamSubscription<KdfUser?>? _authSubscription;
 
-  late final SplayTreeMap<AssetId, Asset> _orderedCoins;
+  late final AssetIdMap _orderedCoins;
 
   Future<void> init() async {
     await _coins.init();
 
-    _orderedCoins = SplayTreeMap<AssetId, Asset>((keyA, keyB) {
+    _orderedCoins = AssetIdMap((keyA, keyB) {
       final isDefaultA = _config.defaultAssets.contains(keyA.id);
       final isDefaultB = _config.defaultAssets.contains(keyB.id);
 
@@ -112,8 +114,9 @@ class AssetManager {
     } catch (e) {
       if (!completer.isCompleted) {
         completer.completeError(e);
+      } else {
+        rethrow;
       }
-      rethrow;
     } finally {
       _activationCompleters.remove(asset.id);
     }

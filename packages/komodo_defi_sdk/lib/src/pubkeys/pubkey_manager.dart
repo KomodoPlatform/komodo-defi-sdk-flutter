@@ -24,6 +24,7 @@ class PubkeyManager {
 
   /// Create a new pubkey for an asset if supported
   Future<PubkeyInfo> createNewPubkey(Asset asset) async {
+    // ignore: deprecated_member_use_from_same_package
     await KomodoDefiSdk.global.assets.activateAsset(asset).last;
 
     final strategy = await _resolvePubkeyStrategy(asset);

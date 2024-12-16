@@ -21,7 +21,7 @@ extension AssetValidation on Asset {
       }
 
       // Ensure required servers are available
-      if (protocol.requiredServers.isEmpty ?? true) {
+      if (protocol.requiredServers.isEmpty) {
         return false;
       }
 
@@ -88,13 +88,54 @@ extension AssetValidation on Asset {
   /// Whether this asset requires HD wallet mode
   bool get requiresHdWallet => protocol.requiresHdWallet;
 
+  /// Returns a set of reasons why this asset might be unavailable for use
+  /// session.
+  ///
+  /// Returns null if the asset is available.
+  Future<Set<AssetUnavailableErrorReason>?> getUnavailableReasons([
+    KomodoDefiSdk? sdk,
+  ]) async {
+    sdk ??= KomodoDefiSdk.global;
+
+    final status = <AssetUnavailableErrorReason>{};
+
+    if (!isValid) {
+      status.add(AssetUnavailableErrorReason.invalidConfiguration);
+    }
+
+    if (protocol.requiredServers.isEmpty) {
+      status.add(AssetUnavailableErrorReason.missingServers);
+    }
+
+    final user = await sdk.auth.currentUser;
+    if (user != null) {
+      final isHdWallet = user.isHd;
+
+      if (protocol.requiresHdWallet && !isHdWallet) {
+        status.add(AssetUnavailableErrorReason.notSupportedInHdWallet);
+      }
+
+      if (isHdWallet &&
+          protocol.supportsMultipleAddresses &&
+          derivationPath == null) {
+        status.add(AssetUnavailableErrorReason.missingDerivationPath);
+      }
+    }
+
+    return status;
+  }
+
   /// Get human-readable reason why an asset might be disabled
+  @Deprecated(
+    'This method does not consider localised strings and will be removed in '
+    'the future because it concerns only the UI. Use getValidationStatus().',
+  )
   String? getDisabledReason(AuthOptions options) {
     if (!isValid) {
       if (protocol.supportsMultipleAddresses && derivationPath == null) {
         return 'Missing derivation path required for multiple addresses';
       }
-      if (protocol.requiredServers.isEmpty ?? true) {
+      if (protocol.requiredServers.isEmpty) {
         return 'No servers configured';
       }
       return 'Invalid configuration';
@@ -114,4 +155,16 @@ extension AssetValidation on Asset {
 
     return null;
   }
+}
+
+enum AssetUnavailableErrorReason {
+  missingDerivationPath,
+
+  missingServers,
+
+  notSupportedInIguana,
+
+  notSupportedInHdWallet,
+
+  invalidConfiguration;
 }

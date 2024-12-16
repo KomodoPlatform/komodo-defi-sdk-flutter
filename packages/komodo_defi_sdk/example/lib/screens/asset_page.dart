@@ -25,6 +25,7 @@ class _AssetPageState extends State<AssetPage> {
   @override
   void initState() {
     super.initState();
+    _refreshUnavailableReasons().ignore();
     _loadPubkeys();
   }
 
@@ -37,6 +38,7 @@ class _AssetPageState extends State<AssetPage> {
       _error = e.toString();
     } finally {
       if (mounted) setState(() => _isLoading = false);
+      _refreshUnavailableReasons().ignore();
     }
   }
 
@@ -51,14 +53,19 @@ class _AssetPageState extends State<AssetPage> {
       setState(() => _error = e.toString());
     } finally {
       setState(() => _isLoading = false);
+      await _refreshUnavailableReasons();
     }
+  }
+
+  Set<CantCreateNewAddressReason>? _cantCreateNewAddressReasons;
+
+  Future<void> _refreshUnavailableReasons() async {
+    final reasons = await widget.asset.getCantCreateNewAddressReasons();
+    setState(() => _cantCreateNewAddressReasons = reasons);
   }
 
   @override
   Widget build(BuildContext context) {
-    final supportsMultipleAddresses =
-        widget.asset.pubkeyStrategy(isHdWallet: true).supportsMultipleAddresses;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.asset.id.name),
@@ -86,9 +93,8 @@ class _AssetPageState extends State<AssetPage> {
                             syncStatus: SyncStatusEnum.inProgress,
                           )
                         : _pubkeys!,
-                    onGenerateNewAddress:
-                        supportsMultipleAddresses ? _generateNewAddress : null,
-                    supportsMultipleAddresses: supportsMultipleAddresses,
+                    onGenerateNewAddress: _generateNewAddress,
+                    cantCreateNewAddressReasons: _cantCreateNewAddressReasons,
                   ),
                 ),
                 Expanded(child: _TransactionsSection(widget.asset)),
@@ -214,15 +220,42 @@ class _AddressesSection extends StatelessWidget {
   const _AddressesSection({
     required this.pubkeys,
     required this.onGenerateNewAddress,
-    required this.supportsMultipleAddresses,
+    required this.cantCreateNewAddressReasons,
   });
 
   final AssetPubkeys pubkeys;
   final VoidCallback? onGenerateNewAddress;
-  final bool supportsMultipleAddresses;
+  final Set<CantCreateNewAddressReason>? cantCreateNewAddressReasons;
+
+  String _getTooltipMessage() {
+    if (cantCreateNewAddressReasons?.isEmpty ?? true) {
+      return '';
+    }
+
+    return cantCreateNewAddressReasons!.map((reason) {
+      return switch (reason) {
+        CantCreateNewAddressReason.maxGapLimitReached =>
+          'Maximum gap limit reached - please use existing unused addresses first',
+        CantCreateNewAddressReason.maxAddressesReached =>
+          'Maximum number of addresses reached for this asset',
+        CantCreateNewAddressReason.missingDerivationPath =>
+          'Missing derivation path configuration',
+        CantCreateNewAddressReason.protocolNotSupported =>
+          'Protocol does not support multiple addresses',
+        CantCreateNewAddressReason.derivationModeNotSupported =>
+          'Current wallet mode does not support multiple addresses',
+        CantCreateNewAddressReason.noActiveWallet =>
+          'No active wallet - please sign in first',
+      };
+    }).join('\n');
+  }
+
+  bool get canCreateNewAddress => cantCreateNewAddressReasons?.isEmpty ?? true;
 
   @override
   Widget build(BuildContext context) {
+    final tooltipMessage = _getTooltipMessage();
+
     return SizedBox(
       width: double.infinity,
       child: Column(
@@ -231,12 +264,27 @@ class _AddressesSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               const Text('Addresses'),
-              if (supportsMultipleAddresses)
-                ElevatedButton.icon(
-                  onPressed: onGenerateNewAddress,
+              Tooltip(
+                message: tooltipMessage,
+                // textStyle: const TextStyle(
+                //   color: Colors.white,
+                //   fontSize: 14,
+                // ),
+                // decoration: BoxDecoration(
+                //   color: Theme.of(context).colorScheme.inverseSurface,
+                //   borderRadius: BorderRadius.circular(4),
+                // ),
+                // padding: const EdgeInsets.symmetric(
+                //   horizontal: 16,
+                //   vertical: 8,
+                // ),
+                preferBelow: true,
+                child: ElevatedButton.icon(
+                  onPressed: canCreateNewAddress ? onGenerateNewAddress : null,
                   label: const Text('New'),
                   icon: const Icon(Icons.add),
                 ),
+              ),
             ],
           ),
           Expanded(
@@ -278,8 +326,6 @@ class _TransactionsSection extends StatefulWidget {
 class __TransactionsSectionState extends State<_TransactionsSection> {
   final _transactions = <Transaction>[];
 
-  String? error;
-
   @override
   void initState() {
     super.initState();
@@ -313,7 +359,6 @@ class __TransactionsSectionState extends State<_TransactionsSection> {
 
   Future<void> _loadTransactions() async {
     try {
-      error = null;
       final transactionsStream =
           _sdk.transactions.getTransactionsStreamed(widget.asset);
 
@@ -324,9 +369,6 @@ class __TransactionsSectionState extends State<_TransactionsSection> {
     } catch (e) {
       print('FAILED TO FETCH TXs');
       print(e);
-      setState(() {
-        error = e.toString();
-      });
     }
   }
 }

@@ -815,8 +815,10 @@ class _AssetItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompatible = asset.isCompatibleWith(authOptions);
-    final disabledReason = asset.getDisabledReason(authOptions);
+    // final isCompatible = asset.isCompatibleWith(authOptions);
+    const isCompatible = true;
+    // final disabledReason = asset.getDisabledReason(authOptions);
+    const disabledReason = null as String?;
 
     return ListTile(
       key: Key(asset.id.id),
@@ -840,6 +842,7 @@ class _AssetItemWidget extends StatelessWidget {
         asset: asset,
         isEnabled: isCompatible,
       ),
+      // ignore: avoid_redundant_argument_values
       enabled: isCompatible,
       onTap: isCompatible ? onTap : null,
     );

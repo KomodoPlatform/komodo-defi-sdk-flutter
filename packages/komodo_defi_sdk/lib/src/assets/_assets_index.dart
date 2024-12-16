@@ -6,5 +6,6 @@ library _assets_index;
 export 'asset_extensions.dart';
 export 'asset_history_storage.dart';
 export 'asset_manager.dart';
+export 'asset_pubkey_extensions.dart';
 export 'balance_manager.dart';
 export 'legacy_asset_extensions.dart';
