@@ -64,6 +64,6 @@ extension AssetHdWalletAddressesExtension on Asset {
         reasons.add(CantCreateNewAddressReason.maxGapLimitReached);
       }
     }
-    return reasons;
+    return reasons.isEmpty ? null : reasons;
   }
 }

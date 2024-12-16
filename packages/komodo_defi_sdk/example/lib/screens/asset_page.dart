@@ -60,7 +60,7 @@ class _AssetPageState extends State<AssetPage> {
   Set<CantCreateNewAddressReason>? _cantCreateNewAddressReasons;
 
   Future<void> _refreshUnavailableReasons() async {
-    final reasons = await widget.asset.getCantCreateNewAddressReasons();
+    final reasons = await widget.asset.getCantCreateNewAddressReasons(_sdk);
     setState(() => _cantCreateNewAddressReasons = reasons);
   }
 
@@ -266,18 +266,6 @@ class _AddressesSection extends StatelessWidget {
               const Text('Addresses'),
               Tooltip(
                 message: tooltipMessage,
-                // textStyle: const TextStyle(
-                //   color: Colors.white,
-                //   fontSize: 14,
-                // ),
-                // decoration: BoxDecoration(
-                //   color: Theme.of(context).colorScheme.inverseSurface,
-                //   borderRadius: BorderRadius.circular(4),
-                // ),
-                // padding: const EdgeInsets.symmetric(
-                //   horizontal: 16,
-                //   vertical: 8,
-                // ),
                 preferBelow: true,
                 child: ElevatedButton.icon(
                   onPressed: canCreateNewAddress ? onGenerateNewAddress : null,
