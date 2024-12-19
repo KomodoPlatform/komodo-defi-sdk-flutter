@@ -19,27 +19,6 @@ A new Flutter FFI plugin project.
     'kdf_resources' => 'bin/kdf'
   }
 
-  # Prepare the executable in the `bin/kdf` folder
-  s.prepare_command = <<-CMD
-    if [ ! -f "bin/kdf" ]; then
-      echo "Error: kdf executable not found in bin/kdf"
-      echo "Searching for files with similar names..."
-
-      # Recursively search for files with names similar to 'kdf'
-      suggestions=$(find . -type f -iname '*kdf*')
-
-      if [ -z "$suggestions" ]; then
-        echo "No similar files found in the project directories."
-      else
-        echo "Found similar files:"
-        echo "$suggestions"
-      fi
-
-      exit 1
-    fi
-    chmod +x "bin/kdf"
-  CMD
-
   s.script_phase = {
     :name => 'Install kdf executable',
     :execution_position => :before_compile,
