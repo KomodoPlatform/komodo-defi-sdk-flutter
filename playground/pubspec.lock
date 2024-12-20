@@ -17,14 +17,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.11.0"
-  aws_client:
-    dependency: transitive
-    description:
-      name: aws_client
-      sha256: "433b3a5ca80eff10744d2403102477662a040b0204c5b31a1d1a1398f91494f0"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.6.0"
   bip39:
     dependency: "direct main"
     description:
