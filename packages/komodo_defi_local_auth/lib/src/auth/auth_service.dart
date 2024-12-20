@@ -116,7 +116,7 @@ class KdfAuthService implements IAuthService {
       }
 
       // If we know this is not a BIP39 seed, don't allow HD mode
-      if (storedUser.isBip39Seed == false &&
+      if (!storedUser.isBip39Seed &&
           options.derivationMethod == DerivationMethod.hdWallet) {
         throw AuthException(
           'Cannot use HD mode with non-BIP39 seed',
