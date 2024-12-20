@@ -23,7 +23,10 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
 
     // For HD wallets, verify BIP39 compatibility if not already verified
     if (currentUser.isHd && !currentUser.isBip39Seed) {
-      currentUser = await _verifyBip39Compatibility(config, currentUser);
+      currentUser = await _verifyBip39Compatibility(
+        walletPassword: config.walletPassword,
+        currentUser,
+      );
     }
 
     return currentUser;
@@ -60,11 +63,18 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
     );
     await _secureStorage.saveUser(currentUser);
 
-    if (currentUser.isHd && !currentUser.isBip39Seed) {
-      // Verify BIP39 compatibility for HD wallets after registration
-      // if verification fails, the user can still log into the wallet in legacy
-      // mode.
-      currentUser = await _verifyBip39Compatibility(config, currentUser);
+    try {
+      currentUser = await _verifyBip39Compatibility(
+        walletPassword: config.walletPassword,
+        currentUser,
+      );
+    } on AuthException {
+      if (currentUser.isHd && !currentUser.isBip39Seed) {
+        // Verify BIP39 compatibility for HD wallets after registration
+        // if verification fails, the user can still log into the wallet in legacy
+        // mode.
+        rethrow;
+      }
     }
 
     return currentUser;
@@ -78,9 +88,9 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
   /// so any atomic requirements need to be handled by the calling function.
   /// Throws [AuthException] if the seed is not a valid BIP39 seed phrase.
   Future<KdfUser> _verifyBip39Compatibility(
-    KdfStartupConfig config,
-    KdfUser currentUser,
-  ) async {
+    KdfUser currentUser, {
+    required String? walletPassword,
+  }) async {
     var updatedUser = currentUser.copyWith();
     bool isBip39;
 
@@ -90,7 +100,7 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
       // [getActiveUser] function (or any others). It simply
       final plaintext = await _getMnemonic(
         encrypted: false,
-        walletPassword: config.walletPassword,
+        walletPassword: walletPassword,
       );
 
       if (plaintext.plaintextMnemonic == null) {
