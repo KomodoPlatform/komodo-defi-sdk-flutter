@@ -738,10 +738,6 @@ class _KomodoAppState extends State<KomodoApp> {
       return 'Please enter a ${fieldName ?? 'value'}.';
     }
 
-    if (input.contains(RegExp('[<>&]'))) {
-      return "Invalid password: contains '<', '>', or '&'";
-    }
-
     return null;
   }
 
