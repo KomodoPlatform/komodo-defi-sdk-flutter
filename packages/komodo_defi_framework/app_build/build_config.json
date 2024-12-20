@@ -1,27 +1,61 @@
 {
     "api": {
-        "api_commit_hash": "bb749a99344fb61e92410cb64b035dba1de35779",
+        "api_commit_hash": "8206c6ef61ee5c0f697fab5fcfd7256e3ebe13ac",
         "branch": "main",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
-            "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework",
-            "https://sdk.devbuilds.komodo.earth"
+            "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework"
         ],
         "platforms": {
             "web": {
                 "matching_keyword": "wasm",
                 "valid_zip_sha256_checksums": [
-                    "91ac9f0e880ec49aedab21c5df130ffc9475cdbf0b6428cf6862842142176293"
+                    "f82e330a8d9bc1c2011604648233922cf216a732858c5a6a935ad77a286b1993"
                 ],
                 "path": "web/kdf/bin"
             },
-            "macos": {
-                "matching_keyword": "mac-arm64",
+            "ios": {
+                "matching_keyword": "ios-aarch64",
                 "valid_zip_sha256_checksums": [
-                    "1a06b4e7d9b3db9ba9623445274ac420f5522d4ee56a6a2f3b305e56b6ae26c8"
+                    "2a2094fbcaa9ad0026fa819348c4eb44babdaa71064e4f3b947308bd492b45d5"
+                ],
+                "path": "ios"
+            },
+            "macos": {
+                "matching_keyword": "Darwin-Release",
+                "valid_zip_sha256_checksums": [
+                    "215f40d4ce9d67daebf19bbd6775e0f78b739792efa3dc21f99575000f7a59c2"
                 ],
                 "path": "macos/bin"
+            },
+            "windows": {
+                "matching_keyword": "Win64",
+                "valid_zip_sha256_checksums": [
+                    "b2f3dd59f40e3fd8ea46e42350a17ced72b303b8e0203396cf5d13fb08ca76e9"
+                ],
+                "path": "windows/bin"
+            },
+            "android-armv7": {
+                "matching_keyword": "android-armv7",
+                "valid_zip_sha256_checksums": [
+                    "e508d27142ab6b5c54568cd1a8c0f73bad6a093f24a3309a1fdb6550e99a8752"
+                ],
+                "path": "android/app/src/main/cpp/libs/armeabi-v7a"
+            },
+            "android-aarch64": {
+                "matching_keyword": "android-aarch64",
+                "valid_zip_sha256_checksums": [
+                    "4fdff1027260f7fe5740802146cf125a64dbf11e9a2af8dfe4b6555f1a7cb7c3"
+                ],
+                "path": "android/app/src/main/cpp/libs/arm64-v8a"
+            },
+            "linux": {
+                "matching_keyword": "Linux-Release",
+                "valid_zip_sha256_checksums": [
+                    "1163efd83af247575ed55e11f3128ce5a49a13601712bdb708581db968d28f7a"
+                ],
+                "path": "linux/bin"
             }
         }
     },
