@@ -109,9 +109,13 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     final appSupportParentDir = Directory(p.dirname(appSupportDir.path));
     final appSupportGrandParentDir =
         Directory(p.dirname(appSupportParentDir.path));
+    final homeDir = Platform.environment['HOME'] ?? '';
+
     final files = [
       '/usr/local/bin/kdf',
       '/usr/bin/kdf',
+      '$homeDir/.local/bin/kdf',
+      '$homeDir/bin/kdf',
       p.join(Directory.current.path, 'kdf'),
       p.join(Directory.current.path, 'kdf.exe'),
       p.join(appSupportDir.path, 'kdf'),
