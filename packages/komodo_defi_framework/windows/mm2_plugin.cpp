@@ -1,5 +1,3 @@
-#include "include/mm2_plugin/mm2_plugin.h"
-
 #include <flutter/plugin_registrar_windows.h>
 
 namespace
