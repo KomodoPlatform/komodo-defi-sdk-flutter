@@ -105,12 +105,21 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       'kdf',
     ]);
 
+    final appSupportDir = await getApplicationSupportDirectory();
+    final appSupportParentDir = Directory(p.dirname(appSupportDir.path));
+    final appSupportGrandParentDir =
+        Directory(p.dirname(appSupportParentDir.path));
     final files = [
       '/usr/local/bin/kdf',
       '/usr/bin/kdf',
-      'bin/kdf_executable',
-      p.join(Directory.current.path, 'kdf_executable'),
-      p.join((await getApplicationSupportDirectory()).path, 'kdf'),
+      p.join(Directory.current.path, 'kdf'),
+      p.join(Directory.current.path, 'kdf.exe'),
+      p.join(appSupportDir.path, 'kdf'),
+      p.join(appSupportDir.path, 'kdf.exe'),
+      p.join(appSupportParentDir.path, 'KomodoPlatform', 'kdf'),
+      p.join(appSupportParentDir.path, 'KomodoPlatform', 'kdf.exe'),
+      p.join(appSupportGrandParentDir.path, 'KomodoPlatform', 'kdf'),
+      p.join(appSupportGrandParentDir.path, 'KomodoPlatform', 'kdf.exe'),
       macosKdfResourcePath,
     ].map((path) => File(p.normalize(path))).toList();
 
