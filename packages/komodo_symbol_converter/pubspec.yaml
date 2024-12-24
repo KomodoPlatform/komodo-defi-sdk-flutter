@@ -1,10 +1,11 @@
 name: komodo_symbol_converter
 description: A lightweight package to convert fiat/crypto prices and charts
 version: 0.1.0+1
-publish_to: none
 
 environment:
-  sdk: ^3.4.0
+  sdk: ^3.6.0
+
+resolution: workspace
 
 dev_dependencies:
   mocktail: ^1.0.4

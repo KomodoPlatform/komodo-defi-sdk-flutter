@@ -6,33 +6,32 @@ homepage: https://komodoplatform.com
 publish_to: "none"
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
-  # Minimum Flutter version is set quite high for build transformer capabilities.
-  # If this is too high for your project, this can be lowered by commenting out
-  # the following line and running the build transformer manually via CLI.
-  flutter: '>=3.22.0'
+  sdk: ^3.6.0
+
+resolution: workspace
 
 dependencies:
-  aws_client: ^0.6.0
+  # aws_client: ^0.6.0
   ffi: ^2.1.2
   flutter:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
   http: ^1.2.2
-  komodo_wallet_build_transformer:
-    path: ../komodo_wallet_build_transformer
-  komodo_defi_types:
-    path: ../komodo_defi_types
+
+  # === First-party packages
+  komodo_defi_types: ^0.1.0
+  komodo_wallet_build_transformer: ^0.1.0
+  # ========================
 
   logging: ^1.2.0
+  path: any
   path_provider: ^2.1.4
   plugin_platform_interface: ^2.0.2
   web: ^1.1.0
 
 
 
-  path: any
 dev_dependencies:
   build_runner: ^2.4.11
   # build_web_compilers: ^4.0.10
