@@ -81,11 +81,8 @@ libmm2.a
 libmm2.dylib
 libkdflib.a
 libkdflib.dylib
-windows/**/mm2.exe
 windows/**/kdf.exe
-linux/mm2/mm2
 linux/kdf/kdf
-macos/mm2
 macos/kdf
 **/.api_last_updated*
 .venv/
