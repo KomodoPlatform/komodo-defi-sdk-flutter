@@ -2,6 +2,7 @@ name: komodo_defi_framework_example
 description: "Demonstrates how to use the komodo_defi_framework plugin."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 repository: 'https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/tree/dev/example'
 
 # The following defines the version and build number for your application.
@@ -19,9 +20,8 @@ repository: 'https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/tree/dev/
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.6.0
-
-resolution: workspace
+  sdk: ^3.4.4
+  flutter: '>=3.22.0 <3.25.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -33,14 +33,20 @@ dependencies:
   flutter:
     sdk: flutter
 
-  komodo_defi_framework: ^0.1.0
+  komodo_defi_framework:
+    # When depending on this package from a real application you should use:
+    #   komodo_defi_framework: ^x.y.z
+    # See https://dart.dev/tools/pub/dependencies#version-constraints
+    # The example app is bundled with the plugin so we use a path dependency on
+    # the parent directory to use the current plugin's version.
+    path: ../packages/komodo_defi_framework
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   bip39: ^1.0.6
   json_editor_flutter: ^1.4.2
-  flutter_secure_storage: ^9.2.2
+  flutter_secure_storage: ^4.2.1
   shared_preferences: ^2.3.1
   postman_collection: ^0.0.9
   flutter_json_view: ^1.1.2
@@ -49,7 +55,8 @@ dependencies:
   flutter_inappwebview: ^6.1.4
   shelf_proxy: ^1.0.4
 
-  komodo_defi_types: ^0.1.0
+  komodo_defi_types:
+    path: ../packages/komodo_defi_types
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -68,6 +75,13 @@ dev_dependencies:
   flutter_web_plugins:
     sdk: flutter
   js: any
+
+dependency_overrides:
+  flutter_secure_storage_web:
+     git:
+      url: https://github.com/mogol/flutter_secure_storage.git
+      ref: develop
+      path: flutter_secure_storage_web
 
 flutter:
 

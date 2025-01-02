@@ -12,9 +12,8 @@ version: 0.1.0+1
 publish_to: 'none'
 
 environment:
-  sdk: ^3.6.0
-
-resolution: workspace
+  sdk: ^3.4.0
+  flutter: '>=3.22.0 <3.25.0'
 
 dependencies:
 
@@ -24,11 +23,16 @@ dependencies:
     sdk: flutter
   flutter_secure_storage: ^9.2.2
   
-  komodo_coins: ^0.1.0
-  komodo_defi_framework: ^0.1.0
-  komodo_defi_local_auth: ^0.1.0
-  komodo_defi_rpc_methods: ^0.1.0
-  komodo_defi_types: ^0.1.0
+  komodo_coins:
+    path: ../komodo_coins
+  komodo_defi_framework:
+    path: ../komodo_defi_framework
+  komodo_defi_local_auth:
+    path: ../komodo_defi_local_auth
+  komodo_defi_rpc_methods:
+    path: ../komodo_defi_rpc_methods
+  komodo_defi_types:
+    path: ../komodo_defi_types
 
   mutex: ^3.1.0
   shared_preferences: ^2.3.2
@@ -38,6 +42,13 @@ dev_dependencies:
   # test: ^1.25.7
   test: ^1.25.2
   very_good_analysis: ^6.0.0
+
+dependency_overrides:
+  flutter_secure_storage_web:
+     git:
+      url: https://github.com/mogol/flutter_secure_storage.git
+      ref: develop
+      path: flutter_secure_storage_web
 
 # TODO: Move to a separate sub-package?
 # flutter:

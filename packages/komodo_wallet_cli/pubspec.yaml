@@ -1,12 +1,10 @@
 name: komodo_wallet_cli
 description: A sample command-line application with basic argument parsing.
-version: 0.1.0
+version: 0.0.1
 repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/
 
 environment:
-  sdk: ^3.6.0
-
-resolution: workspace
+  sdk: ">=3.0.0 <4.0.0"
 
 # Add regular dependencies here.
 dependencies:
@@ -17,7 +15,8 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   test: ^1.25.2
 
-  komodo_wallet_build_transformer: ^0.1.0
+  komodo_wallet_build_transformer:
+    path: ../komodo_wallet_build_transformer
 
 assets:
   - path: assets/transformer_invoker.txt

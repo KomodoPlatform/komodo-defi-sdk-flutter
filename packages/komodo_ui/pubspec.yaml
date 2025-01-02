@@ -1,11 +1,11 @@
 name: komodo_ui
 description: A high-level widget catalog relevant to building Flutter UI apps which consume Komodo DeFi Framework
 version: 0.1.0+1
+publish_to: none
 
 environment:
-  sdk: ^3.6.0
-
-resolution: workspace
+  sdk: ^3.4.0
+  flutter: ^3.22.0
 
 dependencies:
   flutter:
