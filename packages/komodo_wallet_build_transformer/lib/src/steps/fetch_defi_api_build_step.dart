@@ -491,20 +491,33 @@ class FetchDefiApiStep extends BuildStep {
       // file build size or if it is required for cache-busting.
     }
     if (_isBinaryExecutable(platform)) {
-      _renameExecutable(destinationFolder);
+      _renameExecutable(platform, destinationFolder);
       _setExecutablePermissions(destinationFolder);
     }
     return Future.value();
   }
 
   /// if executable is named "mm2" or "mm2.exe", then rename to "kdf"
-  void _renameExecutable(String destinationFolder) {
-    final executableName = Platform.isWindows ? 'mm2.exe' : 'mm2';
+  void _renameExecutable(String platform, String destinationFolder) {
+    final executableName = platform == 'windows' ? 'mm2.exe' : 'mm2';
     final executablePath = path.join(destinationFolder, executableName);
+
+    _log.fine('Looking for executable at: $executablePath');
     if (FileSystemEntity.isFileSync(executablePath)) {
-      final newExecutablePath = path.join(destinationFolder, 'kdf');
-      File(executablePath).renameSync(newExecutablePath);
-      _log.info('Renamed executable from $executableName to kdf');
+      final originalExtension = path.extension(executablePath);
+      final newExecutableName = 'kdf$originalExtension';
+      final newExecutablePath = path.join(destinationFolder, newExecutableName);
+
+      try {
+        File(executablePath).renameSync(newExecutablePath);
+        _log.info(
+          'Renamed executable from $executableName to $newExecutableName',
+        );
+      } catch (e) {
+        _log.severe('Failed to rename executable: $e');
+      }
+    } else {
+      _log.severe('Executable not found at: $executablePath');
     }
   }
 
