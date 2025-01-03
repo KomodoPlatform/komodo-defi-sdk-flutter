@@ -148,7 +148,7 @@ void main(List<String> arguments) async {
     final canRunConcurrent = _argResults.flag('concurrent');
 
     final artifactOutputPackage = getDependencyDirectory(
-          _projectRoot.path,
+          _projectRoot,
           _argResults.option('artifact_output_package')!,
         )?.absolute ??
         (throw Exception('Artifact output package not found'));
