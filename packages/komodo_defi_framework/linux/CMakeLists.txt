@@ -18,17 +18,6 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
 target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
 
-# Copy kdf binary to $HOME/.local/bin/kdf to make it accessible
-set(FINAL_INSTALL_DIR "$ENV{HOME}/.local/bin")
-set(KDF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/bin/kdf")
-
-add_custom_command(
-    TARGET ${PLUGIN_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${KDF_PATH} 
-        "${FINAL_INSTALL_DIR}/kdf"
-)
-
 # List of absolute paths to libraries that should be bundled with the plugin
 set(mm2_bundled_libraries
     "${CMAKE_CURRENT_SOURCE_DIR}/libmm2.so"

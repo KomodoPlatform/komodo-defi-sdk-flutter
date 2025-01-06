@@ -38,30 +38,6 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
 
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
-set(APP_NAME "KomodoPlatform")
-set(FINAL_INSTALL_DIR "$ENV{APPDATA}/${APP_NAME}")
-
-# Find all .exe and .dll files in the bin directory
-file(GLOB EXE_DLL_FILES "${CMAKE_CURRENT_SOURCE_DIR}/bin/*.exe" "${CMAKE_CURRENT_SOURCE_DIR}/bin/*.dll")
-
-# Ensure the final install directory exists
-add_custom_command(
-  TARGET ${PLUGIN_NAME} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${FINAL_INSTALL_DIR}"
-)
-
-# Copy each .exe and .dll file to the final install directory
-foreach(FILE ${EXE_DLL_FILES})
-  get_filename_component(FILE_NAME ${FILE} NAME)
-  add_custom_command(
-    TARGET ${PLUGIN_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-      "${FILE}"
-      "${FINAL_INSTALL_DIR}/${FILE_NAME}"
-    VERBATIM
-  )
-endforeach()
-
 set(mm2_bundled_libraries
   "${CMAKE_CURRENT_SOURCE_DIR}/bin/kdf.exe"
   PARENT_SCOPE
