@@ -118,6 +118,8 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       '$homeDir/bin/kdf',
       p.join(Directory.current.path, 'kdf'),
       p.join(Directory.current.path, 'kdf.exe'),
+      p.join(Directory.current.path, 'lib/kdf'),
+      p.join(Directory.current.path, 'lib/kdf.exe'),
       p.join(appSupportDir.path, 'kdf'),
       p.join(appSupportDir.path, 'kdf.exe'),
       p.join(appSupportParentDir.path, 'KomodoPlatform', 'kdf'),
