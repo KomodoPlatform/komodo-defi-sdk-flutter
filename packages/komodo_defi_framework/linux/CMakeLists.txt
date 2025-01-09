@@ -58,3 +58,16 @@ set(komodo_defi_framework_bundled_libraries
   ${KDF_PATH}
   PARENT_SCOPE
 )
+
+# For local development/debugging/testing
+# Copies the KDF binary to $HOME/.local/bin to make it accessible
+# This simplifies debug environment setup - avoids adding platform-dependent
+# paths to vscode debugging configurations or environment variables
+set(FINAL_INSTALL_DIR "$ENV{HOME}/.local/bin")
+set(KDF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/bin/kdf")
+add_custom_command(
+    TARGET ${PLUGIN_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${KDF_PATH} 
+        "${FINAL_INSTALL_DIR}/kdf"
+)
