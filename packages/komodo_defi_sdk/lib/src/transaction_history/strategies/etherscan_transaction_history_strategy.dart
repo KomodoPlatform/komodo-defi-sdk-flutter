@@ -23,8 +23,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
       };
 
   @override
-  bool supportsAsset(Asset asset) =>
-      _protocolHelper.supportsProtocol(asset.protocol);
+  bool supportsAsset(Asset asset) => _protocolHelper.supportsProtocol(asset);
 
   @override
   Future<MyTxHistoryResponse> fetchTransactionHistory(
@@ -32,14 +31,18 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
     Asset asset,
     TransactionPagination pagination,
   ) async {
-    validatePagination(pagination);
-
-    final url = _protocolHelper.getApiUrlForAsset(asset);
-    if (url == null) {
+    if (!supportsAsset(asset)) {
       throw UnsupportedError(
         'Asset ${asset.id.name} is not supported by EtherscanTransactionStrategy',
       );
     }
+
+    validatePagination(pagination);
+
+    final url = _protocolHelper.getApiUrlForAsset(asset) ??
+        (throw UnsupportedError(
+          'No API URL found for asset ${asset.id.toJson()}',
+        ));
 
     try {
       final addresses = await _getAssetPubkeys(asset);
@@ -205,32 +208,28 @@ class EtherscanProtocolHelper {
   final String _baseUrl;
 
   /// Returns true if the given protocol is supported by Etherscan
-  bool supportsProtocol(ProtocolClass protocol) {
-    return protocol is Erc20Protocol ||
-        protocol.subClass == CoinSubClass.utxo || // For parent chains
-        _getBaseEndpoint(protocol.subClass) != null;
+  bool supportsProtocol(Asset asset) {
+    return asset.protocol is Erc20Protocol && getApiUrlForAsset(asset) != null;
   }
 
   /// Constructs the appropriate API URL for a given asset
   Uri? getApiUrlForAsset(Asset asset) {
-    if (!supportsProtocol(asset.protocol)) return null;
+    if (!supportsProtocol(asset)) return null;
 
     final endpoint = _getEndpointForAsset(asset);
     if (endpoint == null) return null;
 
-    return Uri.parse('$_baseUrl$endpoint');
+    return Uri.parse(endpoint);
   }
 
   String? _getEndpointForAsset(Asset asset) {
-    final version = _getApiVersion(asset);
-    final baseEndpoint = _getBaseEndpoint(asset.protocol.subClass);
+    final baseEndpoint = _getBaseEndpoint(asset.id);
     if (baseEndpoint == null) return null;
 
-    final parentPrefix = baseEndpoint.split('_').first;
     final isParentChain = asset.id.parentId == null;
 
     if (isParentChain) {
-      return '/v$version/${parentPrefix}_tx_history';
+      return baseEndpoint;
     }
 
     // For tokens, we need contract address in the path
@@ -239,44 +238,59 @@ class EtherscanProtocolHelper {
     }
 
     final protocol = asset.protocol as Erc20Protocol;
-    return '/v$version/$baseEndpoint/${protocol.swapContractAddress}';
+    return '$baseEndpoint/${protocol.swapContractAddress}';
   }
 
-  int _getApiVersion(Asset asset) {
-    // Parent chains (ETH, BNB etc) use v1, tokens use v2
-    return asset.id.parentId == null ? 1 : 2;
-  }
-
-  String? _getBaseEndpoint(CoinSubClass subClass) {
-    return switch (subClass) {
-      CoinSubClass.erc20 => 'eth_tx_history',
-      CoinSubClass.bep20 => 'bep_tx_history',
-      CoinSubClass.matic => 'plg_tx_history',
-      CoinSubClass.ftm20 => 'ftm_tx_history',
-      CoinSubClass.avx20 => 'avx_tx_history',
-      CoinSubClass.moonriver => 'moonriver_tx_history',
-      CoinSubClass.moonbeam => 'moonbeam_tx_history',
-      CoinSubClass.ethereumClassic => 'etc_tx_history',
-      CoinSubClass.hecoChain => 'heco_tx_history',
-      CoinSubClass.krc20 => 'kcs_tx_history',
+  String? _getBaseEndpoint(AssetId id) {
+    final isParentChain = id.parentId == null;
+    return switch (id.subClass) {
+      CoinSubClass.hecoChain when isParentChain => _hecoUrl,
+      CoinSubClass.hecoChain => _hecoTokenUrl,
+      CoinSubClass.bep20 when isParentChain => _bnbUrl,
+      CoinSubClass.bep20 => _bepUrl,
+      CoinSubClass.matic when isParentChain => _maticUrl,
+      CoinSubClass.matic => _maticTokenUrl,
+      CoinSubClass.ftm20 when isParentChain => _ftmUrl,
+      CoinSubClass.ftm20 => _ftmTokenUrl,
+      CoinSubClass.avx20 when isParentChain => _avaxUrl,
+      CoinSubClass.avx20 => _avaxTokenUrl,
+      CoinSubClass.moonriver when isParentChain => _mvrUrl,
+      CoinSubClass.moonriver => _mvrTokenUrl,
+      CoinSubClass.moonbeam => _arbUrl,
+      CoinSubClass.ethereumClassic => _etcUrl,
+      CoinSubClass.krc20 when isParentChain => _kcsUrl,
+      CoinSubClass.krc20 => _kcsTokenUrl,
+      CoinSubClass.erc20 when isParentChain => _ethUrl,
+      CoinSubClass.erc20 => _ercUrl,
+      CoinSubClass.arbitrum when isParentChain => _arbUrl,
+      CoinSubClass.arbitrum => _arbTokenUrl,
       _ => null,
     };
   }
 
   /// Get an appropriate human-readable name for a given protocol
   String getProtocolDisplayName(Asset asset) {
-    return switch (asset.protocol.subClass) {
-      CoinSubClass.erc20 => 'Ethereum',
-      CoinSubClass.bep20 => 'Binance Smart Chain',
-      CoinSubClass.matic => 'Polygon',
-      CoinSubClass.ftm20 => 'Fantom',
-      CoinSubClass.avx20 => 'Avalanche',
-      CoinSubClass.moonriver => 'Moonriver',
-      CoinSubClass.moonbeam => 'Moonbeam',
-      CoinSubClass.ethereumClassic => 'Ethereum Classic',
-      CoinSubClass.hecoChain => 'HECO Chain',
-      CoinSubClass.krc20 => 'KuCoin Chain',
-      _ => 'Unknown Chain',
-    };
+    return asset.protocol.subClass.formatted;
   }
+
+  String get _ethUrl => '$_baseUrl/v1/eth_tx_history';
+  String get _ercUrl => '$_baseUrl/v2/erc_tx_history';
+  String get _bnbUrl => '$_baseUrl/v1/bnb_tx_history';
+  String get _bepUrl => '$_baseUrl/v2/bep_tx_history';
+  String get _ftmUrl => '$_baseUrl/v1/ftm_tx_history';
+  String get _ftmTokenUrl => '$_baseUrl/v2/ftm_tx_history';
+  String get _arbUrl => '$_baseUrl/v1/arbitrum_tx_history';
+  String get _arbTokenUrl => '$_baseUrl/v2/arbitrum_tx_history';
+  String get _etcUrl => '$_baseUrl/v1/etc_tx_history';
+  String get _avaxUrl => '$_baseUrl/v1/avx_tx_history';
+  String get _avaxTokenUrl => '$_baseUrl/v2/avx_tx_history';
+  String get _mvrUrl => '$_baseUrl/v1/moonriver_tx_history';
+  String get _mvrTokenUrl => '$_baseUrl/v2/moonriver_tx_history';
+  String get _hecoUrl => '$_baseUrl/v1/heco_tx_history';
+  String get _hecoTokenUrl => '$_baseUrl/v2/heco_tx_history';
+  String get _maticUrl => '$_baseUrl/v1/plg_tx_history';
+  String get _maticTokenUrl => '$_baseUrl/v2/plg_tx_history';
+  String get _kcsUrl => '$_baseUrl/v1/kcs_tx_history';
+  String get _kcsTokenUrl => '$_baseUrl/v2/kcs_tx_history';
+  String get _txByHashUrl => '$_baseUrl/v1/transactions_by_hash';
 }
