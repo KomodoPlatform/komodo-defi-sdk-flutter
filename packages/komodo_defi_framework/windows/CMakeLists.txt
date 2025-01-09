@@ -46,3 +46,25 @@ set(mm2_bundled_libraries
   "${CMAKE_CURRENT_SOURCE_DIR}/bin/kdf.exe"
   PARENT_SCOPE
 )
+
+# For local development/debugging/testing
+# Copies the KDF binary to APPDATA to make it accessible
+# This simplifies debug environment setup - avoids adding platform-dependent
+# paths to vscode debugging configurations or environment variables
+set(APP_NAME "KomodoPlatform")
+set(FINAL_INSTALL_DIR "$ENV{APPDATA}/${APP_NAME}")
+file(GLOB EXE_DLL_FILES "${CMAKE_CURRENT_SOURCE_DIR}/bin/*.exe" "${CMAKE_CURRENT_SOURCE_DIR}/bin/*.dll")
+add_custom_command(
+  TARGET ${PLUGIN_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${FINAL_INSTALL_DIR}"
+)
+foreach(FILE ${EXE_DLL_FILES})
+  get_filename_component(FILE_NAME ${FILE} NAME)
+  add_custom_command(
+    TARGET ${PLUGIN_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+      "${FILE}"
+      "${FINAL_INSTALL_DIR}/${FILE_NAME}"
+    VERBATIM
+  )
+endforeach()

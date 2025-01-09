@@ -63,10 +63,24 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     }
 
     try {
+      // Store the config in a temp file to avoid command line argument and
+      // environment variable value size limits (varies from 4-128 KB).
+      final tempDir = await Directory.systemTemp.createTemp('mm_coins_');
+      final configFile = File(p.join(tempDir.path, 'kdf_config.json'));
+      await configFile.writeAsString(args.join());
+
+      final environment = Map<String, String>.from(Platform.environment)
+        ..['MM_CONF_PATH'] = configFile.path;
+
       final newProcess = await Process.start(
         executablePath,
-        args,
+        [],
+        environment: environment,
+        runInShell: true,
       );
+      await newProcess.exitCode.then((_) async {
+        await tempDir.delete(recursive: true);
+      });
 
       _logCallback('Launched executable: $executablePath');
       _attachProcessListeners(newProcess);
