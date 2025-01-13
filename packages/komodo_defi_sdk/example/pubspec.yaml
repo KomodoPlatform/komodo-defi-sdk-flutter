@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_bloc: ^8.1.6
-  flutter_secure_storage: ^9.2.2
+  flutter_secure_storage: ^9.2.4
 
   komodo_defi_sdk:
     path: ../
@@ -30,13 +30,6 @@ dev_dependencies:
     sdk: flutter
     
   js: any
-
-dependency_overrides:
-  flutter_secure_storage_web:
-     git:
-      url: https://github.com/mogol/flutter_secure_storage.git
-      ref: develop
-      path: flutter_secure_storage_web
 
 flutter:
   uses-material-design: true
