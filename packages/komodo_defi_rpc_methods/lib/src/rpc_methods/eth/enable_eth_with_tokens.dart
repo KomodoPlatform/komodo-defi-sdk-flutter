@@ -42,7 +42,6 @@ class EnableEthWithTokensResponse extends BaseResponse {
   EnableEthWithTokensResponse({
     required super.mmrpc,
     required this.currentBlock,
-    required this.ticker,
     required this.walletBalance,
     required this.nftsInfos,
   });
@@ -53,7 +52,6 @@ class EnableEthWithTokensResponse extends BaseResponse {
     return EnableEthWithTokensResponse(
       mmrpc: json.value<String>('mmrpc'),
       currentBlock: result.value<int>('current_block'),
-      ticker: result.value<String>('ticker'),
       walletBalance: WalletBalance.fromJson(
         result.value<JsonMap>('wallet_balance'),
       ),
@@ -62,7 +60,6 @@ class EnableEthWithTokensResponse extends BaseResponse {
   }
 
   final int currentBlock;
-  final String ticker;
   final WalletBalance walletBalance;
   final JsonMap nftsInfos; // Could be expanded into a proper type if needed
 
@@ -71,7 +68,6 @@ class EnableEthWithTokensResponse extends BaseResponse {
         'mmrpc': mmrpc,
         'result': {
           'current_block': currentBlock,
-          'ticker': ticker,
           'wallet_balance': walletBalance.toJson(),
           'nfts_infos': nftsInfos,
         },

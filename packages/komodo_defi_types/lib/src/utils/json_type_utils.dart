@@ -150,6 +150,11 @@ T? _traverseJson<T>(
         return _convertMap(value);
       }
 
+      // Cast 0 to false and 1 to true for boolean types
+      if (T == bool && value is int && (value == 0 || value == 1)) {
+        return (value == 1) as T;
+      }
+
       // Final type check
       if (value is! T) {
         throw ArgumentError(
