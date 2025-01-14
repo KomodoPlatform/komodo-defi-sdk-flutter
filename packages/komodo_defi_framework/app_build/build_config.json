@@ -1,7 +1,7 @@
 {
     "api": {
-        "api_commit_hash": "bb749a99344fb61e92410cb64b035dba1de35779",
-        "branch": "main",
+        "api_commit_hash": "405bcb7daf316477497eb6925cba0ca9640ab383",
+        "branch": "dev",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
@@ -10,16 +10,16 @@
         ],
         "platforms": {
             "web": {
-                "matching_keyword": "wasm",
+                "matching_pattern": "^kdf_[a-f0-9]+-wasm\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "91ac9f0e880ec49aedab21c5df130ffc9475cdbf0b6428cf6862842142176293"
+                    "1800ab7e8682f01d9a10679475509706b0414bc178937d6db95ebf84f29df84c"
                 ],
                 "path": "web/kdf/bin"
             },
             "macos": {
-                "matching_keyword": "mac-arm64",
+                "matching_pattern": "^kdf_[a-f0-9]+-mac-arm64\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "1a06b4e7d9b3db9ba9623445274ac420f5522d4ee56a6a2f3b305e56b6ae26c8"
+                    "37161ccc3022f07d5e1bedf2069f3fe609cf12a18f8ca5fd4bbc32e0ce734cf5"
                 ],
                 "path": "macos/bin"
             }
@@ -28,7 +28,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "642abea7172b81db24b16bffc13783b9a0e400f5",
+        "bundled_coins_repo_commit": "eae824b3502f9da19cce891f93e8c2f98fbf534f",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://komodoplatform.github.io/coins",
         "coins_repo_branch": "master",

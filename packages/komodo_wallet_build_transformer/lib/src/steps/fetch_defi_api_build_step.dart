@@ -417,14 +417,13 @@ class FetchDefiApiStep extends BuildStep {
   ) async {
     final releases = await githubApiProvider.getReleases();
     final apiVersionShortHash = apiCommitHash.substring(0, 7);
-    final matchingKeyword = config[platform]!.matchingKeyword;
+    final matchingConfig = config[platform]!.matchingConfig;
 
     for (final release in releases) {
       for (final asset in release.assets) {
         final url = asset.browserDownloadUrl;
 
-        if (url.contains(matchingKeyword) &&
-            url.contains(apiVersionShortHash)) {
+        if (matchingConfig.matches(url) && url.contains(apiVersionShortHash)) {
           final commitHash = await githubApiProvider.getLatestCommitHash(
             branch: release.tagName,
           );
@@ -454,14 +453,14 @@ class FetchDefiApiStep extends BuildStep {
     _checkResponseSuccess(response);
 
     final document = parser.parse(response.body);
-    final matchingKeyword = config[platform]!.matchingKeyword;
+    final matchingConfig = config[platform]!.matchingConfig;
     final extensions = ['.zip'];
     final apiVersionShortHash = apiCommitHash.substring(0, 7);
 
     for (final element in document.querySelectorAll('a')) {
       final href = element.attributes['href'];
       if (href != null &&
-          href.contains(matchingKeyword) &&
+          matchingConfig.matches(href) &&
           extensions.any(href.endsWith) &&
           href.contains(apiVersionShortHash)) {
         return '$sourceUrl/$apiBranch/$href';
