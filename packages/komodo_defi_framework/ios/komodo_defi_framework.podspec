@@ -21,8 +21,40 @@ A new Flutter FFI plugin project.
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
   s.platform = :ios, '12.0'
-
-  # Flutter.framework does not contain a i386 slice.
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
   s.swift_version = '5.0'
+
+  s.frameworks = [
+    'CoreFoundation',
+    'SystemConfiguration',
+  ]
+
+  s.vendored_libraries = 'libmm2.a'
+  # s.vendored_libraries = 'libkdflib.dylib'
+
+  s.pod_target_xcconfig = {
+    'DEFINES_MODULE' => 'YES',
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
+    'OTHER_LDFLAGS' => [
+      '-force_load "$(PODS_TARGET_SRCROOT)/libmm2.a"',
+      '-framework SystemConfiguration',
+    ],
+    # # Add rpath to ensure dylib can be found at runtime
+    #  'LD_RUNPATH_SEARCH_PATHS' => [
+    #   '$(inherited)',
+    #   '@executable_path/Frameworks',
+    #   '@loader_path/Frameworks'
+    # ]
+  }
+
+  s.user_target_xcconfig = {
+    'OTHER_LDFLAGS' => [
+      '-framework SystemConfiguration'
+    ]
+  }
+
+  s.libraries = ['c++', 'resolv']
+
+  # Ensure the dylib is copied into the final app bundle
+  # s.preserve_paths = 'libkdflib.dylib'
+
 end
