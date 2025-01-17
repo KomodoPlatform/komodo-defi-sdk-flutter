@@ -1,5 +1,5 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// V2 Transaction History Request
 class MyTxHistoryRequest

@@ -1,7 +1,9 @@
 import 'dart:async';
+
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/src/auth/auth_service.dart';
 import 'package:komodo_defi_local_auth/src/auth/storage/secure_storage.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// The [KomodoDefiAuth] class provides a simplified local authentication

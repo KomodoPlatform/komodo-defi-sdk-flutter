@@ -1,5 +1,5 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_types/types.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // TODO: Refactor strategy consumption so that API client does not need to be
 // passed in. See the activation strategy for an example of how this can

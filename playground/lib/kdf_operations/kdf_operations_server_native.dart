@@ -1,8 +1,7 @@
 import 'dart:async';
 
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
-// ignore: depend_on_referenced_packages
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class KdfHttpServerOperations implements IKdfOperations {
   KdfHttpServerOperations(

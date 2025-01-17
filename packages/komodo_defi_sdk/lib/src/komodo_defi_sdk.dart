@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_sdk/src/addresses/address_operations.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/transaction_history/transaction_history_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 KomodoDefiSdk? _instance;
@@ -194,6 +196,9 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   late final PubkeyManager pubkeys = _assertSdkInitialized(
     PubkeyManager(_apiClient!),
   );
+
+  late final AddressOperations _addresses = AddressOperations(_apiClient!);
+  AddressOperations get addresses => _assertSdkInitialized(_addresses);
 
   late final MnemonicValidator? _mnemonicValidator;
   MnemonicValidator get mnemonicValidator =>

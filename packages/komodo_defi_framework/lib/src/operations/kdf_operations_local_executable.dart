@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 

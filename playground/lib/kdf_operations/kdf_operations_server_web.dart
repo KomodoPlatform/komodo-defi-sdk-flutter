@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:js_interop';
+
 // this warning is pointless, since `web` and `js_interop` fail to compile on
 // native platforms, so they aren't safe to import without conditional
 // imports either (yet)
@@ -10,8 +11,7 @@ import 'dart:js_interop';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
-// ignore: depend_on_referenced_packages
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_proxy/shelf_proxy.dart';
 

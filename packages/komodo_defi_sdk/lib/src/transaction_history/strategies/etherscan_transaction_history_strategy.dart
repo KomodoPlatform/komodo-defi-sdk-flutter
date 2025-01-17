@@ -1,7 +1,9 @@
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Strategy for fetching transaction history from the Etherscan proxy service.
@@ -35,6 +37,11 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
       throw UnsupportedError(
         'Asset ${asset.id.name} is not supported by EtherscanTransactionStrategy',
       );
+    }
+
+    // TODO! Remove after resolving tx history spamming issue in KW.
+    if (kDebugMode) {
+      return MyTxHistoryResponse.empty();
     }
 
     validatePagination(pagination);

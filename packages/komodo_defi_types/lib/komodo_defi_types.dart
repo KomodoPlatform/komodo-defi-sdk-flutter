@@ -14,13 +14,8 @@ export 'src/auth/exceptions/auth_exception.dart';
 export 'src/auth/kdf_user.dart';
 
 // Aliased/proxied types
+export 'src/exported_rpc_types.dart';
 export 'src/komodo_defi_types_base.dart';
-// TODO: Consider moving utils to a separate package. The rationale for
-// including them here is that many are associated with the types in this
-// package.
-export 'src/utils/json_type_utils.dart';
-export 'src/utils/mnemonic_validator.dart';
-export 'src/utils/security_utils.dart';
 export 'types.dart';
 
 // Export activation params types

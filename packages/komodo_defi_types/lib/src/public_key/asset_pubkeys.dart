@@ -1,8 +1,8 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_types/types.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class AssetPubkeys {
-  AssetPubkeys({
+  const AssetPubkeys({
     required this.assetId,
     required this.keys,
     // required this.usedAddressesCount,

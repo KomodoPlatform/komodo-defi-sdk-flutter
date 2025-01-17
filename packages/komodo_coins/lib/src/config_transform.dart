@@ -1,6 +1,6 @@
 // lib/src/assets/config_transform.dart
 import 'package:flutter/foundation.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 // ignore: one_member_abstracts
 abstract class CoinConfigTransform {
@@ -38,7 +38,7 @@ class CoinConfigTransformer {
       // large size of the config file. However, it is necessary to avoid
       // mutating the original map and for making the transforms idempotent.
       // Use sparingly and ideally only once.
-      (config, transform) => transform.transform(JsonMap.from(config)),
+      (config, transform) => transform.transform(JsonMap.of(config)),
     );
   }
 }
@@ -88,18 +88,23 @@ class WssWebsocketTransform implements CoinConfigTransform {
 
   @override
   JsonMap transform(JsonMap config) {
-    final electrum = JsonList.from(config.value<JsonList>('electrum'));
+    final electrum = JsonList.of(config.value<JsonList>('electrum'));
     // On native, only non-WSS servers are supported. On web, only WSS servers
     // are supported.
-    final filteredElectrums = kIsWeb
-        ? _filterOutNonWssElectrums(electrum)
-        : _filterOutWssElectrums(electrum);
+    final filteredElectrums = filterElectrums(
+      electrum,
+      serverType:
+          kIsWeb ? ElectrumServerType.wssOnly : ElectrumServerType.nonWssOnly,
+    );
 
     return config..['electrum'] = filteredElectrums;
   }
 
-  JsonList _filterOutNonWssElectrums(JsonList electrums) {
-    final electrumsCopy = JsonList.from(electrums);
+  JsonList filterElectrums(
+    JsonList electrums, {
+    required ElectrumServerType serverType,
+  }) {
+    final electrumsCopy = JsonList.of(electrums);
 
     for (final e in electrumsCopy) {
       if (e['protocol'] == 'WSS') {
@@ -107,11 +112,19 @@ class WssWebsocketTransform implements CoinConfigTransform {
       }
     }
 
-    return electrums.where((JsonMap e) => e['ws_url'] != null).toList();
+    return electrumsCopy
+      ..removeWhere(
+        (JsonMap e) => serverType == ElectrumServerType.wssOnly
+            ? e['ws_url'] == null
+            : e['ws_url'] != null,
+      );
   }
+}
 
-  JsonList _filterOutWssElectrums(JsonList electrums) =>
-      electrums.where((JsonMap e) => e['protocol'] != 'WSS').toList();
+/// Specifies which type of Electrum servers to retain
+enum ElectrumServerType {
+  wssOnly,
+  nonWssOnly,
 }
 
 class ParentCoinTransform implements CoinConfigTransform {

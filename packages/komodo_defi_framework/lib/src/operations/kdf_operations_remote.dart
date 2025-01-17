@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class KdfOperationsRemote implements IKdfOperations {
   // TODO! Add wallet password and name or add the config object
