@@ -2,7 +2,6 @@ import 'package:example/screens/withdrawal_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class AssetPage extends StatefulWidget {

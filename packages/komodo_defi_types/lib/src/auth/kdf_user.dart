@@ -1,7 +1,6 @@
 // TODO! Document this class
 // wallet_id.dart
 import 'package:equatable/equatable.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Represents a unique wallet identifier

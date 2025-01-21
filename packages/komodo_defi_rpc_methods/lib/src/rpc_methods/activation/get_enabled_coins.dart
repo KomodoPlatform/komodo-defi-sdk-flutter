@@ -2,7 +2,7 @@
 
 // import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class GetEnabledCoinsRequest
     extends BaseRequest<GetEnabledCoinsResponse, GeneralErrorResponse> {

@@ -1,4 +1,3 @@
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class KdfApiClient implements ApiClient {

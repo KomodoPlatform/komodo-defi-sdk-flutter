@@ -1,5 +1,5 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class TaskEnableUtxoInit
     extends BaseRequest<NewTaskResponse, GeneralErrorResponse> {

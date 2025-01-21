@@ -1,5 +1,5 @@
 import 'package:komodo_defi_rpc_methods/src/common_structures/activation/activation_params/activation_params.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class UtxoActivationParams extends ActivationParams {
   UtxoActivationParams({

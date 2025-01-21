@@ -1,7 +1,6 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
+import 'package:komodo_defi_types/types.dart';
 
 /// Base class for all protocol definitions
 abstract class ProtocolClass {

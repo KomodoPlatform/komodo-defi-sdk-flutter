@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
+import 'package:komodo_defi_types/types.dart';
 
 class AssetId extends Equatable {
   const AssetId({

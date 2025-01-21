@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:http/http.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 const _kdfAsstsPath = 'kdf';
 const _kdfJsBootstrapperPath = '$_kdfAsstsPath/res/kdflib_bootstrapper.js';

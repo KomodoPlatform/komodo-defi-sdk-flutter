@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // ignore: one_member_abstracts
 abstract class SecurityUtils {

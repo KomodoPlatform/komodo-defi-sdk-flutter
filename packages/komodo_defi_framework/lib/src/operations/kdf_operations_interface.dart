@@ -3,7 +3,7 @@ import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 enum MainStatus {
   notRunning,

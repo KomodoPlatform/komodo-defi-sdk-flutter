@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/types.dart';
 
 class TransactionPage extends Equatable {
   const TransactionPage({

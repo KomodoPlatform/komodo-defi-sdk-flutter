@@ -1,5 +1,6 @@
 import 'package:komodo_defi_sdk/src/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/types.dart';
 
 extension AssetHdWalletAddressesExtension on Asset {
   /// Returns a set of the reasons why a new address cannot be created. This is

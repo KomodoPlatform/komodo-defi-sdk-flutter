@@ -1,5 +1,5 @@
 import 'package:decimal/decimal.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:meta/meta.dart';
 
 @immutable

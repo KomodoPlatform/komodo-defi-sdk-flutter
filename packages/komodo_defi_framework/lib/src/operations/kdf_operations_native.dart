@@ -10,7 +10,7 @@ import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/native/komodo_defi_framework_bindings_generated.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_local_executable.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 typedef NativeLogCallback = ffi.Void Function(ffi.Pointer<ffi.Char>);
 

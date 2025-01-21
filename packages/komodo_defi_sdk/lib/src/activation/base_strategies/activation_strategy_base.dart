@@ -1,4 +1,4 @@
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/types.dart';
 
 abstract class AssetActivator {
   const AssetActivator(this.client);

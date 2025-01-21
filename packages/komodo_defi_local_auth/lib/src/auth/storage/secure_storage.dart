@@ -1,7 +1,6 @@
 // lib/src/auth/secure_storage.dart
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 abstract class Storage {

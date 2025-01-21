@@ -4,7 +4,6 @@ import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
