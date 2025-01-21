@@ -26,6 +26,9 @@ if(ANDROID)
     message(FATAL_ERROR "Static library '${KDFLIB_PATH}' not found. Please ensure it is present.")
   endif()
   
+  # Force linking of all symbols to prevent them being optimised out 
+  # due to the lack of direct usage in native code. Dart FFI is used to 
+  # access the library functions.
   target_link_libraries(komodo_defi_framework PRIVATE
     "-Wl,--whole-archive"
     "${KDFLIB_PATH}"
