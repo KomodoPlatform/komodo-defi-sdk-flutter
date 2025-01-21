@@ -9,7 +9,7 @@
         ],
         "platforms": {
             "web": {
-                "matching_pattern": "^kdf_[a-f0-9]+-wasm\\.zip$",
+                "matching_pattern": "wasm",
                 "valid_zip_sha256_checksums": [
                     "f82e330a8d9bc1c2011604648233922cf216a732858c5a6a935ad77a286b1993"
                 ],
@@ -62,7 +62,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "eae824b3502f9da19cce891f93e8c2f98fbf534f",
+        "bundled_coins_repo_commit": "8a37a6cdb8f4f334f305899006b31415e3a49bf1",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://komodoplatform.github.io/coins",
         "coins_repo_branch": "master",
