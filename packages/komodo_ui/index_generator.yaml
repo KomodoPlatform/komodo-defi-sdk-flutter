@@ -1,0 +1,157 @@
+# TODO: Upgrade `index_generator` to 4.0.0 and update configuration file for breaking changes
+# accross all SDK packages. This package is already using the latest version.
+
+# Used to generate Dart index file. Can be ran with `<dart|flutter> pub global run index_generator`
+# from this package's root directory.
+# See https://pub.dev/packages/index_generator for more information.
+index_generator:
+  default_file_name: index
+  exclude:
+    - '**.g.dart'
+    - '**.freezed.dart'
+    - '**_test.dart'
+    - '**_test_*.dart'
+    - '{_,**/_}*.dart'
+    - '**.mocks.dart'
+    - '**.config.dart'
+    - '**.module.dart'
+
+  libraries:
+    # Main library export
+    - directory_path: lib
+      file_name: komodo_ui
+      name: komodo_ui
+      disclaimer: true
+      comments: |
+        // Copyright (c) 2025 Komodo Platform
+        // This is the main entry point for the Komodo UI Kit
+      docs: |
+        /// Komodo UI Kit - A comprehensive UI library for DeFi applications
+        /// Built on top of the Komodo DeFi Framework
+      include:
+        - 'src/**/*.dart'
+      exports:
+        - package: package:flutter/material.dart
+          show: 
+            - Widget
+            - StatelessWidget
+            - StatefulWidget
+        - package: package:flutter/foundation.dart
+          show:
+            - Key
+            - ValueChanged
+            - VoidCallback
+
+    # Core Components
+    - directory_path: lib/src/core/inputs
+      name: komodo_ui.core.inputs
+      docs: |
+        /// Input components for forms and user interaction
+      include:
+        - '*.dart'
+        - 'widgets/*.dart'
+
+    - directory_path: lib/src/core/feedback
+      name: komodo_ui.core.feedback
+      docs: |
+        /// Components for user feedback, alerts, and notifications
+      include:
+        - '*.dart'
+        - 'components/*.dart'
+
+    - directory_path: lib/src/core/layout
+      name: komodo_ui.core.layout
+      docs: |
+        /// Layout components for structuring UI
+      include:
+        - '*.dart'
+        - 'containers/*.dart'
+
+    # DeFi Components
+    - directory_path: lib/src/defi/asset
+      name: komodo_ui.defi.asset
+      docs: |
+        /// Components for displaying and managing digital assets
+      include:
+        - '*.dart'
+        - 'widgets/*.dart'
+      exports:
+        - package: package:decimal/decimal.dart
+          show:
+            - Decimal
+
+    - directory_path: lib/src/defi/swap
+      name: komodo_ui.defi.swap
+      docs: |
+        /// Components for token swapping and trading interfaces
+      include:
+        - '*.dart'
+        - 'components/*.dart'
+      exports:
+        - package: package:komodo_defi_sdk/komodo_defi_sdk.dart
+          show:
+            - SwapParameters
+            - SwapResult
+
+    - directory_path: lib/src/defi/wallet
+      name: komodo_ui.defi.wallet
+      docs: |
+        /// Wallet management and display components
+      include:
+        - '*.dart'
+        - 'screens/*.dart'
+        - 'widgets/*.dart'
+
+    # Composite Components
+    - directory_path: lib/src/composite/cards
+      name: komodo_ui.composite.cards
+      docs: |
+        /// Reusable card components and layouts
+      include:
+        - '*.dart'
+        - 'templates/*.dart'
+
+    - directory_path: lib/src/composite/dialogs
+      name: komodo_ui.composite.dialogs
+      docs: |
+        /// Modal dialogs and popups
+      include:
+        - '*.dart'
+        - 'modals/*.dart'
+
+    # Utils
+    - directory_path: lib/src/utils/formatters
+      name: komodo_ui.utils.formatters
+      docs: |
+        /// Utility functions for formatting values
+      include:
+        - '*.dart'
+      exports:
+        - package: package:intl/intl.dart
+          show:
+            - NumberFormat
+            - DateFormat
+
+    - directory_path: lib/src/utils/validators
+      name: komodo_ui.utils.validators
+      docs: |
+        /// Input validation utilities
+      include:
+        - '*.dart'
+
+    # Constants and Theme
+    - directory_path: lib/src/constants
+      name: komodo_ui.constants
+      docs: |
+        /// Global constants and theme definitions
+      file_name: constants
+      include:
+        - '**/*.dart'
+      exclude:
+        - '**/*.g.dart'
+      exports:
+        - package: package:flutter/material.dart
+          show:
+            - ThemeData
+            - Colors
+            - TextTheme
