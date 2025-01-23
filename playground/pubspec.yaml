@@ -2,8 +2,8 @@ name: komodo_defi_framework_example
 description: "Demonstrates how to use the komodo_defi_framework plugin."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-repository: 'https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/tree/dev/example'
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
+repository: "https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/tree/dev/example"
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -21,7 +21,7 @@ version: 1.0.0+1
 
 environment:
   sdk: ^3.4.4
-  flutter: '>=3.22.0 <3.25.0'
+  flutter: ">=3.22.0 <3.25.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -46,7 +46,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   bip39: ^1.0.6
   json_editor_flutter: ^1.4.2
-  flutter_secure_storage: ^4.2.1
+  flutter_secure_storage: ^9.2.4
   shared_preferences: ^2.3.1
   postman_collection: ^0.0.9
   flutter_json_view: ^1.1.2
@@ -68,23 +68,15 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^4.0.0
 
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
+  # For information on the generic Dart part of this file, see the
+  # following page: https://dart.dev/tools/pub/pubspec
 
-# The following section is specific to Flutter packages.
+  # The following section is specific to Flutter packages.
   flutter_web_plugins:
     sdk: flutter
   js: any
 
-dependency_overrides:
-  flutter_secure_storage_web:
-     git:
-      url: https://github.com/mogol/flutter_secure_storage.git
-      ref: develop
-      path: flutter_secure_storage_web
-
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
