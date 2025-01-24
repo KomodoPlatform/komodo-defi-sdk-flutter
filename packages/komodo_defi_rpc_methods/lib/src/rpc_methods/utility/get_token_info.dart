@@ -11,7 +11,7 @@ class GetTokenInfoRequest
     required this.protocolType,
     required this.platform,
     required this.contractAddress,
-  }) : super(method: 'get_token_info', rpcPass: rpcPass, mmrpc: null);
+  }) : super(method: 'get_token_info', rpcPass: rpcPass, mmrpc: '2.0');
 
   /// Token type - e.g ERC20 for tokens on the Ethereum network
   final String protocolType;
@@ -53,10 +53,11 @@ class GetTokenInfoResponse extends BaseResponse {
   });
 
   factory GetTokenInfoResponse.parse(Map<String, dynamic> json) {
+    final result = json.value<JsonMap>('result');
     return GetTokenInfoResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
-      type: json.value<String>('type'),
-      info: TokenInfo.fromJson(json.value<Map<String, dynamic>>('info')),
+      type: result.value<String>('type'),
+      info: TokenInfo.fromJson(result.value<JsonMap>('info')),
     );
   }
 
