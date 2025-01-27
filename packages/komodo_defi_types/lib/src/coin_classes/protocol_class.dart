@@ -8,6 +8,7 @@ abstract class ProtocolClass {
     required this.subClass,
     required this.config,
     this.supportedProtocols = const [],
+    this.isCustomToken = false,
   });
 
   /// Creates the appropriate protocol class from JSON config
@@ -87,6 +88,11 @@ abstract class ProtocolClass {
   final CoinSubClass subClass;
   final JsonMap config;
   final List<CoinSubClass> supportedProtocols;
+
+  /// Whether this is a custom token activated by the user.
+  /// Only EVM tokens are supported (e.g. ETH), and they are activated
+  /// as wallet-only.
+  final bool isCustomToken;
 
   /// Whether this protocol supports multiple addresses per wallet
   bool get supportsMultipleAddresses;

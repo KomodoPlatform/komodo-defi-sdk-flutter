@@ -18,15 +18,9 @@ class ActivationStrategyFactory {
           TendermintActivationStrategy(client),
           QtumActivationStrategy(client),
           ZhtlcActivationStrategy(client),
+          CustomErc20ActivationStrategy(client),
         ],
       ),
-    );
-  }
-
-  static SmartAssetActivator createCustomTokenStrategy(ApiClient client) {
-    return SmartAssetActivator(
-      client,
-      CompositeAssetActivator(client, [CustomErc20ActivationStrategy(client)]),
     );
   }
 }
