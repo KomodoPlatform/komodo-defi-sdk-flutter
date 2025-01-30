@@ -3,7 +3,7 @@ description: |
   Bindings for `src/komodo_defi_framework.h`.
 
   Regenerate bindings with `dart run ffigen --config ffigen.yaml`.
-output: 'lib/komodo_defi_framework_bindings_generated.dart'
+output: 'lib/src/native/komodo_defi_framework_bindings_generated.dart'
 headers:
   entry-points:
     - 'src/komodo_defi_framework.h'

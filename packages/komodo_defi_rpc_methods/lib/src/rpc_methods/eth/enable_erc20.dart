@@ -22,7 +22,7 @@ class EnableErc20Request
     return super.toJson().deepMerge({
       'params': {
         'ticker': ticker,
-        'activation_params': activationParams.toJsonRequestParams(),
+        'activation_params': activationParams.toRpcParams(),
       },
     });
   }

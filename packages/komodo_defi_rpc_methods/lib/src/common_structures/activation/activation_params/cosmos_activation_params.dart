@@ -11,8 +11,7 @@ class CosmosActivationParams extends ActivationParams {
   final bool isIrisToken;
 
   @override
-  Map<String, dynamic> toJsonRequestParams() =>
-      super.toJsonRequestParams().deepMerge({
+  Map<String, dynamic> toRpcParams() => super.toRpcParams().deepMerge({
         'rpc_urls': rpcUrls,
         'is_iris_token': isIrisToken,
       });

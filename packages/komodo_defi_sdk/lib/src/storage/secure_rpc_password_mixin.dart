@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:komodo_defi_framework/komodo_defi_framework.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // TODO! Move storage to a separate package. The RPC method package has a

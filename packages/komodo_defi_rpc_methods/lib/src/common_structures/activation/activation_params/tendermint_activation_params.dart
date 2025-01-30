@@ -69,9 +69,9 @@ class TendermintActivationParams extends ActivationParams {
   }
 
   @override
-  JsonMap toJsonRequestParams() {
+  JsonMap toRpcParams() {
     return {
-      ...super.toJsonRequestParams(),
+      ...super.toRpcParams(),
       'rpc_urls': rpcUrls,
       'tokens_params': _tokensParams.map((e) => e.toJson()).toList(),
       'get_balances': getBalances,
@@ -96,9 +96,9 @@ class TendermintTokenActivationParams extends ActivationParams {
   }
 
   @override
-  JsonMap toJsonRequestParams() {
+  JsonMap toRpcParams() {
     return {
-      ...super.toJsonRequestParams(),
+      ...super.toRpcParams(),
     };
   }
 }

@@ -1,4 +1,4 @@
-# Used to generate Dart index file. Can be ran with `<dart|flutter> pub global run index_generator`
+# Used to generate Dart index file. Can be ran with `dart run index_generator`
 # from this package's root directory.
 # See https://pub.dev/packages/index_generator for more information.
 index_generator:

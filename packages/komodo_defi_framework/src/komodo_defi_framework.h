@@ -12,7 +12,6 @@
 #define FFI_PLUGIN_EXPORT
 #endif
 
-// typedef void (*LogCallback)(const char *line);
 typedef void (*LogCallback)(const char *line);
 
 /**
@@ -58,7 +57,6 @@ FFI_PLUGIN_EXPORT int8_t mm2_stop(void);
 // FFI_PLUGIN_EXPORT void lsof(void);
 // FFI_PLUGIN_EXPORT const char *metrics(void);
 
-// // Add these new function declarations
 // FFI_PLUGIN_EXPORT const char *mm2_version(void);
 // FFI_PLUGIN_EXPORT const char *mm2_rpc(const char *request);
 // FFI_PLUGIN_EXPORT void mm2_rpc_free(char *response);

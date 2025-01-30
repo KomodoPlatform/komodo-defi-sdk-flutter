@@ -22,7 +22,7 @@ class EnableTendermintWithAssetsRequest extends BaseRequest<
         ...super.toJson(),
         'params': {
           'ticker': ticker,
-          ...params.toJsonRequestParams(),
+          ...params.toRpcParams(),
         },
       };
 

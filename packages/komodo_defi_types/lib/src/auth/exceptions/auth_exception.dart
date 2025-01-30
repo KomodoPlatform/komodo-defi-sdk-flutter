@@ -1,3 +1,5 @@
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+
 enum AuthExceptionType {
   invalidWalletPassword,
   walletAlreadyRunning,

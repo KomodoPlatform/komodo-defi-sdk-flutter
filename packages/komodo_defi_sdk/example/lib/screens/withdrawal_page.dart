@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_ui/komodo_ui.dart';
 
 class WithdrawalScreen extends StatefulWidget {
   const WithdrawalScreen({
@@ -32,24 +35,64 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   String? _error;
   bool _isIbcTransfer = false;
 
+  AddressValidation? _addressValidation;
+  Timer? _validationDebounce;
+
   @override
   void initState() {
     super.initState();
+    _toAddressController.addListener(_onAddressChanged);
     if (widget.asset.supportsMultipleAddresses) {
       _selectedFromAddress = widget.pubkeys.keys.first;
     }
   }
 
-  @override
-  void dispose() {
-    _toAddressController.dispose();
-    _amountController.dispose();
-    _memoController.dispose();
-    _ibcChannelController.dispose();
-    super.dispose();
+  void _onAddressChanged() {
+    // Clear validation when input changes
+    setState(() => _addressValidation = null);
+
+    // Cancel previous validation if it exists
+    _validationDebounce?.cancel();
+
+    final address = _toAddressController.text;
+    if (address.isEmpty) return;
+
+    // Start new validation after debounce
+    _validationDebounce = Timer(const Duration(milliseconds: 500), () {
+      _validateAddress(address);
+    });
+  }
+
+  String? _addressValidator(String? value) {
+    if (value?.isEmpty ?? true) return 'Please enter recipient address';
+
+    // If validation is in progress, consider it invalid
+    if (_addressValidation == null) {
+      return 'Validating address...';
+    }
+
+    // Return validation error if invalid
+    if (!_addressValidation!.isValid) {
+      return _addressValidation!.invalidReason ?? 'Invalid address format';
+    }
+
+    return null;
   }
 
   Future<void> _previewWithdrawal() async {
+    if (_addressValidation == null) {
+      setState(() => _error = 'Please wait for address validation to complete');
+      return;
+    }
+
+    if (!_addressValidation!.isValid) {
+      setState(
+        () => _error =
+            _addressValidation!.invalidReason ?? 'Invalid address format',
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     try {
@@ -60,13 +103,16 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         toAddress: _toAddressController.text,
         amount: _isMaxAmount ? null : Decimal.parse(_amountController.text),
         fee: _selectedFee,
-        from: _selectedFromAddress != null
-            ? WithdrawalSource.hdWallet(
-                accountId: 0,
-                chain: _selectedFromAddress!.chain!,
-                addressId: int.parse(
-                  _selectedFromAddress!.derivationPath!.split('/').last,
-                ),
+        from: _selectedFromAddress?.derivationPath != null
+            ?
+            // WithdrawalSource.hdWalletId(
+            //     accountId: 0,
+            //     addressId: int.parse(
+            //       _selectedFromAddress!.derivationPath!.split('/').last,
+            //     ),
+            //   )
+            WithdrawalSource.hdDerivationPath(
+                _selectedFromAddress!.derivationPath!,
               )
             : null,
         memo: _memoController.text.isEmpty ? null : _memoController.text,
@@ -87,9 +133,19 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
       await _showPreviewDialog(params);
     } catch (e) {
       if (!mounted) return;
-
       setState(() => _error = e.toString());
     }
+  }
+
+  @override
+  void dispose() {
+    _validationDebounce?.cancel();
+    _toAddressController.removeListener(_onAddressChanged);
+    _toAddressController.dispose();
+    _amountController.dispose();
+    _memoController.dispose();
+    _ibcChannelController.dispose();
+    super.dispose();
   }
 
   Future<void> _showPreviewDialog(WithdrawParameters params) async {
@@ -154,10 +210,35 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
           'Fee Details:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        if (details.gas != null) Text('Gas: ${details.gas} units'),
-        if (details.gasPrice != null) Text('Gas Price: ${details.gasPrice}'),
+
+        // If it's an ETH gas variant:
+        if (details is FeeInfoEthGas) ...[
+          Text('Gas: ${details.gas} units'),
+          // If you're storing gasPrice in ETH, then you might print:
+          Text('Gas Price: ${details.gasPrice} ETH/1gas'),
+          // or convert to Gwei if you prefer
+        ],
+
+        if (details is FeeInfoQrc20Gas) ...[
+          Text('Gas Limit: ${details.gasLimit}'),
+          Text('Gas Price: ${details.gasPrice} (coin units)'),
+        ],
+
+        if (details is FeeInfoCosmosGas) ...[
+          Text('Gas Limit: ${details.gasLimit}'),
+          Text('Gas Price: ${details.gasPrice} (coin units)'),
+        ],
+
+        if (details is FeeInfoUtxoFixed) ...[
+          Text('Amount: ${details.amount} ${details.coin} (fixed)'),
+        ],
+        if (details is FeeInfoUtxoPerKbyte) ...[
+          Text('Amount per KB: ${details.amount} ${details.coin}'),
+        ],
+
+        const SizedBox(height: 4),
         Text(
-          'Total Fee: ${details.totalFee ?? details.amount} ${widget.asset.id.id}',
+          'Total Fee: ${details.totalFee} ${details.coin}',
           style: const TextStyle(fontWeight: FontWeight.w500),
         ),
       ],
@@ -199,31 +280,27 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   bool get _isTendermintProtocol => widget.asset.protocol is TendermintProtocol;
 
-  // TODO! Implement address validation in SDK package using the RPC method.
-  String? _validateAddress(String? value) {
-    if (value?.isEmpty ?? true) return 'Please enter recipient address';
+  Future<void> _validateAddress(String address) async {
+    try {
+      final validation = await KomodoDefiSdk().addresses.validateAddress(
+            asset: widget.asset,
+            address: address,
+          );
 
-    // Protocol-specific address validation
-    final protocol = widget.asset.protocol;
-    if (protocol is Erc20Protocol) {
-      if (!value!.startsWith('0x')) return 'Invalid ETH address format';
-      if (value.length != 42) return 'ETH address must be 42 characters';
-    } else if (protocol is UtxoProtocol) {
-      // Basic UTXO address validation
-      if (value!.length < 26 || value.length > 35) {
-        return 'Invalid UTXO address length';
+      if (mounted) {
+        setState(() => _addressValidation = validation);
       }
-    } else if (protocol is TendermintProtocol) {
-      final prefix = protocol.accountPrefix;
-      if (prefix != null && !value!.startsWith(prefix)) {
-        return 'Address must start with $prefix';
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Address validation failed: $e');
       }
     }
-
-    return null;
   }
 
   bool isCustomFee = false;
+
+  /// Convert Gwei -> ETH by dividing by 10^9
+  static final Decimal _gweiToEth = Decimal.fromInt(1000000000);
 
   Widget _buildFeeSelection() {
     final protocol = widget.asset.protocol;
@@ -242,16 +319,26 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Gas Price (Gwei)',
                   ),
-                  // initialValue: '1',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
-                    final gasPrice = Decimal.tryParse(value);
-                    if (gasPrice != null) {
+                    final gweiInput = Decimal.tryParse(value);
+                    if (gweiInput != null) {
+                      final ethPrice = gweiInput / _gweiToEth;
+
                       setState(() {
-                        _selectedFee = FeeInfo.erc20(
-                          widget.asset.id.id,
-                          gasPrice,
-                          _selectedFee?.gas ?? 21000,
+                        final oldFee = _selectedFee;
+
+                        // Preserve whatever gas limit we had before if oldFee is ethGas
+                        final oldGasLimit = oldFee?.maybeMap(
+                          ethGas: (eth) => eth.gas,
+                          orElse: () => 21000,
+                        );
+
+                        // Now create a new ethGas FeeInfo using the old gas limit.
+                        _selectedFee = FeeInfo.ethGas(
+                          coin: widget.asset.id.id,
+                          gasPrice: ethPrice.toDecimal(),
+                          gas: oldGasLimit ?? 21000,
                         );
                       });
                     }
@@ -265,16 +352,21 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Gas Limit',
                   ),
-                  // initialValue: '21000',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
                     final gasLimit = int.tryParse(value);
                     if (gasLimit != null) {
                       setState(() {
-                        _selectedFee = FeeInfo.erc20(
-                          widget.asset.id.id,
-                          Decimal.parse(_selectedFee?.gasPrice ?? '1'),
-                          gasLimit,
+                        final oldFee = _selectedFee;
+                        final oldGasPrice = oldFee?.maybeMap(
+                          ethGas: (eth) => eth.gasPrice,
+                          orElse: () => Decimal.parse('0.000000003'),
+                        );
+
+                        _selectedFee = FeeInfo.ethGas(
+                          coin: widget.asset.id.id,
+                          gasPrice: oldGasPrice ?? Decimal.parse('0.000000003'),
+                          gas: gasLimit,
                         );
                       });
                     }
@@ -311,14 +403,23 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               ),
             ],
             selected: {
-              _selectedFee?.amount ?? Decimal.parse(defaultFee.toString()),
+              if (_selectedFee != null)
+                _selectedFee!.maybeMap(
+                  utxoFixed: (f) => f.amount,
+                  utxoPerKbyte: (p) => p.amount,
+                  orElse: () => Decimal.zero,
+                )
+              else
+                Decimal.parse(defaultFee.toString()),
             },
             onSelectionChanged: !isCustomFee
                 ? null
                 : (value) {
                     setState(() {
-                      _selectedFee =
-                          FeeInfo.utxoFixed(widget.asset.id.id, value.first);
+                      _selectedFee = FeeInfo.utxoFixed(
+                        coin: widget.asset.id.id,
+                        amount: value.first,
+                      );
                     });
                   },
           ),
@@ -355,6 +456,9 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                     ),
                   ),
                 ),
+              // TODO: Check if wallet is currently in HD mode. Use KW coin
+              // details' page address management as an example of how to
+              // handle this.
               if (widget.asset.supportsMultipleAddresses) ...[
                 DropdownButtonFormField<PubkeyInfo>(
                   value: _selectedFromAddress,
@@ -376,8 +480,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                         ),
                       )
                       .toList(),
-                  onChanged: (value) =>
-                      setState(() => _selectedFromAddress = value),
+                  onChanged: widget.pubkeys.keys
+                          .any((k) => k.derivationPath == null)
+                      ? null
+                      : (value) => setState(() => _selectedFromAddress = value),
                   validator: (value) =>
                       value == null ? 'Please select a source address' : null,
                 ),
@@ -385,11 +491,14 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               ],
               TextFormField(
                 controller: _toAddressController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'To Address',
                   hintText: 'Enter recipient address',
+                  // Show validation status
+                  suffixIcon: _buildValidationStatus(),
                 ),
-                validator: _validateAddress,
+                validator: _addressValidator,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
               ),
               const SizedBox(height: 16),
               if (_isTendermintProtocol) ...[
@@ -453,7 +562,15 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 value: isCustomFee,
                 onChanged: (value) => setState(() => isCustomFee = value),
               ),
-              _buildFeeSelection(),
+              // Reusable fee input
+              FeeInfoInput(
+                asset: widget.asset,
+                selectedFee: _selectedFee,
+                isCustomFee: isCustomFee,
+                onFeeSelected: (fee) {
+                  setState(() => _selectedFee = fee);
+                },
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _memoController,
@@ -491,6 +608,26 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget? _buildValidationStatus() {
+    if (_toAddressController.text.isEmpty) return null;
+
+    if (_addressValidation == null) {
+      return Container(
+        padding: const EdgeInsets.all(4),
+        width: 16,
+        height: 16,
+        child: const CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    return Icon(
+      _addressValidation!.isValid ? Icons.check_circle : Icons.error,
+      color: _addressValidation!.isValid
+          ? Theme.of(context).colorScheme.primary
+          : Theme.of(context).colorScheme.error,
     );
   }
 
@@ -545,11 +682,6 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(_getFeeDisplay()),
-                  if (protocol is Erc20Protocol && _selectedFee?.gas != null)
-                    Text(
-                      'Gas: ${_selectedFee!.gas} @ ${_selectedFee!.gasPrice} Gwei',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
                 ],
               ),
             ],
@@ -580,22 +712,30 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   String _getFeeDisplay() {
-    if (_selectedFee == null) return 'Calculating...';
+    final fee = _selectedFee;
+    if (fee == null) return 'Calculating...';
 
-    switch (_selectedFee!.type) {
-      case WithdrawalFeeType.utxo:
-        return '${_selectedFee!.amount} ${widget.asset.id.id}';
-      case WithdrawalFeeType.eth:
-        final gasPrice = Decimal.parse(_selectedFee!.gasPrice ?? '0');
-        final gas = _selectedFee!.gas ?? 0;
-        final totalGwei = gasPrice * Decimal.fromInt(gas);
+    // You can do a map(...) on the union:
+    return fee.map(
+      utxoFixed: (f) => '${f.amount} ${f.coin}',
+      utxoPerKbyte: (f) => '${f.amount} ${f.coin}',
+      ethGas: (eth) {
+        // If eth.gasPrice is in ETH, multiply by eth.gas => total in ETH
+        final totalEth = eth.gasPrice * Decimal.fromInt(eth.gas);
+        // If you prefer to show Gwei, multiply by 1e9
+        final totalGwei = totalEth * Decimal.fromInt(1000000000);
         return '$totalGwei Gwei';
-
-      // TODO?
-      case WithdrawalFeeType.tendermint:
-      case WithdrawalFeeType.qrc20:
-        return '${_selectedFee!.amount} ${widget.asset.id.id}';
-    }
+      },
+      qrc20Gas: (qrc) {
+        // total = gasPrice * gasLimit, both in coin units
+        final totalCoin = qrc.gasPrice * Decimal.fromInt(qrc.gasLimit);
+        return '$totalCoin ${qrc.coin}';
+      },
+      cosmosGas: (cosmos) {
+        final totalCoin = cosmos.gasPrice * Decimal.fromInt(cosmos.gasLimit);
+        return '$totalCoin ${cosmos.coin}';
+      },
+    );
   }
 }
 

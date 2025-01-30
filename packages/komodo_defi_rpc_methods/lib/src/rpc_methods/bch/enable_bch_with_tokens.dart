@@ -62,7 +62,7 @@ class EnableBchWithTokensRequest
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
         'params': {
           'ticker': ticker,
-          ...activationParams.toJsonRequestParams(),
+          ...activationParams.toRpcParams(),
           'slp_tokens_requests':
               slpTokensRequests.map((e) => e.toJson()).toList(),
           if (addressFormat != null) 'address_format': addressFormat!.toJson(),

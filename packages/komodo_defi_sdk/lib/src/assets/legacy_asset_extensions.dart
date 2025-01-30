@@ -146,7 +146,19 @@ extension AssetPubkeysExtension on Asset {
   /// print('BTC addresses: ${pubkeys.keys.map((k) => k.address).join(", ")}');
   /// ```
   @Deprecated(_deprecatedMessage)
-  Future<AssetPubkeys> getPubkeys([KomodoDefiSdk? sdk]) {
+  Future<AssetPubkeys> getPubkeysOptionalSdk([KomodoDefiSdk? sdk]) {
     return (sdk ?? KomodoDefiSdk.global).pubkeys.getPubkeys(this);
+  }
+
+  /// Fetches pubkeys for this asset. Requires a specific SDK instance.
+  ///
+  /// Example:
+  /// ```dart
+  /// final btcAsset = Asset.byTicker('BTC').first;
+  /// final pubkeys = await btcAsset.getPubkeys(sdk);
+  /// print('BTC addresses: ${pubkeys.keys.map((k) => k.address).join(", ")}');
+  /// ```
+  Future<AssetPubkeys> getPubkeys(KomodoDefiSdk sdk) {
+    return sdk.pubkeys.getPubkeys(this);
   }
 }

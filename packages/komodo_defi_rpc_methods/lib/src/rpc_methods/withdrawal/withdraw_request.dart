@@ -3,14 +3,16 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-@Deprecated('Use the new task-based withdrawal API')
-
-/// Request for standard withdrawal (legacy API)
-class WithdrawLegacyRequest
+/// Request for standard withdrawal (non-task API)
+///
+/// After the bug with the task-based withdrawal API was fixed, this request
+/// will be deprecated in favor of the new task-based withdrawal API.
+// @Deprecated('Use the new task-based withdrawal API')
+class WithdrawRequest
     extends BaseRequest<WithdrawStatusResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  @Deprecated('Use the new task-based withdrawal API')
-  WithdrawLegacyRequest({
+  // @Deprecated('Use the new task-based withdrawal API')
+  WithdrawRequest({
     required super.rpcPass,
     required this.coin,
     required this.to,
@@ -20,14 +22,22 @@ class WithdrawLegacyRequest
     this.memo,
     this.max = false,
     this.ibcSourceChannel,
-  }) : super(
+  })  : assert(
+          amount != null || max,
+          'Amount cannot be specified if sending the maximum amount',
+        ),
+        assert(
+          amount == null || !max,
+          'Amount must be specified if not sending the maximum amount',
+        ),
+        super(
           method: 'withdraw',
-          mmrpc: '2.0',
+          mmrpc: RpcVersion.v2_0,
         );
 
   final String coin;
   final String to;
-  final Decimal amount;
+  final Decimal? amount;
   final FeeInfo? fee;
   final WithdrawalSource? from;
   final String? memo;
@@ -40,18 +50,31 @@ class WithdrawLegacyRequest
         'params': {
           'coin': coin,
           'to': to,
-          if (!max) 'amount': amount.toString(),
-          'max': max,
+          if (max) 'max': max,
+          if (!max && amount != null) 'amount': amount?.toString(),
           if (fee != null) 'fee': fee!.toJson(),
-          if (from != null) 'from': from!.toJson(),
+          if (from != null) 'from': from!.toRpcParams(),
           if (memo != null) 'memo': memo,
           if (ibcSourceChannel != null) 'ibc_source_channel': ibcSourceChannel,
         },
       };
 
   @override
-  WithdrawStatusResponse parse(Map<String, dynamic> json) =>
-      WithdrawStatusResponse.parse(json);
+  WithdrawStatusResponse parse(Map<String, dynamic> json) {
+    // TODO: Remove work-around when legacy withdrawal is deprecated or
+    // refactor to avoid shared parsing logic
+    final hasDetails = json.hasNestedKey('result', 'details');
+    final hasStatus = json.hasNestedKey('result', 'status');
+    return WithdrawStatusResponse.parse(
+      json.deepMerge(
+        {
+          if (!hasStatus) 'result': {'status': 'Ok'},
+        }.deepMerge({
+          if (!hasDetails) 'result': {'details': json['result']},
+        }),
+      ),
+    );
+  }
 }
 
 /// Request to initialize withdrawal task
@@ -61,23 +84,21 @@ class WithdrawInitRequest
   WithdrawInitRequest({
     required super.rpcPass,
     required WithdrawParameters params,
-    // required this.coin,
-    // required this.to,
-    // this.amount,
-    // this.fee,
-    // this.from,
-    // this.memo,
-    // this.max = false,
   })  : coin = params.asset,
         to = params.toAddress,
-        amount = params.amount.toString(),
+        amount = params.amount?.toString(),
         fee = params.fee,
         from = params.from,
         memo = params.memo,
         max = params.isMax ?? false,
+        assert(
+          params.amount != null || (params.isMax ?? false),
+          'Amount must be non-null if isMax is false and '
+          'must be null if isMax is true',
+        ),
         super(
           method: 'task::withdraw::init',
-          mmrpc: '2.0',
+          mmrpc: RpcVersion.v2_0,
         );
 
   final String coin;
@@ -96,7 +117,7 @@ class WithdrawInitRequest
           'to': to,
           if (amount != null) 'amount': amount,
           if (fee != null) 'fee': fee!.toJson(),
-          if (from != null) 'from': from!.toJson(),
+          if (from != null) 'from': from!.toRpcParams(),
           if (memo != null) 'memo': memo,
           if (max) 'max': max,
         },
@@ -170,7 +191,9 @@ class WithdrawStatusResponse extends BaseResponse {
         'mmrpc': mmrpc,
         'result': {
           'status': status,
-          'details': details is WithdrawResult ? details.toJson() : details,
+          'details': (details is WithdrawResult)
+              ? (details as WithdrawResult).toJson()
+              : details,
         },
       };
 
@@ -226,46 +249,3 @@ class WithdrawCancelResponse extends BaseResponse {
         'result': result,
       };
 }
-
-// class WithdrawalSource {
-//   WithdrawalSource._({
-//     this.derivationPath,
-//     this.accountId,
-//     this.chain,
-//     this.addressId,
-//   }) : assert(
-//           (derivationPath != null) !=
-//               (accountId != null && chain != null && addressId != null),
-//           'Must provide either derivationPath OR (accountId, chain, addressId)',
-//         );
-
-//   factory WithdrawalSource.derivationPath(String path) =>
-//       WithdrawalSource._(derivationPath: path);
-
-//   factory WithdrawalSource.components({
-//     required int accountId,
-//     required String chain,
-//     required int addressId,
-//   }) =>
-//       WithdrawalSource._(
-//         accountId: accountId,
-//         chain: chain,
-//         addressId: addressId,
-//       );
-
-//   final String? derivationPath;
-//   final int? accountId;
-//   final String? chain;
-//   final int? addressId;
-
-//   Map<String, dynamic> toJson() {
-//     if (derivationPath != null) {
-//       return {'derivation_path': derivationPath};
-//     }
-//     return {
-//       'account_id': accountId,
-//       'chain': chain,
-//       'address_id': addressId,
-//     };
-//   }
-// }

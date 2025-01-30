@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:komodo_defi_rpc_methods/src/models/models.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
@@ -10,6 +12,7 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
     required this.errorTrace,
     required this.errorType,
     required this.errorData,
+    required this.object,
   });
 
   @override
@@ -24,6 +27,7 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
       errorTrace: error?.valueOrNull<String>('error_trace'),
       errorType: error?.valueOrNull<String>('error_type'),
       errorData: error?.valueOrNull<dynamic>('error_data'),
+      object: json,
     );
   }
 
@@ -31,6 +35,7 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
   final String? errorPath;
   final String? errorTrace;
   final String? errorType;
+  final JsonMap? object;
   final dynamic errorData;
 
   static bool isErrorResponse(Map<String, dynamic> json) {
@@ -38,7 +43,7 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
         json.hasNestedKey('error') ||
         json.valueOrNull<String>('result', 'status') == 'Error';
 
-    print('isErrorResponse: $isError, json: $json');
+    log('isErrorResponse: $isError, json: $json');
 
     return isError;
   }
@@ -52,6 +57,7 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
       'error_type': errorType,
       'error_data': errorData,
       'error_trace': errorTrace,
+      'object': object,
     };
   }
 

@@ -21,7 +21,7 @@ class EnableTendermintTokenRequest
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
         'params': {
           'ticker': ticker,
-          'activation_params': params.toJsonRequestParams(),
+          'activation_params': params.toRpcParams(),
         },
       });
 

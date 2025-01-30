@@ -36,18 +36,26 @@ abstract class BaseRequest<T extends BaseResponse,
   final String? rpcPass;
   final String? mmrpc;
   final String method;
-  final KdfRequestParams? params;
+  final RpcRequestParams? params;
 
   /// Convert request to JSON as per the API specification:
   /// https://komodoplatform.com/en/docs/komodo-defi-framework/api/
   @mustCallSuper
   Map<String, dynamic> toJson() {
+    final paramsJson = params?.toRpcParams().ensureJson();
     return {
       'method': method,
       if (mmrpc?.isNotEmpty ?? false) 'mmrpc': mmrpc,
       if (rpcPass?.isNotEmpty ?? false) 'rpc_pass': rpcPass,
-      if (params != null) 'params': params!.toJsonRequestParams().ensureJson(),
-    };
+    }.deepMerge(
+      // When the legacy API is fully deprecated, remove this block. This is
+      // to ensure that the request is compatible with both the legacy and
+      // new API versions because the new API requires the parameters to be
+      // nested under the 'params' key.
+      mmrpc == RpcVersion.legacy || mmrpc == null
+          ? paramsJson ?? {}
+          : {'params': paramsJson},
+    );
   }
 
   Future<T> send(ApiClient client) async {

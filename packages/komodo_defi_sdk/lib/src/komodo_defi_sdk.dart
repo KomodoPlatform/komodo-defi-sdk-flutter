@@ -7,6 +7,7 @@ import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/transaction_history/transaction_history_manager.dart';
+import 'package:komodo_defi_sdk/src/withdrawals/legacy_withdrawal_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -109,7 +110,8 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   T _assertSdkInitialized<T>(T? val) {
     if (!_isInitialized || val == null) {
       throw StateError(
-        'KomodoDefiSdk is not initialized. Call initialize() or await ensureInitialized() first.',
+        'Cannot call ${val.runtimeType} because KomodoDefiSdk is not '
+        'initialized. Call initialize() or await ensureInitialized() first.',
       );
     }
 
@@ -165,16 +167,20 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
     _mnemonicValidator = MnemonicValidator();
 
-    await Future.wait([
+    await Future.wait<void>([
       _auth!.ensureInitialized(),
       _assets!.init(),
       _mnemonicValidator!.init(),
+      Future(
+        () async => _transactionHistory =
+            await TransactionHistoryManager.create(_apiClient, _auth!),
+      ),
     ]);
 
     _isInitialized = true;
   }
 
-  // Helper extension methods
+  // TODO: Refactor/move to auth manager
   Future<AuthOptions?> currentUserAuthOptions() async {
     final user = await auth.currentUser;
     return user == null
@@ -187,11 +193,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
   TransactionHistoryManager get transactions =>
       _assertSdkInitialized(_transactionHistory);
-  late final TransactionHistoryManager _transactionHistory =
-      TransactionHistoryManager(
-    _apiClient!,
-    _auth!,
-  );
+  TransactionHistoryManager? _transactionHistory;
 
   late final PubkeyManager pubkeys = _assertSdkInitialized(
     PubkeyManager(_apiClient!),
@@ -205,5 +207,8 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       _assertSdkInitialized(_mnemonicValidator);
 
   WithdrawalManager get withdrawals => _assertSdkInitialized(_withdrawals);
-  late final WithdrawalManager _withdrawals = WithdrawalManager(_apiClient!);
+
+  late final LegacyWithdrawalManager
+      _withdrawals = /*WithdrawalManager(_apiClient!);*/
+      LegacyWithdrawalManager(_apiClient!);
 }

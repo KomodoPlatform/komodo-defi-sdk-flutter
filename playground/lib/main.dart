@@ -8,6 +8,7 @@ import 'package:json_editor_flutter/json_editor_flutter.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_framework_example/kdf_operations/kdf_operations_server.dart';
 import 'package:komodo_defi_framework_example/widgets/request_playground.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 

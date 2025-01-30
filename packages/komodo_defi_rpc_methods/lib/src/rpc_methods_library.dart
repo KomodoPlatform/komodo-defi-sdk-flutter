@@ -16,6 +16,8 @@ class KomodoDefiRpcMethods {
   final ApiClient? _client;
 
   // Common/general methods
+  AddressMethodsNamespace get address => AddressMethodsNamespace(_client);
+
   WalletMethods get wallet => WalletMethods(_client);
 
   GeneralActivationMethods get generalActivation =>

@@ -15,53 +15,80 @@ class WithdrawalManager {
 
   /// Start a withdrawal operation and return a progress stream
   Stream<WithdrawalProgress> withdraw(WithdrawParameters parameters) async* {
-    // Initialize withdrawal task
-    final initResponse = await _client.rpc.withdraw.init(parameters);
-
-    final taskId = initResponse.taskId;
-    final controller = StreamController<WithdrawalProgress>();
-
-    WithdrawStatusResponse? lastProgress;
-
+    int? taskId;
     try {
-      await initResponse
-          .watch<WithdrawStatusResponse>(
-            getTaskStatus: (int taskId) async => lastProgress = await _client
-                .rpc.withdraw
-                .status(taskId, forgetIfFinished: false),
-            isTaskComplete: (WithdrawStatusResponse status) =>
-                status.status != 'InProgress',
-          )
-          .takeWhile((status) => !controller.isClosed)
-          .map(_mapStatusToProgress)
-          .forEach(controller.add);
+      // Initialize withdrawal task
+      final initResponse = await _client.rpc.withdraw.init(parameters);
+      taskId = initResponse.taskId;
+
+      WithdrawStatusResponse? lastProgress;
+
+      await for (final status in initResponse.watch<WithdrawStatusResponse>(
+        getTaskStatus: (int taskId) async => lastProgress =
+            await _client.rpc.withdraw.status(taskId, forgetIfFinished: false),
+        isTaskComplete: (WithdrawStatusResponse status) =>
+            status.status != 'InProgress',
+      )) {
+        if (status.status == 'Error') {
+          yield* Stream.error(
+            WithdrawalException(
+              status.details as String,
+              _mapErrorToCode(status.details as String),
+            ),
+          );
+          return;
+        }
+
+        yield _mapStatusToProgress(status);
+
+        // Break if we have a successful result to handle tx broadcast
+        if (status.status == 'Ok' && status.details is WithdrawResult) {
+          break;
+        }
+      }
 
       // Send the raw transaction to the network if successful
       if (lastProgress?.status == 'Ok' &&
           lastProgress?.details is WithdrawResult) {
         final details = lastProgress!.details as WithdrawResult;
 
-        final response = await _client.rpc.withdraw.sendRawTransaction(
-          coin: parameters.asset,
-          txHex: details.txHex,
-        );
-
-        yield WithdrawalProgress(
-          status: WithdrawalStatus.complete,
-          message: 'Withdrawal complete',
-          withdrawalResult: WithdrawalResult(
-            txHash: response.txHash,
-            balanceChanges: details.balanceChanges,
+        try {
+          final response = await _client.rpc.withdraw.sendRawTransaction(
             coin: parameters.asset,
-            toAddress: parameters.toAddress,
-            fee: details.fee,
-            kmdRewardsEligible: details.kmdRewards != null &&
-                Decimal.parse(details.kmdRewards!.amount) > Decimal.zero,
-          ),
-        );
+            txHex: details.txHex,
+          );
+
+          yield WithdrawalProgress(
+            status: WithdrawalStatus.complete,
+            message: 'Withdrawal complete',
+            withdrawalResult: WithdrawalResult(
+              txHash: response.txHash,
+              balanceChanges: details.balanceChanges,
+              coin: parameters.asset,
+              toAddress: parameters.toAddress,
+              fee: details.fee,
+              kmdRewardsEligible: details.kmdRewards != null &&
+                  Decimal.parse(details.kmdRewards!.amount) > Decimal.zero,
+            ),
+          );
+        } catch (e) {
+          yield* Stream.error(
+            WithdrawalException(
+              'Failed to broadcast transaction: $e',
+              WithdrawalErrorCode.networkError,
+            ),
+          );
+        }
       }
+    } catch (e) {
+      yield* Stream.error(
+        WithdrawalException(
+          'Withdrawal failed: $e',
+          WithdrawalErrorCode.unknownError,
+        ),
+      );
     } finally {
-      await controller.close();
+      await _activeWithdrawals[taskId]?.close();
       _activeWithdrawals.remove(taskId);
     }
   }
@@ -74,22 +101,13 @@ class WithdrawalManager {
     } catch (e) {
       return false;
     } finally {
-      _activeWithdrawals[taskId]?.close();
+      await _activeWithdrawals[taskId]?.close();
       _activeWithdrawals.remove(taskId);
     }
   }
 
   /// Map API status response to domain progress model
   WithdrawalProgress _mapStatusToProgress(WithdrawStatusResponse status) {
-    if (status.status == 'Error') {
-      return WithdrawalProgress(
-        status: WithdrawalStatus.error,
-        message: status.details as String,
-        errorCode: WithdrawalErrorCode.unknownError,
-        errorMessage: status.details as String,
-      );
-    }
-
     if (status.status == 'Ok') {
       final result = status.details as WithdrawResult;
       return WithdrawalProgress(
@@ -116,22 +134,61 @@ class WithdrawalManager {
   Future<WithdrawalPreview> previewWithdrawal(
     WithdrawParameters parameters,
   ) async {
-    final stream = (await _client.rpc.withdraw.init(parameters))
-        .watch<WithdrawStatusResponse>(
-      getTaskStatus: (int taskId) =>
-          _client.rpc.withdraw.status(taskId, forgetIfFinished: false),
-      isTaskComplete: (WithdrawStatusResponse status) =>
-          status.status != 'InProgress',
-    );
+    try {
+      final stream = (await _client.rpc.withdraw.init(parameters))
+          .watch<WithdrawStatusResponse>(
+        getTaskStatus: (int taskId) =>
+            _client.rpc.withdraw.status(taskId, forgetIfFinished: false),
+        isTaskComplete: (WithdrawStatusResponse status) =>
+            status.status != 'InProgress',
+      );
 
-    final lastStatus = await stream.last;
+      final lastStatus = await stream.last;
 
-    if (lastStatus.status == 'Error' ||
-        lastStatus.details is! WithdrawalPreview) {
-      throw Exception("Couldn't preview withdrawal: $lastStatus");
+      if (lastStatus.status.toLowerCase() == 'Error') {
+        throw WithdrawalException(
+          lastStatus.details as String,
+          _mapErrorToCode(lastStatus.details as String),
+        );
+      }
+
+      if (lastStatus.details is! WithdrawalPreview) {
+        throw WithdrawalException(
+          'Invalid preview response format',
+          WithdrawalErrorCode.unknownError,
+        );
+      }
+
+      return lastStatus.details as WithdrawalPreview;
+    } catch (e) {
+      if (e is WithdrawalException) {
+        rethrow;
+      }
+      throw WithdrawalException(
+        'Preview failed: $e',
+        WithdrawalErrorCode.unknownError,
+      );
+    }
+  }
+
+  /// Maps error messages to withdrawal error codes
+  WithdrawalErrorCode _mapErrorToCode(String error) {
+    final errorLower = error.toLowerCase();
+
+    if (errorLower.contains('insufficient funds') ||
+        errorLower.contains('not enough funds')) {
+      return WithdrawalErrorCode.insufficientFunds;
     }
 
-    return lastStatus.details as WithdrawalPreview;
+    if (errorLower.contains('invalid address')) {
+      return WithdrawalErrorCode.invalidAddress;
+    }
+
+    if (errorLower.contains('fee')) {
+      return WithdrawalErrorCode.networkError;
+    }
+
+    return WithdrawalErrorCode.unknownError;
   }
 
   /// Cleanup any active withdrawals

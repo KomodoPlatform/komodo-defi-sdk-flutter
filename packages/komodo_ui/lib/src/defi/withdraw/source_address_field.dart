@@ -3,7 +3,6 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_ui/komodo_ui.dart';
 
 class SourceAddressField extends StatelessWidget {
-
   const SourceAddressField({
     required this.asset,
     required this.pubkeys,

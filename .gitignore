@@ -1,3 +1,7 @@
+# First-party related
+# As per Dart guidelines, we should ignore pubspec.lock files for packages.
+packages/**/pubspec.lock # TODO: Get this to work.
+
 # Miscellaneous
 *.class
 *.log

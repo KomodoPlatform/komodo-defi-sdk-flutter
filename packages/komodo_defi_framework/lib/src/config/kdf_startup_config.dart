@@ -158,9 +158,9 @@ class KdfStartupConfig {
       'allow_registrations': allowRegistrations,
       if (enableHd != null) 'enable_hd': enableHd,
       if (hdAccountId != null) 'hd_account_id': hdAccountId,
-      // 'enable_hd': false,
       'https': https,
       'coins': coins,
+      'trading_proto_v2': true,
     };
   }
 

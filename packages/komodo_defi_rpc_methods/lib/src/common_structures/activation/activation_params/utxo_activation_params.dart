@@ -2,7 +2,8 @@ import 'package:komodo_defi_rpc_methods/src/common_structures/activation/activat
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class UtxoActivationParams extends ActivationParams {
-  UtxoActivationParams({
+  /// Primary constructor is private to enforce using named constructors
+  const UtxoActivationParams._({
     required super.mode,
     required this.txHistory,
     super.requiredConfirmations,
@@ -20,10 +21,82 @@ class UtxoActivationParams extends ActivationParams {
     this.overwintered,
   });
 
+  /// Constructor for HD wallet or non-HD wallet activation. If in non-HD mode,
+  /// the HD parameters will be ignored.
+  ///
+  /// Prefer using [UtxoActivationParams.nonHd] if you know the wallet is not
+  /// running in HD mode.
+  factory UtxoActivationParams.hdWallet({
+    required ActivationMode mode,
+    required bool txHistory,
+    required int minAddressesNumber,
+    required ScanPolicy scanPolicy,
+    required int gapLimit,
+    int? requiredConfirmations,
+    bool requiresNotarization = false,
+    PrivateKeyPolicy privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    int? txVersion,
+    int? txFee,
+    int? dustAmount,
+    int? pubtype,
+    int? p2shtype,
+    int? wiftype,
+    int? overwintered,
+  }) {
+    return UtxoActivationParams._(
+      mode: mode,
+      txHistory: txHistory,
+      minAddressesNumber: minAddressesNumber,
+      scanPolicy: scanPolicy,
+      gapLimit: gapLimit,
+      requiredConfirmations: requiredConfirmations,
+      requiresNotarization: requiresNotarization,
+      privKeyPolicy: privKeyPolicy,
+      txVersion: txVersion,
+      txFee: txFee,
+      dustAmount: dustAmount,
+      pubtype: pubtype,
+      p2shtype: p2shtype,
+      wiftype: wiftype,
+      overwintered: overwintered,
+    );
+  }
+
+  /// Constructor for standard (non-HD) wallet activation
+  factory UtxoActivationParams.nonHd({
+    required ActivationMode mode,
+    required bool txHistory,
+    int? requiredConfirmations,
+    bool requiresNotarization = false,
+    PrivateKeyPolicy privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    int? txVersion,
+    int? txFee,
+    int? dustAmount,
+    int? pubtype,
+    int? p2shtype,
+    int? wiftype,
+    int? overwintered,
+  }) {
+    return UtxoActivationParams._(
+      mode: mode,
+      txHistory: txHistory,
+      requiredConfirmations: requiredConfirmations,
+      requiresNotarization: requiresNotarization,
+      privKeyPolicy: privKeyPolicy,
+      txVersion: txVersion,
+      txFee: txFee,
+      dustAmount: dustAmount,
+      pubtype: pubtype,
+      p2shtype: p2shtype,
+      wiftype: wiftype,
+      overwintered: overwintered,
+    );
+  }
+
   factory UtxoActivationParams.fromJson(JsonMap json) {
     final base = ActivationParams.fromConfigJson(json);
 
-    return UtxoActivationParams(
+    return UtxoActivationParams._(
       mode: base.mode ??
           (throw const FormatException(
             'UTXO activation requires mode parameter',
@@ -55,9 +128,8 @@ class UtxoActivationParams extends ActivationParams {
   final int? overwintered;
 
   @override
-  Map<String, dynamic> toJsonRequestParams() {
-    return {
-      ...super.toJsonRequestParams(),
+  Map<String, dynamic> toRpcParams() {
+    return super.toRpcParams().deepMerge({
       if (txHistory != null) 'tx_history': txHistory,
       if (txVersion != null) 'txversion': txVersion,
       if (txFee != null) 'txfee': txFee,
@@ -66,7 +138,7 @@ class UtxoActivationParams extends ActivationParams {
       if (p2shtype != null) 'p2shtype': p2shtype,
       if (wiftype != null) 'wiftype': wiftype,
       if (overwintered != null) 'overwintered': overwintered,
-    };
+    });
   }
 
   UtxoActivationParams copyWith({
@@ -85,7 +157,7 @@ class UtxoActivationParams extends ActivationParams {
     ScanPolicy? scanPolicy,
     int? gapLimit,
   }) {
-    return UtxoActivationParams(
+    return UtxoActivationParams._(
       mode: mode,
       txHistory: txHistory ?? this.txHistory,
       requiredConfirmations:
@@ -102,6 +174,24 @@ class UtxoActivationParams extends ActivationParams {
       p2shtype: p2shtype ?? this.p2shtype,
       wiftype: wiftype ?? this.wiftype,
       overwintered: overwintered ?? this.overwintered,
+    );
+  }
+
+  /// Method to copy the activation parameters, but with only the HD wallet
+  /// parameters.
+  ///
+  /// HD wallet parameters are ignored if the wallet is not running in HD mode.
+  ///
+  /// See [UtxoActivationParams.hdWallet] for more information.
+  UtxoActivationParams copyWithHd({
+    required int minAddressesNumber,
+    required ScanPolicy scanPolicy,
+    required int gapLimit,
+  }) {
+    return copyWith(
+      minAddressesNumber: minAddressesNumber,
+      scanPolicy: scanPolicy,
+      gapLimit: gapLimit,
     );
   }
 }

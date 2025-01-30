@@ -24,8 +24,7 @@ class LightningActivationParams extends ActivationParams {
   final LightningChannelConfig? ourChannelsConfig;
 
   @override
-  Map<String, dynamic> toJsonRequestParams() =>
-      super.toJsonRequestParams().deepMerge({
+  Map<String, dynamic> toRpcParams() => super.toRpcParams().deepMerge({
         'name': name,
         'listening_port': listeningPort,
         'color': color,

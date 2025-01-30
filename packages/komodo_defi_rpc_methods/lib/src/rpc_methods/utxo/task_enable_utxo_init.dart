@@ -26,7 +26,7 @@ class TaskEnableUtxoInit
         'method': method,
         'params': {
           'ticker': ticker,
-          'activation_params': params.toJsonRequestParams(),
+          'activation_params': params.toRpcParams(),
         },
       };
 

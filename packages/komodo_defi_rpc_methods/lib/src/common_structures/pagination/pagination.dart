@@ -3,7 +3,7 @@ class Pagination {
     this.fromId,
     this.pageNumber,
   });
-  final int? fromId;
+  final String? fromId;
   final int? pageNumber;
 
   Map<String, dynamic> toJson() => {

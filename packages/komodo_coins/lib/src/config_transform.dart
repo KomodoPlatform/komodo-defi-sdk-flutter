@@ -47,6 +47,8 @@ extension CoinConfigTransformExtension on JsonMap {
   JsonMap get applyTransforms => CoinConfigTransformer.applyTransforms(this);
 }
 
+const bool _isTestCoinsOnly = false;
+
 class CoinFilter {
   const CoinFilter();
 
@@ -68,10 +70,12 @@ class CoinFilter {
     final coin = config.value<String>('coin');
     final protocolSubClass = config.valueOrNull<String>('type');
     final protocolClass = config.valueOrNull<String>('protocol', 'type');
+    final isTestnet = config.valueOrNull<bool>('is_testnet') ?? false;
 
     return _filteredCoins.containsKey(coin) ||
         _filteredProtocolTypes.containsKey(protocolClass) ||
-        _filteredProtocolSubTypes.containsKey(protocolSubClass);
+        _filteredProtocolSubTypes.containsKey(protocolSubClass) ||
+        (_isTestCoinsOnly && !isTestnet);
   }
 }
 

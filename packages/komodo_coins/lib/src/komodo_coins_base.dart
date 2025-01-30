@@ -35,66 +35,65 @@ class KomodoCoins {
 
     try {
       final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final jsonData = jsonFromString(response.body);
-
-        // First pass: Parse all platform coin AssetIds
-        final platformIds = <AssetId>{};
-        for (final entry in jsonData.entries) {
-          // Apply transforms before processing
-          final coinData = (entry.value as JsonMap).applyTransforms;
-
-          if (_hasNoParent(coinData)) {
-            try {
-              platformIds.addAll(AssetId.parseAllTypes(coinData, knownIds: {}));
-            } catch (e) {
-              debugPrint('Error parsing platform coin ${entry.key}: $e');
-            }
-          }
-        }
-
-        // Second pass: Create assets with proper parent relationships
-        final assets = <AssetId, Asset>{};
-
-        for (final entry in jsonData.entries) {
-          // Apply transforms before processing
-          final coinData = (entry.value as JsonMap).applyTransforms;
-
-          // Filter out excluded coins
-          if (const CoinFilter().shouldFilter(entry.value as JsonMap)) {
-            debugPrint('[Komodo Coins] Excluding coin ${entry.key}');
-            continue;
-          }
-
-          try {
-            // Parse all possible AssetIds for this coin
-            final assetIds =
-                AssetId.parseAllTypes(coinData, knownIds: platformIds).map(
-              (id) => id.isChildAsset
-                  ? AssetId.parse(coinData, knownIds: platformIds)
-                  : id,
-            );
-
-            // Create Asset instance for each valid AssetId
-            for (final assetId in assetIds) {
-              final asset = Asset.fromJsonWithId(coinData, assetId: assetId);
-              // if (asset != null) {
-              assets[assetId] = asset;
-              // }
-            }
-          } catch (e) {
-            debugPrint(
-              'Error parsing asset ${entry.key}: $e , '
-              'with transformed data: \n${coinData.toJsonString()}\n',
-            );
-          }
-        }
-
-        _assets = assets;
-        return assets;
-      } else {
+      if (response.statusCode != 200) {
         throw Exception('Failed to fetch assets: ${response.statusCode}');
       }
+      final jsonData = jsonFromString(response.body);
+
+      // First pass: Parse all platform coin AssetIds
+      final platformIds = <AssetId>{};
+      for (final entry in jsonData.entries) {
+        // Apply transforms before processing
+        final coinData = (entry.value as JsonMap).applyTransforms;
+
+        if (_hasNoParent(coinData)) {
+          try {
+            platformIds.addAll(AssetId.parseAllTypes(coinData, knownIds: {}));
+          } catch (e) {
+            debugPrint('Error parsing platform coin ${entry.key}: $e');
+          }
+        }
+      }
+
+      // Second pass: Create assets with proper parent relationships
+      final assets = <AssetId, Asset>{};
+
+      for (final entry in jsonData.entries) {
+        // Apply transforms before processing
+        final coinData = (entry.value as JsonMap).applyTransforms;
+
+        // Filter out excluded coins
+        if (const CoinFilter().shouldFilter(entry.value as JsonMap)) {
+          debugPrint('[Komodo Coins] Excluding coin ${entry.key}');
+          continue;
+        }
+
+        try {
+          // Parse all possible AssetIds for this coin
+          final assetIds =
+              AssetId.parseAllTypes(coinData, knownIds: platformIds).map(
+            (id) => id.isChildAsset
+                ? AssetId.parse(coinData, knownIds: platformIds)
+                : id,
+          );
+
+          // Create Asset instance for each valid AssetId
+          for (final assetId in assetIds) {
+            final asset = Asset.fromJsonWithId(coinData, assetId: assetId);
+            // if (asset != null) {
+            assets[assetId] = asset;
+            // }
+          }
+        } catch (e) {
+          debugPrint(
+            'Error parsing asset ${entry.key}: $e , '
+            'with transformed data: \n${coinData.toJsonString()}\n',
+          );
+        }
+      }
+
+      _assets = assets;
+      return assets;
     } catch (e) {
       debugPrint('Error fetching assets: $e');
       rethrow;

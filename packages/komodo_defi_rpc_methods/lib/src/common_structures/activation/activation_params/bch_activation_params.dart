@@ -36,9 +36,9 @@ class BchActivationParams extends ActivationParams {
   final List<String> bchdUrls;
 
   @override
-  Map<String, dynamic> toJsonRequestParams() {
+  Map<String, dynamic> toRpcParams() {
     return {
-      ...super.toJsonRequestParams(),
+      ...super.toRpcParams(),
       'bchd_urls': bchdUrls,
     };
   }

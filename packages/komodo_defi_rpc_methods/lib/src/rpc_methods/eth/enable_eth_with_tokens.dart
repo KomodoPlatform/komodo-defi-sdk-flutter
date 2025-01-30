@@ -27,7 +27,7 @@ class EnableEthWithTokensRequest
     return super.toJson().deepMerge({
       'params': {
         'ticker': ticker,
-        ...activationParams.toJsonRequestParams(),
+        ...activationParams.toRpcParams(),
         'get_balances': getBalances,
       },
     });

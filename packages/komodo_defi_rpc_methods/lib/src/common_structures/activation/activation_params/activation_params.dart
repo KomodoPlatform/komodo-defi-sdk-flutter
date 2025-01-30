@@ -2,7 +2,23 @@ import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:meta/meta.dart';
 
-class ActivationParams implements KdfRequestParams {
+/// Defines additional parameters used for activation. These params may vary depending
+/// on the coin type.
+///
+/// Key parameters include:
+/// - [requiredConfirmations]: Confirmations to wait for steps in swap
+/// - [requiresNotarization]: For dPoW protected coins, waits for transactions to be notarized
+/// - [privKeyPolicy]: Sets private key handling mode (default: ContextPrivKey)
+/// - [minAddressesNumber]: For HD wallets, minimum additional addresses to generate
+/// - [scanPolicy]: HD wallet address scanning behavior
+/// - [gapLimit]: Maximum number of empty addresses in a row for HD wallets
+/// - [mode]: Activation mode configuration for QTUM, UTXO & ZHTLC coins
+///
+/// For ZHTLC coins:
+/// - [zcashParamsPath]: Path to Zcash parameters folder
+/// - [scanBlocksPerIteration]: Number of blocks scanned per iteration (default: 1000)
+/// - [scanIntervalMs]: Interval between scan iterations in ms (default: 0)
+class ActivationParams implements RpcRequestParams {
   const ActivationParams({
     this.requiredConfirmations,
     this.requiresNotarization = false,
@@ -16,7 +32,7 @@ class ActivationParams implements KdfRequestParams {
     this.scanIntervalMs,
   });
 
-  /// Factory to create ActivationParams from JSON
+  /// Creates [ActivationParams] from configuration JSON
   factory ActivationParams.fromConfigJson(JsonMap json) {
     final mode =
         ActivationMode.fromConfig(json, type: ActivationModeType.electrum);
@@ -33,7 +49,6 @@ class ActivationParams implements KdfRequestParams {
           : ScanPolicy.parse(json.value<String>('scan_policy')),
       gapLimit: json.valueOrNull<int>('gap_limit'),
       mode: mode,
-      // ZHTLC specific params
       zcashParamsPath: json.valueOrNull<String>('zcash_params_path'),
       scanBlocksPerIteration:
           json.valueOrNull<int>('scan_blocks_per_iteration'),
@@ -41,35 +56,48 @@ class ActivationParams implements KdfRequestParams {
     );
   }
 
+  /// Optional. Number of confirmations to wait for during swap steps.
+  /// Defaults to value in the coins file if not set.
   final int? requiredConfirmations;
+
+  /// Optional, defaults to false. For dPoW protected coins, a true value will wait
+  /// for transactions to be notarised when doing swaps.
   final bool requiresNotarization;
 
+  /// Configuration for coin activation mode. Required for QTUM, UTXO & ZHTLC coins.
   final ActivationMode? mode;
 
-  /// Whether to use Trezor hardware wallet or context private key
-  /// Defaults to ContextPrivKey
+  /// Whether to use Trezor hardware wallet or context private key.
+  /// Defaults to ContextPrivKey.
   final PrivateKeyPolicy privKeyPolicy;
 
-  /// How many additional addreesses to generate at a minimum
+  /// HD wallets only. How many additional addresses to generate at a minimum.
   final int? minAddressesNumber;
 
-  /// Whether or not to scan for new addresses
-  /// Options: 'do_not_scan', 'scan_if_new_wallet' or 'scan'
+  /// HD wallets only. Whether or not to scan for new addresses.
+  /// Note that 'scan' will result in multiple requests to the Komodo DeFi Framework.
   final ScanPolicy? scanPolicy;
 
-  /// The max number of empty addresses in a row
+  /// HD wallets only. The max number of empty addresses in a row.
   /// If transactions were sent to an address outside the gap_limit,
-  /// they will not be identified when scanning
+  /// they will not be identified when scanning.
   final int? gapLimit;
 
-  // ZHTLC specific params
+  /// ZHTLC coins only. Path to folder containing Zcash parameters.
+  /// Optional, defaults to standard location.
   final String? zcashParamsPath;
+
+  /// ZHTLC coins only. Sets the number of scanned blocks per iteration during
+  /// BuildingWalletDb state. Optional, default value is 1000.
   final int? scanBlocksPerIteration;
+
+  /// ZHTLC coins only. Sets the interval in milliseconds between iterations of
+  /// BuildingWalletDb state. Optional, default value is 0.
   final int? scanIntervalMs;
 
   @override
   @mustCallSuper
-  JsonMap toJsonRequestParams() {
+  JsonMap toRpcParams() {
     return {
       if (requiredConfirmations != null)
         'required_confirmations': requiredConfirmations,
@@ -116,10 +144,15 @@ class ActivationParams implements KdfRequestParams {
   }
 }
 
+/// Defines the private key policy for activation
 enum PrivateKeyPolicy {
+  /// Use context private key (default)
   contextPrivKey,
+
+  /// Use Trezor hardware wallet
   trezor;
 
+  /// String identifier for the policy
   String get id {
     switch (this) {
       case PrivateKeyPolicy.contextPrivKey:
@@ -130,9 +163,15 @@ enum PrivateKeyPolicy {
   }
 }
 
+/// Defines the type of activation mode for QTUM, UTXO & ZHTLC coins
 enum ActivationModeType {
+  /// Use Electrum servers for activation
   electrum,
+
+  /// Use native blockchain node
   native,
+
+  /// Use light wallet mode (ZHTLC coins only)
   lightWallet;
 
   String get value {
@@ -147,17 +186,18 @@ enum ActivationModeType {
   }
 }
 
+/// Defines the activation mode for QTUM, BCH, UTXO & ZHTLC coins
 class ActivationMode {
   ActivationMode({
     required this.rpc,
     this.rpcData,
   }) : assert(
-          // If rpc is not native, rpcData must be provided. And if rpcData is provided, rpc must not be native
           (rpc != ActivationModeType.native.value && rpcData != null) ||
               (rpc == ActivationModeType.native.value && rpcData == null),
           'rpcData can only be provided for LightWallet or Electrum modes',
         );
 
+  /// Creates an [ActivationMode] from configuration JSON
   factory ActivationMode.fromConfig(
     JsonMap json, {
     required ActivationModeType type,
@@ -170,7 +210,11 @@ class ActivationMode {
     );
   }
 
+  /// RPC mode: 'Native' for running a native blockchain node, 'Electrum' for using
+  /// electrum servers, or 'Light' for ZHTLC coins
   final String rpc;
+
+  /// Configuration data for Electrum or Light mode
   final ActivationRpcData? rpcData;
 
   JsonMap toJsonRequest() => {
@@ -179,9 +223,15 @@ class ActivationMode {
       };
 }
 
+/// Defines how to scan for new addresses in HD wallets
 enum ScanPolicy {
+  /// Do not scan for new addresses
   doNotScan,
+
+  /// Only scan if this is a new wallet
   scanIfNewWallet,
+
+  /// Always scan for new addresses (will result in multiple API requests)
   scan;
 
   static Set<String> get validPolicies => {
@@ -193,6 +243,8 @@ enum ScanPolicy {
   static bool isValidScanPolicy(String policy) =>
       validPolicies.contains(policy);
 
+  /// Parses a string into a [ScanPolicy]
+  /// Throws [ArgumentError] if the policy string is invalid
   static ScanPolicy parse(String policy) {
     if (!isValidScanPolicy(policy)) {
       throw ArgumentError.value(policy, 'policy', 'Invalid scan policy');
@@ -210,6 +262,8 @@ enum ScanPolicy {
     }
   }
 
+  /// Attempts to parse a string into a [ScanPolicy]
+  /// Returns null if the input is null or invalid
   static ScanPolicy? tryParse(String? policy) {
     if (policy == null) {
       return null;
@@ -230,24 +284,21 @@ enum ScanPolicy {
   }
 }
 
-/// Parser for activation RPC data
+/// Contains information about electrum & lightwallet_d servers for coins being used
+/// in 'Electrum' or 'Light' mode
 class ActivationRpcData {
   ActivationRpcData({
     this.lightWalletDServers,
-    // this.electrumServers,
     this.electrum,
     this.syncParams,
   });
 
+  /// Creates [ActivationRpcData] from JSON configuration
   factory ActivationRpcData.fromJson(JsonMap json) {
     return ActivationRpcData(
       lightWalletDServers: json
           .valueOrNull<List<dynamic>>('light_wallet_d_servers')
           ?.cast<String>(),
-      // electrumServers: json
-      //     .valueOrNull<List<dynamic>>('electrum_servers')
-      //     ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
-      //     .toList(),
       electrum: json
           .valueOrNull<List<dynamic>>('electrum')
           ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
@@ -256,14 +307,22 @@ class ActivationRpcData {
     );
   }
 
+  /// ZHTLC only. A list of urls which are hosting lightwallet_d servers for a coin
   final List<String>? lightWalletDServers;
-  // final List<ActivationServers>? electrumServers;
+
+  /// List of electrum servers for QTUM, BCH & UTXO coins
   final List<ActivationServers>? electrum;
+
+  /// ZHTLC coins only. Optional, defaults to two days ago. Defines where to start
+  /// scanning blockchain data upon initial activation.
+  /// Options:
+  /// - "earliest" (the coin's sapling_activation_height)
+  /// - height (a specific block height)
+  /// - date (a unix timestamp)
   final dynamic syncParams;
 
   bool get isEmpty => [
         lightWalletDServers,
-        // electrumServers,
         electrum,
         syncParams,
       ].every(
@@ -276,16 +335,15 @@ class ActivationRpcData {
   JsonMap toJsonRequest() => {
         if (lightWalletDServers != null)
           'light_wallet_d_servers': lightWalletDServers,
-        // if (electrumServers != null)
-        //   'servers': electrumServers!.map((e) => e.toJsonRequest()).toList(),
         if (electrum != null) ...{
           'servers': electrum!.map((e) => e.toJsonRequest()).toList(),
         },
-
         if (syncParams != null) 'sync_params': syncParams,
       };
 }
 
+/// Contains information about electrum servers for coins being used in 'Electrum'
+/// or 'Light' mode
 class ActivationServers {
   ActivationServers({
     required this.url,
@@ -294,6 +352,7 @@ class ActivationServers {
     this.disableCertVerification = false,
   });
 
+  /// Creates [ActivationServers] from JSON configuration
   factory ActivationServers.fromJsonConfig(JsonMap json) {
     return ActivationServers(
       url: json.value<String>('url'),
@@ -304,9 +363,19 @@ class ActivationServers {
     );
   }
 
+  /// The URL and port for an electrum server
   final String url;
+
+  /// Optional, for WSS only. The URL and port for an electrum server's WSS port
   final String? wsUrl;
+
+  /// Optional, defaults to 'TCP'. Transport protocol used to connect to the server.
+  /// Options: 'TCP' or 'SSL'
   final String protocol;
+
+  /// Optional, defaults to false. If true, disables server SSL/TLS certificate
+  /// verification (e.g. for self-signed certificates).
+  /// WARNING: Use at your own risk!
   final bool disableCertVerification;
 
   JsonMap toJsonRequest() => {

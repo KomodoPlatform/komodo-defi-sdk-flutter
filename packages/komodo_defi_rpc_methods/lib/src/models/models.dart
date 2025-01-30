@@ -9,3 +9,4 @@ export 'error_response.dart';
 export 'new_task.dart';
 export 'new_task_response.dart';
 export 'params.dart';
+export 'rpc_version.dart';

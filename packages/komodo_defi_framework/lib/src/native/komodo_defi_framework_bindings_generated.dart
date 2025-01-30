@@ -96,7 +96,6 @@ class KomodoDefiFrameworkBindings {
   late final _mm2_stop = _mm2_stopPtr.asFunction<int Function()>();
 }
 
-/// typedef void (*LogCallback)(const char *line);
-typedef LogCallback = ffi.Pointer<ffi.NativeFunction<LogCallbackFunction>>;
 typedef LogCallbackFunction = ffi.Void Function(ffi.Pointer<ffi.Char> line);
 typedef DartLogCallbackFunction = void Function(ffi.Pointer<ffi.Char> line);
+typedef LogCallback = ffi.Pointer<ffi.NativeFunction<LogCallbackFunction>>;

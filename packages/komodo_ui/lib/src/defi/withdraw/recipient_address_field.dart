@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:komodo_ui/komodo_ui.dart';
 
 class RecipientAddressField extends StatelessWidget {
-
   const RecipientAddressField({
     required this.address,
     required this.onChanged,
@@ -46,7 +45,8 @@ class RecipientAddressField extends StatelessWidget {
                     final result = await Navigator.push<String>(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => const QrCodeReaderOverlay(),),
+                        builder: (_) => const QrCodeReaderOverlay(),
+                      ),
                     );
                     if (result != null) onQrScanned(result);
                   },

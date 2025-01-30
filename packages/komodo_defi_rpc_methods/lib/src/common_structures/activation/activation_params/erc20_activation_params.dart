@@ -20,7 +20,7 @@ class Erc20ActivationParams extends ActivationParams {
   final String fallbackSwapContract;
 
   @override
-  JsonMap toJsonRequestParams() => super.toJsonRequestParams().deepMerge({
+  JsonMap toRpcParams() => super.toRpcParams().deepMerge({
         'nodes': nodes.map((e) => e.url).toList(),
         'swap_contract_address': swapContractAddress,
         'fallback_swap_contract': fallbackSwapContract,

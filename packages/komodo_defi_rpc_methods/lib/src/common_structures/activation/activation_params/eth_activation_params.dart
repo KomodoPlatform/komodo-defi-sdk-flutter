@@ -59,9 +59,9 @@ class EthWithTokensActivationParams extends ActivationParams {
   }
 
   @override
-  Map<String, dynamic> toJsonRequestParams() {
+  Map<String, dynamic> toRpcParams() {
     return {
-      ...super.toJsonRequestParams(),
+      ...super.toRpcParams(),
       'nodes': nodes.map((e) => e.toJson()).toList(),
       'swap_contract_address': swapContractAddress,
       'fallback_swap_contract': fallbackSwapContract,
