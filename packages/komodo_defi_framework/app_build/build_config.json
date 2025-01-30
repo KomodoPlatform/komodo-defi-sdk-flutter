@@ -10,14 +10,14 @@
         ],
         "platforms": {
             "web": {
-                "matching_pattern": "^kdf_[a-f0-9]+-wasm\\.zip$",
+                "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
                     "1800ab7e8682f01d9a10679475509706b0414bc178937d6db95ebf84f29df84c"
                 ],
                 "path": "web/kdf/bin"
             },
             "macos": {
-                "matching_pattern": "^kdf_[a-f0-9]+-mac-arm64\\.zip$",
+                "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
                     "37161ccc3022f07d5e1bedf2069f3fe609cf12a18f8ca5fd4bbc32e0ce734cf5"
                 ],
@@ -28,7 +28,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "8a37a6cdb8f4f334f305899006b31415e3a49bf1",
+        "bundled_coins_repo_commit": "d905acf5df6c2560c7112ed70adad2104167d6f9",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://komodoplatform.github.io/coins",
         "coins_repo_branch": "master",

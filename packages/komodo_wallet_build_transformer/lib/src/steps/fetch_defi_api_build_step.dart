@@ -410,35 +410,6 @@ class FetchDefiApiStep extends BuildStep {
     }
   }
 
-  Future<String> _fetchFromGitHub(
-    String platform,
-    Map<String, ApiBuildPlatformConfig> config,
-    String sourceUrl,
-  ) async {
-    final releases = await githubApiProvider.getReleases();
-    final apiVersionShortHash = apiCommitHash.substring(0, 7);
-    final matchingConfig = config[platform]!.matchingConfig;
-
-    for (final release in releases) {
-      for (final asset in release.assets) {
-        final url = asset.browserDownloadUrl;
-
-        if (matchingConfig.matches(url) && url.contains(apiVersionShortHash)) {
-          final commitHash = await githubApiProvider.getLatestCommitHash(
-            branch: release.tagName,
-          );
-          if (commitHash == apiCommitHash) {
-            return url;
-          }
-        }
-      }
-    }
-
-    throw Exception(
-      'Zip file not found for platform $platform in GitHub releases',
-    );
-  }
-
   Future<String> _fetchFromBaseUrl(
     String platform,
     Map<String, ApiBuildPlatformConfig> config,
@@ -455,19 +426,97 @@ class FetchDefiApiStep extends BuildStep {
     final document = parser.parse(response.body);
     final matchingConfig = config[platform]!.matchingConfig;
     final extensions = ['.zip'];
-    final apiVersionShortHash = apiCommitHash.substring(0, 7);
 
+    // Support both full and short hash variants
+    final fullHash = apiCommitHash;
+    final shortHash = apiCommitHash.substring(0, 7);
+    _log.info('Looking for files with hash $fullHash or $shortHash');
+
+    // Look for files with either hash length
     for (final element in document.querySelectorAll('a')) {
       final href = element.attributes['href'];
       if (href != null &&
           matchingConfig.matches(href) &&
-          extensions.any(href.endsWith) &&
-          href.contains(apiVersionShortHash)) {
-        return '$sourceUrl/$apiBranch/$href';
+          extensions.any(href.endsWith)) {
+        if (href.contains(fullHash) || href.contains(shortHash)) {
+          _log.info('Found matching file: $href');
+          return '$sourceUrl/$apiBranch/$href';
+        }
       }
     }
 
+    _log.warning('No matching files found in $sourceUrl. '
+        'Pattern: ${matchingConfig.matchingPattern}, '
+        'Hashes tried: [$fullHash, $shortHash]');
+
     throw Exception('Zip file not found for platform $platform');
+  }
+
+  Future<String> _fetchFromGitHub(
+    String platform,
+    Map<String, ApiBuildPlatformConfig> config,
+    String sourceUrl,
+  ) async {
+    final releases = await githubApiProvider.getReleases();
+    final matchingConfig = config[platform]!.matchingConfig;
+    final fullHash = apiCommitHash;
+    final shortHash = apiCommitHash.substring(0, 7);
+
+    _log.info('Looking for release files with hash $fullHash or $shortHash');
+
+    // TODO! Try to find exact version release first
+    // if (version != null && version!.isNotEmpty) {
+    //   _log.info('Searching for exact version match: $version');
+    //   for (final release in releases) {
+    //     if (release.tagName == version) {
+    //       _log.info('Found matching release: ${release.tagName}');
+    //       for (final asset in release.assets) {
+    //         final fileName = path.basename(asset.browserDownloadUrl);
+    //         _log.fine('Checking file $fileName for $platform');
+
+    //         if (matchingConfig.matches(fileName)) {
+    //           _log.info('Found matching file $fileName in version $version');
+    //           return asset.browserDownloadUrl;
+    //         }
+    //       }
+    //       _log.warning('No matching assets found in version $version. '
+    //           'Available assets:\n${release.assets.map((a) => '  - ${a.name}').join('\n')}');
+    //     }
+    //   }
+    //   _log.warning('No exact version match found for $version');
+    // }
+
+    // If no exact version match found, try matching by commit hash
+    _log.info('Searching for commit hash match');
+    for (final release in releases) {
+      for (final asset in release.assets) {
+        final fileName = path.basename(asset.browserDownloadUrl);
+
+        if (matchingConfig.matches(fileName)) {
+          if (fileName.contains(fullHash) || fileName.contains(shortHash)) {
+            final commitHash = await githubApiProvider.getLatestCommitHash(
+              branch: release.tagName,
+            );
+            if (commitHash == apiCommitHash) {
+              _log.info('Found matching file by commit hash: $fileName');
+              return asset.browserDownloadUrl;
+            }
+          }
+        }
+      }
+    }
+
+    // Log available assets to help diagnose issues
+    _log.warning('No files found matching criteria:\n'
+        'Platform: $platform\n'
+        'Version: \$version\n'
+        'Hash: $fullHash or $shortHash\n'
+        'Pattern: ${matchingConfig.matchingPattern}\n'
+        'Available assets:\n${releases.expand((r) => r.assets).map((a) => '  - ${a.name}').join('\n')}');
+
+    throw Exception(
+        'Zip file not found for platform $platform in GitHub releases. '
+        'Searched for version: \$version, commit: $apiCommitHash');
   }
 
   void _checkResponseSuccess(http.Response response) {
