@@ -4,7 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
 
 /// Base class for all protocol definitions
-abstract class ProtocolClass {
+abstract class ProtocolClass with ExplorerUrlMixin {
   const ProtocolClass({
     required this.subClass,
     required this.config,
@@ -99,6 +99,10 @@ abstract class ProtocolClass {
   String? get derivationPath => config.valueOrNull<String>('derivation_path');
   bool get isTestnet => config.valueOrNull<bool>('is_testnet') ?? false;
   ActivationRpcData get requiredServers => ActivationRpcData.fromJson(config);
+
+  /// Explorer URL handling is now delegated to the ExplorerUrlPattern class
+  @override
+  ExplorerUrlPattern get explorerPattern => ExplorerUrlPattern.fromJson(config);
 
   /// Convert protocol back to JSON representation
   JsonMap toJson() => {

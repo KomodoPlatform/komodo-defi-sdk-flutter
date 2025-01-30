@@ -21,7 +21,7 @@ class Transaction extends Equatable {
     this.memo,
   });
 
-  factory Transaction.fromJson(Map<String, dynamic> json) => Transaction(
+  factory Transaction.fromJson(JsonMap json) => Transaction(
         id: json.value<String>('id'),
         internalId: json.value<String>('internal_id'),
         assetId: AssetId.parse(
@@ -78,7 +78,7 @@ class Transaction extends Equatable {
         memo,
       ];
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'id': id,
         'internal_id': internalId,
         'asset_id': assetId.toJson(),

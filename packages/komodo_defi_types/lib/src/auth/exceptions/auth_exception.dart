@@ -31,7 +31,7 @@ class AuthException implements Exception {
   final AuthExceptionType type;
 
   /// The error details.
-  final Map<String, dynamic>? details;
+  final JsonMap? details;
 
   @override
   String toString() {

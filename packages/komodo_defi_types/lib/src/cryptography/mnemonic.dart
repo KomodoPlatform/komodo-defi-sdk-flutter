@@ -5,7 +5,7 @@ class Mnemonic {
   // moved to the RPC package.
 
   /// Factory method to create Mnemonic from a RPC response
-  factory Mnemonic.fromRpcJson(Map<String, dynamic> result) {
+  factory Mnemonic.fromRpcJson(JsonMap result) {
     final format = result.value<String>('format');
 
     if (format == 'plaintext') {
@@ -51,7 +51,7 @@ class Mnemonic {
   bool get isEncrypted => encryptedMnemonic != null;
 
   // Convert Mnemonic to JSON
-  Map<String, dynamic> toJson() {
+  JsonMap toJson() {
     final data = <String, dynamic>{};
     data['format'] = format;
 
@@ -64,7 +64,7 @@ class Mnemonic {
     return data;
   }
 
-  static Mnemonic? tryParse(Map<String, dynamic> json) {
+  static Mnemonic? tryParse(JsonMap json) {
     try {
       return Mnemonic.fromRpcJson(json);
     } catch (e) {
@@ -83,7 +83,7 @@ class EncryptedMnemonicData {
   });
 
   // Factory method to create EncryptedMnemonicData from JSON
-  factory EncryptedMnemonicData.fromJson(Map<String, dynamic> json) {
+  factory EncryptedMnemonicData.fromJson(JsonMap json) {
     return EncryptedMnemonicData(
       encryptionAlgorithm: json.value<String>('encryption_algorithm'),
       keyDerivationDetails: Argon2Details.fromJson(
@@ -101,7 +101,7 @@ class EncryptedMnemonicData {
   final String ciphertext;
   final String tag;
 
-  static EncryptedMnemonicData? tryParse(Map<String, dynamic> json) {
+  static EncryptedMnemonicData? tryParse(JsonMap json) {
     try {
       return EncryptedMnemonicData.fromJson(json);
     } catch (e) {
@@ -110,7 +110,7 @@ class EncryptedMnemonicData {
   }
 
   // Example to show end-user for the correct format needed in the input
-  static const Map<String, dynamic> encryptedDataExample = {
+  static const JsonMap encryptedDataExample = {
     'encryption_algorithm': 'AES256CBC',
     'key_derivation_details': {
       'Argon2': {
@@ -132,7 +132,7 @@ class EncryptedMnemonicData {
   };
 
   // Convert EncryptedMnemonicData to JSON
-  Map<String, dynamic> toJson() {
+  JsonMap toJson() {
     return {
       'encryption_algorithm': encryptionAlgorithm,
       'key_derivation_details': keyDerivationDetails.toJson(),
@@ -155,7 +155,7 @@ class Argon2Details {
   });
 
   // Factory method to create Argon2Details from JSON
-  factory Argon2Details.fromJson(Map<String, dynamic> json) {
+  factory Argon2Details.fromJson(JsonMap json) {
     var argon2Params = json;
     var argon2Salt = json;
     if (json['Argon2'] != null) {
@@ -183,7 +183,7 @@ class Argon2Details {
   final String saltHmac;
 
   // Convert Argon2Details to JSON
-  Map<String, dynamic> toJson() {
+  JsonMap toJson() {
     return {
       'algorithm': algorithm,
       'version': version,

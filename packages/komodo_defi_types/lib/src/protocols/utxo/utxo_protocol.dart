@@ -22,10 +22,22 @@ class UtxoProtocol extends ProtocolClass {
   }
 
   @override
+  // TODO: Consider the limitation this is likely to impose in the near
+  // future when we need to confirgure activation parameters e.g. for Trezor.
+  // A better solution may be to create a separate activation strategy rather
+  // than adding the activation parameters to the protocol.
+  // Hint: It may be useful to refactor `[ActivationStrategy.supportsAssetType]`
+  // to be async.
   UtxoActivationParams defaultActivationParams() {
-    return UtxoActivationParams.fromJson(config).copyWith(
-      txHistory: true,
-    );
+    return UtxoActivationParams.fromJson(config)
+        .copyWith(
+          txHistory: true,
+        )
+        .copyWithHd(
+          minAddressesNumber: 1,
+          scanPolicy: ScanPolicy.scanIfNewWallet,
+          gapLimit: 20,
+        );
   }
 
   @override

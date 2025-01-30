@@ -1,137 +1,181 @@
 import 'package:decimal/decimal.dart';
-import 'package:equatable/equatable.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-/// Base abstract class for fee information
-abstract class FeeInfo extends Equatable {
-  const FeeInfo({
-    required this.coin,
-    required this.amount,
-  });
+part 'fee_info.freezed.dart';
+// We are doing manual fromJson/toJson, so no need for part 'fee_info.g.dart';
 
-  /// Factory constructor to create the appropriate fee type from JSON
-  factory FeeInfo.fromJson(Map<String, dynamic> json) {
-    final feeType = WithdrawalFeeType.parse(json.value<String>('type'));
-    final coin = json.value<String>('coin');
+/// A union representing five possible fee types:
+/// - UtxoFixed
+/// - UtxoPerKbyte
+/// - EthGas
+/// - Qrc20Gas
+/// - CosmosGas
+@freezed
+class FeeInfo with _$FeeInfo {
+  //////////////////////////////////////////////////////////////////////////////
+  //  Custom Manual JSON Parsing
+  //
+  //  The docs show that each variant includes a "type" field and possibly
+  //  different fields like "amount", "gas_price", "gas", "gas_limit", etc.
+  //////////////////////////////////////////////////////////////////////////////
 
-    switch (feeType) {
-      case WithdrawalFeeType.eth:
-        final gas = json.valueOrNull<int>('gas');
-        final gasPriceString = json.valueOrNull<String>('gas_price');
-
-        if (gas != null && gasPriceString != null) {
-          return EthFeeInfo.fromGasParams(
-            coin: coin,
-            gasPrice: Decimal.parse(gasPriceString),
-            gasLimit: gas,
-          );
-        }
-
-        return EthFeeInfo(
-          coin: coin,
-          amount: Decimal.parse(json.value('amount')),
-          gas: gas,
-          gasPrice:
-              gasPriceString != null ? Decimal.parse(gasPriceString) : null,
+  /// Parse a JSON object into one of the [FeeInfo] variants, based on `type`.
+  factory FeeInfo.fromJson(JsonMap json) {
+    final type = json['type'] as String? ?? '';
+    switch (type) {
+      case 'UtxoFixed' || 'Utxo':
+        return FeeInfo.utxoFixed(
+          coin: json['coin'] as String? ?? '',
+          amount: Decimal.parse(json['amount'] as String),
         );
-
-      case WithdrawalFeeType.utxo:
-        return UtxoFeeInfo(
-          coin: coin,
-          amount: Decimal.parse(json.value('amount')),
+      case 'UtxoPerKbyte':
+        return FeeInfo.utxoPerKbyte(
+          coin: json['coin'] as String? ?? '',
+          amount: Decimal.parse(json['amount'] as String),
         );
-
+      case 'EthGas' || 'Eth':
+        return FeeInfo.ethGas(
+          coin: json['coin'] as String? ?? '',
+          // If JSON provides e.g. "0.000000003", parse to Decimal => 3e-9
+          gasPrice: Decimal.parse(json['gas_price'].toString()),
+          gas: json['gas'] as int,
+        );
+      case 'Qrc20Gas':
+        return FeeInfo.qrc20Gas(
+          coin: json['coin'] as String? ?? '',
+          gasPrice: Decimal.parse(json['gas_price'].toString()),
+          gasLimit: json['gas_limit'] as int,
+        );
+      case 'CosmosGas':
+        return FeeInfo.cosmosGas(
+          coin: json['coin'] as String? ?? '',
+          // The doc sometimes shows 0.05 as a number (double),
+          // so we convert it to string, then parse:
+          gasPrice: Decimal.parse(json['gas_price'].toString()),
+          gasLimit: json['gas_limit'] as int,
+        );
       default:
-        throw ArgumentError('Unknown fee type: $feeType');
+        throw ArgumentError('Unknown fee type: $type');
     }
   }
+  // A private constructor so that we can add custom getters/methods.
+  const FeeInfo._();
 
-  /// The coin identifier the fee is paid in
-  final String coin;
-
-  /// The total fee amount in the native coin unit
-  final Decimal amount;
-
-  /// The type of fee (UTXO, ETH, etc)
-  WithdrawalFeeType get type;
-
-  /// Gets the total fee amount in the native coin unit
-  Decimal get totalFee => amount;
-
-  /// Convert to JSON representation
-  Map<String, dynamic> toJson() => {
-        'type': type.toString(),
-        'amount': amount.toString(),
-        'total_fee': totalFee.toString(),
-        'coin': coin,
-      };
-
-  @override
-  String toString() => toJson().toString();
-}
-
-/// Fee information for UTXO-based coins
-class UtxoFeeInfo extends FeeInfo {
-  const UtxoFeeInfo({
-    required super.coin,
-    required super.amount,
-  });
-
-  @override
-  WithdrawalFeeType get type => WithdrawalFeeType.utxo;
-
-  @override
-  List<Object?> get props => [coin, amount];
-}
-
-/// Fee information for ETH/ERC20 coins
-class EthFeeInfo extends FeeInfo {
-  const EthFeeInfo({
-    required super.coin,
-    required super.amount,
-    this.gas,
-    this.gasPrice,
-  });
-
-  factory EthFeeInfo.fromGasParams({
+  /// 1) A *fixed* fee in coin units (e.g. "0.0001 BTC").
+  const factory FeeInfo.utxoFixed({
+    /// Which coin pays the fee
     required String coin,
+
+    /// The fee amount in coin units
+    required Decimal amount,
+  }) = FeeInfoUtxoFixed;
+
+  /// 2) A *per kilobyte* fee in coin units (e.g. "0.0001 BTC per KB").
+  const factory FeeInfo.utxoPerKbyte({
+    required String coin,
+    required Decimal amount,
+  }) = FeeInfoUtxoPerKbyte;
+
+  /// 3) ETH-like gas: you specify *gasPrice* (in ETH) and *gas* (units).
+  ///
+  /// Example JSON:
+  /// ```json
+  /// {
+  ///   "type": "EthGas",
+  ///   "coin": "ETH",
+  ///   "gas_price": "0.000000003",
+  ///   "gas": 21000
+  /// }
+  /// ```
+  /// Interpreted as: 3 Gwei -> total fee = 0.000000003 ETH * 21000 = 0.000063 ETH.
+  const factory FeeInfo.ethGas({
+    required String coin,
+
+    /// Gas price in ETH. e.g. "0.000000003" => 3 Gwei
     required Decimal gasPrice,
+
+    /// Gas limit (number of gas units)
+    required int gas,
+  }) = FeeInfoEthGas;
+
+  /// 4) Qtum/QRC20-like gas, specifying `gasPrice` (in coin units) and `gasLimit`.
+  const factory FeeInfo.qrc20Gas({
+    required String coin,
+
+    /// Gas price in coin units. e.g. "0.000000004"
+    required Decimal gasPrice,
+
+    /// Gas limit
     required int gasLimit,
-  }) {
-    final totalFee = _calculateTotalFee(gasPrice, gasLimit);
-    return EthFeeInfo(
-      coin: coin,
-      amount: totalFee,
-      gas: gasLimit,
-      gasPrice: gasPrice,
+  }) = FeeInfoQrc20Gas;
+
+  /// 5) Cosmos-like gas, specifying `gasPrice` (in coin units) and `gasLimit`.
+  ///
+  /// Example JSON:
+  /// ```json
+  /// {
+  ///   "type": "CosmosGas",
+  ///   "coin": "IRIS",
+  ///   "gas_price": 0.05,
+  ///   "gas_limit": 21000
+  /// }
+  /// ```
+  const factory FeeInfo.cosmosGas({
+    required String coin,
+
+    /// Gas price in coin units. e.g. "0.05"
+    required Decimal gasPrice,
+
+    /// Gas limit
+    required int gasLimit,
+  }) = FeeInfoCosmosGas;
+
+  /// A convenience getter returning the *total fee* in the coin's main units.
+  ///
+  /// - For ETH: `gasPrice * gas` => total in ETH
+  /// - For Qrc20, Cosmos: `gasPrice * gasLimit` => total in coin units
+  /// - For UTXO fees: simply `amount`
+  Decimal get totalFee => map(
+        utxoFixed: (fee) => fee.amount,
+        utxoPerKbyte: (fee) => fee.amount,
+        ethGas: (fee) => fee.gasPrice * Decimal.fromInt(fee.gas),
+        qrc20Gas: (fee) => fee.gasPrice * Decimal.fromInt(fee.gasLimit),
+        cosmosGas: (fee) => fee.gasPrice * Decimal.fromInt(fee.gasLimit),
+      );
+
+  /// Convert this [FeeInfo] to a JSON object matching the mmRPC 2.0 docs.
+  JsonMap toJson() {
+    return map(
+      utxoFixed: (fee) => <String, dynamic>{
+        'type': 'UtxoFixed',
+        'coin': fee.coin,
+        'amount': fee.amount.toString(),
+      },
+      utxoPerKbyte: (fee) => <String, dynamic>{
+        'type': 'UtxoPerKbyte',
+        'coin': fee.coin,
+        'amount': fee.amount.toString(),
+      },
+      ethGas: (fee) => <String, dynamic>{
+        'type': 'Eth',
+        'coin': fee.coin,
+        'gas_price': fee.gasPrice.toString(),
+        'gas': fee.gas,
+        // Optionally: "total_fee": totalFee.toString(),
+      },
+      qrc20Gas: (fee) => <String, dynamic>{
+        'type': 'Qrc20Gas',
+        'coin': fee.coin,
+        'gas_price': fee.gasPrice.toString(),
+        'gas_limit': fee.gasLimit,
+      },
+      cosmosGas: (fee) => <String, dynamic>{
+        'type': 'CosmosGas',
+        'coin': fee.coin,
+        'gas_price': fee.gasPrice.toString(),
+        'gas_limit': fee.gasLimit,
+      },
     );
   }
-
-  /// Gas limit for transaction
-  final int? gas;
-
-  /// Gas price in Gwei
-  final Decimal? gasPrice;
-
-  @override
-  WithdrawalFeeType get type => WithdrawalFeeType.eth;
-
-  /// Calculate total fee from gas parameters (gas price in Gwei)
-  static Decimal _calculateTotalFee(Decimal gasPriceGwei, int gasUnits) {
-    return (gasPriceGwei.toRational() *
-            (Decimal.fromInt(gasUnits).toRational() /
-                Decimal.fromInt(1000000000).toRational()))
-        .toDecimal(scaleOnInfinitePrecision: 18);
-  }
-
-  @override
-  Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        if (gas != null) 'gas': gas,
-        if (gasPrice != null) 'gas_price': gasPrice.toString(),
-      };
-
-  @override
-  List<Object?> get props => [coin, amount, gas, gasPrice];
 }

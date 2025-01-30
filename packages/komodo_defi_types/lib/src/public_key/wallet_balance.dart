@@ -20,7 +20,7 @@ class WalletBalance {
   final String walletType;
   final List<WalletAccount> accounts;
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'wallet_type': walletType,
         'accounts': accounts.map((e) => e.toJson()).toList(),
       };
@@ -53,7 +53,7 @@ class WalletAccount {
   final TokenBalanceMap totalBalance;
   final List<WalletAddress> addresses;
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'account_index': accountIndex,
         'derivation_path': derivationPath,
         'total_balance': totalBalance.toJson(),
@@ -85,7 +85,7 @@ class WalletAddress {
   final String chain;
   final TokenBalanceMap balance;
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'address': address,
         'derivation_path': derivationPath,
         'chain': chain,

@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:meta/meta.dart';
 
@@ -93,7 +94,7 @@ class ActivationProgress extends Equatable {
         progressDetails,
       ];
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'status': status,
         if (progressPercentage != null)
           'progressPercentage': progressPercentage,
@@ -119,7 +120,7 @@ class ActivationProgressDetails extends Equatable {
 
   final String currentStep;
   final int stepCount;
-  final Map<String, dynamic> additionalInfo;
+  final JsonMap additionalInfo;
   final String? errorCode;
   final String? errorDetails;
   final String? stackTrace;
@@ -134,7 +135,7 @@ class ActivationProgressDetails extends Equatable {
   ActivationProgressDetails copyWith({
     String? currentStep,
     int? stepCount,
-    Map<String, dynamic>? additionalInfo,
+    JsonMap? additionalInfo,
     String? errorCode,
     String? errorDetails,
     String? stackTrace,
@@ -165,7 +166,7 @@ class ActivationProgressDetails extends Equatable {
         completedAt,
       ];
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'currentStep': currentStep,
         'stepCount': stepCount,
         'additionalInfo': additionalInfo,
@@ -230,7 +231,7 @@ class BatchActivationProgress {
       .map((a) => a.id.name)
       .toList();
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'overallProgress': overallProgress,
         'isComplete': isComplete,
         'pendingAssets': pendingAssets,

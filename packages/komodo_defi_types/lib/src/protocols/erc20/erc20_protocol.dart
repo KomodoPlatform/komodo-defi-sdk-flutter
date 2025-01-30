@@ -62,4 +62,9 @@ class Erc20Protocol extends ProtocolClass {
 
   String get fallbackSwapContract =>
       config.value<String>('fallback_swap_contract');
+
+  @override
+  // TODO: Confirm if this is correct, or if it is only for 'ERC20' and 'ETH'
+  // protocols as is in the legacy repository.
+  bool get needs0xPrefix => true;
 }

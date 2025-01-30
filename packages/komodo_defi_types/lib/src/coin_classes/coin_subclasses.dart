@@ -28,6 +28,7 @@ enum CoinSubClass {
   zhtlc,
   unknown;
 
+  // TODO: verify all the tickers. This is primarily used
   String get ticker {
     switch (this) {
       case CoinSubClass.moonbeam:
@@ -36,6 +37,7 @@ enum CoinSubClass {
         return 'FTM';
       case CoinSubClass.arbitrum:
         return 'ARB';
+      // ignore: deprecated_member_use_from_same_package
       case CoinSubClass.slp:
         return 'SLP';
       case CoinSubClass.sia:
@@ -44,8 +46,9 @@ enum CoinSubClass {
         return 'QTUM';
       case CoinSubClass.avx20:
         return 'AVAX';
+      case CoinSubClass.utxo:
       case CoinSubClass.smartChain:
-        return 'BNB';
+        return 'KMD';
       case CoinSubClass.moonriver:
         return 'MOVR';
       case CoinSubClass.ethereumClassic:
@@ -58,8 +61,6 @@ enum CoinSubClass {
         return 'BNB';
       case CoinSubClass.matic:
         return 'MATIC';
-      case CoinSubClass.utxo:
-        return 'BTC';
       case CoinSubClass.smartBch:
         return 'BCH';
       case CoinSubClass.erc20:

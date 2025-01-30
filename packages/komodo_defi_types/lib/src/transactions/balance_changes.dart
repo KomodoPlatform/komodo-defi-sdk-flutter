@@ -36,7 +36,7 @@ class BalanceChanges extends Equatable {
   @override
   List<Object?> get props => [netChange, receivedByMe, spentByMe, totalAmount];
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'my_balance_change': netChange.toString(),
         'received_by_me': receivedByMe.toString(),
         'spent_by_me': spentByMe.toString(),

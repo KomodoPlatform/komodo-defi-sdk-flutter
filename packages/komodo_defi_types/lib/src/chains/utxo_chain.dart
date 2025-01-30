@@ -60,7 +60,7 @@ class UtxoChain extends Chain {
   }
 
   @override
-  UtxoChain fromJsonConfig(Map<String, dynamic> json) {
+  UtxoChain fromJsonConfig(JsonMap json) {
     return UtxoChain(
       id: json.value<String>('coin'),
       decimals: json.value<int>('decimals'),
@@ -94,7 +94,7 @@ class UtxoChain extends Chain {
     );
   }
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'id': id,
         'decimals': decimals,
         'name': name,

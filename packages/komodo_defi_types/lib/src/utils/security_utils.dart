@@ -68,7 +68,7 @@ String _generateSecurePassword(
 }
 
 extension CensoredJsonMap on JsonMap {
-  Map<String, dynamic> censored() {
+  JsonMap censored() {
     // Search recursively for the following keys and replace their values
     // with "*" characters.
     const sensitive = [

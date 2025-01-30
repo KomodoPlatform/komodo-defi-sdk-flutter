@@ -95,8 +95,7 @@ T? _traverseJson<T>(
           case 'bool':
             return value.cast<bool>() as T;
           default:
-            if (genericType == 'Map<String, dynamic>' ||
-                genericType == 'JsonMap') {
+            if (genericType == 'JsonMap' || genericType == 'JsonMap') {
               return value.cast<JsonMap>() as T;
             }
         }
@@ -177,7 +176,7 @@ dynamic _convertList(List<dynamic> list) {
   return list
       .map(
         (item) => switch (item) {
-          Map<dynamic, dynamic>() => _convertMap<Map<String, dynamic>>(item),
+          Map<dynamic, dynamic>() => _convertMap<JsonMap>(item),
           List<dynamic>() => _convertList(item),
           String() => item, // Keep strings as is
           int() => item, // Keep numbers as is
@@ -197,7 +196,7 @@ T _convertMap<T>(Map<dynamic, dynamic> sourceMap) {
     final stringKey = key?.toString() ?? '';
     if (value is Map) {
       // Recursively convert nested maps
-      sanitizedMap[stringKey] = _convertMap<Map<String, dynamic>>(value);
+      sanitizedMap[stringKey] = _convertMap<JsonMap>(value);
     } else if (value is List) {
       // Handle lists and convert any maps within them
       sanitizedMap[stringKey] = _convertList(value);
@@ -206,7 +205,7 @@ T _convertMap<T>(Map<dynamic, dynamic> sourceMap) {
     }
   });
 
-  if (T is JsonMap || T is Map<String, dynamic> || T is Map<String, dynamic>?) {
+  if (T is JsonMap || T is JsonMap || T is JsonMap?) {
     return sanitizedMap as T;
   } else if ((T is Map<String, Object?>) || (T is Map<String, Object?>?)) {
     return Map<String, Object?>.from(sanitizedMap) as T;
@@ -335,7 +334,7 @@ extension JsonMapCensoring<T extends Map<dynamic, dynamic>> on T {
     );
 
     // Safely cast censoredMap back to T by ensuring type conformity
-    return Map<String, dynamic>.from(censoredMap) as T;
+    return JsonMap.from(censoredMap) as T;
   }
 }
 

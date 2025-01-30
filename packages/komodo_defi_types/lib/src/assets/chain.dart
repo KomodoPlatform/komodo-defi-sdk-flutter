@@ -1,4 +1,5 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 abstract class Chain {
   const Chain({
@@ -20,7 +21,7 @@ abstract class Chain {
   BaseRequest createEnableRequest(ActivationParams params);
   // final BaseRequest enableRequest;
 
-  Chain fromJsonConfig(Map<String, dynamic> json);
+  Chain fromJsonConfig(JsonMap json);
 }
 
 // !????

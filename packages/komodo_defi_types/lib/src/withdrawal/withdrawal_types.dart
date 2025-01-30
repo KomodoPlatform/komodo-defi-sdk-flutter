@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:equatable/equatable.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -20,7 +21,7 @@ class WithdrawResult {
     this.memo,
   });
 
-  factory WithdrawResult.fromJson(Map<String, dynamic> json) {
+  factory WithdrawResult.fromJson(JsonMap json) {
     return WithdrawResult(
       txHex: json.value<String>('tx_hex'),
       txHash: json.value<String>('tx_hash'),
@@ -52,7 +53,7 @@ class WithdrawResult {
   final KmdRewards? kmdRewards;
   final String? memo;
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'tx_hex': txHex,
         'tx_hash': txHash,
         'from': from,
@@ -167,13 +168,13 @@ class WithdrawParameters extends Equatable {
   final bool? ibcTransfer;
   final bool? isMax;
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'coin': asset,
         'to': toAddress,
         if (fee != null) 'fee': fee!.toJson(),
         if (amount != null) 'amount': amount.toString(),
         if (isMax != null) 'max': isMax,
-        if (from != null) 'from': from!.toJson(),
+        if (from != null) 'from': from!.toRpcParams(),
         if (memo != null) 'memo': memo,
         if (ibcTransfer != null) 'ibc_transfer': ibcTransfer,
       };
@@ -194,14 +195,47 @@ class WithdrawParameters extends Equatable {
 /// Preview of a withdrawal operation, using same structure as API response
 typedef WithdrawalPreview = WithdrawResult;
 
+enum Bip44Chain {
+  external._(0, 'External'),
+  internal._(1, 'Internal');
+
+  const Bip44Chain._(this.value, this.name);
+
+  final int value;
+  final String name;
+}
+
 /// Specifies the source of funds for a withdrawal
-class WithdrawalSource extends Equatable {
+// TODO: Implement Trezor sourcew
+class WithdrawalSource extends Equatable implements RpcRequestParams {
   const WithdrawalSource._({
     required this.type,
     required this.params,
   });
 
-  factory WithdrawalSource.hdWallet({
+  factory WithdrawalSource.hdWalletId({
+    required int accountId,
+    required int addressId,
+    Bip44Chain chain = Bip44Chain.external,
+  }) =>
+      WithdrawalSource._(
+        type: WithdrawalSourceType.hdWallet,
+        params: {
+          'account_id': accountId,
+          'chain': chain.value,
+          'address_id': addressId,
+        },
+      );
+
+  factory WithdrawalSource.hdDerivationPath(String derivationPath) =>
+      WithdrawalSource._(
+        type: WithdrawalSourceType.hdWallet,
+        params: {'derivation_path': derivationPath},
+      );
+
+  // E.g. m/44'/COIN_ID'/ACCOUNT_ID'/CHAIN/ADDRESS_ID
+  factory WithdrawalSource.hdWalletPath({
+    required int coinId,
     required int accountId,
     required String chain,
     required int addressId,
@@ -209,22 +243,29 @@ class WithdrawalSource extends Equatable {
       WithdrawalSource._(
         type: WithdrawalSourceType.hdWallet,
         params: {
-          'account_id': accountId,
-          'chain': chain,
-          'address_id': addressId,
+          'derivation_path': "m/44'/$coinId'/$accountId'/$chain/$addressId",
         },
       );
 
-  final WithdrawalSourceType type;
-  final Map<String, dynamic> params;
+  // TODO:
+  // factory WithdrawalSource.trezor
 
-  Map<String, dynamic> toJson() => {
+  final WithdrawalSourceType type;
+  final JsonMap params;
+
+  @override
+  JsonMap toRpcParams() => params;
+
+  JsonMap toJson() => {
         'type': type.toString(),
         ...params,
       };
 
   @override
-  List<Object?> get props => [type, params];
+  List<Object?> get props => [
+        type,
+        [...params.values, params.keys],
+      ];
 }
 
 class KmdRewards {
@@ -233,7 +274,7 @@ class KmdRewards {
     required this.claimedByMe,
   });
 
-  factory KmdRewards.fromJson(Map<String, dynamic> json) {
+  factory KmdRewards.fromJson(JsonMap json) {
     return KmdRewards(
       amount: json.value<String>('amount'),
       claimedByMe: json.value<bool>('claimed_by_me'),
@@ -243,7 +284,7 @@ class KmdRewards {
   final String amount;
   final bool claimedByMe;
 
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'amount': amount,
         'claimed_by_me': claimedByMe,
       };

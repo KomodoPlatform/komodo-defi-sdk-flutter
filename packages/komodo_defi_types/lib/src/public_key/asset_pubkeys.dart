@@ -1,4 +1,5 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class AssetPubkeys {
@@ -18,7 +19,7 @@ class AssetPubkeys {
   Balance get balance =>
       keys.fold(Balance.zero(), (prev, element) => prev + element.balance);
 
-  Map<String, dynamic> toJson() {
+  JsonMap toJson() {
     return {
       'assetId': assetId.toJson(),
       'addresses': keys.map((e) => e.toJson()).toList(),
@@ -68,7 +69,7 @@ typedef Balance = BalanceInfo;
 //   final Decimal spendableBalance;
 //   final Decimal unspendableBalance;
 
-//   Map<String, dynamic> toJson() {
+//   JsonMap toJson() {
 //     return {
 //       'address': address,
 //       'derivationPath': derivationPath,

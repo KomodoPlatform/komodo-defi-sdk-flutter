@@ -42,7 +42,7 @@ class TokenBalanceMap {
         (prev, curr) => prev + curr,
       );
 
-  Map<String, dynamic> toJson() => Map.fromEntries(
+  JsonMap toJson() => Map.fromEntries(
         _balances.entries.map((e) => MapEntry(e.key, e.value.toJson())),
       );
 
