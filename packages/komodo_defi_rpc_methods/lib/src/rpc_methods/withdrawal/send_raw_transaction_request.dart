@@ -37,8 +37,9 @@ class SendRawTransactionResponse extends BaseResponse {
 
   factory SendRawTransactionResponse.parse(Map<String, dynamic> json) {
     return SendRawTransactionResponse(
-      mmrpc: json.value<String>('mmrpc'),
-      txHash: json.value<String>('result', 'tx_hash'),
+      mmrpc: json.valueOrNull<String>('mmrpc'),
+      txHash: json.valueOrNull<String>('result', 'tx_hash') ??
+          json.value('tx_hash'),
     );
   }
 

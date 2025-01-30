@@ -60,7 +60,7 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
         client.rpc.transactionHistory.myTxHistory(
           coin: asset.id.id,
           limit: t.itemCount,
-          pagingOptions: Pagination(fromId: int.parse(t.fromId)),
+          pagingOptions: Pagination(fromId: t.fromId),
           target:
               isHdWallet ? HdHistoryTarget.accountId(0) : IguanaHistoryTarget(),
         ),

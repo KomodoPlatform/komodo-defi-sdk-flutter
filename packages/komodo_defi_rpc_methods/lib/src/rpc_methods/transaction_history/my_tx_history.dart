@@ -116,6 +116,20 @@ class MyTxHistoryResponse extends BaseResponse {
     );
   }
 
+  factory MyTxHistoryResponse.empty() => MyTxHistoryResponse(
+        mmrpc: '2.0',
+        currentBlock: 0,
+        fromId: null,
+        limit: 0,
+        skipped: 0,
+        syncStatus:
+            SyncStatusResponse(state: TransactionSyncStatusEnum.finished),
+        total: 0,
+        totalPages: 0,
+        pageNumber: null,
+        transactions: const [],
+      );
+
   final int currentBlock;
   final String? fromId;
   final int limit;
