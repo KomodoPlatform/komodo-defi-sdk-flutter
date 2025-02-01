@@ -3,6 +3,13 @@
 ## Overview
 The `komodo_defi_remote` package provides tooling and infrastructure for managing remote KDF instances. It enables automated deployment, monitoring, and management of KDF on remote servers through both programmatic and CLI interfaces.
 
+This package solves key infrastructure challenges:
+- Enables running resource-intensive zero-knowledge chains and native node synchronization on powerful remote servers while maintaining a lightweight local interface
+- Provides a unified experience where the primary KDF instance can run either locally or remotely with full capabilities including native blockchain synchronization
+- Makes sophisticated setups accessible to non-technical users through 1-click deployment
+- Provides geographic optimization by running the instance closer to trading venues or blockchain networks
+- Enables seamless switching between remote and local operation without disrupting user workflows
+
 ## Core Components
 
 ### 1. Remote Daemon (RemoteKdfDaemon)
@@ -12,6 +19,9 @@ A lightweight Dart service that runs on the remote server and:
 - Provides health monitoring and logging
 - Handles automatic recovery
 - Implements security measures
+- Supports worker process management
+- Handles resource allocation for workers
+- Provides worker-specific metrics and logging
 
 ```dart
 // High-level daemon structure
@@ -26,13 +36,16 @@ class RemoteKdfDaemon {
 ```
 
 ### 2. Deployment Manager (RemoteDeploymentManager)
-Handles automated setup of new KDF instances:
+Handles automated setup of new KDF instances and workers:
 - Server provisioning (optional)
 - System requirements verification
 - KDF binary installation and updates
 - Configuration management
 - SSL/TLS setup
 - Network security configuration
+- Worker-specific resource allocation
+- Load balancing configuration
+- Geographic deployment optimization
 
 ```dart
 abstract class IServerProvider {
@@ -46,8 +59,19 @@ class RemoteDeploymentManager {
     RemoteServerConfig config,
   });
   
+  Future<RemoteKdfInstance> deployWorkerInstance({
+    IServerProvider? provider,
+    WorkerInstanceConfig config,
+    RemoteLocation? preferredLocation,
+  });
+  
   Future<void> destroy(String instanceId);
   Future<void> update(String instanceId);
+  
+  // Worker-specific deployment controls
+  Future<void> configureForWorkers(String instanceId, WorkerResourceConfig config);
+  Future<void> optimizeLocation(String instanceId, List<String> targetRegions);
+  Future<Map<String, WorkerCapacity>> getWorkerCapacity(String instanceId);
 }
 ```
 
@@ -158,6 +182,16 @@ daemon:
   host: "0.0.0.0"
   log_level: info
   health_check_interval: 30s
+  
+worker_support:
+  enabled: true
+  max_workers: 10
+  worker_ports: "9000-9010"
+  worker_metrics_enabled: true
+  resource_limits:
+    memory_per_worker: "512M"
+    cpu_per_worker: 1
+    max_total_memory: "8G"
 
 kdf:
   binary_path: "/usr/local/bin/kdf"
