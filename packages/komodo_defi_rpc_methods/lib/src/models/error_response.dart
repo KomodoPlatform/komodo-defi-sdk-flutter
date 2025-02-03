@@ -43,8 +43,6 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
         json.hasNestedKey('error') ||
         json.valueOrNull<String>('result', 'status') == 'Error';
 
-    log('isErrorResponse: $isError, json: $json');
-
     return isError;
   }
 
