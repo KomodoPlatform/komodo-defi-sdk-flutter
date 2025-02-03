@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
+import 'package:komodo_defi_sdk/src/activation/base_strategies/activation_strategy_factory.dart';
 import 'package:komodo_defi_sdk/src/addresses/address_operations.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
@@ -164,6 +166,17 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     );
 
     _assets = AssetManager(_apiClient!, _auth!, _config);
+    _customTokenAssets = AssetManager(
+      _apiClient,
+      _auth!,
+      _config,
+      activationManager: ActivationManager(
+        _apiClient,
+        activator: ActivationStrategyFactory.createCustomTokenStrategy(
+          _apiClient,
+        ),
+      ),
+    );
 
     _mnemonicValidator = MnemonicValidator();
 
@@ -190,6 +203,11 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
   late final AssetManager? _assets;
   AssetManager get assets => _assertSdkInitialized(_assets);
+  late final AssetManager? _customTokenAssets;
+
+  /// Asset manager for custom tokens activated by the user as
+  /// wallet only assets.
+  AssetManager get customAssets => _assertSdkInitialized(_customTokenAssets);
 
   TransactionHistoryManager get transactions =>
       _assertSdkInitialized(_transactionHistory);

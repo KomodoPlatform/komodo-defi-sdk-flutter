@@ -15,9 +15,10 @@ class AssetManager {
   AssetManager(
     this._client,
     this._auth,
-    this._config,
-  )   : _assetHistory = AssetHistoryStorage(),
-        _activationManager = ActivationManager(_client);
+    this._config, {
+    ActivationManager? activationManager,
+  })  : _assetHistory = AssetHistoryStorage(),
+        _activationManager = activationManager ?? ActivationManager(_client);
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;

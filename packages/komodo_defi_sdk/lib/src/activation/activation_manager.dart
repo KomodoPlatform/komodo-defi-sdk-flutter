@@ -9,8 +9,9 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manages the activation lifecycle of assets
 class ActivationManager {
-  ActivationManager(ApiClient client)
-      : _activator = ActivationStrategyFactory.createStrategy(client);
+  ActivationManager(ApiClient client, {SmartAssetActivator? activator})
+      : _activator =
+            activator ?? ActivationStrategyFactory.createStrategy(client);
 
   final SmartAssetActivator _activator;
   final Map<AssetId, Completer<void>> _activationCompleters = {};
