@@ -1,10 +1,11 @@
+import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
 
 /// Base class for all protocol definitions
-abstract class ProtocolClass with ExplorerUrlMixin {
+abstract class ProtocolClass with ExplorerUrlMixin  implements Equatable {
   const ProtocolClass({
     required this.subClass,
     required this.config,
@@ -113,6 +114,8 @@ abstract class ProtocolClass with ExplorerUrlMixin {
   /// Convert protocol back to JSON representation
   JsonMap toJson() => {
         ...config,
+        'sub_class': subClass.toString().split('.').last,
+        'is_custom_token': isCustomToken,
         if (supportedProtocols.isNotEmpty)
           'other_types': supportedProtocols
               .map((p) => p.toString().split('.').last)
@@ -136,4 +139,17 @@ abstract class ProtocolClass with ExplorerUrlMixin {
 
   ActivationParams defaultActivationParams() =>
       ActivationParams.fromConfigJson(config);
+
+  @override
+  List<Object?> get props => [
+        subClass,
+        supportedProtocols,
+        isCustomToken,
+        requiresHdWallet,
+        derivationPath,
+        isTestnet,
+      ];
+
+  @override
+  bool? get stringify => false;
 }

@@ -6,6 +6,7 @@ import 'dart:collection';
 import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/assets/custom_asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -18,12 +19,14 @@ class AssetManager {
     this._config, {
     ActivationManager? activationManager,
   })  : _assetHistory = AssetHistoryStorage(),
+        _customTokenHistory = CustomAssetHistoryStorage(),
         _activationManager = activationManager ?? ActivationManager(_client);
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final KomodoDefiSdkConfig _config;
   final AssetHistoryStorage _assetHistory;
+  final CustomAssetHistoryStorage _customTokenHistory;
   final ActivationManager _activationManager;
 
   final Map<AssetId, Completer<void>> _activationCompleters = {};
@@ -99,6 +102,13 @@ class AssetManager {
             final user = await _auth.currentUser;
             if (user != null) {
               await _assetHistory.addAssetToWallet(user.walletId, asset.id.id);
+              if (asset.protocol.isCustomToken) {
+                _orderedCoins[asset.id] = asset;
+                await _customTokenHistory.addAssetToWallet(
+                  user.walletId,
+                  asset,
+                );
+              }
             }
             if (!completer.isCompleted) {
               completer.complete();
@@ -148,6 +158,10 @@ class AssetManager {
             .where((asset) => !_activeAssetIds.contains(asset.id));
         assetsToActivate.addAll(assets);
       }
+
+      final customTokens =
+          await _customTokenHistory.getWalletAssets(user.walletId);
+      assetsToActivate.addAll(customTokens);
     }
 
     final validAssets = assetsToActivate
@@ -194,11 +208,9 @@ class AssetManager {
     await _handlePreActivation(user);
   }
 
-  // bool isAssetActive(AssetId assetId) => _activeAssetIds.contains(assetId);
-
+  /// Fetches the list of enabled coins from KDF. 
+  /// Note: user must be authenticated to perform this operation.
   Future<Set<String>> _getEnabledCoins() async {
-    if (!await _auth.isSignedIn()) return {};
-
     final enabled = await _client.rpc.generalActivation.getEnabledCoins();
     return enabled.result.map((e) => e.ticker).toSet();
   }

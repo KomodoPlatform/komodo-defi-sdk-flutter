@@ -13,6 +13,7 @@ class Erc20Protocol extends ProtocolClass {
     _validateErc20Config(json);
     return Erc20Protocol._(
       subClass: CoinSubClass.parse(json.value('type')),
+      isCustomToken: json.valueOrNull<bool>('is_custom_token') ?? false,
       config: json,
     );
   }
