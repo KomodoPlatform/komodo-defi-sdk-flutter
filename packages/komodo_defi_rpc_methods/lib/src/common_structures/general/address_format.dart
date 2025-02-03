@@ -12,6 +12,7 @@ class AddressFormat {
   }) {
     switch (subClass) {
       case CoinSubClass.erc20:
+      case CoinSubClass.ethereumClassic:
         return AddressFormat(
           format: AddressFormatFormat.mixedCase.toString(),
           network: '',
@@ -41,7 +42,7 @@ class AddressFormat {
 
   Map<String, dynamic> toJson() => {
         'format': format,
-        'network': network,
+        if (network.isNotEmpty) 'network': network,
       };
 }
 

@@ -19,7 +19,7 @@ class ConvertAddressRequest
   Map<String, dynamic> toJson() {
     return super.toJson().deepMerge({
       'from': fromAddress,
-      'coin': coinSubClass,
+      'coin': coinSubClass.ticker,
       'to_address_format': AddressFormat.fromCoinSubClass(
         coinSubClass,
         isBchNetwork: isBchNetwork,
@@ -42,7 +42,7 @@ class ConvertAddressResponse extends BaseResponse {
   factory ConvertAddressResponse.parse(Map<String, dynamic> json) {
     return ConvertAddressResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
-      address: json.value<String>('address'),
+      address: json.value<String>('result', 'address'),
     );
   }
 
