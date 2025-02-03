@@ -91,9 +91,9 @@ extension AssetTickerIndexExtension on AssetManager {
     _isInitialized = false;
   }
 
-  // Internal methods for maintaining the index
+  /// Internal methods for maintaining the index
   // ignore: unused_element
-  Future<void> _updateIndex(Asset asset, {bool remove = false}) async {
+  Future<void> updateIndex(Asset asset, {bool remove = false}) async {
     if (!_isInitialized) return;
     await _lock.protect(() async {
       _updateTickerIndex(asset, remove: remove);

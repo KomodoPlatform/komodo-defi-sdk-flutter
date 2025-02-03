@@ -24,6 +24,10 @@ class CustomAssetHistoryStorage {
   /// Add a single asset to wallet's history
   Future<void> addAssetToWallet(WalletId walletId, Asset asset) async {
     final assets = await getWalletAssets(walletId);
+    // Equatable operators not working as expected, so we need to check manually
+    if (assets.any((historicalAsset) => historicalAsset.id.id == asset.id.id)) {
+      return;
+    }
     assets.add(asset);
     await storeWalletAssets(walletId, assets);
   }

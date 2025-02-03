@@ -53,7 +53,7 @@ class AssetManager {
 
     _orderedCoins.addAll(_coins.all);
 
-    initTickerIndex();
+    await initTickerIndex();
 
     final currentUser = await _auth.currentUser;
     await _onAuthStateChanged(currentUser);
@@ -104,6 +104,7 @@ class AssetManager {
               await _assetHistory.addAssetToWallet(user.walletId, asset.id.id);
               if (asset.protocol.isCustomToken) {
                 _orderedCoins[asset.id] = asset;
+                await updateIndex(asset);
                 await _customTokenHistory.addAssetToWallet(
                   user.walletId,
                   asset,
@@ -162,6 +163,10 @@ class AssetManager {
       final customTokens =
           await _customTokenHistory.getWalletAssets(user.walletId);
       assetsToActivate.addAll(customTokens);
+      for (final customToken in customTokens) {
+        _orderedCoins[customToken.id] = customToken;
+        await updateIndex(customToken);
+      }
     }
 
     final validAssets = assetsToActivate
@@ -208,7 +213,7 @@ class AssetManager {
     await _handlePreActivation(user);
   }
 
-  /// Fetches the list of enabled coins from KDF. 
+  /// Fetches the list of enabled coins from KDF.
   /// Note: user must be authenticated to perform this operation.
   Future<Set<String>> _getEnabledCoins() async {
     final enabled = await _client.rpc.generalActivation.getEnabledCoins();
@@ -231,14 +236,4 @@ class AssetManager {
     _activationCompleters.clear();
     _authSubscription?.cancel();
   }
-}
-
-class _AssetGroup {
-  _AssetGroup({
-    required this.primary,
-    required this.children,
-  });
-
-  final Asset primary;
-  final List<Asset> children;
 }
