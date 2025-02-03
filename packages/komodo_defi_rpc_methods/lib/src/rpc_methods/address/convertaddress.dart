@@ -9,10 +9,7 @@ class ConvertAddressRequest
     required this.coin,
     required this.fromAddress,
     required this.toAddressFormat,
-  }) : super(
-          method: 'convertaddress',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'convertaddress', mmrpc: null);
 
   final String coin;
   final String fromAddress;
@@ -21,11 +18,9 @@ class ConvertAddressRequest
   @override
   Map<String, dynamic> toJson() => {
         ...super.toJson(),
-        'params': {
-          'coin': coin,
-          'from': fromAddress,
-          'to_address_format': toAddressFormat.toJson(),
-        },
+        'coin': coin,
+        'from': fromAddress,
+        'to_address_format': toAddressFormat.toJson(),
       };
 
   @override
@@ -41,7 +36,7 @@ class ConvertAddressResponse extends BaseResponse {
 
   factory ConvertAddressResponse.parse(Map<String, dynamic> json) {
     return ConvertAddressResponse(
-      mmrpc: json.value<String>('mmrpc'),
+      mmrpc: json.valueOrNull<String>('mmrpc'),
       address: json.value<String>('result', 'address'),
     );
   }
