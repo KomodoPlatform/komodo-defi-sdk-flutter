@@ -5,8 +5,6 @@
 
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_rpc_methods/src/rpc_methods/utility/get_token_info.dart';
-import 'package:komodo_defi_rpc_methods/src/rpc_methods/wallet/convert_address.dart';
-import 'package:komodo_defi_rpc_methods/src/rpc_methods/wallet/validate_address.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A class that provides a library of RPC methods used by the Komodo DeFi
@@ -75,31 +73,6 @@ class WalletMethods extends BaseRpcMethodNamespace {
 
   Future<GetPublicKeyHashResponse> getPublicKeyHash([String? rpcPass]) =>
       execute(GetPublicKeyHashRequest(rpcPass: rpcPass));
-
-  Future<ConvertAddressResponse> convertAddress({
-    required String fromAddress,
-    required CoinSubClass coinSubClass,
-    String? rpcPass,
-  }) =>
-      execute(
-        ConvertAddressRequest(
-          rpcPass: rpcPass ?? '',
-          fromAddress: fromAddress,
-          coinSubClass: coinSubClass,
-        ),
-      );
-
-  Future<ValidateAddressResponse> validateAddress({
-    required String assetId,
-    required String address,
-  }) =>
-      execute(
-        ValidateAddressRequest(
-          coin: assetId,
-          address: address,
-          rpcPass: rpcPass ?? '',
-        ),
-      );
 }
 
 /// KDF v2 Utility Methods not specific to any larger feature

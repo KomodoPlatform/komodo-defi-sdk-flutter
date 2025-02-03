@@ -1,5 +1,5 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class EnableCustomErc20TokenRequest
     extends BaseRequest<EnableErc20Response, GeneralErrorResponse>
@@ -31,7 +31,7 @@ class EnableCustomErc20TokenRequest
     return super.toJson().deepMerge({
       'params': {
         'ticker': ticker,
-        'activation_params': activationParams.toJsonRequestParams(),
+        'activation_params': activationParams.toRpcParams(),
         'protocol': {
           'type': 'ERC20',
           'protocol_data': {
