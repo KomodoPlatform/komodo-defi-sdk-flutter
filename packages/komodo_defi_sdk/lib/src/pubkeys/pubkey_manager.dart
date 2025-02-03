@@ -1,16 +1,22 @@
-import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
+import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manager responsible for handling pubkey operations across different assets
 class PubkeyManager {
-  PubkeyManager(this._client);
+  PubkeyManager(
+    this._client,
+    this._auth,
+    this._assetManager,
+  );
 
   final ApiClient _client;
+  final KomodoDefiLocalAuth _auth;
+  final AssetManager _assetManager;
 
   /// Get pubkeys for a given asset, handling HD/non-HD differences internally
   Future<AssetPubkeys> getPubkeys(Asset asset) async {
-    final finalStatus =
-        await KomodoDefiSdk.global.assets.activateAsset(asset).last;
+    final finalStatus = await _assetManager.activateAsset(asset).last;
 
     if (finalStatus.isComplete && !finalStatus.isSuccess) {
       throw StateError(
@@ -25,7 +31,7 @@ class PubkeyManager {
   /// Create a new pubkey for an asset if supported
   Future<PubkeyInfo> createNewPubkey(Asset asset) async {
     // ignore: deprecated_member_use_from_same_package
-    await KomodoDefiSdk.global.assets.activateAsset(asset).last;
+    await _assetManager.activateAsset(asset).last;
 
     final strategy = await _resolvePubkeyStrategy(asset);
     if (!strategy.supportsMultipleAddresses) {
@@ -38,11 +44,15 @@ class PubkeyManager {
   }
 
   Future<PubkeyStrategy> _resolvePubkeyStrategy(Asset asset) async {
-    // Get auth status from global SDK instance
-    final authOptions = await KomodoDefiSdk().auth.currentUsersAuthOptions();
+    final authOptions = await _auth.currentUsersAuthOptions();
     final isHdWallet =
         authOptions?.derivationMethod == DerivationMethod.hdWallet;
 
     return asset.pubkeyStrategy(isHdWallet: isHdWallet);
+  }
+
+  /// Dispose of any resources
+  Future<void> dispose() async {
+    // Add any cleanup if needed
   }
 }

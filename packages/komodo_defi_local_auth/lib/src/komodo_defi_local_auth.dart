@@ -139,7 +139,7 @@ abstract interface class KomodoDefiAuth {
   ///
   /// This method should be called when the authentication service is no longer
   /// needed to clean up resources.
-  void dispose();
+  Future<void> dispose();
 }
 
 class KomodoDefiLocalAuth implements KomodoDefiAuth {
@@ -364,7 +364,7 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
   }
 
   @override
-  void dispose() {
+  Future<void> dispose() async {
     _authService.dispose();
   }
 }

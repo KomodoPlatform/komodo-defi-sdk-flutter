@@ -104,14 +104,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         amount: _isMaxAmount ? null : Decimal.parse(_amountController.text),
         fee: _selectedFee,
         from: _selectedFromAddress?.derivationPath != null
-            ?
-            // WithdrawalSource.hdWalletId(
-            //     accountId: 0,
-            //     addressId: int.parse(
-            //       _selectedFromAddress!.derivationPath!.split('/').last,
-            //     ),
-            //   )
-            WithdrawalSource.hdDerivationPath(
+            ? WithdrawalSource.hdDerivationPath(
                 _selectedFromAddress!.derivationPath!,
               )
             : null,

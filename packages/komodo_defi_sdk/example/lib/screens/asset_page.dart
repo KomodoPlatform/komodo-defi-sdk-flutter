@@ -1,6 +1,7 @@
-import 'package:example/screens/withdrawal_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:kdf_sdk_example/screens/withdrawal_page.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -14,14 +15,14 @@ class AssetPage extends StatefulWidget {
   State<AssetPage> createState() => _AssetPageState();
 }
 
-final _sdk = KomodoDefiSdk();
-
 class _AssetPageState extends State<AssetPage> {
   AssetPubkeys? _pubkeys;
   bool _isLoading = false;
   String? _error;
 
   final List<Transaction> _transactions = [];
+
+  late final _sdk = context.read<KomodoDefiSdk>();
 
   @override
   void initState() {
@@ -348,8 +349,10 @@ class __TransactionsSectionState extends State<_TransactionsSection> {
 
   Future<void> _loadTransactions() async {
     try {
-      final transactionsStream =
-          _sdk.transactions.getTransactionsStreamed(widget.asset);
+      final transactionsStream = context
+          .read<KomodoDefiSdk>()
+          .transactions
+          .getTransactionsStreamed(widget.asset);
 
       await for (final transactions in transactionsStream) {
         _transactions.addAll(transactions);

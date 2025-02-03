@@ -1,36 +1,90 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
-import 'package:komodo_defi_sdk/src/activation/_activation.dart';
+import 'package:flutter/foundation.dart';
+import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:mutex/mutex.dart';
 
-/// Manages the activation lifecycle of assets
-
-/// Manages the activation lifecycle of assets
+/// Manager responsible for handling asset activation lifecycle
 class ActivationManager {
-  ActivationManager(ApiClient client)
-      : _activator = ActivationStrategyFactory.createStrategy(client);
+  ActivationManager(
+    this._client,
+    this._auth,
+    this._assetHistory,
+    this._assetLookup,
+  ) : _activator = SmartAssetActivator(
+          _client,
+          CompositeAssetActivator(
+            _client,
+            [
+              UtxoActivationStrategy(_client),
+              Erc20ActivationStrategy(_client),
+              TendermintActivationStrategy(_client),
+              QtumActivationStrategy(_client),
+              ZhtlcActivationStrategy(_client),
+            ],
+          ),
+        );
 
+  final ApiClient _client;
+  final KomodoDefiLocalAuth _auth;
+  final AssetHistoryStorage _assetHistory;
   final SmartAssetActivator _activator;
-  final Map<AssetId, Completer<void>> _activationCompleters = {};
-  final Set<AssetId> _activeAssetIds = {};
+  final IAssetLookup _assetLookup;
+  final _activationMutex = Mutex();
+  static const _operationTimeout = Duration(seconds: 30);
 
+  final Map<AssetId, Completer<void>> _activationCompleters = {};
+  bool _isDisposed = false;
+
+  /// Helper for mutex-protected operations with timeout
+  Future<T> _protectedOperation<T>(
+    Future<T> Function() operation,
+  ) {
+    return _activationMutex.protect(operation).timeout(
+          _operationTimeout,
+          onTimeout: () => throw TimeoutException(
+            'Operation timed out',
+            _operationTimeout,
+          ),
+        );
+  }
+
+  /// Activate a single asset
   Stream<ActivationProgress> activateAsset(Asset asset) =>
       activateAssets([asset]);
 
+  /// Activate multiple assets
   Stream<ActivationProgress> activateAssets(List<Asset> assets) async* {
+    if (_isDisposed) {
+      throw StateError('ActivationManager has been disposed');
+    }
+
     final groups = _AssetGroup._groupByPrimary(assets);
 
     for (final group in groups) {
-      final primaryCompleter = _activationCompleters.putIfAbsent(
-        group.primary.id,
-        Completer<void>.new,
-      );
+      // Check activation status atomically
+      final activationStatus = await _checkActivationStatus(group);
+      if (activationStatus.isComplete) {
+        yield activationStatus;
+        continue;
+      }
 
-      final parentAsset = group.parentId != null
-          ? KomodoDefiSdk.global.assets.fromId(group.parentId!)
-          : null;
+      // Register activation attempt
+      final primaryCompleter = await _registerActivation(group.primary.id);
+      if (primaryCompleter == null) {
+        debugPrint(
+          'Activation already in progress for ${group.primary.id.name}',
+        );
+        continue;
+      }
+
+      final parentAsset = group.parentId == null
+          ? null
+          : _assetLookup.fromId(group.parentId!) ??
+              (throw StateError('Parent asset ${group.parentId} not found'));
 
       yield ActivationProgress(
         status: 'Starting activation for ${group.primary.id.name}...',
@@ -52,50 +106,166 @@ class ActivationManager {
           yield progress;
 
           if (progress.isComplete) {
-            if (progress.isSuccess) {
-              _activeAssetIds.add(group.primary.id);
-              if (group.children != null) {
-                _activeAssetIds.addAll(group.children!.map((c) => c.id));
-              }
-
-              if (!primaryCompleter.isCompleted) {
-                primaryCompleter.complete();
-              }
-            } else {
-              if (!primaryCompleter.isCompleted) {
-                primaryCompleter.completeError(
-                  progress.errorMessage ?? 'Unknown error',
-                );
-              }
-            }
+            await _handleActivationComplete(group, progress, primaryCompleter);
           }
         }
       } catch (e) {
+        debugPrint('Activation failed: $e');
         if (!primaryCompleter.isCompleted) {
           primaryCompleter.completeError(e);
         }
         rethrow;
       } finally {
-        _activationCompleters.remove(group.primary.id);
+        try {
+          await _cleanupActivation(group.primary.id);
+        } catch (e) {
+          debugPrint('Failed to cleanup activation: $e');
+        }
       }
     }
   }
 
-  // bool isAssetActive(AssetId assetId) => _activeAssetIds.contains(assetId);
+  /// Check if asset and its children are already activated
+  Future<ActivationProgress> _checkActivationStatus(_AssetGroup group) async {
+    try {
+      final enabledCoins =
+          await _client.rpc.generalActivation.getEnabledCoins();
+      final enabledAssetIds = enabledCoins.result
+          .map((coin) => _assetLookup.findAssetsByTicker(coin.ticker))
+          .expand((assets) => assets)
+          .map((asset) => asset.id)
+          .toSet();
 
-  void dispose() {
-    _activationCompleters.clear();
+      final isActive = enabledAssetIds.contains(group.primary.id);
+      final childrenActive = group.children
+              ?.every((child) => enabledAssetIds.contains(child.id)) ??
+          true;
+
+      if (isActive && childrenActive) {
+        return ActivationProgress.alreadyActiveSuccess(
+          assetName: group.primary.id.name,
+          childCount: group.children?.length ?? 0,
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to check activation status: $e');
+    }
+
+    return const ActivationProgress(
+      status: 'Needs activation',
+      progressDetails: ActivationProgressDetails(
+        currentStep: 'init',
+        stepCount: 1,
+      ),
+    );
+  }
+
+  /// Register new activation attempt
+  Future<Completer<void>?> _registerActivation(AssetId assetId) async {
+    return _protectedOperation(() async {
+      if (_activationCompleters.containsKey(assetId)) {
+        return null;
+      }
+      final completer = Completer<void>();
+      _activationCompleters[assetId] = completer;
+      return completer;
+    });
+  }
+
+  /// Handle completion of activation
+  Future<void> _handleActivationComplete(
+    _AssetGroup group,
+    ActivationProgress progress,
+    Completer<void> completer,
+  ) async {
+    if (progress.isSuccess) {
+      final user = await _auth.currentUser;
+      if (user != null) {
+        await _assetHistory.addAssetToWallet(
+          user.walletId,
+          group.primary.id.id,
+        );
+      }
+
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    } else {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          progress.errorMessage ?? 'Unknown error',
+        );
+      }
+    }
+  }
+
+  /// Cleanup after activation attempt
+  Future<void> _cleanupActivation(AssetId assetId) async {
+    await _protectedOperation(() async {
+      _activationCompleters.remove(assetId);
+    });
+  }
+
+  /// Get currently activated assets
+  Future<Set<AssetId>> getActiveAssets() async {
+    if (_isDisposed) {
+      throw StateError('ActivationManager has been disposed');
+    }
+
+    try {
+      final enabledCoins =
+          await _client.rpc.generalActivation.getEnabledCoins();
+      return enabledCoins.result
+          .map((coin) => _assetLookup.findAssetsByTicker(coin.ticker))
+          .expand((assets) => assets)
+          .map((asset) => asset.id)
+          .toSet();
+    } catch (e) {
+      debugPrint('Failed to get active assets: $e');
+      return {};
+    }
+  }
+
+  /// Check if specific asset is active
+  Future<bool> isAssetActive(AssetId assetId) async {
+    if (_isDisposed) {
+      throw StateError('ActivationManager has been disposed');
+    }
+
+    try {
+      final activeAssets = await getActiveAssets();
+      return activeAssets.contains(assetId);
+    } catch (e) {
+      debugPrint('Failed to check if asset is active: $e');
+      return false;
+    }
+  }
+
+  /// Dispose of resources
+  Future<void> dispose() async {
+    if (_isDisposed) return;
+
+    await _protectedOperation(() async {
+      _isDisposed = true;
+      for (final completer in _activationCompleters.values) {
+        if (!completer.isCompleted) {
+          completer.completeError('ActivationManager disposed');
+        }
+      }
+      _activationCompleters.clear();
+    });
   }
 }
 
-/// Helper class for grouping assets by their primary/parent
+/// Internal class for grouping related assets
 class _AssetGroup {
   _AssetGroup({
     required this.primary,
     this.children,
   }) : assert(
-          children == null || children.every((asset) => asset.id == primary.id),
-          'All child assets in a group must have the same parent',
+          children == null ||
+              children.every((asset) => asset.id.parentId == primary.id),
+          'All child assets must have the parent asset as their parent',
         );
 
   final Asset primary;
@@ -130,62 +300,3 @@ class _AssetGroup {
     return groups.values.toList();
   }
 }
-
-// class _AssetGroup {
-//   _AssetGroup(this.assets)
-//       : assert(
-//           assets.every(
-//             (asset) =>
-//                 // Asset is either a non-child asset (parent or standalone)
-//                 !asset.id.isChildAsset ||
-//                 // Or its parent is either another asset in the group or matches other children's parent
-//                 asset.id.parentId == _findCommonParentId(assets),
-//           ),
-//           'All child assets in a group must have the same parent',
-//         );
-
-//   // Helper method to find the common parent ID
-//   static AssetId? _findCommonParentId(List<Asset> assets) {
-//     final childAssets = assets.where((a) => a.id.isChildAsset);
-//     if (childAssets.isEmpty) return null;
-
-//     final parentId = childAssets.first.id.parentId;
-//     // Verify all children have the same parent
-//     assert(childAssets.every((a) => a.id.parentId == parentId));
-//     return parentId;
-//   }
-
-//   final List<Asset> assets;
-
-//   AssetId? get _parentId =>
-//       assets.firstWhereOrNull((asset) => asset.id.isChildAsset)?.id.parentId;
-
-//   AssetId get _primaryId => _parentId ?? assets.first.id;
-
-//   Map<AssetId, Asset> get children => Map.fromEntries(
-//         assets
-//             .where((asset) => asset.id.isChildAsset)
-//             .map((asset) => MapEntry(asset.id, asset)),
-//       );
-
-//   Asset? get parent => _parentId == null
-//       ? null
-//       : assets.firstWhereOrNull((asset) => asset.id == _parentId) ??
-//           KomodoDefiSdk.global.assets.fromId(_parentId!);
-
-//   Asset get primary => parent ?? assets.first;
-
-//   static List<_AssetGroup> _groupByPrimary(List<Asset> assets) {
-//     final groups = <AssetId, List<Asset>>{};
-
-//     for (final asset in assets) {
-//       final primaryId = asset.id.parentId ?? asset.id;
-//       groups.putIfAbsent(primaryId, () => []).add(asset);
-//     }
-
-//     return groups.values.map(_AssetGroup.new).toList();
-//   }
-
-//   @override
-//   String toString() => 'AssetGroup{primary: $primary, children: $children}';
-// }

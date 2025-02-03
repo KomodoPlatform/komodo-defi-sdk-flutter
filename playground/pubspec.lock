@@ -382,28 +382,28 @@ packages:
       path: "../packages/komodo_defi_framework"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "0.2.0"
   komodo_defi_rpc_methods:
     dependency: transitive
     description:
       path: "../packages/komodo_defi_rpc_methods"
       relative: true
     source: path
-    version: "0.1.0+1"
+    version: "0.2.0+0"
   komodo_defi_types:
     dependency: "direct main"
     description:
       path: "../packages/komodo_defi_types"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "0.2.0+0"
   komodo_wallet_build_transformer:
     dependency: transitive
     description:
       path: "../packages/komodo_wallet_build_transformer"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "0.2.0+0"
   leak_tracker:
     dependency: transitive
     description:
@@ -810,7 +810,7 @@ packages:
     source: hosted
     version: "14.3.0"
   web:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: web
       sha256: cd3543bd5798f6ad290ea73d210f423502e71900302dde696f8bff84bf89a1cb

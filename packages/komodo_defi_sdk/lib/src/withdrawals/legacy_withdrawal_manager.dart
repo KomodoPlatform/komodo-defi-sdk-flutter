@@ -129,5 +129,7 @@ class LegacyWithdrawalManager implements WithdrawalManager {
 
   /// No cleanup needed for legacy implementation
   @override
-  void dispose() {}
+  Future<void> dispose() async {
+    // Do any cleanup here
+  }
 }

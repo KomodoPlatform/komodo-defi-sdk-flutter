@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:example/screens/asset_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:kdf_sdk_example/screens/asset_page.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -13,7 +14,11 @@ final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Create SDK instance with config
+  _komodoDefiSdk = KomodoDefiSdk(config: _config);
   await _komodoDefiSdk.initialize();
+
   runApp(
     MaterialApp(
       scaffoldMessengerKey: _scaffoldKey,
@@ -23,11 +28,123 @@ void main() async {
   );
 }
 
-final KomodoDefiSdk _komodoDefiSdk = KomodoDefiSdk(
-  config: const KomodoDefiSdkConfig(
-    defaultAssets: {'KMD', 'BTC', 'ETH', 'DOC', 'MARTY'},
-  ),
-);
+// Default SDK configuration
+const KomodoDefiSdkConfig _config = KomodoDefiSdkConfig();
+
+// Reference to SDK instance
+late final KomodoDefiSdk _komodoDefiSdk;
+
+/// Button that shows "Remote Connection" and then handles the full process of
+/// setting up a remote connection (including UI modal)
+class SetupRemoteConnection extends StatefulWidget {
+  const SetupRemoteConnection({required this.sdk, super.key});
+
+  final KomodoDefiSdk sdk;
+
+  @override
+  _SetupRemoteConnectionState createState() => _SetupRemoteConnectionState();
+}
+
+class _SetupRemoteConnectionState extends State<SetupRemoteConnection> {
+  final TextEditingController _hostController = TextEditingController();
+  final TextEditingController _portController = TextEditingController();
+  final TextEditingController _rpcPasswordController = TextEditingController();
+  bool _isHttps = false;
+
+  bool _isConnecting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: () => _showRemoteConnectionDialog(context),
+          child: const Text('Setup Remote Connection'),
+        ),
+        if (_isConnecting) const CircularProgressIndicator(),
+      ],
+    );
+  }
+
+  Future<void> _showRemoteConnectionDialog(BuildContext context) async {
+    final didProvideConnection = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Setup Remote Connection'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _hostController,
+                decoration: const InputDecoration(labelText: 'Host'),
+              ),
+              TextField(
+                controller: _portController,
+                decoration: const InputDecoration(labelText: 'Port'),
+              ),
+              TextField(
+                controller: _rpcPasswordController,
+                decoration: const InputDecoration(labelText: 'RPC Password'),
+              ),
+              // List item checkbox
+              CheckboxListTile(
+                title: const Text('Use HTTPS'),
+                value: _isHttps,
+                onChanged: (value) {
+                  setState(() {
+                    _isHttps = value ?? false;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => _handleConnection(context),
+              child: const Text('Connect'),
+            ),
+          ],
+        );
+      },
+    );
+
+    _remoteHostConfig = !(didProvideConnection ?? false)
+        ? null
+        : RemoteConfig(
+            ipAddress: _hostController.text,
+            https: true,
+            port: int.tryParse(_portController.text) ?? 0,
+            rpcPassword: _rpcPasswordController.text,
+          );
+  }
+
+  Future<void> _handleConnection(BuildContext context) async {
+    setState(() {
+      _isConnecting = true;
+    });
+
+    try {
+      //TODO!
+    } catch (e) {
+      _scaffoldKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text('Error connecting to remote: $e'),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isConnecting = false;
+      });
+    }
+  }
+}
+
+RemoteConfig? _remoteHostConfig;
 
 class KomodoApp extends StatefulWidget {
   const KomodoApp({super.key});
@@ -107,7 +224,8 @@ class _KomodoAppState extends State<KomodoApp> {
     final userOrRefresh = user ?? await _komodoDefiSdk.auth.currentUser;
     if (userOrRefresh == null && _currentUser != null) {
       // Redirect to the main page and clear navigation stack
-      _navigatorKey.currentState?.pushNamedAndRemoveUntil('/', (_) => false);
+      await _navigatorKey.currentState
+          ?.pushNamedAndRemoveUntil('/', (_) => false);
       _mnemonic = null;
     }
     setState(() {
@@ -366,26 +484,12 @@ class _KomodoAppState extends State<KomodoApp> {
                     ),
                     const SizedBox(height: 16),
                   ],
-
-                  // ListView(
-                  //   shrinkWrap: true,
-                  //   children: _komodoDefiSdk.assets.all
-                  //       .map((asset) => ListTile(
-                  //             title: Text(asset.id.symbol),
-                  //             subtitle: Text(asset.id.name),
-                  //           ))
-                  //       .toList(),
-                  // ),
                 ],
               ),
 
             // SizedBox(height: 16),
 
             if (_currentUser != null) ...[
-              // Text('Active Assets (${activeAssets.length}):'),
-              // SizedBox(height: 4),
-              // if (activeAssets.isEmpty) const Text('No active assets'),
-              // Text('${activeAssets.map((a) => a.id.id).join(', ')}'),
               const SizedBox(height: 16),
 
               // Show list of all coins
@@ -439,7 +543,10 @@ class _KomodoAppState extends State<KomodoApp> {
     // _navigatorKey.currentState? .pushNamed('/asset', arguments: asset);
     _navigatorKey.currentState?.push(
       MaterialPageRoute<void>(
-        builder: (context) => AssetPage(asset),
+        builder: (context) => RepositoryProvider.value(
+          value: _komodoDefiSdk,
+          child: AssetPage(asset),
+        ),
       ),
     );
   }
@@ -812,10 +919,9 @@ class _AssetItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // final isCompatible = asset.isCompatibleWith(authOptions);
-    const isCompatible = true;
-    // final disabledReason = asset.getDisabledReason(authOptions);
-    const disabledReason = null as String?;
+    final disabledReasons = asset.getUnavailableReasons(authOptions);
+    final isCompatible = disabledReasons == null;
+    final disabledReason = disabledReasons?.map((r) => r.message).join(', ');
 
     return ListTile(
       key: Key(asset.id.id),

@@ -30,8 +30,17 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  bip39: ^1.0.6
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
   flutter:
     sdk: flutter
+  flutter_inappwebview: ^6.1.4
+  flutter_json_view: ^1.1.2
+  flutter_secure_storage: ^9.2.4
+  json_editor_flutter: ^1.4.2
 
   komodo_defi_framework:
     # When depending on this package from a real application you should use:
@@ -41,36 +50,27 @@ dependencies:
     # the parent directory to use the current plugin's version.
     path: ../packages/komodo_defi_framework
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-  bip39: ^1.0.6
-  json_editor_flutter: ^1.4.2
-  flutter_secure_storage: ^9.2.4
-  shared_preferences: ^2.3.1
-  postman_collection: ^0.0.9
-  flutter_json_view: ^1.1.2
-  url_launcher: ^6.3.0
-  shelf: ^1.4.1
-  flutter_inappwebview: ^6.1.4
-  shelf_proxy: ^1.0.4
-
   komodo_defi_types:
     path: ../packages/komodo_defi_types
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
+  postman_collection: ^0.0.9
+  shared_preferences: ^2.3.1
+  shelf: ^1.4.1
+  shelf_proxy: ^1.0.4
+  url_launcher: ^6.3.0
+  web: ^1.1.0
 
+dev_dependencies:
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
 
   # For information on the generic Dart part of this file, see the
   # following page: https://dart.dev/tools/pub/pubspec
-
   # The following section is specific to Flutter packages.
   flutter_web_plugins:
     sdk: flutter
@@ -85,13 +85,10 @@ flutter:
   assets:
     - assets/komodo_defi.postman_collection.json
     - web/
-
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
-
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
-
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a
   # "family" key with the font family name, and a "fonts" key with a

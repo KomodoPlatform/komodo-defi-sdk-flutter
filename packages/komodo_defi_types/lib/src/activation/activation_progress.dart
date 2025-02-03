@@ -27,6 +27,27 @@ class ActivationProgress extends Equatable {
     );
   }
 
+  factory ActivationProgress.alreadyActiveSuccess({
+    required String assetName,
+    int childCount = 0,
+  }) {
+    return ActivationProgress(
+      status: 'Activation completed successfully',
+      progressPercentage: 100,
+      isComplete: true,
+      progressDetails: ActivationProgressDetails(
+        currentStep: 'complete',
+        stepCount: 1,
+        additionalInfo: {
+          'primaryAsset': assetName,
+          'alreadyActive': true,
+          'childCount': childCount,
+        },
+        completedAt: DateTime.now(),
+      ),
+    );
+  }
+
   /// Factory for error states
   factory ActivationProgress.error({
     required String message,

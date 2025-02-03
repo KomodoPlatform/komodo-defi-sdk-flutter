@@ -2,7 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
+import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -10,6 +10,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// Handles pagination client-side since the API currently doesn't support it.
 class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
   EtherscanTransactionStrategy({
+    required this.pubkeyManager,
     http.Client? httpClient,
     String? baseUrl,
   })  : _client = httpClient ?? http.Client(),
@@ -17,6 +18,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
   final http.Client _client;
   final EtherscanProtocolHelper _protocolHelper;
+
+  final PubkeyManager pubkeyManager;
 
   @override
   Set<Type> get supportedPaginationModes => {
@@ -114,7 +117,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
   }
 
   Future<List<PubkeyInfo>> _getAssetPubkeys(Asset asset) async {
-    return (await KomodoDefiSdk.global.pubkeys.getPubkeys(asset)).keys;
+    return (await pubkeyManager.getPubkeys(asset)).keys;
   }
 
   Future<JsonMap> _executeRequest(Uri uri) async {

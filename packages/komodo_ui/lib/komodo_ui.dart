@@ -13,6 +13,8 @@ export 'package:flutter/material.dart'
     show StatefulWidget, StatelessWidget, Widget;
 
 export 'src/composite/index.dart';
+export 'src/constants/constants.dart';
+export 'src/constants/index.dart';
 export 'src/core/index.dart';
 export 'src/core/inputs/address_select_input.dart';
 export 'src/core/inputs/divided_button.dart';
@@ -33,3 +35,4 @@ export 'src/utils/formatters/address_formatting.dart';
 export 'src/utils/formatters/asset_formatting.dart';
 export 'src/utils/formatters/fee_info_formatters.dart';
 export 'src/utils/formatters/transaction_formatting.dart';
+export 'src/utils/index.dart';
