@@ -2,6 +2,8 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+/// Activation strategy for custom ERC20 tokens. This strategy is used to
+/// activate tokens that are not part of the live coins configuration.
 class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
   const CustomErc20ActivationStrategy(super.client);
 
@@ -23,6 +25,9 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
         CoinSubClass.rskSmartBitcoin,
         CoinSubClass.arbitrum,
       };
+
+  @override
+  bool get supportsCustomTokenActivation => true;
 
   @override
   bool get supportsBatchActivation => true;
