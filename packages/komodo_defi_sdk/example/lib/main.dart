@@ -20,10 +20,15 @@ void main() async {
   await _komodoDefiSdk.initialize();
 
   runApp(
-    MaterialApp(
-      scaffoldMessengerKey: _scaffoldKey,
-      navigatorKey: _navigatorKey,
-      home: const Scaffold(body: KomodoApp()),
+    MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<KomodoDefiSdk>.value(value: _komodoDefiSdk),
+      ],
+      child: MaterialApp(
+        scaffoldMessengerKey: _scaffoldKey,
+        navigatorKey: _navigatorKey,
+        home: const Scaffold(body: KomodoApp()),
+      ),
     ),
   );
 }
@@ -543,10 +548,7 @@ class _KomodoAppState extends State<KomodoApp> {
     // _navigatorKey.currentState? .pushNamed('/asset', arguments: asset);
     _navigatorKey.currentState?.push(
       MaterialPageRoute<void>(
-        builder: (context) => RepositoryProvider.value(
-          value: _komodoDefiSdk,
-          child: AssetPage(asset),
-        ),
+        builder: (context) => AssetPage(asset),
       ),
     );
   }
