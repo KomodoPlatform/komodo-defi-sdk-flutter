@@ -1,6 +1,6 @@
 {
     "api": {
-        "api_commit_hash": "bb3fe5552ba8548dbaced7a735a01967f91d4340",
+        "api_commit_hash": "95b8f034efba11f4492d4a509f9439cbe83aadb5",
         "branch": "fix-init-withdraw-utxo",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
@@ -12,14 +12,14 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "e8e9c49d991ad00ed0137388e89478254a166c0046806c88afb9d193647bbf5a"
+                    "c2c4f0989e8e0c83e07a50583c78b4cc14eb31656ac487292b482e01d37fde39"
                 ],
                 "path": "web/kdf/bin"
             },
             "macos": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "320bb452f6953d7a40c1c05440c99843c715254d3b7ec2e4eab819bff667de94"
+                    "a0b53f9fdf8ca1572c62b5846a1123ec6b87522046199f8a36a99e90a6181c7d"
                 ],
                 "path": "macos/bin"
             }
