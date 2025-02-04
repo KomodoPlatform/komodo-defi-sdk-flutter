@@ -1,4 +1,3 @@
-import 'package:komodo_defi_sdk/src/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Core extension providing asset validation and compatibility checks
@@ -31,21 +30,21 @@ extension AssetValidation on Asset {
     }
   }
 
-  /// Checks if the asset is compatible with the current wallet mode.
-  ///
-  /// This performs a full compatibility check including:
-  /// - Basic validity
-  /// - HD wallet compatibility
-  /// - Protocol requirements
-  Future<bool> get isCompatible async {
-    if (!isValid) return false;
+  // /// Checks if the asset is compatible with the current wallet mode.
+  // ///
+  // /// This performs a full compatibility check including:
+  // /// - Basic validity
+  // /// - HD wallet compatibility
+  // /// - Protocol requirements
+  // Future<bool> get isCompatible async {
+  //   if (!isValid) return false;
 
-    final authOptions =
-        await KomodoDefiSdk.global.auth.currentUsersAuthOptions();
-    if (authOptions == null) return false;
+  //   final authOptions =
+  //       await KomodoDefiSdk.global.auth.currentUsersAuthOptions();
+  //   if (authOptions == null) return false;
 
-    return _checkWalletCompatibility(authOptions);
-  }
+  //   return _checkWalletCompatibility(authOptions);
+  // }
 
   /// Check compatibility with specific wallet options.
   /// Useful for pre-checking compatibility before wallet mode changes.
@@ -92,11 +91,9 @@ extension AssetValidation on Asset {
   /// session.
   ///
   /// Returns null if the asset is available.
-  Future<Set<AssetUnavailableErrorReason>?> getUnavailableReasons([
-    KomodoDefiSdk? sdk,
-  ]) async {
-    sdk ??= KomodoDefiSdk.global;
-
+  Set<AssetUnavailableErrorReason>? getUnavailableReasons(
+    AuthOptions authOptions,
+  ) {
     final status = <AssetUnavailableErrorReason>{};
 
     if (!isValid) {
@@ -107,22 +104,20 @@ extension AssetValidation on Asset {
       status.add(AssetUnavailableErrorReason.missingServers);
     }
 
-    final user = await sdk.auth.currentUser;
-    if (user != null) {
-      final isHdWallet = user.isHd;
+    final isHdWallet =
+        authOptions.derivationMethod == DerivationMethod.hdWallet;
 
-      if (protocol.requiresHdWallet && !isHdWallet) {
-        status.add(AssetUnavailableErrorReason.notSupportedInHdWallet);
-      }
-
-      if (isHdWallet &&
-          protocol.supportsMultipleAddresses &&
-          derivationPath == null) {
-        status.add(AssetUnavailableErrorReason.missingDerivationPath);
-      }
+    if (protocol.requiresHdWallet && !isHdWallet) {
+      status.add(AssetUnavailableErrorReason.notSupportedInHdWallet);
     }
 
-    return status;
+    if (isHdWallet &&
+        protocol.supportsMultipleAddresses &&
+        derivationPath == null) {
+      status.add(AssetUnavailableErrorReason.missingDerivationPath);
+    }
+
+    return status.isEmpty ? null : status;
   }
 
   /// Get human-readable reason why an asset might be disabled
@@ -167,4 +162,22 @@ enum AssetUnavailableErrorReason {
   notSupportedInHdWallet,
 
   invalidConfiguration;
+}
+
+// TODO! Localise
+extension AssetUnavailableErrorReasonExtension on AssetUnavailableErrorReason {
+  String get message {
+    switch (this) {
+      case AssetUnavailableErrorReason.missingDerivationPath:
+        return 'Missing derivation path required for multiple addresses';
+      case AssetUnavailableErrorReason.missingServers:
+        return 'No servers configured';
+      case AssetUnavailableErrorReason.notSupportedInIguana:
+        return 'Not supported in Iguana wallet';
+      case AssetUnavailableErrorReason.notSupportedInHdWallet:
+        return 'Requires HD wallet mode';
+      case AssetUnavailableErrorReason.invalidConfiguration:
+        return 'Invalid configuration';
+    }
+  }
 }

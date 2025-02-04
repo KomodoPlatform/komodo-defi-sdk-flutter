@@ -196,13 +196,15 @@ class WithdrawParameters extends Equatable {
 typedef WithdrawalPreview = WithdrawResult;
 
 enum Bip44Chain {
-  external._(0, 'External'),
-  internal._(1, 'Internal');
+  external._('External', 'External', 0),
+  internal._('Internal', 'Internal', 1);
 
-  const Bip44Chain._(this.value, this.name);
+  const Bip44Chain._(this.value, this.name, this.id);
 
-  final int value;
+  final String value;
   final String name;
+
+  final int id;
 }
 
 /// Specifies the source of funds for a withdrawal

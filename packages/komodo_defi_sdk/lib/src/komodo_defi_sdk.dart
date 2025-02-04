@@ -1,111 +1,209 @@
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/addresses/address_operations.dart';
-import 'package:komodo_defi_sdk/src/assets/asset_manager.dart';
+import 'package:komodo_defi_sdk/src/assets/custom_asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
-import 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
+import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
-import 'package:komodo_defi_sdk/src/transaction_history/transaction_history_manager.dart';
-import 'package:komodo_defi_sdk/src/withdrawals/legacy_withdrawal_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-KomodoDefiSdk? _instance;
-
-// TODO! Ensure the lazy initialization of the SDK instance works reliably
-// for all all public properties, or otherwise make initialization required.
-/// A high-level opinionated library that provides a simple way to build
-/// cross-platform Komodo Defi Framework applications (primarily focused on
-/// wallets).
+/// A high-level SDK that provides a simple way to build cross-platform applications
+/// using the Komodo DeFi Framework, with a primary focus on wallet functionality.
+///
+/// The SDK provides an intuitive abstraction layer over the underlying Komodo DeFi
+/// Framework API, handling binary/media file fetching, authentication, asset management,
+/// and other core wallet functionality.
+///
+/// ## Getting Started
+///
+/// Create and initialize a new SDK instance:
+///
+/// ```dart
+/// final sdk = KomodoDefiSdk();
+/// await sdk.initialize();
+/// ```
+///
+/// Or with custom configuration:
+///
+/// ```dart
+/// final sdk = KomodoDefiSdk(
+///   host: RemoteConfig(
+///     userpass: 'your-password',
+///     ipAddress: 'https://your-server.com',
+///     port: 7783
+///   ),
+///   config: KomodoDefiSdkConfig(
+///     defaultAssets: {'KMD', 'BTC'},
+///     preActivateDefaultAssets: true
+///   )
+/// );
+/// await sdk.initialize();
+/// ```
+///
+/// ## Core Features
+///
+/// The SDK provides access to several core managers:
+///
+/// * [auth] - Handles user authentication and wallet management
+/// * [assets] - Manages coin/token activation and configuration
+/// * [pubkeys] - Handles address generation and management
+/// * [transactions] - Manages transaction history and monitoring
+/// * [withdrawals] - Handles asset withdrawal operations
+/// * [addresses] - Provides address validation and format conversion
+///
+/// ## Usage Example
+///
+/// Here's a basic example showing how to authenticate and activate an asset:
+///
+/// ```dart
+/// // Initialize SDK
+/// final sdk = KomodoDefiSdk();
+/// await sdk.initialize();
+///
+/// // Sign in user
+/// await sdk.auth.signIn(
+///   password: 'user-password',
+///   walletId: WalletId('my-wallet')
+/// );
+///
+/// // Activate Bitcoin
+/// final btc = sdk.assets.findAssetsByTicker('BTC').first;
+/// await sdk.assets.activateAsset(btc).last;
+///
+/// // Get addresses
+/// final addresses = await sdk.pubkeys.getPubkeys(btc);
+/// print('BTC Addresses: ${addresses.keys.map((k) => k.address).join(", ")}');
+/// ```
+///
+/// ## Cleanup
+///
+/// Be sure to dispose of the SDK when it's no longer needed:
+///
+/// ```dart
+/// await sdk.dispose();
+/// ```
+///
+/// This will clean up all resources and stop any background operations.
 class KomodoDefiSdk with SecureRpcPasswordMixin {
-  /// Creates a new instance of the [KomodoDefiSdk] class.
+  /// Creates a new instance of [KomodoDefiSdk] with optional host configuration
+  /// and SDK configuration.
   ///
-  /// NB: This is a singleton class. Use the [KomodoDefiSdk.newInstance]
-  /// constructor to create a new instance.
+  /// If [host] is not provided, defaults to local configuration.
+  /// If [config] is not provided, uses default configuration.
   ///
-  /// This constructor is synchronous, but internal initialization is handled
-  /// asynchronously when needed.
-  ///
-  /// Defaults to a local instance unless [host] is provided.
+  /// Example:
+  /// ```dart
+  /// final sdk = KomodoDefiSdk(
+  ///   host: RemoteConfig(
+  ///     userpass: 'password',
+  ///     ipAddress: 'https://example.com',
+  ///     port: 7783
+  ///   )
+  /// );
+  /// ```
   factory KomodoDefiSdk({
     IKdfHostConfig? host,
     KomodoDefiSdkConfig? config,
   }) {
-    if (_instance != null && host != null && _instance!._hostConfig != host) {
-      throw StateError(
-        'KomodoDefiSdk is a singleton and has already been initialized.',
-      );
-    }
-    return _instance ??= KomodoDefiSdk._(
+    return KomodoDefiSdk._(
       host,
       config ?? const KomodoDefiSdkConfig(),
+      null,
     );
   }
 
-  // KomodoDefiSdk get global => _instance!;
-
-  /// Creates a new instance of the [KomodoDefiSdk] class.
-  factory KomodoDefiSdk.newInstance({
-    IKdfHostConfig? host,
-    KomodoDefiSdkConfig? config,
-  }) {
-    return KomodoDefiSdk._(host, config ?? const KomodoDefiSdkConfig());
-  }
-
-  /// Creates a new instance of the [KomodoDefiSdk] class from an existing
-  /// [KomodoDefiFramework] instance.
+  /// Creates a new SDK instance from an existing KDF framework instance.
   ///
-  /// This may be useful when wanting to create a new SDK instance from a
-  /// pre-existing framework instance created in a different package/project.
+  /// This is useful when you already have a configured framework instance
+  /// and want to use it with the SDK.
+  ///
+  /// Example:
+  /// ```dart
+  /// final framework = KomodoDefiFramework.create(...);
+  /// final sdk = KomodoDefiSdk.fromFramework(framework);
+  /// ```
   factory KomodoDefiSdk.fromFramework(
     KomodoDefiFramework framework, {
     KomodoDefiSdkConfig? config,
   }) {
-    return _instance ??= KomodoDefiSdk._(
+    return KomodoDefiSdk._(
       null,
       config ?? const KomodoDefiSdkConfig(),
       framework,
     );
   }
 
-  KomodoDefiSdk._(this._hostConfig, this._config, [this._kdfFramework]);
+  KomodoDefiSdk._(
+    this._hostConfig,
+    this._config,
+    this._kdfFramework,
+  );
 
   final IKdfHostConfig? _hostConfig;
   final KomodoDefiSdkConfig _config;
-
-  /// The global instance of the [KomodoDefiSdk].
-  ///
-  /// Avoid using this unless the SDK instance is not available in the context
-  /// from which it is being accessed. This allows us to keep the flexibility
-  /// for future expansions to support multiple SDK instances at once. However,
-  /// there are no plans to support this at the moment, but it will reduce the
-  /// work needed to support it in the future.
-  static KomodoDefiSdk get global => _instance!;
-
   KomodoDefiFramework? _kdfFramework;
 
-  // ignore: unused_field
+  // Private nullable fields
+  ApiClient? _apiClient;
   LogCallback? _logCallback;
+  KomodoDefiLocalAuth? _auth;
+  AssetManager? _assets;
+  PubkeyManager? _pubkeys;
+  AddressOperations? _addresses;
+  MnemonicValidator? _mnemonicValidator;
+  TransactionHistoryManager? _transactionHistory;
+  WithdrawalManager? _withdrawals;
 
-  late KomodoDefiLocalAuth? _auth;
   bool _isInitialized = false;
   Future<void>? _initializationFuture;
 
-  late final ApiClient? _apiClient;
-  ApiClient get client {
-    if (!_isInitialized) {
-      throw StateError(
-        'KomodoDefiSdk is not initialized. Call initialize() or await ensureInitialized() first.',
-      );
-    }
-    return _apiClient!;
-  }
+  /// The API client for making direct RPC calls.
+  ///
+  /// While the SDK provides high-level abstractions for most operations,
+  /// the client can be used for direct API access when needed.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  ApiClient get client => _assertSdkInitialized(_apiClient);
 
-  KomodoDefiLocalAuth get auth {
-    return _assertSdkInitialized(_auth);
-  }
+  /// The authentication manager instance.
+  ///
+  /// Handles user authentication, wallet management, and session state.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  KomodoDefiLocalAuth get auth => _assertSdkInitialized(_auth);
+
+  /// The pubkey manager instance.
+  ///
+  /// Handles generation and management of addresses for assets.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  PubkeyManager get pubkeys => _assertSdkInitialized(_pubkeys);
+
+  /// The address operations instance.
+  ///
+  /// Provides functionality for address validation and format conversion.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  AddressOperations get addresses => _assertSdkInitialized(_addresses);
+
+  /// The asset manager instance.
+  ///
+  /// Handles coin/token activation and configuration.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  AssetManager get assets => _assertSdkInitialized(_assets);
+
+  /// The transaction history manager instance.
+  ///
+  /// Manages transaction history and monitoring.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  TransactionHistoryManager get transactions =>
+      _assertSdkInitialized(_transactionHistory);
 
   T _assertSdkInitialized<T>(T? val) {
     if (!_isInitialized || val == null) {
@@ -118,29 +216,56 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     return val;
   }
 
-  /// Explicitly initialize the [KomodoDefiSdk] instance.
-  /// This method can be called to pre-initialize the SDK if desired.
+  /// The mnemonic validator instance.
+  ///
+  /// Provides functionality for validating BIP39 mnemonics.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  MnemonicValidator get mnemonicValidator =>
+      _assertSdkInitialized(_mnemonicValidator);
+
+  /// The withdrawal manager instance.
+  ///
+  /// Handles asset withdrawal operations.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  WithdrawalManager get withdrawals => _assertSdkInitialized(_withdrawals);
+
+  /// Initializes the SDK instance.
+  ///
+  /// This must be called before using any SDK functionality. The initialization
+  /// process sets up all required managers and establishes necessary connections.
+  ///
+  /// If the SDK is already initialized, this method returns immediately.
+  ///
+  /// Example:
+  /// ```dart
+  /// final sdk = KomodoDefiSdk();
+  /// await sdk.initialize();
+  /// ```
   Future<void> initialize() async {
     if (_isInitialized) return;
-    if (_initializationFuture != null) {
-      await _initializationFuture;
-      return;
-    }
 
-    _initializationFuture = _initialize();
+    _initializationFuture ??= _initialize();
     await _initializationFuture;
   }
 
-  /// Ensures that the SDK is initialized before performing any operation.
-  /// This method is called internally when needed, but can also be called
-  /// explicitly if pre-initialization is desired.
+  /// Ensures the SDK is initialized before performing any operation.
+  ///
+  /// This is a convenience method that can be used instead of [initialize]
+  /// when you're not sure if the SDK has already been initialized.
+  ///
+  /// Example:
+  /// ```dart
+  /// await sdk.ensureInitialized();
+  /// // Now safe to use SDK functionality
+  /// ```
   Future<void> ensureInitialized() async {
     if (!_isInitialized) {
       await initialize();
     }
   }
 
-  // TODO: Bootstrapper system with concurrency similar to KW
   Future<void> _initialize() async {
     final rpcPassword = await ensureRpcPassword();
 
@@ -150,7 +275,6 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
           rpcPassword: rpcPassword,
         );
 
-    // Ensure _kdfFramework is initialized
     _kdfFramework ??= KomodoDefiFramework.create(
       hostConfig: hostConfig,
       externalLogger: kDebugMode ? print : null,
@@ -158,57 +282,113 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
     _apiClient = _kdfFramework!.client;
 
+    // Initialize auth first as other managers depend on it
     _auth = KomodoDefiLocalAuth(
       kdf: _kdfFramework!,
       hostConfig: hostConfig,
     );
+    await _auth!.ensureInitialized();
 
-    _assets = AssetManager(_apiClient!, _auth!, _config);
+    // Initialize asset history storage for sharing between managers
+    final assetHistory = AssetHistoryStorage();
+    final customAssetHistory = CustomAssetHistoryStorage();
 
+    // Initialize asset manager first as it implements IAssetLookup
+    _assets = AssetManager(
+      _apiClient!,
+      _auth!,
+      _config,
+      assetHistory,
+      customAssetHistory,
+    );
+    await _assets!.init();
+
+    // Initialize activation manager with asset lookup capabilities
+    final activationManager = ActivationManager(
+      _apiClient!,
+      _auth!,
+      assetHistory,
+      customAssetHistory,
+      _assets!,
+    );
+
+    // Set activation manager in AssetManager to complete circular dependency
+    _assets!.setActivationManager(activationManager);
+
+    // Initialize remaining managers with proper dependencies
+    _pubkeys = PubkeyManager(_apiClient!, _auth!, _assets!);
+    _addresses = AddressOperations(_apiClient!);
     _mnemonicValidator = MnemonicValidator();
+    await _mnemonicValidator!.init();
 
-    await Future.wait<void>([
-      _auth!.ensureInitialized(),
-      _assets!.init(),
-      _mnemonicValidator!.init(),
-      Future(
-        () async => _transactionHistory =
-            await TransactionHistoryManager.create(_apiClient, _auth!),
-      ),
-    ]);
+    // Initialize managers that work with transactions
+    _transactionHistory = TransactionHistoryManager(
+      _apiClient!,
+      _auth!,
+      _assets!,
+      pubkeyManager: _pubkeys!,
+    );
+
+    // Initialize withdrawal manager last as it depends on asset activation
+    _withdrawals = WithdrawalManager(
+      _apiClient!,
+      _auth!,
+      _assets!,
+    );
 
     _isInitialized = true;
   }
 
-  // TODO: Refactor/move to auth manager
+  /// Gets the current user's authentication options.
+  ///
+  /// Returns null if no user is currently authenticated.
+  ///
+  /// Example:
+  /// ```dart
+  /// final options = await sdk.currentUserAuthOptions();
+  /// if (options != null) {
+  ///   print('Current derivation method: ${options.derivationMethod}');
+  /// }
+  /// ```
   Future<AuthOptions?> currentUserAuthOptions() async {
+    _assertSdkInitialized(auth);
     final user = await auth.currentUser;
     return user == null
         ? null
         : KomodoDefiLocalAuth.storedAuthOptions(user.walletId.name);
   }
 
-  late final AssetManager? _assets;
-  AssetManager get assets => _assertSdkInitialized(_assets);
+  /// Disposes of this SDK instance and cleans up all resources.
+  ///
+  /// This should be called when the SDK is no longer needed to ensure
+  /// proper cleanup of resources and background operations.
+  ///
+  /// Example:
+  /// ```dart
+  /// await sdk.dispose();
+  /// ```
+  Future<void> dispose() async {
+    if (!_isInitialized) return;
+    _isInitialized = false;
 
-  TransactionHistoryManager get transactions =>
-      _assertSdkInitialized(_transactionHistory);
-  TransactionHistoryManager? _transactionHistory;
+    // Dispose managers in reverse order of initialization
+    await _withdrawals?.dispose();
+    await _transactionHistory?.dispose();
+    await _pubkeys?.dispose();
+    await _assets?.dispose();
+    await _auth?.dispose();
 
-  late final PubkeyManager pubkeys = _assertSdkInitialized(
-    PubkeyManager(_apiClient!),
-  );
+    // Clear references to managers
+    _withdrawals = null;
+    _transactionHistory = null;
+    _pubkeys = null;
+    _assets = null;
+    _auth = null;
 
-  late final AddressOperations _addresses = AddressOperations(_apiClient!);
-  AddressOperations get addresses => _assertSdkInitialized(_addresses);
-
-  late final MnemonicValidator? _mnemonicValidator;
-  MnemonicValidator get mnemonicValidator =>
-      _assertSdkInitialized(_mnemonicValidator);
-
-  WithdrawalManager get withdrawals => _assertSdkInitialized(_withdrawals);
-
-  late final LegacyWithdrawalManager
-      _withdrawals = /*WithdrawalManager(_apiClient!);*/
-      LegacyWithdrawalManager(_apiClient!);
+    // Clean up framework
+    if (_kdfFramework != null) {
+      await _kdfFramework!.dispose();
+      _kdfFramework = null;
+    }
+  }
 }

@@ -11,6 +11,10 @@ extension BaseRequestApiClientExtension on ApiClient {
   ) async {
     final response = await executeRpc(request.toJson());
 
+    if (GeneralErrorResponse.isErrorResponse(response)) {
+      throw GeneralErrorResponse.parse(response);
+    }
+
     return request.parseResponse(jsonEncode(response));
   }
 }

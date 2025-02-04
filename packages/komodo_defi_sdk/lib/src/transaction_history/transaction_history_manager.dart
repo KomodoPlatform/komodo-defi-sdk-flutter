@@ -2,9 +2,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
-import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
-import 'package:komodo_defi_sdk/src/transaction_history/transaction_history_strategies.dart';
-import 'package:komodo_defi_sdk/src/transaction_history/transaction_storage.dart';
+import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Core interface for transaction history manager
@@ -31,24 +30,20 @@ abstract interface class _TransactionHistoryManager {
 }
 
 class TransactionHistoryManager implements _TransactionHistoryManager {
-  TransactionHistoryManager._(
+  TransactionHistoryManager(
     this._client,
     this._auth,
-    this._storage,
-  ) {
-    _initializeStreamController();
-  }
-  static Future<TransactionHistoryManager> create(
-    ApiClient client,
-    KomodoDefiLocalAuth auth,
-  ) async {
-    final storage = await InMemoryTransactionStorage.create();
-    return TransactionHistoryManager._(client, auth, storage);
-  }
+    this._assetManager, {
+    required PubkeyManager pubkeyManager,
+    TransactionStorage? storage,
+  })  : _storage = storage ?? TransactionStorage.defaultForPlatform(),
+        _strategyFactory = TransactionHistoryStrategyFactory(pubkeyManager);
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
+  final AssetManager _assetManager;
   final TransactionStorage _storage;
+
   final _streamControllers = <AssetId, StreamController<Transaction>>{};
   final _pollingTimers = <AssetId, Timer>{};
   final _syncInProgress = <AssetId>{};
@@ -61,6 +56,10 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   bool _isDisposed = false;
   StreamSubscription<KdfUser?>? _authSubscription;
 
+  final TransactionHistoryStrategyFactory _strategyFactory;
+
+  // TODO! Determine if this can be removed, or if it should be replaced added
+  // to the constructor.
   void _initializeStreamController() {
     _authSubscription = _auth.authStateChanges.listen((user) {
       if (user == null) {
@@ -87,8 +86,6 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   }
 
   @override
-
-  ///!NB! Prefer stream-based transaction fetching even for once-off fetches.
   Future<TransactionPage> getTransactionHistory(
     Asset asset, {
     TransactionPagination? pagination,
@@ -123,7 +120,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
       await _ensureAssetActivated(asset);
 
       // Get appropriate strategy for the asset
-      final strategy = TransactionHistoryStrategyFactory.forAsset(asset);
+      final strategy = _strategyFactory.forAsset(asset);
 
       // Apply rate limiting
       await _rateLimiter.throttle();
@@ -155,9 +152,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
         // Propagate storage-specific errors
         rethrow;
       }
-      throw Exception(
-        'Failed to fetch transaction history: ${e is Error ? e : e.toString()}',
-      );
+      throw Exception('Failed to fetch transaction history: $e');
     }
   }
 
@@ -168,7 +163,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     }
 
     await _ensureAssetActivated(asset);
-    final strategy = TransactionHistoryStrategyFactory.forAsset(asset);
+    final strategy = _strategyFactory.forAsset(asset);
 
     // First try to get any cached transactions
     final localPage = await _storage.getTransactions(
@@ -201,7 +196,6 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
                 ),
         );
 
-        // Reset retry count on successful fetch
         retryCount = 0;
 
         if (response.transactions.isEmpty) {
@@ -216,25 +210,18 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
         await _batchStoreTransactions(transactions);
         yield transactions;
 
-        // Update fromId for next batch
         fromId = response.fromId;
 
-        // If we got less than requested or no fromId, we're done
         if (response.transactions.length < _maxBatchSize || fromId == null) {
           hasMore = false;
         } else {
-          // Only throttle between successful batches
-          // Use a shorter delay for streaming compared to regular requests
           await Future<void>.delayed(const Duration(milliseconds: 200));
         }
-      } catch (e, stack) {
-        print('Error fetching transactions: $e\n$stack');
+      } catch (e) {
         retryCount++;
-
         if (retryCount >= maxRetries) {
           hasMore = false;
         } else {
-          // Exponential backoff for retries
           await Future<void>.delayed(
             Duration(milliseconds: 500 * (1 << retryCount)),
           );
@@ -249,22 +236,17 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
       throw StateError('TransactionHistoryManager has been disposed');
     }
 
-    // Get or create controller for this asset
     final controller = _streamControllers.putIfAbsent(
       asset.id,
       () => StreamController<Transaction>.broadcast(
         onListen: () {
-          // Only start polling if there isn't already an active timer
           if (!_pollingTimers.containsKey(asset.id)) {
             _startPolling(asset);
           }
         },
         onCancel: () async {
-          // Only stop polling if there are no more listeners
           if (!_streamControllers[asset.id]!.hasListener) {
             _stopPolling(asset.id);
-
-            // Clean up the controller if it's no longer needed
             await _streamControllers[asset.id]?.close();
             _streamControllers.remove(asset.id);
           }
@@ -275,14 +257,71 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     return controller.stream;
   }
 
+  @override
+  Future<void> syncTransactionHistory(Asset asset) async {
+    if (_isDisposed || _syncInProgress.contains(asset.id)) return;
+    _syncInProgress.add(asset.id);
+
+    try {
+      final strategy = _strategyFactory.forAsset(asset);
+      var fromId = await _storage.getLatestTransactionId(asset.id);
+      var hasMore = true;
+
+      while (hasMore && !_isDisposed) {
+        await _rateLimiter.throttle();
+
+        final response = await strategy.fetchTransactionHistory(
+          _client,
+          asset,
+          fromId != null
+              ? TransactionBasedPagination(
+                  fromId: fromId,
+                  itemCount: _maxBatchSize,
+                )
+              : const PagePagination(
+                  pageNumber: 1,
+                  itemsPerPage: _maxBatchSize,
+                ),
+        );
+
+        if (response.transactions.isEmpty) {
+          hasMore = false;
+          continue;
+        }
+
+        final transactions = response.transactions
+            .map((tx) => tx.asTransaction(asset.id))
+            .toList();
+
+        await _batchStoreTransactions(transactions);
+        fromId = response.fromId;
+
+        if (response.transactions.length < _maxBatchSize) {
+          hasMore = false;
+        }
+      }
+    } finally {
+      _syncInProgress.remove(asset.id);
+    }
+  }
+
+  @override
+  Future<void> clearTransactionHistory(Asset asset) async {
+    if (_isDisposed) return;
+
+    await _storage.clearTransactions(asset.id);
+    _stopPolling(asset.id);
+    await _streamControllers[asset.id]?.close();
+    _streamControllers.remove(asset.id);
+  }
+
   Future<void> _pollNewTransactions(Asset asset, [int retryCount = 0]) async {
     if (_isDisposed || _syncInProgress.contains(asset.id)) return;
 
     try {
-      final strategy = TransactionHistoryStrategyFactory.forAsset(asset);
+      final strategy = _strategyFactory.forAsset(asset);
       final lastTx = await _storage.getLatestTransactionId(asset.id);
 
-      // Rate limit check moved here, specific to polling
       await _rateLimiter.throttle();
 
       final response = await strategy.fetchTransactionHistory(
@@ -293,10 +332,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
                 fromId: lastTx,
                 itemCount: _maxBatchSize,
               )
-            : const PagePagination(
-                pageNumber: 1,
-                itemsPerPage: _maxBatchSize,
-              ),
+            : const PagePagination(pageNumber: 1, itemsPerPage: _maxBatchSize),
       );
 
       if (!_pollingTimers.containsKey(asset.id)) return;
@@ -315,31 +351,40 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           }
         }
       }
-    } catch (e, stack) {
+    } catch (e) {
       if (retryCount < _maxPollingRetries) {
         final delay = Duration(seconds: math.pow(2, retryCount).toInt());
         await Future.delayed(
           delay,
           () => _pollNewTransactions(asset, retryCount + 1),
         );
-      } else {
-        print(
-          'Failed to poll transactions for ${asset.id} after $retryCount retries: $e\n$stack',
-        );
       }
     }
   }
 
-  void _startPolling(Asset asset) {
-    // Always ensure we clean up any existing timer first
-    _stopPolling(asset.id);
+  Future<void> _ensureAssetActivated(Asset asset) async {
+    final status = await _assetManager.activateAsset(asset).last;
+    if (status.isComplete && !status.isSuccess) {
+      throw StateError('Failed to activate asset ${asset.id.name}');
+    }
+  }
 
+  Future<void> _batchStoreTransactions(List<Transaction> transactions) async {
+    if (transactions.isEmpty) return;
+
+    try {
+      await _storage.storeTransactions(transactions);
+    } catch (e) {
+      throw Exception('Failed to store transactions batch: $e');
+    }
+  }
+
+  void _startPolling(Asset asset) {
+    _stopPolling(asset.id);
     _pollingTimers[asset.id] = Timer.periodic(
       _defaultPollingInterval,
       (_) => _pollNewTransactions(asset),
     );
-
-    // Trigger immediate first poll
     _pollNewTransactions(asset);
   }
 
@@ -348,105 +393,11 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     _pollingTimers.remove(assetId);
   }
 
-  Future<void> _ensureAssetActivated(Asset asset) async {
-    try {
-      final finalStatus =
-          await KomodoDefiSdk.global.assets.activateAsset(asset).last;
-
-      if (finalStatus.isComplete && !finalStatus.isSuccess) {
-        throw StateError(
-          'Failed to activate asset ${asset.id.name}. ${finalStatus.toJson()}',
-        );
-      }
-    } catch (e, stack) {
-      throw Exception(
-        'Failed to fetch transactions for asset ${asset.id.name} '
-        'because the asset could not be activated: $e\n$stack',
-      );
-    }
-  }
-
-  Future<void> _batchStoreTransactions(List<Transaction> transactions) async {
-    if (transactions.isEmpty) return;
-
-    try {
-      // Store all transactions in a single operation
-      await _storage.storeTransactions(transactions);
-    } catch (e) {
-      throw Exception(
-        'Failed to store transactions batch: ${e is Error ? e : e.toString()}',
-      );
-    }
-  }
-
-  @override
-  Future<void> syncTransactionHistory(Asset asset) async {
-    if (_isDisposed || _syncInProgress.contains(asset.id)) return;
-    _syncInProgress.add(asset.id);
-
-    try {
-      final strategy = TransactionHistoryStrategyFactory.forAsset(asset);
-      var fromId = await _storage.getLatestTransactionId(asset.id);
-
-      while (true) {
-        if (_isDisposed) break;
-
-        await _rateLimiter.throttle();
-
-        final response = await strategy.fetchTransactionHistory(
-          _client,
-          asset,
-          fromId != null
-              ? TransactionBasedPagination(
-                  fromId: fromId,
-                  itemCount: _maxBatchSize,
-                )
-              : const PagePagination(
-                  pageNumber: 1,
-                  itemsPerPage: _maxBatchSize,
-                ),
-        );
-
-        if (response.transactions.isEmpty) break;
-
-        final transactions = response.transactions
-            .map((tx) => tx.asTransaction(asset.id))
-            .toList();
-
-        await _batchStoreTransactions(transactions);
-        fromId = transactions.last.internalId;
-
-        // Break if we've reached the end
-        if (response.transactions.length < _maxBatchSize) break;
-      }
-    } finally {
-      _syncInProgress.remove(asset.id);
-    }
-  }
-
-  @override
-  Future<void> clearTransactionHistory(Asset asset) async {
-    if (_isDisposed) return;
-
-    await _storage.clearTransactions(asset.id);
-    _stopPolling(asset.id);
-    await _streamControllers[asset.id]?.close();
-    _streamControllers.remove(asset.id);
-  }
-
   Future<void> dispose() async {
     if (_isDisposed) return;
     _isDisposed = true;
 
     await _authSubscription?.cancel();
-
-    // Wait for any pending storage operations
-    try {
-      final stats = await _storage.getStats();
-      print('Final storage stats: $stats');
-    } catch (e) {
-      // Ignore stats error during disposal
-    }
 
     final timers = _pollingTimers.values.toList();
     _pollingTimers.clear();
@@ -457,14 +408,13 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     final controllers = _streamControllers.values.toList();
     _streamControllers.clear();
     for (final controller in controllers) {
-      controller.close();
+      await controller.close();
     }
 
     _syncInProgress.clear();
   }
 }
 
-/// Helper class for rate limiting API requests
 class _RateLimiter {
   _RateLimiter(this.interval);
   final Duration interval;

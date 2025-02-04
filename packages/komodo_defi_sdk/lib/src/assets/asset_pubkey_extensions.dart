@@ -8,6 +8,8 @@ extension AssetHdWalletAddressesExtension on Asset {
   ///
   /// Returns null if a new address can be created.
   ///
+  /// [sdk] - Optional SDK instance to use. If not provided, uses the global instance.
+  ///
   /// Note: This method may take long to complete if the asset isn't already
   /// activated.
   ///
@@ -16,16 +18,12 @@ extension AssetHdWalletAddressesExtension on Asset {
   ///! expensive operations. If this is absolutely necessary, then we will
   ///! revisit the implementation with a more efficient solution.
   ///
-  /// If you need to check multiple assets (e.g. an assets list page) then
-  /// consider using [Asset().getUnavailableReasons()] instead. It can potentially
-  /// be converted to a sync method if needed.
-  Future<Set<CantCreateNewAddressReason>?> getCantCreateNewAddressReasons([
-    KomodoDefiSdk? sdk,
-  ]) async {
-    sdk ??= KomodoDefiSdk();
-
-    final user = await sdk.auth.currentUser;
-
+  // TODO! Refactor to not reference the global instance.
+  Future<Set<CantCreateNewAddressReason>?> getCantCreateNewAddressReasons(
+    KomodoDefiSdk sdk,
+  ) async {
+    final instance = sdk;
+    final user = await instance.auth.currentUser;
     final reasons = <CantCreateNewAddressReason>{};
 
     final supportsMultipleAddresses = protocol.supportsMultipleAddresses;
@@ -41,20 +39,19 @@ extension AssetHdWalletAddressesExtension on Asset {
     if (user == null) {
       return reasons..add(CantCreateNewAddressReason.noActiveWallet);
     }
+
     final isHdWallet = user.isHd;
     if (!isHdWallet) {
       reasons.add(CantCreateNewAddressReason.derivationModeNotSupported);
     }
 
     if (supportsMultipleAddresses) {
-      final addresses = await sdk.pubkeys.getPubkeys(this);
+      final addresses = await instance.pubkeys.getPubkeys(this);
       if (addresses.keys.length >= 20) {
         reasons.add(CantCreateNewAddressReason.maxAddressesReached);
       }
 
       // Consider carefully how to handle this as it would break things if
-      // TODO! Replace the balance check with a check for transactions.
-      // If 3 addresses are unused, we can't create a new one.
       // this is used in a long list of addresses.
       final unusedAddressesCount =
           addresses.keys.where((key) => !key.balance.hasBalance).length;

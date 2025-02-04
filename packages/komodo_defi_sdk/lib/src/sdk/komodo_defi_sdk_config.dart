@@ -1,7 +1,7 @@
 // sdk_config.dart
 class KomodoDefiSdkConfig {
   const KomodoDefiSdkConfig({
-    this.defaultAssets = const {},
+    this.defaultAssets = const {'KMD', 'BTC', 'ETH', 'DOC', 'MARTY'},
     this.preActivateDefaultAssets = true,
     this.preActivateHistoricalAssets = true,
     this.maxPreActivationAttempts = 3,

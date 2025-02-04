@@ -14,6 +14,7 @@ abstract class TransactionHistoryStrategy {
     ApiClient client,
     Asset asset,
     TransactionPagination pagination,
+    // {required HistoryTarget? target,}
   );
 
   /// Whether this strategy supports the given asset

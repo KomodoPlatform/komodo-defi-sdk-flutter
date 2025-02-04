@@ -71,7 +71,7 @@ class HdHistoryTarget implements HistoryTarget {
     }
   }
 
-  HdHistoryTarget.accountId(this.accountId)
+  const HdHistoryTarget.accountId(this.accountId)
       : type = HistoryTargetType.accountId,
         addressId = null,
         chain = null;

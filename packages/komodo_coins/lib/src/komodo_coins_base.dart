@@ -4,13 +4,19 @@ import 'package:komodo_coins/src/config_transform.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-// lib/src/komodo_coins_base.dart
+/// A high-level library that provides a simple way to access Komodo Platform
+/// coin data.
+///
+/// NB: [init] must be called before accessing any assets.
 class KomodoCoins {
-  factory KomodoCoins() => _instance;
-  KomodoCoins._internal();
-  static final KomodoCoins _instance = KomodoCoins._internal();
+  /// Creates an instance of [KomodoCoins] and initializes it.
+  static Future<KomodoCoins> create() async {
+    final instance = KomodoCoins();
+    await instance.init();
+    return instance;
+  }
 
-  static Map<AssetId, Asset>? _assets;
+  Map<AssetId, Asset>? _assets;
 
   @mustCallSuper
   Future<void> init() async {
@@ -26,7 +32,7 @@ class KomodoCoins {
     return _assets!;
   }
 
-  static Future<Map<AssetId, Asset>> fetchAssets() async {
+  Future<Map<AssetId, Asset>> fetchAssets() async {
     if (_assets != null) return _assets!;
 
     final url = Uri.parse(

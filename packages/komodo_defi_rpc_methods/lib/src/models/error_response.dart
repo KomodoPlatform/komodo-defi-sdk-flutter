@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:komodo_defi_rpc_methods/src/models/models.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
@@ -41,7 +39,8 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
   static bool isErrorResponse(Map<String, dynamic> json) {
     final isError = json.hasNestedKey('result', 'details', 'error') ||
         json.hasNestedKey('error') ||
-        json.valueOrNull<String>('result', 'status') == 'Error';
+        json.valueOrNull<String>('result', 'status') == 'Error' ||
+        json.valueOrNull<int>('code') == -1;
 
     return isError;
   }

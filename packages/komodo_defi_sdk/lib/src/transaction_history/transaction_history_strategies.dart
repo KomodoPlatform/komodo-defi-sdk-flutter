@@ -1,18 +1,21 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Factory for creating appropriate transaction history strategies
 class TransactionHistoryStrategyFactory {
-  static final List<TransactionHistoryStrategy> _strategies = [
-    EtherscanTransactionStrategy(),
-    const V2TransactionStrategy(),
-    const LegacyTransactionStrategy(),
-    const ZhtlcTransactionStrategy(),
-  ];
+  TransactionHistoryStrategyFactory(PubkeyManager pubkeyManager)
+      : _strategies = [
+          EtherscanTransactionStrategy(pubkeyManager: pubkeyManager),
+          const V2TransactionStrategy(),
+          const LegacyTransactionStrategy(),
+          const ZhtlcTransactionStrategy(),
+        ];
 
-  static TransactionHistoryStrategy forAsset(Asset asset) {
+  final List<TransactionHistoryStrategy> _strategies;
+
+  TransactionHistoryStrategy forAsset(Asset asset) {
     final strategy = _strategies.firstWhere(
       (strategy) => strategy.supportsAsset(asset),
       orElse: () => throw UnsupportedError(
@@ -42,27 +45,31 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
     ApiClient client,
     Asset asset,
     TransactionPagination pagination,
+    // {required HistoryTarget? target,}
   ) async {
     validatePagination(pagination);
 
-    final isHdWallet =
-        (await KomodoDefiSdk.global.auth.currentUser)?.isHd ?? false;
+    const isHdWallet =
+        // (await KomodoDefiSdk.global.auth.currentUser)?.isHd ?? false;
+        true;
 
     return switch (pagination) {
       final PagePagination p => client.rpc.transactionHistory.myTxHistory(
           coin: asset.id.id,
           limit: p.itemsPerPage,
           pagingOptions: Pagination(pageNumber: p.pageNumber),
-          target:
-              isHdWallet ? HdHistoryTarget.accountId(0) : IguanaHistoryTarget(),
+          target: isHdWallet
+              ? const HdHistoryTarget.accountId(0)
+              : IguanaHistoryTarget(),
         ),
       final TransactionBasedPagination t =>
         client.rpc.transactionHistory.myTxHistory(
           coin: asset.id.id,
           limit: t.itemCount,
           pagingOptions: Pagination(fromId: t.fromId),
-          target:
-              isHdWallet ? HdHistoryTarget.accountId(0) : IguanaHistoryTarget(),
+          target: isHdWallet
+              ? const HdHistoryTarget.accountId(0)
+              : IguanaHistoryTarget(),
         ),
       _ => throw UnsupportedError(
           'Pagination mode ${pagination.runtimeType} not supported',

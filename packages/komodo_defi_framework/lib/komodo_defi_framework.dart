@@ -126,7 +126,9 @@ class KomodoDefiFramework implements ApiClient {
 
   Future<bool> isRunning() async {
     final running = await _kdfOperations.isRunning();
-    _log('KDF is running: $running');
+    if (!running) {
+      _log('KDF is not running.');
+    }
     return running;
   }
 

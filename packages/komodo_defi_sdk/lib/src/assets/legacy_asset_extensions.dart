@@ -128,27 +128,27 @@ extension AssetTickerShortExtension on Asset {
   /// print('Found ${btcAssets.length} BTC assets');
   /// ```
   @Deprecated(_deprecatedMessage)
-  static Set<Asset> byTicker(String ticker, [KomodoDefiSdk? sdk]) {
-    return (sdk ?? KomodoDefiSdk.global).assets.assetsFromTicker(ticker);
+  static Set<Asset> byTicker(String ticker, KomodoDefiSdk sdk) {
+    return sdk.assets.assetsFromTicker(ticker);
   }
 }
 
 /// Extension for backwards compatibility with pubkey operations
 @Deprecated(_deprecatedMessage)
 extension AssetPubkeysExtension on Asset {
-  /// Fetches pubkeys for this asset. Optionally accepts a
-  /// specific SDK instance. Passing the SDK is recommended if available.
-  ///
-  /// Example:
-  /// ```dart
-  /// final btcAsset = Asset.byTicker('BTC').first;
-  /// final pubkeys = await btcAsset.getPubkeys();
-  /// print('BTC addresses: ${pubkeys.keys.map((k) => k.address).join(", ")}');
-  /// ```
-  @Deprecated(_deprecatedMessage)
-  Future<AssetPubkeys> getPubkeysOptionalSdk([KomodoDefiSdk? sdk]) {
-    return (sdk ?? KomodoDefiSdk.global).pubkeys.getPubkeys(this);
-  }
+  // /// Fetches pubkeys for this asset. Optionally accepts a
+  // /// specific SDK instance. Passing the SDK is recommended if available.
+  // ///
+  // /// Example:
+  // /// ```dart
+  // /// final btcAsset = Asset.byTicker('BTC').first;
+  // /// final pubkeys = await btcAsset.getPubkeys();
+  // /// print('BTC addresses: ${pubkeys.keys.map((k) => k.address).join(", ")}');
+  // /// ```
+  // @Deprecated(_deprecatedMessage)
+  // Future<AssetPubkeys> getPubkeysOptionalSdk(KomodoDefiSdk sdk) {
+  //   return sdk.pubkeys.getPubkeys(this);
+  // }
 
   /// Fetches pubkeys for this asset. Requires a specific SDK instance.
   ///

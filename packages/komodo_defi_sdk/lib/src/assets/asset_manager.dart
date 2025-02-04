@@ -7,27 +7,71 @@ import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/assets/custom_asset_history_storage.dart';
-import 'package:komodo_defi_sdk/src/sdk/sdk_config.dart';
+import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 typedef AssetIdMap = SplayTreeMap<AssetId, Asset>;
 
-class AssetManager {
+/// Manages the lifecycle and state of crypto assets in the Komodo DeFi Framework.
+///
+/// The AssetManager is responsible for:
+/// * Tracking available assets
+/// * Managing asset activation state
+/// * Handling automatic activation of assets
+/// * Maintaining asset ordering and grouping
+///
+/// ## Usage
+///
+/// ```dart
+/// final assetManager = sdk.assets;
+///
+/// // Find an asset
+/// final btcAssets = assetManager.findAssetsByTicker('BTC');
+///
+/// // Activate an asset
+/// await assetManager.activateAsset(btcAssets.first).last;
+///
+/// // Get all activated assets
+/// final activeAssets = await assetManager.getActivatedAssets();
+/// ```
+class AssetManager implements IAssetProvider {
+  /// Creates a new instance of AssetManager.
+  ///
+  /// This is typically created by the SDK and shouldn't need to be instantiated
+  /// directly.
   AssetManager(
     this._client,
     this._auth,
-    this._config, {
-    ActivationManager? activationManager,
-  })  : _assetHistory = AssetHistoryStorage(),
-        _customTokenHistory = CustomAssetHistoryStorage(),
-        _activationManager = activationManager ?? ActivationManager(_client);
+    this._config,
+    this._assetHistory,
+    this._customAssetHistory,
+  );
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final KomodoDefiSdkConfig _config;
   final AssetHistoryStorage _assetHistory;
-  final CustomAssetHistoryStorage _customTokenHistory;
-  final ActivationManager _activationManager;
+  final CustomAssetHistoryStorage _customAssetHistory;
+
+  ActivationManager? _activationManager;
+
+  /// Set the activation manager after construction to handle circular dependency
+  void setActivationManager(ActivationManager manager) {
+    if (_activationManager != null) {
+      throw StateError('ActivationManager has already been set');
+    }
+    _activationManager = manager;
+  }
+
+  /// Gets the activation manager, throwing if not set
+  ActivationManager get _activation {
+    if (_activationManager == null) {
+      throw StateError(
+        'ActivationManager not set. Ensure setActivationManager() is called during initialization.',
+      );
+    }
+    return _activationManager!;
+  }
 
   final Map<AssetId, Completer<void>> _activationCompleters = {};
   final Set<AssetId> _activeAssetIds = {};
@@ -37,6 +81,10 @@ class AssetManager {
 
   late final AssetIdMap _orderedCoins;
 
+  /// Initializes the asset manager.
+  ///
+  /// This is called automatically by the SDK and shouldn't need to be called
+  /// manually.
   Future<void> init() async {
     await _coins.init();
 
@@ -53,92 +101,72 @@ class AssetManager {
 
     _orderedCoins.addAll(_coins.all);
 
-    await initTickerIndex();
-
     final currentUser = await _auth.currentUser;
     await _onAuthStateChanged(currentUser);
 
     _authSubscription = _auth.authStateChanges.listen(_onAuthStateChanged);
   }
 
+  /// Activates a specific asset, making it available for use.
+  ///
+  /// Returns a stream of [ActivationProgress] updates during the activation process.
+  ///
+  /// Example:
+  /// ```dart
+  /// final asset = assetManager.findAssetsByTicker('BTC').first;
+  /// await for (final progress in assetManager.activateAsset(asset)) {
+  ///   print('Activation progress: ${progress.status}');
+  /// }
+  /// ```
+  Stream<ActivationProgress> activateAsset(Asset asset) {
+    // custom tokens are not in the coins list, so they have
+    // to be added to the indexes on login and activation
+    if (asset.protocol.isCustomToken) {
+      _orderedCoins[asset.id] = asset;
+      updateIndex(asset).ignore();
+    }
+    return _activation.activateAsset(asset);
+  }
+
+  /// Returns an asset by its [AssetId], if available.
+  ///
+  /// Returns null if no matching asset is found.
+  /// Throws [StateError] if called before initialization.
+  @override
   Asset? fromId(AssetId id) => _coins.isInitialized
       ? available[id]
       : throw StateError(
           'Assets have not been initialized. Call init() first.',
         );
 
+  /// Returns all available assets, ordered by priority.
+  ///
+  /// Default assets (configured in [KomodoDefiSdkConfig]) appear first,
+  /// followed by other assets in alphabetical order.
+  @override
   Map<AssetId, Asset> get available => _orderedCoins;
   Map<AssetId, Asset> get availableOrdered => available;
 
-  @Deprecated(
-      'This method will be removed from the public interface in the future. '
-      'It is intended for internal use only.')
-  Stream<ActivationProgress> activateAsset(Asset asset) async* {
-    if ((await getActivatedAssets()).contains(asset)) {
-      yield ActivationProgress.success();
-      return;
-    }
-
-    final isCompatible = await asset.isCompatible;
-    if (!isCompatible) {
-      throw UnsupportedError(
-        'Asset ${asset.id.name} is not compatible with current wallet mode',
-      );
-    }
-
-    final completer = _activationCompleters.putIfAbsent(
-      asset.id,
-      Completer<void>.new,
-    );
-
-    try {
-      await for (final progress in _activationManager.activateAsset(asset)) {
-        yield progress;
-
-        if (progress.isComplete) {
-          if (progress.isSuccess) {
-            _activeAssetIds.add(asset.id);
-
-            final user = await _auth.currentUser;
-            if (user != null) {
-              await _assetHistory.addAssetToWallet(user.walletId, asset.id.id);
-              if (asset.protocol.isCustomToken) {
-                _orderedCoins[asset.id] = asset;
-                await updateIndex(asset);
-                await _customTokenHistory.addAssetToWallet(
-                  user.walletId,
-                  asset,
-                );
-              }
-            }
-            if (!completer.isCompleted) {
-              completer.complete();
-            }
-          } else {
-            if (!completer.isCompleted) {
-              completer.completeError(progress.errorMessage ?? 'Unknown error');
-            }
-          }
-        }
-      }
-
-      yield ActivationProgress.success();
-    } catch (e) {
-      if (!completer.isCompleted) {
-        completer.completeError(e);
-      } else {
-        rethrow;
-      }
-    } finally {
-      _activationCompleters.remove(asset.id);
-    }
-  }
-
+  /// Returns currently activated assets for the signed-in user.
+  ///
+  /// Returns an empty list if no user is signed in.
+  @override
   Future<List<Asset>> getActivatedAssets() async {
     if (!await _auth.isSignedIn()) return [];
 
-    final enabledCoins = await _getEnabledCoins();
+    final enabledCoins = await getEnabledCoins();
     return enabledCoins.expand(findAssetsByTicker).toList();
+  }
+
+  /// Returns the set of enabled coin tickers for the current user.
+  ///
+  /// Returns an empty set if no user is signed in.
+  @override
+  Future<Set<String>> getEnabledCoins() async {
+    if (!await _auth.isSignedIn()) return {};
+
+    final enabled = await _client.rpc.generalActivation.getEnabledCoins();
+    return enabled.result.map((e) => e.ticker).toSet();
   }
 
   Future<void> _handlePreActivation(KdfUser user) async {
@@ -161,7 +189,7 @@ class AssetManager {
       }
 
       final customTokens =
-          await _customTokenHistory.getWalletAssets(user.walletId);
+          await _customAssetHistory.getWalletAssets(user.walletId);
       assetsToActivate.addAll(customTokens);
       for (final customToken in customTokens) {
         _orderedCoins[customToken.id] = customToken;
@@ -174,7 +202,7 @@ class AssetManager {
         .toList();
 
     await for (final progress
-        in _activationManager.activateAssets(validAssets)) {
+        in _activationManager!.activateAssets(validAssets)) {
       if (progress.isComplete && !progress.isSuccess) {
         final assetToRetry = validAssets.firstWhere(
           (asset) => !_activeAssetIds.contains(asset.id),
@@ -203,7 +231,7 @@ class AssetManager {
       return;
     }
 
-    final enabledCoins = await _getEnabledCoins();
+    final enabledCoins = await getEnabledCoins();
     for (final ticker in enabledCoins) {
       _activeAssetIds.addAll(
         findAssetsByTicker(ticker).map((asset) => asset.id),
@@ -213,17 +241,30 @@ class AssetManager {
     await _handlePreActivation(user);
   }
 
-  /// Fetches the list of enabled coins from KDF.
-  /// Note: user must be authenticated to perform this operation.
-  Future<Set<String>> _getEnabledCoins() async {
-    final enabled = await _client.rpc.generalActivation.getEnabledCoins();
-    return enabled.result.map((e) => e.ticker).toSet();
-  }
-
+  /// Finds all assets matching the given ticker symbol.
+  ///
+  /// Example:
+  /// ```dart
+  /// final ethAssets = assetManager.findAssetsByTicker('ETH');
+  /// for (final asset in ethAssets) {
+  ///   print('${asset.id.name} on ${asset.protocol.subClass.formatted}');
+  /// }
+  /// ```
+  @override
   Set<Asset> findAssetsByTicker(String ticker) {
     return available.values.where((asset) => asset.id.id == ticker).toSet();
   }
 
+  /// Returns child assets for the given parent asset ID.
+  ///
+  /// For example, this can be used to find all tokens on a particular chain.
+  ///
+  /// Example:
+  /// ```dart
+  /// final ethId = assetManager.findAssetsByTicker('ETH').first.id;
+  /// final erc20Tokens = assetManager.childAssetsOf(ethId);
+  /// ```
+  @override
   Set<Asset> childAssetsOf(AssetId parentId) {
     return available.values
         .where(
@@ -232,8 +273,11 @@ class AssetManager {
         .toSet();
   }
 
-  void dispose() {
+  /// Disposes of the asset manager, cleaning up resources.
+  ///
+  /// This is called automatically by the SDK when disposing.
+  Future<void> dispose() async {
     _activationCompleters.clear();
-    _authSubscription?.cancel();
+    await _authSubscription?.cancel();
   }
 }

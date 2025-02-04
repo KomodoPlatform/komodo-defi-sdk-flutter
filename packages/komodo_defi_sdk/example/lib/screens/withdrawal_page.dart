@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_ui/komodo_ui.dart';
@@ -27,6 +28,8 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   final _amountController = TextEditingController();
   final _memoController = TextEditingController();
   final _ibcChannelController = TextEditingController();
+
+  late final _sdk = context.read<KomodoDefiSdk>();
 
   PubkeyInfo? _selectedFromAddress;
   bool _isMaxAmount = false;
@@ -104,14 +107,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         amount: _isMaxAmount ? null : Decimal.parse(_amountController.text),
         fee: _selectedFee,
         from: _selectedFromAddress?.derivationPath != null
-            ?
-            // WithdrawalSource.hdWalletId(
-            //     accountId: 0,
-            //     addressId: int.parse(
-            //       _selectedFromAddress!.derivationPath!.split('/').last,
-            //     ),
-            //   )
-            WithdrawalSource.hdDerivationPath(
+            ? WithdrawalSource.hdDerivationPath(
                 _selectedFromAddress!.derivationPath!,
               )
             : null,
@@ -120,8 +116,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         ibcTransfer: _isIbcTransfer ? true : null,
       );
 
-      final preview =
-          await KomodoDefiSdk().withdrawals.previewWithdrawal(params);
+      final preview = await _sdk.withdrawals.previewWithdrawal(params);
 
       if (!mounted) return;
 
@@ -247,8 +242,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   Future<void> _executeWithdrawal(WithdrawParameters params) async {
     try {
-      await for (final progress
-          in KomodoDefiSdk().withdrawals.withdraw(params)) {
+      await for (final progress in _sdk.withdrawals.withdraw(params)) {
         if (progress.status == WithdrawalStatus.complete) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -282,10 +276,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   Future<void> _validateAddress(String address) async {
     try {
-      final validation = await KomodoDefiSdk().addresses.validateAddress(
-            asset: widget.asset,
-            address: address,
-          );
+      final validation = await _sdk.addresses.validateAddress(
+        asset: widget.asset,
+        address: address,
+      );
 
       if (mounted) {
         setState(() => _addressValidation = validation);

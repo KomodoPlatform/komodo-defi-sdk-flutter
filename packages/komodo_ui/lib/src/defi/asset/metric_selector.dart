@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_ui/komodo_ui.dart';
-import 'package:komodo_ui/utils.dart';
 
 /// Model representing metric data
 typedef MetricData = ({
