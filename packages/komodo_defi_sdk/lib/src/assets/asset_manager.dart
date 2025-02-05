@@ -97,6 +97,8 @@ class AssetManager implements IAssetProvider {
 
     _orderedCoins.addAll(_coins.all);
 
+    await initTickerIndex();
+
     final currentUser = await _auth.currentUser;
     await _onAuthStateChanged(currentUser);
 
