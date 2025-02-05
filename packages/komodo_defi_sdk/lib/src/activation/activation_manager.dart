@@ -16,19 +16,7 @@ class ActivationManager {
     this._assetHistory,
     this._customTokenHistory,
     this._assetLookup,
-  ) : _activator = SmartAssetActivator(
-          _client,
-          CompositeAssetActivator(
-            _client,
-            [
-              UtxoActivationStrategy(_client),
-              Erc20ActivationStrategy(_client),
-              TendermintActivationStrategy(_client),
-              QtumActivationStrategy(_client),
-              ZhtlcActivationStrategy(_client),
-            ],
-          ),
-        );
+  ) : _activator = ActivationStrategyFactory.createStrategy(_client);
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
