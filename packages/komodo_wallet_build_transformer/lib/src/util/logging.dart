@@ -60,7 +60,7 @@ Level logLevelFromString(String level) {
 /// not be printed for any log messages.
 void configureLogToConsole(
   String loggingLevel, {
-  Level allowStackTracesFromLevel = Level.WARNING,
+  Level allowStackTracesFromLevel = Level.SEVERE,
 }) {
   recordStackTraceAtLevel = allowStackTracesFromLevel;
   Logger.root.level = logLevelFromString(loggingLevel);

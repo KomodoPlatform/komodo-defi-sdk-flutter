@@ -2,25 +2,24 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
-import 'package:html/parser.dart' as parser;
-import 'package:http/http.dart' as http;
 import 'package:komodo_wallet_build_transformer/src/build_step.dart';
-import 'package:komodo_wallet_build_transformer/src/steps/github/github_api_provider.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/defi_api_build_step/artefact_downloader.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/defi_api_build_step/artefact_downloader_factory.dart';
+import 'package:komodo_wallet_build_transformer/src/steps/defi_api_build_step/node_path.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/models/api/api_build_platform_config.dart';
 import 'package:komodo_wallet_build_transformer/src/steps/models/build_config.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 class FetchDefiApiStep extends BuildStep {
-  FetchDefiApiStep({
+  FetchDefiApiStep._({
     // required this.projectRoot,
     required this.apiCommitHash,
     required this.platformsConfig,
     required this.sourceUrls,
-    required this.apiBranch,
+    required this.artefactDownloaders,
     required this.artifactOutputPath,
     required this.buildConfigFile,
-    required this.githubApiProvider,
     this.selectedPlatform,
     this.forceUpdate = false,
     this.enabled = true,
@@ -33,24 +32,20 @@ class FetchDefiApiStep extends BuildStep {
     File buildConfigFile, {
     String? githubToken,
   }) {
-    // Assumption here is that the first uri will always be the GitHub API.
-    final apiProvider = GithubApiProvider.withBaseUrl(
-      baseUrl: buildConfig.apiConfig.sourceUrls.first,
-      branch: buildConfig.apiConfig.branch,
-      token: githubToken,
+    final artefactDownloaders = ArtefactDownloaderFactory.fromBuildConfig(
+      buildConfig.apiConfig,
+      githubToken: githubToken,
     );
 
-    return FetchDefiApiStep(
-      // projectRoot: Directory.current.path,
+    return FetchDefiApiStep._(
       apiCommitHash: buildConfig.apiConfig.apiCommitHash,
       platformsConfig: buildConfig.apiConfig.platforms,
       sourceUrls: buildConfig.apiConfig.sourceUrls,
-      apiBranch: buildConfig.apiConfig.branch,
+      artefactDownloaders: artefactDownloaders,
       // TODO: Change type to Directory?
       artifactOutputPath: artifactOutputPath.path,
       enabled: buildConfig.apiConfig.fetchAtBuildEnabled,
       buildConfigFile: buildConfigFile,
-      githubApiProvider: apiProvider,
       concurrent: buildConfig.coinCIConfig.concurrentDownloadsEnabled,
     );
   }
@@ -65,10 +60,9 @@ class FetchDefiApiStep extends BuildStep {
   final String apiCommitHash;
   final Map<String, ApiBuildPlatformConfig> platformsConfig;
   final List<String> sourceUrls;
-  final String apiBranch;
+  final Map<String, ArtefactDownloader> artefactDownloaders;
   final String artifactOutputPath;
   final File buildConfigFile;
-  final GithubApiProvider githubApiProvider;
   String? selectedPlatform;
   bool forceUpdate;
   bool enabled;
@@ -126,7 +120,12 @@ class FetchDefiApiStep extends BuildStep {
     final progressString =
         '${platformsToUpdate.indexOf(platform) + 1}/${platformsToUpdate.length}';
     _log.info('[$progressString] Updating $platform platform...');
-    await _updatePlatform(platform, platformsConfig);
+    final platformConfig = platformsConfig[platform];
+    if (platformConfig == null) {
+      _log.severe('Platform $platform is not configured');
+      return;
+    }
+    await _updatePlatform(platform, platformConfig);
   }
 
   /// If set, the OVERRIDE_DEFI_API_DOWNLOAD environment variable will override
@@ -163,7 +162,7 @@ class FetchDefiApiStep extends BuildStep {
 
   Future<void> _updatePlatform(
     String platform,
-    Map<String, ApiBuildPlatformConfig> config,
+    ApiBuildPlatformConfig config,
   ) async {
     final updateMessage = overrideDefiApiDownload != null
         ? '${overrideDefiApiDownload! ? 'FORCING' : 'SKIPPING'} update of '
@@ -188,14 +187,28 @@ class FetchDefiApiStep extends BuildStep {
     String? zipFilePath;
     for (final sourceUrl in sourceUrls) {
       try {
-        final zipFileUrl = await _findZipFileUrl(platform, config, sourceUrl);
-        zipFilePath = await _downloadFile(zipFileUrl, destinationFolder);
+        _log.fine('Attempting to download from $sourceUrl for $platform');
+
+        final downloader = artefactDownloaders[sourceUrl];
+        if (downloader == null) {
+          throw ArgumentError.value(sourceUrl, '', 'No downloader found');
+        }
+
+        final zipFileUrl =
+            await downloader.fetchDownloadUrl(config.matchingConfig, platform);
+        zipFilePath = await downloader.downloadArtefact(
+          url: zipFileUrl,
+          destinationPath: destinationFolder,
+        );
 
         if (await _verifyChecksum(zipFilePath, platform)) {
-          await _extractZipFile(zipFilePath, destinationFolder);
+          await downloader.extractArtefact(
+            filePath: zipFilePath,
+            destinationFolder: destinationFolder,
+          );
           _updateLastUpdatedFile(platform, destinationFolder, zipFilePath);
           _log.info('$platform platform update completed.');
-          break; // Exit loop if update is successful
+          break;
         } else {
           _log.warning('SHA256 Checksum verification failed for $zipFilePath');
           if (sourceUrl == sourceUrls.last) {
@@ -226,31 +239,6 @@ class FetchDefiApiStep extends BuildStep {
 
   bool _shouldUpdate(bool isOutdated) {
     return overrideDefiApiDownload ?? (forceUpdate || isOutdated);
-  }
-
-  Future<String> _downloadFile(String url, String destinationFolder) async {
-    _log.info('Downloading $url...');
-    final response = await http.get(Uri.parse(url));
-    _checkResponseSuccess(response);
-
-    final zipFileName = path.basename(url);
-    final zipFilePath = path.join(destinationFolder, zipFileName);
-
-    final directory = Directory(destinationFolder);
-    if (!directory.existsSync()) {
-      await directory.create(recursive: true);
-    }
-
-    final zipFile = File(zipFilePath);
-    try {
-      await zipFile.writeAsBytes(response.bodyBytes);
-    } catch (e) {
-      _log.info('Error writing file', e);
-      rethrow;
-    }
-
-    _log.info('Downloaded $zipFileName');
-    return zipFilePath;
   }
 
   Future<bool> _verifyChecksum(String filePath, String platform) async {
@@ -298,7 +286,7 @@ class FetchDefiApiStep extends BuildStep {
   Future<bool> _checkIfOutdated(
     String platform,
     String destinationFolder,
-    Map<String, ApiBuildPlatformConfig> config,
+    ApiBuildPlatformConfig config,
   ) async {
     final lastUpdatedFilePath =
         path.join(destinationFolder, '.api_last_updated_$platform');
@@ -316,7 +304,7 @@ class FetchDefiApiStep extends BuildStep {
         final storedChecksums =
             List<String>.from(lastUpdatedData['checksums'] as List? ?? []);
         final targetChecksums =
-            List<String>.from(config[platform]!.validZipSha256Checksums);
+            List<String>.from(config.validZipSha256Checksums);
 
         if (storedChecksums.toSet().containsAll(targetChecksums)) {
           _log.info('version: $apiCommitHash and SHA256 checksum match.');
@@ -398,135 +386,6 @@ class FetchDefiApiStep extends BuildStep {
     }
   }
 
-  Future<String> _findZipFileUrl(
-    String platform,
-    Map<String, ApiBuildPlatformConfig> config,
-    String sourceUrl,
-  ) async {
-    if (sourceUrl.startsWith('https://api.github.com/repos/')) {
-      return _fetchFromGitHub(platform, config, sourceUrl);
-    } else {
-      return _fetchFromBaseUrl(platform, config, sourceUrl);
-    }
-  }
-
-  Future<String> _fetchFromBaseUrl(
-    String platform,
-    Map<String, ApiBuildPlatformConfig> config,
-    String sourceUrl,
-  ) async {
-    if (!config.containsKey(platform)) {
-      throw ArgumentError('Invalid platform: $platform');
-    }
-
-    final url = '$sourceUrl/$apiBranch/';
-    final response = await http.get(Uri.parse(url));
-    _checkResponseSuccess(response);
-
-    final document = parser.parse(response.body);
-    final matchingConfig = config[platform]!.matchingConfig;
-    final extensions = ['.zip'];
-
-    // Support both full and short hash variants
-    final fullHash = apiCommitHash;
-    final shortHash = apiCommitHash.substring(0, 7);
-    _log.info('Looking for files with hash $fullHash or $shortHash');
-
-    // Look for files with either hash length
-    for (final element in document.querySelectorAll('a')) {
-      final href = element.attributes['href'];
-      if (href != null &&
-          matchingConfig.matches(href) &&
-          extensions.any(href.endsWith)) {
-        if (href.contains(fullHash) || href.contains(shortHash)) {
-          _log.info('Found matching file: $href');
-          return '$sourceUrl/$apiBranch/$href';
-        }
-      }
-    }
-
-    _log.warning('No matching files found in $sourceUrl. '
-        'Pattern: ${matchingConfig.matchingPattern}, '
-        'Hashes tried: [$fullHash, $shortHash]');
-
-    throw Exception('Zip file not found for platform $platform');
-  }
-
-  Future<String> _fetchFromGitHub(
-    String platform,
-    Map<String, ApiBuildPlatformConfig> config,
-    String sourceUrl,
-  ) async {
-    final releases = await githubApiProvider.getReleases();
-    final matchingConfig = config[platform]!.matchingConfig;
-    final fullHash = apiCommitHash;
-    final shortHash = apiCommitHash.substring(0, 7);
-
-    _log.info('Looking for release files with hash $fullHash or $shortHash');
-
-    // TODO! Try to find exact version release first
-    // if (version != null && version!.isNotEmpty) {
-    //   _log.info('Searching for exact version match: $version');
-    //   for (final release in releases) {
-    //     if (release.tagName == version) {
-    //       _log.info('Found matching release: ${release.tagName}');
-    //       for (final asset in release.assets) {
-    //         final fileName = path.basename(asset.browserDownloadUrl);
-    //         _log.fine('Checking file $fileName for $platform');
-
-    //         if (matchingConfig.matches(fileName)) {
-    //           _log.info('Found matching file $fileName in version $version');
-    //           return asset.browserDownloadUrl;
-    //         }
-    //       }
-    //       _log.warning('No matching assets found in version $version. '
-    //           'Available assets:\n${release.assets.map((a) => '  - ${a.name}').join('\n')}');
-    //     }
-    //   }
-    //   _log.warning('No exact version match found for $version');
-    // }
-
-    // If no exact version match found, try matching by commit hash
-    _log.info('Searching for commit hash match');
-    for (final release in releases) {
-      for (final asset in release.assets) {
-        final fileName = path.basename(asset.browserDownloadUrl);
-
-        if (matchingConfig.matches(fileName)) {
-          if (fileName.contains(fullHash) || fileName.contains(shortHash)) {
-            final commitHash = await githubApiProvider.getLatestCommitHash(
-              branch: release.tagName,
-            );
-            if (commitHash == apiCommitHash) {
-              _log.info('Found matching file by commit hash: $fileName');
-              return asset.browserDownloadUrl;
-            }
-          }
-        }
-      }
-    }
-
-    // Log available assets to help diagnose issues
-    _log.warning('No files found matching criteria:\n'
-        'Platform: $platform\n'
-        'Version: \$version\n'
-        'Hash: $fullHash or $shortHash\n'
-        'Pattern: ${matchingConfig.matchingPattern}\n'
-        'Available assets:\n${releases.expand((r) => r.assets).map((a) => '  - ${a.name}').join('\n')}');
-
-    throw Exception(
-        'Zip file not found for platform $platform in GitHub releases. '
-        'Searched for version: \$version, commit: $apiCommitHash');
-  }
-
-  void _checkResponseSuccess(http.Response response) {
-    if (response.statusCode != 200) {
-      throw HttpException(
-        'Failed to fetch data: ${response.statusCode} ${response.reasonPhrase}',
-      );
-    }
-  }
-
   // TODO: Dynamically determine if the platform is using an executable file
   // or static/dynamic library.
   bool _isBinaryExecutable(String platform) {
@@ -545,45 +404,8 @@ class FetchDefiApiStep extends BuildStep {
     return Future.value();
   }
 
-  Future<void> _extractZipFile(
-    String zipFilePath,
-    String destinationFolder,
-  ) async {
-    try {
-      // Determine the platform to use the appropriate extraction command
-      if (Platform.isMacOS || Platform.isLinux) {
-        // For macOS and Linux, use the `unzip` command with overwrite option
-        final result = await Process.run(
-          'unzip',
-          ['-o', zipFilePath, '-d', destinationFolder],
-        );
-        if (result.exitCode != 0) {
-          throw Exception('Error extracting zip file: ${result.stderr}');
-        }
-      } else if (Platform.isWindows) {
-        // For Windows, use PowerShell's Expand-Archive command
-        final result = await Process.run('powershell', [
-          'Expand-Archive',
-          '-Path',
-          zipFilePath,
-          '-DestinationPath',
-          destinationFolder,
-        ]);
-        if (result.exitCode != 0) {
-          throw Exception('Error extracting zip file: ${result.stderr}');
-        }
-      } else {
-        _log.severe('Unsupported platform: ${Platform.operatingSystem}');
-        throw UnsupportedError('Unsupported platform');
-      }
-      _log.info('Extraction completed.');
-    } catch (e) {
-      _log.shout('Failed to extract zip file: $e');
-      rethrow;
-    }
-  }
-
   void _updateDocumentationIfExists() {
+    // TODO: re-implement?
     //   final documentationFile = File('$projectRoot/docs/UPDATE_API_MODULE.md');
     //   if (!documentationFile.existsSync()) {
     //     return;
@@ -603,89 +425,5 @@ class FetchDefiApiStep extends BuildStep {
         Platform.environment['TARGET_DEVICE_PLATFORM_NAME'] ==
             'iphonesimulator' ||
         Platform.environment['SWIFT_PLATFORM_TARGET_PREFIX'] == 'ios';
-  }
-
-  String findNode() {
-    if (Platform.isWindows) {
-      return findNodeWindows();
-    } else if (Platform.isLinux || Platform.isMacOS) {
-      return findNodeUnix();
-    } else {
-      return 'npm';
-    }
-  }
-
-  String findNodeUnix() {
-    // Common npm locations on macOS
-    final commonLocations = [
-      '/usr/local/bin/npm',
-      '/usr/bin/npm',
-      '/opt/homebrew/bin/npm',
-    ];
-
-    // Check common locations
-    for (final location in commonLocations) {
-      if (File(location).existsSync()) {
-        return location;
-      }
-    }
-
-    // Check PATH environment variable
-    final pathEnv = Platform.environment['PATH'];
-    if (pathEnv != null) {
-      final paths = pathEnv.split(':');
-      for (final path in paths) {
-        final npmPath = '$path/npm';
-        if (File(npmPath).existsSync()) {
-          return npmPath;
-        }
-      }
-    }
-
-    // Check NVM_BIN environment variable
-    final nvmBin = Platform.environment['NVM_BIN'];
-    if (nvmBin != null) {
-      final npmPath = '$nvmBin/npm';
-      if (File(npmPath).existsSync()) {
-        return npmPath;
-      }
-    }
-
-    // Check NODE_PATH environment variable
-    final nodePath = Platform.environment['NODE_PATH'];
-    if (nodePath != null) {
-      final npmPath = '$nodePath/npm';
-      if (File(npmPath).existsSync()) {
-        return npmPath;
-      }
-    }
-
-    // If npm is not found, throw an exception
-    throw Exception(
-      'npm not found in common locations or environment variables. '
-      'Please ensure npm is installed and accessible.',
-    );
-  }
-
-  String findNodeWindows() {
-    final commonLocations = [
-      'C:/Program Files/nodejs/npm.cmd',
-      'C:/Program Files (x86)/nodejs/npm.cmd',
-      'C:/Program Files/nodejs/npm',
-      'C:/Program Files (x86)/nodejs/npm',
-    ];
-
-    for (final location in commonLocations) {
-      if (File(location).existsSync()) {
-        return location;
-      }
-    }
-
-    final nodePath = Platform.environment['PATH'];
-    if (nodePath != null) {
-      return nodePath;
-    }
-
-    throw Exception('NODE_PATH not found in environment variables.');
   }
 }
