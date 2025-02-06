@@ -174,6 +174,16 @@ class AssetManager implements IAssetProvider {
   Future<void> _handlePreActivation(KdfUser user) async {
     final assetsToActivate = <Asset>{};
 
+    if (_config.preActivateCustomTokenAssets) {
+      final customTokens =
+          await _customAssetHistory.getWalletAssets(user.walletId);
+      assetsToActivate.addAll(customTokens);
+      for (final customToken in customTokens) {
+        _orderedCoins[customToken.id] = customToken;
+        await updateIndex(customToken);
+      }
+    }
+
     if (_config.preActivateDefaultAssets) {
       for (final ticker in _config.defaultAssets) {
         final assets = findAssetsByTicker(ticker)
@@ -188,14 +198,6 @@ class AssetManager implements IAssetProvider {
         final assets = findAssetsByTicker(ticker)
             .where((asset) => !_activeAssetIds.contains(asset.id));
         assetsToActivate.addAll(assets);
-      }
-
-      final customTokens =
-          await _customAssetHistory.getWalletAssets(user.walletId);
-      assetsToActivate.addAll(customTokens);
-      for (final customToken in customTokens) {
-        _orderedCoins[customToken.id] = customToken;
-        await updateIndex(customToken);
       }
     }
 
