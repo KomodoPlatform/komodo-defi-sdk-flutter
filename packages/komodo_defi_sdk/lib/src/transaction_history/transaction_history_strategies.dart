@@ -1,3 +1,4 @@
+import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
@@ -5,10 +6,12 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Factory for creating appropriate transaction history strategies
 class TransactionHistoryStrategyFactory {
-  TransactionHistoryStrategyFactory(PubkeyManager pubkeyManager)
-      : _strategies = [
+  TransactionHistoryStrategyFactory(
+    PubkeyManager pubkeyManager,
+    KomodoDefiLocalAuth auth,
+  ) : _strategies = [
           EtherscanTransactionStrategy(pubkeyManager: pubkeyManager),
-          const V2TransactionStrategy(),
+          V2TransactionStrategy(auth),
           const LegacyTransactionStrategy(),
           const ZhtlcTransactionStrategy(),
         ];
@@ -29,7 +32,9 @@ class TransactionHistoryStrategyFactory {
 
 /// Strategy for fetching transaction history using the v2 API
 class V2TransactionStrategy extends TransactionHistoryStrategy {
-  const V2TransactionStrategy();
+  const V2TransactionStrategy(this._auth);
+
+  final KomodoDefiLocalAuth _auth;
 
   @override
   Set<Type> get supportedPaginationModes => {
@@ -49,9 +54,7 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
   ) async {
     validatePagination(pagination);
 
-    const isHdWallet =
-        // (await KomodoDefiSdk.global.auth.currentUser)?.isHd ?? false;
-        true;
+    final isHdWallet = (await _auth.currentUser)?.isHd ?? false;
 
     return switch (pagination) {
       final PagePagination p => client.rpc.transactionHistory.myTxHistory(
