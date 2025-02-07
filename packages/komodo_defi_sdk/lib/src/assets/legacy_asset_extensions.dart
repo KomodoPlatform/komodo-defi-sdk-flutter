@@ -85,6 +85,22 @@ extension AssetTickerIndexExtension on AssetManager {
     return Set<Asset>.unmodifiable(_tickerIndex[ticker] ?? {});
   }
 
+  /// Returns all assets matching the given ticker symbol.
+  ///
+  /// If no assets are found, returns `null`.
+  ///
+  /// Currently all assets have unique tickers, but this has not always been
+  /// the case, and may not be in the future.
+  @Deprecated(_deprecatedMessage)
+  Set<Asset>? maybeAssetsFromTicker(String ticker) {
+    assert(
+      _isInitialized,
+      'Ticker index not initialized. Call initTickerIndex() first.',
+    );
+    final assets = _tickerIndex[ticker];
+    return assets?.isEmpty == true ? null : Set<Asset>.unmodifiable(assets!);
+  }
+
   /// Cleans up the ticker index. Call when the manager is no longer needed.
   void dispose() {
     _tickerIndex.clear();
