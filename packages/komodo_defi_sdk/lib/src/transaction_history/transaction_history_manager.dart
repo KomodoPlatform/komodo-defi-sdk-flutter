@@ -37,7 +37,8 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     required PubkeyManager pubkeyManager,
     TransactionStorage? storage,
   })  : _storage = storage ?? TransactionStorage.defaultForPlatform(),
-        _strategyFactory = TransactionHistoryStrategyFactory(pubkeyManager);
+        _strategyFactory =
+            TransactionHistoryStrategyFactory(pubkeyManager, _auth);
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
