@@ -14,12 +14,12 @@ class AddressFormat {
       case CoinSubClass.erc20:
       case CoinSubClass.ethereumClassic:
         return AddressFormat(
-          format: AddressFormatFormat.mixedCase.toString(),
+          format: AddressFormatType.mixedCase.toString(),
           network: '',
         );
       case CoinSubClass.qrc20:
         return AddressFormat(
-          format: AddressFormatFormat.contract.toString(),
+          format: AddressFormatType.contract.toString(),
           network: '',
         );
       case CoinSubClass.utxo:
@@ -29,7 +29,7 @@ class AddressFormat {
       // ignore: no_default_cases
       default:
         return AddressFormat(
-          format: AddressFormatFormat.cashAddress.toString(),
+          format: AddressFormatType.cashAddress.toString(),
           // Only set network for BCH coins
           network:
               isBchNetwork ? AddressFormatNetwork.bitcoinCash.toString() : '',
@@ -46,8 +46,8 @@ class AddressFormat {
       };
 }
 
-/// [AddressFormat] format field options.
-enum AddressFormatFormat {
+/// The address format to which the input address should be converted.
+enum AddressFormatType {
   /// Use for ETH, ERC20 coins
   mixedCase,
 
@@ -66,21 +66,21 @@ enum AddressFormatFormat {
   @override
   String toString() {
     switch (this) {
-      case AddressFormatFormat.mixedCase:
+      case AddressFormatType.mixedCase:
         return 'mixedcase';
-      case AddressFormatFormat.cashAddress:
+      case AddressFormatType.cashAddress:
         return 'cashaddress';
-      case AddressFormatFormat.standard:
+      case AddressFormatType.standard:
         return 'standard';
-      case AddressFormatFormat.contract:
+      case AddressFormatType.contract:
         return 'contract';
-      case AddressFormatFormat.wallet:
+      case AddressFormatType.wallet:
         return 'wallet';
     }
   }
 }
 
-/// [AddressFormat] network prefix for [AddressFormatFormat.cashAddress]
+/// [AddressFormat] network prefix for [AddressFormatType.cashAddress]
 /// format. Used only for UTXO coins, specifically BCH at the moment.
 enum AddressFormatNetwork {
   /// BCH main network (mainnet)
