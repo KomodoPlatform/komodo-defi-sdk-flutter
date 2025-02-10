@@ -5,8 +5,7 @@
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
-            "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework",
-            "https://sdk.devbuilds.komodo.earth"
+            "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework"
         ],
         "platforms": {
             "web": {
@@ -16,12 +15,47 @@
                 ],
                 "path": "web/kdf/bin"
             },
+            "ios": {
+                "matching_keyword": "ios-aarch64",
+                "valid_zip_sha256_checksums": [
+                    "2a2094fbcaa9ad0026fa819348c4eb44babdaa71064e4f3b947308bd492b45d5"
+                ],
+                "path": "ios"
+            },
             "macos": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
                     "a0b53f9fdf8ca1572c62b5846a1123ec6b87522046199f8a36a99e90a6181c7d"
                 ],
                 "path": "macos/bin"
+            },
+            "windows": {
+                "matching_keyword": "Win64",
+                "valid_zip_sha256_checksums": [
+                    "b2f3dd59f40e3fd8ea46e42350a17ced72b303b8e0203396cf5d13fb08ca76e9"
+                ],
+                "path": "windows/bin"
+            },
+            "android-armv7": {
+                "matching_keyword": "android-armv7",
+                "valid_zip_sha256_checksums": [
+                    "e508d27142ab6b5c54568cd1a8c0f73bad6a093f24a3309a1fdb6550e99a8752"
+                ],
+                "path": "android/app/src/main/cpp/libs/armeabi-v7a"
+            },
+            "android-aarch64": {
+                "matching_keyword": "android-aarch64",
+                "valid_zip_sha256_checksums": [
+                    "4fdff1027260f7fe5740802146cf125a64dbf11e9a2af8dfe4b6555f1a7cb7c3"
+                ],
+                "path": "android/app/src/main/cpp/libs/arm64-v8a"
+            },
+            "linux": {
+                "matching_keyword": "Linux-Release",
+                "valid_zip_sha256_checksums": [
+                    "1163efd83af247575ed55e11f3128ce5a49a13601712bdb708581db968d28f7a"
+                ],
+                "path": "linux/bin"
             }
         }
     },
