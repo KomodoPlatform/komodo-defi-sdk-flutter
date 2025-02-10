@@ -63,6 +63,6 @@ foreach(FILE ${EXE_DLL_FILES})
 endforeach()
 
 set(mm2_bundled_libraries
-  "${CMAKE_CURRENT_SOURCE_DIR}/kdf"
+  "${CMAKE_CURRENT_SOURCE_DIR}/bin/kdf.exe"
   PARENT_SCOPE
 )
