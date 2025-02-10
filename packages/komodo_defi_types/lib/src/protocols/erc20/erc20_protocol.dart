@@ -6,12 +6,14 @@ class Erc20Protocol extends ProtocolClass {
   Erc20Protocol._({
     required super.subClass,
     required super.config,
+    super.isCustomToken = false,
   });
 
   factory Erc20Protocol.fromJson(JsonMap json) {
     _validateErc20Config(json);
     return Erc20Protocol._(
       subClass: CoinSubClass.parse(json.value('type')),
+      isCustomToken: json.valueOrNull<bool>('is_custom_token') ?? false,
       config: json,
     );
   }
@@ -67,4 +69,27 @@ class Erc20Protocol extends ProtocolClass {
   // TODO: Confirm if this is correct, or if it is only for 'ERC20' and 'ETH'
   // protocols as is in the legacy repository.
   bool get needs0xPrefix => true;
+
+  Erc20Protocol copyWith({
+    int? chainId,
+    List<EvmNode>? nodes,
+    String? swapContractAddress,
+    String? fallbackSwapContract,
+    bool? isCustomToken,
+  }) {
+    return Erc20Protocol._(
+      subClass: subClass,
+      isCustomToken: isCustomToken ?? this.isCustomToken,
+      config: JsonMap.from(config)
+        ..addAll({
+          if (chainId != null) 'chain_id': chainId,
+          if (nodes != null)
+            'nodes': nodes.map((node) => node.toJson()).toList(),
+          if (swapContractAddress != null)
+            'swap_contract_address': swapContractAddress,
+          if (fallbackSwapContract != null)
+            'fallback_swap_contract': fallbackSwapContract,
+        }),
+    );
+  }
 }

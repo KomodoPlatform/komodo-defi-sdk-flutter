@@ -3,6 +3,7 @@ import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/addresses/address_operations.dart';
+import 'package:komodo_defi_sdk/src/assets/custom_asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
@@ -290,9 +291,16 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
     // Initialize asset history storage for sharing between managers
     final assetHistory = AssetHistoryStorage();
+    final customAssetHistory = CustomAssetHistoryStorage();
 
     // Initialize asset manager first as it implements IAssetLookup
-    _assets = AssetManager(_apiClient!, _auth!, _config);
+    _assets = AssetManager(
+      _apiClient!,
+      _auth!,
+      _config,
+      assetHistory,
+      customAssetHistory,
+    );
     await _assets!.init();
 
     // Initialize activation manager with asset lookup capabilities
@@ -300,6 +308,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       _apiClient!,
       _auth!,
       assetHistory,
+      customAssetHistory,
       _assets!,
     );
 

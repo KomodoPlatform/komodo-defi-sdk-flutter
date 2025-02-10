@@ -6,6 +6,7 @@ import 'dart:collection';
 import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/assets/custom_asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -42,12 +43,15 @@ class AssetManager implements IAssetProvider {
     this._client,
     this._auth,
     this._config,
-  ) : _assetHistory = AssetHistoryStorage();
+    this._assetHistory,
+    this._customAssetHistory,
+  );
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final KomodoDefiSdkConfig _config;
   final AssetHistoryStorage _assetHistory;
+  final CustomAssetHistoryStorage _customAssetHistory;
 
   ActivationManager? _activationManager;
 
@@ -117,6 +121,12 @@ class AssetManager implements IAssetProvider {
   /// }
   /// ```
   Stream<ActivationProgress> activateAsset(Asset asset) {
+    // custom tokens are not in the coins list, so they have
+    // to be added to the indexes on login and activation
+    if (asset.protocol.isCustomToken) {
+      _orderedCoins[asset.id] = asset;
+      updateIndex(asset).ignore();
+    }
     return _activation.activateAsset(asset);
   }
 
@@ -163,6 +173,16 @@ class AssetManager implements IAssetProvider {
 
   Future<void> _handlePreActivation(KdfUser user) async {
     final assetsToActivate = <Asset>{};
+
+    if (_config.preActivateCustomTokenAssets) {
+      final customTokens =
+          await _customAssetHistory.getWalletAssets(user.walletId);
+      assetsToActivate.addAll(customTokens);
+      for (final customToken in customTokens) {
+        _orderedCoins[customToken.id] = customToken;
+        await updateIndex(customToken);
+      }
+    }
 
     if (_config.preActivateDefaultAssets) {
       for (final ticker in _config.defaultAssets) {
@@ -264,14 +284,4 @@ class AssetManager implements IAssetProvider {
     _activationCompleters.clear();
     await _authSubscription?.cancel();
   }
-}
-
-class _AssetGroup {
-  _AssetGroup({
-    required this.primary,
-    required this.children,
-  });
-
-  final Asset primary;
-  final List<Asset> children;
 }

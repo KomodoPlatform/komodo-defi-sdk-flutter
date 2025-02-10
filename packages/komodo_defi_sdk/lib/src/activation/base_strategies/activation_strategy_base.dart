@@ -14,6 +14,11 @@ abstract class BatchCapableActivator extends AssetActivator {
   const BatchCapableActivator(super.client);
 
   bool get supportsBatchActivation;
+
+  /// Whether the activator supports activation of custom EVM-chain
+  /// tokens that are not part of the live coins configuration.
+  /// Defaults to false.
+  bool get supportsCustomTokenActivation => false;
 }
 
 /// Smart activator that chooses between batch/single methods
@@ -129,6 +134,13 @@ abstract class ProtocolActivationStrategy extends BatchCapableActivator {
 
   @override
   bool canHandle(Asset asset) =>
+      // | isCustomToken | supportsCustomTokenActivation | result |
+      // |---------------|------------------------------|--------|
+      // | true          | true                         | true   |
+      // | true          | false                        | false  |
+      // | false         | true                         | true   |
+      // | false         | false                        | false  |
+      (!asset.protocol.isCustomToken || supportsCustomTokenActivation) &&
       supportedProtocols.contains(asset.protocol.subClass);
 
   Set<CoinSubClass> get supportedProtocols;

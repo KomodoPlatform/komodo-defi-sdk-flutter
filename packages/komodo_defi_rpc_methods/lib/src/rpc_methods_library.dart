@@ -4,6 +4,7 @@
 // ignore_for_file: unused_field, unused_element
 
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
+import 'package:komodo_defi_rpc_methods/src/rpc_methods/utility/get_token_info.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A class that provides a library of RPC methods used by the Komodo DeFi
@@ -43,6 +44,7 @@ class KomodoDefiRpcMethods {
   // Add other namespaces here, e.g.:
   // TradeNamespace get trade => TradeNamespace(_client);
   // UtilityNamespace get utility => UtilityNamespace(_client);
+  UtilityMethods get utility => UtilityMethods(_client);
 }
 
 class TaskMethods extends BaseRpcMethodNamespace {
@@ -71,6 +73,29 @@ class WalletMethods extends BaseRpcMethodNamespace {
 
   Future<GetPublicKeyHashResponse> getPublicKeyHash([String? rpcPass]) =>
       execute(GetPublicKeyHashRequest(rpcPass: rpcPass));
+}
+
+/// KDF v2 Utility Methods not specific to any larger feature
+/// or namespace (e.g. current MTP, token info for custom token activation).
+class UtilityMethods extends BaseRpcMethodNamespace {
+  UtilityMethods(super.client);
+
+  /// Returns the ticker and decimals values required for activation of a custom
+  /// token, given a [platform], [protocolType], and [contractAddress].
+  Future<GetTokenInfoResponse> getTokenInfo({
+    required String protocolType,
+    required String platform,
+    required String contractAddress,
+    String? rpcPass,
+  }) =>
+      execute(
+        GetTokenInfoRequest(
+          protocolType: protocolType,
+          platform: platform,
+          contractAddress: contractAddress,
+          rpcPass: rpcPass ?? '',
+        ),
+      );
 }
 
 class GeneralActivationMethods extends BaseRpcMethodNamespace {

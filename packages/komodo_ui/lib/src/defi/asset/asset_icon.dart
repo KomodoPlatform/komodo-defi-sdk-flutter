@@ -58,6 +58,29 @@ class AssetIcon extends StatelessWidget {
     _AssetIconResolver.clearCaches();
   }
 
+  /// Registers a custom icon for a given coin abbreviation.
+  ///
+  /// The [imageProvider] will be used instead of the default asset or CDN images
+  /// when displaying the icon for the specified [assetId].
+  ///
+  /// Example:
+  /// ```dart
+  /// // Register a custom icon from an asset
+  /// CoinIcon.registerCustomIcon(
+  ///   'MYCOIN',
+  ///   AssetImage('assets/my_custom_coin.png'),
+  /// );
+  ///
+  /// // Register a custom icon from memory
+  /// CoinIcon.registerCustomIcon(
+  ///   'MYCOIN',
+  ///   MemoryImage(customIconBytes),
+  /// );
+  /// ```
+  static void registerCustomIcon(AssetId assetId, ImageProvider imageProvider) {
+    _AssetIconResolver.registerCustomIcon(assetId, imageProvider);
+  }
+
   /// Pre-loads the asset icon image into the cache.
   ///
   /// This is useful when you know you'll need an icon soon and want to avoid
@@ -93,10 +116,16 @@ class _AssetIconResolver extends StatelessWidget {
 
   static final Map<String, bool> _assetExistenceCache = {};
   static final Map<String, bool> _cdnExistenceCache = {};
+  static final Map<String, ImageProvider> _customIconsCache = {};
+
+  static void registerCustomIcon(AssetId assetId, ImageProvider imageProvider) {
+    _customIconsCache[assetId.symbol.configSymbol] = imageProvider;
+  }
 
   static void clearCaches() {
     _assetExistenceCache.clear();
     _cdnExistenceCache.clear();
+    _customIconsCache.clear();
   }
 
   String get _sanitizedId =>
@@ -113,6 +142,23 @@ class _AssetIconResolver extends StatelessWidget {
     final sanitizedId = resolver._sanitizedId;
 
     try {
+      if (_customIconsCache.containsKey(asset.symbol.configSymbol)) {
+        if (context.mounted) {
+          await precacheImage(
+            _customIconsCache[asset.symbol.configSymbol]!,
+            context,
+            onError: (e, stackTrace) {
+              if (throwExceptions) {
+                throw Exception(
+                  'Failed to pre-cache custom image for coin $asset: $e',
+                );
+              }
+            },
+          );
+        }
+        return;
+      }
+
       bool? assetExists;
       bool? cdnExists;
 
@@ -159,6 +205,17 @@ class _AssetIconResolver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_customIconsCache.containsKey(_sanitizedId)) {
+      return Image(
+        image: _customIconsCache[_sanitizedId]!,
+        filterQuality: FilterQuality.high,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('Error loading custom icon for $assetId: $error');
+          return Icon(Icons.monetization_on_outlined, size: size);
+        },
+      );
+    }
+
     _assetExistenceCache[_imagePath] = true;
     return Image.asset(
       _imagePath,

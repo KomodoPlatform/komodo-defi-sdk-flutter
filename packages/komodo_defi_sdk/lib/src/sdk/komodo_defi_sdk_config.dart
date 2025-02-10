@@ -4,6 +4,7 @@ class KomodoDefiSdkConfig {
     this.defaultAssets = const {'KMD', 'BTC', 'ETH', 'DOC', 'MARTY'},
     this.preActivateDefaultAssets = true,
     this.preActivateHistoricalAssets = true,
+    this.preActivateCustomTokenAssets = true,
     this.maxPreActivationAttempts = 3,
     this.activationRetryDelay = const Duration(seconds: 2),
   });
@@ -17,6 +18,9 @@ class KomodoDefiSdkConfig {
   /// Whether to automatically activate previously used assets on login
   final bool preActivateHistoricalAssets;
 
+  /// Whether to automatically activate custom tokens on login
+  final bool preActivateCustomTokenAssets;
+
   /// Maximum number of retry attempts for pre-activation
   final int maxPreActivationAttempts;
 
@@ -27,6 +31,7 @@ class KomodoDefiSdkConfig {
     Set<String>? defaultAssets,
     bool? preActivateDefaultAssets,
     bool? preActivateHistoricalAssets,
+    bool? preActivateCustomTokenAssets,
     int? maxPreActivationAttempts,
     Duration? activationRetryDelay,
   }) {
@@ -36,6 +41,8 @@ class KomodoDefiSdkConfig {
           preActivateDefaultAssets ?? this.preActivateDefaultAssets,
       preActivateHistoricalAssets:
           preActivateHistoricalAssets ?? this.preActivateHistoricalAssets,
+      preActivateCustomTokenAssets:
+          preActivateCustomTokenAssets ?? this.preActivateCustomTokenAssets,
       maxPreActivationAttempts:
           maxPreActivationAttempts ?? this.maxPreActivationAttempts,
       activationRetryDelay: activationRetryDelay ?? this.activationRetryDelay,

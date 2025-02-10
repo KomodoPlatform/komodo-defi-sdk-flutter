@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/assets/custom_asset_history_storage.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mutex/mutex.dart';
 
@@ -13,24 +14,14 @@ class ActivationManager {
     this._client,
     this._auth,
     this._assetHistory,
+    this._customTokenHistory,
     this._assetLookup,
-  ) : _activator = SmartAssetActivator(
-          _client,
-          CompositeAssetActivator(
-            _client,
-            [
-              UtxoActivationStrategy(_client),
-              Erc20ActivationStrategy(_client),
-              TendermintActivationStrategy(_client),
-              QtumActivationStrategy(_client),
-              ZhtlcActivationStrategy(_client),
-            ],
-          ),
-        );
+  ) : _activator = ActivationStrategyFactory.createStrategy(_client);
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final AssetHistoryStorage _assetHistory;
+  final CustomAssetHistoryStorage _customTokenHistory;
   final SmartAssetActivator _activator;
   final IAssetLookup _assetLookup;
   final _activationMutex = Mutex();
@@ -185,6 +176,16 @@ class ActivationManager {
           user.walletId,
           group.primary.id.id,
         );
+
+        final allAssets = [group.primary, ...(group.children?.toList() ?? [])];
+        for (final asset in allAssets) {
+          if (asset.protocol.isCustomToken) {
+            await _customTokenHistory.addAssetToWallet(
+              user.walletId,
+              asset,
+            );
+          }
+        }
       }
 
       if (!completer.isCompleted) {

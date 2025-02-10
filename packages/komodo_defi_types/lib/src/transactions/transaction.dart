@@ -92,6 +92,35 @@ class Transaction extends Equatable {
         if (fee != null) 'fee': fee!.toJson(),
         if (memo != null) 'memo': memo,
       };
+
+  Transaction copyWith({
+    String? id,
+    String? internalId,
+    AssetId? assetId,
+    BalanceChanges? balanceChanges,
+    DateTime? timestamp,
+    int? confirmations,
+    int? blockHeight,
+    List<String>? from,
+    List<String>? to,
+    String? txHash,
+    FeeInfo? fee,
+    String? memo,
+  }) =>
+      Transaction(
+        id: id ?? this.id,
+        internalId: internalId ?? this.internalId,
+        assetId: assetId ?? this.assetId,
+        balanceChanges: balanceChanges ?? this.balanceChanges,
+        timestamp: timestamp ?? this.timestamp,
+        confirmations: confirmations ?? this.confirmations,
+        blockHeight: blockHeight ?? this.blockHeight,
+        from: from ?? this.from,
+        to: to ?? this.to,
+        txHash: txHash ?? this.txHash,
+        fee: fee ?? this.fee,
+        memo: memo ?? this.memo,
+      );
 }
 
 extension TransactionInfoExtension on TransactionInfo {

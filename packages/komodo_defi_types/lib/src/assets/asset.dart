@@ -18,6 +18,12 @@ class Asset extends Equatable {
     return Asset(id: assetId, protocol: protocol);
   }
 
+  factory Asset.fromJson(JsonMap json) {
+    final assetId = AssetId.parse(json, knownIds: const {});
+    final protocol = ProtocolClass.fromJson(json);
+    return Asset(id: assetId, protocol: protocol);
+  }
+
   /// Creates a variant of this asset with a different protocol type
   Asset? createVariant(CoinSubClass protocolType) {
     if (!protocol.supportsProtocolType(protocolType)) return null;
@@ -39,12 +45,13 @@ class Asset extends Equatable {
         .toSet();
   }
 
-  // /// Gets the appropriate activation strategy for this asset
-  // ActivationStrategy get activationStrategy =>
-  //     ActivationStrategyFactory.createForAsset(this);
-
   final AssetId id;
   final ProtocolClass protocol;
+
+  JsonMap toJson() => {
+        ...protocol.toJson(),
+        ...id.toJson(),
+      };
 
   @override
   List<Object?> get props => [id, protocol];
