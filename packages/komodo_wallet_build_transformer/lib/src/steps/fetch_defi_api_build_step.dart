@@ -399,6 +399,7 @@ class FetchDefiApiStep extends BuildStep {
       // file build size or if it is required for cache-busting.
     }
     if (_isBinaryExecutable(platform)) {
+      _renameExecutable(destinationFolder);
       _setExecutablePermissions(destinationFolder);
     }
     return Future.value();
