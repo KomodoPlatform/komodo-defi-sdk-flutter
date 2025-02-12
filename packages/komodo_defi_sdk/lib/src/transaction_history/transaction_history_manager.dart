@@ -197,8 +197,6 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
                 ),
         );
 
-        retryCount = 0;
-
         if (response.transactions.isEmpty) {
           hasMore = false;
           continue;
