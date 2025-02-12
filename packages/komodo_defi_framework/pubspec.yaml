@@ -79,6 +79,9 @@ flutter:
               # but is not recommended for production builds.
               # - --concurrent,
 
+              # Uncomment the following option to enable verbose logging.
+              # --log_level=finest,
+
               #! NB: There may be complications if we want to publish the
               # sub-packages as separate packages. However, Flutter's upcoming
               # support for native/web build hooks may simplify this process.

@@ -405,6 +405,30 @@ class FetchDefiApiStep extends BuildStep {
     return Future.value();
   }
 
+  /// if executable is named "mm2" or "mm2.exe", then rename to "kdf"
+  void _renameExecutable(String platform, String destinationFolder) {
+    final executableName = platform == 'windows' ? 'mm2.exe' : 'mm2';
+    final executablePath = path.join(destinationFolder, executableName);
+
+    _log.fine('Looking for executable at: $executablePath');
+    if (FileSystemEntity.isFileSync(executablePath)) {
+      final originalExtension = path.extension(executablePath);
+      final newExecutableName = 'kdf$originalExtension';
+      final newExecutablePath = path.join(destinationFolder, newExecutableName);
+
+      try {
+        File(executablePath).renameSync(newExecutablePath);
+        _log.info(
+          'Renamed executable from $executableName to $newExecutableName',
+        );
+      } catch (e) {
+        _log.severe('Failed to rename executable: $e');
+      }
+    } else {
+      _log.severe('Executable not found at: $executablePath');
+    }
+  }
+
   void _updateDocumentationIfExists() {
     // TODO: re-implement?
     //   final documentationFile = File('$projectRoot/docs/UPDATE_API_MODULE.md');

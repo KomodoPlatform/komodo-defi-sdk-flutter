@@ -57,11 +57,13 @@ class DevBuildsArtefactDownloader implements ArtefactDownloader {
       }
     }
 
-    final availableAssets = attemptedFiles.join('\n . - ');
-    _log.fine('No matching files found in $sourceUrl. '
-        '\nPattern: ${matchingConfig.matchingPattern}, '
-        '\nHashes tried: [$fullHash, $shortHash]'
-        '\nAvailable assets: $availableAssets');
+    final availableAssets = attemptedFiles.join('\n');
+    _log.fine(
+      'No matching files found in $sourceUrl. '
+      '\nPattern: ${matchingConfig.matchingPattern}, '
+      '\nHashes tried: [$fullHash, $shortHash]'
+      '\nAvailable assets: $availableAssets',
+    );
 
     throw Exception('Zip file not found for platform $platform');
   }

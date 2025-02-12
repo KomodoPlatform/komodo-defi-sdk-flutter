@@ -92,8 +92,9 @@ class GithubArtefactDownloader implements ArtefactDownloader {
         'Available assets:\n$releaseAssets');
 
     throw Exception(
-        'Zip file not found for platform $platform in GitHub releases. '
-        'Searched for version: \$version, commit: $apiCommitHash');
+      'Zip file not found for platform $platform in GitHub releases. '
+      'Searched for version: \$version, commit: $apiCommitHash',
+    );
   }
 
   @override
