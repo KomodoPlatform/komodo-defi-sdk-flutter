@@ -10,17 +10,28 @@ import 'package:path/path.dart' as path;
 ///
 /// [projectPath] is the directory of the specified project.
 /// [dependencyName] is the name of the dependency to look up.
-Directory? getDependencyDirectory(String projectPath, String dependencyName) {
+Directory? getDependencyDirectory(
+  Directory projectPath,
+  String dependencyName,
+) {
   final log = Logger('komodo_wallet_build_transformer');
-  final packageConfigFile =
-      File(path.join(projectPath, '.dart_tool', 'package_config.json'))
-          .absolute;
 
-  final projectDir = Directory(projectPath).absolute;
+  // Find the root .dart_tool directory by traversing up
+  final dartToolDir = _findDartToolDirectory(projectPath);
+  if (dartToolDir == null) {
+    throw Exception(
+      'Could not find .dart_tool directory in any parent directory of '
+      '$projectPath',
+    );
+  }
+
+  final packageConfigFile = File(
+    path.join(dartToolDir.path, 'package_config.json'),
+  ).absolute;
 
   if (!packageConfigFile.existsSync()) {
     throw Exception(
-      'package_config.json not found in $projectPath/.dart_tool/',
+      'package_config.json not found in ${dartToolDir.path}',
     );
   }
 
@@ -33,24 +44,10 @@ Directory? getDependencyDirectory(String projectPath, String dependencyName) {
 
   final packages = packageConfig['packages'] as List;
 
-  Directory? projectPackageDir;
   String? packageRootUri;
 
   for (final package in packages) {
     final rootUri = package['rootUri'] as String;
-
-    final packageRoot = path.join(packageConfigFile.parent.path, rootUri);
-
-    // Check if packageConfigFile + rootUri is the same as the projectDir
-    if (path.equals(packageRoot, projectDir.path)) {
-      projectPackageDir = Directory(
-        path.normalize(
-          path.join(packageRoot, package['packageUri'] as String?),
-        ),
-      );
-
-      log.info('Found package $dependencyName at $projectPackageDir');
-    }
 
     if (package['name'] == dependencyName) {
       if (rootUri.startsWith('file:///')) {
@@ -61,16 +58,42 @@ Directory? getDependencyDirectory(String projectPath, String dependencyName) {
       log.info('Found package $dependencyName at $packageRootUri');
     }
 
-    if (projectPackageDir != null && packageRootUri != null) {
+    if (packageRootUri != null) {
       break;
     }
   }
 
-  if (packageRootUri != null && projectPackageDir != null) {
-    return resolvePackageDirectory(projectPackageDir, packageRootUri);
+  if (packageRootUri != null) {
+    return resolvePackageDirectory(dartToolDir, packageRootUri);
   }
 
   log.warning('Dependency $dependencyName not found in package_config.json');
+  return null;
+}
+
+/// Finds the .dart_tool directory by traversing up the directory tree
+/// until it is found or the root directory is reached.
+Directory? _findDartToolDirectory(Directory startDir) {
+  Directory? currentDir = startDir.absolute;
+
+  while (currentDir != null) {
+    final dartToolDir = Directory(path.join(currentDir.path, '.dart_tool'));
+    final packageConfigFile =
+        File(path.join(dartToolDir.path, 'package_config.json'));
+
+    if (dartToolDir.existsSync() && packageConfigFile.existsSync()) {
+      return dartToolDir;
+    }
+
+    final parentDir = path.dirname(currentDir.path);
+    if (parentDir == currentDir.path) {
+      // We've reached the root directory
+      return null;
+    }
+
+    currentDir = Directory(parentDir);
+  }
+
   return null;
 }
 

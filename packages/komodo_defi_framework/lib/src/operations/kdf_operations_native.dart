@@ -235,17 +235,27 @@ List<String> _getLibraryPaths() {
     return [
       'kdf',
       'mm2',
-      'Frameworks/libkdflib.a',
-      'komodo_defi_framework/Frameworks/libkdflib.a',
       'libkdflib.dylib',
-      'libkdflib.a',
       'PROCESS',
       'EXECUTABLE',
     ];
   } else if (Platform.isIOS) {
-    return ['libkdflib.dylib'];
+    return [
+      'libkdflib.dylib',
+      'PROCESS',
+      'EXECUTABLE',
+    ];
   } else if (Platform.isAndroid) {
-    return ['libkdflib.so', 'libkdflib_static.so'];
+    return [
+      'libkomodo_defi_framework.so',
+      'komodo_defi_framework.so',
+      'komodo_defi_framework_plugin.so',
+      'libkomodo_defi_framework_plugin.so',
+      'libkdflib.so',
+      'libkdflib_static.so',
+      'EXECUTABLE',
+      'PROCESS',
+    ];
   } else if (Platform.isWindows) {
     return ['kdflib.dll', 'kdflib_static.dll'];
   } else if (Platform.isLinux) {

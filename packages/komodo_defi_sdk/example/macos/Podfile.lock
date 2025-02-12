@@ -44,7 +44,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   flutter_secure_storage_macos: c2754d3483d20bb207bb9e5a14f1b8e771abcdb9
   FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
-  komodo_defi_framework: f716eeef2f8d5cd3a97efe7bb103e8e18285032c
+  komodo_defi_framework: f0b88d0dfa7907a9ece425bf4f1435cd94cfdc73
   local_auth_darwin: 66e40372f1c29f383a314c738c7446e2f7fdadc3
   mobile_scanner: 07710d6b9b2c220ae899de2d7ecf5d77ffa56333
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
@@ -52,4 +52,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 236401fc2c932af29a9fcf0e97baeeb2d750d367
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2

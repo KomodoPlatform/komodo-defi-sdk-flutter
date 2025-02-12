@@ -2,6 +2,7 @@ name: komodo_coins
 description: "A package for fetching managing Komodo Platform coin configuration data storage, runtime updates, and queries."
 version: 0.2.0+0
 homepage: "komodoplatform.com"
+publish_to: none
 
 environment:
   sdk: ^3.5.3

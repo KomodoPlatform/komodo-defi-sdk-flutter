@@ -53,7 +53,7 @@ Level logLevelFromString(String level) {
 /// The [allowStackTracesFromLevel] is the minimum level of log messages that
 /// will have their stack traces printed.
 /// By default, stack traces are only printed for log messages at the
-/// [Level.WARNING] level or higher.
+/// [Level.SEVERE] level or higher.
 /// If [allowStackTracesFromLevel] is set to [Level.ALL], stack traces will
 /// be printed for all log messages.
 /// If [allowStackTracesFromLevel] is set to [Level.OFF], stack traces will

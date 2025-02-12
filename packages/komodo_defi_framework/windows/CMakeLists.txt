@@ -18,6 +18,9 @@ add_library(${PLUGIN_NAME} SHARED
 # This can be changed to accommodate different builds.
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../src" "${CMAKE_CURRENT_BINARY_DIR}/shared")
 
+# Find all .exe and .dll files in the bin directory
+file(GLOB BIN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/bin/*.exe" "${CMAKE_CURRENT_SOURCE_DIR}/bin/*.dll")
+
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
 # external build triggered from this build file.
@@ -26,6 +29,7 @@ set(komodo_defi_framework_bundled_libraries
   # Defined in ../src/CMakeLists.txt.
   # This can be changed to accommodate different builds.
   $<TARGET_FILE:komodo_defi_framework>
+  ${BIN_FILES}
   PARENT_SCOPE
 )
 
@@ -38,7 +42,53 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
 
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
+set(APP_NAME "KomodoPlatform")
+set(FINAL_INSTALL_DIR "$ENV{APPDATA}/${APP_NAME}")
+
+# Find all .exe and .dll files in the bin directory
+file(GLOB EXE_DLL_FILES "${CMAKE_CURRENT_SOURCE_DIR}/bin/*.exe" "${CMAKE_CURRENT_SOURCE_DIR}/bin/*.dll")
+
+# Ensure the final install directory exists
+add_custom_command(
+  TARGET ${PLUGIN_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${FINAL_INSTALL_DIR}"
+)
+
+# Copy each .exe and .dll file to the final install directory
+foreach(FILE ${EXE_DLL_FILES})
+  get_filename_component(FILE_NAME ${FILE} NAME)
+  add_custom_command(
+    TARGET ${PLUGIN_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+      "${FILE}"
+      "${FINAL_INSTALL_DIR}/${FILE_NAME}"
+    VERBATIM
+  )
+endforeach()
+
 set(mm2_bundled_libraries
-  "${CMAKE_CURRENT_SOURCE_DIR}/mm2"
+  "${CMAKE_CURRENT_SOURCE_DIR}/bin/kdf.exe"
   PARENT_SCOPE
 )
+
+# For local development/debugging/testing
+# Copies the KDF binary to APPDATA to make it accessible
+# This simplifies debug environment setup - avoids adding platform-dependent
+# paths to vscode debugging configurations or environment variables
+set(APP_NAME "KomodoPlatform")
+set(FINAL_INSTALL_DIR "$ENV{APPDATA}/${APP_NAME}")
+file(GLOB EXE_DLL_FILES "${CMAKE_CURRENT_SOURCE_DIR}/bin/*.exe" "${CMAKE_CURRENT_SOURCE_DIR}/bin/*.dll")
+add_custom_command(
+  TARGET ${PLUGIN_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${FINAL_INSTALL_DIR}"
+)
+foreach(FILE ${EXE_DLL_FILES})
+  get_filename_component(FILE_NAME ${FILE} NAME)
+  add_custom_command(
+    TARGET ${PLUGIN_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+      "${FILE}"
+      "${FINAL_INSTALL_DIR}/${FILE_NAME}"
+    VERBATIM
+  )
+endforeach()
