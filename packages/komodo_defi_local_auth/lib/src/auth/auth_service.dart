@@ -196,8 +196,7 @@ class KdfAuthService implements IAuthService {
 
           // Create new user record if none exists
           final newUser = KdfUser(
-            walletId: WalletId.fromName(name),
-            authOptions: _fallbackAuthOptions,
+            walletId: WalletId.fromName(name, _fallbackAuthOptions),
             isBip39Seed: true, // Default to true until verified otherwise
           );
           await _secureStorage.saveUser(newUser);

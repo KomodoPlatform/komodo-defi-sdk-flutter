@@ -175,8 +175,12 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     await ensureInitialized();
     await _assertAuthState(false);
 
-    final updatedUser =
-        (await _findUser(walletName)).copyWith(authOptions: options);
+    final user = await _findUser(walletName);
+    final updatedUser = user.copyWith(
+      walletId: user.walletId.copyWith(
+        authOptions: options,
+      ),
+    );
 
     // Save AuthOptions to secure storage by wallet name
     await _secureStorage.saveUser(updatedUser);

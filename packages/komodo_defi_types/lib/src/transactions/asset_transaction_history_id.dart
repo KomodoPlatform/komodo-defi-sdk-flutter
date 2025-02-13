@@ -6,16 +6,16 @@ import 'package:komodo_defi_types/src/auth/kdf_user.dart';
 /// This is used to store the transaction history in key-value storage without
 /// collisions when using multiple wallets on the same device.
 class AssetTransactionHistoryId extends Equatable {
-  const AssetTransactionHistoryId(this.wallet, this.assetId);
+  const AssetTransactionHistoryId(this.walletId, this.assetId);
 
   /// The wallet for which the transaction history is stored (cached). This is
   /// used to uniquely identify the transaction history for a given wallet and
   /// asset.
-  final KdfUser wallet;
+  final WalletId walletId;
 
   /// The asset for which the transaction history is stored (cached).
   final AssetId assetId;
 
   @override
-  List<Object?> get props => [wallet, assetId];
+  List<Object?> get props => [walletId, assetId];
 }

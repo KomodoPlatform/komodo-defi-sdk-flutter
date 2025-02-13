@@ -10,18 +10,18 @@ abstract interface class TransactionStorage {
       InMemoryTransactionStorage();
 
   /// Store a new transaction
-  Future<void> storeTransaction(Transaction transaction, KdfUser wallet);
+  Future<void> storeTransaction(Transaction transaction, WalletId walletId);
 
   /// Store multiple transactions in batch
   Future<void> storeTransactions(
     List<Transaction> transactions,
-    KdfUser wallet,
+    WalletId walletId,
   );
 
   /// Retrieve transactions for an asset with pagination
   Future<TransactionPage> getTransactions(
     AssetId assetId,
-    KdfUser user, {
+    WalletId walletId, {
     String? fromId,
     int? pageNumber,
     int limit = 10,
@@ -31,10 +31,10 @@ abstract interface class TransactionStorage {
   Future<Transaction?> getTransactionById(String internalId);
 
   /// Clear stored transactions for an asset
-  Future<void> clearTransactions(AssetId assetId, KdfUser user);
+  Future<void> clearTransactions(AssetId assetId, WalletId walletId);
 
   /// Get latest transaction's internal ID for an asset
-  Future<String?> getLatestTransactionId(AssetId assetId, KdfUser user);
+  Future<String?> getLatestTransactionId(AssetId assetId, WalletId walletId);
 
   /// Get storage statistics
   Future<StorageStats> getStats();
@@ -91,7 +91,7 @@ class InMemoryTransactionStorage implements TransactionStorage {
   }
 
   @override
-  Future<void> storeTransaction(Transaction transaction, KdfUser user) async {
+  Future<void> storeTransaction(Transaction transaction, WalletId walletId) async {
     if (transaction.internalId.isEmpty) {
       throw TransactionStorageException(
         'Transaction internal ID cannot be empty',
@@ -101,7 +101,7 @@ class InMemoryTransactionStorage implements TransactionStorage {
     try {
       await _mutex.protect(() async {
         final assetHistoryId =
-            AssetTransactionHistoryId(user, transaction.assetId);
+            AssetTransactionHistoryId(walletId, transaction.assetId);
         final txMap = {transaction.internalId: transaction};
         // recreate the entire splaytreemap here, since the txMap passed to
         // _compareTransactions is not updated once the entry already exists,
@@ -120,7 +120,7 @@ class InMemoryTransactionStorage implements TransactionStorage {
         );
       });
 
-      await _enforceStorageLimit(transaction.assetId, user);
+      await _enforceStorageLimit(transaction.assetId, walletId);
     } catch (e) {
       throw TransactionStorageException('Failed to store transaction', e);
     }
@@ -129,7 +129,7 @@ class InMemoryTransactionStorage implements TransactionStorage {
   @override
   Future<void> storeTransactions(
     List<Transaction> transactions,
-    KdfUser user,
+    WalletId user,
   ) async {
     if (transactions.isEmpty) return;
 
@@ -174,7 +174,7 @@ class InMemoryTransactionStorage implements TransactionStorage {
   @override
   Future<TransactionPage> getTransactions(
     AssetId assetId,
-    KdfUser user, {
+    WalletId user, {
     String? fromId,
     int? pageNumber,
     int limit = 10,
@@ -237,7 +237,7 @@ class InMemoryTransactionStorage implements TransactionStorage {
   }
 
   @override
-  Future<void> clearTransactions(AssetId assetId, KdfUser user) async {
+  Future<void> clearTransactions(AssetId assetId, WalletId user) async {
     await _mutex.protect(() async {
       final assetTxHistoryId = AssetTransactionHistoryId(user, assetId);
       _storage.remove(assetTxHistoryId);
@@ -245,7 +245,7 @@ class InMemoryTransactionStorage implements TransactionStorage {
   }
 
   @override
-  Future<String?> getLatestTransactionId(AssetId assetId, KdfUser user) async {
+  Future<String?> getLatestTransactionId(AssetId assetId, WalletId user) async {
     return _mutex.protect(() async {
       final assetTxHistoryId = AssetTransactionHistoryId(user, assetId);
       final transactions = _storage[assetTxHistoryId]?.values;
@@ -254,7 +254,7 @@ class InMemoryTransactionStorage implements TransactionStorage {
     });
   }
 
-  Future<void> _enforceStorageLimit(AssetId assetId, KdfUser user) async {
+  Future<void> _enforceStorageLimit(AssetId assetId, WalletId user) async {
     if (_maxTransactionsPerAsset == null) return;
 
     await _mutex.protect(() async {
