@@ -54,11 +54,10 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
       );
     }
 
-    final walletId = WalletId.fromName(config.walletName!);
+    final walletId = WalletId.fromName(config.walletName!, authOptions);
     // ignore: omit_local_variable_types
     KdfUser currentUser = KdfUser(
       walletId: walletId,
-      authOptions: authOptions,
       isBip39Seed: false,
     );
     await _secureStorage.saveUser(currentUser);

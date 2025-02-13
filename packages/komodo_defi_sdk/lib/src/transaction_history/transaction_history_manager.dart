@@ -105,6 +105,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
       // First try to get from local storage
       final localPage = await _storage.getTransactions(
         asset.id,
+        await _getCurrentWalletId(),
         fromId:
             pagination is TransactionBasedPagination ? pagination.fromId : null,
         pageNumber: pagination is PagePagination ? pagination.pageNumber : null,
@@ -169,6 +170,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     // First try to get any cached transactions
     final localPage = await _storage.getTransactions(
       asset.id,
+      await _getCurrentWalletId(),
       limit: _maxBatchSize,
     );
 
@@ -196,8 +198,6 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
                   itemsPerPage: _maxBatchSize,
                 ),
         );
-
-        retryCount = 0;
 
         if (response.transactions.isEmpty) {
           hasMore = false;
@@ -265,7 +265,10 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
 
     try {
       final strategy = _strategyFactory.forAsset(asset);
-      var fromId = await _storage.getLatestTransactionId(asset.id);
+      var fromId = await _storage.getLatestTransactionId(
+        asset.id,
+        await _getCurrentWalletId(),
+      );
       var hasMore = true;
 
       while (hasMore && !_isDisposed) {
@@ -310,7 +313,10 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   Future<void> clearTransactionHistory(Asset asset) async {
     if (_isDisposed) return;
 
-    await _storage.clearTransactions(asset.id);
+    await _storage.clearTransactions(
+      asset.id,
+      await _getCurrentWalletId(),
+    );
     _stopPolling(asset.id);
     await _streamControllers[asset.id]?.close();
     _streamControllers.remove(asset.id);
@@ -321,7 +327,10 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
 
     try {
       final strategy = _strategyFactory.forAsset(asset);
-      final lastTx = await _storage.getLatestTransactionId(asset.id);
+      final lastTx = await _storage.getLatestTransactionId(
+        asset.id,
+        await _getCurrentWalletId(),
+      );
 
       await _rateLimiter.throttle();
 
@@ -370,11 +379,22 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     }
   }
 
+  Future<WalletId> _getCurrentWalletId() async {
+    final currentUser = await _auth.currentUser;
+    if (currentUser == null) {
+      throw StateError('User is not logged in');
+    }
+    return currentUser.walletId;
+  }
+
   Future<void> _batchStoreTransactions(List<Transaction> transactions) async {
     if (transactions.isEmpty) return;
 
     try {
-      await _storage.storeTransactions(transactions);
+      await _storage.storeTransactions(
+        transactions,
+        await _getCurrentWalletId(),
+      );
     } catch (e) {
       throw Exception('Failed to store transactions batch: $e');
     }

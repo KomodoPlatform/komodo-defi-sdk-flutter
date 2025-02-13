@@ -10,14 +10,18 @@ abstract interface class TransactionStorage {
       InMemoryTransactionStorage();
 
   /// Store a new transaction
-  Future<void> storeTransaction(Transaction transaction);
+  Future<void> storeTransaction(Transaction transaction, WalletId walletId);
 
   /// Store multiple transactions in batch
-  Future<void> storeTransactions(List<Transaction> transactions);
+  Future<void> storeTransactions(
+    List<Transaction> transactions,
+    WalletId walletId,
+  );
 
   /// Retrieve transactions for an asset with pagination
   Future<TransactionPage> getTransactions(
-    AssetId assetId, {
+    AssetId assetId,
+    WalletId walletId, {
     String? fromId,
     int? pageNumber,
     int limit = 10,
@@ -27,10 +31,10 @@ abstract interface class TransactionStorage {
   Future<Transaction?> getTransactionById(String internalId);
 
   /// Clear stored transactions for an asset
-  Future<void> clearTransactions(AssetId assetId);
+  Future<void> clearTransactions(AssetId assetId, WalletId walletId);
 
   /// Get latest transaction's internal ID for an asset
-  Future<String?> getLatestTransactionId(AssetId assetId);
+  Future<String?> getLatestTransactionId(AssetId assetId, WalletId walletId);
 
   /// Get storage statistics
   Future<StorageStats> getStats();
@@ -46,17 +50,22 @@ class InMemoryTransactionStorage implements TransactionStorage {
   }
 
   final _mutex = Mutex();
-  final Map<AssetId, SplayTreeMap<String, Transaction>> _storage;
+  final Map<AssetTransactionHistoryId, SplayTreeMap<String, Transaction>>
+      _storage;
   static const int? _maxTransactionsPerAsset = null;
 
   /// Compare transactions for ordering within the SplayTreeMap
-  static int _compareTransactions(
+  int _compareTransactions(
     String a,
     String b,
+    AssetTransactionHistoryId assetTxHistoryId,
     Map<String, Transaction> transactions,
   ) {
-    final txA = transactions[a];
-    final txB = transactions[b];
+    final assetTxHistory = _storage[assetTxHistoryId];
+
+    // the transactions
+    final txA = transactions[a] ?? assetTxHistory?[a];
+    final txB = transactions[b] ?? assetTxHistory?[b];
 
     if (txA == null || txB == null) {
       throw TransactionStorageException('Transaction not found in comparison');
@@ -70,17 +79,19 @@ class InMemoryTransactionStorage implements TransactionStorage {
 
   Future<void> _initializeStorage() async {
     await _mutex.protect(() async {
-      for (final assetId in _storage.keys) {
-        final assetTransactions = _storage[assetId] ?? <String, Transaction>{};
-        _storage[assetId] = SplayTreeMap<String, Transaction>(
-          (a, b) => _compareTransactions(a, b, assetTransactions),
+      for (final assetTxHistoryId in _storage.keys) {
+        final assetTransactions =
+            _storage[assetTxHistoryId] ?? <String, Transaction>{};
+        _storage[assetTxHistoryId] = SplayTreeMap<String, Transaction>(
+          (a, b) =>
+              _compareTransactions(a, b, assetTxHistoryId, assetTransactions),
         );
       }
     });
   }
 
   @override
-  Future<void> storeTransaction(Transaction transaction) async {
+  Future<void> storeTransaction(Transaction transaction, WalletId walletId) async {
     if (transaction.internalId.isEmpty) {
       throw TransactionStorageException(
         'Transaction internal ID cannot be empty',
@@ -89,28 +100,37 @@ class InMemoryTransactionStorage implements TransactionStorage {
 
     try {
       await _mutex.protect(() async {
-        final assetTransactions = _storage.putIfAbsent(
-          transaction.assetId,
-          () => SplayTreeMap<String, Transaction>(
-            (a, b) => _compareTransactions(
-              a,
-              b,
-              {transaction.internalId: transaction},
-            ),
-          ),
+        final assetHistoryId =
+            AssetTransactionHistoryId(walletId, transaction.assetId);
+        final txMap = {transaction.internalId: transaction};
+        // recreate the entire splaytreemap here, since the txMap passed to
+        // _compareTransactions is not updated once the entry already exists,
+        // resulting in comparison exceptions due to missing transactions.
+        // This is a workaround for the issue, and should be revisited.
+        // TODO: consider using a standard map, and sorting the transactions at
+        // retreival instead of storage.
+        _storage.update(
+          assetHistoryId,
+          (existingMap) => SplayTreeMap<String, Transaction>(
+            (a, b) => _compareTransactions(a, b, assetHistoryId, txMap),
+          )..[transaction.internalId] = transaction,
+          ifAbsent: () => SplayTreeMap<String, Transaction>(
+            (a, b) => _compareTransactions(a, b, assetHistoryId, txMap),
+          )..[transaction.internalId] = transaction,
         );
-
-        assetTransactions[transaction.internalId] = transaction;
       });
 
-      await _enforceStorageLimit(transaction.assetId);
+      await _enforceStorageLimit(transaction.assetId, walletId);
     } catch (e) {
       throw TransactionStorageException('Failed to store transaction', e);
     }
   }
 
   @override
-  Future<void> storeTransactions(List<Transaction> transactions) async {
+  Future<void> storeTransactions(
+    List<Transaction> transactions,
+    WalletId user,
+  ) async {
     if (transactions.isEmpty) return;
 
     try {
@@ -121,19 +141,29 @@ class InMemoryTransactionStorage implements TransactionStorage {
           final txMap = Map.fromEntries(
             entry.value.map((tx) => MapEntry(tx.internalId, tx)),
           );
+          final assetHistoryId = AssetTransactionHistoryId(user, entry.key);
 
-          _storage
-              .putIfAbsent(
-                entry.key,
-                () => SplayTreeMap<String, Transaction>(
-                  (a, b) => _compareTransactions(a, b, txMap),
-                ),
-              )
-              .addEntries(txMap.entries);
+          // recreate the entire splaytreemap here, since the txMap passed to
+          // _compareTransactions is not updated once the entry already exists,
+          // resulting in comparison exceptions due to missing transactions.
+          // This is a workaround for the issue, and should be revisited.
+          // TODO: consider using a standard map, and sorting the transactions
+          // at retreival instead of storage.
+          _storage.update(
+            assetHistoryId,
+            (existingMap) => SplayTreeMap<String, Transaction>(
+              (a, b) => _compareTransactions(a, b, assetHistoryId, txMap),
+            )
+              ..addEntries(existingMap.entries)
+              ..addEntries(txMap.entries),
+            ifAbsent: () => SplayTreeMap<String, Transaction>(
+              (a, b) => _compareTransactions(a, b, assetHistoryId, txMap),
+            )..addEntries(txMap.entries),
+          );
         }
 
         for (final assetId in grouped.keys) {
-          await _enforceStorageLimit(assetId);
+          await _enforceStorageLimit(assetId, user);
         }
       });
     } catch (e) {
@@ -143,13 +173,15 @@ class InMemoryTransactionStorage implements TransactionStorage {
 
   @override
   Future<TransactionPage> getTransactions(
-    AssetId assetId, {
+    AssetId assetId,
+    WalletId user, {
     String? fromId,
     int? pageNumber,
     int limit = 10,
   }) async {
     return _mutex.protect(() async {
-      final assetTransactions = _storage[assetId] ?? SplayTreeMap();
+      final assetTransactionsId = AssetTransactionHistoryId(user, assetId);
+      final assetTransactions = _storage[assetTransactionsId] ?? SplayTreeMap();
       final total = assetTransactions.length;
 
       if (total == 0) {
@@ -205,26 +237,29 @@ class InMemoryTransactionStorage implements TransactionStorage {
   }
 
   @override
-  Future<void> clearTransactions(AssetId assetId) async {
+  Future<void> clearTransactions(AssetId assetId, WalletId user) async {
     await _mutex.protect(() async {
-      _storage.remove(assetId);
+      final assetTxHistoryId = AssetTransactionHistoryId(user, assetId);
+      _storage.remove(assetTxHistoryId);
     });
   }
 
   @override
-  Future<String?> getLatestTransactionId(AssetId assetId) async {
+  Future<String?> getLatestTransactionId(AssetId assetId, WalletId user) async {
     return _mutex.protect(() async {
-      final transactions = _storage[assetId]?.values;
+      final assetTxHistoryId = AssetTransactionHistoryId(user, assetId);
+      final transactions = _storage[assetTxHistoryId]?.values;
       if (transactions == null || transactions.isEmpty) return null;
       return transactions.first.internalId;
     });
   }
 
-  Future<void> _enforceStorageLimit(AssetId assetId) async {
+  Future<void> _enforceStorageLimit(AssetId assetId, WalletId user) async {
     if (_maxTransactionsPerAsset == null) return;
 
     await _mutex.protect(() async {
-      final assetTransactions = _storage[assetId];
+      final assetTxHistoryId = AssetTransactionHistoryId(user, assetId);
+      final assetTransactions = _storage[assetTxHistoryId];
       if (assetTransactions == null) return;
 
       if (assetTransactions.length > _maxTransactionsPerAsset!) {
@@ -303,7 +338,7 @@ class StorageStats {
   });
 
   final int totalTransactions;
-  final Map<AssetId, int> transactionsPerAsset;
+  final Map<AssetTransactionHistoryId, int> transactionsPerAsset;
   final DateTime oldestTransaction;
   final DateTime newestTransaction;
 }

@@ -1,7 +1,8 @@
+import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class AuthOptions {
+class AuthOptions extends Equatable {
   const AuthOptions({
     required this.derivationMethod,
   });
@@ -20,4 +21,7 @@ class AuthOptions {
       'derivation_method': derivationMethod.toString(),
     };
   }
+  
+  @override
+  List<Object?> get props => [derivationMethod];
 }
