@@ -175,8 +175,11 @@ class FetchDefiApiStep extends BuildStep {
     }
 
     final destinationFolder = _getPlatformDestinationFolder(platform);
-    final isOutdated =
-        await _checkIfOutdated(platform, destinationFolder, config);
+    final isOutdated = await _checkIfOutdated(
+      platform,
+      destinationFolder,
+      config,
+    );
 
     if (!_shouldUpdate(isOutdated)) {
       _log.info('$platform platform is up to date.');
@@ -194,8 +197,10 @@ class FetchDefiApiStep extends BuildStep {
           throw ArgumentError.value(sourceUrl, '', 'No downloader found');
         }
 
-        final zipFileUrl =
-            await downloader.fetchDownloadUrl(config.matchingConfig, platform);
+        final zipFileUrl = await downloader.fetchDownloadUrl(
+          config.matchingConfig,
+          platform,
+        );
         zipFilePath = await downloader.downloadArtefact(
           url: zipFileUrl,
           destinationPath: destinationFolder,
@@ -268,8 +273,9 @@ class FetchDefiApiStep extends BuildStep {
     String destinationFolder,
     String zipFilePath,
   ) {
-    final lastUpdatedFile =
-        File(path.join(destinationFolder, '.api_last_updated_$platform'));
+    final lastUpdatedFile = File(
+      path.join(destinationFolder, '.api_last_updated_$platform'),
+    );
     final currentTimestamp = DateTime.now().toIso8601String();
     final fileChecksum =
         sha256.convert(File(zipFilePath).readAsBytesSync()).toString();
@@ -288,8 +294,10 @@ class FetchDefiApiStep extends BuildStep {
     String destinationFolder,
     ApiBuildPlatformConfig config,
   ) async {
-    final lastUpdatedFilePath =
-        path.join(destinationFolder, '.api_last_updated_$platform');
+    final lastUpdatedFilePath = path.join(
+      destinationFolder,
+      '.api_last_updated_$platform',
+    );
     final lastUpdatedFile = File(lastUpdatedFilePath);
 
     if (!lastUpdatedFile.existsSync()) {
@@ -301,10 +309,12 @@ class FetchDefiApiStep extends BuildStep {
               as Map<String, dynamic>? ??
           {};
       if (lastUpdatedData['api_commit_hash'] == apiCommitHash) {
-        final storedChecksums =
-            List<String>.from(lastUpdatedData['checksums'] as List? ?? []);
-        final targetChecksums =
-            List<String>.from(config.validZipSha256Checksums);
+        final storedChecksums = List<String>.from(
+          lastUpdatedData['checksums'] as List? ?? [],
+        );
+        final targetChecksums = List<String>.from(
+          config.validZipSha256Checksums,
+        );
 
         if (storedChecksums.toSet().containsAll(targetChecksums)) {
           _log.info('version: $apiCommitHash and SHA256 checksum match.');
@@ -334,7 +344,9 @@ class FetchDefiApiStep extends BuildStep {
     final npmPath = findNode();
     final installResult = await Process.run(
       npmPath,
-      ['install'],
+      [
+        'install',
+      ],
       workingDirectory: artifactOutputPath,
     );
     if (installResult.exitCode != 0) {
@@ -344,7 +356,10 @@ class FetchDefiApiStep extends BuildStep {
     _log.fine('Running npm run build in $artifactOutputPath');
     final buildResult = await Process.run(
       npmPath,
-      ['run', 'build'],
+      [
+        'run',
+        'build',
+      ],
       workingDirectory: artifactOutputPath,
     );
     if (buildResult.exitCode != 0) {
@@ -399,33 +414,53 @@ class FetchDefiApiStep extends BuildStep {
       // file build size or if it is required for cache-busting.
     }
     if (_isBinaryExecutable(platform)) {
-      _renameExecutable(platform, destinationFolder);
+      _tryRenameExecutable(platform, destinationFolder);
       _setExecutablePermissions(destinationFolder);
+    } else {
+      _tryRenameLibrary(platform, destinationFolder);
     }
+
     return Future.value();
   }
 
   /// if executable is named "mm2" or "mm2.exe", then rename to "kdf"
-  void _renameExecutable(String platform, String destinationFolder) {
+  void _tryRenameExecutable(String platform, String destinationFolder) {
     final executableName = platform == 'windows' ? 'mm2.exe' : 'mm2';
     final executablePath = path.join(destinationFolder, executableName);
 
-    _log.fine('Looking for executable at: $executablePath');
-    if (FileSystemEntity.isFileSync(executablePath)) {
-      final originalExtension = path.extension(executablePath);
-      final newExecutableName = 'kdf$originalExtension';
+    _tryRenameFile(
+      filePath: executablePath,
+      destinationFolder: destinationFolder,
+    );
+  }
+
+  /// if library is named "libmm2.a" or "libmm2.dylib", then rename to
+  /// "libkdf.a" or "libkdf.dylib"
+  void _tryRenameLibrary(String platform, String destinationFolder) {
+    const libraryName = 'libmm2.a';
+    final libraryPath = path.join(destinationFolder, libraryName);
+
+    _tryRenameFile(filePath: libraryPath, destinationFolder: destinationFolder);
+  }
+
+  void _tryRenameFile({
+    required String filePath,
+    required String destinationFolder,
+  }) {
+    _log.fine('Looking for KDF at: $filePath');
+    if (FileSystemEntity.isFileSync(filePath)) {
+      final newExecutableName = path.basename(filePath)
+        .replaceAll('mm2', 'kdf');
       final newExecutablePath = path.join(destinationFolder, newExecutableName);
 
       try {
-        File(executablePath).renameSync(newExecutablePath);
-        _log.info(
-          'Renamed executable from $executableName to $newExecutableName',
-        );
+        File(filePath).renameSync(newExecutablePath);
+        _log.info('Renamed kdf from $filePath to $newExecutableName');
       } catch (e) {
-        _log.severe('Failed to rename executable: $e');
+        _log.severe('Failed to rename kdf: $e');
       }
     } else {
-      _log.severe('Executable not found at: $executablePath');
+      _log.warning('KDF not found at: $filePath');
     }
   }
 

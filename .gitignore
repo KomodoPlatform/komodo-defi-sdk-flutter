@@ -78,6 +78,7 @@ contrib/coins_config.json
 
 # api native library
 libmm2.a
+libkdf.a
 libmm2.dylib
 libkdflib.a
 libkdflib.dylib
