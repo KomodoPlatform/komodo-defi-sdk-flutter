@@ -5,11 +5,11 @@ repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/
 publish_to: "none"
 
 environment:
-  sdk: ^3.4.4
+  sdk: ^3.7.0
   # TODO: Consider a different approach to fetching the BIP-0039 wordlist besides
   # including it as an asset. This will allow us to drop Flutter as a
   # dependency and keep it pure Dart.
-  flutter: ">=3.22.0 <3.25.0"
+  flutter: ">=3.29.0 <3.30.0"
 
 dependencies:
   decimal: ^3.0.2
@@ -28,7 +28,7 @@ dev_dependencies:
   index_generator: ^4.0.1
   json_serializable: ^6.9.3
   test: ^1.25.2
-  very_good_analysis: ^6.0.0
+  very_good_analysis: ^7.0.0
 
 flutter:
   assets:

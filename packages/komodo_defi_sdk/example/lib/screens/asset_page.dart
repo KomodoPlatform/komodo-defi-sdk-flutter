@@ -72,36 +72,35 @@ class _AssetPageState extends State<AssetPage> {
       appBar: AppBar(
         title: Text(widget.asset.id.name),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadPubkeys,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadPubkeys),
         ],
       ),
-      body: _error != null
-          ? Center(child: Text('Error: $_error'))
-          : Column(
-              children: [
-                // const SizedBox(height: 32),
-                AssetHeader(widget.asset, _pubkeys),
-                const SizedBox(height: 32),
-                Flexible(
-                  child: _AddressesSection(
-                    pubkeys: _pubkeys == null
-                        ? AssetPubkeys(
-                            keys: [],
-                            assetId: widget.asset.id,
-                            availableAddressesCount: 0,
-                            syncStatus: SyncStatusEnum.inProgress,
-                          )
-                        : _pubkeys!,
-                    onGenerateNewAddress: _generateNewAddress,
-                    cantCreateNewAddressReasons: _cantCreateNewAddressReasons,
+      body:
+          _error != null
+              ? Center(child: Text('Error: $_error'))
+              : Column(
+                children: [
+                  // const SizedBox(height: 32),
+                  AssetHeader(widget.asset, _pubkeys),
+                  const SizedBox(height: 32),
+                  Flexible(
+                    child: _AddressesSection(
+                      pubkeys:
+                          _pubkeys == null
+                              ? AssetPubkeys(
+                                keys: [],
+                                assetId: widget.asset.id,
+                                availableAddressesCount: 0,
+                                syncStatus: SyncStatusEnum.inProgress,
+                              )
+                              : _pubkeys!,
+                      onGenerateNewAddress: _generateNewAddress,
+                      cantCreateNewAddressReasons: _cantCreateNewAddressReasons,
+                    ),
                   ),
-                ),
-                Expanded(child: _TransactionsSection(widget.asset)),
-              ],
-            ),
+                  Expanded(child: _TransactionsSection(widget.asset)),
+                ],
+              ),
     );
   }
 }
@@ -192,19 +191,21 @@ class _AssetHeaderState extends State<AssetHeader> {
       spacing: 8,
       children: [
         FilledButton.icon(
-          onPressed: widget.pubkeys == null
-              ? null
-              : () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (context) => WithdrawalScreen(
-                        asset: widget.asset,
-                        pubkeys: widget.pubkeys!,
+          onPressed:
+              widget.pubkeys == null
+                  ? null
+                  : () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder:
+                            (context) => WithdrawalScreen(
+                              asset: widget.asset,
+                              pubkeys: widget.pubkeys!,
+                            ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
           icon: const Icon(Icons.send),
           label: const Text('Send'),
         ),
@@ -234,22 +235,24 @@ class _AddressesSection extends StatelessWidget {
       return '';
     }
 
-    return cantCreateNewAddressReasons!.map((reason) {
-      return switch (reason) {
-        CantCreateNewAddressReason.maxGapLimitReached =>
-          'Maximum gap limit reached - please use existing unused addresses first',
-        CantCreateNewAddressReason.maxAddressesReached =>
-          'Maximum number of addresses reached for this asset',
-        CantCreateNewAddressReason.missingDerivationPath =>
-          'Missing derivation path configuration',
-        CantCreateNewAddressReason.protocolNotSupported =>
-          'Protocol does not support multiple addresses',
-        CantCreateNewAddressReason.derivationModeNotSupported =>
-          'Current wallet mode does not support multiple addresses',
-        CantCreateNewAddressReason.noActiveWallet =>
-          'No active wallet - please sign in first',
-      };
-    }).join('\n');
+    return cantCreateNewAddressReasons!
+        .map((reason) {
+          return switch (reason) {
+            CantCreateNewAddressReason.maxGapLimitReached =>
+              'Maximum gap limit reached - please use existing unused addresses first',
+            CantCreateNewAddressReason.maxAddressesReached =>
+              'Maximum number of addresses reached for this asset',
+            CantCreateNewAddressReason.missingDerivationPath =>
+              'Missing derivation path configuration',
+            CantCreateNewAddressReason.protocolNotSupported =>
+              'Protocol does not support multiple addresses',
+            CantCreateNewAddressReason.derivationModeNotSupported =>
+              'Current wallet mode does not support multiple addresses',
+            CantCreateNewAddressReason.noActiveWallet =>
+              'No active wallet - please sign in first',
+          };
+        })
+        .join('\n');
   }
 
   bool get canCreateNewAddress => cantCreateNewAddressReasons?.isEmpty ?? true;
@@ -280,21 +283,22 @@ class _AddressesSection extends StatelessWidget {
           Expanded(
             child: ListView.builder(
               itemCount: pubkeys.keys.length,
-              itemBuilder: (context, index) => ListTile(
-                leading: Text(index.toString()),
-                title: Text(pubkeys.keys[index].toJson().toJsonString()),
-                trailing: Text(
-                  pubkeys.keys[index].balance.total.toStringAsPrecision(2),
-                ),
-                onTap: () {
-                  Clipboard.setData(
-                    ClipboardData(text: pubkeys.keys[index].address),
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Copied to clipboard')),
-                  );
-                },
-              ),
+              itemBuilder:
+                  (context, index) => ListTile(
+                    leading: Text(index.toString()),
+                    title: Text(pubkeys.keys[index].toJson().toJsonString()),
+                    trailing: Text(
+                      pubkeys.keys[index].balance.total.toStringAsPrecision(2),
+                    ),
+                    onTap: () {
+                      Clipboard.setData(
+                        ClipboardData(text: pubkeys.keys[index].address),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Copied to clipboard')),
+                      );
+                    },
+                  ),
             ),
           ),
         ],
@@ -305,7 +309,7 @@ class _AddressesSection extends StatelessWidget {
 
 class _TransactionsSection extends StatefulWidget {
   // ignore: unused_element
-  const _TransactionsSection(this.asset, {super.key});
+  const _TransactionsSection(this.asset);
 
   final Asset asset;
 

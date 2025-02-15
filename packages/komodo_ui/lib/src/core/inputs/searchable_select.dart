@@ -199,10 +199,11 @@ class SearchableSelectView<T> extends StatelessWidget {
             ),
           ),
           isEmpty: selectedItem == null,
-          child: selectedItem == null
-              ? null
-              : selectedItemBuilder?.call(selectedItem!) ??
-                  DefaultSelectedItemView(item: selectedItem!),
+          child:
+              selectedItem == null
+                  ? null
+                  : selectedItemBuilder?.call(selectedItem!) ??
+                      DefaultSelectedItemView(item: selectedItem!),
         ),
       ),
     );
@@ -211,12 +212,9 @@ class SearchableSelectView<T> extends StatelessWidget {
 
 /// Default view for selected items
 class DefaultSelectedItemView extends StatelessWidget {
-  const DefaultSelectedItemView({
-    required this.item,
-    super.key,
-  });
+  const DefaultSelectedItemView({required this.item, super.key});
 
-  final SelectItem item;
+  final SelectItem<dynamic> item;
 
   @override
   Widget build(BuildContext context) {
@@ -224,10 +222,7 @@ class DefaultSelectedItemView extends StatelessWidget {
 
     return Row(
       children: [
-        if (item.leading != null) ...[
-          item.leading!,
-          const SizedBox(width: 12),
-        ],
+        if (item.leading != null) ...[item.leading!, const SizedBox(width: 12)],
         Expanded(
           child: Text(
             item.title,
@@ -277,49 +272,45 @@ class SearchableSelectorDelegate<T> extends SearchDelegate<SelectItem<T>?> {
 
   @override
   Widget buildResults(BuildContext context) {
-    final results = items
-        .where((item) => item.title.toLowerCase().contains(query.toLowerCase()))
-        .toList();
+    final results =
+        items
+            .where(
+              (item) => item.title.toLowerCase().contains(query.toLowerCase()),
+            )
+            .toList();
 
     return ListView.builder(
       itemCount: results.length,
       itemBuilder: (context, index) {
         final item = results[index];
         return itemBuilder?.call(item, () => close(context, item)) ??
-            SearchResultTile(
-              item: item,
-              onTap: () => close(context, item),
-            );
+            SearchResultTile(item: item, onTap: () => close(context, item));
       },
     );
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    final suggestions = items
-        .where((item) => item.title.toLowerCase().contains(query.toLowerCase()))
-        .toList();
+    final suggestions =
+        items
+            .where(
+              (item) => item.title.toLowerCase().contains(query.toLowerCase()),
+            )
+            .toList();
 
     return ListView.builder(
       itemCount: suggestions.length,
       itemBuilder: (context, index) {
         final item = suggestions[index];
         return itemBuilder?.call(item, () => query = item.title) ??
-            SearchResultTile(
-              item: item,
-              onTap: () => query = item.title,
-            );
+            SearchResultTile(item: item, onTap: () => query = item.title);
       },
     );
   }
 }
 
 class SearchResultTile<T> extends StatelessWidget {
-  const SearchResultTile({
-    required this.item,
-    super.key,
-    this.onTap,
-  });
+  const SearchResultTile({required this.item, super.key, this.onTap});
 
   final SelectItem<T> item;
   final VoidCallback? onTap;
@@ -471,9 +462,7 @@ class _SearchOverlayState<T> extends State<_SearchOverlay<T>> {
 
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: theme.colorScheme.surface,
       child: Container(
         constraints: const BoxConstraints(maxHeight: 300),
@@ -492,7 +481,8 @@ class _SearchOverlayState<T> extends State<_SearchOverlay<T>> {
                     Icons.search,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  border: theme.inputDecorationTheme.border ??
+                  border:
+                      theme.inputDecorationTheme.border ??
                       defaultSearchableSelectTheme(
                         theme.brightness,
                         theme.colorScheme,
@@ -535,9 +525,10 @@ InputDecorationTheme defaultSearchableSelectTheme(
 ) {
   final isDark = themeMode == Brightness.dark;
   final surfaceColor = isDark ? Colors.grey[900] : Colors.grey[50];
-  final borderColor = isDark
-      ? colorScheme.onSurface.withOpacity(0.1)
-      : colorScheme.outline.withOpacity(0.2);
+  final borderColor =
+      isDark
+          ? colorScheme.onSurface.withOpacity(0.1)
+          : colorScheme.outline.withOpacity(0.2);
 
   return InputDecorationTheme(
     filled: true,
@@ -552,14 +543,9 @@ InputDecorationTheme defaultSearchableSelectTheme(
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(
-        color: colorScheme.primary.withOpacity(0.5),
-      ),
+      borderSide: BorderSide(color: colorScheme.primary.withOpacity(0.5)),
     ),
-    contentPadding: const EdgeInsets.symmetric(
-      horizontal: 16,
-      vertical: 12,
-    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
   );
 }
 
@@ -653,9 +639,7 @@ class _DemoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Custom Dropdown Demo'),
-      ),
+      appBar: AppBar(title: const Text('Custom Dropdown Demo')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Center(
@@ -664,19 +648,13 @@ class _DemoScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Crypto Coin Selector',
-                  style: theme.textTheme.titleLarge,
-                ),
+                Text('Crypto Coin Selector', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 8),
                 const _CoinDropdownDemo(),
 
                 const SizedBox(height: 32),
 
-                Text(
-                  'User Selector',
-                  style: theme.textTheme.titleLarge,
-                ),
+                Text('User Selector', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 8),
                 _UserDropdownDemo(),
 
@@ -786,9 +764,7 @@ class _UserDropdownDemo extends StatelessWidget {
       title: 'Anton Bulov',
       value: '0x4cd....66fv84',
       leading: CircleAvatar(
-        backgroundImage: NetworkImage(
-          'https://picsum.photos/seed/1/100',
-        ),
+        backgroundImage: NetworkImage('https://picsum.photos/seed/1/100'),
       ),
       trailing: Icon(Icons.verified, color: Colors.blue),
     ),
@@ -797,9 +773,7 @@ class _UserDropdownDemo extends StatelessWidget {
       title: 'Sarah Connor',
       value: '5bvns....66fv84',
       leading: CircleAvatar(
-        backgroundImage: NetworkImage(
-          'https://picsum.photos/seed/2/100',
-        ),
+        backgroundImage: NetworkImage('https://picsum.photos/seed/2/100'),
       ),
     ),
     const SelectItem(
@@ -807,9 +781,7 @@ class _UserDropdownDemo extends StatelessWidget {
       title: 'John Doe',
       value: '9vdsf....13695',
       leading: CircleAvatar(
-        backgroundImage: NetworkImage(
-          'https://picsum.photos/seed/3/100',
-        ),
+        backgroundImage: NetworkImage('https://picsum.photos/seed/3/100'),
       ),
     ),
   ];
@@ -824,40 +796,38 @@ class _UserDropdownDemo extends StatelessWidget {
       onItemSelected: (item) {
         debugPrint('Selected user: ${item.title}');
       },
-      selectedItemBuilder: (item) => Row(
-        children: [
-          if (item.leading != null) ...[
-            item.leading!,
-            const SizedBox(width: 12),
-          ],
-          Expanded(
-            child: Text(
-              item.title,
-              style: theme.textTheme.bodyLarge,
-            ),
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.copy_outlined,
-              size: 20,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: item.id));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'ID copied to clipboard',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                    ),
-                  ),
+      selectedItemBuilder:
+          (item) => Row(
+            children: [
+              if (item.leading != null) ...[
+                item.leading!,
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(item.title, style: theme.textTheme.bodyLarge),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.copy_outlined,
+                  size: 20,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-              );
-            },
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: item.id));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'ID copied to clipboard',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
