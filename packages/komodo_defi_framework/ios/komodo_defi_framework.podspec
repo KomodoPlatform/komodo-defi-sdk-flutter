@@ -28,14 +28,14 @@ A new Flutter FFI plugin project.
     'SystemConfiguration',
   ]
 
-  s.vendored_libraries = 'libmm2.a'
+  s.vendored_libraries = 'libkdf.a'
   # s.vendored_libraries = 'libkdflib.dylib'
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
     'OTHER_LDFLAGS' => [
-      '-force_load "$(PODS_TARGET_SRCROOT)/libmm2.a"',
+      '-force_load "$(PODS_TARGET_SRCROOT)/libkdf.a"',
       '-framework SystemConfiguration',
     ],
     # # Add rpath to ensure dylib can be found at runtime

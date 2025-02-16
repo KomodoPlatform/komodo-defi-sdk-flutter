@@ -24,7 +24,7 @@ A new Flutter FFI plugin project.
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'FlutterMacOS'
-  # s.vendored_libraries = 'Frameworks/libmm2.a'
+  # s.vendored_libraries = 'Frameworks/libkdf.a'
   # s.vendored_libraries = ['Frameworks/libkdflib.a']
   s.vendored_libraries = ['Frameworks/*.a']
   # Exclude i386 and arm64 from iOS Simulator build

@@ -18,7 +18,7 @@ target_compile_definitions(komodo_defi_framework PUBLIC DART_SHARED_LIB)
 
 if(ANDROID)
   set(KDFLIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../android/app/src/main/cpp/libs")
-  set(KDFLIB_PATH "${KDFLIB_DIR}/${ANDROID_ABI}/libmm2.a")
+  set(KDFLIB_PATH "${KDFLIB_DIR}/${ANDROID_ABI}/libkdf.a")
 
   find_library(KDFLIB_PATH mm2 PATHS "${CMAKE_SOURCE_DIR}/path/to/library/directory" NO_DEFAULT_PATH )
 
