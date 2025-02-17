@@ -9,12 +9,16 @@ class SeedDialog extends StatefulWidget {
     required this.isHdMode,
     required this.onRegister,
     required this.sdk,
+    required this.walletName,
+    required this.password,
     super.key,
   });
 
   final bool isHdMode;
   final Future<void> Function(String input, bool isEncrypted) onRegister;
   final KomodoDefiSdk sdk;
+  final String walletName;
+  final String password;
 
   @override
   State<SeedDialog> createState() => _SeedDialogState();
@@ -90,15 +94,15 @@ class _SeedDialogState extends State<SeedDialog> {
     });
   }
 
+  bool get canSubmit =>
+      errorMessage == null &&
+      (mnemonicController.text.isEmpty ||
+          isMnemonicEncrypted ||
+          !widget.isHdMode ||
+          isBip39 == true);
+
   @override
   Widget build(BuildContext context) {
-    final canSubmit =
-        errorMessage == null &&
-        (mnemonicController.text.isEmpty ||
-            isMnemonicEncrypted ||
-            !widget.isHdMode ||
-            isBip39 == true);
-
     return AlertDialog(
       title: const Text('Import Existing Seed?'),
       content: Column(
@@ -164,20 +168,22 @@ class _SeedDialogState extends State<SeedDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop<bool>(false),
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed:
-              canSubmit
-                  ? () => widget.onRegister(
-                    mnemonicController.text,
-                    isMnemonicEncrypted,
-                  )
-                  : null,
+          onPressed: canSubmit ? () async => _onSubmit() : null,
           child: const Text('Register'),
         ),
       ],
     );
+  }
+
+  Future<void> _onSubmit() async {
+    if (!canSubmit) return;
+
+    widget.onRegister(mnemonicController.text, isMnemonicEncrypted).ignore();
+
+    Navigator.of(context).pop<bool>(true);
   }
 }

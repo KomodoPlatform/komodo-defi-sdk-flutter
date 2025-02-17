@@ -37,6 +37,7 @@ class InstanceView extends StatefulWidget {
 }
 
 class _InstanceViewState extends State<InstanceView> {
+  final _formKey = GlobalKey<FormState>();
   String? _mnemonic;
   Timer? _refreshUsersTimer;
 
@@ -126,17 +127,19 @@ class _InstanceViewState extends State<InstanceView> {
   }
 
   Future<void> _showSeedDialog() async {
-    final result = await showDialog<bool>(
+    if (!_formKey.currentState!.validate()) return; // Add form validation
+
+    await showDialog<void>(
       context: context,
       builder:
           (context) => SeedDialog(
             isHdMode: widget.state.isHdMode,
             sdk: widget.instance.sdk,
+            walletName: widget.state.walletNameController.text,
+            password: widget.state.passwordController.text,
             onRegister: _handleRegistration,
           ),
     );
-
-    if (result != true) return;
   }
 
   Future<void> _handleRegistration(String input, bool isEncrypted) async {
@@ -204,17 +207,17 @@ class _InstanceViewState extends State<InstanceView> {
         const SizedBox(height: 16),
         if (widget.currentUser == null)
           Expanded(
-            // Add this Expanded
             child: SingleChildScrollView(
-              // Add ScrollView for better UX
-              child: _buildAuthForm(),
+              // Wrap the auth form in a Form widget using the key
+              child: Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: _buildAuthForm(),
+              ),
             ),
           )
         else
-          Expanded(
-            // This Expanded was already present
-            child: _buildLoggedInView(),
-          ),
+          Expanded(child: _buildLoggedInView()),
       ],
     );
   }

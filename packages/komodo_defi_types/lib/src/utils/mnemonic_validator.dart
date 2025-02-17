@@ -4,7 +4,7 @@ import 'package:flutter/services.dart' show rootBundle;
 
 final Set<String> _mnemonicWordlist = {};
 
-const _validLengths = [12, 24];
+const _validLengths = [12, 15, 18, 21, 24];
 
 enum MnemonicFailedReason {
   empty,
