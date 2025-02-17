@@ -224,7 +224,7 @@ class EtherscanProtocolHelper {
 
   /// Constructs the appropriate API URL for a given asset
   Uri? getApiUrlForAsset(Asset asset) {
-    if (!supportsProtocol(asset)) return null;
+    if (asset.protocol is! Erc20Protocol) return null;
 
     final endpoint = _getEndpointForAsset(asset);
     if (endpoint == null) return null;
