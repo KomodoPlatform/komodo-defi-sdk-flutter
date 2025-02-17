@@ -20,7 +20,9 @@ class FetchDefiApiStep extends BuildStep {
     required this.artefactDownloaders,
     required this.artifactOutputPath,
     required this.buildConfigFile,
+    // ignore: unused_element, unused_element_parameter
     this.selectedPlatform,
+    // ignore: unused_element, unused_element_parameter
     this.forceUpdate = false,
     this.enabled = true,
     this.concurrent = true,
@@ -154,21 +156,22 @@ class FetchDefiApiStep extends BuildStep {
       const bool.hasEnvironment(_overrideEnvName)
           ? const bool.fromEnvironment(_overrideEnvName)
           : Platform.environment[_overrideEnvName] != null
-              ? bool.tryParse(
-                  Platform.environment[_overrideEnvName]!,
-                  caseSensitive: false,
-                )
-              : null;
+          ? bool.tryParse(
+            Platform.environment[_overrideEnvName]!,
+            caseSensitive: false,
+          )
+          : null;
 
   Future<void> _updatePlatform(
     String platform,
     ApiBuildPlatformConfig config,
   ) async {
-    final updateMessage = overrideDefiApiDownload != null
-        ? '${overrideDefiApiDownload! ? 'FORCING' : 'SKIPPING'} update of '
-            '$platform platform because OVERRIDE_DEFI_API_DOWNLOAD is set to '
-            '$overrideDefiApiDownload'
-        : null;
+    final updateMessage =
+        overrideDefiApiDownload != null
+            ? '${overrideDefiApiDownload! ? 'FORCING' : 'SKIPPING'} update of '
+                '$platform platform because OVERRIDE_DEFI_API_DOWNLOAD is set to '
+                '$overrideDefiApiDownload'
+            : null;
 
     if (updateMessage != null) {
       _log.info(updateMessage);
@@ -305,7 +308,8 @@ class FetchDefiApiStep extends BuildStep {
     }
 
     try {
-      final lastUpdatedData = json.decode(lastUpdatedFile.readAsStringSync())
+      final lastUpdatedData =
+          json.decode(lastUpdatedFile.readAsStringSync())
               as Map<String, dynamic>? ??
           {};
       if (lastUpdatedData['api_commit_hash'] == apiCommitHash) {
@@ -342,26 +346,18 @@ class FetchDefiApiStep extends BuildStep {
       ..info('Updating Web platform...')
       ..fine('Running npm install in $artifactOutputPath');
     final npmPath = findNode();
-    final installResult = await Process.run(
-      npmPath,
-      [
-        'install',
-      ],
-      workingDirectory: artifactOutputPath,
-    );
+    final installResult = await Process.run(npmPath, [
+      'install',
+    ], workingDirectory: artifactOutputPath);
     if (installResult.exitCode != 0) {
       throw Exception('npm install failed: ${installResult.stderr}');
     }
 
     _log.fine('Running npm run build in $artifactOutputPath');
-    final buildResult = await Process.run(
-      npmPath,
-      [
-        'run',
-        'build',
-      ],
-      workingDirectory: artifactOutputPath,
-    );
+    final buildResult = await Process.run(npmPath, [
+      'run',
+      'build',
+    ], workingDirectory: artifactOutputPath);
     if (buildResult.exitCode != 0) {
       throw Exception('npm run build failed: ${buildResult.stderr}');
     }
@@ -449,8 +445,9 @@ class FetchDefiApiStep extends BuildStep {
   }) {
     _log.fine('Looking for KDF at: $filePath');
     if (FileSystemEntity.isFileSync(filePath)) {
-      final newExecutableName = path.basename(filePath)
-        .replaceAll('mm2', 'kdf');
+      final newExecutableName = path
+          .basename(filePath)
+          .replaceAll('mm2', 'kdf');
       final newExecutablePath = path.join(destinationFolder, newExecutableName);
 
       try {

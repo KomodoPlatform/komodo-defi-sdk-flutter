@@ -6,3 +6,5 @@
 
 /// Higher-order component compositions
 library komodo_ui.composite;
+
+export 'cards/collapsible_card.dart';

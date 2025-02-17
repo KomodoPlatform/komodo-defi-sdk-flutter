@@ -51,6 +51,11 @@ class PubkeyInfo extends NewAddressInfo {
   // asset has ongoing swaps.
   bool get isActiveForSwap =>
       derivationPath == null || derivationPath!.endsWith('/0');
+
+  // TODO: Consider moving to an extension in the UI library since this
+  // could be considered a UI concern.
+  String get addressShort =>
+      '${address.substring(0, 6)}...${address.substring(address.length - 6)}';
 }
 
 typedef Balance = BalanceInfo;

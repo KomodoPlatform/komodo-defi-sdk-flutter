@@ -21,15 +21,14 @@ class WalletId extends Equatable {
     String name,
     AuthOptions authOptions,
     String pubkeyHash,
-  ) =>
-      WalletId(name: name, pubkeyHash: pubkeyHash, authOptions: authOptions);
+  ) => WalletId(name: name, pubkeyHash: pubkeyHash, authOptions: authOptions);
 
   /// Create from JSON representation
   factory WalletId.fromJson(JsonMap json) => WalletId(
-        name: json.value<String>('name'),
-        pubkeyHash: json.valueOrNull<String>('pubkey_hash'),
-        authOptions: AuthOptions.fromJson(json.value<JsonMap>('auth_options')),
-      );
+    name: json.value<String>('name'),
+    pubkeyHash: json.valueOrNull<String>('pubkey_hash'),
+    authOptions: AuthOptions.fromJson(json.value<JsonMap>('auth_options')),
+  );
 
   /// The wallet's name (always available)
   final String name;
@@ -57,21 +56,20 @@ class WalletId extends Equatable {
 
   /// Convert to JSON representation
   JsonMap toJson() => {
-        'name': name,
-        'auth_options': authOptions.toJson(),
-        if (pubkeyHash != null) 'pubkey_hash': pubkeyHash,
-      };
+    'name': name,
+    'auth_options': authOptions.toJson(),
+    if (pubkeyHash != null) 'pubkey_hash': pubkeyHash,
+  };
 
   WalletId copyWith({
     String? name,
     String? pubkeyHash,
     AuthOptions? authOptions,
-  }) =>
-      WalletId(
-        name: name ?? this.name,
-        pubkeyHash: pubkeyHash ?? this.pubkeyHash,
-        authOptions: authOptions ?? this.authOptions,
-      );
+  }) => WalletId(
+    name: name ?? this.name,
+    pubkeyHash: pubkeyHash ?? this.pubkeyHash,
+    authOptions: authOptions ?? this.authOptions,
+  );
 }
 
 /// Updated KdfUser to use WalletId
@@ -83,11 +81,20 @@ class KdfUser extends Equatable {
   });
 
   /// Create from JSON representation
-  factory KdfUser.fromJson(JsonMap json) => KdfUser(
-        walletId: WalletId.fromJson(json.value<JsonMap>('wallet_id')),
-        isBip39Seed: json.value<bool>('is_bip39_seed'),
-        metadata: json.valueOrNull<JsonMap>('metadata') ?? const {},
-      );
+  factory KdfUser.fromJson(JsonMap json) {
+    final walletIdJson = json.value<JsonMap>('wallet_id');
+    // Backwards compatibility for old format. This can be removed in the
+    // following release because it was not public.
+    final maybeAuthOptions = json.valueOrNull<JsonMap>('auth_options');
+    if (maybeAuthOptions != null && !walletIdJson.containsKey('auth_options')) {
+      walletIdJson['auth_options'] = maybeAuthOptions;
+    }
+    return KdfUser(
+      walletId: WalletId.fromJson(walletIdJson),
+      isBip39Seed: json.value<bool>('is_bip39_seed'),
+      metadata: json.valueOrNull<JsonMap>('metadata') ?? const {},
+    );
+  }
 
   final WalletId walletId;
   final bool isBip39Seed;
@@ -102,11 +109,7 @@ class KdfUser extends Equatable {
   AuthOptions get authOptions => walletId.authOptions;
 
   // Update copyWith to include new field
-  KdfUser copyWith({
-    WalletId? walletId,
-    bool? isBip39Seed,
-    JsonMap? metadata,
-  }) {
+  KdfUser copyWith({WalletId? walletId, bool? isBip39Seed, JsonMap? metadata}) {
     return KdfUser(
       walletId: walletId ?? this.walletId,
       isBip39Seed: isBip39Seed ?? this.isBip39Seed,
@@ -118,8 +121,8 @@ class KdfUser extends Equatable {
   List<Object?> get props => [walletId, isBip39Seed, metadata];
 
   JsonMap toJson() => {
-        'wallet_id': walletId.toJson(),
-        'is_bip39_seed': isBip39Seed,
-        if (metadata.isNotEmpty) 'metadata': metadata,
-      };
+    'wallet_id': walletId.toJson(),
+    'is_bip39_seed': isBip39Seed,
+    if (metadata.isNotEmpty) 'metadata': metadata,
+  };
 }

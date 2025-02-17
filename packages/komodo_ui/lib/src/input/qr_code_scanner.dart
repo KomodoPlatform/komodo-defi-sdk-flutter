@@ -5,6 +5,15 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 class QrCodeReaderOverlay extends StatefulWidget {
   const QrCodeReaderOverlay({super.key});
 
+  /// Shows the QR code reader overlay and returns the scanned QR code.
+  ///
+  /// Returns `null` if the user cancels the scan.
+  static Future<String?> show(BuildContext context) async {
+    return Navigator.of(context).push<String?>(
+      MaterialPageRoute(builder: (_) => const QrCodeReaderOverlay()),
+    );
+  }
+
   @override
   State<QrCodeReaderOverlay> createState() => _QrCodeReaderOverlayState();
 }
@@ -42,9 +51,8 @@ class _QrCodeReaderOverlayState extends State<QrCodeReaderOverlay> {
             Navigator.pop(context, r);
           }
         },
-        placeholderBuilder: (context, _) => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        placeholderBuilder:
+            (context, _) => const Center(child: CircularProgressIndicator()),
       ),
     );
   }
@@ -81,11 +89,7 @@ class _QrCodeReaderOverlayState extends State<QrCodeReaderOverlay> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.warning,
-            color: Colors.yellowAccent,
-            size: 64,
-          ),
+          const Icon(Icons.warning, color: Colors.yellowAccent, size: 64),
           const SizedBox(height: 8),
           Text(
             //TODO!l10n: LocaleKeys.qrScannerErrorTitle.tr(),

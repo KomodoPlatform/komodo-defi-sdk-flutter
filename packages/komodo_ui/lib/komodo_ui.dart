@@ -12,6 +12,7 @@ export 'package:flutter/foundation.dart' show Key, ValueChanged, VoidCallback;
 export 'package:flutter/material.dart'
     show StatefulWidget, StatelessWidget, Widget;
 
+export 'src/composite/cards/collapsible_card.dart';
 export 'src/composite/index.dart';
 export 'src/constants/constants.dart';
 export 'src/constants/index.dart';
@@ -22,6 +23,7 @@ export 'src/core/inputs/fee_info_input.dart';
 export 'src/core/inputs/search_coin_select.dart';
 export 'src/core/inputs/searchable_select.dart';
 export 'src/defi/asset/asset_icon.dart';
+export 'src/defi/asset/crypto_asset_card.dart';
 export 'src/defi/asset/metric_selector.dart';
 export 'src/defi/asset/trend_percentage_text.dart';
 export 'src/defi/index.dart';
