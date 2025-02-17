@@ -1,0 +1,64 @@
+targets:
+  $default:
+    builders:
+      build_web_compilers|entrypoint:
+        generate_for:
+          - web/**.dart
+          - test/**.browser_test.dart
+        options:
+          compiler: dart2js
+          dart2js_args:
+            - --minify
+            - --no-source-maps
+            - -O4
+      build_web_compilers|dart2js_archive_extractor:
+        options:
+          filter_outputs: true
+
+    sources:
+      - web/**
+      - lib/**
+      - $package$
+
+global_options:
+  build_web_compilers|dart2js_compiler:
+    options:
+      dart2js_args:
+        - --fast-startup
+        - --trust-primitives
+        - --trust-type-annotations
+
+  build_web_compilers|entrypoint:
+    dependencies:
+      - build_web_compilers|dart2js_archive_extractor
+
+  dart_sass_builder:
+    options:
+      outputStyle: compressed
+      sourceMap: false
+
+  build_modules|module_library:
+    options:
+      strategy: direct
+
+  build_resolvers:
+    options:
+      external_packages:
+        - js
+
+  build_modules|modules:
+    options:
+      strategy: fine
+
+  # Specific configuration for kdf_wrapper.dart
+  $kdf_wrapper:
+    builders:
+      build_web_compilers|entrypoint:
+        options:
+          dart2js_args:
+            - --minify
+            - --no-source-maps
+            - -O4
+            - --enable-asserts
+        generate_for:
+          - web/kdf/kdf_wrapper.dart
