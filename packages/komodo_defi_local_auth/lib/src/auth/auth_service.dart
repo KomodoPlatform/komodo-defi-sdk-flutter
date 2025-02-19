@@ -149,8 +149,9 @@ class KdfAuthService implements IAuthService {
     ),
     Mnemonic? mnemonic,
   }) async {
+    await _ensureKdfRunning();
+
     await _runReadOperation(() async {
-      await _ensureKdfRunning();
       final walletExists = await _walletExists(walletName);
       if (walletExists) {
         throw AuthException(
@@ -185,8 +186,9 @@ class KdfAuthService implements IAuthService {
 
   @override
   Future<List<KdfUser>> getUsers() async {
+    await _ensureKdfRunning();
+
     return _runReadOperation(() async {
-      await _ensureKdfRunning();
       final walletNames = await _client.rpc.wallet.getWalletNames();
 
       return Future.wait(

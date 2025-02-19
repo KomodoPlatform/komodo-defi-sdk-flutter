@@ -160,7 +160,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   @override
   Future<KdfStartupResult> kdfMain(JsonMap params, {int? logLevel}) async {
-    if (_process != null && _process!.pid != 0 && await isRunning()) {
+    if (_process != null && _process!.pid != 0) {
       return KdfStartupResult.alreadyRunning;
     }
 
