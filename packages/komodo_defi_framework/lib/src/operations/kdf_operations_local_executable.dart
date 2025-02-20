@@ -78,18 +78,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         environment: environment,
         runInShell: true,
       );
-      // Attach a callback to delete the temp directory, but don't await it
-      newProcess.exitCode.then((exitCode) async {
-        try {
-          await tempDir.delete(recursive: true);
-          _logCallback('Temporary directory deleted successfully.');
-        } catch (deletionError) {
-          _logCallback('Failed to delete temporary directory: $deletionError');
-        }
-      }).ignore();
 
       _logCallback('Launched executable: $executablePath');
-      _attachProcessListeners(newProcess);
+      _attachProcessListeners(newProcess, tempDir);
 
       return newProcess;
     } catch (e) {
@@ -97,7 +88,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     }
   }
 
-  void _attachProcessListeners(Process newProcess) {
+  void _attachProcessListeners(Process newProcess, Directory tempDir) {
     stdoutSub = newProcess.stdout.listen((event) {
       _logCallback('[INFO]: ${String.fromCharCodes(event)}');
     });
@@ -106,11 +97,24 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       _logCallback('[ERROR]: ${String.fromCharCodes(event)}');
     });
 
-    newProcess.exitCode.then((exitCode) async {
+    newProcess.exitCode
+        .then((exitCode) async => _cleanUpOnProcessExit(exitCode, tempDir))
+        .ignore();
+  }
+
+  Future<void> _cleanUpOnProcessExit(int exitCode, Directory tempDir) async {
+    try {
+      _logCallback('KDF process exited with code: $exitCode');
       await stdoutSub?.cancel();
       await stderrSub?.cancel();
-      _logCallback('Process exited with code: $exitCode');
-    }).ignore();
+
+      await tempDir.delete(recursive: true);
+      _logCallback('Temporary directory deleted successfully.');
+    } catch (error) {
+      _logCallback('Failed to delete temporary directory: $error');
+    } finally {
+      _process = null;
+    }
   }
 
   Future<File?> _getExecutable() async {
