@@ -78,9 +78,15 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         environment: environment,
         runInShell: true,
       );
-      await newProcess.exitCode.then((_) async {
-        await tempDir.delete(recursive: true);
-      });
+      // Attach a callback to delete the temp directory, but don't await it
+      newProcess.exitCode.then((exitCode) async {
+        try {
+          await tempDir.delete(recursive: true);
+          _logCallback('Temporary directory deleted successfully.');
+        } catch (deletionError) {
+          _logCallback('Failed to delete temporary directory: $deletionError');
+        }
+      }).ignore();
 
       _logCallback('Launched executable: $executablePath');
       _attachProcessListeners(newProcess);
