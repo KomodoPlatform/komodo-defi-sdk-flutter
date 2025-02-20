@@ -139,8 +139,8 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
 
   @override
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
-    if (kDebugMode) _log('mm2 config: ${_config.toJson()}');
-    if (kDebugMode) _log('mm2Rpc request (pre-process): $request');
+    if (kDebugMode) _log('mm2 config: ${_config.toJson().censored()}');
+    if (kDebugMode) _log('mm2Rpc request (pre-process): ${request.censored()}');
     request['userpass'] = _config.rpcPassword;
     final response = await _client.post(
       _url,
@@ -220,7 +220,7 @@ ffi.DynamicLibrary _loadLibrary() {
               ? ffi.DynamicLibrary.executable()
               : ffi.DynamicLibrary.open(path);
       if (lib.providesSymbol('mm2_main')) {
-        print('Loaded library at path: $path');
+        if (kDebugMode) print('Loaded library at path: $path');
         return lib;
       }
     } catch (_) {

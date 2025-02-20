@@ -157,7 +157,7 @@ class KdfOperationsRemote implements IKdfOperations {
       request['userpass'] = _userpass;
     }
 
-    _logCallback('mm2Rpc request: ${json.encode(request)}');
+    _logCallback('mm2Rpc request: ${json.encode(request.censored())}');
 
     late final http.Response response;
 
