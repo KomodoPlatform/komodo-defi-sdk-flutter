@@ -55,26 +55,41 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   static final Uri _url = Uri.parse('http://127.0.0.1:7783');
 
-  Future<Process> _startKdf(List<String> args) async {
+  Future<Process> _startKdf(JsonMap params) async {
     final executablePath = (await _getExecutable())?.absolute.path;
 
     if (executablePath == null) {
       throw Exception('No executable found.');
     }
 
-    try {
-      // Store the config in a temp file to avoid command line argument and
-      // environment variable value size limits (varies from 4-128 KB).
-      final tempDir = await Directory.systemTemp.createTemp('mm_coins_');
-      final configFile = File(p.join(tempDir.path, 'kdf_config.json'));
-      await configFile.writeAsString(args.join());
+    if (!params.containsKey('coins')) {
+      throw ArgumentError.value(
+        params['coins'],
+        'params',
+        'Missing coins list.',
+      );
+    }
 
-      final environment = Map<String, String>.from(Platform.environment)
-        ..['MM_CONF_PATH'] = configFile.path;
+    try {
+      final coinsList = params.value<List<JsonMap>>('coins');
+      final sensitiveArgs = JsonMap.of(params)..remove('coins');
+
+      // Store the coins list in a temp file to avoid command line argument and
+      // environment variable value size limits (varies from 4-128 KB).
+      // Pass the config directly to the executable as an argument.
+      final tempDir = await Directory.systemTemp.createTemp('mm_coins_');
+      final coinsConfigFile = File(p.join(tempDir.path, 'kdf_coins.json'));
+      await coinsConfigFile.writeAsString(
+        coinsList.toJsonString(),
+        flush: true,
+      );
+
+      final environment = Map<String, String>.of(Platform.environment)
+        ..['MM_COINS_PATH'] = coinsConfigFile.path;
 
       final newProcess = await Process.start(
         executablePath,
-        [],
+        [sensitiveArgs.toJsonString()],
         environment: environment,
         runInShell: true,
       );
@@ -180,7 +195,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       'log_level': logLevel ?? 3,
     }.censored().toJsonString()}');
 
-    _process = await _startKdf([params.toJsonString()]);
+    _process = await _startKdf(params);
 
     final timer = Stopwatch()..start();
 
