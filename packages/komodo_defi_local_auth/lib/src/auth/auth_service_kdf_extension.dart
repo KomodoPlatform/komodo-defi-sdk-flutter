@@ -67,8 +67,8 @@ extension KdfExtensions on KdfAuthService {
   /// NOTE: do not use within a read or write lock.
   Future<void> _ensureKdfRunning() async {
     if (!await _kdfFramework.isRunning()) {
-      _lockWriteOperation(
-        () async => await _kdfFramework.startKdf(await _noAuthConfig),
+      await _lockWriteOperation(
+        () async => _kdfFramework.startKdf(await _noAuthConfig),
       );
     }
   }
