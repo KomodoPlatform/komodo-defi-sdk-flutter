@@ -170,7 +170,7 @@ class KdfOperationsWasm implements IKdfOperations {
 
   /// Makes the JavaScript RPC call and returns the raw JS response
   Future<js_interop.JSObject> _makeJsCall(JsonMap request) async {
-    if (kDebugMode) _log('mm2Rpc request: $request');
+    if (kDebugMode) _log('mm2Rpc request: ${request.censored()}');
     request['userpass'] = _config.rpcPassword;
 
     final jsRequest = request.jsify() as js_interop.JSObject?;

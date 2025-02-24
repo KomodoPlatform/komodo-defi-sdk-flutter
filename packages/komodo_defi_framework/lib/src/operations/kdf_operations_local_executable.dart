@@ -55,35 +55,47 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   static final Uri _url = Uri.parse('http://127.0.0.1:7783');
 
-  Future<Process> _startKdf(List<String> args) async {
+  Future<Process> _startKdf(JsonMap params) async {
     final executablePath = (await _getExecutable())?.absolute.path;
 
     if (executablePath == null) {
       throw Exception('No executable found.');
     }
 
-    try {
-      // Store the config in a temp file to avoid command line argument and
-      // environment variable value size limits (varies from 4-128 KB).
-      final tempDir = await Directory.systemTemp.createTemp('mm_coins_');
-      final configFile = File(p.join(tempDir.path, 'kdf_config.json'));
-      await configFile.writeAsString(args.join());
+    if (!params.containsKey('coins')) {
+      throw ArgumentError.value(
+        params['coins'],
+        'params',
+        'Missing coins list.',
+      );
+    }
 
-      final environment = Map<String, String>.from(Platform.environment)
-        ..['MM_CONF_PATH'] = configFile.path;
+    try {
+      final coinsList = params.value<List<JsonMap>>('coins');
+      final sensitiveArgs = JsonMap.of(params)..remove('coins');
+
+      // Store the coins list in a temp file to avoid command line argument and
+      // environment variable value size limits (varies from 4-128 KB).
+      // Pass the config directly to the executable as an argument.
+      final tempDir = await Directory.systemTemp.createTemp('mm_coins_');
+      final coinsConfigFile = File(p.join(tempDir.path, 'kdf_coins.json'));
+      await coinsConfigFile.writeAsString(
+        coinsList.toJsonString(),
+        flush: true,
+      );
+
+      final environment = Map<String, String>.of(Platform.environment)
+        ..['MM_COINS_PATH'] = coinsConfigFile.path;
 
       final newProcess = await Process.start(
         executablePath,
-        [],
+        [sensitiveArgs.toJsonString()],
         environment: environment,
         runInShell: true,
       );
-      await newProcess.exitCode.then((_) async {
-        await tempDir.delete(recursive: true);
-      });
 
       _logCallback('Launched executable: $executablePath');
-      _attachProcessListeners(newProcess);
+      _attachProcessListeners(newProcess, tempDir);
 
       return newProcess;
     } catch (e) {
@@ -91,7 +103,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     }
   }
 
-  void _attachProcessListeners(Process newProcess) {
+  void _attachProcessListeners(Process newProcess, Directory tempDir) {
     stdoutSub = newProcess.stdout.listen((event) {
       _logCallback('[INFO]: ${String.fromCharCodes(event)}');
     });
@@ -100,11 +112,24 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       _logCallback('[ERROR]: ${String.fromCharCodes(event)}');
     });
 
-    newProcess.exitCode.then((exitCode) async {
+    newProcess.exitCode
+        .then((exitCode) async => _cleanUpOnProcessExit(exitCode, tempDir))
+        .ignore();
+  }
+
+  Future<void> _cleanUpOnProcessExit(int exitCode, Directory tempDir) async {
+    try {
+      _logCallback('KDF process exited with code: $exitCode');
       await stdoutSub?.cancel();
       await stderrSub?.cancel();
-      _logCallback('Process exited with code: $exitCode');
-    }).ignore();
+
+      await tempDir.delete(recursive: true);
+      _logCallback('Temporary directory deleted successfully.');
+    } catch (error) {
+      _logCallback('Failed to delete temporary directory: $error');
+    } finally {
+      _process = null;
+    }
   }
 
   Future<File?> _getExecutable() async {
@@ -160,7 +185,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   @override
   Future<KdfStartupResult> kdfMain(JsonMap params, {int? logLevel}) async {
-    if (_process != null && _process!.pid != 0 && await isRunning()) {
+    if (_process != null && _process!.pid != 0) {
       return KdfStartupResult.alreadyRunning;
     }
 
@@ -170,7 +195,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       'log_level': logLevel ?? 3,
     }.censored().toJsonString()}');
 
-    _process = await _startKdf([params.toJsonString()]);
+    _process = await _startKdf(params);
 
     final timer = Stopwatch()..start();
 

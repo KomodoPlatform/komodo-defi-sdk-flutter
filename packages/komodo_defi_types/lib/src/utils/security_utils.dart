@@ -85,6 +85,7 @@ extension CensoredJsonMap on JsonMap {
       'pubkey',
       'privkey',
       'userpass',
+      'rpc_password',
     ];
 
     return censorKeys(sensitive);

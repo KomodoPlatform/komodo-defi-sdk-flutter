@@ -1,5 +1,6 @@
 // lib/main.dart
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/screens/asset_page.dart';
@@ -127,8 +128,9 @@ class _KomodoAppState extends State<KomodoApp> {
       final state = _getOrCreateInstanceState(instance.name);
       state.knownUsers = users;
       setState(() {});
-    } catch (e) {
+    } catch (e, s) {
       print('Error fetching known users: $e');
+      debugPrintStack(stackTrace: s);
     }
   }
 
