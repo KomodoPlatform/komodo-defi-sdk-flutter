@@ -19,9 +19,7 @@ class MnemonicValidator {
       final wordlist = await rootBundle.loadString(
         'packages/komodo_defi_types/assets/bip-0039/english-wordlist.txt',
       );
-      _validMnemonicWords.addAll(
-        wordlist.split('\n').map((w) => w.replaceAll(RegExp(r'\r?\n'), '')),
-      );
+      _validMnemonicWords.addAll(wordlist.split('\n').map((w) => w.trim()));
     }
   }
 
