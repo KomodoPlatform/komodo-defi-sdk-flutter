@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 class KdfStartupConfig {
@@ -77,7 +78,11 @@ class KdfStartupConfig {
       [walletName, walletPassword].every((e) => e.isNotEmpty),
       'Wallet name and password must not be empty',
     );
-    final home = userHome ?? await _getAndSetupUserHome();
+
+    final (String? userHomePath, String? dbPath) = await _getAndSetupUserHome(
+      userHome: userHome,
+      dbHome: dbDir,
+    );
 
     assert(hdAccountId == null, 'HD Account ID is not supported yet.');
 
@@ -86,8 +91,8 @@ class KdfStartupConfig {
       walletPassword: walletPassword,
       rpcPassword: rpcPassword ?? generatePassword(),
       seed: seed,
-      dbDir: dbDir ?? home,
-      userHome: home,
+      dbDir: dbPath,
+      userHome: userHomePath,
       allowWeakPassword: allowWeakPassword,
       netid: netid,
       gui: gui,
@@ -102,14 +107,20 @@ class KdfStartupConfig {
     );
   }
 
-  static Future<String?> _getAndSetupUserHome() async {
-    final home =
-        (kIsWeb ? null : (await getApplicationDocumentsDirectory()).path);
+  static Future<(String? home, String? dbDir)> _getAndSetupUserHome({
+    String? userHome,
+    String? dbHome,
+  }) async {
+    if (kIsWeb) return (null, null);
 
-    if (home != null && !Directory(home).existsSync()) {
-      Directory(home).createSync(recursive: true);
+    final home = userHome ?? (await getApplicationDocumentsDirectory()).path;
+    final dbDir = dbHome ?? path.join(home, '.kdf');
+
+    if (!Directory(dbDir).existsSync()) {
+      Directory(dbDir).createSync(recursive: true);
     }
-    return home;
+
+    return (home, dbDir);
   }
 
   static Future<KdfStartupConfig> noAuthStartup({
@@ -117,14 +128,15 @@ class KdfStartupConfig {
     String? rpcIp,
     int rpcPort = 7783,
   }) async {
-    final home = await _getAndSetupUserHome();
+    final (String? home, String? dbDir) = await _getAndSetupUserHome();
+
     return KdfStartupConfig._(
       walletName: null,
       walletPassword: null,
       seed: null,
       rpcPassword: rpcPassword ?? generatePassword(),
       userHome: home,
-      dbDir: home,
+      dbDir: dbDir,
       allowWeakPassword: true,
       netid: 8762,
       gui: 'komodo-defi-flutter-auth',
