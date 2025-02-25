@@ -82,8 +82,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       // Calculate string length by finding the null terminator
       var length = 0;
       final messagePtrAsInt = messagePtr.cast<ffi.Uint8>();
-      while (
-          messagePtrAsInt[length] != 0 && messagePtrAsInt[length] != 255) {
+      while (messagePtrAsInt[length] != 0 && messagePtrAsInt[length] != 255) {
         length++;
 
         // prevent overflows & infinite loops with a reasonable limit
