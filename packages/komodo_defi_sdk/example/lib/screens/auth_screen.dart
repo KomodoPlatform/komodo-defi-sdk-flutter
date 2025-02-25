@@ -133,6 +133,7 @@ class _AuthScreenState extends State<AuthScreen> {
         isHd: _state.instanceData.isHdMode,
       );
     } on AuthException catch (e) {
+      debugPrint('Registration failed: ${e.toString()}');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

@@ -1,7 +1,10 @@
 # To activate the CLI package from a local path, run:
 # `dart pub global activate --source=path packages/komodo_wallet_cli`
 # To upgrade the CLI package, first delete the cached package
+# macOS/Linux:
 # `flutter clean && rm -rf ~/.pub-cache/global_packages/komodo_wallet_cli`
+# Windows:
+# flutter clean && rd /s /q %USERPROFILE%\.pub-cache\global_packages\komodo_wallet_cli
 # Then re-activate the package with the same as the first command.
 
 name: komodo_wallet_cli

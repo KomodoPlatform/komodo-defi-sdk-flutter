@@ -26,6 +26,7 @@
 /// ```
 library;
 
+import 'dart:developer';
 import 'dart:io';
 import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
@@ -97,7 +98,7 @@ void main(List<String> arguments) async {
       unlockTransitive: results['unlock-transitive'],
     );
   } catch (e) {
-    print('Error: $e');
+    log('Error: $e');
     printUsage(parser);
     exit(1);
   }
@@ -107,8 +108,8 @@ void main(List<String> arguments) async {
 ///
 /// Displays available options and their descriptions.
 void printUsage(ArgParser parser) {
-  print('Usage: flutter_upgrade_nested [options]');
-  print(parser.usage);
+  log('Usage: flutter_upgrade_nested [options]');
+  log(parser.usage);
 }
 
 /// Recursively searches for and upgrades Flutter projects.
@@ -129,11 +130,11 @@ Future<void> upgradeFlutterProjects(
   bool unlockTransitive = false,
 }) async {
   final stats = ProjectStats();
-  print('Searching for Flutter projects in: ${searchDir.path}');
-  print(
+  log('Searching for Flutter projects in: ${searchDir.path}');
+  log(
     'Upgrade mode: ${allowMajorVersions ? 'Major versions allowed' : 'Regular upgrade'}',
   );
-  print('----------------------------------------');
+  log('----------------------------------------');
 
   try {
     await for (final entity in searchDir.list(
@@ -145,7 +146,7 @@ Future<void> upgradeFlutterProjects(
         if (isFlutterProject) {
           stats.found++;
           final projectDir = entity.parent;
-          print('\nFound Flutter project: ${projectDir.path}');
+          log('\nFound Flutter project: ${projectDir.path}');
 
           final success = await upgradeDependencies(
             projectDir,
@@ -157,14 +158,14 @@ Future<void> upgradeFlutterProjects(
           } else {
             stats.failed++;
           }
-          print('----------------------------------------');
+          log('----------------------------------------');
         }
       }
     }
 
     printSummary(stats);
   } catch (e) {
-    print('Error while searching for projects: $e');
+    log('Error while searching for projects: $e');
     exit(1);
   }
 }
@@ -196,7 +197,7 @@ Future<bool> checkIfFlutterProject(File pubspecFile) async {
     }
     return false;
   } catch (e) {
-    print('Warning: Could not parse ${pubspecFile.path}: $e');
+    log('Warning: Could not parse ${pubspecFile.path}: $e');
     return false;
   }
 }
@@ -219,9 +220,11 @@ Future<bool> upgradeDependencies(
   bool unlockTransitive = false,
 }) async {
   try {
-    print(
+    log(
       'Running flutter pub upgrade${allowMajorVersions ? ' --major-versions' : ''} in ${projectDir.path}...',
     );
+
+    log('Folder exists: ${projectDir.existsSync()}');
 
     final args = ['pub', 'upgrade'];
     if (allowMajorVersions) {
@@ -235,18 +238,19 @@ Future<bool> upgradeDependencies(
       'flutter',
       args,
       workingDirectory: projectDir.path,
+      runInShell: true,
     );
 
     if (result.exitCode == 0) {
-      print('✓ Successfully upgraded dependencies');
+      log('✓ Successfully upgraded dependencies');
       return true;
     } else {
-      print('✗ Failed to upgrade dependencies');
-      print('Error: ${result.stderr}');
+      log('✗ Failed to upgrade dependencies');
+      log('Error: ${result.stderr}');
       return false;
     }
   } catch (e) {
-    print('✗ Failed to execute flutter pub upgrade: $e');
+    log('✗ Failed to execute flutter pub upgrade: $e');
     return false;
   }
 }
@@ -259,8 +263,8 @@ Future<bool> upgradeDependencies(
 /// Parameters:
 /// - [stats]: The [ProjectStats] object containing the statistics to display
 void printSummary(ProjectStats stats) {
-  print('\nSummary:');
-  print('Found: ${stats.found} Flutter projects');
-  print('Successfully upgraded: ${stats.upgraded} projects');
-  print('Failed to upgrade: ${stats.failed} projects');
+  log('\nSummary:');
+  log('Found: ${stats.found} Flutter projects');
+  log('Successfully upgraded: ${stats.upgraded} projects');
+  log('Failed to upgrade: ${stats.failed} projects');
 }

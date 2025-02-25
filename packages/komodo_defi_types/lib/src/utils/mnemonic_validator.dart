@@ -2,7 +2,7 @@
 
 import 'package:flutter/services.dart' show rootBundle;
 
-final Set<String> _mnemonicWordlist = {};
+final Set<String> _validMnemonicWords = {};
 
 const _validLengths = [12, 15, 18, 21, 24];
 
@@ -15,11 +15,11 @@ enum MnemonicFailedReason {
 
 class MnemonicValidator {
   Future<void> init() async {
-    if (_mnemonicWordlist.isEmpty) {
+    if (_validMnemonicWords.isEmpty) {
       final wordlist = await rootBundle.loadString(
         'packages/komodo_defi_types/assets/bip-0039/english-wordlist.txt',
       );
-      _mnemonicWordlist.addAll(wordlist.split('\n'));
+      _validMnemonicWords.addAll(wordlist.split('\n').map((w) => w.trim()));
     }
   }
 
@@ -31,7 +31,7 @@ class MnemonicValidator {
     bool allowCustomSeed = false,
   }) {
     assert(
-      _mnemonicWordlist.isNotEmpty,
+      _validMnemonicWords.isNotEmpty,
       'Mnemonic wordlist is not initialized. '
       'Call MnemonicValidator.init() first.',
     );
@@ -68,23 +68,22 @@ class MnemonicValidator {
 
   bool validateBip39(String input) {
     assert(
-      _mnemonicWordlist.isNotEmpty,
+      _validMnemonicWords.isNotEmpty,
       'Mnemonic wordlist is not initialized. '
       'Call MnemonicValidator.init() first.',
     );
 
-    final words = input.trim().split(' ');
+    final inputWordsList = input.split(' ');
 
-    if (!_validLengths.contains(words.length)) {
+    if (!_validLengths.contains(inputWordsList.length)) {
       return false;
     }
 
-    for (final word in words) {
-      if (!_mnemonicWordlist.contains(word)) {
-        return false;
-      }
+    if (inputWordsList.any(
+      (element) => !_validMnemonicWords.contains(element),
+    )) {
+      return false;
     }
-
     return true;
   }
 }
