@@ -1,6 +1,6 @@
 {
     "api": {
-        "api_commit_hash": "86d30023e188b899fcc665a70fa6f400fda02519",
+        "api_commit_hash": "365858790ecba14076077cd579f911721835c2be",
         "branch": "dev",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
@@ -12,49 +12,49 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "44023779f8123d6de47fece45df2d89b60c2aa228ef3673353fc6a1b86db3f7e"
+                    "16ef10084fced1cd749aa10465030aea55e8a39356a31a7e4db0b4ee394c51d4"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "ec4c1773e7c6a26b2a5c77aa0ffecaa7805ebcb568bd7d87bf61ace73a5ef87e"
+                    "9ce958fbee4040df08e0f6fd54781ad4fa23e2abf5e7d20390c09626a8bba808"
                 ],
                 "path": "ios"
             },
             "macos": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "e16af4c528b7419e05b944aae8dcfa83b8be58b6030969520e7ca961bc3f1a0f"
+                    "1ca518229de56f6303dac34fd73f306dec3e73f83c4a12a499a91d70e2e2218d"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "c8708080adb637b2427ea04960ca9203a4a4e226ecce971e05b28fc91c1f3814"
+                    "c1f9a5d0f5c9de384102b38990a1686b7cfe77abd7a50121596ef697918d9f73"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "748d3432bc394777019440d69ad7d3a0e3a23c357698c6158ea6224d22f6fb6a"
+                    "da4f9e8865352005a72137c361ff19324c6613a92709d83a7a980b7da6ee8a2e"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "b0a2e0aa4f9594d1be8ac166070703cce8a374d8f15d64464817995c95e3fbd1"
+                    "374ec84a6feb26175a825d68ba9ab7366938fa2e839f5d8cb6291277fcb4b080"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "4fac38c311a222ed16ca6a5700d7b90dbed70d6c44c0a96ac3b51a2de1ff4712"
+                    "b0318578c1d431feef297b408c72852613b406f722a509838e167af5296fa9c4"
                 ],
                 "path": "linux/bin"
             }
@@ -63,7 +63,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "1f2992f9572bfc879d393b1787ee0d2f56df150d",
+        "bundled_coins_repo_commit": "9c862b5e37f84c27616033d49b74fa507f827f0d",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://komodoplatform.github.io/coins",
         "coins_repo_branch": "master",
