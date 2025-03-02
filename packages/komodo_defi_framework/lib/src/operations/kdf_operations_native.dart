@@ -257,7 +257,10 @@ List<String> _getLibraryPaths() {
       'PROCESS',
     ];
   } else if (Platform.isWindows) {
-    return ['kdflib.dll', 'kdflib_static.dll'];
+    // Temporary solution to resolve the isssue where Rust libraries built for
+    // Windows will crash for devices using Nvidia GPUs. When no libraries are
+    // found, the SDK will attempt to use the KDF executable if present.
+    return [];
   } else if (Platform.isLinux) {
     return ['libkdflib.so', 'libkdflib_static.so'];
   } else {
