@@ -77,7 +77,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       // Store the coins list in a temp file to avoid command line argument and
       // environment variable value size limits (varies from 4-128 KB).
       // Pass the config directly to the executable as an argument.
-      final tempDir = await Directory.systemTemp.createTemp('mm_coins_');
+      final tempDir = await getTemporaryDirectory();
       final coinsConfigFile = File(p.join(tempDir.path, 'kdf_coins.json'));
       await coinsConfigFile.writeAsString(
         coinsList.toJsonString(),
