@@ -116,8 +116,9 @@ class KdfStartupConfig {
     final home = userHome ?? (await getApplicationDocumentsDirectory()).path;
     final dbDir = dbHome ?? path.join(home, '.kdf');
 
-    if (!Directory(dbDir).existsSync()) {
-      Directory(dbDir).createSync(recursive: true);
+    // ignore: avoid_slow_async_io
+    if (!await Directory(dbDir).exists()) {
+      await Directory(dbDir).create(recursive: true);
     }
 
     return (home, dbDir);

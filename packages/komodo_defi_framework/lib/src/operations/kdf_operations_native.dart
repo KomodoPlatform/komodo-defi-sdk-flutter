@@ -56,6 +56,10 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     );
   }
 
+  /// Logs a native log message, or the raw bytes if parsing fails.
+  /// Default method uses the package:ffi [Utf8] class to decode the message.
+  /// If decoding fails, it tries to parse the message manually, or the raw
+  /// bytes if parsing fails.
   static void _logNativeLogMessage(
     ffi.Pointer<Utf8> messagePtr,
     void Function(String) log,
@@ -74,12 +78,17 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     }
   }
 
+  /// Tries to parse the native log message manually, or the raw bytes if
+  /// parsing fails, by finding the null terminator (0x00) or invalid UTF-8
+  /// byte (0xFF). This is a workaround for the fact that KDF terminating on
+  /// exceptions can leave the log message in an invalid state.
   static String _tryParseNativeLogMessage(
     ffi.Pointer<Utf8> messagePtr,
     void Function(String) log,
   ) {
     try {
       // Calculate string length by finding the null terminator
+      // (0x00) or invalid UTF-8 byte (0xFF). 0xFF encountered on iOS.
       var length = 0;
       final messagePtrAsInt = messagePtr.cast<ffi.Uint8>();
       while (messagePtrAsInt[length] != 0 && messagePtrAsInt[length] != 255) {
@@ -97,9 +106,9 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
         return '';
       }
 
-      // Create a Uint8List from the UTF-8 bytes
+      // print the raw bytes if the message is not valid UTF-8 to prevent
+      // flutter devtools from crashing.
       final bytes = messagePtrAsInt.asTypedList(length);
-
       if (!_isValidUtf8(bytes)) {
         log('Received invalid UTF-8 log message.');
         final hexString =
@@ -116,7 +125,6 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     return '';
   }
 
-// Helper function to validate UTF-8
   static bool _isValidUtf8(List<int> bytes) {
     try {
       utf8.decode(bytes, allowMalformed: false);
