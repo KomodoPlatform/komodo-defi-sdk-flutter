@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' show Random;
 
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
@@ -77,8 +78,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       // Store the coins list in a temp file to avoid command line argument and
       // environment variable value size limits (varies from 4-128 KB).
       // Pass the config directly to the executable as an argument.
-      final tempDir = await Directory.systemTemp.createTemp('mm_coins_');
-      final coinsConfigFile = File(p.join(tempDir.path, 'kdf_coins.json'));
+      final tempDir = await getTemporaryDirectory();
+      final coinsTempDir = await tempDir.createTemp('mm_coins_');
+      final coinsConfigFile = File(p.join(coinsTempDir.path, 'kdf_coins.json'));
       await coinsConfigFile.writeAsString(
         coinsList.toJsonString(),
         flush: true,
@@ -95,7 +97,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       );
 
       _logCallback('Launched executable: $executablePath');
-      _attachProcessListeners(newProcess, tempDir);
+      _attachProcessListeners(newProcess, coinsTempDir);
 
       return newProcess;
     } catch (e) {

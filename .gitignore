@@ -89,7 +89,7 @@ macos/kdf
 .venv/
 
 # Android C++ files
-android/app/.cxx/
+**/.cxx
 
 # Coins asset files 
 assets/config/coins.json

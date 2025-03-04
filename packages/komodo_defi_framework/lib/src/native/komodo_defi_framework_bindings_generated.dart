@@ -8,6 +8,8 @@
 // ignore_for_file: type=lint
 import 'dart:ffi' as ffi;
 
+import 'package:ffi/ffi.dart';
+
 /// Bindings for `src/komodo_defi_framework.h`.
 ///
 /// Regenerate bindings with `dart run ffigen --config ffigen.yaml`.
@@ -31,7 +33,7 @@ class KomodoDefiFrameworkBindings {
   /// /
   /// // FFI_PLUGIN_EXPORT int8_t mm2_main(const char *conf, LogCallback log_cb);
   int mm2_main(
-    ffi.Pointer<ffi.Char> conf,
+    ffi.Pointer<Utf8> conf,
     LogCallback log_cb,
   ) {
     return _mm2_main(
@@ -42,9 +44,9 @@ class KomodoDefiFrameworkBindings {
 
   late final _mm2_mainPtr = _lookup<
       ffi.NativeFunction<
-          ffi.Int8 Function(ffi.Pointer<ffi.Char>, LogCallback)>>('mm2_main');
-  late final _mm2_main = _mm2_mainPtr
-      .asFunction<int Function(ffi.Pointer<ffi.Char>, LogCallback)>();
+          ffi.Int8 Function(ffi.Pointer<Utf8>, LogCallback)>>('mm2_main');
+  late final _mm2_main =
+      _mm2_mainPtr.asFunction<int Function(ffi.Pointer<Utf8>, LogCallback)>();
 
   /// Checks if the MM2 singleton thread is currently running or not.
   /// 0 .. not running.
@@ -96,6 +98,6 @@ class KomodoDefiFrameworkBindings {
   late final _mm2_stop = _mm2_stopPtr.asFunction<int Function()>();
 }
 
-typedef LogCallbackFunction = ffi.Void Function(ffi.Pointer<ffi.Char> line);
-typedef DartLogCallbackFunction = void Function(ffi.Pointer<ffi.Char> line);
+typedef LogCallbackFunction = ffi.Void Function(ffi.Pointer<Utf8> line);
+typedef DartLogCallbackFunction = void Function(ffi.Pointer<Utf8> line);
 typedef LogCallback = ffi.Pointer<ffi.NativeFunction<LogCallbackFunction>>;

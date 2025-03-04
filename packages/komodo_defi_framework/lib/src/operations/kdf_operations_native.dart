@@ -12,8 +12,6 @@ import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.da
 import 'package:komodo_defi_framework/src/operations/kdf_operations_local_executable.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
-typedef NativeLogCallback = ffi.Void Function(ffi.Pointer<ffi.Char>);
-
 IKdfOperations createLocalKdfOperations({
   required void Function(String) logCallback,
   required LocalConfig config,
@@ -34,50 +32,111 @@ IKdfOperations createLocalKdfOperations({
 }
 
 class KdfOperationsNativeLibrary implements IKdfOperations {
-  @override
-  factory KdfOperationsNativeLibrary.create({
-    required void Function(String)? logCallback,
-    required LocalConfig config,
-  }) {
-    final nativeLogCallback = ffi.NativeCallable<NativeLogCallback>.listener(
-      (ffi.Pointer<ffi.Char> messagePtr) {
-        try {
-          final message = utf8.decode(
-            messagePtr
-                .cast<ffi.Uint8>()
-                .asTypedList(messagePtr[0].bitLength)
-                .toList(),
-            allowMalformed: true,
-          );
-          if (message.isNotEmpty) {
-            (logCallback ?? print).call(message);
-          } else {
-            (logCallback ?? print).call(message);
-          }
-        } catch (e) {
-          (logCallback ?? print).call('Failed to decode log message: $e');
-        }
-      },
-    );
-
-    return KdfOperationsNativeLibrary._(
-      KomodoDefiFrameworkBindings(_library),
-      nativeLogCallback,
-      config,
-      logCallback ?? print,
-    );
-  }
-
   KdfOperationsNativeLibrary._(
     this._bindings,
     this._logCallback,
     this._config,
     this._log,
   );
+  @override
+  factory KdfOperationsNativeLibrary.create({
+    required void Function(String)? logCallback,
+    required LocalConfig config,
+  }) {
+    final log = logCallback ?? print;
+    final nativeLogCallback = ffi.NativeCallable<LogCallbackFunction>.listener(
+      (ffi.Pointer<Utf8> messagePtr) => _logNativeLogMessage(messagePtr, log),
+    );
+
+    return KdfOperationsNativeLibrary._(
+      KomodoDefiFrameworkBindings(_library),
+      nativeLogCallback,
+      config,
+      log,
+    );
+  }
+
+  /// Logs a native log message, or the raw bytes if parsing fails.
+  /// Default method uses the package:ffi [Utf8] class to decode the message.
+  /// If decoding fails, it tries to parse the message manually, or the raw
+  /// bytes if parsing fails.
+  static void _logNativeLogMessage(
+    ffi.Pointer<Utf8> messagePtr,
+    void Function(String) log,
+  ) {
+    try {
+      final message = messagePtr.toDartString();
+      log(message);
+    } catch (e) {
+      final unsignedLength = messagePtr.length;
+      log('Failed to decode log message ($unsignedLength bytes): $e');
+
+      final manuallyParsedMessage = _tryParseNativeLogMessage(messagePtr, log);
+      if (manuallyParsedMessage.isNotEmpty) {
+        log(manuallyParsedMessage);
+      }
+    }
+  }
+
+  /// Tries to parse the native log message manually, or the raw bytes if
+  /// parsing fails, by finding the null terminator (0x00) or invalid UTF-8
+  /// byte (0xFF). This is a workaround for the fact that KDF terminating on
+  /// exceptions can leave the log message in an invalid state.
+  static String _tryParseNativeLogMessage(
+    ffi.Pointer<Utf8> messagePtr,
+    void Function(String) log,
+  ) {
+    try {
+      // Calculate string length by finding the null terminator
+      // (0x00) or invalid UTF-8 byte (0xFF). 0xFF encountered on iOS.
+      var length = 0;
+      final messagePtrAsInt = messagePtr.cast<ffi.Uint8>();
+      while (messagePtrAsInt[length] != 0 && messagePtrAsInt[length] != 255) {
+        length++;
+
+        // prevent overflows & infinite loops with a reasonable limit
+        if (length >= 32767) {
+          log('Received log message longer than 32767 bytes.');
+          return '';
+        }
+      }
+
+      if (length == 0) {
+        log('Received empty log message.');
+        return '';
+      }
+
+      // print the raw bytes if the message is not valid UTF-8 to prevent
+      // flutter devtools from crashing.
+      final bytes = messagePtrAsInt.asTypedList(length);
+      if (!_isValidUtf8(bytes)) {
+        log('Received invalid UTF-8 log message.');
+        final hexString =
+            bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+        log('Raw bytes: $hexString');
+        return '';
+      }
+
+      return utf8.decode(bytes);
+    } catch (e) {
+      log('Failed to decode log message: $e');
+    }
+
+    return '';
+  }
+
+  static bool _isValidUtf8(List<int> bytes) {
+    try {
+      utf8.decode(bytes, allowMalformed: false);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   void Function(String) _log;
   final KomodoDefiFrameworkBindings _bindings;
-  final ffi.NativeCallable<NativeLogCallback> _logCallback;
+  final ffi.NativeCallable<LogCallbackFunction> _logCallback;
   LocalConfig _config;
 
   @override
@@ -101,7 +160,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   @override
   Future<KdfStartupResult> kdfMain(JsonMap startParams, {int? logLevel}) async {
     final startParamsPtr =
-        startParams.toJsonString().toNativeUtf8().cast<ffi.Char>();
+        startParams.toJsonString().toNativeUtf8().cast<Utf8>();
     // TODO: Implement log level
 
     try {
@@ -178,9 +237,9 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     );
     final bindings = KomodoDefiFrameworkBindings(dylib);
     final startParamsPtr =
-        ffi.Pointer<ffi.Char>.fromAddress(params.startParamsPtrAddress);
+        ffi.Pointer<Utf8>.fromAddress(params.startParamsPtrAddress);
     final logCallback =
-        ffi.Pointer<ffi.NativeFunction<NativeLogCallback>>.fromAddress(
+        ffi.Pointer<ffi.NativeFunction<LogCallbackFunction>>.fromAddress(
       params.logCallbackAddress,
     );
     return bindings.mm2_main(startParamsPtr, logCallback);
