@@ -1,4 +1,18 @@
+import 'dart:collection';
+
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+
+final assetTickersWithFaucet = UnmodifiableListView([
+  'RICK',
+  'MORTY',
+  'DOC',
+  'MARTY',
+]);
+
+extension AssetFaucetExtension on Asset {
+  // TODO: Implement faucet functionality in SDK
+  bool get hasFaucet => assetTickersWithFaucet.contains(id.symbol.configSymbol);
+}
 
 /// Core extension providing asset validation and compatibility checks
 extension AssetValidation on Asset {
@@ -161,7 +175,7 @@ enum AssetUnavailableErrorReason {
 
   notSupportedInHdWallet,
 
-  invalidConfiguration;
+  invalidConfiguration,
 }
 
 // TODO! Localise

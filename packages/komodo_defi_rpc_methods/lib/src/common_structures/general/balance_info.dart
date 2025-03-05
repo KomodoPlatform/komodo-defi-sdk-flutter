@@ -56,6 +56,7 @@ class BalanceInfo {
   final Decimal? _unspendable;
   late final Decimal unspendable = _unspendable ?? _total! - _spendable!;
 
+  /// Whether the balance has any spendable or unspendable funds.
   bool get hasBalance => spendable > Decimal.zero || unspendable > Decimal.zero;
 
   Map<String, dynamic> toJson() => {

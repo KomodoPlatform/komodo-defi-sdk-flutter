@@ -18,12 +18,13 @@ class AssetId extends Equatable {
     final subClass = CoinSubClass.parse(json.value('type'));
 
     final parentCoinTicker = json.valueOrNull<String>('parent_coin');
-    final maybeParent = parentCoinTicker == null
-        ? null
-        : knownIds?.singleWhere(
-            (parent) =>
-                parent.id == parentCoinTicker && parent.subClass == subClass,
-          );
+    final maybeParent =
+        parentCoinTicker == null
+            ? null
+            : knownIds?.singleWhere(
+              (parent) =>
+                  parent.id == parentCoinTicker && parent.subClass == subClass,
+            );
 
     return AssetId(
       id: json.value<String>('coin'),
@@ -86,9 +87,10 @@ class AssetId extends Equatable {
 
     for (final otherType in otherTypes) {
       final jsonCopy = JsonMap.from(json);
-      final otherTypesCopy = List<String>.from(otherTypes)
-        ..remove(otherType)
-        ..add(json.value('type'));
+      final otherTypesCopy =
+          List<String>.from(otherTypes)
+            ..remove(otherType)
+            ..add(json.value('type'));
 
       // TODO: Perhaps restructure so we can copy the protocol data from
       // another coin with the same type
@@ -112,14 +114,14 @@ class AssetId extends Equatable {
   //     : '${id}_${subClass.formatted}';
 
   JsonMap toJson() => {
-        'coin': id,
-        'fname': name,
-        'symbol': symbol.toJson(),
-        'chain_id': chainId.formattedChainId,
-        'derivation_path': derivationPath,
-        'type': subClass.formatted,
-        if (parentId != null) 'parent_coin': parentId!.id,
-      };
+    'coin': id,
+    'fname': name,
+    'symbol': symbol.toJson(),
+    'chain_id': chainId.formattedChainId,
+    'derivation_path': derivationPath,
+    'type': subClass.formatted,
+    if (parentId != null) 'parent_coin': parentId!.id,
+  };
 
   @override
   List<Object?> get props => [id, subClass.formatted];
@@ -168,9 +170,7 @@ abstract class ChainId with EquatableMixin {
 
   String get formattedChainId;
 
-  static ChainId? parseOrNull(
-    ChainId? Function() fromConfig,
-  ) {
+  static ChainId? parseOrNull(ChainId? Function() fromConfig) {
     try {
       return fromConfig();
     } catch (e) {
@@ -180,15 +180,11 @@ abstract class ChainId with EquatableMixin {
 }
 
 class AssetChainId extends ChainId {
-  AssetChainId({
-    required this.chainId,
-  });
+  AssetChainId({required this.chainId});
 
   @override
   factory AssetChainId.fromConfig(JsonMap json) {
-    return AssetChainId(
-      chainId: json.value<int>('chain_id'),
-    );
+    return AssetChainId(chainId: json.value<int>('chain_id'));
   }
   final int chainId;
 
@@ -228,16 +224,12 @@ class TendermintChainId extends ChainId {
 }
 
 class ProtocolChainId extends ChainId {
-  ProtocolChainId({
-    required ProtocolClass protocol,
-  }) : _protocol = protocol;
+  ProtocolChainId({required ProtocolClass protocol}) : _protocol = protocol;
 
   @override
   factory ProtocolChainId.fromConfig(JsonMap json) {
     final protocol = ProtocolClass.fromJson(json);
-    return ProtocolChainId(
-      protocol: protocol,
-    );
+    return ProtocolChainId(protocol: protocol);
   }
 
   final ProtocolClass _protocol;

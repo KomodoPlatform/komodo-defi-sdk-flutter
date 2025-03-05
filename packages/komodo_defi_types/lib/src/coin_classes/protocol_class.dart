@@ -5,7 +5,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_types/src/utils/json_type_utils.dart';
 
 /// Base class for all protocol definitions
-abstract class ProtocolClass with ExplorerUrlMixin  implements Equatable {
+abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
   const ProtocolClass({
     required this.subClass,
     required this.config,
@@ -14,31 +14,28 @@ abstract class ProtocolClass with ExplorerUrlMixin  implements Equatable {
   });
 
   /// Creates the appropriate protocol class from JSON config
-  factory ProtocolClass.fromJson(
-    JsonMap json, {
-    CoinSubClass? requestedType,
-  }) {
+  factory ProtocolClass.fromJson(JsonMap json, {CoinSubClass? requestedType}) {
     final primaryType =
         requestedType ?? CoinSubClass.parse(json.value<String>('type'));
-    final otherTypes = json
+    final otherTypes =
+        json
             .valueOrNull<List<dynamic>>('other_types')
-            ?.map(
-              (type) => CoinSubClass.parse(type as String),
-            )
+            ?.map((type) => CoinSubClass.parse(type as String))
             .toList() ??
         [];
 
     // If a specific type is requested, update the config
-    final configToUse = requestedType != null && requestedType != primaryType
-        ? (JsonMap.from(json)
-          ..['type'] = requestedType.toString().split('.').last)
-        : json;
+    final configToUse =
+        requestedType != null && requestedType != primaryType
+            ? (JsonMap.from(json)
+              ..['type'] = requestedType.toString().split('.').last)
+            : json;
     try {
       return switch (primaryType) {
         CoinSubClass.utxo || CoinSubClass.smartChain => UtxoProtocol.fromJson(
-            configToUse,
-            supportedProtocols: otherTypes,
-          ),
+          configToUse,
+          supportedProtocols: otherTypes,
+        ),
         // SLP is no longer supported by its own protocol (BCH)
         // CoinSubClass.slp => SlpProtocol.fromJson(
         //     configToUse,
@@ -58,23 +55,19 @@ abstract class ProtocolClass with ExplorerUrlMixin  implements Equatable {
         CoinSubClass.ewt ||
         CoinSubClass.hecoChain ||
         CoinSubClass.rskSmartBitcoin ||
-        CoinSubClass.erc20 =>
-          Erc20Protocol.fromJson(json),
+        CoinSubClass.erc20 => Erc20Protocol.fromJson(json),
         CoinSubClass.qrc20 => QtumProtocol.fromJson(json),
         CoinSubClass.zhtlc => ZhtlcProtocol.fromJson(json),
         CoinSubClass.tendermintToken ||
-        CoinSubClass.tendermint =>
-          TendermintProtocol.fromJson(
-            configToUse,
-            supportedProtocols: otherTypes,
-          ),
+        CoinSubClass.tendermint => TendermintProtocol.fromJson(
+          configToUse,
+          supportedProtocols: otherTypes,
+        ),
         CoinSubClass.sia => SiaProtocol.fromJson(
-            configToUse,
-            supportedProtocols: otherTypes,
-          ),
-        CoinSubClass.slp ||
-        CoinSubClass.smartBch ||
-        CoinSubClass.unknown =>
+          configToUse,
+          supportedProtocols: otherTypes,
+        ),
+        CoinSubClass.slp || CoinSubClass.smartBch || CoinSubClass.unknown =>
           throw UnsupportedProtocolException(
             'Unsupported protocol type: ${primaryType.formatted}',
           ),
@@ -111,16 +104,19 @@ abstract class ProtocolClass with ExplorerUrlMixin  implements Equatable {
   @override
   ExplorerUrlPattern get explorerPattern => ExplorerUrlPattern.fromJson(config);
 
+  /// Whether the protocol supports memos
+  // TODO! Implement
+  bool get isMemoSupported => true;
+
   /// Convert protocol back to JSON representation
   JsonMap toJson() => {
-        ...config,
-        'sub_class': subClass.toString().split('.').last,
-        'is_custom_token': isCustomToken,
-        if (supportedProtocols.isNotEmpty)
-          'other_types': supportedProtocols
-              .map((p) => p.toString().split('.').last)
-              .toList(),
-      };
+    ...config,
+    'sub_class': subClass.toString().split('.').last,
+    'is_custom_token': isCustomToken,
+    if (supportedProtocols.isNotEmpty)
+      'other_types':
+          supportedProtocols.map((p) => p.toString().split('.').last).toList(),
+  };
 
   /// Check if this protocol supports a given protocol type
   bool supportsProtocolType(CoinSubClass type) {
@@ -140,15 +136,17 @@ abstract class ProtocolClass with ExplorerUrlMixin  implements Equatable {
   ActivationParams defaultActivationParams() =>
       ActivationParams.fromConfigJson(config);
 
+  String? get contractAddress => config.valueOrNull<String>('contract_address');
+
   @override
   List<Object?> get props => [
-        subClass,
-        supportedProtocols,
-        isCustomToken,
-        requiresHdWallet,
-        derivationPath,
-        isTestnet,
-      ];
+    subClass,
+    supportedProtocols,
+    isCustomToken,
+    requiresHdWallet,
+    derivationPath,
+    isTestnet,
+  ];
 
   @override
   bool? get stringify => false;

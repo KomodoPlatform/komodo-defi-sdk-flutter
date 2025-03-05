@@ -10,7 +10,10 @@ export 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 
 export 'src/assets/_assets_index.dart' show AssetHdWalletAddressesExtension;
 export 'src/assets/asset_extensions.dart'
-    show AssetUnavailableErrorReasonExtension, AssetValidation;
+    show
+        AssetFaucetExtension,
+        AssetUnavailableErrorReasonExtension,
+        AssetValidation;
 export 'src/assets/asset_pubkey_extensions.dart';
 export 'src/assets/legacy_asset_extensions.dart';
 // // Export coin activation extension
