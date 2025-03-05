@@ -33,12 +33,13 @@ class KomodoCoins {
   }
 
   Future<Map<AssetId, Asset>> fetchAssets() async {
+    
     if (_assets != null) return _assets!;
 
     final url = Uri.parse(
       'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
     );
-
+  
     try {
       final response = await http.get(url);
       if (response.statusCode != 200) {

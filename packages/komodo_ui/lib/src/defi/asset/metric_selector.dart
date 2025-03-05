@@ -3,11 +3,8 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_ui/komodo_ui.dart';
 
 /// Model representing metric data
-typedef MetricData = ({
-  double value,
-  double trendPercentage,
-  AssetId? selectedAsset,
-});
+typedef MetricData =
+    ({double value, double trendPercentage, AssetId? selectedAsset});
 
 extension MetricDataMethods on MetricData {
   MetricData copyWith({
@@ -44,11 +41,11 @@ class MetricSelectorController extends ChangeNotifier {
       asset == null
           ? null
           : SelectItem<AssetId>(
-              id: asset.id,
-              value: asset,
-              title: asset.symbol.common,
-              leading: AssetIcon(asset),
-            ),
+            id: asset.id,
+            value: asset,
+            title: asset.symbol.common,
+            leading: AssetIcon(asset),
+          ),
     );
     notifyListeners();
   }
@@ -142,23 +139,23 @@ class MetricSelector extends StatelessWidget {
                   onItemSelected: (item) {
                     onAssetSelected?.call(item.value);
                   },
-                  selectedItemBuilder: (item) => _AssetSelectionView(
-                    item: item,
-                    onClear: controller.allowEmptySelection
-                        ? () {
-                            controller.selectAsset(null);
-                            onAssetSelected?.call(null);
-                          }
-                        : null,
-                  ),
+                  selectedItemBuilder:
+                      (item) => _AssetSelectionView(
+                        item: item,
+                        onClear:
+                            controller.allowEmptySelection
+                                ? () {
+                                  controller.selectAsset(null);
+                                  onAssetSelected?.call(null);
+                                }
+                                : null,
+                      ),
                 ),
               ),
               const SizedBox(width: 12),
               _MetricValueText(value: controller.data.value),
               const SizedBox(width: 12),
-              TrendPercentageText(
-                investmentReturnPercentage: controller.data.trendPercentage,
-              ),
+              TrendPercentageText(percentage: controller.data.trendPercentage),
             ],
           ),
         );
@@ -169,10 +166,7 @@ class MetricSelector extends StatelessWidget {
 
 /// Widget for displaying selected asset with optional clear button
 class _AssetSelectionView extends StatelessWidget {
-  const _AssetSelectionView({
-    required this.item,
-    this.onClear,
-  });
+  const _AssetSelectionView({required this.item, this.onClear});
 
   final SelectItem<AssetId> item;
   final VoidCallback? onClear;
@@ -181,10 +175,7 @@ class _AssetSelectionView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        if (item.leading != null) ...[
-          item.leading!,
-          const SizedBox(width: 8),
-        ],
+        if (item.leading != null) ...[item.leading!, const SizedBox(width: 8)],
         Text(item.title),
         if (onClear != null) ...[
           const SizedBox(width: 4),
@@ -214,9 +205,9 @@ class _MetricValueText extends StatelessWidget {
             ..minimumSignificantDigits = 3
             ..minimumFractionDigits = 2)
           .format(value),
-      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
     );
   }
 }

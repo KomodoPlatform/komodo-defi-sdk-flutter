@@ -55,3 +55,4 @@ assets:
 
 executables:
   flutter_upgrade_nested:
+  update_api_config:
