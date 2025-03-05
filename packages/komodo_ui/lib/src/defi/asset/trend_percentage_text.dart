@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 /// migrating from the Komodo Wallet app to the new SDK repository.
 ///
 /// E.g.:
-/// - Locked into using investmentReturnPercentage prop name
+/// - Locked into using percentage prop name
 /// - Fixed icon choices and behaviors
 ///
 /// Could be enhanced with:
@@ -25,9 +25,10 @@ class TrendPercentageText extends StatelessWidget {
   /// Enhanced version of the original TrendPercentageText with more
   /// customization options while maintaining backwards compatibility.
   const TrendPercentageText({
-    required this.investmentReturnPercentage,
+    this.percentage,
     this.showIcon = true,
     this.iconSize = 24,
+    this.contentSpacing = 4,
     this.spacing = 2,
     this.precision = 2,
     this.upIcon = Icons.trending_up,
@@ -37,11 +38,18 @@ class TrendPercentageText extends StatelessWidget {
     this.downColor,
     this.neutralColor,
     this.textStyle,
+    this.prefix,
+    this.suffix,
+    this.noValueText = '-',
     super.key,
   });
 
   /// The percentage value to display
-  final double investmentReturnPercentage;
+  /// If null, will display [noValueText] and use neutral styling
+  final double? percentage;
+
+  /// Text to display when percentage is null
+  final String noValueText;
 
   /// Whether to show the trend icon
   final bool showIcon;
@@ -51,6 +59,9 @@ class TrendPercentageText extends StatelessWidget {
 
   /// Spacing between icon and text
   final double spacing;
+  
+  /// Spacing between contents and prefix/suffix
+  final double contentSpacing;
 
   /// Number of decimal places to show
   final int precision;
@@ -76,43 +87,66 @@ class TrendPercentageText extends StatelessWidget {
   /// Optional text style (falls back to theme's bodyLarge)
   final TextStyle? textStyle;
 
+  /// Optional prefix widget to display before the trend icon and text
+  ///
+  /// Typically a `Text` widget. The trend text style will automatically be
+  /// applied to the prefix widget.
+  final Widget? prefix;
+
+  /// Optional suffix widget to display after the text
+  ///
+  /// Typically a `Text` widget. The trend text style will automatically be
+  /// applied to the prefix widget.
+  final Widget? suffix;
+
+  bool get _isPositive => percentage != null && percentage! > 0;
+  bool get _isNeutral => percentage == null || percentage == 0;
+
+  IconData get _icon =>
+      _isPositive
+          ? upIcon
+          : _isNeutral
+          ? neutralIcon
+          : downIcon;
+
+  Color _trendColor(ThemeData theme) =>
+      _isPositive
+          ? (upColor ?? Colors.green)
+          : _isNeutral
+          ? (neutralColor ?? theme.disabledColor)
+          : (downColor ?? theme.colorScheme.error);
+
+  String get _displayText =>
+      percentage == null
+          ? noValueText
+          : '${percentage!.toStringAsFixed(precision)}%';
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final defaultTextStyle =
         theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 12);
 
-    final isPositive = investmentReturnPercentage > 0;
-    final isNeutral = investmentReturnPercentage == 0;
+    final color = _trendColor(theme);
 
-    final color = isPositive
-        ? (upColor ?? Colors.green)
-        : isNeutral
-            ? (neutralColor ?? theme.disabledColor)
-            : (downColor ?? theme.colorScheme.error);
+    final resolvedTextStyle = (textStyle ?? defaultTextStyle).copyWith(
+      color: color,
+    );
 
-    final icon = isPositive
-        ? upIcon
-        : isNeutral
-            ? neutralIcon
-            : downIcon;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showIcon) ...[
-          Icon(
-            icon,
-            color: color,
-            size: iconSize,
-          ),
-          SizedBox(width: spacing),
+    return DefaultTextStyle(
+      style: resolvedTextStyle,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (prefix != null) ...[prefix!, SizedBox(width: contentSpacing)],
+          if (showIcon) ...[
+            Icon(_icon, color: color, size: iconSize),
+            SizedBox(width: spacing),
+          ],
+          Text(_displayText),
+          if (suffix != null) ...[SizedBox(width: contentSpacing), suffix!],
         ],
-        Text(
-          '${investmentReturnPercentage.toStringAsFixed(precision)}%',
-          style: (textStyle ?? defaultTextStyle).copyWith(color: color),
-        ),
-      ],
+      ),
     );
   }
 }
