@@ -220,11 +220,6 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
         .then((user) => user?.authOptions);
   }
 
-  Future<AuthOptions?> currentUsersAuthOptions() async {
-    final user = await _authService.getActiveUser();
-    return user == null ? null : storedAuthOptions(user.walletId.name);
-  }
-
   @override
   Future<KdfUser> register({
     required String walletName,

@@ -13,6 +13,15 @@ class TaskShepherd {
   ///
   /// The [getTaskStatus] function should return the current status of the task
   /// given the task ID.
+  ///
+  /// The [checkTaskStatus] function should return true if the task is complete.
+  ///
+  /// The [cancelTask] function can be used to cancel the task if needed.
+  /// If provided, it will be called when the stream is canceled by the 
+  /// consumer.
+  /// It will NOT be called when the task completes naturally.
+  /// If not provided, the task cannot be canceled and cancelling the stream
+  /// will not cancel the task.
   static Stream<T> executeTask<T extends BaseResponse>({
     required Future<NewTaskResponse> Function() initTask,
     required Future<T> Function(int taskId) getTaskStatus,
@@ -22,6 +31,7 @@ class TaskShepherd {
     Duration pollingInterval = const Duration(seconds: 1),
   }) {
     final controller = StreamController<T>();
+    var taskCompletedNaturally = false;
 
     scheduleMicrotask(() async {
       try {
@@ -30,7 +40,10 @@ class TaskShepherd {
 
         if (cancelTask != null) {
           controller.onCancel = () async {
-            await cancelTask(taskId);
+            // Only call cancelTask if the task didn't complete naturally
+            if (!taskCompletedNaturally) {
+              await cancelTask(taskId);
+            }
           };
         }
 
@@ -55,6 +68,9 @@ class TaskShepherd {
           }
 
           if (checkTaskStatus(status)) {
+            // Mark task as naturally completed before closing the controller
+            taskCompletedNaturally = true;
+            controller.onCancel = null;
             await controller.close();
             return;
           }
@@ -63,7 +79,7 @@ class TaskShepherd {
         }
       } catch (e, stackTrace) {
         controller.addError(e, stackTrace);
-        // await controller.
+        await controller.close();
       }
     });
 

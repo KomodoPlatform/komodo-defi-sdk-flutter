@@ -54,7 +54,7 @@ extension AssetHdWalletAddressesExtension on Asset {
       // Consider carefully how to handle this as it would break things if
       // this is used in a long list of addresses.
       final unusedAddressesCount =
-          addresses.keys.where((key) => !key.balance.hasBalance).length;
+          addresses.keys.where((key) => !key.balance.hasValue).length;
 
       if (unusedAddressesCount >= 3) {
         reasons.add(CantCreateNewAddressReason.maxGapLimitReached);

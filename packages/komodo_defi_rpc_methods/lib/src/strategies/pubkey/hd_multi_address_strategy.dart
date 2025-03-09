@@ -26,13 +26,13 @@ class HDWalletStrategy extends PubkeyStrategy {
 
   @override
   Future<PubkeyInfo> getNewAddress(AssetId assetId, ApiClient client) async {
-    final newAddress = (await client.rpc.hdWallet.getNewAddress(
-      assetId.id,
-      accountId: 0,
-      chain: 'External',
-      gapLimit: _gapLimit,
-    ))
-        .newAddress;
+    final newAddress =
+        (await client.rpc.hdWallet.getNewAddress(
+          assetId.id,
+          accountId: 0,
+          chain: 'External',
+          gapLimit: _gapLimit,
+        )).newAddress;
 
     return PubkeyInfo(
       address: newAddress.address,
@@ -73,33 +73,31 @@ class HDWalletStrategy extends PubkeyStrategy {
     AssetId assetId,
     AccountBalanceInfo balanceInfo,
   ) async {
-    final addresses = balanceInfo.addresses
-        .map(
-          (addr) => PubkeyInfo(
-            address: addr.address,
-            derivationPath: addr.derivationPath,
-            chain: addr.chain,
-            balance: addr.balance.balanceOf(assetId.id),
-          ),
-        )
-        .toList();
+    final addresses =
+        balanceInfo.addresses
+            .map(
+              (addr) => PubkeyInfo(
+                address: addr.address,
+                derivationPath: addr.derivationPath,
+                chain: addr.chain,
+                balance: addr.balance.balanceOf(assetId.id),
+              ),
+            )
+            .toList();
 
     return AssetPubkeys(
       assetId: assetId,
       keys: addresses,
-      availableAddressesCount:
-          await availableNewAddressesCount(addresses).then((value) => value),
+      availableAddressesCount: await availableNewAddressesCount(
+        addresses,
+      ).then((value) => value),
       syncStatus: SyncStatusEnum.success,
     );
   }
 
-  Future<int> availableNewAddressesCount(
-    List<PubkeyInfo> addresses,
-  ) {
-    final gapFromLastUsed = addresses.lastIndexWhere(
-          (addr) => addr.balance.hasBalance,
-        ) +
-        1;
+  Future<int> availableNewAddressesCount(List<PubkeyInfo> addresses) {
+    final gapFromLastUsed =
+        addresses.lastIndexWhere((addr) => addr.balance.hasValue) + 1;
 
     return Future.value((_gapLimit - gapFromLastUsed).clamp(0, _gapLimit));
   }

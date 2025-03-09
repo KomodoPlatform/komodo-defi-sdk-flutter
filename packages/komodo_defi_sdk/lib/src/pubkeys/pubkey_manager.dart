@@ -4,11 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manager responsible for handling pubkey operations across different assets
 class PubkeyManager {
-  PubkeyManager(
-    this._client,
-    this._auth,
-    this._assetManager,
-  );
+  PubkeyManager(this._client, this._auth, this._assetManager);
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
@@ -44,15 +40,16 @@ class PubkeyManager {
   }
 
   Future<PubkeyStrategy> _resolvePubkeyStrategy(Asset asset) async {
-    final authOptions = await _auth.currentUsersAuthOptions();
     final isHdWallet =
-        authOptions?.derivationMethod == DerivationMethod.hdWallet;
+        await _auth.currentUser.then((u) => u?.isHd) ??
+        (throw AuthException.notSignedIn());
 
     return asset.pubkeyStrategy(isHdWallet: isHdWallet);
   }
 
   /// Dispose of any resources
   Future<void> dispose() async {
+    
     // Add any cleanup if needed
   }
 }

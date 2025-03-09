@@ -7,7 +7,9 @@ Future<AssetId?> showCoinSearch(
   required List<AssetId> coins,
   SelectItem<AssetId> Function(AssetId coinId)? customCoinItemBuilder,
 }) {
-  final isMobile = MediaQuery.of(context).size.width < 600;
+
+  // Shows the full-screen Material search view on mobile
+  final isMobileViewRequired = MediaQuery.of(context).size.width < 600;
 
   final items = coins.map((assetId) {
     return customCoinItemBuilder?.call(assetId) ??
@@ -24,6 +26,6 @@ Future<AssetId?> showCoinSearch(
     items: items,
     searchHint: 'Search coins', //TODO: Localize
     convertResult: (item) => item?.value,
-    isMobile: isMobile,
+    isMobile: isMobileViewRequired,
   );
 }

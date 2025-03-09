@@ -105,15 +105,8 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   ///   )
   /// );
   /// ```
-  factory KomodoDefiSdk({
-    IKdfHostConfig? host,
-    KomodoDefiSdkConfig? config,
-  }) {
-    return KomodoDefiSdk._(
-      host,
-      config ?? const KomodoDefiSdkConfig(),
-      null,
-    );
+  factory KomodoDefiSdk({IKdfHostConfig? host, KomodoDefiSdkConfig? config}) {
+    return KomodoDefiSdk._(host, config ?? const KomodoDefiSdkConfig(), null);
   }
 
   /// Creates a new SDK instance from an existing KDF framework instance.
@@ -137,11 +130,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     );
   }
 
-  KomodoDefiSdk._(
-    this._hostConfig,
-    this._config,
-    this._kdfFramework,
-  );
+  KomodoDefiSdk._(this._hostConfig, this._config, this._kdfFramework);
 
   final IKdfHostConfig? _hostConfig;
   final KomodoDefiSdkConfig _config;
@@ -157,6 +146,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   MnemonicValidator? _mnemonicValidator;
   TransactionHistoryManager? _transactionHistory;
   WithdrawalManager? _withdrawals;
+  BalanceManager? _balances;
 
   bool _isInitialized = false;
   Future<void>? _initializationFuture;
@@ -231,6 +221,16 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Throws [StateError] if accessed before initialization.
   WithdrawalManager get withdrawals => _assertSdkInitialized(_withdrawals);
 
+  /// Gets a reference to the balance manager for checking asset balances
+  BalanceManager get balances {
+    if (_balances == null) {
+      throw StateError(
+        'SDK has not been initialized. Call initialize() first.',
+      );
+    }
+    return _balances!;
+  }
+
   /// Initializes the SDK instance.
   ///
   /// This must be called before using any SDK functionality. The initialization
@@ -269,11 +269,8 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   Future<void> _initialize() async {
     final rpcPassword = await ensureRpcPassword();
 
-    final hostConfig = _hostConfig ??
-        LocalConfig(
-          https: true,
-          rpcPassword: rpcPassword,
-        );
+    final hostConfig =
+        _hostConfig ?? LocalConfig(https: true, rpcPassword: rpcPassword);
 
     _kdfFramework ??= KomodoDefiFramework.create(
       hostConfig: hostConfig,
@@ -283,10 +280,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _apiClient = _kdfFramework!.client;
 
     // Initialize auth first as other managers depend on it
-    _auth = KomodoDefiLocalAuth(
-      kdf: _kdfFramework!,
-      hostConfig: hostConfig,
-    );
+    _auth = KomodoDefiLocalAuth(kdf: _kdfFramework!, hostConfig: hostConfig);
     await _auth!.ensureInitialized();
 
     // Initialize asset history storage for sharing between managers
@@ -321,6 +315,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _mnemonicValidator = MnemonicValidator();
     await _mnemonicValidator!.init();
 
+    // Initialize balance manager
+    _balances = BalanceManager(
+      _apiClient!,
+      activationManager,
+      _assets!,
+      _auth!,
+    );
+
     // Initialize managers that work with transactions
     _transactionHistory = TransactionHistoryManager(
       _apiClient!,
@@ -330,11 +332,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     );
 
     // Initialize withdrawal manager last as it depends on asset activation
-    _withdrawals = WithdrawalManager(
-      _apiClient!,
-      _auth!,
-      _assets!,
-    );
+    _withdrawals = WithdrawalManager(_apiClient!, _auth!, _assets!);
 
     _isInitialized = true;
   }
@@ -377,6 +375,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     await _pubkeys?.dispose();
     await _assets?.dispose();
     await _auth?.dispose();
+    await _balances?.dispose();
 
     // Clear references to managers
     _withdrawals = null;
@@ -384,6 +383,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _pubkeys = null;
     _assets = null;
     _auth = null;
+    _balances = null;
 
     // Clean up framework
     if (_kdfFramework != null) {

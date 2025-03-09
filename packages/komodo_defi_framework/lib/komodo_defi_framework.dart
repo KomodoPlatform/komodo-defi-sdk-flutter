@@ -10,7 +10,6 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
-export 'package:komodo_defi_types/komodo_defi_types.dart' show SecurityUtils;
 
 export 'src/operations/kdf_operations_interface.dart';
 

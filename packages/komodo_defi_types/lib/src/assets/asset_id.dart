@@ -81,7 +81,8 @@ class AssetId extends Equatable {
     return assetIds;
 
     // Remove below if it is confirmed that we will never encounter a coin with
-    // multiple types which need to be treated as separate assets.
+    // multiple types which need to be treated as separate assets. This was
+    // possible in the past with SLP coins, but they have been deprecated.
 
     final otherTypes = json.valueOrNull<List<String>>('other_types') ?? [];
 
@@ -102,7 +103,7 @@ class AssetId extends Equatable {
       jsonCopy['type'] = otherType;
       jsonCopy['other_types'] = otherTypesCopy;
 
-      //! assetIds.add(AssetId.parse(jsonCopy));
+      // assetIds.add(AssetId.parse(jsonCopy));
     }
 
     return assetIds;
@@ -126,16 +127,6 @@ class AssetId extends Equatable {
   @override
   List<Object?> get props => [id, subClass.formatted];
 
-  // @override
-  // bool operator ==(Object other) {
-  //   if (other is AssetId) {
-  //     return isSameAsset(other);
-  //   }
-  //   return false;
-  // }
-
-  // @override
-  // int get hashCode => id.hashCode ^ subClass.hashCode;
 
   @override
   String toString() =>
@@ -149,13 +140,11 @@ class AssetId extends Equatable {
 }
 
 abstract class ChainId with EquatableMixin {
-  // const ChainId.fromConfig();
-
   static ChainId parse(JsonMap json) {
     final chainParseAttempts = [
       () => parseOrNull(() => AssetChainId.fromConfig(json)),
       () => parseOrNull(() => TendermintChainId.fromConfig(json)),
-      () => ProtocolChainId.fromConfig(json),
+      () => parseOrNull(() => ProtocolChainId.fromConfig(json)),
     ];
 
     for (final parseAttempt in chainParseAttempts) {
@@ -169,6 +158,7 @@ abstract class ChainId with EquatableMixin {
   }
 
   String get formattedChainId;
+  int? get decimals;
 
   static ChainId? parseOrNull(ChainId? Function() fromConfig) {
     try {
@@ -180,19 +170,27 @@ abstract class ChainId with EquatableMixin {
 }
 
 class AssetChainId extends ChainId {
-  AssetChainId({required this.chainId});
+  AssetChainId({required this.chainId, this.decimalsValue});
 
   @override
   factory AssetChainId.fromConfig(JsonMap json) {
-    return AssetChainId(chainId: json.value<int>('chain_id'));
+    return AssetChainId(
+      chainId: json.value<int>('chain_id'),
+      decimalsValue: json.valueOrNull<int>('decimals'),
+    );
   }
+
   final int chainId;
+  final int? decimalsValue;
 
   @override
   String get formattedChainId => chainId.toString();
 
   @override
-  List<Object?> get props => [chainId];
+  int? get decimals => decimalsValue;
+
+  @override
+  List<Object?> get props => [chainId, decimalsValue];
 }
 
 class TendermintChainId extends ChainId {
@@ -200,6 +198,7 @@ class TendermintChainId extends ChainId {
     required this.accountPrefix,
     required this.chainId,
     required this.chainRegistryName,
+    this.decimalsValue,
   });
 
   @override
@@ -209,34 +208,54 @@ class TendermintChainId extends ChainId {
       accountPrefix: protocolData.value<String>('account_prefix'),
       chainId: protocolData.value<String>('chain_id'),
       chainRegistryName: protocolData.value<String>('chain_registry_name'),
+      decimalsValue:
+          protocolData.valueOrNull<int>('decimals') ??
+          json.valueOrNull<int>('decimals'),
     );
   }
 
   final String accountPrefix;
   final String chainId;
   final String chainRegistryName;
+  final int? decimalsValue;
 
   @override
   String get formattedChainId => '$chainRegistryName:$chainId';
 
   @override
-  List<Object?> get props => [accountPrefix, chainId, chainRegistryName];
+  int? get decimals => decimalsValue;
+
+  @override
+  List<Object?> get props => [
+    accountPrefix,
+    chainId,
+    chainRegistryName,
+    decimalsValue,
+  ];
 }
 
 class ProtocolChainId extends ChainId {
-  ProtocolChainId({required ProtocolClass protocol}) : _protocol = protocol;
+  ProtocolChainId({required ProtocolClass protocol, this.decimalsValue})
+    : _protocol = protocol;
 
   @override
   factory ProtocolChainId.fromConfig(JsonMap json) {
     final protocol = ProtocolClass.fromJson(json);
-    return ProtocolChainId(protocol: protocol);
+    return ProtocolChainId(
+      protocol: protocol,
+      decimalsValue: json.valueOrNull<int>('decimals'),
+    );
   }
 
   final ProtocolClass _protocol;
+  final int? decimalsValue;
 
   @override
   String get formattedChainId => _protocol.runtimeType.toString();
 
   @override
-  List<Object?> get props => [_protocol];
+  int? get decimals => decimalsValue;
+
+  @override
+  List<Object?> get props => [_protocol, decimalsValue];
 }

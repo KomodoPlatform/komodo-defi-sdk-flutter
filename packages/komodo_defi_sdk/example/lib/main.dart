@@ -55,7 +55,7 @@ class KomodoApp extends StatefulWidget {
 
 class _KomodoAppState extends State<KomodoApp> {
   // Instance-specific state management
-  final Map<String, InstanceState> InstanceStates = {};
+  final Map<String, InstanceState> _instanceStates = {};
   final Map<String, KdfUser?> _currentUsers = {};
   final Map<String, String> _statusMessages = {};
   int _selectedInstanceIndex = 0;
@@ -92,7 +92,7 @@ class _KomodoAppState extends State<KomodoApp> {
   }
 
   Future<void> _initializeInstance(KdfInstanceState instance) async {
-    final state = _getOrCreateInstanceState(instance.name);
+    _getOrCreateInstanceState(instance.name);
 
     // Initialize assets
     _allAssets = instance.sdk.assets.available;
@@ -151,7 +151,7 @@ class _KomodoAppState extends State<KomodoApp> {
   }
 
   InstanceState _getOrCreateInstanceState(String instanceName) {
-    return InstanceStates.putIfAbsent(instanceName, InstanceState.new);
+    return _instanceStates.putIfAbsent(instanceName, InstanceState.new);
   }
 
   @override
@@ -245,10 +245,10 @@ class _KomodoAppState extends State<KomodoApp> {
   @override
   void dispose() {
     _searchController.dispose();
-    for (final state in InstanceStates.values) {
+    for (final state in _instanceStates.values) {
       state.dispose();
     }
-    InstanceStates.clear();
+    _instanceStates.clear();
     super.dispose();
   }
 }
@@ -269,4 +269,3 @@ class InstanceState extends InstanceData {
     passwordController.dispose();
   }
 }
-

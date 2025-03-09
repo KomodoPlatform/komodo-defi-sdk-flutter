@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -80,6 +82,8 @@ class _AssetPageState extends State<AssetPage> {
               ? Center(child: Text('Error: $_error'))
               : Column(
                 children: [
+                  // Add linear progress indicator for pubkey loading
+                  if (_isLoading) const LinearProgressIndicator(minHeight: 4),
                   // const SizedBox(height: 32),
                   AssetHeader(widget.asset, _pubkeys),
                   const SizedBox(height: 32),
@@ -96,6 +100,7 @@ class _AssetPageState extends State<AssetPage> {
                               : _pubkeys!,
                       onGenerateNewAddress: _generateNewAddress,
                       cantCreateNewAddressReasons: _cantCreateNewAddressReasons,
+                      isGeneratingAddress: _isLoading,
                     ),
                   ),
                   Expanded(child: _TransactionsSection(widget.asset)),
@@ -116,6 +121,31 @@ class AssetHeader extends StatefulWidget {
 }
 
 class _AssetHeaderState extends State<AssetHeader> {
+  StreamSubscription<BalanceInfo?>? _balanceSubscription;
+  BalanceInfo? _balance;
+  bool _balanceLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _balanceLoading = true;
+    _balanceSubscription = context
+      .read<KomodoDefiSdk>()
+      .balances
+      .watchBalance(widget.asset.id)
+      .listen((balance) {
+        _balanceLoading = false;
+
+        setState(() => _balance = balance);
+      })..onError((_) => setState(() => _balanceLoading = false));
+  }
+
+  @override
+  void dispose() {
+    _balanceSubscription?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -132,53 +162,59 @@ class _AssetHeaderState extends State<AssetHeader> {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          children: [
-            Text('Total', style: Theme.of(context).textTheme.bodyMedium),
-            Text(
-              // TODO: Stream-based
-              (widget.pubkeys?.syncStatus == SyncStatusEnum.inProgress)
-                  ? 'Loading...'
-                  : (widget.pubkeys?.balance.total.toDouble() ?? 0.0)
-                      .toString(),
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 8),
-            const SizedBox(width: 128, child: Divider()),
-            const SizedBox(height: 8),
-            Row(
-              // mainAxisAlignment: MainAxisAlignment.spaceAround,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Column(
-                  children: [
+          children:
+              _balanceLoading
+                  ? [
+                    const SizedBox(
+                      height: 32,
+                      width: 32,
+                      child: CircularProgressIndicator(),
+                    ),
+                  ]
+                  : [
                     Text(
-                      'Available',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      'Total',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     Text(
-                      widget.pubkeys?.balance.spendable.toDouble().toString() ??
-                          '0.0',
+                      (_balance?.total.toDouble() ?? 0.0).toString(),
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    const SizedBox(width: 128, child: Divider()),
+                    const SizedBox(height: 8),
+                    Row(
+                      // mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Column(
+                          children: [
+                            Text(
+                              'Available',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            Text(
+                              _balance?.spendable.toDouble().toString() ??
+                                  '0.0',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          children: [
+                            Text(
+                              'Locked',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            Text(
+                              _balance?.unspendable.toDouble().toString() ??
+                                  '0.0',
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  children: [
-                    Text(
-                      'Locked',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Text(
-                      widget.pubkeys?.balance.unspendable
-                              .toDouble()
-                              .toString() ??
-                          '0.0',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );
@@ -224,11 +260,13 @@ class _AddressesSection extends StatelessWidget {
     required this.pubkeys,
     required this.onGenerateNewAddress,
     required this.cantCreateNewAddressReasons,
+    this.isGeneratingAddress = false,
   });
 
   final AssetPubkeys pubkeys;
   final VoidCallback? onGenerateNewAddress;
   final Set<CantCreateNewAddressReason>? cantCreateNewAddressReasons;
+  final bool isGeneratingAddress;
 
   String _getTooltipMessage() {
     if (cantCreateNewAddressReasons?.isEmpty ?? true) {
@@ -260,7 +298,6 @@ class _AddressesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tooltipMessage = _getTooltipMessage();
-
     return SizedBox(
       width: double.infinity,
       child: Column(
@@ -273,33 +310,71 @@ class _AddressesSection extends StatelessWidget {
                 message: tooltipMessage,
                 preferBelow: true,
                 child: ElevatedButton.icon(
-                  onPressed: canCreateNewAddress ? onGenerateNewAddress : null,
+                  onPressed:
+                      (canCreateNewAddress && !isGeneratingAddress)
+                          ? onGenerateNewAddress
+                          : null,
                   label: const Text('New'),
-                  icon: const Icon(Icons.add),
+                  icon:
+                      isGeneratingAddress
+                          ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2.0),
+                          )
+                          : const Icon(Icons.add),
                 ),
               ),
             ],
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: pubkeys.keys.length,
-              itemBuilder:
-                  (context, index) => ListTile(
-                    leading: Text(index.toString()),
-                    title: Text(pubkeys.keys[index].toJson().toJsonString()),
-                    trailing: Text(
-                      pubkeys.keys[index].balance.total.toStringAsPrecision(2),
+            child:
+                pubkeys.keys.isEmpty &&
+                        pubkeys.syncStatus != SyncStatusEnum.inProgress
+                    ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (pubkeys.syncStatus ==
+                              SyncStatusEnum.inProgress) ...[
+                            const SizedBox(
+                              height: 32,
+                              width: 32,
+                              child: CircularProgressIndicator(),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text('Loading addresses...'),
+                          ] else
+                            const Text('No addresses available'),
+                        ],
+                      ),
+                    )
+                    : ListView.builder(
+                      itemCount: pubkeys.keys.length,
+                      itemBuilder:
+                          (context, index) => ListTile(
+                            leading: Text(index.toString()),
+                            title: Text(
+                              pubkeys.keys[index].toJson().toJsonString(),
+                            ),
+                            trailing: Text(
+                              pubkeys.keys[index].balance.total
+                                  .toStringAsPrecision(2),
+                            ),
+                            onTap: () {
+                              Clipboard.setData(
+                                ClipboardData(
+                                  text: pubkeys.keys[index].address,
+                                ),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Copied to clipboard'),
+                                ),
+                              );
+                            },
+                          ),
                     ),
-                    onTap: () {
-                      Clipboard.setData(
-                        ClipboardData(text: pubkeys.keys[index].address),
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Copied to clipboard')),
-                      );
-                    },
-                  ),
-            ),
           ),
         ],
       ),

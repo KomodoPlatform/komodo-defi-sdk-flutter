@@ -4,7 +4,7 @@ enum SyncStatusEnum {
   success,
   error;
 
-  bool get isComplete => this == success || this == error;
+  bool get isTerminal => this == success || this == error;
 
   static SyncStatusEnum? tryParse(String? value) {
     if (value == null) {

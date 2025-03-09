@@ -18,10 +18,11 @@ class AccountBalanceInfo {
       totalBalance: TokenBalanceMap.fromJson(
         json.value<JsonMap>('total_balance'),
       ),
-      addresses: json
-          .value<List<dynamic>>('addresses')
-          .map((e) => AddressInfo.fromJson(e as JsonMap))
-          .toList(),
+      addresses:
+          json
+              .value<List<dynamic>>('addresses')
+              .map((e) => AddressInfo.fromJson(e as JsonMap))
+              .toList(),
     );
   }
 
@@ -32,15 +33,15 @@ class AccountBalanceInfo {
 
   /// Gets all addresses with non-zero balance for a specific token
   List<AddressInfo> addressesWithBalance(String ticker) =>
-      addresses.where((a) => a.balance.balanceOf(ticker).hasBalance).toList();
+      addresses.where((a) => a.balance.balanceOf(ticker).hasValue).toList();
 
   /// Gets all tokens that have any balance across all addresses
   Set<String> get activeTokens => totalBalance.tokensWithBalance;
 
   JsonMap toJson() => {
-        'account_index': accountIndex,
-        'derivation_path': derivationPath,
-        'total_balance': totalBalance.toJson(),
-        'addresses': addresses.map((e) => e.toJson()).toList(),
-      };
+    'account_index': accountIndex,
+    'derivation_path': derivationPath,
+    'total_balance': totalBalance.toJson(),
+    'addresses': addresses.map((e) => e.toJson()).toList(),
+  };
 }

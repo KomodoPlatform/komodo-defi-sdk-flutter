@@ -21,3 +21,5 @@ export 'src/assets/legacy_asset_extensions.dart';
 //     show AssetActivation;
 
 export 'src/komodo_defi_sdk.dart';
+
+export 'src/widgets/asset_balance.dart';

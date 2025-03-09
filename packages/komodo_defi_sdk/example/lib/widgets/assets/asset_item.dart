@@ -81,6 +81,11 @@ class _AssetItemTrailing extends StatelessWidget {
           backgroundColor: Colors.white70,
         ),
         const SizedBox(width: 8),
+        SizedBox(
+          width: 80,
+          child: AssetBalanceText(assetId: asset.id, activateIfNeeded: false),
+        ),
+        const SizedBox(width: 8),
         const Icon(Icons.arrow_forward_ios),
       ],
     );
