@@ -6,21 +6,17 @@ class ActivationStrategyFactory {
   static SmartAssetActivator createStrategy(ApiClient client) {
     return SmartAssetActivator(
       client,
-      CompositeAssetActivator(
-        client,
-        [
-          // BCH strategy needs to be before UTXO strategy to handle the special case
-          // BchActivationStrategy(client),
-          UtxoActivationStrategy(client),
-          Erc20ActivationStrategy(client),
-          // SlpActivationStrategy(client),
-          TendermintActivationStrategy(client),
-          QtumActivationStrategy(client),
-          ZhtlcActivationStrategy(client),
-          CustomErc20ActivationStrategy(client),
-          NftActivationStrategy(client),
-        ],
-      ),
+      CompositeAssetActivator(client, [
+        // BCH strategy needs to be before UTXO strategy to handle the special case
+        // BchActivationStrategy(client),
+        UtxoActivationStrategy(client),
+        Erc20ActivationStrategy(client),
+        // SlpActivationStrategy(client),
+        TendermintActivationStrategy(client),
+        QtumActivationStrategy(client),
+        ZhtlcActivationStrategy(client),
+        CustomErc20ActivationStrategy(client),
+      ]),
     );
   }
 }
