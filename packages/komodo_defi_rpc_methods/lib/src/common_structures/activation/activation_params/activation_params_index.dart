@@ -9,6 +9,7 @@ export 'cosmos_activation_params.dart';
 export 'erc20_activation_params.dart';
 export 'eth_activation_params.dart';
 export 'lightning_activation_params.dart';
+export 'nft_activation_params.dart';
 export 'qtum_activation_params.dart';
 export 'sia_activation_params.dart';
 export 'slp_activation_params.dart';

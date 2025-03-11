@@ -61,9 +61,7 @@ class CoinFilter {
     'SLP': 'Simple Ledger Protocol',
   };
 
-  static const _filteredProtocolTypes = {
-    'NFT': 'Non Fungible Token',
-  };
+  static const _filteredProtocolTypes = {};
 
   /// Returns true if the given coin should be filtered out.
   bool shouldFilter(JsonMap config) {

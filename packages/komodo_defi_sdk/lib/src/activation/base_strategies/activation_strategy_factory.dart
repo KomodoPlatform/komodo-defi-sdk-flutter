@@ -1,5 +1,4 @@
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
-import 'package:komodo_defi_sdk/src/activation/protocol_strategies/custom_erc20_activation_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Factory for creating the complete activation strategy stack
@@ -19,6 +18,7 @@ class ActivationStrategyFactory {
           QtumActivationStrategy(client),
           ZhtlcActivationStrategy(client),
           CustomErc20ActivationStrategy(client),
+          NftActivationStrategy(client),
         ],
       ),
     );
