@@ -43,7 +43,7 @@ class NftActivationParams extends ActivationParams {
 
 /// Contains information about a provider's URL and proxy settings
 class NftProviderInfo {
-  NftProviderInfo({required this.url, required this.komodoProxy});
+  const NftProviderInfo({required this.url, required this.komodoProxy});
 
   factory NftProviderInfo.fromJson(JsonMap json) {
     return NftProviderInfo(
@@ -62,10 +62,18 @@ class NftProviderInfo {
   Map<String, dynamic> toJson() => {'url': url, 'komodo_proxy': komodoProxy};
 }
 
-/// Contains information about a provider, including its type and
+/// Contains information about a NFT provider, including its type and
 /// the connection details
 class NftProvider {
-  NftProvider({required this.type, required this.info});
+  const NftProvider({required this.type, required this.info});
+
+  factory NftProvider.moralis() => const NftProvider(
+        type: 'Moralis',
+        info: NftProviderInfo(
+          url: 'https://moralis-proxy.komodo.earth',
+          komodoProxy: true,
+        ),
+      );
 
   factory NftProvider.fromJson(JsonMap json) {
     return NftProvider(
@@ -75,6 +83,7 @@ class NftProvider {
   }
 
   /// The type of provider (e.g., "Moralis")
+  // TODO: make this an enum once all providers are known
   final String type;
 
   /// Connection information for the provider
