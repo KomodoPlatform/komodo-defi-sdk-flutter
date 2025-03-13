@@ -57,10 +57,13 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   Future<Process> _startKdf(JsonMap params) async {
     final executablePath = (await _getExecutable())?.absolute.path;
-
     if (executablePath == null) {
       throw Exception('No executable found.');
     }
+
+    // specifically needed on linux, which currently resets the file permissions
+    // on every build.
+    await _tryGrantExecutablePermissions(executablePath);
 
     if (!params.containsKey('coins')) {
       throw ArgumentError.value(
@@ -104,6 +107,19 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     }
   }
 
+  /// check if the executable has executable permissions on linux/macos
+  /// if not, run chmod +x on it
+  Future<void> _tryGrantExecutablePermissions(String executablePath) async {
+    if (Platform.isLinux || Platform.isMacOS) {
+      final result = await Process.run('chmod', ['+x', executablePath]);
+      if (result.exitCode != 0) {
+        throw Exception(
+          'Failed to make executable executable: ${result.stderr}',
+        );
+      }
+    }
+  }
+
   void _attachProcessListeners(Process newProcess, Directory tempDir) {
     stdoutSub = newProcess.stdout.listen((event) {
       _logCallback('[INFO]: ${String.fromCharCodes(event)}');
@@ -133,7 +149,8 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     }
   }
 
-  String linuxBuildKdfPath({bool isDebugBuild = false}) => p.join(
+  String linuxBuildKdfPath({bool isDebugBuild = false, bool isLib = false}) =>
+      p.join(
         Directory.current.path,
         'build',
         'linux',
@@ -141,17 +158,33 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         isDebugBuild ? 'debug' : 'release',
         'bundle',
         'lib',
-        'kdf',
+        isLib ? 'libkdf.so' : 'kdf',
       );
 
-  String windowsBuildKdfPath({bool isDebugBuild = false}) => p.join(
+  String windowsBuildKdfPath({bool isDebugBuild = false, bool isLib = false}) =>
+      p.join(
         Directory.current.path,
         'build',
         'windows',
         'x64',
         'runner',
         isDebugBuild ? 'Debug' : 'Release',
-        'kdf.exe',
+        isLib ? 'kdf.dll' : 'kdf.exe',
+      );
+
+  String macosBuildKdfPath({bool isDebugBuild = false, bool isLib = false}) =>
+      p.join(
+        Directory.current.path,
+        'build',
+        'macos',
+        'Build',
+        'Products',
+        isDebugBuild ? 'Debug' : 'Release',
+        'komodo_defi_framework',
+        'kdf_resources.bundle',
+        'Contents',
+        'Resources',
+        isLib ? 'libkdf.dylib' : 'kdf',
       );
 
   Future<File?> _getExecutable() async {
@@ -183,6 +216,8 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       windowsBuildKdfPath(),
       linuxBuildKdfPath(isDebugBuild: true),
       linuxBuildKdfPath(),
+      macosBuildKdfPath(isDebugBuild: true),
+      macosBuildKdfPath(),
     ].map((path) => File(p.normalize(path))).toList();
 
     for (final file in files) {
