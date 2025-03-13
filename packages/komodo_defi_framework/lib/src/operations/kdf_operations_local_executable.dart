@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' show Random;
 
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
@@ -134,6 +133,27 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     }
   }
 
+  String linuxBuildKdfPath({bool isDebugBuild = false}) => p.join(
+        Directory.current.path,
+        'build',
+        'linux',
+        'x64',
+        isDebugBuild ? 'debug' : 'release',
+        'bundle',
+        'lib',
+        'kdf',
+      );
+
+  String windowsBuildKdfPath({bool isDebugBuild = false}) => p.join(
+        Directory.current.path,
+        'build',
+        'windows',
+        'x64',
+        'runner',
+        isDebugBuild ? 'Debug' : 'Release',
+        'kdf.exe',
+      );
+
   Future<File?> _getExecutable() async {
     final macosKdfResourcePath = p.joinAll([
       p.dirname(p.dirname(Platform.resolvedExecutable)),
@@ -146,28 +166,23 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       'kdf',
     ]);
 
-    final appSupportDir = await getApplicationSupportDirectory();
-    final appSupportParentDir = Directory(p.dirname(appSupportDir.path));
-    final appSupportGrandParentDir =
-        Directory(p.dirname(appSupportParentDir.path));
-    final homeDir = Platform.environment['HOME'] ?? '';
-
     final files = [
       '/usr/local/bin/kdf',
       '/usr/bin/kdf',
-      '$homeDir/.local/bin/kdf',
-      '$homeDir/bin/kdf',
       p.join(Directory.current.path, 'kdf'),
       p.join(Directory.current.path, 'kdf.exe'),
       p.join(Directory.current.path, 'lib/kdf'),
       p.join(Directory.current.path, 'lib/kdf.exe'),
-      p.join(appSupportDir.path, 'kdf'),
-      p.join(appSupportDir.path, 'kdf.exe'),
-      p.join(appSupportParentDir.path, 'KomodoPlatform', 'kdf'),
-      p.join(appSupportParentDir.path, 'KomodoPlatform', 'kdf.exe'),
-      p.join(appSupportGrandParentDir.path, 'KomodoPlatform', 'kdf'),
-      p.join(appSupportGrandParentDir.path, 'KomodoPlatform', 'kdf.exe'),
       macosKdfResourcePath,
+
+      // Paths specifically for running/debugging client applications like
+      // Komodo Wallet. Looks inside of the build directory for the KDF
+      // executable, since it won't be in the same directory as the IDE
+      // execution context (usually the root directory of the project).
+      windowsBuildKdfPath(isDebugBuild: true),
+      windowsBuildKdfPath(),
+      linuxBuildKdfPath(isDebugBuild: true),
+      linuxBuildKdfPath(),
     ].map((path) => File(p.normalize(path))).toList();
 
     for (final file in files) {
