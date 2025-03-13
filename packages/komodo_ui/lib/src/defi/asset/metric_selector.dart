@@ -155,7 +155,9 @@ class MetricSelector extends StatelessWidget {
               const SizedBox(width: 12),
               _MetricValueText(value: controller.data.value),
               const SizedBox(width: 12),
-              TrendPercentageText(percentage: controller.data.trendPercentage),
+              TrendPercentageText(
+                investmentReturnPercentage: controller.data.trendPercentage,
+              ),
             ],
           ),
         );
