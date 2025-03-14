@@ -51,8 +51,9 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
   final TextEditingController _awsSecretKeyController = TextEditingController();
   final TextEditingController _awsInstanceTypeController =
       TextEditingController();
-  final TextEditingController _rpcPasswordController =
-      TextEditingController(text: _generateDefaultRpcPassword());
+  final TextEditingController _rpcPasswordController = TextEditingController(
+    text: _generateDefaultRpcPassword(),
+  );
 
   void _hostTypeChanged(String? value) {
     if (value == null) {
@@ -81,8 +82,11 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
     return AlertDialog(
       title: const Text('Configure KDF'),
       content: ConstrainedBox(
-        constraints:
-            const BoxConstraints(minWidth: 300, minHeight: 300, maxWidth: 300),
+        constraints: const BoxConstraints(
+          minWidth: 300,
+          minHeight: 300,
+          maxWidth: 300,
+        ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -91,10 +95,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                 value: _selectedHostType,
                 onChanged: _hostTypeChanged,
                 items: const [
-                  DropdownMenuItem(
-                    value: 'local',
-                    child: Text('Local'),
-                  ),
+                  DropdownMenuItem(value: 'local', child: Text('Local')),
                   DropdownMenuItem(
                     value: 'remote',
                     child: Text('Remote (LAN/Internet)'),
@@ -143,22 +144,18 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   },
                   title: const Text('Expose WASM via HTTP'),
                   subtitle: const Text(
-                      'Enable this to access the WASM instance through a REST API. '
-                      'Accessible at http://localhost:3777'),
+                    'Enable this to access the WASM instance through a REST API. '
+                    'Accessible at http://localhost:3777',
+                  ),
                 ),
               ],
               if (_selectedHostType == 'remote') ...[
                 DropdownButtonFormField<String>(
                   value: _selectedProtocol,
                   onChanged: (value) => _selectedProtocolChanged(value!),
-                  decoration: const InputDecoration(
-                    labelText: 'Protocol',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Protocol'),
                   items: const [
-                    DropdownMenuItem(
-                      value: 'http',
-                      child: Text('http'),
-                    ),
+                    DropdownMenuItem(value: 'http', child: Text('http')),
                     DropdownMenuItem(
                       value: 'https',
                       child: Text('https (Requires special configuration)'),
@@ -176,49 +173,48 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   decoration: InputDecoration(
                     labelText: 'Host or IP Address',
                     hintText: 'e.g. 123.456.789.012 or example.com',
-                    suffixIcon: _selectedHostType == 'remote'
-                        ? IconButton(
-                            icon: const Icon(Icons.info_outline),
-                            onPressed: () => showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Remote Access Setup'),
-                                content: SingleChildScrollView(
-                                  child: SelectableText(
-                                    _remoteAccessTooltipMessage(),
+                    suffixIcon:
+                        _selectedHostType == 'remote'
+                            ? IconButton(
+                              icon: const Icon(Icons.info_outline),
+                              onPressed:
+                                  () => showDialog(
+                                    context: context,
+                                    builder:
+                                        (context) => AlertDialog(
+                                          title: const Text(
+                                            'Remote Access Setup',
+                                          ),
+                                          content: SingleChildScrollView(
+                                            child: SelectableText(
+                                              _remoteAccessTooltipMessage(),
+                                            ),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                              },
+                                              child: const Text('OK'),
+                                            ),
+                                          ],
+                                        ),
                                   ),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                    child: const Text('OK'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : null,
+                            )
+                            : null,
                   ),
                 ),
                 TextField(
                   controller: _portController,
                   keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'Port',
-                  ),
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(labelText: 'Port'),
                 ),
               ],
               if (_selectedHostType == 'aws') ...[
                 TextField(
                   controller: _awsRegionController,
-                  decoration: const InputDecoration(
-                    labelText: 'AWS Region',
-                  ),
+                  decoration: const InputDecoration(labelText: 'AWS Region'),
                 ),
                 TextField(
                   controller: _awsAccessKeyController,
@@ -234,9 +230,7 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                 ),
                 TextField(
                   controller: _awsInstanceTypeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Instance Type',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Instance Type'),
                 ),
               ],
             ],
@@ -318,8 +312,9 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
         return AlertDialog(
           title: const Text('Warning: HTTP is not secure'),
           content: const Text(
-              'You have selected HTTP, which is not secure as your RPC password will be sent in plain text, which can be intercepted by malicious actors. '
-              'For remotely accessible KDF instances, it is recommended to use a strong (32+ character) RPC password and set the connection to HTTPS.'),
+            'You have selected HTTP, which is not secure as your RPC password will be sent in plain text, which can be intercepted by malicious actors. '
+            'For remotely accessible KDF instances, it is recommended to use a strong (32+ character) RPC password and set the connection to HTTPS.',
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -359,9 +354,10 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
   Future<void> _loadSavedConfiguration() async {
     final prefs = await SharedPreferences.getInstance();
     // TODO: Fix. host type is stored in 'lastUsedConfig' key with the rest of the host config.
-    String? savedHostType = prefs.getString('hostType') == null
-        ? null
-        : prefs.getString('lastUsedConfig') == null
+    String? savedHostType =
+        prefs.getString('hostType') == null
+            ? null
+            : prefs.getString('lastUsedConfig') == null
             ? null
             : jsonDecode(prefs.getString('lastUsedConfig')!)['hostType'];
     String? savedIp = prefs.getString('ipAddress');
@@ -621,16 +617,17 @@ class _MyAppState extends State<MyApp> {
 
     setState(() {
       _kdfHostConfig = config;
-      _kdfFramework = exposeHttp && !kIsWeb
-          ? KomodoDefiFramework.createWithOperations(
-              hostConfig: config,
-              kdfOperations: KdfHttpServerOperations(config as LocalConfig),
-              externalLogger: _logController.add,
-            )
-          : KomodoDefiFramework.create(
-              hostConfig: config,
-              externalLogger: _logController.add,
-            );
+      _kdfFramework =
+          exposeHttp && !kIsWeb
+              ? KomodoDefiFramework.createWithOperations(
+                hostConfig: config,
+                kdfOperations: KdfHttpServerOperations(config as LocalConfig),
+                externalLogger: _logController.add,
+              )
+              : KomodoDefiFramework.create(
+                hostConfig: config,
+                externalLogger: _logController.add,
+              );
     });
 
     await _saveConfig(config);
@@ -662,42 +659,41 @@ class _MyAppState extends State<MyApp> {
 
     final didSave = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Execute RPC'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: 500,
-              width: 500,
-              child: JsonEditor(
-                json: jsonEncode(
-                  {
-                    'userpass': '********',
-                    'method': 'get_enabled_coins',
-                  },
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Execute RPC'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 500,
+                  width: 500,
+                  child: JsonEditor(
+                    json: jsonEncode({
+                      'userpass': '********',
+                      'method': 'get_enabled_coins',
+                    }),
+                    onChanged: (json) => updatedInput = json,
+                  ),
                 ),
-                onChanged: (json) => updatedInput = json,
-              ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(false);
-            },
-            child: const Text('Cancel'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(false);
+                },
+                child: const Text('Cancel'),
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop(true);
+                },
+                label: const Text('Execute'),
+                icon: const Icon(Icons.play_arrow_rounded),
+              ),
+            ],
           ),
-          FilledButton.icon(
-            onPressed: () {
-              Navigator.of(context).pop(true);
-            },
-            label: const Text('Execute'),
-            icon: const Icon(Icons.play_arrow_rounded),
-          ),
-        ],
-      ),
     );
 
     if (didSave == false || didSave == null) {
@@ -779,9 +775,7 @@ class _MyAppState extends State<MyApp> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       'lastUsedConfig',
-      jsonEncode(
-        config.getConnectionParams(),
-      ),
+      jsonEncode(config.getConnectionParams()),
     );
   }
 
@@ -813,14 +807,16 @@ class _MyAppState extends State<MyApp> {
     try {
       final KdfStartupConfig startupConfig =
           await KdfStartupConfig.generateWithDefaults(
-        enableHd: false, // TODO: Add as checkbox
-        walletName: walletName,
-        walletPassword: walletPassword, // This is the wallet account password
-        rpcPassword: _kdfHostConfig!.rpcPassword, // RPC password
-        seed: (passphrase?.isNotEmpty ?? false)
-            ? passphrase
-            : null, // Optional passphrase
-      );
+            enableHd: false, // TODO: Add as checkbox
+            walletName: walletName,
+            walletPassword:
+                walletPassword, // This is the wallet account password
+            rpcPassword: _kdfHostConfig!.rpcPassword, // RPC password
+            seed:
+                (passphrase?.isNotEmpty ?? false)
+                    ? passphrase
+                    : null, // Optional passphrase
+          );
 
       final result = await _kdfFramework!.startKdf(startupConfig);
 

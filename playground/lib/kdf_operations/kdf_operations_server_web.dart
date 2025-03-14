@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:js_interop';
 
 // this warning is pointless, since `web` and `js_interop` fail to compile on
 // native platforms, so they aren't safe to import without conditional
@@ -37,22 +36,43 @@ class KdfHttpServerOperations implements IKdfOperations {
       throw Exception('WebView controller is not available.');
     }
 
-    final jsConfig = {
-      'conf': startParams,
-      'log_level': logLevel ?? 3,
-    }.jsify();
+    final jsConfig = {'conf': startParams, 'log_level': logLevel ?? 3};
 
     try {
-      final result = await controller.evaluateJavascript(
+      // The mm2_main function now returns a Promise that resolves to a result code
+      // or rejects with a structured error. We need to handle both cases.
+      final resultStr = await controller.evaluateJavascript(
         source: '''
-          kdf.mm2_main(${jsonEncode(jsConfig)}).then((res) => window.postMessage(res));
+          (async function() {
+            try {
+              const result = await kdf.mm2_main(${jsonEncode(jsConfig)});
+              return { success: true, code: result };
+            } catch (error) {
+              return { 
+                success: false, 
+                code: error.code || 1,
+                message: error.message || String(error) 
+              };
+            }
+          })();
         ''',
       );
-      _logger?.call('kdfMain result: $result');
-      return KdfStartupResult.ok;
+
+      final resultMap = jsonDecode(resultStr.toString());
+      _logger?.call('kdfMain result: $resultMap');
+
+      if (resultMap['success'] == true) {
+        final code = resultMap['code'] as int;
+        return KdfStartupResult.fromDefaultInt(code);
+      } else {
+        _logger?.call(
+          'Error starting KDF: ${resultMap['message']} (code: ${resultMap['code']})',
+        );
+        return KdfStartupResult.fromDefaultInt(resultMap['code'] as int);
+      }
     } catch (e) {
       _logger?.call('Error starting KDF: $e');
-      return KdfStartupResult.invalidParams;
+      return KdfStartupResult.initError;
     }
   }
 
@@ -79,12 +99,35 @@ class KdfHttpServerOperations implements IKdfOperations {
     }
 
     try {
-      final result = await controller.evaluateJavascript(
+      final resultStr = await controller.evaluateJavascript(
         source: '''
-          kdf.mm2_stop().then((res) => window.postMessage(res));
+          (async function() {
+            try {
+              const result = await kdf.mm2_stop();
+              return { success: true, code: result };
+            } catch (error) {
+              return { 
+                success: false, 
+                code: error.code || 2,
+                message: error.message || String(error) 
+              };
+            }
+          })();
         ''',
       );
-      return StopStatus.fromDefaultInt(int.parse(result.toString()));
+
+      final resultMap = jsonDecode(resultStr.toString());
+      _logger?.call('kdfStop result: $resultMap');
+
+      if (resultMap['success'] == true) {
+        final code = resultMap['code'] as int;
+        return StopStatus.fromDefaultInt(code);
+      } else {
+        _logger?.call(
+          'Error stopping KDF: ${resultMap['message']} (code: ${resultMap['code']})',
+        );
+        return StopStatus.fromDefaultInt(resultMap['code'] as int);
+      }
     } catch (e) {
       _logger?.call('Error stopping KDF: $e');
       return StopStatus.errorStopping;
@@ -120,12 +163,26 @@ class KdfHttpServerOperations implements IKdfOperations {
     }
 
     try {
-      final response = await controller.evaluateJavascript(
+      final responseStr = await controller.evaluateJavascript(
         source: '''
-          kdf.mm2_rpc(${jsonEncode(request)}).then((res) => window.postMessage(JSON.stringify(res)));
+          (async function() {
+            try {
+              const result = await kdf.mm2_rpc(${jsonEncode(request)});
+              return JSON.stringify(result);
+            } catch (error) {
+              return JSON.stringify({
+                error: error.message || String(error)
+              });
+            }
+          })();
         ''',
       );
-      return jsonDecode(response.toString());
+
+      final response = jsonDecode(responseStr.toString());
+      if (response is Map && response.containsKey('error')) {
+        throw Exception('RPC error: ${response['error']}');
+      }
+      return response;
     } catch (e) {
       _logger?.call('Error calling mm2Rpc: $e');
       throw Exception('Error calling mm2Rpc: $e');
@@ -157,9 +214,7 @@ class KdfHttpServerOperations implements IKdfOperations {
     if (_isInitialized) return;
 
     _webView = HeadlessInAppWebView(
-      initialUrlRequest: URLRequest(
-        url: null,
-      ),
+      initialUrlRequest: URLRequest(url: null),
       onWebViewCreated: (controller) async {
         await _injectLibrary(controller);
       },
@@ -167,15 +222,15 @@ class KdfHttpServerOperations implements IKdfOperations {
 
     await _webView.run();
     _isInitialized = true;
-
     await _startProxyServer();
   }
 
   Future<void> _injectLibrary(InAppWebViewController controller) async {
     try {
       // Load the JS file from assets
-      String jsCode =
-          await rootBundle.loadString('kdf/res/kdflib_bootstrapper.js');
+      String jsCode = await rootBundle.loadString(
+        'kdf/res/kdflib_bootstrapper.js',
+      );
       await controller.evaluateJavascript(source: jsCode);
 
       _logger?.call('KDF library injected successfully');

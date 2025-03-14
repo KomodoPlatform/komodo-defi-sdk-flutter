@@ -4,7 +4,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:json_editor_flutter/json_editor_flutter.dart';
-import 'package:postman_collection/postman_collection.dart';
+import 'package:komodo_defi_framework_example/models/postman_collection_types.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class RequestPlayground extends StatefulWidget {
@@ -13,12 +13,12 @@ class RequestPlayground extends StatefulWidget {
   const RequestPlayground({super.key, required this.executeRequest});
 
   @override
-  _RequestPlaygroundState createState() => _RequestPlaygroundState();
+  State<RequestPlayground> createState() => _RequestPlaygroundState();
 }
 
 class _RequestPlaygroundState extends State<RequestPlayground> {
-  late PostmanCollection _collection;
-  late final List<PostmanCollectionItem> _requests = [];
+  late Collection _collection;
+  late final List<CollectionItem> _requests = [];
   int _selectedRequestIndex = 0;
   late Map<String, dynamic> _jsonData = {};
   String _response = '';
@@ -44,14 +44,15 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
 
       if (storedConfig == null) {
         // Load the default configuration from assets
-        String jsonString = await defaultBundle
-            .loadString('assets/komodo_defi.postman_collection.json');
+        String jsonString = await defaultBundle.loadString(
+          'assets/komodo_defi.postman_collection.json',
+        );
 
-        _collection = PostmanCollection.fromJson(
+        _collection = Collection.fromJson(
           parseJsonWithCommentStripping(jsonString),
         );
       } else {
-        _collection = PostmanCollection.fromJson(
+        _collection = Collection.fromJson(
           parseJsonWithCommentStripping(storedConfig),
         );
       }
@@ -87,7 +88,7 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
     return json.decode(strippedJson);
   }
 
-  void _extractRequests(List<PostmanCollectionItem> items) {
+  void _extractRequests(List<CollectionItem> items) {
     for (var item in items) {
       if (item.item != null) {
         _extractRequests(item.item!);
@@ -100,8 +101,7 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
   void _selectRequest(int index) {
     setState(() {
       _selectedRequestIndex = index;
-      String rawBody =
-          jsonDecode(jsonEncode(_requests[index].request?.body))['raw'] ?? '{}';
+      String rawBody = _requests[index].request?.body?.raw ?? '{}';
       try {
         _jsonData = parseJsonWithCommentStripping(rawBody);
       } catch (e) {
@@ -119,8 +119,9 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
       String? historyString = prefs.getString('request_history');
       if (historyString != null) {
         setState(() {
-          _history =
-              List<Map<String, dynamic>>.from(json.decode(historyString));
+          _history = List<Map<String, dynamic>>.from(
+            json.decode(historyString),
+          );
         });
       }
     } catch (e) {
@@ -183,9 +184,7 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -215,9 +214,12 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
                   children: [
                     FilledButton.icon(
                       onPressed: _isSending ? null : _executeRequest,
-                      label: _isSending
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Send'),
+                      label:
+                          _isSending
+                              ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                              : const Text('Send'),
                       icon: const Icon(Icons.send),
                     ),
                     const Spacer(),
@@ -225,8 +227,8 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
                       onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) =>
-                                HistoryScreen(history: _history),
+                            builder:
+                                (context) => HistoryScreen(history: _history),
                           ),
                         );
                       },
@@ -255,11 +257,7 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
                     themeColor: Colors.blue,
                   ),
                 ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Text(_response),
-                  ),
-                ),
+                Expanded(child: SingleChildScrollView(child: Text(_response))),
               ],
             ),
           ),
@@ -282,9 +280,7 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Request History'),
-      ),
+      appBar: AppBar(title: const Text('Request History')),
       body: ListView.builder(
         itemCount: history.length,
         itemBuilder: (context, index) {
@@ -314,9 +310,7 @@ class HistoryDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Request Details'),
-      ),
+      appBar: AppBar(title: const Text('Request Details')),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
