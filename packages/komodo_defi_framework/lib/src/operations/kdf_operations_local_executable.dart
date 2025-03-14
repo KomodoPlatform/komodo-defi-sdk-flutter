@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
+import 'package:komodo_defi_framework/src/exceptions/kdf_exception.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -62,9 +63,10 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   Future<Process> _startKdf(JsonMap params) async {
     final executablePath = (await _getExecutable())?.absolute.path;
     if (executablePath == null) {
-      throw Exception(
+      throw KdfException(
         'KDF executable not found in any of the expected locations. '
         'Please ensure KDF is properly installed or included in your application bundle.',
+        type: KdfExceptionType.executableNotFound,
       );
     }
 
@@ -110,14 +112,23 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       _attachProcessListeners(newProcess, coinsTempDir);
 
       return newProcess;
-    } catch (e) {
+    } catch (e, stackTrace) {
       // Clean up the temporary directory if an error occurs. Exceptions can
       // be thrown before process listeners are attached, so ensure that the
       // dangling resources are cleaned up.
       await coinsTempDir?.delete(recursive: true).catchError((Object error) {
         _logCallback('Failed to delete temporary directory: $error');
+        return Directory(
+            ''); // Return a dummy directory to satisfy the return type
       });
-      rethrow;
+      if (e is KdfException) {
+        rethrow;
+      }
+      throw KdfException(
+        'Failed to start KDF: ${e.toString()}',
+        type: KdfExceptionType.startupFailed,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -127,8 +138,10 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     if (Platform.isLinux || Platform.isMacOS) {
       final result = await Process.run('chmod', ['+x', executablePath]);
       if (result.exitCode != 0) {
-        throw Exception(
+        throw KdfException(
           'Failed to make executable executable: ${result.stderr}',
+          type: KdfExceptionType.permissionError,
+          stackTrace: StackTrace.current,
         );
       }
     }
@@ -274,7 +287,12 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       }
 
       if (exitCode != null) {
-        throw Exception('Error starting KDF: Exit code: $exitCode');
+        throw KdfException(
+          'Error starting KDF: Exit code: $exitCode',
+          type: KdfExceptionType.startupFailed,
+          details: {'exitCode': exitCode},
+          stackTrace: StackTrace.current,
+        );
       }
 
       await Future<void>.delayed(const Duration(milliseconds: 500));
@@ -284,7 +302,12 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       return KdfStartupResult.ok;
     }
 
-    throw Exception('Error starting KDF: Process not running.');
+    throw KdfException(
+      'Error starting KDF: Process not running after timeout.',
+      type: KdfExceptionType.startupFailed,
+      details: {'timeout': _startupTimeout.inSeconds},
+      stackTrace: StackTrace.current,
+    );
   }
 
   @override
@@ -322,7 +345,10 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   @override
   Future<void> validateSetup() async {
     if (_process == null) {
-      throw Exception('Executable is not running. Please start it first.');
+      throw KdfException(
+        'KDF executable is not running. Please start it first.',
+        type: KdfExceptionType.notRunning,
+      );
     }
   }
 
