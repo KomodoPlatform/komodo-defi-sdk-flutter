@@ -12,12 +12,14 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   KdfOperationsLocalExecutable._(
     this._logCallback,
     this._config,
-    this._kdfRemote,
-  );
+    this._kdfRemote, {
+    Duration startupTimeout = const Duration(seconds: 30),
+  }) : _startupTimeout = startupTimeout;
 
   factory KdfOperationsLocalExecutable.create({
     required void Function(String) logCallback,
     required LocalConfig config,
+    Duration startupTimeout = const Duration(seconds: 30),
   }) {
     return KdfOperationsLocalExecutable._(
       logCallback,
@@ -27,6 +29,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         rpcUrl: _url,
         userpass: config.rpcPassword,
       ),
+      startupTimeout: startupTimeout,
     );
   }
 
@@ -35,6 +38,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   final LocalConfig _config;
 
   Process? _process;
+  final Duration _startupTimeout;
   late StreamSubscription<List<int>>? stdoutSub;
   late StreamSubscription<List<int>>? stderrSub;
 
@@ -58,7 +62,10 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   Future<Process> _startKdf(JsonMap params) async {
     final executablePath = (await _getExecutable())?.absolute.path;
     if (executablePath == null) {
-      throw Exception('No executable found.');
+      throw Exception(
+        'KDF executable not found in any of the expected locations. '
+        'Please ensure KDF is properly installed or included in your application bundle.',
+      );
     }
 
     // specifically needed on linux, which currently resets the file permissions
@@ -73,6 +80,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       );
     }
 
+    Directory? coinsTempDir;
     try {
       final coinsList = params.value<List<JsonMap>>('coins');
       final sensitiveArgs = JsonMap.of(params)..remove('coins');
@@ -81,7 +89,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       // environment variable value size limits (varies from 4-128 KB).
       // Pass the config directly to the executable as an argument.
       final tempDir = await getTemporaryDirectory();
-      final coinsTempDir = await tempDir.createTemp('mm_coins_');
+      coinsTempDir = await tempDir.createTemp('mm_coins_');
       final coinsConfigFile = File(p.join(coinsTempDir.path, 'kdf_coins.json'));
       await coinsConfigFile.writeAsString(
         coinsList.toJsonString(),
@@ -103,7 +111,13 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
       return newProcess;
     } catch (e) {
-      throw Exception('Failed to start executable: $e');
+      // Clean up the temporary directory if an error occurs. Exceptions can
+      // be thrown before process listeners are attached, so ensure that the
+      // dangling resources are cleaned up.
+      await coinsTempDir?.delete(recursive: true).catchError((Object error) {
+        _logCallback('Failed to delete temporary directory: $error');
+      });
+      rethrow;
     }
   }
 
@@ -254,15 +268,16 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     int? exitCode;
     unawaited(_process?.exitCode.then((code) => exitCode = code));
 
-    while (timer.elapsed.inSeconds < 30) {
-      if (await isRunning() || exitCode != null) {
+    while (timer.elapsed < _startupTimeout) {
+      if (await isRunning()) {
         break;
       }
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-    }
 
-    if (exitCode != null && exitCode != 0) {
-      throw Exception('Error starting KDF: Exit code: $exitCode');
+      if (exitCode != null) {
+        throw Exception('Error starting KDF: Exit code: $exitCode');
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
 
     if (await isRunning()) {
