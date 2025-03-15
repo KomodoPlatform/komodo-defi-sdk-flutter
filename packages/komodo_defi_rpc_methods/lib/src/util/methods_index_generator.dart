@@ -21,8 +21,9 @@ void main(List<String> arguments) {
       final content = file.readAsStringSync();
 
       // Regex to match classes that extend BaseRequest
-      final classRegex =
-          RegExp(r'class\s+(\w+Request)\s+extends\s+BaseRequest');
+      final classRegex = RegExp(
+        r'class\s+(\w+Request)\s+extends\s+BaseRequest',
+      );
       final constructorRegex = RegExp(r'(\w+Request)\(([^)]*)\)');
 
       for (final classMatch in classRegex.allMatches(content)) {
@@ -31,8 +32,9 @@ void main(List<String> arguments) {
         final constructorMatch = constructorRegex.firstMatch(content);
         if (constructorMatch != null) {
           final constructorParameters = constructorMatch.group(2)!;
-          final methodMatch =
-              RegExp(r"method:\s*'([^']*)'").firstMatch(content);
+          final methodMatch = RegExp(
+            r"method:\s*'([^']*)'",
+          ).firstMatch(content);
 
           if (methodMatch != null) {
             final method = methodMatch.group(1)!;
@@ -42,14 +44,16 @@ void main(List<String> arguments) {
             Map<String, dynamic> current = requestClasses;
 
             for (final segment in methodSegments) {
-              current = (current.putIfAbsent(
-                segment,
-                () => {
-                  'classes': <dynamic, dynamic>{},
-                  'children': <dynamic, dynamic>{},
-                },
-              )['children'] as Map<dynamic, dynamic>)
-                  .cast<String, dynamic>();
+              current =
+                  (current.putIfAbsent(
+                            segment,
+                            () => {
+                              'classes': <dynamic, dynamic>{},
+                              'children': <dynamic, dynamic>{},
+                            },
+                          )['children']
+                          as Map<dynamic, dynamic>)
+                      .cast<String, dynamic>();
             }
 
             current['classes'] ??= <String, dynamic>{};

@@ -9,10 +9,7 @@ class ZCoinTxHistoryRequest
     this.limit = 10,
     this.pagingOptions,
     super.rpcPass,
-  }) : super(
-          method: 'z_coin_tx_history',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'z_coin_tx_history', mmrpc: '2.0');
 
   final String coin;
   final int limit;
@@ -20,16 +17,16 @@ class ZCoinTxHistoryRequest
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'mmrpc': mmrpc,
-        'method': method,
-        'params': {
-          'coin': coin,
-          'limit': limit,
-          if (pagingOptions != null) 'paging_options': pagingOptions!.toJson(),
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'mmrpc': mmrpc,
+    'method': method,
+    'params': {
+      'coin': coin,
+      'limit': limit,
+      if (pagingOptions != null) 'paging_options': pagingOptions!.toJson(),
+    },
+  };
 
   @override
   MyTxHistoryResponse parse(Map<String, dynamic> json) =>

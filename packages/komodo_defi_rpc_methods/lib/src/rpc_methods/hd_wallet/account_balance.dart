@@ -25,10 +25,7 @@ class AccountBalanceInitRequest
       'userpass': rpcPass,
       'method': method,
       'mmrpc': mmrpc,
-      'params': {
-        'coin': coin,
-        'account_index': accountIndex,
-      },
+      'params': {'coin': coin, 'account_index': accountIndex},
     };
   }
 
@@ -56,10 +53,7 @@ class AccountBalanceStatusRequest
       'userpass': rpcPass,
       'method': method,
       'mmrpc': mmrpc,
-      'params': {
-        'task_id': taskId,
-        'forget_if_finished': forgetIfFinished,
-      },
+      'params': {'task_id': taskId, 'forget_if_finished': forgetIfFinished},
     };
   }
 
@@ -70,14 +64,11 @@ class AccountBalanceStatusRequest
 
 // TODO: Make re-usable
 class ResponseDetails<T, R extends GeneralErrorResponse> {
-  ResponseDetails({
-    required this.data,
-    required this.error,
-    this.description,
-  }) : assert(
-          [data, error, description].where((e) => e != null).length == 1,
-          'Of the three fields, exactly one must be non-null',
-        );
+  ResponseDetails({required this.data, required this.error, this.description})
+    : assert(
+        [data, error, description].where((e) => e != null).length == 1,
+        'Of the three fields, exactly one must be non-null',
+      );
 
   final T? data;
   final R? error;
@@ -142,15 +133,18 @@ class AccountBalanceStatusResponse extends BaseResponse {
       status: status!,
       // details: status == 'Ok' ? AccountBalanceInfo.fromJson(details) : details,
       details: ResponseDetails<AccountBalanceInfo, GeneralErrorResponse>(
-        data: status == SyncStatusEnum.success
-            ? AccountBalanceInfo.fromJson(result.value<JsonMap>('details'))
-            : null,
-        error: status == SyncStatusEnum.error
-            ? GeneralErrorResponse.parse(result.value<JsonMap>('details'))
-            : null,
-        description: status == SyncStatusEnum.inProgress
-            ? result.value<String>('details')
-            : null,
+        data:
+            status == SyncStatusEnum.success
+                ? AccountBalanceInfo.fromJson(result.value<JsonMap>('details'))
+                : null,
+        error:
+            status == SyncStatusEnum.error
+                ? GeneralErrorResponse.parse(result.value<JsonMap>('details'))
+                : null,
+        description:
+            status == SyncStatusEnum.inProgress
+                ? result.value<String>('details')
+                : null,
       ),
     );
   }
@@ -175,10 +169,8 @@ class AccountBalanceStatusResponse extends BaseResponse {
 class AccountBalanceCancelRequest
     extends BaseRequest<AccountBalanceCancelResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  AccountBalanceCancelRequest({
-    required super.rpcPass,
-    required this.taskId,
-  }) : super(method: 'task::account_balance::cancel');
+  AccountBalanceCancelRequest({required super.rpcPass, required this.taskId})
+    : super(method: 'task::account_balance::cancel');
 
   final int taskId;
 
@@ -189,9 +181,7 @@ class AccountBalanceCancelRequest
       'userpass': rpcPass,
       'method': method,
       'mmrpc': mmrpc,
-      'params': {
-        'task_id': taskId,
-      },
+      'params': {'task_id': taskId},
     };
   }
 
@@ -202,10 +192,7 @@ class AccountBalanceCancelRequest
 
 // Cancel Response
 class AccountBalanceCancelResponse extends BaseResponse {
-  AccountBalanceCancelResponse({
-    required super.mmrpc,
-    required this.result,
-  });
+  AccountBalanceCancelResponse({required super.mmrpc, required this.result});
 
   factory AccountBalanceCancelResponse.parse(JsonMap json) {
     return AccountBalanceCancelResponse(
@@ -218,9 +205,6 @@ class AccountBalanceCancelResponse extends BaseResponse {
 
   @override
   JsonMap toJson() {
-    return {
-      'mmrpc': mmrpc,
-      'result': result,
-    };
+    return {'mmrpc': mmrpc, 'result': result};
   }
 }

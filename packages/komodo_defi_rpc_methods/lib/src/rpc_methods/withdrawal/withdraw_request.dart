@@ -22,18 +22,15 @@ class WithdrawRequest
     this.memo,
     this.max = false,
     this.ibcSourceChannel,
-  })  : assert(
-          amount != null || max,
-          'Amount cannot be specified if sending the maximum amount',
-        ),
-        assert(
-          amount == null || !max,
-          'Amount must be specified if not sending the maximum amount',
-        ),
-        super(
-          method: 'withdraw',
-          mmrpc: RpcVersion.v2_0,
-        );
+  }) : assert(
+         amount != null || max,
+         'Amount cannot be specified if sending the maximum amount',
+       ),
+       assert(
+         amount == null || !max,
+         'Amount must be specified if not sending the maximum amount',
+       ),
+       super(method: 'withdraw', mmrpc: RpcVersion.v2_0);
 
   final String coin;
   final String to;
@@ -46,18 +43,18 @@ class WithdrawRequest
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'params': {
-          'coin': coin,
-          'to': to,
-          if (max) 'max': max,
-          if (!max && amount != null) 'amount': amount?.toString(),
-          if (fee != null) 'fee': fee!.toJson(),
-          if (from != null) 'from': from!.toRpcParams(),
-          if (memo != null) 'memo': memo,
-          if (ibcSourceChannel != null) 'ibc_source_channel': ibcSourceChannel,
-        },
-      };
+    ...super.toJson(),
+    'params': {
+      'coin': coin,
+      'to': to,
+      if (max) 'max': max,
+      if (!max && amount != null) 'amount': amount?.toString(),
+      if (fee != null) 'fee': fee!.toJson(),
+      if (from != null) 'from': from!.toRpcParams(),
+      if (memo != null) 'memo': memo,
+      if (ibcSourceChannel != null) 'ibc_source_channel': ibcSourceChannel,
+    },
+  };
 
   @override
   WithdrawStatusResponse parse(Map<String, dynamic> json) {
@@ -84,22 +81,19 @@ class WithdrawInitRequest
   WithdrawInitRequest({
     required super.rpcPass,
     required WithdrawParameters params,
-  })  : coin = params.asset,
-        to = params.toAddress,
-        amount = params.amount?.toString(),
-        fee = params.fee,
-        from = params.from,
-        memo = params.memo,
-        max = params.isMax ?? false,
-        assert(
-          params.amount != null || (params.isMax ?? false),
-          'Amount must be non-null if isMax is false and '
-          'must be null if isMax is true',
-        ),
-        super(
-          method: 'task::withdraw::init',
-          mmrpc: RpcVersion.v2_0,
-        );
+  }) : coin = params.asset,
+       to = params.toAddress,
+       amount = params.amount?.toString(),
+       fee = params.fee,
+       from = params.from,
+       memo = params.memo,
+       max = params.isMax ?? false,
+       assert(
+         params.amount != null || (params.isMax ?? false),
+         'Amount must be non-null if isMax is false and '
+         'must be null if isMax is true',
+       ),
+       super(method: 'task::withdraw::init', mmrpc: RpcVersion.v2_0);
 
   final String coin;
   final String to;
@@ -111,17 +105,17 @@ class WithdrawInitRequest
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'params': {
-          'coin': coin,
-          'to': to,
-          if (amount != null) 'amount': amount,
-          if (fee != null) 'fee': fee!.toJson(),
-          if (from != null) 'from': from!.toRpcParams(),
-          if (memo != null) 'memo': memo,
-          if (max) 'max': max,
-        },
-      };
+    ...super.toJson(),
+    'params': {
+      'coin': coin,
+      'to': to,
+      if (amount != null) 'amount': amount,
+      if (fee != null) 'fee': fee!.toJson(),
+      if (from != null) 'from': from!.toRpcParams(),
+      if (memo != null) 'memo': memo,
+      if (max) 'max': max,
+    },
+  };
 
   @override
   WithdrawInitResponse parse(Map<String, dynamic> json) =>
@@ -138,22 +132,16 @@ class WithdrawStatusRequest
     required super.rpcPass,
     required this.taskId,
     this.forgetIfFinished = true,
-  }) : super(
-          method: 'task::withdraw::status',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'task::withdraw::status', mmrpc: '2.0');
 
   final int taskId;
   final bool forgetIfFinished;
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'params': {
-          'task_id': taskId,
-          'forget_if_finished': forgetIfFinished,
-        },
-      };
+    ...super.toJson(),
+    'params': {'task_id': taskId, 'forget_if_finished': forgetIfFinished},
+  };
 
   @override
   WithdrawStatusResponse parse(Map<String, dynamic> json) =>
@@ -174,9 +162,10 @@ class WithdrawStatusResponse extends BaseResponse {
     return WithdrawStatusResponse(
       mmrpc: json.value<String>('mmrpc'),
       status: status,
-      details: status == 'Ok'
-          ? WithdrawResult.fromJson(result.value<JsonMap>('details'))
-          : result.value<String>('details'),
+      details:
+          status == 'Ok'
+              ? WithdrawResult.fromJson(result.value<JsonMap>('details'))
+              : result.value<String>('details'),
     );
   }
 
@@ -188,14 +177,15 @@ class WithdrawStatusResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'status': status,
-          'details': (details is WithdrawResult)
+    'mmrpc': mmrpc,
+    'result': {
+      'status': status,
+      'details':
+          (details is WithdrawResult)
               ? (details as WithdrawResult).toJson()
               : details,
-        },
-      };
+    },
+  };
 
   @override
   String toString() => toJson().toJsonString();
@@ -205,23 +195,16 @@ class WithdrawStatusResponse extends BaseResponse {
 class WithdrawCancelRequest
     extends BaseRequest<WithdrawCancelResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  WithdrawCancelRequest({
-    required super.rpcPass,
-    required this.taskId,
-  }) : super(
-          method: 'task::withdraw::cancel',
-          mmrpc: '2.0',
-        );
+  WithdrawCancelRequest({required super.rpcPass, required this.taskId})
+    : super(method: 'task::withdraw::cancel', mmrpc: '2.0');
 
   final int taskId;
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'params': {
-          'task_id': taskId,
-        },
-      };
+    ...super.toJson(),
+    'params': {'task_id': taskId},
+  };
 
   @override
   WithdrawCancelResponse parse(Map<String, dynamic> json) =>
@@ -229,10 +212,7 @@ class WithdrawCancelRequest
 }
 
 class WithdrawCancelResponse extends BaseResponse {
-  WithdrawCancelResponse({
-    required super.mmrpc,
-    required this.result,
-  });
+  WithdrawCancelResponse({required super.mmrpc, required this.result});
 
   factory WithdrawCancelResponse.parse(Map<String, dynamic> json) {
     return WithdrawCancelResponse(
@@ -244,8 +224,5 @@ class WithdrawCancelResponse extends BaseResponse {
   final String result;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': result,
-      };
+  Map<String, dynamic> toJson() => {'mmrpc': mmrpc, 'result': result};
 }

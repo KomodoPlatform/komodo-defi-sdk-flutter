@@ -11,12 +11,10 @@ class LightningClosedChannelsFilter {
   final int? toFundingValueSats;
 
   Map<String, dynamic> toJson() => {
-        if (channelType != null) 'channel_type': channelType,
-        if (counterpartyNodeId != null)
-          'counterparty_node_id': counterpartyNodeId,
-        if (fromFundingValueSats != null)
-          'from_funding_value_sats': fromFundingValueSats,
-        if (toFundingValueSats != null)
-          'to_funding_value_sats': toFundingValueSats,
-      };
+    if (channelType != null) 'channel_type': channelType,
+    if (counterpartyNodeId != null) 'counterparty_node_id': counterpartyNodeId,
+    if (fromFundingValueSats != null)
+      'from_funding_value_sats': fromFundingValueSats,
+    if (toFundingValueSats != null) 'to_funding_value_sats': toFundingValueSats,
+  };
 }

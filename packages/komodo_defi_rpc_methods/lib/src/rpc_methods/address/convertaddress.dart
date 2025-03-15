@@ -17,11 +17,11 @@ class ConvertAddressRequest
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'coin': coin,
-        'from': fromAddress,
-        'to_address_format': toAddressFormat.toJson(),
-      };
+    ...super.toJson(),
+    'coin': coin,
+    'from': fromAddress,
+    'to_address_format': toAddressFormat.toJson(),
+  };
 
   @override
   ConvertAddressResponse parse(Map<String, dynamic> json) =>
@@ -29,10 +29,7 @@ class ConvertAddressRequest
 }
 
 class ConvertAddressResponse extends BaseResponse {
-  ConvertAddressResponse({
-    required super.mmrpc,
-    required this.address,
-  });
+  ConvertAddressResponse({required super.mmrpc, required this.address});
 
   factory ConvertAddressResponse.parse(Map<String, dynamic> json) {
     return ConvertAddressResponse(
@@ -45,9 +42,7 @@ class ConvertAddressResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'address': address,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {'address': address},
+  };
 }

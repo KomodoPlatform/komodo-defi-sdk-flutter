@@ -15,11 +15,13 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
 
   @override
   factory GeneralErrorResponse.parse(Map<String, dynamic> json) {
-    final error = json.valueOrNull<JsonMap>('result', 'details') ??
+    final error =
+        json.valueOrNull<JsonMap>('result', 'details') ??
         json.valueOrNull<JsonMap>('message');
     return GeneralErrorResponse(
       mmrpc: json.valueOrNull<String>('mmrpc') ?? '',
-      error: error?.valueOrNull<String>('message') ??
+      error:
+          error?.valueOrNull<String>('message') ??
           error?.valueOrNull<String>('error'),
       errorPath: error?.valueOrNull<String>('error_path'),
       errorTrace: error?.valueOrNull<String>('error_trace'),
@@ -37,7 +39,8 @@ class GeneralErrorResponse extends BaseResponse implements Exception {
   final dynamic errorData;
 
   static bool isErrorResponse(Map<String, dynamic> json) {
-    final isError = json.hasNestedKey('result', 'details', 'error') ||
+    final isError =
+        json.hasNestedKey('result', 'details', 'error') ||
         json.hasNestedKey('error') ||
         json.valueOrNull<String>('result', 'status') == 'Error' ||
         json.valueOrNull<int>('code') == -1;

@@ -3,16 +3,13 @@ import 'package:komodo_defi_rpc_methods/src/common_structures/activation/activat
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class CosmosActivationParams extends ActivationParams {
-  CosmosActivationParams({
-    required this.rpcUrls,
-    this.isIrisToken = false,
-  });
+  CosmosActivationParams({required this.rpcUrls, this.isIrisToken = false});
   final List<String> rpcUrls;
   final bool isIrisToken;
 
   @override
   Map<String, dynamic> toRpcParams() => super.toRpcParams().deepMerge({
-        'rpc_urls': rpcUrls,
-        'is_iris_token': isIrisToken,
-      });
+    'rpc_urls': rpcUrls,
+    'is_iris_token': isIrisToken,
+  });
 }

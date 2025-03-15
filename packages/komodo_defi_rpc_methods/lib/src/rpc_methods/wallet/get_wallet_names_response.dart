@@ -21,10 +21,10 @@ class GetWalletNamesResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'wallet_names': walletNames,
-          'activated_wallet': activatedWallet,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {
+      'wallet_names': walletNames,
+      'activated_wallet': activatedWallet,
+    },
+  };
 }

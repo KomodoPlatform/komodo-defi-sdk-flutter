@@ -5,10 +5,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class GetMnemonicResponse extends BaseResponse {
-  GetMnemonicResponse({
-    required super.mmrpc,
-    required this.mnemonic,
-  });
+  GetMnemonicResponse({required super.mmrpc, required this.mnemonic});
 
   @override
   factory GetMnemonicResponse.parse(Map<String, dynamic> json) {
@@ -22,7 +19,7 @@ class GetMnemonicResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': mnemonic.toJson(),
-      };
+    'mmrpc': mmrpc,
+    'result': mnemonic.toJson(),
+  };
 }

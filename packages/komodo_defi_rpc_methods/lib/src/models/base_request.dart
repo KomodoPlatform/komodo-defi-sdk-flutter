@@ -24,8 +24,10 @@ extension BaseRequestApiClientExtension on ApiClient {
 /// Parameters:
 /// - [T] - The response type
 /// - [E] - The error response type
-abstract class BaseRequest<T extends BaseResponse,
-    E extends GeneralErrorResponse> {
+abstract class BaseRequest<
+  T extends BaseResponse,
+  E extends GeneralErrorResponse
+> {
   BaseRequest({
     // required this.client,
     required this.method,
@@ -70,15 +72,18 @@ abstract class BaseRequest<T extends BaseResponse,
   T parseResponse(String responseBody);
 }
 
-mixin RequestHandlingMixin<T extends BaseResponse,
-    E extends GeneralErrorResponse> on BaseRequest<T, E> {
+mixin RequestHandlingMixin<
+  T extends BaseResponse,
+  E extends GeneralErrorResponse
+>
+    on BaseRequest<T, E> {
   // @override
   // Future<T> send() async {
   //   final response = await client.sendRequest(toJson());
   //   return parseResponse(jsonEncode(response));
   // }
 
-// Parse response from JSON
+  // Parse response from JSON
   @override
   T parseResponse(String responseBody) {
     final json = jsonFromString(responseBody);

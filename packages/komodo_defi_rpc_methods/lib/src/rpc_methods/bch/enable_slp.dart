@@ -8,23 +8,20 @@ class EnableSlpRequest
     required this.ticker,
     required this.activationParams,
     super.rpcPass,
-  }) : super(
-          method: 'enable_slp',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'enable_slp', mmrpc: '2.0');
 
   final String ticker;
   final SlpActivationParams activationParams;
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'params': {
-          'ticker': ticker,
-          ...activationParams.toJson(),
-          // 'activation_params': activationParams.toJson(),
-        },
-      };
+    ...super.toJson(),
+    'params': {
+      'ticker': ticker,
+      ...activationParams.toJson(),
+      // 'activation_params': activationParams.toJson(),
+    },
+  };
 
   @override
   EnableSlpResponse parse(Map<String, dynamic> json) =>
@@ -51,10 +48,7 @@ class EnableSlpResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'balances': balances,
-          'platform_coin': platformCoin,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {'balances': balances, 'platform_coin': platformCoin},
+  };
 }

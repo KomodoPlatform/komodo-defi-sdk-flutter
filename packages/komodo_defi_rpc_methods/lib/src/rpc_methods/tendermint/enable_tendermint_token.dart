@@ -8,10 +8,7 @@ class EnableTendermintTokenRequest
     required super.rpcPass,
     required this.ticker,
     required this.params,
-  }) : super(
-          method: 'enable_tendermint_token',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'enable_tendermint_token', mmrpc: '2.0');
 
   final String ticker;
   @override
@@ -19,11 +16,8 @@ class EnableTendermintTokenRequest
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {
-          'ticker': ticker,
-          'activation_params': params.toRpcParams(),
-        },
-      });
+    'params': {'ticker': ticker, 'activation_params': params.toRpcParams()},
+  });
 
   @override
   EnableTendermintTokenResponse parse(Map<String, dynamic> json) =>
@@ -41,7 +35,10 @@ class EnableTendermintTokenResponse extends BaseResponse {
     return EnableTendermintTokenResponse(
       mmrpc: json.value<String>('mmrpc'),
       balances: Map.fromEntries(
-        json.value<JsonMap>('result', 'balances').entries.map(
+        json
+            .value<JsonMap>('result', 'balances')
+            .entries
+            .map(
               (e) => MapEntry(e.key, BalanceInfo.fromJson(e.value as JsonMap)),
             ),
       ),
@@ -54,12 +51,12 @@ class EnableTendermintTokenResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'balances': Map.fromEntries(
-            balances.entries.map((e) => MapEntry(e.key, e.value.toJson())),
-          ),
-          'platform_coin': platformCoin,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {
+      'balances': Map.fromEntries(
+        balances.entries.map((e) => MapEntry(e.key, e.value.toJson())),
+      ),
+      'platform_coin': platformCoin,
+    },
+  };
 }

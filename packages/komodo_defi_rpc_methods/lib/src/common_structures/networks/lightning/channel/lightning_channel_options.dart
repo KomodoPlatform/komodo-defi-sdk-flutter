@@ -11,14 +11,17 @@ class LightningChannelOptions {
 
   factory LightningChannelOptions.fromJson(Map<String, dynamic> json) {
     return LightningChannelOptions(
-      proportionalFeeInMillionthsSats:
-          json.valueOrNull<int?>('proportional_fee_in_millionths_sats'),
+      proportionalFeeInMillionthsSats: json.valueOrNull<int?>(
+        'proportional_fee_in_millionths_sats',
+      ),
       baseFeeMsat: json.valueOrNull<int?>('base_fee_msat'),
       cltvExpiryDelta: json.valueOrNull<int?>('cltv_expiry_delta'),
-      maxDustHtlcExposureMsat:
-          json.valueOrNull<int?>('max_dust_htlc_exposure_msat'),
-      forceCloseAvoidanceMaxFeeSatoshis:
-          json.valueOrNull<int?>('force_close_avoidance_max_fee_satoshis'),
+      maxDustHtlcExposureMsat: json.valueOrNull<int?>(
+        'max_dust_htlc_exposure_msat',
+      ),
+      forceCloseAvoidanceMaxFeeSatoshis: json.valueOrNull<int?>(
+        'force_close_avoidance_max_fee_satoshis',
+      ),
     );
   }
   final int? proportionalFeeInMillionthsSats;

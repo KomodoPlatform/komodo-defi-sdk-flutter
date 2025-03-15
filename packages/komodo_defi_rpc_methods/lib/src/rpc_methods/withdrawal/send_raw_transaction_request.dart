@@ -9,20 +9,17 @@ class SendRawTransactionLegacyRequest
     required super.rpcPass,
     required this.coin,
     required this.txHex,
-  }) : super(
-          method: 'send_raw_transaction',
-          mmrpc: null,
-        );
+  }) : super(method: 'send_raw_transaction', mmrpc: null);
 
   final String coin;
   final String txHex;
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'coin': coin,
-        'tx_hex': txHex,
-      };
+    ...super.toJson(),
+    'coin': coin,
+    'tx_hex': txHex,
+  };
 
   @override
   SendRawTransactionResponse parse(Map<String, dynamic> json) =>
@@ -30,15 +27,13 @@ class SendRawTransactionLegacyRequest
 }
 
 class SendRawTransactionResponse extends BaseResponse {
-  SendRawTransactionResponse({
-    required super.mmrpc,
-    required this.txHash,
-  });
+  SendRawTransactionResponse({required super.mmrpc, required this.txHash});
 
   factory SendRawTransactionResponse.parse(Map<String, dynamic> json) {
     return SendRawTransactionResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
-      txHash: json.valueOrNull<String>('result', 'tx_hash') ??
+      txHash:
+          json.valueOrNull<String>('result', 'tx_hash') ??
           json.value('tx_hash'),
     );
   }
@@ -47,9 +42,7 @@ class SendRawTransactionResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'tx_hash': txHash,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {'tx_hash': txHash},
+  };
 }

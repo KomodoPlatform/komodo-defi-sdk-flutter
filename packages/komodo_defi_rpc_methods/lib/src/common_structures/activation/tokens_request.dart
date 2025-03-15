@@ -1,10 +1,7 @@
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class TokensRequest {
-  TokensRequest({
-    required this.ticker,
-    this.requiredConfirmations = 3,
-  });
+  TokensRequest({required this.ticker, this.requiredConfirmations = 3});
 
   factory TokensRequest.fromJson(JsonMap json) {
     return TokensRequest(
@@ -18,7 +15,7 @@ class TokensRequest {
   final int requiredConfirmations;
 
   Map<String, dynamic> toJson() => {
-        'ticker': ticker,
-        'required_confirmations': requiredConfirmations,
-      };
+    'ticker': ticker,
+    'required_confirmations': requiredConfirmations,
+  };
 }

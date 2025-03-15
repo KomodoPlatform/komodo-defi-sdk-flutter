@@ -4,7 +4,6 @@
 // ignore_for_file: unused_field, unused_element
 
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
-import 'package:komodo_defi_rpc_methods/src/rpc_methods/utility/get_token_info.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A class that provides a library of RPC methods used by the Komodo DeFi
@@ -43,7 +42,8 @@ class KomodoDefiRpcMethods {
 
   // Add other namespaces here, e.g.:
   // TradeNamespace get trade => TradeNamespace(_client);
-  // UtilityNamespace get utility => UtilityNamespace(_client);
+  MessageSigningMethodsNamespace get messageSigning =>
+      MessageSigningMethodsNamespace(_client);
   UtilityMethods get utility => UtilityMethods(_client);
 }
 
@@ -63,13 +63,7 @@ class WalletMethods extends BaseRpcMethodNamespace {
   Future<MyBalanceResponse> myBalance({
     required String coin,
     String? rpcPass,
-  }) =>
-      execute(
-        MyBalanceRequest(
-          rpcPass: rpcPass ?? '',
-          coin: coin,
-        ),
-      );
+  }) => execute(MyBalanceRequest(rpcPass: rpcPass ?? '', coin: coin));
 
   Future<GetPublicKeyHashResponse> getPublicKeyHash([String? rpcPass]) =>
       execute(GetPublicKeyHashRequest(rpcPass: rpcPass));
@@ -87,15 +81,40 @@ class UtilityMethods extends BaseRpcMethodNamespace {
     required String platform,
     required String contractAddress,
     String? rpcPass,
-  }) =>
-      execute(
-        GetTokenInfoRequest(
-          protocolType: protocolType,
-          platform: platform,
-          contractAddress: contractAddress,
-          rpcPass: rpcPass ?? '',
-        ),
-      );
+  }) => execute(
+    GetTokenInfoRequest(
+      protocolType: protocolType,
+      platform: platform,
+      contractAddress: contractAddress,
+      rpcPass: rpcPass ?? '',
+    ),
+  );
+
+  /// Signs a message with a coin's signing key
+  Future<SignMessageResponse> signMessage({
+    required String coin,
+    required String message,
+    String? rpcPass,
+  }) => execute(
+    SignMessageRequest(coin: coin, message: message, rpcPass: rpcPass ?? ''),
+  );
+
+  /// Verifies a message signature
+  Future<VerifyMessageResponse> verifyMessage({
+    required String coin,
+    required String message,
+    required String signature,
+    required String address,
+    String? rpcPass,
+  }) => execute(
+    VerifyMessageRequest(
+      coin: coin,
+      message: message,
+      signature: signature,
+      address: address,
+      rpcPass: rpcPass ?? '',
+    ),
+  );
 }
 
 class GeneralActivationMethods extends BaseRpcMethodNamespace {
@@ -114,79 +133,73 @@ class HdWalletMethods extends BaseRpcMethodNamespace {
     int? accountId,
     String? chain,
     int? gapLimit,
-  }) =>
-      execute(
-        GetNewAddressRequest(
-          rpcPass: rpcPass,
-          coin: coin,
-          accountId: accountId,
-          chain: chain,
-          gapLimit: gapLimit,
-        ),
-      );
+  }) => execute(
+    GetNewAddressRequest(
+      rpcPass: rpcPass,
+      coin: coin,
+      accountId: accountId,
+      chain: chain,
+      gapLimit: gapLimit,
+    ),
+  );
 
   Future<NewTaskResponse> scanForNewAddressesInit(
     String coin, {
     String? rpcPass,
     int? accountId,
     int? gapLimit,
-  }) =>
-      execute(
-        ScanForNewAddressesInitRequest(
-          rpcPass: rpcPass,
-          coin: coin,
-          accountId: accountId,
-          gapLimit: gapLimit,
-        ),
-      );
+  }) => execute(
+    ScanForNewAddressesInitRequest(
+      rpcPass: rpcPass,
+      coin: coin,
+      accountId: accountId,
+      gapLimit: gapLimit,
+    ),
+  );
 
   Future<ScanForNewAddressesStatusResponse> scanForNewAddressesStatus(
     int taskId, {
     String? rpcPass,
     bool forgetIfFinished = true,
-  }) =>
-      execute(
-        ScanForNewAddressesStatusRequest(
-          rpcPass: rpcPass,
-          taskId: taskId,
-          forgetIfFinished: forgetIfFinished,
-        ),
-      );
+  }) => execute(
+    ScanForNewAddressesStatusRequest(
+      rpcPass: rpcPass,
+      taskId: taskId,
+      forgetIfFinished: forgetIfFinished,
+    ),
+  );
 
   Future<NewTaskResponse> accountBalanceInit({
     required String coin,
     required int accountIndex,
     String? rpcPass,
-  }) =>
-      execute(
-        AccountBalanceInitRequest(
-          rpcPass: rpcPass ?? this.rpcPass,
-          coin: coin,
-          accountIndex: accountIndex,
-        ),
-      );
+  }) => execute(
+    AccountBalanceInitRequest(
+      rpcPass: rpcPass ?? this.rpcPass,
+      coin: coin,
+      accountIndex: accountIndex,
+    ),
+  );
 
   Future<AccountBalanceStatusResponse> accountBalanceStatus({
     required int taskId,
     bool forgetIfFinished = true,
     String? rpcPass,
-  }) =>
-      execute(
-        AccountBalanceStatusRequest(
-          rpcPass: rpcPass ?? this.rpcPass,
-          taskId: taskId,
-          forgetIfFinished: forgetIfFinished,
-        ),
-      );
+  }) => execute(
+    AccountBalanceStatusRequest(
+      rpcPass: rpcPass ?? this.rpcPass,
+      taskId: taskId,
+      forgetIfFinished: forgetIfFinished,
+    ),
+  );
 
   Future<AccountBalanceCancelResponse> accountBalanceCancel({
     required int taskId,
     String? rpcPass,
-  }) =>
-      execute(
-        AccountBalanceCancelRequest(
-          rpcPass: rpcPass ?? this.rpcPass,
-          taskId: taskId,
-        ),
-      );
+  }) => execute(
+    AccountBalanceCancelRequest(
+      rpcPass: rpcPass ?? this.rpcPass,
+      taskId: taskId,
+    ),
+  );
 }

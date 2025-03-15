@@ -7,10 +7,7 @@ class TaskEnableUtxoInit
     required this.ticker,
     required this.params,
     super.rpcPass,
-  }) : super(
-          method: 'task::enable_utxo::init',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'task::enable_utxo::init', mmrpc: '2.0');
 
   final String ticker;
 
@@ -20,15 +17,12 @@ class TaskEnableUtxoInit
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'mmrpc': mmrpc,
-        'method': method,
-        'params': {
-          'ticker': ticker,
-          'activation_params': params.toRpcParams(),
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'mmrpc': mmrpc,
+    'method': method,
+    'params': {'ticker': ticker, 'activation_params': params.toRpcParams()},
+  };
 
   @override
   NewTaskResponse parseResponse(String responseBody) {

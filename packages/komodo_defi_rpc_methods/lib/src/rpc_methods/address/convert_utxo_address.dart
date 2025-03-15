@@ -9,10 +9,7 @@ class ConvertUtxoAddressRequest
     required this.coin,
     required this.address,
     required this.toCoin,
-  }) : super(
-          method: 'convert_utxo_address',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'convert_utxo_address', mmrpc: '2.0');
 
   final String coin;
   final String address;
@@ -20,13 +17,9 @@ class ConvertUtxoAddressRequest
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'params': {
-          'coin': coin,
-          'address': address,
-          'to_coin': toCoin,
-        },
-      };
+    ...super.toJson(),
+    'params': {'coin': coin, 'address': address, 'to_coin': toCoin},
+  };
 
   @override
   ConvertUtxoAddressResponse parse(Map<String, dynamic> json) =>
@@ -34,10 +27,7 @@ class ConvertUtxoAddressRequest
 }
 
 class ConvertUtxoAddressResponse extends BaseResponse {
-  ConvertUtxoAddressResponse({
-    required super.mmrpc,
-    required this.result,
-  });
+  ConvertUtxoAddressResponse({required super.mmrpc, required this.result});
 
   factory ConvertUtxoAddressResponse.parse(Map<String, dynamic> json) {
     return ConvertUtxoAddressResponse(
@@ -49,8 +39,5 @@ class ConvertUtxoAddressResponse extends BaseResponse {
   final String result;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': result,
-      };
+  Map<String, dynamic> toJson() => {'mmrpc': mmrpc, 'result': result};
 }

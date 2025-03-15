@@ -22,8 +22,6 @@ class _AssetPageState extends State<AssetPage> {
   bool _isLoading = false;
   String? _error;
 
-  final List<Transaction> _transactions = [];
-
   late final _sdk = context.read<KomodoDefiSdk>();
 
   @override
@@ -128,6 +126,7 @@ class _AssetHeaderState extends State<AssetHeader> {
   @override
   void initState() {
     super.initState();
+    _loadCurrentUser();
     _balanceLoading = true;
     _balanceSubscription = context
       .read<KomodoDefiSdk>()
@@ -146,6 +145,19 @@ class _AssetHeaderState extends State<AssetHeader> {
     super.dispose();
   }
 
+  String? _signedMessage;
+  bool _isSigningMessage = false;
+  KdfUser? _currentUser;
+
+
+  Future<void> _loadCurrentUser() async {
+    final sdk = context.read<KomodoDefiSdk>();
+    final user = await sdk.auth.currentUser;
+    if (mounted) {
+      setState(() => _currentUser = user);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -153,6 +165,29 @@ class _AssetHeaderState extends State<AssetHeader> {
         _buildBalanceOverview(context),
         const SizedBox(height: 16),
         _buildActions(context),
+        if (_signedMessage != null) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              title: const Text('Signed Message'),
+              subtitle: Text(_signedMessage!),
+              trailing: IconButton(
+                icon: const Icon(Icons.copy),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: _signedMessage!));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Signature copied to clipboard'),
+                    ),
+                  );
+                },
+              ),
+              onTap: () {
+                setState(() => _signedMessage = null);
+              },
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -222,6 +257,11 @@ class _AssetHeaderState extends State<AssetHeader> {
 
   //TODO: Eradicate this widget helper function
   Widget _buildActions(BuildContext context) {
+    final isHdWallet =
+        _currentUser?.authOptions.derivationMethod == DerivationMethod.hdWallet;
+    final hasAddresses =
+        widget.pubkeys != null && widget.pubkeys!.keys.isNotEmpty;
+
     return Wrap(
       alignment: WrapAlignment.spaceEvenly,
       spacing: 8,
@@ -250,8 +290,109 @@ class _AssetHeaderState extends State<AssetHeader> {
           icon: const Icon(Icons.qr_code),
           label: const Text('Receive'),
         ),
+
+        Tooltip(
+          message:
+              !hasAddresses
+                  ? 'No addresses available to sign with'
+                  : isHdWallet
+                  ? 'Will sign with the first address'
+                  : 'Sign a message with this address',
+          child: FilledButton.tonalIcon(
+            onPressed:
+                _isSigningMessage || !hasAddresses
+                    ? null
+                    : () => _showSignMessageDialog(context),
+            icon: const Icon(Icons.edit_document),
+            label:
+                _isSigningMessage
+                    ? const Text('Signing...')
+                    : const Text('Sign'),
+          ),
+        ),
       ],
     );
+  }
+
+  Future<void> _showSignMessageDialog(BuildContext context) async {
+    final isHdWallet = _currentUser?.isHd ?? false;
+
+    final messageController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final message = await showDialog<String>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Sign Message'),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isHdWallet &&
+                      widget.pubkeys != null &&
+                      widget.pubkeys!.keys.isNotEmpty) ...[
+                    Text(
+                      'Using address: ${widget.pubkeys!.keys[0].address}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  TextFormField(
+                    controller: messageController,
+                    decoration: const InputDecoration(
+                      labelText: 'Message to sign',
+                      hintText: 'Enter a message to sign',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a message';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'The signature can be used to prove that you own this address.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() == true) {
+                    Navigator.pop(context, messageController.text);
+                  }
+                },
+                child: const Text('Sign'),
+              ),
+            ],
+          ),
+    );
+
+    if (message == null) return;
+
+    setState(() => _isSigningMessage = true);
+    try {
+      final signature = await context
+          .read<KomodoDefiSdk>()
+          .messageSigning
+          .signMessage(coin: widget.asset.id.id, message: message);
+      setState(() => _signedMessage = signature);
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error signing message: $e')));
+    } finally {
+      setState(() => _isSigningMessage = false);
+    }
   }
 }
 

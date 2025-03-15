@@ -4,6 +4,7 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/addresses/address_operations.dart';
 import 'package:komodo_defi_sdk/src/assets/custom_asset_history_storage.dart';
+import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
@@ -195,6 +196,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   TransactionHistoryManager get transactions =>
       _assertSdkInitialized(_transactionHistory);
 
+  /// The message signing manager instance.
+  ///
+  /// Provides functionality to sign and verify messages using cryptocurrencies.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  MessageSigningManager get messageSigning =>
+      _assertSdkInitialized(_messageSigning);
+
   T _assertSdkInitialized<T>(T? val) {
     if (!_isInitialized || val == null) {
       throw StateError(
@@ -380,6 +389,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     // Clear references to managers
     _withdrawals = null;
     _transactionHistory = null;
+    _messageSigning = null;
     _pubkeys = null;
     _assets = null;
     _auth = null;

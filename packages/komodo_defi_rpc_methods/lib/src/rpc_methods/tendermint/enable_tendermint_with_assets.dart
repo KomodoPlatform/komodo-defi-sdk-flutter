@@ -1,17 +1,15 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
-class EnableTendermintWithAssetsRequest extends BaseRequest<
-    EnableTendermintWithAssetsResponse,
-    GeneralErrorResponse> with RequestHandlingMixin {
+class EnableTendermintWithAssetsRequest
+    extends
+        BaseRequest<EnableTendermintWithAssetsResponse, GeneralErrorResponse>
+    with RequestHandlingMixin {
   EnableTendermintWithAssetsRequest({
     required super.rpcPass,
     required this.ticker,
     required this.params,
-  }) : super(
-          method: 'enable_tendermint_with_assets',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'enable_tendermint_with_assets', mmrpc: '2.0');
 
   final String ticker;
   @override
@@ -19,12 +17,9 @@ class EnableTendermintWithAssetsRequest extends BaseRequest<
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'params': {
-          'ticker': ticker,
-          ...params.toRpcParams(),
-        },
-      };
+    ...super.toJson(),
+    'params': {'ticker': ticker, ...params.toRpcParams()},
+  };
 
   @override
   EnableTendermintWithAssetsResponse parse(Map<String, dynamic> json) =>
@@ -52,22 +47,28 @@ class EnableTendermintWithAssetsResponse extends BaseResponse {
       ticker: result.value<String>('ticker'),
       address: result.value<String>('address'),
       currentBlock: result.value<int>('current_block'),
-      balance: hasBalances
-          ? BalanceInfo.fromJson(result.value<JsonMap>('balance'))
-          : null,
-      tokensBalances: hasBalances
-          ? Map.fromEntries(
-              result.value<JsonMap>('tokens_balances').entries.map(
-                    (e) => MapEntry(
-                      e.key,
-                      BalanceInfo.fromJson(e.value as JsonMap),
+      balance:
+          hasBalances
+              ? BalanceInfo.fromJson(result.value<JsonMap>('balance'))
+              : null,
+      tokensBalances:
+          hasBalances
+              ? Map.fromEntries(
+                result
+                    .value<JsonMap>('tokens_balances')
+                    .entries
+                    .map(
+                      (e) => MapEntry(
+                        e.key,
+                        BalanceInfo.fromJson(e.value as JsonMap),
+                      ),
                     ),
-                  ),
-            )
-          : {},
-      tokensTickers: !hasBalances
-          ? result.value<List<dynamic>>('tokens_tickers').cast<String>()
-          : [],
+              )
+              : {},
+      tokensTickers:
+          !hasBalances
+              ? result.value<List<dynamic>>('tokens_tickers').cast<String>()
+              : [],
     );
   }
 
@@ -80,18 +81,17 @@ class EnableTendermintWithAssetsResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'ticker': ticker,
-          'address': address,
-          'current_block': currentBlock,
-          if (balance != null) 'balance': balance!.toJson(),
-          if (tokensBalances.isNotEmpty)
-            'tokens_balances': Map.fromEntries(
-              tokensBalances.entries
-                  .map((e) => MapEntry(e.key, e.value.toJson())),
-            ),
-          if (tokensTickers.isNotEmpty) 'tokens_tickers': tokensTickers,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {
+      'ticker': ticker,
+      'address': address,
+      'current_block': currentBlock,
+      if (balance != null) 'balance': balance!.toJson(),
+      if (tokensBalances.isNotEmpty)
+        'tokens_balances': Map.fromEntries(
+          tokensBalances.entries.map((e) => MapEntry(e.key, e.value.toJson())),
+        ),
+      if (tokensTickers.isNotEmpty) 'tokens_tickers': tokensTickers,
+    },
+  };
 }

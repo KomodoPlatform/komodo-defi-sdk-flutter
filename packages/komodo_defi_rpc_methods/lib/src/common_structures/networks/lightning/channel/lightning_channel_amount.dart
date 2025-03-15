@@ -1,10 +1,7 @@
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class LightningChannelAmount {
-  LightningChannelAmount({
-    required this.type,
-    this.value,
-  });
+  LightningChannelAmount({required this.type, this.value});
 
   factory LightningChannelAmount.fromJson(Map<String, dynamic> json) {
     return LightningChannelAmount(

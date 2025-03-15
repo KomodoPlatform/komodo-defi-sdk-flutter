@@ -13,8 +13,9 @@ class WalletInfo {
     return WalletInfo(
       address: json.value<String>('address'),
       type: json.value<String>('type'),
-      derivationMethod:
-          Map<String, String>.from(json.value('derivation_method')),
+      derivationMethod: Map<String, String>.from(
+        json.value('derivation_method'),
+      ),
       pubkey: json.value<String>('pubkey'),
       miningPubkey: json.valueOrNull<String?>('mining_pubkey'),
     );

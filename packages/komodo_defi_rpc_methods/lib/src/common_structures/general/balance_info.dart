@@ -62,7 +62,6 @@ class BalanceInfo {
     // 'total': total.toString(),
     'spendable': spendable.toString(),
     'unspendable': unspendable.toString(),
-
   };
 
   @override

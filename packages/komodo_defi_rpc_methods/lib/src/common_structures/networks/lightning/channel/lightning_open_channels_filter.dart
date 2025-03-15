@@ -11,12 +11,10 @@ class LightningOpenChannelsFilter {
   final int? toFundingValueSats;
 
   Map<String, dynamic> toJson() => {
-        if (isOutbound != null) 'is_outbound': isOutbound,
-        if (counterpartyNodeId != null)
-          'counterparty_node_id': counterpartyNodeId,
-        if (fromFundingValueSats != null)
-          'from_funding_value_sats': fromFundingValueSats,
-        if (toFundingValueSats != null)
-          'to_funding_value_sats': toFundingValueSats,
-      };
+    if (isOutbound != null) 'is_outbound': isOutbound,
+    if (counterpartyNodeId != null) 'counterparty_node_id': counterpartyNodeId,
+    if (fromFundingValueSats != null)
+      'from_funding_value_sats': fromFundingValueSats,
+    if (toFundingValueSats != null) 'to_funding_value_sats': toFundingValueSats,
+  };
 }

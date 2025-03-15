@@ -13,10 +13,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 ///   "id": null
 /// }
 class NewTaskResponse extends BaseResponse {
-  NewTaskResponse({
-    required super.mmrpc,
-    required this.taskId,
-  });
+  NewTaskResponse({required super.mmrpc, required this.taskId});
 
   @override
   factory NewTaskResponse.parse(Map<String, dynamic> json) {
@@ -30,7 +27,7 @@ class NewTaskResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {'task_id': taskId},
-      };
+    'mmrpc': mmrpc,
+    'result': {'task_id': taskId},
+  };
 }
