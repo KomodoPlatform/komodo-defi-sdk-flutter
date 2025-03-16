@@ -30,6 +30,8 @@ export 'tendermint/tendermind_rpc_namespace.dart';
 export 'transaction_history/my_tx_history.dart';
 export 'transaction_history/transaction_history_namespace.dart';
 export 'utility/get_token_info.dart';
+export 'utility/message_signing.dart';
+export 'utility/message_signing_rpc_namespace.dart';
 export 'utility/rpc_task_shepherd.dart';
 export 'utxo/task_enable_utxo_init.dart';
 export 'utxo/utxo_rpc_extensions.dart';

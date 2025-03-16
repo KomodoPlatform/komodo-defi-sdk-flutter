@@ -90,8 +90,9 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
     if (!_addressValidation!.isValid) {
       setState(
-        () => _error =
-            _addressValidation!.invalidReason ?? 'Invalid address format',
+        () =>
+            _error =
+                _addressValidation!.invalidReason ?? 'Invalid address format',
       );
       return;
     }
@@ -106,11 +107,12 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         toAddress: _toAddressController.text,
         amount: _isMaxAmount ? null : Decimal.parse(_amountController.text),
         fee: _selectedFee,
-        from: _selectedFromAddress?.derivationPath != null
-            ? WithdrawalSource.hdDerivationPath(
-                _selectedFromAddress!.derivationPath!,
-              )
-            : null,
+        from:
+            _selectedFromAddress?.derivationPath != null
+                ? WithdrawalSource.hdDerivationPath(
+                  _selectedFromAddress!.derivationPath!,
+                )
+                : null,
         memo: _memoController.text.isEmpty ? null : _memoController.text,
         isMax: _isMaxAmount,
         ibcTransfer: _isIbcTransfer ? true : null,
@@ -148,47 +150,51 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Withdrawal'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Amount: ${_preview!.balanceChanges.netChange} '
-                  '${widget.asset.id.id}'),
-              Text('To: ${_preview!.to.join(', ')}'),
-              _buildFeeDetails(_preview!.fee),
-              if (_preview!.kmdRewards != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'KMD Rewards Available: ${_preview!.kmdRewards!.amount}',
-                  style:
-                      TextStyle(color: Theme.of(context).colorScheme.primary),
-                ),
-              ],
-              if (_isIbcTransfer) ...[
-                const SizedBox(height: 8),
-                Text('IBC Channel: ${_ibcChannelController.text}'),
-                const Text(
-                  'Note: IBC transfers may take longer to complete',
-                  style: TextStyle(fontStyle: FontStyle.italic),
-                ),
-              ],
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Confirm Withdrawal'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Amount: ${_preview!.balanceChanges.netChange} '
+                    '${widget.asset.id.id}',
+                  ),
+                  Text('To: ${_preview!.to.join(', ')}'),
+                  _buildFeeDetails(_preview!.fee),
+                  if (_preview!.kmdRewards != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'KMD Rewards Available: ${_preview!.kmdRewards!.amount}',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                  if (_isIbcTransfer) ...[
+                    const SizedBox(height: 8),
+                    Text('IBC Channel: ${_ibcChannelController.text}'),
+                    const Text(
+                      'Note: IBC transfers may take longer to complete',
+                      style: TextStyle(fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Confirm'),
+              ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
     );
 
     if (confirmed == true) {
@@ -252,9 +258,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 ),
                 action: SnackBarAction(
                   label: 'Copy Hash',
-                  onPressed: () => Clipboard.setData(
-                    ClipboardData(text: progress.withdrawalResult!.txHash),
-                  ),
+                  onPressed:
+                      () => Clipboard.setData(
+                        ClipboardData(text: progress.withdrawalResult!.txHash),
+                      ),
                 ),
               ),
             );
@@ -343,9 +350,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               Expanded(
                 child: TextFormField(
                   enabled: isCustomFee,
-                  decoration: const InputDecoration(
-                    labelText: 'Gas Limit',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Gas Limit'),
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
                     final gasLimit = int.tryParse(value);
@@ -406,16 +411,17 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               else
                 Decimal.parse(defaultFee.toString()),
             },
-            onSelectionChanged: !isCustomFee
-                ? null
-                : (value) {
-                    setState(() {
-                      _selectedFee = FeeInfo.utxoFixed(
-                        coin: widget.asset.id.id,
-                        amount: value.first,
-                      );
-                    });
-                  },
+            onSelectionChanged:
+                !isCustomFee
+                    ? null
+                    : (value) {
+                      setState(() {
+                        _selectedFee = FeeInfo.utxoFixed(
+                          coin: widget.asset.id.id,
+                          amount: value.first,
+                        );
+                      });
+                    },
           ),
         ],
       );
@@ -427,9 +433,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Withdraw'),
-      ),
+      appBar: AppBar(title: const Text('Withdraw')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -463,23 +467,28 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                       onPressed: () => _onCopyAddress(_selectedFromAddress),
                     ),
                   ),
-                  items: widget.pubkeys.keys
-                      .map(
-                        (addr) => DropdownMenuItem(
-                          value: addr,
-                          child: Text(
-                            '${addr.address} (${addr.balance.spendable})',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: widget.pubkeys.keys
-                          .any((k) => k.derivationPath == null)
-                      ? null
-                      : (value) => setState(() => _selectedFromAddress = value),
-                  validator: (value) =>
-                      value == null ? 'Please select a source address' : null,
+                  items:
+                      widget.pubkeys.keys
+                          .map(
+                            (addr) => DropdownMenuItem(
+                              value: addr,
+                              child: Text(
+                                '${addr.address} (${addr.balance.spendable})',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                  onChanged:
+                      widget.pubkeys.keys.any((k) => k.derivationPath == null)
+                          ? null
+                          : (value) =>
+                              setState(() => _selectedFromAddress = value),
+                  validator:
+                      (value) =>
+                          value == null
+                              ? 'Please select a source address'
+                              : null,
                 ),
                 const SizedBox(height: 16),
               ],
@@ -510,9 +519,11 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                       labelText: 'IBC Channel',
                       hintText: 'Enter IBC channel ID',
                     ),
-                    validator: (value) => value?.isEmpty == true
-                        ? 'Please enter IBC channel'
-                        : null,
+                    validator:
+                        (value) =>
+                            value?.isEmpty == true
+                                ? 'Please enter IBC channel'
+                                : null,
                   ),
                 ],
               ],
@@ -524,8 +535,9 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                   hintText: 'Enter amount to send',
                   suffix: Text(widget.asset.id.id),
                 ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 enabled: !_isMaxAmount,
                 validator: (value) {
                   if (_isMaxAmount) return null;
@@ -540,12 +552,13 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               ),
               CheckboxListTile(
                 value: _isMaxAmount,
-                onChanged: (value) => setState(() {
-                  _isMaxAmount = value == true;
-                  if (_isMaxAmount) {
-                    _amountController.clear();
-                  }
-                }),
+                onChanged:
+                    (value) => setState(() {
+                      _isMaxAmount = value == true;
+                      if (_isMaxAmount) {
+                        _amountController.clear();
+                      }
+                    }),
                 title: const Text('Send maximum amount'),
               ),
               const SizedBox(height: 16),
@@ -619,9 +632,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
     return Icon(
       _addressValidation!.isValid ? Icons.check_circle : Icons.error,
-      color: _addressValidation!.isValid
-          ? Theme.of(context).colorScheme.primary
-          : Theme.of(context).colorScheme.error,
+      color:
+          _addressValidation!.isValid
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.error,
     );
   }
 
@@ -630,9 +644,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
     Clipboard.setData(ClipboardData(text: address.address));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Address copied to clipboard'),
-      ),
+      const SnackBar(content: Text('Address copied to clipboard')),
     );
   }
 
@@ -674,9 +686,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               const Text('Estimated Fee:'),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(_getFeeDisplay()),
-                ],
+                children: [Text(_getFeeDisplay())],
               ),
             ],
           ),
@@ -709,27 +719,16 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     final fee = _selectedFee;
     if (fee == null) return 'Calculating...';
 
-    // You can do a map(...) on the union:
-    return fee.map(
-      utxoFixed: (f) => '${f.amount} ${f.coin}',
-      utxoPerKbyte: (f) => '${f.amount} ${f.coin}',
-      ethGas: (eth) {
-        // If eth.gasPrice is in ETH, multiply by eth.gas => total in ETH
-        final totalEth = eth.gasPrice * Decimal.fromInt(eth.gas);
-        // If you prefer to show Gwei, multiply by 1e9
-        final totalGwei = totalEth * Decimal.fromInt(1000000000);
-        return '$totalGwei Gwei';
-      },
-      qrc20Gas: (qrc) {
-        // total = gasPrice * gasLimit, both in coin units
-        final totalCoin = qrc.gasPrice * Decimal.fromInt(qrc.gasLimit);
-        return '$totalCoin ${qrc.coin}';
-      },
-      cosmosGas: (cosmos) {
-        final totalCoin = cosmos.gasPrice * Decimal.fromInt(cosmos.gasLimit);
-        return '$totalCoin ${cosmos.coin}';
-      },
-    );
+    return switch (fee) {
+      FeeInfoUtxoFixed(:final amount, :final coin) => '$amount $coin',
+      FeeInfoUtxoPerKbyte(:final amount, :final coin) => '$amount $coin',
+      FeeInfoEthGas(:final gasPrice, :final gas) =>
+        '${(gasPrice * Decimal.fromInt(gas)) * Decimal.fromInt(1000000000)} Gwei',
+      FeeInfoQrc20Gas(:final gasPrice, :final gasLimit, :final coin) =>
+        '${gasPrice * Decimal.fromInt(gasLimit)} $coin',
+      FeeInfoCosmosGas(:final gasPrice, :final gasLimit, :final coin) =>
+        '${gasPrice * Decimal.fromInt(gasLimit)} $coin',
+    };
   }
 }
 

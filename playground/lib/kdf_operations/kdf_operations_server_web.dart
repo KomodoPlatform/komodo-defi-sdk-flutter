@@ -72,7 +72,8 @@ class KdfHttpServerOperations implements IKdfOperations {
       }
     } catch (e) {
       _logger?.call('Error starting KDF: $e');
-      return KdfStartupResult.initError;
+      // return KdfStartupResult.initError;
+      throw Exception('Error starting KDF: $e');
     }
   }
 

@@ -5,15 +5,14 @@ packages:
   - packages/**
   - products/**
 
-commands:
+command:
   bootstrap:
     hooks:
-      post:
-        - melos run indexes:generate
-        - melos run runners:generate
-        - melos run assets:generate
+      post: melos run prepare
 
 scripts:
+  prepare:
+    run: melos run indexes:generate --no-select && melos run runners:generate --no-select
   indexes:generate:
     run: dart run index_generator
     exec:

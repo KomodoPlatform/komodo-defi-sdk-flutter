@@ -3,7 +3,6 @@ import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/addresses/address_operations.dart';
-import 'package:komodo_defi_sdk/src/assets/custom_asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
@@ -147,6 +146,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   MnemonicValidator? _mnemonicValidator;
   TransactionHistoryManager? _transactionHistory;
   WithdrawalManager? _withdrawals;
+  MessageSigningManager? _messageSigning;
   BalanceManager? _balances;
 
   bool _isInitialized = false;
@@ -342,6 +342,8 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
     // Initialize withdrawal manager last as it depends on asset activation
     _withdrawals = WithdrawalManager(_apiClient!, _auth!, _assets!);
+
+    _messageSigning = MessageSigningManager(_apiClient!);
 
     _isInitialized = true;
   }
