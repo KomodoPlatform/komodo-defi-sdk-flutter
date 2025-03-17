@@ -7,8 +7,10 @@ import 'package:provider/provider.dart';
 /// An adapter component that connects the komodo_ui AssetBalanceText with
 /// the SDK's BalanceManager
 class AssetBalanceText extends StatelessWidget {
-  const AssetBalanceText({
-    required this.assetId,
+  /// An adapter component that connects the komodo_ui AssetBalanceText with
+  /// the SDK's BalanceManager
+  const AssetBalanceText(
+    this.assetId, {
     super.key,
     this.style,
     this.loadingWidget,
@@ -39,12 +41,45 @@ class AssetBalanceText extends StatelessWidget {
   Widget build(BuildContext context) {
     final balanceManager = context.read<KomodoDefiSdk>().balances;
 
+    final bal = balanceManager.lastKnown(assetId);
+
+    final firstBalance =
+        true
+            ? Future<BalanceInfo?>.value(bal)
+            : balanceManager.getBalance(assetId);
+
+    return StreamBuilder<BalanceInfo?>(
+      stream: Stream.fromFuture(firstBalance),
+      // balanceManager.watchBalance(
+      //   assetId,
+      //   activateIfNeeded: activateIfNeeded,
+      // ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting ||
+            (snapshot.data == null)) {
+          return loadingWidget ?? const SizedBox.shrink();
+        }
+
+        if (snapshot.hasError) {
+          return errorBuilder?.call(context, snapshot.error!) ??
+              const Text('Error loading balance');
+        }
+
+        final balance = snapshot.data;
+        final formattedBalance =
+            formatBalance?.call(balance) ?? _defaultFormatBalance(balance);
+
+        return Text(formattedBalance, style: style);
+      },
+    );
+
     return TextStreamBuilder<BalanceInfo>(
       stream: balanceManager.watchBalance(
         assetId,
         activateIfNeeded: activateIfNeeded,
       ),
-      formatData: formatBalance ?? _defaultFormatBalance,
+      formatData:
+          (bal) => formatBalance?.call(bal) ?? _defaultFormatBalance(bal),
       style:
           style ??
           Theme.of(context).textTheme.bodyMedium, // TODO! Verify correct style
@@ -59,12 +94,24 @@ class AssetBalanceText extends StatelessWidget {
     }
     final symbol = assetId.symbol.common;
 
-    final decimals = !balance.hasValue ? 0 : 4;
+    final decimals = !balance.hasValue ? 2 : 4;
 
     final formatter = NumberFormat.decimalPatternDigits(
       decimalDigits: decimals,
     );
 
-    return '${formatter.format(balance?.total.toDouble() ?? 0)} $symbol';
+    // Fix: Properly call _trimZeros function
+    final formattedAmount = formatter.format(balance.total.toDouble());
+    final trimmedAmount = _trimZeros(formattedAmount);
+
+    return '$trimmedAmount $symbol';
   }
+}
+
+// TODO: Consider making a formatting/validation utility for the SDK
+String _trimZeros(String value) {
+  if (value.contains('.')) {
+    return value.replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+  }
+  return value;
 }
