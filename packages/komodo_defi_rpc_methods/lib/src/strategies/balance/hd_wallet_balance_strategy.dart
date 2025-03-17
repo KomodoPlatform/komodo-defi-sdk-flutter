@@ -22,8 +22,8 @@ class HDWalletBalanceStrategy extends BalanceStrategy {
 
   @override
   Future<BalanceInfo> getBalance(AssetId assetId, ApiClient client) async {
-    int retryCount = 0;
-    Duration timeout = _initialTimeout;
+    var retryCount = 0;
+    var timeout = _initialTimeout;
 
     while (true) {
       try {
@@ -94,9 +94,11 @@ class HDWalletBalanceStrategy extends BalanceStrategy {
     Duration timeout,
   ) async {
     final taskId = initResponse.taskId;
-    final Completer<AccountBalanceStatusResponse> completer = Completer();
+    final completer = Completer<AccountBalanceStatusResponse>();
     Timer? pollingTimer;
     Timer? timeoutTimer;
+    var consecutiveErrorCount = 0;
+    const maxConsecutiveErrors = 3;
 
     try {
       // Set timeout for the entire operation
@@ -136,6 +138,9 @@ class HDWalletBalanceStrategy extends BalanceStrategy {
             taskId: taskId,
           );
 
+          // Reset error count on successful response
+          consecutiveErrorCount = 0;
+
           if (status.status.isTerminal) {
             if (status.details.data != null) {
               timer.cancel();
@@ -155,13 +160,26 @@ class HDWalletBalanceStrategy extends BalanceStrategy {
             }
           }
         } catch (e) {
+          consecutiveErrorCount++;
+
           log(
             'Error checking HD wallet balance task status',
             name: 'HDWalletBalanceStrategy',
             error: e,
             stackTrace: StackTrace.current,
           );
-          // Don't fail on a single status check error, keep trying
+
+          // If we get "No such task" error or too many consecutive errors, stop polling
+          final errorString = e.toString().toLowerCase();
+          if (errorString.contains('no such task') ||
+              consecutiveErrorCount >= maxConsecutiveErrors) {
+            timer.cancel();
+            if (!completer.isCompleted) {
+              completer.completeError(
+                Exception('Balance task failed or is no longer available: $e'),
+              );
+            }
+          }
         }
       });
 
@@ -195,8 +213,8 @@ class HDWalletBalanceStrategy extends BalanceStrategy {
 
     scheduleMicrotask(() async {
       BalanceInfo? lastBalance;
-      bool isClosed = false;
-      int consecutiveErrors = 0;
+      var isClosed = false;
+      var consecutiveErrors = 0;
 
       // Add a listener to track when the controller is closed
       controller.onCancel = () {
