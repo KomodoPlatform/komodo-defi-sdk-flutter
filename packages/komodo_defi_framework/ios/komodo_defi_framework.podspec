@@ -54,7 +54,4 @@ A new Flutter FFI plugin project.
 
   s.libraries = ['c++', 'resolv']
 
-  # Ensure the dylib is copied into the final app bundle
-  # s.preserve_paths = 'libkdflib.dylib'
-
 end
