@@ -15,9 +15,12 @@ class SecureLocalStorage {
   SecureLocalStorage._();
   static final SecureLocalStorage _instance = SecureLocalStorage._();
 
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   static const _userPrefix = 'user_';
+  static const String _lastActiveWalletNameKey = 'lastActiveWalletName';
 
   /// Save user data
   Future<void> saveUser(KdfUser user) async {
@@ -38,5 +41,24 @@ class SecureLocalStorage {
   /// Delete user data
   Future<void> deleteUser(String walletName) async {
     await _storage.delete(key: '$_userPrefix$walletName');
+  }
+
+  /// Save the last active wallet name
+  Future<void> saveLastActiveWalletName(String? walletName) async {
+    if (walletName == null) {
+      await _storage.delete(key: _lastActiveWalletNameKey);
+    } else {
+      await _storage.write(key: _lastActiveWalletNameKey, value: walletName);
+    }
+  }
+
+  /// Get the last active wallet name
+  Future<String?> getLastActiveWalletName() async {
+    return _storage.read(key: _lastActiveWalletNameKey);
+  }
+
+  /// Clears all secure storage
+  Future<void> clearSecureStorage() async {
+    await _storage.deleteAll();
   }
 }
