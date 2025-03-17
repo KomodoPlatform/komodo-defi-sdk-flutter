@@ -13,6 +13,7 @@ export 'asset/asset_icon.dart';
 export 'asset/crypto_asset_card.dart';
 export 'asset/metric_selector.dart';
 export 'asset/trend_percentage_text.dart';
+export 'transaction/withdrawal_priority.dart';
 export 'withdraw/recipient_address_field.dart';
 export 'withdraw/source_address_field.dart';
 export 'withdraw/withdraw_amount_field.dart';

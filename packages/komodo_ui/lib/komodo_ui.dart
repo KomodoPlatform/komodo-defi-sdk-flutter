@@ -28,6 +28,7 @@ export 'src/defi/asset/crypto_asset_card.dart';
 export 'src/defi/asset/metric_selector.dart';
 export 'src/defi/asset/trend_percentage_text.dart';
 export 'src/defi/index.dart';
+export 'src/defi/transaction/withdrawal_priority.dart';
 export 'src/defi/withdraw/recipient_address_field.dart';
 export 'src/defi/withdraw/source_address_field.dart';
 export 'src/defi/withdraw/withdraw_amount_field.dart';

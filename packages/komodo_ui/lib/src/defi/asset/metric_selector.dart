@@ -37,31 +37,26 @@ class MetricSelectorController extends ChangeNotifier {
   SearchableSelectController<AssetId> get searchController => _searchController;
 
   void selectAsset(AssetId? asset) {
-    _searchController.select(
-      asset == null
-          ? null
-          : SelectItem<AssetId>(
-            id: asset.id,
-            value: asset,
-            title: asset.symbol.common,
-            leading: AssetIcon(asset),
-          ),
-    );
+    _searchController.select(asset);
     notifyListeners();
   }
 
-  List<SelectItem<AssetId>> buildSelectItems({
-    SelectItem<AssetId> Function(AssetId)? customItemBuilder,
+  List<DropdownMenuItem<AssetId>> buildSelectItems({
+    DropdownMenuItem<AssetId> Function(AssetId)? customItemBuilder,
   }) {
     return availableAssets
         .map(
           (id) =>
               customItemBuilder?.call(id) ??
-              SelectItem<AssetId>(
-                id: id.id,
-                title: id.symbol.common,
+              DropdownMenuItem<AssetId>(
                 value: id,
-                leading: AssetIcon(id),
+                child: Row(
+                  children: [
+                    AssetIcon(id),
+                    const SizedBox(width: 8),
+                    Text(id.symbol.common),
+                  ],
+                ),
               ),
         )
         .toList();
@@ -79,10 +74,6 @@ class MetricSelectorController extends ChangeNotifier {
 /// This is an enhanced version of the original SelectedCoinGraphControl that
 /// maintains backwards compatibility while being more generic for other use
 /// cases.
-///
-/// There may be breaking changes in the near future that enhance
-/// re-usability and customization, but the initial version will be focused on
-/// migrating from the Komodo Wallet app to the new SDK repository.
 ///
 /// There may be breaking changes in the near future that enhance
 /// re-usability and customization, but the initial version will be focused on
@@ -112,7 +103,7 @@ class MetricSelector extends StatelessWidget {
   final MetricSelectorController controller;
 
   /// Custom builder for search items
-  final SelectItem<AssetId> Function(AssetId)? customItemBuilder;
+  final DropdownMenuItem<AssetId> Function(AssetId)? customItemBuilder;
 
   /// Label to show when nothing is selected
   final String emptySelectionLabel;
@@ -136,20 +127,18 @@ class MetricSelector extends StatelessWidget {
                     customItemBuilder: customItemBuilder,
                   ),
                   hint: emptySelectionLabel,
-                  onItemSelected: (item) {
-                    onAssetSelected?.call(item.value);
+                  onChanged: (AssetId? assetId) {
+                    if (assetId != null) {
+                      onAssetSelected?.call(assetId);
+                    }
                   },
-                  selectedItemBuilder:
-                      (item) => _AssetSelectionView(
-                        item: item,
-                        onClear:
-                            controller.allowEmptySelection
-                                ? () {
-                                  controller.selectAsset(null);
-                                  onAssetSelected?.call(null);
-                                }
-                                : null,
-                      ),
+                  selectedItemBuilder: (context, selectedAsset) {
+                    // Return null if no asset is selected
+                    if (selectedAsset == null) return null;
+
+                    // Build a widget for the selected asset
+                    return _buildAssetSelectionView(context, selectedAsset);
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -162,29 +151,24 @@ class MetricSelector extends StatelessWidget {
       },
     );
   }
-}
 
-/// Widget for displaying selected asset with optional clear button
-class _AssetSelectionView extends StatelessWidget {
-  const _AssetSelectionView({required this.item, this.onClear});
-
-  final SelectItem<AssetId> item;
-  final VoidCallback? onClear;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildAssetSelectionView(BuildContext context, AssetId assetId) {
     return Row(
       children: [
-        if (item.leading != null) ...[item.leading!, const SizedBox(width: 8)],
-        Text(item.title),
-        if (onClear != null) ...[
+        AssetIcon(assetId),
+        const SizedBox(width: 8),
+        Text(assetId.symbol.common),
+        if (controller.allowEmptySelection) ...[
           const SizedBox(width: 4),
           IconButton(
             padding: EdgeInsets.zero,
             icon: const Icon(Icons.clear),
             iconSize: 16,
             splashRadius: 20,
-            onPressed: onClear,
+            onPressed: () {
+              controller.selectAsset(null);
+              onAssetSelected?.call(null);
+            },
           ),
         ],
       ],
