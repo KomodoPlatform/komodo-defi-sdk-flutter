@@ -122,21 +122,41 @@ class _AssetHeaderState extends State<AssetHeader> {
   StreamSubscription<BalanceInfo?>? _balanceSubscription;
   BalanceInfo? _balance;
   bool _balanceLoading = false;
+  String? _balanceError;
 
   @override
   void initState() {
     super.initState();
     _loadCurrentUser();
     _balanceLoading = true;
-    _balanceSubscription = context
-      .read<KomodoDefiSdk>()
-      .balances
-      .watchBalance(widget.asset.id)
-      .listen((balance) {
-        _balanceLoading = false;
 
-        setState(() => _balance = balance);
-      })..onError((_) => setState(() => _balanceLoading = false));
+    // Subscribe to balance updates with a small delay to allow pooled activation checks
+    Future.delayed(
+      const Duration(milliseconds: 50),
+      _subscribeToBalanceUpdates,
+    );
+  }
+
+  void _subscribeToBalanceUpdates() {
+    _balanceSubscription = context
+        .read<KomodoDefiSdk>()
+        .balances
+        .watchBalance(widget.asset.id)
+        .listen(
+          (balance) {
+            setState(() {
+              _balanceLoading = false;
+              _balanceError = null;
+              _balance = balance;
+            });
+          },
+          onError: (error) {
+            setState(() {
+              _balanceLoading = false;
+              _balanceError = error.toString();
+            });
+          },
+        );
   }
 
   @override
@@ -148,7 +168,6 @@ class _AssetHeaderState extends State<AssetHeader> {
   String? _signedMessage;
   bool _isSigningMessage = false;
   KdfUser? _currentUser;
-
 
   Future<void> _loadCurrentUser() async {
     final sdk = context.read<KomodoDefiSdk>();
@@ -206,6 +225,52 @@ class _AssetHeaderState extends State<AssetHeader> {
                       child: CircularProgressIndicator(),
                     ),
                   ]
+                  : _balanceError != null
+                  ? [
+                    const Icon(Icons.error_outline, color: Colors.red),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Error loading balance',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    Text(
+                      _balanceError!,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _balanceLoading = true;
+                          _balanceError = null;
+                        });
+                        _balanceSubscription?.cancel();
+                        _balanceSubscription = context
+                            .read<KomodoDefiSdk>()
+                            .balances
+                            .watchBalance(widget.asset.id)
+                            .listen(
+                              (balance) {
+                                setState(() {
+                                  _balanceLoading = false;
+                                  _balanceError = null;
+                                  _balance = balance;
+                                });
+                              },
+                              onError: (error) {
+                                setState(() {
+                                  _balanceLoading = false;
+                                  _balanceError = error.toString();
+                                });
+                              },
+                            );
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ]
                   : [
                     Text(
                       'Total',
@@ -219,7 +284,6 @@ class _AssetHeaderState extends State<AssetHeader> {
                     const SizedBox(width: 128, child: Divider()),
                     const SizedBox(height: 8),
                     Row(
-                      // mainAxisAlignment: MainAxisAlignment.spaceAround,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Column(
@@ -461,7 +525,7 @@ class _AddressesSection extends StatelessWidget {
                           ? const SizedBox(
                             width: 24,
                             height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2.0),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
                           : const Icon(Icons.add),
                 ),

@@ -37,6 +37,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   WithdrawalPreview? _preview;
   String? _error;
   bool _isIbcTransfer = false;
+  bool _isLoadingAddresses = false;
 
   AddressValidation? _addressValidation;
   Timer? _validationDebounce;
@@ -145,6 +146,18 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     super.dispose();
   }
 
+  // Simulates a network retry to fetch addresses
+  Future<void> _retryFetchingAddresses() async {
+    setState(() => _isLoadingAddresses = true);
+
+    // Simulate network request
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (mounted) {
+      setState(() => _isLoadingAddresses = false);
+    }
+  }
+
   Future<void> _showPreviewDialog(WithdrawParameters params) async {
     if (_preview == null) return;
 
@@ -215,9 +228,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         // If it's an ETH gas variant:
         if (details is FeeInfoEthGas) ...[
           Text('Gas: ${details.gas} units'),
-          // If you're storing gasPrice in ETH, then you might print:
           Text('Gas Price: ${details.gasPrice} ETH/1gas'),
-          // or convert to Gwei if you prefer
         ],
 
         if (details is FeeInfoQrc20Gas) ...[
@@ -328,14 +339,11 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
                       setState(() {
                         final oldFee = _selectedFee;
-
-                        // Preserve whatever gas limit we had before if oldFee is ethGas
                         final oldGasLimit = oldFee?.maybeMap(
                           ethGas: (eth) => eth.gas,
                           orElse: () => 21000,
                         );
 
-                        // Now create a new ethGas FeeInfo using the old gas limit.
                         _selectedFee = FeeInfo.ethGas(
                           coin: widget.asset.id.id,
                           gasPrice: ethPrice.toDecimal(),
@@ -454,9 +462,8 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                     ),
                   ),
                 ),
-              // TODO: Check if wallet is currently in HD mode. Use KW coin
-              // details' page address management as an example of how to
-              // handle this.
+
+              // Replace the dropdown with SourceAddressField
               if (widget.asset.supportsMultipleAddresses) ...[
                 DropdownButtonFormField<PubkeyInfo>(
                   value: _selectedFromAddress,
@@ -492,6 +499,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
+
               TextFormField(
                 controller: _toAddressController,
                 decoration: InputDecoration(
@@ -532,7 +540,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 controller: _amountController,
                 decoration: InputDecoration(
                   labelText: 'Amount',
-                  hintText: 'Enter amount to send',
+                  hintText: '0.00',
                   suffix: Text(widget.asset.id.id),
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
@@ -549,6 +557,15 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                   }
                   return null;
                 },
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    RegExp(
+                      r'^\d*\.?\d{0,' +
+                          (widget.asset.id.chainId.decimals ?? 8).toString() +
+                          r'}$',
+                    ),
+                  ),
+                ],
               ),
               CheckboxListTile(
                 value: _isMaxAmount,
@@ -569,15 +586,16 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 value: isCustomFee,
                 onChanged: (value) => setState(() => isCustomFee = value),
               ),
-              // Reusable fee input
-              FeeInfoInput(
-                asset: widget.asset,
-                selectedFee: _selectedFee,
-                isCustomFee: isCustomFee,
-                onFeeSelected: (fee) {
-                  setState(() => _selectedFee = fee);
-                },
-              ),
+              if (isCustomFee) ...[
+                FeeInfoInput(
+                  asset: widget.asset,
+                  selectedFee: _selectedFee,
+                  isCustomFee: isCustomFee,
+                  onFeeSelected: (fee) {
+                    setState(() => _selectedFee = fee);
+                  },
+                ),
+              ],
               const SizedBox(height: 16),
               TextFormField(
                 controller: _memoController,
@@ -706,9 +724,12 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         ],
         if (_isIbcTransfer) ...[
           const Divider(),
-          const Text(
-            'IBC transfers may take several minutes to complete and require additional fees on the destination chain.',
-            style: TextStyle(fontStyle: FontStyle.italic),
+          Text(
+            'IBC transfers may take several minutes to complete and require '
+            'additional fees on the destination chain.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
           ),
         ],
       ],
