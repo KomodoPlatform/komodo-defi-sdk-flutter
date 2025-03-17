@@ -190,35 +190,46 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       return KdfStartupResult.alreadyRunning;
     }
 
-    _logCallback('Starting KDF with parameters (Coins Removed): ${{
+    final coinsCount = params.valueOrNull<List<dynamic>>('coins')?.length;
+    _logCallback('Starting KDF with parameters: ${{
       ...params,
-      'coins': <JsonMap>[],
+      'coins': '{{OMITTED $coinsCount ITEMS}}',
       'log_level': logLevel ?? 3,
     }.censored().toJsonString()}');
 
-    _process = await _startKdf(params);
+    try {
+      _process = await _startKdf(params);
 
-    final timer = Stopwatch()..start();
+      final timer = Stopwatch()..start();
 
-    int? exitCode;
-    unawaited(_process?.exitCode.then((code) => exitCode = code));
+      int? exitCode;
+      unawaited(_process?.exitCode.then((code) => exitCode = code));
 
-    while (timer.elapsed.inSeconds < 30) {
-      if (await isRunning() || exitCode != null) {
-        break;
+      // Wait for process to start and RPC to be available
+      while (timer.elapsed.inSeconds < 30) {
+        if (await isRunning() || exitCode != null) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 500));
       }
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-    }
 
-    if (exitCode != null && exitCode != 0) {
-      throw Exception('Error starting KDF: Exit code: $exitCode');
-    }
+      // Check for specific exit codes that might indicate startup failures
+      if (exitCode != null) {
+        return KdfStartupResult.tryFromDefaultInt(exitCode!);
+      }
 
-    if (await isRunning()) {
-      return KdfStartupResult.ok;
-    }
+      if (await isRunning()) {
+        return KdfStartupResult.ok;
+      }
 
-    throw Exception('Error starting KDF: Process not running.');
+      return KdfStartupResult.spawnError;
+    } catch (e) {
+      _logCallback('Error starting KDF: $e');
+      if (e is ArgumentError) {
+        return KdfStartupResult.invalidParams;
+      }
+      return KdfStartupResult.initError;
+    }
   }
 
   @override
@@ -231,12 +242,29 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   @override
   Future<StopStatus> kdfStop() async {
-    if (_process == null) {
-      return StopStatus.notRunning;
+    var stopResult =
+        await _kdfRemote.kdfStop().catchError((_) => StopStatus.errorStopping);
+
+    if (_process == null || _process!.pid == 0) {
+      return stopResult;
     }
 
-    final stopResult = await _kdfRemote.kdfStop();
-    _process!.kill();
+    _process?.kill();
+    // Await until the process is fully terminated
+
+    stopResult = StopStatus.ok;
+
+    if (_process != null && _process!.pid != 0) {
+      await _process?.exitCode.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          _logCallback('Process did not terminate in time.');
+          stopResult = StopStatus.errorStopping;
+
+          return -1; // Not used.
+        },
+      );
+    }
 
     return stopResult;
   }

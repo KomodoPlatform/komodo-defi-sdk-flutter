@@ -163,25 +163,33 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
         startParams.toJsonString().toNativeUtf8().cast<Utf8>();
     // TODO: Implement log level
 
-    try {
-      final result = await compute(
-        _kdfMainIsolate,
-        _KdfMainParams(
-          startParamsPtr.address,
-          _logCallback.nativeFunction.address,
-        ),
-      );
-      return KdfStartupResult.fromDefaultInt(result);
-    } finally {
-      calloc.free(startParamsPtr);
-    }
+    final timer = Stopwatch()..start();
+    final result = await compute(
+      _kdfMainIsolate,
+      _KdfMainParams(
+        startParamsPtr.address,
+        _logCallback.nativeFunction.address,
+      ),
+    ).whenComplete(() => calloc.free(startParamsPtr));
+
+    if (kDebugMode) _log('KDF started in ${timer.elapsedMilliseconds}ms');
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (kDebugMode) _log('KDF started with result: $result');
+    if (kDebugMode) _log('Status after starting KDF: ${_kdfMainStatus()}');
+
+    return KdfStartupResult.fromDefaultInt(result);
   }
 
-  @override
-  Future<MainStatus> kdfMainStatus() async {
+  // Since KDF main status is sync in this implementation, we can use it
+  // internally to check if KDF is running..
+
+  MainStatus _kdfMainStatus() {
     final status = _bindings.mm2_main_status();
     return MainStatus.fromDefaultInt(status);
   }
+
+  @override
+  Future<MainStatus> kdfMainStatus() => Future.sync(_kdfMainStatus);
 
   @override
   Future<StopStatus> kdfStop() async {
@@ -190,8 +198,8 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   }
 
   @override
-  Future<bool> isRunning() async =>
-      (await kdfMainStatus()) == MainStatus.rpcIsUp;
+  Future<bool> isRunning() =>
+      Future.sync(() => _kdfMainStatus() == MainStatus.rpcIsUp);
 
   final Uri _url = Uri.parse('http://localhost:7783');
   final Client _client = Client();
