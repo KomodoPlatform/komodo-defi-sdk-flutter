@@ -5,6 +5,8 @@ library types;
 
 export 'activation/activation_progress.dart';
 export 'activation/activation_strategy.dart';
+export 'addresses/address_conversion_result.dart';
+export 'addresses/address_validation.dart';
 export 'api/api_client.dart';
 export 'assets/asset.dart';
 export 'assets/asset_id.dart';
@@ -35,6 +37,7 @@ export 'protocols/slp/slp_protocol.dart';
 export 'protocols/tendermint/tendermint_protocol.dart';
 export 'protocols/utxo/utxo_protocol.dart';
 export 'protocols/zhtlc/zhtlc_protocol.dart';
+export 'public_key/address_operations.dart';
 export 'public_key/asset_pubkeys.dart';
 export 'public_key/balance_strategy.dart';
 export 'public_key/derivation_method.dart';

@@ -19,6 +19,10 @@ class AssetPubkeys {
   Balance get balance =>
       keys.fold(Balance.zero(), (prev, element) => prev + element.balance);
 
+  bool get isEmpty => keys.isEmpty;
+
+  bool get isNotEmpty => keys.isNotEmpty;
+
   JsonMap toJson() {
     return {
       'assetId': assetId.toJson(),

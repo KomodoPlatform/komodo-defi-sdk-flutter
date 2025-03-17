@@ -133,47 +133,47 @@ sealed class FeeInfo with _$FeeInfo {
 
   /// A convenience getter returning the *total fee* in the coin's main units.
   Decimal get totalFee => switch (this) {
-    FeeInfoUtxoFixed(:final amount) => amount,
-    FeeInfoUtxoPerKbyte(:final amount) => amount,
-    FeeInfoEthGas(:final gasPrice, :final gas) =>
-      gasPrice * Decimal.fromInt(gas),
-    FeeInfoQrc20Gas(:final gasPrice, :final gasLimit) =>
-      gasPrice * Decimal.fromInt(gasLimit),
-    FeeInfoCosmosGas(:final gasPrice, :final gasLimit) =>
-      gasPrice * Decimal.fromInt(gasLimit),
-  };
+        FeeInfoUtxoFixed(:final amount) => amount,
+        FeeInfoUtxoPerKbyte(:final amount) => amount,
+        FeeInfoEthGas(:final gasPrice, :final gas) =>
+          gasPrice * Decimal.fromInt(gas),
+        FeeInfoQrc20Gas(:final gasPrice, :final gasLimit) =>
+          gasPrice * Decimal.fromInt(gasLimit),
+        FeeInfoCosmosGas(:final gasPrice, :final gasLimit) =>
+          gasPrice * Decimal.fromInt(gasLimit),
+      };
 
   /// Convert this [FeeInfo] to a JSON object matching the mmRPC 2.0 docs.
   JsonMap toJson() => switch (this) {
-    FeeInfoUtxoFixed(:final coin, :final amount) => {
-      'type': 'UtxoFixed',
-      'coin': coin,
-      'amount': amount.toString(),
-    },
-    FeeInfoUtxoPerKbyte(:final coin, :final amount) => {
-      'type': 'UtxoPerKbyte',
-      'coin': coin,
-      'amount': amount.toString(),
-    },
-    FeeInfoEthGas(:final coin, :final gasPrice, :final gas) => {
-      'type': 'Eth',
-      'coin': coin,
-      'gas_price': gasPrice.toString(),
-      'gas': gas,
-    },
-    FeeInfoQrc20Gas(:final coin, :final gasPrice, :final gasLimit) => {
-      'type': 'Qrc20Gas',
-      'coin': coin,
-      'gas_price': gasPrice.toString(),
-      'gas_limit': gasLimit,
-    },
-    FeeInfoCosmosGas(:final coin, :final gasPrice, :final gasLimit) => {
-      'type': 'CosmosGas',
-      'coin': coin,
-      'gas_price': gasPrice.toString(),
-      'gas_limit': gasLimit,
-    },
-  };
+        FeeInfoUtxoFixed(:final coin, :final amount) => {
+            'type': 'UtxoFixed',
+            'coin': coin,
+            'amount': amount.toString(),
+          },
+        FeeInfoUtxoPerKbyte(:final coin, :final amount) => {
+            'type': 'UtxoPerKbyte',
+            'coin': coin,
+            'amount': amount.toString(),
+          },
+        FeeInfoEthGas(:final coin, :final gasPrice, :final gas) => {
+            'type': 'Eth',
+            'coin': coin,
+            'gas_price': gasPrice.toString(),
+            'gas': gas,
+          },
+        FeeInfoQrc20Gas(:final coin, :final gasPrice, :final gasLimit) => {
+            'type': 'Qrc20Gas',
+            'coin': coin,
+            'gas_price': gasPrice.toString(),
+            'gas_limit': gasLimit,
+          },
+        FeeInfoCosmosGas(:final coin, :final gasPrice, :final gasLimit) => {
+            'type': 'CosmosGas',
+            'coin': coin,
+            'gas_price': gasPrice.toString(),
+            'gas_limit': gasLimit,
+          },
+      };
 }
 
 /// Extension methods providing Freezed-like functionality
@@ -187,14 +187,14 @@ extension FeeInfoMaybeMap on FeeInfo {
     TResult Function(FeeInfoEthGas value)? ethGas,
     TResult Function(FeeInfoQrc20Gas value)? qrc20Gas,
     TResult Function(FeeInfoCosmosGas value)? cosmosGas,
-  }) => switch (this) {
-    final FeeInfoUtxoFixed fee when utxoFixed != null => utxoFixed(fee),
-    final FeeInfoUtxoPerKbyte fee when utxoPerKbyte != null => utxoPerKbyte(
-      fee,
-    ),
-    final FeeInfoEthGas fee when ethGas != null => ethGas(fee),
-    final FeeInfoQrc20Gas fee when qrc20Gas != null => qrc20Gas(fee),
-    final FeeInfoCosmosGas fee when cosmosGas != null => cosmosGas(fee),
-    _ => orElse(),
-  };
+  }) =>
+      switch (this) {
+        final FeeInfoUtxoFixed fee when utxoFixed != null => utxoFixed(fee),
+        final FeeInfoUtxoPerKbyte fee when utxoPerKbyte != null =>
+          utxoPerKbyte(fee),
+        final FeeInfoEthGas fee when ethGas != null => ethGas(fee),
+        final FeeInfoQrc20Gas fee when qrc20Gas != null => qrc20Gas(fee),
+        final FeeInfoCosmosGas fee when cosmosGas != null => cosmosGas(fee),
+        _ => orElse(),
+      };
 }

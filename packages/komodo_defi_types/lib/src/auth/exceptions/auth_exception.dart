@@ -11,6 +11,7 @@ enum AuthExceptionType {
   walletAlreadyExists,
   registrationNotAllowed,
   internalError,
+  apiConnectionError,
 }
 
 class AuthException implements Exception {
@@ -90,6 +91,8 @@ class AuthException implements Exception {
         return matchingPatterns[AuthExceptionType.walletAlreadyExists]!;
       case AuthExceptionType.registrationNotAllowed:
         return matchingPatterns[AuthExceptionType.registrationNotAllowed]!;
+      case AuthExceptionType.apiConnectionError:
+        return matchingPatterns[AuthExceptionType.apiConnectionError]!;
       // The following types don't originate from the API, so we return empty arrays
       case AuthExceptionType.generalAuthError:
       case AuthExceptionType.unauthorized:
@@ -122,6 +125,10 @@ class AuthException implements Exception {
         ],
         AuthExceptionType.registrationNotAllowed: [
           'wallet creation is disabled',
+        ],
+        AuthExceptionType.apiConnectionError: [
+          'Connection refused',
+          'Connection timed out',
         ],
         // We don't include patterns for the following types as they don't originate from the API
         // AuthExceptionType.generalAuthError
