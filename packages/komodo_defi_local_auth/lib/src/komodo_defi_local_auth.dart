@@ -147,8 +147,8 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     required KomodoDefiFramework kdf,
     required IKdfHostConfig hostConfig,
     bool allowRegistrations = true,
-  })  : _allowRegistrations = allowRegistrations,
-        _authService = KdfAuthService(kdf, hostConfig);
+  }) : _allowRegistrations = allowRegistrations,
+       _authService = KdfAuthService(kdf, hostConfig);
 
   final SecureLocalStorage _secureStorage = SecureLocalStorage();
 
@@ -177,9 +177,7 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
 
     final user = await _findUser(walletName);
     final updatedUser = user.copyWith(
-      walletId: user.walletId.copyWith(
-        authOptions: options,
-      ),
+      walletId: user.walletId.copyWith(authOptions: options),
     );
 
     // Save AuthOptions to secure storage by wallet name
@@ -218,11 +216,6 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     return SecureLocalStorage()
         .getUser(walletName)
         .then((user) => user?.authOptions);
-  }
-
-  Future<AuthOptions?> currentUsersAuthOptions() async {
-    final user = await _authService.getActiveUser();
-    return user == null ? null : storedAuthOptions(user.walletId.name);
   }
 
   @override
@@ -339,10 +332,7 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
   }
 
   @override
-  Future<void> setOrRemoveActiveUserKeyValue(
-    String key,
-    dynamic value,
-  ) async {
+  Future<void> setOrRemoveActiveUserKeyValue(String key, dynamic value) async {
     final activeUser = await _authService.getActiveUser();
 
     if (activeUser == null) throw AuthException.notFound();
@@ -360,9 +350,10 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     if (signedIn != expected) {
       throw AuthException(
         'User is ${signedIn ? 'signed in' : 'not signed in'}.',
-        type: signedIn
-            ? AuthExceptionType.alreadySignedIn
-            : AuthExceptionType.unauthorized,
+        type:
+            signedIn
+                ? AuthExceptionType.alreadySignedIn
+                : AuthExceptionType.unauthorized,
       );
     }
   }

@@ -22,20 +22,20 @@ class MyTxHistoryRequest
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'params': {
-          'coin': coin,
-          'limit': limit,
-          if (historyTarget != null
-              // Bug in the API, it doesn't accept IguanaHistoryTarget. It is
-              // the default target, so we can just skip it.
-              &&
-              historyTarget is! IguanaHistoryTarget)
-            'target': historyTarget!.toJson() ?? historyTarget!.value,
-          if (pagingOptions != null) 'paging_options': pagingOptions!.toJson(),
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'params': {
+      'coin': coin,
+      'limit': limit,
+      if (historyTarget != null
+          // Bug in the API, it doesn't accept IguanaHistoryTarget. It is
+          // the default target, so we can just skip it.
+          &&
+          historyTarget is! IguanaHistoryTarget)
+        'target': historyTarget!.toJson() ?? historyTarget!.value,
+      if (pagingOptions != null) 'paging_options': pagingOptions!.toJson(),
+    },
+  };
 
   @override
   MyTxHistoryResponse parse(Map<String, dynamic> json) =>
@@ -63,17 +63,14 @@ class MyTxHistoryLegacyRequest
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'coin': coin,
-        'limit': limit,
-        if (fromId != null) 'from_id': fromId,
-        'max': max,
-        if (pageNumber != null) 'page_number': pageNumber,
-        'target': {
-          'type': 'account_id',
-          'id': 0,
-        },
-      };
+    ...super.toJson(),
+    'coin': coin,
+    'limit': limit,
+    if (fromId != null) 'from_id': fromId,
+    'max': max,
+    if (pageNumber != null) 'page_number': pageNumber,
+    'target': {'type': 'account_id', 'id': 0},
+  };
 
   @override
   MyTxHistoryResponse parse(Map<String, dynamic> json) =>
@@ -109,26 +106,26 @@ class MyTxHistoryResponse extends BaseResponse {
       total: result.value<int>('total'),
       totalPages: result.value<int>('total_pages'),
       pageNumber: result.valueOrNull<int>('page_number'),
-      transactions: result
-          .value<List<dynamic>>('transactions')
-          .map((e) => TransactionInfo.fromJson(e as JsonMap))
-          .toList(),
+      transactions:
+          result
+              .value<List<dynamic>>('transactions')
+              .map((e) => TransactionInfo.fromJson(e as JsonMap))
+              .toList(),
     );
   }
 
   factory MyTxHistoryResponse.empty() => MyTxHistoryResponse(
-        mmrpc: '2.0',
-        currentBlock: 0,
-        fromId: null,
-        limit: 0,
-        skipped: 0,
-        syncStatus:
-            SyncStatusResponse(state: TransactionSyncStatusEnum.finished),
-        total: 0,
-        totalPages: 0,
-        pageNumber: null,
-        transactions: const [],
-      );
+    mmrpc: '2.0',
+    currentBlock: 0,
+    fromId: null,
+    limit: 0,
+    skipped: 0,
+    syncStatus: SyncStatusResponse(state: TransactionSyncStatusEnum.finished),
+    total: 0,
+    totalPages: 0,
+    pageNumber: null,
+    transactions: const [],
+  );
 
   final int currentBlock;
   final String? fromId;
@@ -142,17 +139,17 @@ class MyTxHistoryResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'current_block': currentBlock,
-          if (fromId != null) 'from_id': fromId,
-          'limit': limit,
-          'skipped': skipped,
-          'sync_status': syncStatus.toJson(),
-          'total': total,
-          'total_pages': totalPages,
-          if (pageNumber != null) 'page_number': pageNumber,
-          'transactions': transactions.map((tx) => tx.toJson()).toList(),
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {
+      'current_block': currentBlock,
+      if (fromId != null) 'from_id': fromId,
+      'limit': limit,
+      'skipped': skipped,
+      'sync_status': syncStatus.toJson(),
+      'total': total,
+      'total_pages': totalPages,
+      if (pageNumber != null) 'page_number': pageNumber,
+      'transactions': transactions.map((tx) => tx.toJson()).toList(),
+    },
+  };
 }

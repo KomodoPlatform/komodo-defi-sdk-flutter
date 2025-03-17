@@ -16,15 +16,15 @@ class GetMnemonicRequest
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'mmrpc': mmrpc,
-        'method': method,
-        'params': {
-          'format': format,
-          if (format == 'plaintext') 'password': password,
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'mmrpc': mmrpc,
+    'method': method,
+    'params': {
+      'format': format,
+      if (format == 'plaintext') 'password': password,
+    },
+  };
 
   @override
   GetMnemonicResponse parse(Map<String, dynamic> json) =>

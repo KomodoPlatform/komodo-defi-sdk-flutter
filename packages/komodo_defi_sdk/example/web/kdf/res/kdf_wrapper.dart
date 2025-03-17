@@ -1,3 +1,6 @@
+// NB! This file is not currently used and will possibly be removed in the
+// future.
+
 // ignore_for_file: avoid_dynamic_calls
 
 import 'dart:async';
@@ -58,15 +61,18 @@ class KdfPlugin {
 
     final completer = Completer<void>();
 
-    final script = (document.createElement('script') as HTMLScriptElement)
-      ..src = 'kdf/kdflib.js'
-      ..onload = () {
-        _libraryLoaded = true;
-        completer.complete();
-      }.toJS
-      ..onerror = (event) {
-        completer.completeError('Failed to load kdflib.js');
-      }.toJS;
+    final script =
+        (document.createElement('script') as HTMLScriptElement)
+          ..src = 'kdf/kdflib.js'
+          ..onload =
+              () {
+                _libraryLoaded = true;
+                completer.complete();
+              }.toJS
+          ..onerror =
+              (event) {
+                completer.completeError('Failed to load kdflib.js');
+              }.toJS;
 
     document.head!.appendChild(script);
 

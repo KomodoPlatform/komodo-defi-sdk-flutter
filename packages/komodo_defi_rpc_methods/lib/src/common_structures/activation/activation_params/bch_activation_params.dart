@@ -20,7 +20,8 @@ class BchActivationParams extends ActivationParams {
 
     return BchActivationParams(
       bchdUrls: json.value<List<dynamic>>('bchd_urls').cast<String>(),
-      mode: base.mode ??
+      mode:
+          base.mode ??
           (throw const FormatException(
             'BCH activation requires mode parameter',
           )),
@@ -37,9 +38,6 @@ class BchActivationParams extends ActivationParams {
 
   @override
   Map<String, dynamic> toRpcParams() {
-    return {
-      ...super.toRpcParams(),
-      'bchd_urls': bchdUrls,
-    };
+    return {...super.toRpcParams(), 'bchd_urls': bchdUrls};
   }
 }

@@ -72,12 +72,12 @@ class HdHistoryTarget implements HistoryTarget {
   }
 
   const HdHistoryTarget.accountId(this.accountId)
-      : type = HistoryTargetType.accountId,
-        addressId = null,
-        chain = null;
+    : type = HistoryTargetType.accountId,
+      addressId = null,
+      chain = null;
 
   HdHistoryTarget.addressId(this.accountId, this.addressId, this.chain)
-      : type = HistoryTargetType.addressId;
+    : type = HistoryTargetType.addressId;
 
   /// Creates a [HistoryTarget] instance from a JSON map.
   factory HdHistoryTarget.fromJson(Map<String, dynamic> json) {
@@ -111,10 +111,7 @@ class HdHistoryTarget implements HistoryTarget {
   /// per the Komodo Defi API documentation.
   @override
   Map<String, dynamic> toJson() {
-    final data = <String, dynamic>{
-      'type': type.value,
-      'account_id': accountId,
-    };
+    final data = <String, dynamic>{'type': type.value, 'account_id': accountId};
 
     if (type == HistoryTargetType.addressId) {
       data['address_id'] = addressId;

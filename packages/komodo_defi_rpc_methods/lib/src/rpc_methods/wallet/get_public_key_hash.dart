@@ -5,13 +5,10 @@ class GetPublicKeyHashRequest
     extends BaseRequest<GetPublicKeyHashResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
   GetPublicKeyHashRequest({required super.rpcPass})
-      : super(method: 'get_public_key_hash', mmrpc: '2.0');
+    : super(method: 'get_public_key_hash', mmrpc: '2.0');
 
   @override
-  Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'params': <JsonMap>{},
-      };
+  Map<String, dynamic> toJson() => {...super.toJson(), 'params': <JsonMap>{}};
 
   @override
   GetPublicKeyHashResponse parse(Map<String, dynamic> json) =>
@@ -19,10 +16,7 @@ class GetPublicKeyHashRequest
 }
 
 class GetPublicKeyHashResponse extends BaseResponse {
-  GetPublicKeyHashResponse({
-    required super.mmrpc,
-    required this.publicKeyHash,
-  });
+  GetPublicKeyHashResponse({required super.mmrpc, required this.publicKeyHash});
 
   factory GetPublicKeyHashResponse.parse(Map<String, dynamic> json) {
     return GetPublicKeyHashResponse(
@@ -35,9 +29,7 @@ class GetPublicKeyHashResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'public_key_hash': publicKeyHash,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {'public_key_hash': publicKeyHash},
+  };
 }

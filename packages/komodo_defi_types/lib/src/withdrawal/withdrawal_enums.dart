@@ -104,6 +104,39 @@ enum WithdrawalFeeType {
   String toJson() => toString();
 }
 
+enum WithdrawalFeePriority {
+  slow,
+  standard,
+  fast;
+
+  @override
+  String toString() {
+    switch (this) {
+      case WithdrawalFeePriority.slow:
+        return 'slow';
+      case WithdrawalFeePriority.standard:
+        return 'standard';
+      case WithdrawalFeePriority.fast:
+        return 'fast';
+    }
+  }
+
+  static WithdrawalFeePriority fromString(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'slow':
+        return WithdrawalFeePriority.slow;
+      case 'standard':
+        return WithdrawalFeePriority.standard;
+      case 'fast':
+        return WithdrawalFeePriority.fast;
+      default:
+        throw ArgumentError('Invalid withdrawal fee priority: $priority');
+    }
+  }
+
+  String toJson() => toString();
+}
+
 enum WithdrawalSourceType {
   hdWallet,
   importedKey,

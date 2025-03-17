@@ -11,8 +11,8 @@ part 'fee_info.freezed.dart';
 /// - EthGas
 /// - Qrc20Gas
 /// - CosmosGas
-@freezed
-class FeeInfo with _$FeeInfo {
+@Freezed()
+sealed class FeeInfo with _$FeeInfo {
   //////////////////////////////////////////////////////////////////////////////
   //  Custom Manual JSON Parsing
   //
@@ -132,50 +132,69 @@ class FeeInfo with _$FeeInfo {
   }) = FeeInfoCosmosGas;
 
   /// A convenience getter returning the *total fee* in the coin's main units.
-  ///
-  /// - For ETH: `gasPrice * gas` => total in ETH
-  /// - For Qrc20, Cosmos: `gasPrice * gasLimit` => total in coin units
-  /// - For UTXO fees: simply `amount`
-  Decimal get totalFee => map(
-        utxoFixed: (fee) => fee.amount,
-        utxoPerKbyte: (fee) => fee.amount,
-        ethGas: (fee) => fee.gasPrice * Decimal.fromInt(fee.gas),
-        qrc20Gas: (fee) => fee.gasPrice * Decimal.fromInt(fee.gasLimit),
-        cosmosGas: (fee) => fee.gasPrice * Decimal.fromInt(fee.gasLimit),
-      );
+  Decimal get totalFee => switch (this) {
+        FeeInfoUtxoFixed(:final amount) => amount,
+        FeeInfoUtxoPerKbyte(:final amount) => amount,
+        FeeInfoEthGas(:final gasPrice, :final gas) =>
+          gasPrice * Decimal.fromInt(gas),
+        FeeInfoQrc20Gas(:final gasPrice, :final gasLimit) =>
+          gasPrice * Decimal.fromInt(gasLimit),
+        FeeInfoCosmosGas(:final gasPrice, :final gasLimit) =>
+          gasPrice * Decimal.fromInt(gasLimit),
+      };
 
   /// Convert this [FeeInfo] to a JSON object matching the mmRPC 2.0 docs.
-  JsonMap toJson() {
-    return map(
-      utxoFixed: (fee) => <String, dynamic>{
-        'type': 'UtxoFixed',
-        'coin': fee.coin,
-        'amount': fee.amount.toString(),
-      },
-      utxoPerKbyte: (fee) => <String, dynamic>{
-        'type': 'UtxoPerKbyte',
-        'coin': fee.coin,
-        'amount': fee.amount.toString(),
-      },
-      ethGas: (fee) => <String, dynamic>{
-        'type': 'Eth',
-        'coin': fee.coin,
-        'gas_price': fee.gasPrice.toString(),
-        'gas': fee.gas,
-        // Optionally: "total_fee": totalFee.toString(),
-      },
-      qrc20Gas: (fee) => <String, dynamic>{
-        'type': 'Qrc20Gas',
-        'coin': fee.coin,
-        'gas_price': fee.gasPrice.toString(),
-        'gas_limit': fee.gasLimit,
-      },
-      cosmosGas: (fee) => <String, dynamic>{
-        'type': 'CosmosGas',
-        'coin': fee.coin,
-        'gas_price': fee.gasPrice.toString(),
-        'gas_limit': fee.gasLimit,
-      },
-    );
-  }
+  JsonMap toJson() => switch (this) {
+        FeeInfoUtxoFixed(:final coin, :final amount) => {
+            'type': 'UtxoFixed',
+            'coin': coin,
+            'amount': amount.toString(),
+          },
+        FeeInfoUtxoPerKbyte(:final coin, :final amount) => {
+            'type': 'UtxoPerKbyte',
+            'coin': coin,
+            'amount': amount.toString(),
+          },
+        FeeInfoEthGas(:final coin, :final gasPrice, :final gas) => {
+            'type': 'Eth',
+            'coin': coin,
+            'gas_price': gasPrice.toString(),
+            'gas': gas,
+          },
+        FeeInfoQrc20Gas(:final coin, :final gasPrice, :final gasLimit) => {
+            'type': 'Qrc20Gas',
+            'coin': coin,
+            'gas_price': gasPrice.toString(),
+            'gas_limit': gasLimit,
+          },
+        FeeInfoCosmosGas(:final coin, :final gasPrice, :final gasLimit) => {
+            'type': 'CosmosGas',
+            'coin': coin,
+            'gas_price': gasPrice.toString(),
+            'gas_limit': gasLimit,
+          },
+      };
+}
+
+/// Extension methods providing Freezed-like functionality
+extension FeeInfoMaybeMap on FeeInfo {
+  /// Equivalent to Freezed's maybeMap functionality using Dart's pattern matching
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    required TResult Function() orElse,
+    TResult Function(FeeInfoUtxoFixed value)? utxoFixed,
+    TResult Function(FeeInfoUtxoPerKbyte value)? utxoPerKbyte,
+    TResult Function(FeeInfoEthGas value)? ethGas,
+    TResult Function(FeeInfoQrc20Gas value)? qrc20Gas,
+    TResult Function(FeeInfoCosmosGas value)? cosmosGas,
+  }) =>
+      switch (this) {
+        final FeeInfoUtxoFixed fee when utxoFixed != null => utxoFixed(fee),
+        final FeeInfoUtxoPerKbyte fee when utxoPerKbyte != null =>
+          utxoPerKbyte(fee),
+        final FeeInfoEthGas fee when ethGas != null => ethGas(fee),
+        final FeeInfoQrc20Gas fee when qrc20Gas != null => qrc20Gas(fee),
+        final FeeInfoCosmosGas fee when cosmosGas != null => cosmosGas(fee),
+        _ => orElse(),
+      };
 }

@@ -17,11 +17,13 @@ class TendermintActivationParams extends ActivationParams {
     final base = ActivationParams.fromConfigJson(json);
 
     return TendermintActivationParams(
-      rpcUrls: json
-          .value<JsonList>('rpc_urls')
-          .map((e) => EvmNode.fromJson(e).url)
-          .toList(),
-      tokensParams: json
+      rpcUrls:
+          json
+              .value<JsonList>('rpc_urls')
+              .map((e) => EvmNode.fromJson(e).url)
+              .toList(),
+      tokensParams:
+          json
               .valueOrNull<List<dynamic>>('tokens_params')
               ?.map((e) => TokensRequest.fromJson(e as JsonMap))
               .toList() ??
@@ -30,9 +32,10 @@ class TendermintActivationParams extends ActivationParams {
       requiredConfirmations: base.requiredConfirmations,
       requiresNotarization: base.requiresNotarization,
       getBalances: json.valueOrNull<bool>('get_balances') ?? true,
-      privKeyPolicy: json.valueOrNull<String>('priv_key_policy') == 'Trezor'
-          ? PrivateKeyPolicy.trezor
-          : PrivateKeyPolicy.contextPrivKey,
+      privKeyPolicy:
+          json.valueOrNull<String>('priv_key_policy') == 'Trezor'
+              ? PrivateKeyPolicy.trezor
+              : PrivateKeyPolicy.contextPrivKey,
       nodes: json.value<JsonList>('rpc_urls').map(EvmNode.fromJson).toList(),
     );
   }
@@ -83,9 +86,7 @@ class TendermintActivationParams extends ActivationParams {
 
 // tendermint_token_activation_params.dart
 class TendermintTokenActivationParams extends ActivationParams {
-  TendermintTokenActivationParams({
-    super.requiredConfirmations = 3,
-  });
+  TendermintTokenActivationParams({super.requiredConfirmations = 3});
 
   factory TendermintTokenActivationParams.fromJson(JsonMap json) {
     final base = ActivationParams.fromConfigJson(json);
@@ -97,8 +98,6 @@ class TendermintTokenActivationParams extends ActivationParams {
 
   @override
   JsonMap toRpcParams() {
-    return {
-      ...super.toRpcParams(),
-    };
+    return {...super.toRpcParams()};
   }
 }

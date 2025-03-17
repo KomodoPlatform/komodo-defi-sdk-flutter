@@ -25,11 +25,11 @@ class LightningActivationParams extends ActivationParams {
 
   @override
   Map<String, dynamic> toRpcParams() => super.toRpcParams().deepMerge({
-        'name': name,
-        'listening_port': listeningPort,
-        'color': color,
-        'payment_retries': paymentRetries,
-        'accept_inbound_channels': acceptInboundChannels,
-        'accept_forwards_to_priv_channels': acceptForwardsToPrivChannels,
-      });
+    'name': name,
+    'listening_port': listeningPort,
+    'color': color,
+    'payment_retries': paymentRetries,
+    'accept_inbound_channels': acceptInboundChannels,
+    'accept_forwards_to_priv_channels': acceptForwardsToPrivChannels,
+  });
 }

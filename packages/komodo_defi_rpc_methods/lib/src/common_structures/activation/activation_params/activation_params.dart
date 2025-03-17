@@ -34,24 +34,29 @@ class ActivationParams implements RpcRequestParams {
 
   /// Creates [ActivationParams] from configuration JSON
   factory ActivationParams.fromConfigJson(JsonMap json) {
-    final mode =
-        ActivationMode.fromConfig(json, type: ActivationModeType.electrum);
+    final mode = ActivationMode.fromConfig(
+      json,
+      type: ActivationModeType.electrum,
+    );
     return ActivationParams(
       requiredConfirmations: json.valueOrNull<int>('required_confirmations'),
       requiresNotarization:
           json.valueOrNull<bool>('requires_notarization') ?? false,
-      privKeyPolicy: json.valueOrNull<String>('priv_key_policy') == 'Trezor'
-          ? PrivateKeyPolicy.trezor
-          : PrivateKeyPolicy.contextPrivKey,
+      privKeyPolicy:
+          json.valueOrNull<String>('priv_key_policy') == 'Trezor'
+              ? PrivateKeyPolicy.trezor
+              : PrivateKeyPolicy.contextPrivKey,
       minAddressesNumber: json.valueOrNull<int>('min_addresses_number'),
-      scanPolicy: json.valueOrNull<String>('scan_policy') == null
-          ? null
-          : ScanPolicy.parse(json.value<String>('scan_policy')),
+      scanPolicy:
+          json.valueOrNull<String>('scan_policy') == null
+              ? null
+              : ScanPolicy.parse(json.value<String>('scan_policy')),
       gapLimit: json.valueOrNull<int>('gap_limit'),
       mode: mode,
       zcashParamsPath: json.valueOrNull<String>('zcash_params_path'),
-      scanBlocksPerIteration:
-          json.valueOrNull<int>('scan_blocks_per_iteration'),
+      scanBlocksPerIteration: json.valueOrNull<int>(
+        'scan_blocks_per_iteration',
+      ),
       scanIntervalMs: json.valueOrNull<int>('scan_interval_ms'),
     );
   }
@@ -188,14 +193,12 @@ enum ActivationModeType {
 
 /// Defines the activation mode for QTUM, BCH, UTXO & ZHTLC coins
 class ActivationMode {
-  ActivationMode({
-    required this.rpc,
-    this.rpcData,
-  }) : assert(
-          (rpc != ActivationModeType.native.value && rpcData != null) ||
-              (rpc == ActivationModeType.native.value && rpcData == null),
-          'rpcData can only be provided for LightWallet or Electrum modes',
-        );
+  ActivationMode({required this.rpc, this.rpcData})
+    : assert(
+        (rpc != ActivationModeType.native.value && rpcData != null) ||
+            (rpc == ActivationModeType.native.value && rpcData == null),
+        'rpcData can only be provided for LightWallet or Electrum modes',
+      );
 
   /// Creates an [ActivationMode] from configuration JSON
   factory ActivationMode.fromConfig(
@@ -204,9 +207,10 @@ class ActivationMode {
   }) {
     return ActivationMode(
       rpc: type.value,
-      rpcData: type == ActivationModeType.native
-          ? null
-          : ActivationRpcData.fromJson(json),
+      rpcData:
+          type == ActivationModeType.native
+              ? null
+              : ActivationRpcData.fromJson(json),
     );
   }
 
@@ -218,9 +222,9 @@ class ActivationMode {
   final ActivationRpcData? rpcData;
 
   JsonMap toJsonRequest() => {
-        'rpc': rpc,
-        if (rpcData != null) 'rpc_data': rpcData!.toJsonRequest(),
-      };
+    'rpc': rpc,
+    if (rpcData != null) 'rpc_data': rpcData!.toJsonRequest(),
+  };
 }
 
 /// Defines how to scan for new addresses in HD wallets
@@ -235,10 +239,10 @@ enum ScanPolicy {
   scan;
 
   static Set<String> get validPolicies => {
-        'do_not_scan',
-        'scan_if_new_wallet',
-        'scan',
-      };
+    'do_not_scan',
+    'scan_if_new_wallet',
+    'scan',
+  };
 
   static bool isValidScanPolicy(String policy) =>
       validPolicies.contains(policy);
@@ -287,22 +291,20 @@ enum ScanPolicy {
 /// Contains information about electrum & lightwallet_d servers for coins being used
 /// in 'Electrum' or 'Light' mode
 class ActivationRpcData {
-  ActivationRpcData({
-    this.lightWalletDServers,
-    this.electrum,
-    this.syncParams,
-  });
+  ActivationRpcData({this.lightWalletDServers, this.electrum, this.syncParams});
 
   /// Creates [ActivationRpcData] from JSON configuration
   factory ActivationRpcData.fromJson(JsonMap json) {
     return ActivationRpcData(
-      lightWalletDServers: json
-          .valueOrNull<List<dynamic>>('light_wallet_d_servers')
-          ?.cast<String>(),
-      electrum: json
-          .valueOrNull<List<dynamic>>('electrum')
-          ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
-          .toList(),
+      lightWalletDServers:
+          json
+              .valueOrNull<List<dynamic>>('light_wallet_d_servers')
+              ?.cast<String>(),
+      electrum:
+          json
+              .valueOrNull<List<dynamic>>('electrum')
+              ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
+              .toList(),
       syncParams: json.valueOrNull<dynamic>('sync_params'),
     );
   }
@@ -321,25 +323,21 @@ class ActivationRpcData {
   /// - date (a unix timestamp)
   final dynamic syncParams;
 
-  bool get isEmpty => [
-        lightWalletDServers,
-        electrum,
-        syncParams,
-      ].every(
-        (element) =>
-            element == null &&
-            (element is List && element.isEmpty ||
-                element is Map && element.isEmpty),
-      );
+  bool get isEmpty => [lightWalletDServers, electrum, syncParams].every(
+    (element) =>
+        element == null &&
+        (element is List && element.isEmpty ||
+            element is Map && element.isEmpty),
+  );
 
   JsonMap toJsonRequest() => {
-        if (lightWalletDServers != null)
-          'light_wallet_d_servers': lightWalletDServers,
-        if (electrum != null) ...{
-          'servers': electrum!.map((e) => e.toJsonRequest()).toList(),
-        },
-        if (syncParams != null) 'sync_params': syncParams,
-      };
+    if (lightWalletDServers != null)
+      'light_wallet_d_servers': lightWalletDServers,
+    if (electrum != null) ...{
+      'servers': electrum!.map((e) => e.toJsonRequest()).toList(),
+    },
+    if (syncParams != null) 'sync_params': syncParams,
+  };
 }
 
 /// Contains information about electrum servers for coins being used in 'Electrum'
@@ -379,9 +377,9 @@ class ActivationServers {
   final bool disableCertVerification;
 
   JsonMap toJsonRequest() => {
-        'url': url,
-        if (wsUrl != null) 'ws_url': wsUrl,
-        'protocol': protocol,
-        'disable_cert_verification': disableCertVerification,
-      };
+    'url': url,
+    if (wsUrl != null) 'ws_url': wsUrl,
+    'protocol': protocol,
+    'disable_cert_verification': disableCertVerification,
+  };
 }

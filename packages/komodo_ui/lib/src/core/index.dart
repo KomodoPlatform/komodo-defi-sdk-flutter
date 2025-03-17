@@ -7,6 +7,7 @@
 /// Core UI components and primitives
 library komodo_ui.core;
 
+export 'feedback/text_stream_builder.dart';
 export 'inputs/address_select_input.dart';
 export 'inputs/divided_button.dart';
 export 'inputs/fee_info_input.dart';

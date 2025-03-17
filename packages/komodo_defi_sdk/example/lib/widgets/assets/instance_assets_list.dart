@@ -51,6 +51,7 @@ class InstanceAssetList extends StatelessWidget {
             itemBuilder: (context, index) {
               final asset = assets[index];
               return AssetItemWidget(
+                key: Key(asset.id.id),
                 asset: asset,
                 authOptions: authOptions,
                 onTap: () => onAssetSelected(asset),

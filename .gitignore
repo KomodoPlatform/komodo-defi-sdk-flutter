@@ -118,3 +118,4 @@ firebase.json
 # /packages/komodo_defi_framework/web/kdf
 
 *.a
+.transformer_invoker

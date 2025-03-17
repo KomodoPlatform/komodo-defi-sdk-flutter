@@ -15,11 +15,11 @@ class LightningPaymentFilter {
   final int? toTimestamp;
 
   Map<String, dynamic> toJson() => {
-        if (status != null) 'status': status,
-        if (paymentType != null) 'payment_type': paymentType,
-        if (fromAmountMsat != null) 'from_amount_msat': fromAmountMsat,
-        if (toAmountMsat != null) 'to_amount_msat': toAmountMsat,
-        if (fromTimestamp != null) 'from_timestamp': fromTimestamp,
-        if (toTimestamp != null) 'to_timestamp': toTimestamp,
-      };
+    if (status != null) 'status': status,
+    if (paymentType != null) 'payment_type': paymentType,
+    if (fromAmountMsat != null) 'from_amount_msat': fromAmountMsat,
+    if (toAmountMsat != null) 'to_amount_msat': toAmountMsat,
+    if (fromTimestamp != null) 'from_timestamp': fromTimestamp,
+    if (toTimestamp != null) 'to_timestamp': toTimestamp,
+  };
 }

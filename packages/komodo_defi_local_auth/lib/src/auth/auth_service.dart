@@ -68,6 +68,10 @@ abstract interface class IAuthService {
   /// is fully integrated with KW. This may be deprecated in the future.
   Future<void> setActiveUserMetadata(JsonMap metadata);
 
+  /// Attempts to restore a user session without requiring password authentication
+  /// Only works if the KDF API is running and the wallet exists
+  Future<void> restoreSession(KdfUser user);
+
   Stream<KdfUser?> get authStateChanges;
   void dispose();
 }
@@ -242,9 +246,8 @@ class KdfAuthService implements IAuthService {
     return _runReadOperation(_getActiveUser);
   }
 
-  AuthOptions get _fallbackAuthOptions => const AuthOptions(
-        derivationMethod: DerivationMethod.hdWallet,
-      );
+  AuthOptions get _fallbackAuthOptions =>
+      const AuthOptions(derivationMethod: DerivationMethod.hdWallet);
 
   @override
   Future<Mnemonic> getMnemonic({
@@ -286,9 +289,7 @@ class KdfAuthService implements IAuthService {
   late final Future<KdfStartupConfig> _noAuthConfig =
       KdfStartupConfig.noAuthStartup(rpcPassword: _hostConfig.rpcPassword);
 
-  Future<bool> verifyEncryptedSeedBip39Compatibility(
-    String password,
-  ) async {
+  Future<bool> verifyEncryptedSeedBip39Compatibility(String password) async {
     final mnemonic = await getMnemonic(
       encrypted: false,
       walletPassword: password,
@@ -323,9 +324,7 @@ class KdfAuthService implements IAuthService {
   }
 
   @override
-  Future<void> setActiveUserMetadata(
-    Map<String, dynamic> metadata,
-  ) async {
+  Future<void> setActiveUserMetadata(Map<String, dynamic> metadata) async {
     final activeUser = await _activeUserOrThrow();
     // TODO: Implement locks for this to avoid this method interfering with
     // more sensitive operations.
@@ -334,5 +333,43 @@ class KdfAuthService implements IAuthService {
 
     final updatedUser = user.copyWith(metadata: metadata);
     await _secureStorage.saveUser(updatedUser);
+  }
+
+  @override
+  Future<void> restoreSession(KdfUser user) async {
+    // Only attempt to restore the session if KDF is running
+    return _runReadOperation(() async {
+      try {
+        // Check if KDF is running
+        if (!await _kdfFramework.isRunning()) {
+          throw AuthException(
+            'KDF API is not running, cannot restore session',
+            type: AuthExceptionType.apiConnectionError,
+          );
+        }
+
+        // Verify the wallet exists in KDF
+        final wallets = await getUsers();
+        final walletExists = wallets.any(
+          (w) => w.walletId.name == user.walletId.name,
+        );
+
+        if (!walletExists) {
+          throw AuthException(
+            'Wallet not found: ${user.walletId.name}',
+            type: AuthExceptionType.walletNotFound,
+          );
+        }
+
+        // Update internal state and emit auth state change
+        _lastEmittedUser = user;
+        _emitAuthStateChange(user);
+      } catch (e) {
+        throw AuthException(
+          'Failed to restore session: $e',
+          type: AuthExceptionType.generalAuthError,
+        );
+      }
+    });
   }
 }

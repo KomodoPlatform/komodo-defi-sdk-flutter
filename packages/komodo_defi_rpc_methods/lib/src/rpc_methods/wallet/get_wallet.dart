@@ -5,9 +5,9 @@ class GetWalletRequest
     extends BaseRequest<GetWalletResponse, GeneralErrorResponse>
     with RequestHandlingMixin<GetWalletResponse, GeneralErrorResponse> {
   GetWalletRequest()
-      // TODO! Migrate to the confirmed rpc method name when the method is
-      // merged into the KDF's `dev` branch.
-      : super(method: 'get_wallet');
+    // TODO! Migrate to the confirmed rpc method name when the method is
+    // merged into the KDF's `dev` branch.
+    : super(method: 'get_wallet');
 
   // @override
   // Map<String, dynamic> toJson() {
@@ -31,16 +31,12 @@ class GetWalletResponse extends BaseResponse {
   // ignore: avoid_unused_constructor_parameters
   @override
   factory GetWalletResponse.parse(Map<String, dynamic> json) {
-    return GetWalletResponse(
-      walletName: json.value<String>('wallet_name'),
-    );
+    return GetWalletResponse(walletName: json.value<String>('wallet_name'));
   }
   final String walletName;
 
   @override
   Map<String, dynamic> toJson() {
-    return {
-      'wallet_name': walletName,
-    };
+    return {'wallet_name': walletName};
   }
 }

@@ -21,8 +21,8 @@ class TokenBalance {
   final String contractAddress;
 
   Map<String, dynamic> toJson() => {
-        'ticker': ticker,
-        'balance': balance.toJson(),
-        'contract_address': contractAddress,
-      };
+    'ticker': ticker,
+    'balance': balance.toJson(),
+    'contract_address': contractAddress,
+  };
 }

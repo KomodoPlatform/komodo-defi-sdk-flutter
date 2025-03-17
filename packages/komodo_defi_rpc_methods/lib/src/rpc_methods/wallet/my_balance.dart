@@ -4,18 +4,14 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 class MyBalanceRequest
     extends BaseRequest<MyBalanceResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  MyBalanceRequest({
-    required String rpcPass,
-    required this.coin,
-  }) : super(method: 'my_balance', rpcPass: rpcPass, mmrpc: null);
+  MyBalanceRequest({required String rpcPass, required this.coin})
+    : super(method: 'my_balance', rpcPass: rpcPass, mmrpc: null);
 
   final String coin;
 
   @override
   Map<String, dynamic> toJson() {
-    return super.toJson().deepMerge({
-      'coin': coin,
-    });
+    return super.toJson().deepMerge({'coin': coin});
   }
 
   @override

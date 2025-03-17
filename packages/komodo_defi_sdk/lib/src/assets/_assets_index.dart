@@ -8,5 +8,5 @@ export 'asset_history_storage.dart';
 export 'asset_lookup.dart';
 export 'asset_manager.dart';
 export 'asset_pubkey_extensions.dart';
-export 'balance_manager.dart';
+export 'custom_asset_history_storage.dart';
 export 'legacy_asset_extensions.dart';

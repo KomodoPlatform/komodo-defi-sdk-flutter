@@ -31,14 +31,15 @@ class AssetSymbol {
   String get configSymbol => symbolFromConfigId(assetConfigId);
 
   List<String?> get symbolPriority => [
-        liveCoinWatchId,
-        coinPaprikaId,
-        coinGeckoId,
-        binanceId,
-        configSymbol,
-      ];
+    configSymbol,
+    coinGeckoId,
+    liveCoinWatchId,
+    coinPaprikaId,
+    binanceId,
+  ];
 
-  String get common => symbolPriority.firstWhere((e) => e != null)!;
+  String get common =>
+      symbolPriority.firstWhere((e) => e != null && e.isNotEmpty)!;
 
   static String symbolFromConfigId(String configId) {
     if (_configToSymbolCache.containsKey(configId)) {
@@ -57,11 +58,11 @@ class AssetSymbol {
   }
 
   JsonMap toJson() => {
-        'coinpaprika_id': coinPaprikaId,
-        'coingecko_id': coinGeckoId,
-        'livecoinwatch_id': liveCoinWatchId,
-        'binance_id': binanceId,
-      };
+    'coinpaprika_id': coinPaprikaId,
+    'coingecko_id': coinGeckoId,
+    'livecoinwatch_id': liveCoinWatchId,
+    'binance_id': binanceId,
+  };
 }
 
 final Map<String, String> _configToSymbolCache = {};

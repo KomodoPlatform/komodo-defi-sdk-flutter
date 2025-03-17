@@ -7,23 +7,18 @@ class TaskStatusRequest
     required this.taskId,
     required super.rpcPass,
     required super.method,
-  }) : super(
-          mmrpc: '2.0',
-        );
+  }) : super(mmrpc: '2.0');
 
   final int taskId;
 
   @override
-  Map<String, dynamic> toJson() => super.toJson()
-    ..addAll({
-      'userpass': rpcPass,
-      'mmrpc': mmrpc,
-      'method': method,
-      'params': {
-        'task_id': taskId,
-        'forget_if_finished': false,
-      },
-    });
+  Map<String, dynamic> toJson() =>
+      super.toJson()..addAll({
+        'userpass': rpcPass,
+        'mmrpc': mmrpc,
+        'method': method,
+        'params': {'task_id': taskId, 'forget_if_finished': false},
+      });
 
   @override
   TaskStatusResponse parseResponse(String responseBody) {
@@ -74,10 +69,7 @@ class TaskStatusResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'status': status,
-          'details': details,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {'status': status, 'details': details},
+  };
 }

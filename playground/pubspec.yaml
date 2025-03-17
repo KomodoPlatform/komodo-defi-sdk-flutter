@@ -52,7 +52,6 @@ dependencies:
 
   komodo_defi_types:
     path: ../packages/komodo_defi_types
-  postman_collection: ^0.0.9
   shared_preferences: ^2.3.1
   shelf: ^1.4.1
   shelf_proxy: ^1.0.4

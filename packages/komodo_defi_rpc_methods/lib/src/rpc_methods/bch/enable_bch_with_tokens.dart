@@ -24,13 +24,13 @@ class EnableBchWithTokensResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'current_block': currentBlock,
-          'bch_addresses_infos': bchAddressesInfos,
-          'slp_addresses_infos': slpAddressesInfos,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {
+      'current_block': currentBlock,
+      'bch_addresses_infos': bchAddressesInfos,
+      'slp_addresses_infos': slpAddressesInfos,
+    },
+  };
 }
 
 class EnableBchWithTokensRequest
@@ -45,11 +45,11 @@ class EnableBchWithTokensRequest
     this.getBalances = true,
     this.utxoMergeParams,
   }) : super(
-          method: 'enable_bch_with_tokens',
-          rpcPass: rpcPass,
-          mmrpc: '2.0',
-          params: activationParams,
-        );
+         method: 'enable_bch_with_tokens',
+         rpcPass: rpcPass,
+         mmrpc: '2.0',
+         params: activationParams,
+       );
 
   final String ticker;
   final BchActivationParams activationParams;
@@ -60,17 +60,16 @@ class EnableBchWithTokensRequest
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {
-          'ticker': ticker,
-          ...activationParams.toRpcParams(),
-          'slp_tokens_requests':
-              slpTokensRequests.map((e) => e.toJson()).toList(),
-          if (addressFormat != null) 'address_format': addressFormat!.toJson(),
-          'get_balances': getBalances,
-          if (utxoMergeParams != null)
-            'utxo_merge_params': utxoMergeParams!.toJson(),
-        },
-      });
+    'params': {
+      'ticker': ticker,
+      ...activationParams.toRpcParams(),
+      'slp_tokens_requests': slpTokensRequests.map((e) => e.toJson()).toList(),
+      if (addressFormat != null) 'address_format': addressFormat!.toJson(),
+      'get_balances': getBalances,
+      if (utxoMergeParams != null)
+        'utxo_merge_params': utxoMergeParams!.toJson(),
+    },
+  });
 
   @override
   EnableBchWithTokensResponse parse(Map<String, dynamic> json) =>

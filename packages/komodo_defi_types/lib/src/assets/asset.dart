@@ -6,6 +6,7 @@ class Asset extends Equatable {
   const Asset({
     required this.id,
     required this.protocol,
+    required this.isWalletOnly,
   });
 
   factory Asset.fromJsonWithId(JsonMap json, {required AssetId assetId}) {
@@ -15,13 +16,21 @@ class Asset extends Equatable {
       requestedType: assetId.subClass,
     );
 
-    return Asset(id: assetId, protocol: protocol);
+    return Asset(
+      id: assetId,
+      protocol: protocol,
+      isWalletOnly: json.valueOrNull<bool>('wallet_only') ?? false,
+    );
   }
 
   factory Asset.fromJson(JsonMap json) {
     final assetId = AssetId.parse(json, knownIds: const {});
     final protocol = ProtocolClass.fromJson(json);
-    return Asset(id: assetId, protocol: protocol);
+    return Asset(
+      id: assetId,
+      protocol: protocol,
+      isWalletOnly: json.valueOrNull<bool>('wallet_only') ?? false,
+    );
   }
 
   /// Creates a variant of this asset with a different protocol type
@@ -34,6 +43,7 @@ class Asset extends Equatable {
     return Asset(
       id: id.copyWith(subClass: protocolType),
       protocol: variantProtocol,
+      isWalletOnly: isWalletOnly,
     );
   }
 
@@ -47,15 +57,17 @@ class Asset extends Equatable {
 
   final AssetId id;
   final ProtocolClass protocol;
+  final bool isWalletOnly;
 
   JsonMap toJson() => {
-        ...protocol.toJson(),
-        ...id.toJson(),
-      };
+    ...protocol.toJson(),
+    ...id.toJson(),
+    'wallet_only': isWalletOnly,
+  };
 
   @override
-  List<Object?> get props => [id, protocol];
+  List<Object?> get props => [id, protocol, isWalletOnly];
 
   @override
-  String toString() => 'Asset($id)';
+  String toString() => 'Asset($id, isWalletOnly: $isWalletOnly)';
 }

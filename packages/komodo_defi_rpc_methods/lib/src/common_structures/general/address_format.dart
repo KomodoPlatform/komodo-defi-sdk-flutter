@@ -1,10 +1,7 @@
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class AddressFormat {
-  const AddressFormat({
-    required this.format,
-    required this.network,
-  });
+  const AddressFormat({required this.format, required this.network});
 
   factory AddressFormat.fromCoinSubClass(
     CoinSubClass subClass, {
@@ -41,9 +38,9 @@ class AddressFormat {
   final String network;
 
   Map<String, dynamic> toJson() => {
-        'format': format,
-        if (network.isNotEmpty) 'network': network,
-      };
+    'format': format,
+    if (network.isNotEmpty) 'network': network,
+  };
 }
 
 /// The address format to which the input address should be converted.

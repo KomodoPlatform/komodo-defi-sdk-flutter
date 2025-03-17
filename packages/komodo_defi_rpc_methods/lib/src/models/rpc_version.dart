@@ -34,8 +34,6 @@ enum RpcVersion {
 
   JsonMap get toParamJson {
     final version = toParamString;
-    return {
-      if (version != null) _paramKey: version,
-    };
+    return {if (version != null) _paramKey: version};
   }
 }

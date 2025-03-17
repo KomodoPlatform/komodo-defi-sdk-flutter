@@ -9,10 +9,12 @@ class CounterpartyChannelConfig {
 
   factory CounterpartyChannelConfig.fromJson(Map<String, dynamic> json) {
     return CounterpartyChannelConfig(
-      outboundChannelsConfirmations:
-          json.valueOrNull<int?>('outbound_channels_confirmations'),
-      forceAnnouncedChannelPreference:
-          json.valueOrNull<bool?>('force_announced_channel_preference'),
+      outboundChannelsConfirmations: json.valueOrNull<int?>(
+        'outbound_channels_confirmations',
+      ),
+      forceAnnouncedChannelPreference: json.valueOrNull<bool?>(
+        'force_announced_channel_preference',
+      ),
       ourLocktimeLimit: json.valueOrNull<int?>('our_locktime_limit'),
     );
   }

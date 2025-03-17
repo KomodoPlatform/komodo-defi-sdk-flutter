@@ -4,7 +4,6 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
-import 'package:komodo_defi_sdk/src/assets/custom_asset_history_storage.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mutex/mutex.dart';
 
@@ -31,15 +30,17 @@ class ActivationManager {
   bool _isDisposed = false;
 
   /// Helper for mutex-protected operations with timeout
-  Future<T> _protectedOperation<T>(
-    Future<T> Function() operation,
-  ) {
-    return _activationMutex.protect(operation).timeout(
+  Future<T> _protectedOperation<T>(Future<T> Function() operation) {
+    return _activationMutex
+        .protect(operation)
+        .timeout(
           _operationTimeout,
-          onTimeout: () => throw TimeoutException(
-            'Operation timed out',
-            _operationTimeout,
-          ),
+          onTimeout:
+              () =>
+                  throw TimeoutException(
+                    'Operation timed out',
+                    _operationTimeout,
+                  ),
         );
   }
 
@@ -72,10 +73,13 @@ class ActivationManager {
         continue;
       }
 
-      final parentAsset = group.parentId == null
-          ? null
-          : _assetLookup.fromId(group.parentId!) ??
-              (throw StateError('Parent asset ${group.parentId} not found'));
+      final parentAsset =
+          group.parentId == null
+              ? null
+              : _assetLookup.fromId(group.parentId!) ??
+                  (throw StateError(
+                    'Parent asset ${group.parentId} not found',
+                  ));
 
       yield ActivationProgress(
         status: 'Starting activation for ${group.primary.id.name}...',
@@ -121,15 +125,18 @@ class ActivationManager {
     try {
       final enabledCoins =
           await _client.rpc.generalActivation.getEnabledCoins();
-      final enabledAssetIds = enabledCoins.result
-          .map((coin) => _assetLookup.findAssetsByTicker(coin.ticker))
-          .expand((assets) => assets)
-          .map((asset) => asset.id)
-          .toSet();
+      final enabledAssetIds =
+          enabledCoins.result
+              .map((coin) => _assetLookup.findAssetsByTicker(coin.ticker))
+              .expand((assets) => assets)
+              .map((asset) => asset.id)
+              .toSet();
 
       final isActive = enabledAssetIds.contains(group.primary.id);
-      final childrenActive = group.children
-              ?.every((child) => enabledAssetIds.contains(child.id)) ??
+      final childrenActive =
+          group.children?.every(
+            (child) => enabledAssetIds.contains(child.id),
+          ) ??
           true;
 
       if (isActive && childrenActive) {
@@ -154,9 +161,12 @@ class ActivationManager {
   /// Register new activation attempt
   Future<Completer<void>?> _registerActivation(AssetId assetId) async {
     return _protectedOperation(() async {
+      // Return the existing completer if activation is already in progress
+      // This ensures subsequent callers properly wait for the activation to complete
       if (_activationCompleters.containsKey(assetId)) {
-        return null;
+        return _activationCompleters[assetId];
       }
+
       final completer = Completer<void>();
       _activationCompleters[assetId] = completer;
       return completer;
@@ -180,10 +190,7 @@ class ActivationManager {
         final allAssets = [group.primary, ...(group.children?.toList() ?? [])];
         for (final asset in allAssets) {
           if (asset.protocol.isCustomToken) {
-            await _customTokenHistory.addAssetToWallet(
-              user.walletId,
-              asset,
-            );
+            await _customTokenHistory.addAssetToWallet(user.walletId, asset);
           }
         }
       }
@@ -193,9 +200,7 @@ class ActivationManager {
       }
     } else {
       if (!completer.isCompleted) {
-        completer.completeError(
-          progress.errorMessage ?? 'Unknown error',
-        );
+        completer.completeError(progress.errorMessage ?? 'Unknown error');
       }
     }
   }
@@ -260,14 +265,12 @@ class ActivationManager {
 
 /// Internal class for grouping related assets
 class _AssetGroup {
-  _AssetGroup({
-    required this.primary,
-    this.children,
-  }) : assert(
-          children == null ||
-              children.every((asset) => asset.id.parentId == primary.id),
-          'All child assets must have the parent asset as their parent',
-        );
+  _AssetGroup({required this.primary, this.children})
+    : assert(
+        children == null ||
+            children.every((asset) => asset.id.parentId == primary.id),
+        'All child assets must have the parent asset as their parent',
+      );
 
   final Asset primary;
   final Set<Asset>? children;
@@ -283,18 +286,12 @@ class _AssetGroup {
         // Child asset
         final group = groups.putIfAbsent(
           asset.id.parentId!,
-          () => _AssetGroup(
-            primary: asset,
-            children: {},
-          ),
+          () => _AssetGroup(primary: asset, children: {}),
         );
         group.children?.add(asset);
       } else {
         // Primary asset
-        groups.putIfAbsent(
-          asset.id,
-          () => _AssetGroup(primary: asset),
-        );
+        groups.putIfAbsent(asset.id, () => _AssetGroup(primary: asset));
       }
     }
 

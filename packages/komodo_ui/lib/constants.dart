@@ -7,4 +7,4 @@
 /// Global constants and theme definitions
 library komodo_ui.constants;
 
-export 'package:flutter/material.dart' show Colors, TextTheme, ThemeData;
+export 'package:flutter/material.dart' show ThemeData, Colors, TextTheme;

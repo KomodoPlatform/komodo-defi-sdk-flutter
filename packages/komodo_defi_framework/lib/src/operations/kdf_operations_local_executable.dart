@@ -194,18 +194,20 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       return KdfStartupResult.alreadyRunning;
     }
 
-    _logCallback('Starting KDF with parameters (Coins Removed): ${{
+    final coinsCount = params.valueOrNull<List<dynamic>>('coins')?.length;
+    _logCallback('Starting KDF with parameters: ${{
       ...params,
-      'coins': <JsonMap>[],
+      'coins': '{{OMITTED $coinsCount ITEMS}}',
       'log_level': logLevel ?? 3,
     }.censored().toJsonString()}');
 
-    _process = await _startKdf(params);
+    try {
+      _process = await _startKdf(params);
 
-    final timer = Stopwatch()..start();
+      final timer = Stopwatch()..start();
 
-    int? exitCode;
-    unawaited(_process?.exitCode.then((code) => exitCode = code));
+      int? exitCode;
+      unawaited(_process?.exitCode.then((code) => exitCode = code));
 
     while (timer.elapsed < _startupTimeout) {
       if (await isRunning()) {
@@ -246,8 +248,11 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   @override
   Future<StopStatus> kdfStop() async {
-    if (_process == null) {
-      return StopStatus.notRunning;
+    var stopResult =
+        await _kdfRemote.kdfStop().catchError((_) => StopStatus.errorStopping);
+
+    if (_process == null || _process!.pid == 0) {
+      return stopResult;
     }
 
     _logCallback('Starting KDF process cleanup');

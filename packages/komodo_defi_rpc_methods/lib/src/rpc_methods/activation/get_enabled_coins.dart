@@ -7,7 +7,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 class GetEnabledCoinsRequest
     extends BaseRequest<GetEnabledCoinsResponse, GeneralErrorResponse> {
   GetEnabledCoinsRequest({super.rpcPass})
-      : super(method: 'get_enabled_coins', mmrpc: '2.0');
+    : super(method: 'get_enabled_coins', mmrpc: '2.0');
 
   @override
   GetEnabledCoinsResponse parseResponse(String responseBody) {
@@ -16,18 +16,16 @@ class GetEnabledCoinsRequest
 }
 
 class GetEnabledCoinsResponse extends BaseResponse {
-  GetEnabledCoinsResponse({
-    required super.mmrpc,
-    required this.result,
-  });
+  GetEnabledCoinsResponse({required super.mmrpc, required this.result});
 
   factory GetEnabledCoinsResponse.fromJson(Map<String, dynamic> json) {
     return GetEnabledCoinsResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
-      result: json
-          .value<JsonList>('result', 'coins')
-          .map(EnabledCoinInfo.fromJson)
-          .toList(),
+      result:
+          json
+              .value<JsonList>('result', 'coins')
+              .map(EnabledCoinInfo.fromJson)
+              .toList(),
     );
   }
 
@@ -35,26 +33,20 @@ class GetEnabledCoinsResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'result': result.map((e) => e.toJson()).toList(),
-      };
+    'result': result.map((e) => e.toJson()).toList(),
+  };
 }
 
 // TODO? Move to common structures?
 
 class EnabledCoinInfo {
-  EnabledCoinInfo({
-    required this.ticker,
-  });
+  EnabledCoinInfo({required this.ticker});
 
   factory EnabledCoinInfo.fromJson(Map<String, dynamic> json) {
-    return EnabledCoinInfo(
-      ticker: json.value<String>('ticker'),
-    );
+    return EnabledCoinInfo(ticker: json.value<String>('ticker'));
   }
 
   final String ticker;
 
-  Map<String, dynamic> toJson() => {
-        'ticker': ticker,
-      };
+  Map<String, dynamic> toJson() => {'ticker': ticker};
 }

@@ -6,7 +6,7 @@ class LegacyGetEnabledCoinsRequest
     extends BaseRequest<LegacyGetEnabledCoinsResponse, GeneralErrorResponse> {
   @Deprecated('Use V2 GetEnabledCoinsRequest')
   LegacyGetEnabledCoinsRequest({super.rpcPass})
-      : super(method: 'get_enabled_coins', mmrpc: null);
+    : super(method: 'get_enabled_coins', mmrpc: null);
 
   @override
   LegacyGetEnabledCoinsResponse parseResponse(String responseBody) {
@@ -15,18 +15,16 @@ class LegacyGetEnabledCoinsRequest
 }
 
 class LegacyGetEnabledCoinsResponse extends BaseResponse {
-  LegacyGetEnabledCoinsResponse({
-    required super.mmrpc,
-    required this.result,
-  });
+  LegacyGetEnabledCoinsResponse({required super.mmrpc, required this.result});
 
   factory LegacyGetEnabledCoinsResponse.fromJson(Map<String, dynamic> json) {
     return LegacyGetEnabledCoinsResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
-      result: json
-          .value<JsonList>('result')
-          .map(LegacyEnabledCoinInfo.fromJson)
-          .toList(),
+      result:
+          json
+              .value<JsonList>('result')
+              .map(LegacyEnabledCoinInfo.fromJson)
+              .toList(),
     );
   }
 
@@ -34,15 +32,12 @@ class LegacyGetEnabledCoinsResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'result': result.map((e) => e.toJson()).toList(),
-      };
+    'result': result.map((e) => e.toJson()).toList(),
+  };
 }
 
 class LegacyEnabledCoinInfo {
-  LegacyEnabledCoinInfo({
-    required this.address,
-    required this.ticker,
-  });
+  LegacyEnabledCoinInfo({required this.address, required this.ticker});
 
   factory LegacyEnabledCoinInfo.fromJson(Map<String, dynamic> json) {
     return LegacyEnabledCoinInfo(
@@ -54,8 +49,5 @@ class LegacyEnabledCoinInfo {
   final String address;
   final String ticker;
 
-  Map<String, dynamic> toJson() => {
-        'address': address,
-        'ticker': ticker,
-      };
+  Map<String, dynamic> toJson() => {'address': address, 'ticker': ticker};
 }

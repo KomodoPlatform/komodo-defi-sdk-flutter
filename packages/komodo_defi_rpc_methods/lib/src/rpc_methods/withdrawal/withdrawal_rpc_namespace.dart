@@ -28,9 +28,7 @@ class WithdrawMethodsNamespace extends BaseRpcMethodNamespace {
   // requests and since the objective for the RPC methods is to be as close to
   // the API as possible.
   Future<WithdrawInitResponse> init(WithdrawParameters params) {
-    return execute(
-      WithdrawInitRequest(rpcPass: rpcPass ?? '', params: params),
-    );
+    return execute(WithdrawInitRequest(rpcPass: rpcPass ?? '', params: params));
   }
 
   /// Get status of a withdrawal task
@@ -50,10 +48,7 @@ class WithdrawMethodsNamespace extends BaseRpcMethodNamespace {
   /// Cancel a withdrawal task
   Future<WithdrawCancelResponse> cancel(int taskId) {
     return execute(
-      WithdrawCancelRequest(
-        rpcPass: rpcPass ?? '',
-        taskId: taskId,
-      ),
+      WithdrawCancelRequest(rpcPass: rpcPass ?? '', taskId: taskId),
     );
   }
 

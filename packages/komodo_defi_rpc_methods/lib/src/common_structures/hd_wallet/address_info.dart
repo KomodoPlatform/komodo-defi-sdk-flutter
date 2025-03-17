@@ -14,9 +14,7 @@ class AddressInfo {
       address: json.value<String>('address'),
       derivationPath: json.value<String>('derivation_path'),
       chain: json.value<String>('chain'),
-      balance: TokenBalanceMap.fromJson(
-        json.value<JsonMap>('balance'),
-      ),
+      balance: TokenBalanceMap.fromJson(json.value<JsonMap>('balance')),
     );
   }
 
@@ -26,9 +24,9 @@ class AddressInfo {
   final TokenBalanceMap balance;
 
   JsonMap toJson() => {
-        'address': address,
-        'derivation_path': derivationPath,
-        'chain': chain,
-        'balance': balance.toJson(),
-      };
+    'address': address,
+    'derivation_path': derivationPath,
+    'chain': chain,
+    'balance': balance.toJson(),
+  };
 }

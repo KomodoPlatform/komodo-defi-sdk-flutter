@@ -19,7 +19,8 @@ class EthWithTokensActivationParams extends ActivationParams {
       nodes: json.value<List<JsonMap>>('nodes').map(EvmNode.fromJson).toList(),
       swapContractAddress: json.value<String>('swap_contract_address'),
       fallbackSwapContract: json.value<String>('fallback_swap_contract'),
-      erc20Tokens: json
+      erc20Tokens:
+          json
               .valueOrNull<List<JsonMap>>('erc20_tokens_requests')
               ?.map(TokensRequest.fromJson)
               .toList() ??

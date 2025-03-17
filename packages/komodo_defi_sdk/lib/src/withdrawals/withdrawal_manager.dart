@@ -1,23 +1,17 @@
 import 'dart:async';
 
 import 'package:decimal/decimal.dart';
-import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
-import 'package:komodo_defi_sdk/src/rpc/rpc_task_buddy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manages asset withdrawals using task-based API
 class WithdrawalManager {
-  WithdrawalManager(
-    this._client,
-    this._auth,
-    this._assetManager,
-  );
-  final ApiClient _client;
+  WithdrawalManager(this._client, this._assetProvider, this._activationManager);
 
-  final KomodoDefiLocalAuth _auth;
-  final AssetManager _assetManager;
+  final ApiClient _client;
+  final IAssetProvider _assetProvider;
+  final ActivationManager _activationManager;
   final _activeWithdrawals = <int, StreamController<WithdrawalProgress>>{};
 
   /// Cancel an active withdrawal task
@@ -48,12 +42,14 @@ class WithdrawalManager {
     WithdrawParameters parameters,
   ) async {
     try {
-      final stream = (await _client.rpc.withdraw.init(parameters))
-          .watch<WithdrawStatusResponse>(
-        getTaskStatus: (int taskId) =>
-            _client.rpc.withdraw.status(taskId, forgetIfFinished: false),
-        isTaskComplete: (WithdrawStatusResponse status) =>
-            status.status != 'InProgress',
+      final stream = (await _client.rpc.withdraw.init(
+        parameters,
+      )).watch<WithdrawStatusResponse>(
+        getTaskStatus:
+            (int taskId) =>
+                _client.rpc.withdraw.status(taskId, forgetIfFinished: false),
+        isTaskComplete:
+            (WithdrawStatusResponse status) => status.status != 'InProgress',
       );
 
       final lastStatus = await stream.last;
@@ -88,24 +84,31 @@ class WithdrawalManager {
   Stream<WithdrawalProgress> withdraw(WithdrawParameters parameters) async* {
     int? taskId;
     try {
-      await _assetManager
-          // ignore: deprecated_member_use_from_same_package
-          .activateAsset(
-            _assetManager.findAssetsByTicker(parameters.asset).single,
-          )
-          .last;
+      final asset = _assetProvider.findAssetsByTicker(parameters.asset).single;
+      final activationStatus =
+          await _activationManager.activateAsset(asset).last;
+
+      if (activationStatus.isComplete && !activationStatus.isSuccess) {
+        throw WithdrawalException(
+          'Failed to activate asset ${parameters.asset}',
+          WithdrawalErrorCode.unknownError,
+        );
+      }
 
       // Initialize withdrawal task
       final initResponse = await _client.rpc.withdraw.init(parameters);
       taskId = initResponse.taskId;
-
       WithdrawStatusResponse? lastProgress;
 
       await for (final status in initResponse.watch<WithdrawStatusResponse>(
-        getTaskStatus: (int taskId) async => lastProgress =
-            await _client.rpc.withdraw.status(taskId, forgetIfFinished: false),
-        isTaskComplete: (WithdrawStatusResponse status) =>
-            status.status != 'InProgress',
+        getTaskStatus:
+            (int taskId) async =>
+                lastProgress = await _client.rpc.withdraw.status(
+                  taskId,
+                  forgetIfFinished: false,
+                ),
+        isTaskComplete:
+            (WithdrawStatusResponse status) => status.status != 'InProgress',
       )) {
         if (status.status == 'Error') {
           yield* Stream.error(
@@ -116,9 +119,7 @@ class WithdrawalManager {
           );
           return;
         }
-
         yield _mapStatusToProgress(status);
-
         // Break if we have a successful result to handle tx broadcast
         if (status.status == 'Ok' && status.details is WithdrawResult) {
           break;
@@ -129,13 +130,11 @@ class WithdrawalManager {
       if (lastProgress?.status == 'Ok' &&
           lastProgress?.details is WithdrawResult) {
         final details = lastProgress!.details as WithdrawResult;
-
         try {
           final response = await _client.rpc.withdraw.sendRawTransaction(
             coin: parameters.asset,
             txHex: details.txHex,
           );
-
           yield WithdrawalProgress(
             status: WithdrawalStatus.complete,
             message: 'Withdrawal complete',
@@ -145,7 +144,8 @@ class WithdrawalManager {
               coin: parameters.asset,
               toAddress: parameters.toAddress,
               fee: details.fee,
-              kmdRewardsEligible: details.kmdRewards != null &&
+              kmdRewardsEligible:
+                  details.kmdRewards != null &&
                   Decimal.parse(details.kmdRewards!.amount) > Decimal.zero,
             ),
           );
@@ -204,7 +204,8 @@ class WithdrawalManager {
           coin: result.coin,
           toAddress: result.to.first,
           fee: result.fee,
-          kmdRewardsEligible: result.kmdRewards != null &&
+          kmdRewardsEligible:
+              result.kmdRewards != null &&
               Decimal.parse(result.kmdRewards!.amount) > Decimal.zero,
         ),
       );

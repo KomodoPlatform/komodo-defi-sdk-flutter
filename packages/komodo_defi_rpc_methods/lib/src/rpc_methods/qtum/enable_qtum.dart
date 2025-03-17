@@ -7,10 +7,7 @@ class TaskEnableQtumInit
     required this.ticker,
     required this.params,
     super.rpcPass,
-  }) : super(
-          method: 'task::enable_qtum::init',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'task::enable_qtum::init', mmrpc: '2.0');
 
   final String ticker;
 
@@ -20,15 +17,12 @@ class TaskEnableQtumInit
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'mmrpc': mmrpc,
-        'method': method,
-        'params': {
-          'ticker': ticker,
-          'activation_params': params.toRpcParams(),
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'mmrpc': mmrpc,
+    'method': method,
+    'params': {'ticker': ticker, 'activation_params': params.toRpcParams()},
+  };
 
   @override
   NewTaskResponse parseResponse(String responseBody) {
@@ -46,25 +40,19 @@ class TaskEnableQtumStatus
     required this.taskId,
     this.forgetIfFinished = true,
     super.rpcPass,
-  }) : super(
-          method: 'task::enable_qtum::status',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'task::enable_qtum::status', mmrpc: '2.0');
 
   final int taskId;
   final bool forgetIfFinished;
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'mmrpc': mmrpc,
-        'method': method,
-        'params': {
-          'task_id': taskId,
-          'forget_if_finished': forgetIfFinished,
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'mmrpc': mmrpc,
+    'method': method,
+    'params': {'task_id': taskId, 'forget_if_finished': forgetIfFinished},
+  };
 
   @override
   TaskStatusResponse parseResponse(String responseBody) {
@@ -83,10 +71,7 @@ class TaskEnableQtumUserAction
     required this.actionType,
     required this.pin,
     super.rpcPass,
-  }) : super(
-          method: 'task::enable_qtum::user_action',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'task::enable_qtum::user_action', mmrpc: '2.0');
 
   final int taskId;
   final String actionType;
@@ -94,18 +79,15 @@ class TaskEnableQtumUserAction
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'mmrpc': mmrpc,
-        'method': method,
-        'params': {
-          'task_id': taskId,
-          'user_action': {
-            'action_type': actionType,
-            'pin': pin,
-          },
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'mmrpc': mmrpc,
+    'method': method,
+    'params': {
+      'task_id': taskId,
+      'user_action': {'action_type': actionType, 'pin': pin},
+    },
+  };
 
   @override
   UserActionResponse parseResponse(String responseBody) {
@@ -119,10 +101,7 @@ class TaskEnableQtumUserAction
 
 // lib/src/common_structures/activation/responses/user_action_response.dart
 class UserActionResponse extends BaseResponse {
-  UserActionResponse({
-    required super.mmrpc,
-    required this.result,
-  });
+  UserActionResponse({required super.mmrpc, required this.result});
 
   factory UserActionResponse.parse(JsonMap json) {
     return UserActionResponse(
@@ -134,8 +113,5 @@ class UserActionResponse extends BaseResponse {
   final String result;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': result,
-      };
+  Map<String, dynamic> toJson() => {'mmrpc': mmrpc, 'result': result};
 }

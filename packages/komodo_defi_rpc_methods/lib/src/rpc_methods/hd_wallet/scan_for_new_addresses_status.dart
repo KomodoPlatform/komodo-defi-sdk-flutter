@@ -20,10 +20,7 @@ class ScanForNewAddressesStatusRequest
       'userpass': rpcPass,
       'method': method,
       'mmrpc': mmrpc,
-      'params': {
-        'task_id': taskId,
-        'forget_if_finished': forgetIfFinished,
-      },
+      'params': {'task_id': taskId, 'forget_if_finished': forgetIfFinished},
     };
   }
 
@@ -47,8 +44,8 @@ class ScanForNewAddressesStatusResponse extends BaseResponse {
       details:
           json.valueOrNull<Map<String, dynamic>>('result', 'details') != null
               ? ScanAddressesInfo.fromJson(
-                  json.value<Map<String, dynamic>>('result', 'details'),
-                )
+                json.value<Map<String, dynamic>>('result', 'details'),
+              )
               : null,
     );
   }

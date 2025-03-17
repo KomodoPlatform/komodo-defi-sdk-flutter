@@ -9,13 +9,10 @@ class ValidateAddressRequest
     required this.coin,
     required this.address,
   }) : super(
-          method: 'validateaddress',
-          mmrpc: RpcVersion.legacy,
-          params: ValidateAddressParams(
-            coin: coin,
-            address: address,
-          ),
-        );
+         method: 'validateaddress',
+         mmrpc: RpcVersion.legacy,
+         params: ValidateAddressParams(coin: coin, address: address),
+       );
 
   final String coin;
   final String address;
@@ -26,19 +23,13 @@ class ValidateAddressRequest
 }
 
 class ValidateAddressParams implements RpcRequestParams {
-  const ValidateAddressParams({
-    required this.coin,
-    required this.address,
-  });
+  const ValidateAddressParams({required this.coin, required this.address});
 
   final String coin;
   final String address;
 
   @override
-  Map<String, dynamic> toRpcParams() => {
-        'coin': coin,
-        'address': address,
-      };
+  Map<String, dynamic> toRpcParams() => {'coin': coin, 'address': address};
 }
 
 class ValidateAddressResponse extends BaseResponse {
@@ -77,10 +68,7 @@ class ValidateAddressResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        if (mmrpc != null) 'mmrpc': mmrpc,
-        'result': {
-          'is_valid': isValid,
-          if (reason != null) 'reason': reason,
-        },
-      };
+    if (mmrpc != null) 'mmrpc': mmrpc,
+    'result': {'is_valid': isValid, if (reason != null) 'reason': reason},
+  };
 }

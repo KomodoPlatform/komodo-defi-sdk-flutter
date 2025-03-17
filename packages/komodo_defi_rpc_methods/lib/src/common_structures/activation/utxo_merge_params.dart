@@ -9,8 +9,8 @@ class UtxoMergeParams {
   final int maxMergeAtOnce;
 
   Map<String, dynamic> toJson() => {
-        'merge_at': mergeAt,
-        'check_every': checkEvery,
-        'max_merge_at_once': maxMergeAtOnce,
-      };
+    'merge_at': mergeAt,
+    'check_every': checkEvery,
+    'max_merge_at_once': maxMergeAtOnce,
+  };
 }

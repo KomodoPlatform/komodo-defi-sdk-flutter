@@ -6,17 +6,14 @@ import 'package:meta/meta.dart';
 /// structures, this one does not correspond to a KDF-defined common structure.
 @immutable
 class TokenBalanceMap {
-  const TokenBalanceMap({
-    required Map<String, BalanceInfo> balances,
-  }) : _balances = balances;
+  const TokenBalanceMap({required Map<String, BalanceInfo> balances})
+    : _balances = balances;
 
   factory TokenBalanceMap.fromJson(JsonMap json) {
     final balances = <String, BalanceInfo>{};
 
     for (final entry in json.entries) {
-      balances[entry.key] = BalanceInfo.fromJson(
-        entry.value as JsonMap,
-      );
+      balances[entry.key] = BalanceInfo.fromJson(entry.value as JsonMap);
     }
 
     return TokenBalanceMap(balances: balances);
@@ -31,20 +28,19 @@ class TokenBalanceMap {
       _balances[ticker] ?? BalanceInfo.zero();
 
   /// Gets all tokens that have non-zero balances
-  Set<String> get tokensWithBalance => _balances.entries
-      .where((e) => e.value.hasBalance)
-      .map((e) => e.key)
-      .toSet();
+  Set<String> get tokensWithBalance =>
+      _balances.entries
+          .where((e) => e.value.hasValue)
+          .map((e) => e.key)
+          .toSet();
 
   /// Gets total balance across all tokens
-  BalanceInfo get totalBalance => _balances.values.fold(
-        BalanceInfo.zero(),
-        (prev, curr) => prev + curr,
-      );
+  BalanceInfo get totalBalance =>
+      _balances.values.fold(BalanceInfo.zero(), (prev, curr) => prev + curr);
 
   JsonMap toJson() => Map.fromEntries(
-        _balances.entries.map((e) => MapEntry(e.key, e.value.toJson())),
-      );
+    _balances.entries.map((e) => MapEntry(e.key, e.value.toJson())),
+  );
 
   @override
   bool operator ==(Object other) {
@@ -54,10 +50,7 @@ class TokenBalanceMap {
         _mapsAreEqual(other._balances, _balances);
   }
 
-  bool _mapsAreEqual(
-    Map<String, BalanceInfo> a,
-    Map<String, BalanceInfo> b,
-  ) {
+  bool _mapsAreEqual(Map<String, BalanceInfo> a, Map<String, BalanceInfo> b) {
     if (a.length != b.length) return false;
     return a.entries.every((e) => b.containsKey(e.key) && b[e.key] == e.value);
   }

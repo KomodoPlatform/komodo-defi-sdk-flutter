@@ -76,9 +76,18 @@ class _AssetItemTrailing extends StatelessWidget {
         CircleAvatar(
           radius: 12,
           foregroundImage: NetworkImage(
-            'https://komodoplatform.github.io/coins/icons/${asset.id.subClass.ticker.toLowerCase()}.png',
+            'https://komodoplatform.github.io/coins/icons/${asset.id.subClass.iconTicker.toLowerCase()}.png',
           ),
           backgroundColor: Colors.white70,
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 80,
+          child: AssetBalanceText(
+            key: Key('balance_${asset.id.id}'),
+            asset.id,
+            activateIfNeeded: false,
+          ),
         ),
         const SizedBox(width: 8),
         const Icon(Icons.arrow_forward_ios),

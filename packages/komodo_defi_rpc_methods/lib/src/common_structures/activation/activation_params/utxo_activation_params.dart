@@ -97,7 +97,8 @@ class UtxoActivationParams extends ActivationParams {
     final base = ActivationParams.fromConfigJson(json);
 
     return UtxoActivationParams._(
-      mode: base.mode ??
+      mode:
+          base.mode ??
           (throw const FormatException(
             'UTXO activation requires mode parameter',
           )),

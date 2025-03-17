@@ -4,32 +4,15 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// A model class representing a selectable item
-class SelectItem<T> {
-  const SelectItem({
-    required this.id,
-    required this.value,
-    required this.title,
-    this.leading,
-    this.trailing,
-  });
-
-  final String id;
-  final T value;
-  final String title;
-  final Widget? leading;
-  final Widget? trailing;
-}
-
 /// Controller for managing selection state
 class SearchableSelectController<T> extends ChangeNotifier {
-  SelectItem<T>? _selectedItem;
+  T? _value;
 
-  SelectItem<T>? get selectedItem => _selectedItem;
+  T? get value => _value;
 
-  void select(SelectItem<T>? item) {
-    if (_selectedItem?.id != item?.id) {
-      _selectedItem = item;
+  void select(T? value) {
+    if (_value != value) {
+      _value = value;
       notifyListeners();
     }
   }
@@ -43,39 +26,73 @@ class SearchableSelectController<T> extends ChangeNotifier {
 class SearchableSelect<T> extends StatefulWidget {
   const SearchableSelect({
     required this.items,
-    required this.onItemSelected,
+    required this.onChanged,
     super.key,
+    this.value,
     this.hint,
     this.selectedItemBuilder,
-    this.itemBuilder,
-    this.forceDropdown = false,
     this.decoration,
-    this.initialValue,
     this.controller,
+    this.forceDropdown = false,
+    this.isExpanded = true,
+    this.validator,
+    this.autovalidateMode,
+    this.focusNode,
   });
 
-  final List<SelectItem<T>> items;
-  final Function(SelectItem<T>)? onItemSelected;
+  /// The list of items the user can select from
+  final List<DropdownMenuItem<T>> items;
+
+  /// Called when the user selects an item
+  final ValueChanged<T?>? onChanged;
+
+  /// The currently selected value
+  final T? value;
+
+  /// Text that describes the search field
   final String? hint;
-  final Widget Function(SelectItem<T>)? selectedItemBuilder;
-  final Widget Function(SelectItem<T>, VoidCallback?)? itemBuilder;
-  final bool forceDropdown;
+
+  /// A builder to customize the selected item appearance
+  final SelectedItemBuilder<T>? selectedItemBuilder;
+
+  /// Decoration for the search input field
   final InputDecoration? decoration;
-  final T? initialValue;
+
+  /// Optional controller for programmatic control
   final SearchableSelectController<T>? controller;
+
+  /// Forces dropdown mode even on mobile
+  final bool forceDropdown;
+
+  /// Whether the button should expand to fill its parent
+  final bool isExpanded;
+
+  /// Optional validator function for form integration
+  final FormFieldValidator<T>? validator;
+
+  /// Auto validation mode for form integration
+  final AutovalidateMode? autovalidateMode;
+
+  /// Focus node for managing focus
+  final FocusNode? focusNode;
 
   @override
   State<SearchableSelect<T>> createState() => _SearchableSelectState<T>();
 }
 
+typedef SelectedItemBuilder<T> =
+    Widget? Function(BuildContext context, T? selectedItem);
+
 class _SearchableSelectState<T> extends State<SearchableSelect<T>> {
-  SelectItem<T>? _selectedItem;
+  T? _selectedValue;
   late final SearchableSelectController<T> _controller;
   bool _isControllerInternal = false;
+  late final FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
+    _focusNode = widget.focusNode ?? FocusNode();
     _initializeController();
     _initializeSelection();
   }
@@ -91,21 +108,18 @@ class _SearchableSelectState<T> extends State<SearchableSelect<T>> {
   }
 
   void _initializeSelection() {
-    if (widget.initialValue != null) {
-      _selectedItem = widget.items.firstWhere(
-        (item) => item.value == widget.initialValue,
-        orElse: () => widget.items.first,
-      );
-      _controller.select(_selectedItem);
-    } else if (_controller.selectedItem != null) {
-      _selectedItem = _controller.selectedItem;
+    if (widget.value != null) {
+      _selectedValue = widget.value;
+      _controller.select(_selectedValue);
+    } else if (_controller.value != null) {
+      _selectedValue = _controller.value;
     }
   }
 
   void _onControllerChange() {
     if (mounted) {
       setState(() {
-        _selectedItem = _controller.selectedItem;
+        _selectedValue = _controller.value;
       });
     }
   }
@@ -119,8 +133,7 @@ class _SearchableSelectState<T> extends State<SearchableSelect<T>> {
       _initializeController();
     }
 
-    if (oldWidget.initialValue != widget.initialValue &&
-        widget.initialValue != null) {
+    if (oldWidget.value != widget.value && widget.value != null) {
       _initializeSelection();
     }
   }
@@ -131,33 +144,72 @@ class _SearchableSelectState<T> extends State<SearchableSelect<T>> {
     if (_isControllerInternal) {
       _controller.dispose();
     }
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _showSearch(BuildContext context) async {
-    final selected = await showSearchOverlay<T>(
-      context,
+    final selected = await showSearchableSelect<T>(
+      context: context,
       items: widget.items,
-      itemBuilder: widget.itemBuilder,
-      forceDropdown: widget.forceDropdown,
+      searchHint: widget.hint ?? 'Search',
+      isMobile: widget.forceDropdown ? false : null,
     );
 
     if (selected != null) {
       setState(() {
-        _selectedItem = selected;
+        _selectedValue = selected;
       });
       _controller.select(selected);
-      widget.onItemSelected?.call(selected);
+      widget.onChanged?.call(selected);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SearchableSelectView(
-      selectedItem: _selectedItem,
-      hint: widget.hint,
-      onTap: () => _showSearch(context),
-      selectedItemBuilder: widget.selectedItemBuilder,
+    // Use FormField for validation support
+    return FormField<T>(
+      initialValue: _selectedValue,
+      validator: widget.validator,
+      autovalidateMode: widget.autovalidateMode,
+      builder: (FormFieldState<T> field) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Focus(
+              focusNode: _focusNode,
+              onFocusChange: (hasFocus) {
+                if (hasFocus) {
+                  _showSearch(context);
+                }
+              },
+              child: SearchableSelectView(
+                selectedItem: _selectedValue,
+                hint: widget.hint,
+                onTap: () => _showSearch(context),
+                selectedItemBuilder: widget.selectedItemBuilder,
+                decoration: widget.decoration,
+                isExpanded: widget.isExpanded,
+                hasError: field.hasError,
+              ),
+            ),
+            if (field.hasError)
+              Padding(
+                padding: const EdgeInsets.only(left: 16, top: 4),
+                child: Text(
+                  field.errorText ?? '',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -170,12 +222,18 @@ class SearchableSelectView<T> extends StatelessWidget {
     super.key,
     this.hint,
     this.selectedItemBuilder,
+    this.decoration,
+    this.isExpanded = true,
+    this.hasError = false,
   });
 
-  final SelectItem<T>? selectedItem;
+  final T? selectedItem;
   final VoidCallback onTap;
   final String? hint;
-  final Widget Function(SelectItem<T>)? selectedItemBuilder;
+  final SelectedItemBuilder<T>? selectedItemBuilder;
+  final InputDecoration? decoration;
+  final bool isExpanded;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
@@ -184,26 +242,48 @@ class SearchableSelectView<T> extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
+        width: isExpanded ? double.infinity : null,
         decoration: BoxDecoration(
           border: Border.all(
-            color: theme.colorScheme.onSurface.withOpacity(0.1),
+            color:
+                hasError
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.onSurface.withOpacity(0.1),
           ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: InputDecorator(
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontSize: theme.textTheme.bodyLarge?.fontSize,
-            ),
-          ),
+          decoration:
+              decoration ??
+              InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: theme.textTheme.bodyLarge?.fontSize,
+                ),
+                errorStyle:
+                    hasError
+                        ? TextStyle(
+                          color: theme.colorScheme.error,
+                          fontSize: 12,
+                        )
+                        : null,
+                errorBorder:
+                    hasError
+                        ? OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: theme.colorScheme.error,
+                          ),
+                        )
+                        : null,
+              ),
           isEmpty: selectedItem == null,
           child:
               selectedItem == null
                   ? null
-                  : selectedItemBuilder?.call(selectedItem!) ??
-                      DefaultSelectedItemView(item: selectedItem!),
+                  : selectedItemBuilder?.call(context, selectedItem) ??
+                      DefaultSelectedItemView(item: selectedItem),
         ),
       ),
     );
@@ -214,43 +294,59 @@ class SearchableSelectView<T> extends StatelessWidget {
 class DefaultSelectedItemView extends StatelessWidget {
   const DefaultSelectedItemView({required this.item, super.key});
 
-  final SelectItem<dynamic> item;
+  final dynamic item;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    if (item is DropdownMenuItem) {
+      final dropdownItem = item as DropdownMenuItem;
+      if (dropdownItem.child is Row) {
+        return dropdownItem.child;
+      } else {
+        return Row(
+          children: [
+            Expanded(
+              child: DefaultTextStyle(
+                style: theme.textTheme.bodyLarge!.copyWith(
+                  color: theme.colorScheme.onSurface,
+                ),
+                child: dropdownItem.child,
+              ),
+            ),
+          ],
+        );
+      }
+    }
+
+    // Fallback for legacy support
     return Row(
       children: [
-        if (item.leading != null) ...[item.leading!, const SizedBox(width: 12)],
         Expanded(
           child: Text(
-            item.title,
+            item.toString(),
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface,
             ),
           ),
         ),
-        if (item.trailing != null) ...[
-          const SizedBox(width: 8),
-          item.trailing!,
-        ],
       ],
     );
   }
 }
 
-class SearchableSelectorDelegate<T> extends SearchDelegate<SelectItem<T>?> {
+class SearchableSelectorDelegate<T> extends SearchDelegate<T?> {
   SearchableSelectorDelegate(
     this.items, {
-    // TODO: Localize and/or expose as a parameter
     this.searchHint = 'Search',
     this.itemBuilder,
   });
 
-  final Iterable<SelectItem<T>> items;
+  final List<DropdownMenuItem<T>> items;
   final String searchHint;
-  final Widget Function(SelectItem<T> item, VoidCallback? onTap)? itemBuilder;
+  final Widget Function(DropdownMenuItem<T> item, VoidCallback? onTap)?
+  itemBuilder;
 
   @override
   String get searchFieldLabel => searchHint;
@@ -270,12 +366,21 @@ class SearchableSelectorDelegate<T> extends SearchDelegate<SelectItem<T>?> {
     );
   }
 
+  String _getItemText(DropdownMenuItem<T> item) {
+    if (item.child is Text) {
+      return (item.child as Text).data ?? '';
+    }
+    return item.value?.toString() ?? '';
+  }
+
   @override
   Widget buildResults(BuildContext context) {
     final results =
         items
             .where(
-              (item) => item.title.toLowerCase().contains(query.toLowerCase()),
+              (item) => _getItemText(
+                item,
+              ).toLowerCase().contains(query.toLowerCase()),
             )
             .toList();
 
@@ -283,88 +388,89 @@ class SearchableSelectorDelegate<T> extends SearchDelegate<SelectItem<T>?> {
       itemCount: results.length,
       itemBuilder: (context, index) {
         final item = results[index];
-        return itemBuilder?.call(item, () => close(context, item)) ??
-            SearchResultTile(item: item, onTap: () => close(context, item));
+
+        // Use the _DropdownItemWidget for consistent styling
+        return itemBuilder?.call(item, () => close(context, item.value)) ??
+            _DropdownItemWidget(
+              item: item,
+              onTap: () => close(context, item.value),
+            );
       },
     );
   }
 
   @override
-  Widget buildSuggestions(BuildContext context) {
-    final suggestions =
-        items
-            .where(
-              (item) => item.title.toLowerCase().contains(query.toLowerCase()),
-            )
-            .toList();
-
-    return ListView.builder(
-      itemCount: suggestions.length,
-      itemBuilder: (context, index) {
-        final item = suggestions[index];
-        return itemBuilder?.call(item, () => query = item.title) ??
-            SearchResultTile(item: item, onTap: () => query = item.title);
-      },
-    );
-  }
+  Widget buildSuggestions(BuildContext context) => buildResults(context);
 }
 
-class SearchResultTile<T> extends StatelessWidget {
-  const SearchResultTile({required this.item, super.key, this.onTap});
+// Custom widget to display dropdown items safely
+class _DropdownItemWidget<T> extends StatelessWidget {
+  const _DropdownItemWidget({required this.item, this.onTap});
 
-  final SelectItem<T> item;
+  final DropdownMenuItem<T> item;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: item.leading,
-      title: Text(item.title),
-      trailing: item.trailing,
+    final theme = Theme.of(context);
+    final inputTheme = theme.inputDecorationTheme;
+
+    final defaultTextStyle = theme.textTheme.bodyLarge?.copyWith(
+      color: inputTheme.labelStyle?.color ?? theme.colorScheme.onSurface,
+    );
+
+    return InkWell(
       onTap: onTap,
+      child: Padding(
+        padding:
+            inputTheme.contentPadding ??
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child:
+            defaultTextStyle == null
+                ? item.child
+                : DefaultTextStyle(style: defaultTextStyle, child: item.child),
+      ),
     );
   }
 }
 
-Future<SelectItem<T>?> showSearchOverlay<T>(
-  BuildContext context, {
-  required Iterable<SelectItem<T>> items,
+Future<T?> showSearchableSelect<T>({
+  required BuildContext context,
+  required List<DropdownMenuItem<T>> items,
   String searchHint = 'Search',
-  Widget Function(SelectItem<T> item, VoidCallback? onTap)? itemBuilder,
-  bool forceDropdown = false,
+  bool? isMobile,
 }) async {
-  final isMobile = MediaQuery.of(context).size.width < 600 && !forceDropdown;
+  isMobile ??= MediaQuery.of(context).size.width < 600;
 
   if (isMobile) {
-    return showSearch<SelectItem<T>?>(
+    return showSearch<T?>(
       context: context,
-      delegate: SearchableSelectorDelegate(
-        items,
-        searchHint: searchHint,
-        itemBuilder: itemBuilder,
-      ),
+      delegate: SearchableSelectorDelegate(items, searchHint: searchHint),
     );
   } else {
-    return showDropdownSearch(
-      context,
-      items,
-      searchHint: searchHint,
-      itemBuilder: itemBuilder,
-    );
+    return showDropdownSearch(context, items, searchHint: searchHint);
   }
 }
 
 OverlayEntry? _overlayEntry;
-Completer? _completer;
+Completer<dynamic>? _completer;
 
-Future<SelectItem<T>?> showDropdownSearch<T>(
+Future<T?> showDropdownSearch<T>(
   BuildContext context,
-  Iterable<SelectItem<T>> items, {
+  List<DropdownMenuItem<T>> items, {
   String searchHint = 'Search',
-  Widget Function(SelectItem<T> item, VoidCallback? onTap)? itemBuilder,
 }) async {
   final renderBox = context.findRenderObject()! as RenderBox;
   final offset = renderBox.localToGlobal(Offset.zero);
+  final screenHeight = MediaQuery.of(context).size.height;
+
+  // Check if there's enough space below
+  final spaceBelow = screenHeight - offset.dy - renderBox.size.height;
+  final requiredSpace = math.min(
+    300,
+    items.length * 56.0 + 60.0,
+  ); // estimate height
+  final showAbove = spaceBelow < requiredSpace && offset.dy > spaceBelow;
 
   void clearOverlay() {
     _overlayEntry?.remove();
@@ -372,14 +478,14 @@ Future<SelectItem<T>?> showDropdownSearch<T>(
     _completer = null;
   }
 
-  void onItemSelected(SelectItem<T>? item) {
-    _completer?.complete(item);
+  void onItemSelected(T? value) {
+    _completer?.complete(value);
     clearOverlay();
   }
 
   clearOverlay();
 
-  _completer = Completer<SelectItem<T>?>();
+  _completer = Completer<T?>();
   _overlayEntry = OverlayEntry(
     builder: (context) {
       return GestureDetector(
@@ -389,13 +495,16 @@ Future<SelectItem<T>?> showDropdownSearch<T>(
           children: [
             Positioned(
               left: offset.dx,
-              top: offset.dy + renderBox.size.height,
+              // Position above or below based on available space
+              top:
+                  showAbove
+                      ? offset.dy - requiredSpace
+                      : offset.dy + renderBox.size.height,
               width: renderBox.size.width,
               child: _SearchOverlay(
                 items: items,
                 onSelected: onItemSelected,
                 searchHint: searchHint,
-                itemBuilder: itemBuilder,
               ),
             ),
           ],
@@ -408,7 +517,7 @@ Future<SelectItem<T>?> showDropdownSearch<T>(
     Overlay.of(context).insert(_overlayEntry!);
   });
 
-  return _completer!.future as Future<SelectItem<T>?>;
+  return _completer!.future as Future<T?>;
 }
 
 class _SearchOverlay<T> extends StatefulWidget {
@@ -416,21 +525,21 @@ class _SearchOverlay<T> extends StatefulWidget {
     required this.items,
     required this.onSelected,
     this.searchHint = 'Search',
-    this.itemBuilder,
   });
-  final Iterable<SelectItem<T>> items;
-  final ValueChanged<SelectItem<T>?>? onSelected;
+
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?>? onSelected;
   final String searchHint;
-  final Widget Function(SelectItem<T> item, VoidCallback? onTap)? itemBuilder;
 
   @override
   State<_SearchOverlay<T>> createState() => _SearchOverlayState<T>();
 }
 
 class _SearchOverlayState<T> extends State<_SearchOverlay<T>> {
-  late Iterable<SelectItem<T>> filteredItems;
+  late List<DropdownMenuItem<T>> filteredItems;
   String query = '';
   final FocusNode _focusNode = FocusNode();
+  int _focusedIndex = -1;
 
   @override
   void initState() {
@@ -444,10 +553,48 @@ class _SearchOverlayState<T> extends State<_SearchOverlay<T>> {
   void updateSearchQuery(String newQuery) {
     setState(() {
       query = newQuery;
-      filteredItems = widget.items.where(
-        (item) => item.title.toLowerCase().contains(query.toLowerCase()),
-      );
+      filteredItems =
+          widget.items
+              .where(
+                (item) => _getItemText(
+                  item,
+                ).toLowerCase().contains(query.toLowerCase()),
+              )
+              .toList();
+      // Reset focus when items change
+      _focusedIndex = filteredItems.isNotEmpty ? 0 : -1;
     });
+  }
+
+  String _getItemText(DropdownMenuItem<T> item) {
+    if (item.child is Text) {
+      return (item.child as Text).data ?? '';
+    }
+    return item.value?.toString() ?? '';
+  }
+
+  void _handleKeyPress(RawKeyEvent event) {
+    if (filteredItems.isEmpty) return;
+
+    if (event is RawKeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        setState(() {
+          _focusedIndex = (_focusedIndex + 1) % filteredItems.length;
+        });
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        setState(() {
+          _focusedIndex =
+              _focusedIndex <= 0 ? filteredItems.length - 1 : _focusedIndex - 1;
+        });
+      } else if (event.logicalKey == LogicalKeyboardKey.enter ||
+          event.logicalKey == LogicalKeyboardKey.space) {
+        if (_focusedIndex >= 0 && _focusedIndex < filteredItems.length) {
+          widget.onSelected?.call(filteredItems[_focusedIndex].value);
+        }
+      } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+        widget.onSelected?.call(null);
+      }
+    }
   }
 
   @override
@@ -459,56 +606,76 @@ class _SearchOverlayState<T> extends State<_SearchOverlay<T>> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final inputTheme = theme.inputDecorationTheme;
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: theme.colorScheme.surface,
-      child: Container(
-        constraints: const BoxConstraints(maxHeight: 300),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: TextFormField(
-                focusNode: _focusNode,
-                readOnly: widget.onSelected == null,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: widget.searchHint,
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: theme.colorScheme.onSurfaceVariant,
+    return RawKeyboardListener(
+      focusNode: _focusNode,
+      onKey: _handleKeyPress,
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        color: theme.colorScheme.surface,
+        child: Container(
+          constraints: const BoxConstraints(maxHeight: 300),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: TextFormField(
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: widget.searchHint,
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    border:
+                        inputTheme.border ??
+                        defaultSearchableSelectTheme(
+                          theme.brightness,
+                          theme.colorScheme,
+                        ).border,
+                    // Use input theme colors for consistency
+                    fillColor: inputTheme.fillColor,
+                    filled: inputTheme.filled,
+                    hintStyle: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: theme.textTheme.bodyLarge?.fontSize,
+                    ),
+                    contentPadding: inputTheme.contentPadding,
                   ),
-                  border:
-                      theme.inputDecorationTheme.border ??
-                      defaultSearchableSelectTheme(
-                        theme.brightness,
-                        theme.colorScheme,
-                      ).border,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  onChanged: updateSearchQuery,
                 ),
-                style: theme.textTheme.bodyLarge,
-                onChanged: updateSearchQuery,
               ),
-            ),
-            Flexible(
-              child: ListView.builder(
-                itemCount: filteredItems.length,
-                itemBuilder: (context, index) {
-                  final item = filteredItems.elementAt(index);
-                  return widget.itemBuilder?.call(
-                        item,
-                        () => widget.onSelected?.call(item),
-                      ) ??
-                      SearchResultTile(
-                        item: item,
-                        onTap: () => widget.onSelected?.call(item),
+              Flexible(
+                child: ListView.builder(
+                  itemCount: filteredItems.length,
+                  itemBuilder: (context, index) {
+                    final item = filteredItems[index];
+                    final isSelected = index == _focusedIndex;
+
+                    final itemWidget = _DropdownItemWidget(
+                      item: item,
+                      onTap: () => widget.onSelected?.call(item.value),
+                    );
+
+                    if (isSelected) {
+                      return ColoredBox(
+                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        child: itemWidget,
                       );
-                },
+                    }
+
+                    return itemWidget;
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -549,285 +716,62 @@ InputDecorationTheme defaultSearchableSelectTheme(
   );
 }
 
-class MockCoinIcon extends StatelessWidget {
-  const MockCoinIcon(this.symbol, {super.key});
-  final String symbol;
+/// A widget that displays a select item with the same parameters as SelectItem
+class SelectItemWidget extends StatelessWidget {
+  const SelectItemWidget({
+    required this.id,
+    required this.value,
+    required this.title,
+    this.leading,
+    this.trailing,
+    this.onTap,
+    super.key,
+  });
+
+  final String id;
+  final String value;
+  final Widget title;
+  final Widget? leading;
+  final Widget? trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Center(
-        child: Text(
-          symbol.substring(0, math.min(2, symbol.length)),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onPrimary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-}
 
-/// Generic method to show a searchable select dialog/overlay
-Future<T?> showSearchableSelect<T>(
-  BuildContext context, {
-  required List<SelectItem<T>> items,
-  String searchHint = 'Search',
-  Widget Function(SelectItem<T> item, VoidCallback? onTap)? itemBuilder,
-  T? Function(SelectItem<T>?)? convertResult,
-  bool? isMobile,
-}) async {
-  isMobile ??= MediaQuery.of(context).size.width < 600;
-
-  final SelectItem<T>? selected;
-
-  if (isMobile) {
-    selected = await showSearch<SelectItem<T>?>(
-      context: context,
-      delegate: SearchableSelectorDelegate(
-        items,
-        searchHint: searchHint,
-        itemBuilder: itemBuilder,
-      ),
-    );
-  } else {
-    selected = await showSearchOverlay(
-      context,
-      items: items,
-      searchHint: searchHint,
-      itemBuilder: itemBuilder,
-    );
-  }
-
-  // Allow conversion of the result if needed
-  if (convertResult != null) {
-    return convertResult(selected);
-  }
-
-  return selected?.value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Demo app:
-
-void main() {
-  runApp(
-    MaterialApp(
-      home: const _DemoScreen(),
-      theme: ThemeData.dark().copyWith(
-        inputDecorationTheme: defaultSearchableSelectTheme(
-          Brightness.dark,
-          const ColorScheme.dark(),
-        ),
-      ),
-    ),
-  );
-}
-
-class _DemoScreen extends StatelessWidget {
-  const _DemoScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Custom Dropdown Demo')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Crypto Coin Selector', style: theme.textTheme.titleLarge),
-                const SizedBox(height: 8),
-                const _CoinDropdownDemo(),
-
-                const SizedBox(height: 32),
-
-                Text('User Selector', style: theme.textTheme.titleLarge),
-                const SizedBox(height: 8),
-                _UserDropdownDemo(),
-
-                const SizedBox(height: 32),
-
-                // Usage instructions
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Features Demo:',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '• Responsive layout (resize window to see mobile/desktop modes)\n'
-                          '• Search functionality\n'
-                          '• Custom item rendering\n'
-                          '• Copy to clipboard\n'
-                          '• Theme support',
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          if (leading != null) ...[leading!, const SizedBox(width: 12)],
+          Expanded(
+            child: DefaultTextStyle(
+              style: theme.textTheme.bodyLarge!.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
+              child: title,
             ),
           ),
-        ),
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+        ],
       ),
     );
   }
 }
 
-class _CoinDropdownDemo extends StatefulWidget {
-  const _CoinDropdownDemo();
+/// A model class representing a selectable item
+class SelectItem {
+  const SelectItem({
+    required this.id,
+    required this.value,
+    required this.title,
+    this.leading,
+    this.trailing,
+  });
 
-  @override
-  State<_CoinDropdownDemo> createState() => _CoinDropdownDemoState();
-}
-
-class _CoinDropdownDemoState extends State<_CoinDropdownDemo> {
-  final controller = SearchableSelectController<String>();
-
-  final coinItems = [
-    const SelectItem(
-      id: 'KMD',
-      title: 'Komodo',
-      value: 'KMD',
-      leading: MockCoinIcon('KMD'),
-      trailing: Text('+2.9%', style: TextStyle(color: Colors.green)),
-    ),
-    const SelectItem(
-      id: 'SL',
-      title: 'SecondLive',
-      value: 'SL',
-      leading: MockCoinIcon('SL'),
-      trailing: Text('+322.9%', style: TextStyle(color: Colors.green)),
-    ),
-    const SelectItem(
-      id: 'KE',
-      title: 'KiloEx',
-      value: 'KE',
-      leading: MockCoinIcon('KE'),
-      trailing: Text('-2.09%', style: TextStyle(color: Colors.red)),
-    ),
-    const SelectItem(
-      id: 'BTC',
-      title: 'Bitcoin',
-      value: 'BTC',
-      leading: MockCoinIcon('BTC'),
-      trailing: Text('+1.2%', style: TextStyle(color: Colors.green)),
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return SearchableSelect<String>(
-      controller: controller,
-      items: coinItems,
-      onItemSelected: (item) {
-        print('Selected: ${item.title}');
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-}
-
-class _UserDropdownDemo extends StatelessWidget {
-  _UserDropdownDemo();
-
-  final userItems = [
-    const SelectItem(
-      id: '0x4cd....66fv84',
-      title: 'Anton Bulov',
-      value: '0x4cd....66fv84',
-      leading: CircleAvatar(
-        backgroundImage: NetworkImage('https://picsum.photos/seed/1/100'),
-      ),
-      trailing: Icon(Icons.verified, color: Colors.blue),
-    ),
-    const SelectItem(
-      id: '5bvns....66fv84',
-      title: 'Sarah Connor',
-      value: '5bvns....66fv84',
-      leading: CircleAvatar(
-        backgroundImage: NetworkImage('https://picsum.photos/seed/2/100'),
-      ),
-    ),
-    const SelectItem(
-      id: '9vdsf....13695',
-      title: 'John Doe',
-      value: '9vdsf....13695',
-      leading: CircleAvatar(
-        backgroundImage: NetworkImage('https://picsum.photos/seed/3/100'),
-      ),
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return SearchableSelect<String>(
-      items: userItems,
-      hint: 'To Anton Bulov',
-      onItemSelected: (item) {
-        debugPrint('Selected user: ${item.title}');
-      },
-      selectedItemBuilder:
-          (item) => Row(
-            children: [
-              if (item.leading != null) ...[
-                item.leading!,
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Text(item.title, style: theme.textTheme.bodyLarge),
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.copy_outlined,
-                  size: 20,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: item.id));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'ID copied to clipboard',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onPrimary,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-    );
-  }
+  final String id;
+  final String value;
+  final Widget title;
+  final Widget? leading;
+  final Widget? trailing;
 }

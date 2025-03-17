@@ -6,7 +6,7 @@ class GetWalletNamesRequest
     extends BaseRequest<GetWalletNamesResponse, GeneralErrorResponse>
     with RequestHandlingMixin<GetWalletNamesResponse, GeneralErrorResponse> {
   GetWalletNamesRequest([String? rpcPass])
-      : super(rpcPass: rpcPass, method: 'get_wallet_names');
+    : super(rpcPass: rpcPass, method: 'get_wallet_names');
 
   @override
   GetWalletNamesResponse parse(Map<String, dynamic> json) =>

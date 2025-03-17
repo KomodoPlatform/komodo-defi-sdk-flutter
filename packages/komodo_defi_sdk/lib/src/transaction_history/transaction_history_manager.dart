@@ -33,16 +33,27 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   TransactionHistoryManager(
     this._client,
     this._auth,
-    this._assetManager, {
+    this._assetProvider,
+    this._activationManager, {
     required PubkeyManager pubkeyManager,
     TransactionStorage? storage,
-  })  : _storage = storage ?? TransactionStorage.defaultForPlatform(),
-        _strategyFactory =
-            TransactionHistoryStrategyFactory(pubkeyManager, _auth);
+  }) : _storage = storage ?? TransactionStorage.defaultForPlatform(),
+       _strategyFactory = TransactionHistoryStrategyFactory(
+         pubkeyManager,
+         _auth,
+       ) {
+    // Subscribe to auth changes directly in constructor
+    _authSubscription = _auth.authStateChanges.listen((user) {
+      if (user == null) {
+        _stopAllPolling();
+      }
+    });
+  }
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
-  final AssetManager _assetManager;
+  final IAssetProvider _assetProvider;
+  final ActivationManager _activationManager;
   final TransactionStorage _storage;
 
   final _streamControllers = <AssetId, StreamController<Transaction>>{};
@@ -58,16 +69,6 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   StreamSubscription<KdfUser?>? _authSubscription;
 
   final TransactionHistoryStrategyFactory _strategyFactory;
-
-  // TODO! Determine if this can be removed, or if it should be replaced added
-  // to the constructor.
-  void _initializeStreamController() {
-    _authSubscription = _auth.authStateChanges.listen((user) {
-      if (user == null) {
-        _stopAllPolling();
-      }
-    });
-  }
 
   void _stopAllPolling() {
     if (_isDisposed) return;
@@ -135,9 +136,10 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
       );
 
       // Convert API response to domain model
-      final transactions = response.transactions
-          .map((tx) => tx.asTransaction(asset.id))
-          .toList();
+      final transactions =
+          response.transactions
+              .map((tx) => tx.asTransaction(asset.id))
+              .toList();
 
       // Store in local storage efficiently
       await _batchStoreTransactions(transactions);
@@ -162,6 +164,11 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   Stream<List<Transaction>> getTransactionsStreamed(Asset asset) async* {
     if (_isDisposed) {
       throw StateError('TransactionHistoryManager has been disposed');
+    }
+
+    // Verify asset exists before proceeding
+    if (_assetProvider.fromId(asset.id) == null) {
+      throw ArgumentError('Asset ${asset.id.name} not found');
     }
 
     await _ensureAssetActivated(asset);
@@ -190,13 +197,13 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           asset,
           fromId != null
               ? TransactionBasedPagination(
-                  fromId: fromId,
-                  itemCount: _maxBatchSize,
-                )
+                fromId: fromId,
+                itemCount: _maxBatchSize,
+              )
               : const PagePagination(
-                  pageNumber: 1,
-                  itemsPerPage: _maxBatchSize,
-                ),
+                pageNumber: 1,
+                itemsPerPage: _maxBatchSize,
+              ),
         );
 
         if (response.transactions.isEmpty) {
@@ -204,9 +211,10 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           continue;
         }
 
-        final transactions = response.transactions
-            .map((tx) => tx.asTransaction(asset.id))
-            .toList();
+        final transactions =
+            response.transactions
+                .map((tx) => tx.asTransaction(asset.id))
+                .toList();
 
         await _batchStoreTransactions(transactions);
         yield transactions;
@@ -279,13 +287,13 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           asset,
           fromId != null
               ? TransactionBasedPagination(
-                  fromId: fromId,
-                  itemCount: _maxBatchSize,
-                )
+                fromId: fromId,
+                itemCount: _maxBatchSize,
+              )
               : const PagePagination(
-                  pageNumber: 1,
-                  itemsPerPage: _maxBatchSize,
-                ),
+                pageNumber: 1,
+                itemsPerPage: _maxBatchSize,
+              ),
         );
 
         if (response.transactions.isEmpty) {
@@ -293,9 +301,10 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           continue;
         }
 
-        final transactions = response.transactions
-            .map((tx) => tx.asTransaction(asset.id))
-            .toList();
+        final transactions =
+            response.transactions
+                .map((tx) => tx.asTransaction(asset.id))
+                .toList();
 
         await _batchStoreTransactions(transactions);
         fromId = response.fromId;
@@ -313,10 +322,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   Future<void> clearTransactionHistory(Asset asset) async {
     if (_isDisposed) return;
 
-    await _storage.clearTransactions(
-      asset.id,
-      await _getCurrentWalletId(),
-    );
+    await _storage.clearTransactions(asset.id, await _getCurrentWalletId());
     _stopPolling(asset.id);
     await _streamControllers[asset.id]?.close();
     _streamControllers.remove(asset.id);
@@ -339,18 +345,19 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
         asset,
         lastTx != null
             ? TransactionBasedPagination(
-                fromId: lastTx,
-                itemCount: _maxBatchSize,
-              )
+              fromId: lastTx,
+              itemCount: _maxBatchSize,
+            )
             : const PagePagination(pageNumber: 1, itemsPerPage: _maxBatchSize),
       );
 
       if (!_pollingTimers.containsKey(asset.id)) return;
 
       if (response.transactions.isNotEmpty) {
-        final newTransactions = response.transactions
-            .map((tx) => tx.asTransaction(asset.id))
-            .toList();
+        final newTransactions =
+            response.transactions
+                .map((tx) => tx.asTransaction(asset.id))
+                .toList();
 
         await _batchStoreTransactions(newTransactions);
 
@@ -373,9 +380,11 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   }
 
   Future<void> _ensureAssetActivated(Asset asset) async {
-    final status = await _assetManager.activateAsset(asset).last;
-    if (status.isComplete && !status.isSuccess) {
-      throw StateError('Failed to activate asset ${asset.id.name}');
+    final activationStatus = await _activationManager.activateAsset(asset).last;
+    if (activationStatus.isComplete && !activationStatus.isSuccess) {
+      throw StateError(
+        'Failed to activate asset ${asset.id.name}. ${activationStatus.toJson()}',
+      );
     }
   }
 

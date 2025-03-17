@@ -31,10 +31,26 @@ enum MainStatus {
 }
 
 enum KdfStartupResult {
+  /// Operation completed successfully
   ok,
-  alreadyRunning,
+
+  /// Invalid parameters were provided to the function
   invalidParams,
-  noCoinsInConf;
+
+  /// The configuration was invalid (missing required fields, etc.)
+  configError,
+
+  /// MM2 is already running
+  alreadyRunning,
+
+  /// MM2 initialization failed
+  initError,
+
+  /// Failed to spawn the MM2 process/thread
+  spawnError,
+
+  /// Unknown result code
+  unknownError;
 
   // Getter for if the KDF is running successfully e.g. KdfStartupResult.ok
   // or KdfStartupResult.alreadyRunning
@@ -45,25 +61,27 @@ enum KdfStartupResult {
 
   bool get isOk => this == KdfStartupResult.ok;
 
-  // Int values
-  // Ok = 0,
-  // AlreadyRuns = 1,
-  // InvalidParams = 2,
-  // NoCoinsInConf = 3,
-
-  static KdfStartupResult fromDefaultInt(int value) {
+  static KdfStartupResult tryFromDefaultInt(int value) {
     switch (value) {
       case 0:
         return KdfStartupResult.ok;
       case 1:
-        return KdfStartupResult.alreadyRunning;
-      case 2:
         return KdfStartupResult.invalidParams;
+      case 2:
+        return KdfStartupResult.configError;
       case 3:
-        return KdfStartupResult.noCoinsInConf;
+        return KdfStartupResult.alreadyRunning;
+      case 4:
+        return KdfStartupResult.initError;
+      case 5:
+        return KdfStartupResult.spawnError;
       default:
-        throw ArgumentError('Unknown KdfStartupResult code: $value');
+        return KdfStartupResult.unknownError;
     }
+  }
+
+  static KdfStartupResult fromDefaultInt(int value) {
+    return tryFromDefaultInt(value);
   }
 }
 
@@ -107,6 +125,11 @@ abstract interface class IKdfOperations {
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request);
   Future<void> validateSetup();
 
+  /// Determines if the KDF is available without considering its current state.
+  ///
+  ///! Note that this returns true if the KDF is running OR if it is possible
+  /// to start it. This may be reworked in the future to separate these
+  /// concerns.
   Future<bool> isAvailable(IKdfHostConfig hostConfig);
 }
 

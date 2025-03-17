@@ -10,7 +10,6 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
-export 'package:komodo_defi_types/komodo_defi_types.dart' show SecurityUtils;
 
 export 'src/operations/kdf_operations_interface.dart';
 
@@ -103,6 +102,20 @@ class KomodoDefiFramework implements ApiClient {
   Future<MainStatus> kdfMainStatus() async {
     final status = await _kdfOperations.kdfMainStatus();
     _log('KDF main status: $status');
+
+    // Checking if KDF is running using `version` method covers the case
+    // where implementations do not run as a singleton. E.g. `kdfMainStatus`
+    // for `kdfOperationsLocalExecutable` will return `MainStatus.notRunning`
+    // if that instance does not have a process running even if KDF is
+    // running in another instance. Consider refactoring the architecture
+    // to take this into account.
+    if (status == MainStatus.notRunning) {
+      final version = await _kdfOperations.version();
+      if (version != null) {
+        return MainStatus.rpcIsUp;
+      }
+    }
+
     return status;
   }
 
@@ -125,7 +138,8 @@ class KomodoDefiFramework implements ApiClient {
   }
 
   Future<bool> isRunning() async {
-    final running = await _kdfOperations.isRunning();
+    final running = await _kdfOperations.isRunning() ||
+        await _kdfOperations.version() != null;
     if (!running) {
       _log('KDF is not running.');
     }

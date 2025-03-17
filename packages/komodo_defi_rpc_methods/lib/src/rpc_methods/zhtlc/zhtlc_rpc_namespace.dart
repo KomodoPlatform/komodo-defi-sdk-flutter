@@ -38,10 +38,7 @@ class TaskEnableZhtlcInit
     required this.ticker,
     required this.params,
     super.rpcPass,
-  }) : super(
-          method: 'task::enable_z_coin::init',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'task::enable_z_coin::init', mmrpc: '2.0');
 
   final String ticker;
   @override
@@ -49,15 +46,12 @@ class TaskEnableZhtlcInit
 
   @override
   JsonMap toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'mmrpc': mmrpc,
-        'method': method,
-        'params': {
-          'ticker': ticker,
-          'activation_params': params.toRpcParams(),
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'mmrpc': mmrpc,
+    'method': method,
+    'params': {'ticker': ticker, 'activation_params': params.toRpcParams()},
+  };
 
   @override
   NewTaskResponse parseResponse(String responseBody) {
@@ -75,25 +69,19 @@ class TaskEnableZhtlcStatus
     required this.taskId,
     this.forgetIfFinished = true,
     super.rpcPass,
-  }) : super(
-          method: 'task::enable_z_coin::status',
-          mmrpc: '2.0',
-        );
+  }) : super(method: 'task::enable_z_coin::status', mmrpc: '2.0');
 
   final int taskId;
   final bool forgetIfFinished;
 
   @override
   JsonMap toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'mmrpc': mmrpc,
-        'method': method,
-        'params': {
-          'task_id': taskId,
-          'forget_if_finished': forgetIfFinished,
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'mmrpc': mmrpc,
+    'method': method,
+    'params': {'task_id': taskId, 'forget_if_finished': forgetIfFinished},
+  };
 
   @override
   TaskStatusResponse parseResponse(String responseBody) {

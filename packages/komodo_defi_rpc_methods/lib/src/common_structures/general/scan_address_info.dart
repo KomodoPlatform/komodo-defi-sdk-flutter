@@ -12,9 +12,10 @@ class ScanAddressesInfo {
     return ScanAddressesInfo(
       accountIndex: json.value<int>('account_index'),
       derivationPath: json.value<String>('derivation_path'),
-      newAddresses: (json['new_addresses'] as List)
-          .map((e) => NewAddressInfo.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      newAddresses:
+          (json['new_addresses'] as List)
+              .map((e) => NewAddressInfo.fromJson(e as Map<String, dynamic>))
+              .toList(),
     );
   }
   final int accountIndex;

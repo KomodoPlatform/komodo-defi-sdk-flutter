@@ -4,10 +4,7 @@ import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class KdfHttpServerOperations implements IKdfOperations {
-  KdfHttpServerOperations(
-    LocalConfig _, {
-    void Function(String)? logCallback,
-  });
+  KdfHttpServerOperations(LocalConfig _, {void Function(String)? logCallback});
 
   @override
   String get operationsName => 'Unsupported HTTP Server Operations';

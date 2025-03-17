@@ -10,12 +10,13 @@ library komodo_ui;
 
 export 'package:flutter/foundation.dart' show Key, ValueChanged, VoidCallback;
 export 'package:flutter/material.dart'
-    show StatefulWidget, StatelessWidget, Widget;
+    show Widget, StatelessWidget, StatefulWidget;
 
 export 'src/composite/cards/collapsible_card.dart';
 export 'src/composite/index.dart';
 export 'src/constants/constants.dart';
 export 'src/constants/index.dart';
+export 'src/core/feedback/text_stream_builder.dart';
 export 'src/core/index.dart';
 export 'src/core/inputs/address_select_input.dart';
 export 'src/core/inputs/divided_button.dart';
@@ -27,6 +28,7 @@ export 'src/defi/asset/crypto_asset_card.dart';
 export 'src/defi/asset/metric_selector.dart';
 export 'src/defi/asset/trend_percentage_text.dart';
 export 'src/defi/index.dart';
+export 'src/defi/transaction/withdrawal_priority.dart';
 export 'src/defi/withdraw/recipient_address_field.dart';
 export 'src/defi/withdraw/source_address_field.dart';
 export 'src/defi/withdraw/withdraw_amount_field.dart';

@@ -12,11 +12,11 @@ class EnableEthWithTokensRequest
     required this.activationParams,
     this.getBalances = true,
   }) : super(
-          method: 'enable_eth_with_tokens',
-          rpcPass: rpcPass,
-          mmrpc: '2.0',
-          params: activationParams,
-        );
+         method: 'enable_eth_with_tokens',
+         rpcPass: rpcPass,
+         mmrpc: '2.0',
+         params: activationParams,
+       );
 
   final String ticker;
   final EthWithTokensActivationParams activationParams;
@@ -66,28 +66,26 @@ class EnableEthWithTokensResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'current_block': currentBlock,
-          'wallet_balance': walletBalance.toJson(),
-          'nfts_infos': nftsInfos,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {
+      'current_block': currentBlock,
+      'wallet_balance': walletBalance.toJson(),
+      'nfts_infos': nftsInfos,
+    },
+  };
 }
 
 class WalletBalance {
-  const WalletBalance({
-    required this.walletType,
-    required this.accounts,
-  });
+  const WalletBalance({required this.walletType, required this.accounts});
 
   factory WalletBalance.fromJson(JsonMap json) {
     return WalletBalance(
       walletType: json.value<String>('wallet_type'),
-      accounts: json
-          .value<List<dynamic>>('accounts')
-          .map((e) => WalletAccount.fromJson(e as JsonMap))
-          .toList(),
+      accounts:
+          json
+              .value<List<dynamic>>('accounts')
+              .map((e) => WalletAccount.fromJson(e as JsonMap))
+              .toList(),
     );
   }
 
@@ -95,9 +93,9 @@ class WalletBalance {
   final List<WalletAccount> accounts;
 
   Map<String, dynamic> toJson() => {
-        'wallet_type': walletType,
-        'accounts': accounts.map((e) => e.toJson()).toList(),
-      };
+    'wallet_type': walletType,
+    'accounts': accounts.map((e) => e.toJson()).toList(),
+  };
 }
 
 class WalletAccount {
@@ -115,10 +113,11 @@ class WalletAccount {
       totalBalance: TokenBalanceMap.fromJson(
         json.value<JsonMap>('total_balance'),
       ),
-      addresses: json
-          .value<List<dynamic>>('addresses')
-          .map((e) => WalletAddress.fromJson(e as JsonMap))
-          .toList(),
+      addresses:
+          json
+              .value<List<dynamic>>('addresses')
+              .map((e) => WalletAddress.fromJson(e as JsonMap))
+              .toList(),
     );
   }
 
@@ -128,11 +127,11 @@ class WalletAccount {
   final List<WalletAddress> addresses;
 
   Map<String, dynamic> toJson() => {
-        'account_index': accountIndex,
-        'derivation_path': derivationPath,
-        'total_balance': totalBalance.toJson(),
-        'addresses': addresses.map((e) => e.toJson()).toList(),
-      };
+    'account_index': accountIndex,
+    'derivation_path': derivationPath,
+    'total_balance': totalBalance.toJson(),
+    'addresses': addresses.map((e) => e.toJson()).toList(),
+  };
 }
 
 class WalletAddress {
@@ -148,9 +147,7 @@ class WalletAddress {
       address: json.value<String>('address'),
       derivationPath: json.value<String>('derivation_path'),
       chain: json.value<String>('chain'),
-      balance: TokenBalanceMap.fromJson(
-        json.value<JsonMap>('balance'),
-      ),
+      balance: TokenBalanceMap.fromJson(json.value<JsonMap>('balance')),
     );
   }
 
@@ -160,9 +157,9 @@ class WalletAddress {
   final TokenBalanceMap balance;
 
   Map<String, dynamic> toJson() => {
-        'address': address,
-        'derivation_path': derivationPath,
-        'chain': chain,
-        'balance': balance.toJson(),
-      };
+    'address': address,
+    'derivation_path': derivationPath,
+    'chain': chain,
+    'balance': balance.toJson(),
+  };
 }

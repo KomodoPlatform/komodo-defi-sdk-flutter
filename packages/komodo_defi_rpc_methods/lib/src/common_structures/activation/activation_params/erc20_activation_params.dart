@@ -21,8 +21,8 @@ class Erc20ActivationParams extends ActivationParams {
 
   @override
   JsonMap toRpcParams() => super.toRpcParams().deepMerge({
-        'nodes': nodes.map((e) => e.url).toList(),
-        'swap_contract_address': swapContractAddress,
-        'fallback_swap_contract': fallbackSwapContract,
-      });
+    'nodes': nodes.map((e) => e.url).toList(),
+    'swap_contract_address': swapContractAddress,
+    'fallback_swap_contract': fallbackSwapContract,
+  });
 }

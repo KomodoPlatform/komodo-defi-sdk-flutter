@@ -67,18 +67,12 @@ class GetTokenInfoResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() {
-    return {
-      'type': type,
-      'info': info.toJson(),
-    };
+    return {'type': type, 'info': info.toJson()};
   }
 }
 
 class TokenInfo {
-  TokenInfo({
-    required this.symbol,
-    required this.decimals,
-  });
+  TokenInfo({required this.symbol, required this.decimals});
 
   factory TokenInfo.fromJson(Map<String, dynamic> json) {
     return TokenInfo(
@@ -97,9 +91,6 @@ class TokenInfo {
   final int decimals;
 
   Map<String, dynamic> toJson() {
-    return {
-      'symbol': symbol,
-      'decimals': decimals,
-    };
+    return {'symbol': symbol, 'decimals': decimals};
   }
 }
