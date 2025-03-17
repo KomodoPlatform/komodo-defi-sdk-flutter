@@ -45,7 +45,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   flutter_secure_storage_darwin: 12d2375c690785d97a4e586f15f11be5ae35d5b0
   FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
-  komodo_defi_framework: f0b88d0dfa7907a9ece425bf4f1435cd94cfdc73
+  komodo_defi_framework: 263b99ca54a5e732a6593938d0a88e31c30a7f81
   local_auth_darwin: 66e40372f1c29f383a314c738c7446e2f7fdadc3
   mobile_scanner: 07710d6b9b2c220ae899de2d7ecf5d77ffa56333
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46

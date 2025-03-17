@@ -21,7 +21,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_secure_storage: ^10.0.0-beta.4
-
+  get_it: ^8.0.3
   komodo_coins:
     path: ../komodo_coins
   komodo_defi_framework:
