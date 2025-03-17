@@ -2,11 +2,10 @@
 
 import 'dart:async';
 import 'dart:collection';
-
+import 'package:flutter/foundation.dart' show ValueGetter;
 import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
-import 'package:komodo_defi_sdk/src/assets/custom_asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -19,6 +18,10 @@ typedef AssetIdMap = SplayTreeMap<AssetId, Asset>;
 /// * Managing asset activation state
 /// * Handling automatic activation of assets
 /// * Maintaining asset ordering and grouping
+///
+/// Note: The actual asset activation is handled by the internal
+/// [ActivationManager] which is not publicly exposed by design.
+/// The [AssetManager] provides proxy methods for backward compatibility.
 ///
 /// ## Usage
 ///
@@ -43,43 +46,21 @@ class AssetManager implements IAssetProvider {
     this._client,
     this._auth,
     this._config,
-    this._assetHistory,
     this._customAssetHistory,
+    this._activationManager,
   );
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final KomodoDefiSdkConfig _config;
-  final AssetHistoryStorage _assetHistory;
   final CustomAssetHistoryStorage _customAssetHistory;
-
-  ActivationManager? _activationManager;
-
-  /// Set the activation manager after construction to handle circular dependency
-  void setActivationManager(ActivationManager manager) {
-    if (_activationManager != null) {
-      throw StateError('ActivationManager has already been set');
-    }
-    _activationManager = manager;
-  }
-
-  /// Gets the activation manager, throwing if not set
-  ActivationManager get _activation {
-    if (_activationManager == null) {
-      throw StateError(
-        'ActivationManager not set. Ensure setActivationManager() is called during initialization.',
-      );
-    }
-    return _activationManager!;
-  }
-
-  final Map<AssetId, Completer<void>> _activationCompleters = {};
-  final Set<AssetId> _activeAssetIds = {};
   final KomodoCoins _coins = KomodoCoins();
-
-  StreamSubscription<KdfUser?>? _authSubscription;
-
   late final AssetIdMap _orderedCoins;
+
+  /// NB: This cannot be used during initialization. This is a workaround
+  /// to publicly expose the activation manager's activation methods.
+  /// See [activateAsset] and [activateAssets] for more details.
+  final ValueGetter<ActivationManager> _activationManager;
 
   /// Initializes the asset manager.
   ///
@@ -101,33 +82,19 @@ class AssetManager implements IAssetProvider {
 
     _orderedCoins.addAll(_coins.all);
 
-    await initTickerIndex();
-
-    final currentUser = await _auth.currentUser;
-    await _onAuthStateChanged(currentUser);
-
-    _authSubscription = _auth.authStateChanges.listen(_onAuthStateChanged);
+    await _initializeCustomTokens();
   }
 
-  /// Activates a specific asset, making it available for use.
-  ///
-  /// Returns a stream of [ActivationProgress] updates during the activation process.
-  ///
-  /// Example:
-  /// ```dart
-  /// final asset = assetManager.findAssetsByTicker('BTC').first;
-  /// await for (final progress in assetManager.activateAsset(asset)) {
-  ///   print('Activation progress: ${progress.status}');
-  /// }
-  /// ```
-  Stream<ActivationProgress> activateAsset(Asset asset) {
-    // custom tokens are not in the coins list, so they have
-    // to be added to the indexes on login and activation
-    if (asset.protocol.isCustomToken) {
-      _orderedCoins[asset.id] = asset;
-      updateIndex(asset).ignore();
+  Future<void> _initializeCustomTokens() async {
+    final user = await _auth.currentUser;
+    if (user != null) {
+      final customTokens = await _customAssetHistory.getWalletAssets(
+        user.walletId,
+      );
+      for (final customToken in customTokens) {
+        _orderedCoins[customToken.id] = customToken;
+      }
     }
-    return _activation.activateAsset(asset);
   }
 
   /// Returns an asset by its [AssetId], if available.
@@ -135,11 +102,12 @@ class AssetManager implements IAssetProvider {
   /// Returns null if no matching asset is found.
   /// Throws [StateError] if called before initialization.
   @override
-  Asset? fromId(AssetId id) => _coins.isInitialized
-      ? available[id]
-      : throw StateError(
-          'Assets have not been initialized. Call init() first.',
-        );
+  Asset? fromId(AssetId id) =>
+      _coins.isInitialized
+          ? available[id]
+          : throw StateError(
+            'Assets have not been initialized. Call init() first.',
+          );
 
   /// Returns all available assets, ordered by priority.
   ///
@@ -154,10 +122,8 @@ class AssetManager implements IAssetProvider {
   /// Returns an empty list if no user is signed in.
   @override
   Future<List<Asset>> getActivatedAssets() async {
-    if (!await _auth.isSignedIn()) return [];
-
-    final enabledCoins = await getEnabledCoins();
-    return enabledCoins.expand(findAssetsByTicker).toList();
+    final enabled = await getEnabledCoins();
+    return enabled.expand(findAssetsByTicker).toList();
   }
 
   /// Returns the set of enabled coin tickers for the current user.
@@ -169,80 +135,6 @@ class AssetManager implements IAssetProvider {
 
     final enabled = await _client.rpc.generalActivation.getEnabledCoins();
     return enabled.result.map((e) => e.ticker).toSet();
-  }
-
-  Future<void> _handlePreActivation(KdfUser user) async {
-    final assetsToActivate = <Asset>{};
-
-    if (_config.preActivateCustomTokenAssets) {
-      final customTokens =
-          await _customAssetHistory.getWalletAssets(user.walletId);
-      assetsToActivate.addAll(customTokens);
-      for (final customToken in customTokens) {
-        _orderedCoins[customToken.id] = customToken;
-        await updateIndex(customToken);
-      }
-    }
-
-    if (_config.preActivateDefaultAssets) {
-      for (final ticker in _config.defaultAssets) {
-        final assets = findAssetsByTicker(ticker)
-            .where((asset) => !_activeAssetIds.contains(asset.id));
-        assetsToActivate.addAll(assets);
-      }
-    }
-
-    if (_config.preActivateHistoricalAssets) {
-      final historical = await _assetHistory.getWalletAssets(user.walletId);
-      for (final ticker in historical) {
-        final assets = findAssetsByTicker(ticker)
-            .where((asset) => !_activeAssetIds.contains(asset.id));
-        assetsToActivate.addAll(assets);
-      }
-    }
-
-    final validAssets = assetsToActivate
-        .where((asset) => asset.isCompatibleWith(user.authOptions))
-        .toList();
-
-    await for (final progress
-        in _activationManager!.activateAssets(validAssets)) {
-      if (progress.isComplete && !progress.isSuccess) {
-        final assetToRetry = validAssets.firstWhere(
-          (asset) => !_activeAssetIds.contains(asset.id),
-          orElse: () => throw StateError('No asset found for retry'),
-        );
-
-        var attempts = 0;
-        while (attempts < _config.maxPreActivationAttempts) {
-          try {
-            await activateAsset(assetToRetry).last;
-            break;
-          } catch (e) {
-            attempts++;
-            if (attempts < _config.maxPreActivationAttempts) {
-              await Future<void>.delayed(_config.activationRetryDelay);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  Future<void> _onAuthStateChanged(KdfUser? user) async {
-    if (user == null) {
-      _activeAssetIds.clear();
-      return;
-    }
-
-    final enabledCoins = await getEnabledCoins();
-    for (final ticker in enabledCoins) {
-      _activeAssetIds.addAll(
-        findAssetsByTicker(ticker).map((asset) => asset.id),
-      );
-    }
-
-    await _handlePreActivation(user);
   }
 
   /// Finds all assets matching the given ticker symbol.
@@ -277,11 +169,36 @@ class AssetManager implements IAssetProvider {
         .toSet();
   }
 
+  /// Activates a single asset.
+  ///
+  /// This is a proxy method that delegates to the internal [ActivationManager]
+  /// for backward compatibility. The [ActivationManager] is not publicly
+  /// exposed by design.
+  ///
+  /// This method may be removed in the future, as the goal is to handle all
+  /// activation logic internally and seamlessly.
+  ///
+  /// Returns a stream of [ActivationProgress] updates.
+  Stream<ActivationProgress> activateAsset(Asset asset) =>
+      _activationManager().activateAsset(asset);
+
+  /// Activates multiple assets at once.
+  ///
+  /// This is a proxy method that delegates to the internal [ActivationManager]
+  /// for backward compatibility. The [ActivationManager] is not publicly
+  /// exposed by design.
+  ///
+  /// This method may be removed in the future, as the goal is to handle all
+  /// activation logic internally and seamlessly.
+  ///
+  /// Returns a stream of [ActivationProgress] updates.
+  Stream<ActivationProgress> activateAssets(List<Asset> assets) =>
+      _activationManager().activateAssets(assets);
+
   /// Disposes of the asset manager, cleaning up resources.
   ///
   /// This is called automatically by the SDK when disposing.
   Future<void> dispose() async {
-    _activationCompleters.clear();
-    await _authSubscription?.cancel();
+    // No cleanup needed for now
   }
 }

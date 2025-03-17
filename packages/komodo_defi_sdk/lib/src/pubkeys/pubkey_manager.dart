@@ -4,16 +4,15 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manager responsible for handling pubkey operations across different assets
 class PubkeyManager {
-  PubkeyManager(this._client, this._auth, this._assetManager);
+  PubkeyManager(this._client, this._auth, this._activationManager);
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
-  final AssetManager _assetManager;
+  final ActivationManager _activationManager;
 
   /// Get pubkeys for a given asset, handling HD/non-HD differences internally
   Future<AssetPubkeys> getPubkeys(Asset asset) async {
-    final finalStatus = await _assetManager.activateAsset(asset).last;
-
+    final finalStatus = await _activationManager.activateAsset(asset).last;
     if (finalStatus.isComplete && !finalStatus.isSuccess) {
       throw StateError(
         'Failed to activate asset ${asset.id.name}. ${finalStatus.toJson()}',
@@ -26,8 +25,12 @@ class PubkeyManager {
 
   /// Create a new pubkey for an asset if supported
   Future<PubkeyInfo> createNewPubkey(Asset asset) async {
-    // ignore: deprecated_member_use_from_same_package
-    await _assetManager.activateAsset(asset).last;
+    final activationStatus = await _activationManager.activateAsset(asset).last;
+    if (activationStatus.isComplete && !activationStatus.isSuccess) {
+      throw StateError(
+        'Failed to activate asset ${asset.id.name}. ${activationStatus.toJson()}',
+      );
+    }
 
     final strategy = await _resolvePubkeyStrategy(asset);
     if (!strategy.supportsMultipleAddresses) {
@@ -43,13 +46,11 @@ class PubkeyManager {
     final isHdWallet =
         await _auth.currentUser.then((u) => u?.isHd) ??
         (throw AuthException.notSignedIn());
-
     return asset.pubkeyStrategy(isHdWallet: isHdWallet);
   }
 
   /// Dispose of any resources
   Future<void> dispose() async {
-    
-    // Add any cleanup if needed
+    // No cleanup needed currently
   }
 }
