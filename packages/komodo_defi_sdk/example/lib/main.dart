@@ -36,6 +36,11 @@ void main() async {
           scaffoldMessengerKey: _scaffoldKey,
           navigatorKey: _navigatorKey,
           theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
+          darkTheme: ThemeData(
+            colorSchemeSeed: Colors.blue,
+            useMaterial3: true,
+            brightness: Brightness.dark,
+          ),
           home: const KomodoApp(),
         ),
       ),
