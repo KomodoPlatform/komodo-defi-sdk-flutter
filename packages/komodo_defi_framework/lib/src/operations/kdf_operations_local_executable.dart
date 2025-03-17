@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/exceptions/kdf_exception.dart';
+import 'package:komodo_defi_framework/src/native/kdf_executable_finder.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -12,38 +13,45 @@ import 'package:path_provider/path_provider.dart';
 class KdfOperationsLocalExecutable implements IKdfOperations {
   KdfOperationsLocalExecutable._(
     this._logCallback,
-    this._config,
     this._kdfRemote, {
     Duration startupTimeout = const Duration(seconds: 30),
-  }) : _startupTimeout = startupTimeout;
+    KdfExecutableFinder? executableFinder,
+    this.executableName = 'kdf',
+  })  : _startupTimeout = startupTimeout,
+        _executableFinder =
+            executableFinder ?? KdfExecutableFinder(logCallback: _logCallback);
 
   factory KdfOperationsLocalExecutable.create({
     required void Function(String) logCallback,
     required LocalConfig config,
     Duration startupTimeout = const Duration(seconds: 30),
+    String executableName = 'kdf',
   }) {
     return KdfOperationsLocalExecutable._(
       logCallback,
-      config,
       KdfOperationsRemote.create(
         logCallback: logCallback,
         rpcUrl: _url,
         userpass: config.rpcPassword,
       ),
       startupTimeout: startupTimeout,
+      executableName: executableName,
     );
   }
 
-  final void Function(String) _logCallback;
-  // ignore: unused_field
-  final LocalConfig _config;
-
-  Process? _process;
-  final Duration _startupTimeout;
-  late StreamSubscription<List<int>>? stdoutSub;
-  late StreamSubscription<List<int>>? stderrSub;
-
   final KdfOperationsRemote _kdfRemote;
+  final Duration _startupTimeout;
+  final void Function(String) _logCallback;
+  final KdfExecutableFinder _executableFinder;
+  final String executableName;
+
+  // Use nullable fields instead of late, for the process and listeners,
+  // because it is not guaranteed that they will be initialized before
+  // they are used. E.g. if the process fails to start, or during the
+  // cleanup process.
+  Process? _process;
+  StreamSubscription<List<int>>? stdoutSub;
+  StreamSubscription<List<int>>? stderrSub;
 
   @override
   String get operationsName => 'Local Executable';
@@ -51,7 +59,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   @override
   Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
     try {
-      return await _getExecutable() != null;
+      return await _executableFinder.findExecutable(
+              executableName: executableName) !=
+          null;
     } catch (e) {
       _logCallback('Error checking availability: $e');
       return false;
@@ -61,11 +71,14 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   static final Uri _url = Uri.parse('http://127.0.0.1:7783');
 
   Future<Process> _startKdf(JsonMap params) async {
-    final executablePath = (await _getExecutable())?.absolute.path;
+    final executablePath =
+        (await _executableFinder.findExecutable(executableName: executableName))
+            ?.absolute
+            .path;
     if (executablePath == null) {
       throw KdfException(
         'KDF executable not found in any of the expected locations. '
-        'Please ensure KDF is properly installed or included in your application bundle.',
+        'Please ensure KDF is properly installed or included in your bundle.',
         type: KdfExceptionType.executableNotFound,
       );
     }
@@ -118,14 +131,13 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       // dangling resources are cleaned up.
       await coinsTempDir?.delete(recursive: true).catchError((Object error) {
         _logCallback('Failed to delete temporary directory: $error');
-        return Directory(
-            ''); // Return a dummy directory to satisfy the return type
+        return Directory('');
       });
       if (e is KdfException) {
         rethrow;
       }
       throw KdfException(
-        'Failed to start KDF: ${e.toString()}',
+        'Failed to start KDF: $e',
         type: KdfExceptionType.startupFailed,
         stackTrace: stackTrace,
       );
@@ -174,92 +186,6 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     } finally {
       _process = null;
     }
-  }
-
-  String linuxBuildKdfPath({bool isDebugBuild = false, bool isLib = false}) =>
-      p.join(
-        Directory.current.path,
-        'build',
-        'linux',
-        'x64',
-        isDebugBuild ? 'debug' : 'release',
-        'bundle',
-        'lib',
-        isLib ? 'libkdf.so' : 'kdf',
-      );
-
-  String windowsBuildKdfPath({bool isDebugBuild = false, bool isLib = false}) =>
-      p.join(
-        Directory.current.path,
-        'build',
-        'windows',
-        'x64',
-        'runner',
-        isDebugBuild ? 'Debug' : 'Release',
-        isLib ? 'kdf.dll' : 'kdf.exe',
-      );
-
-  String macosBuildKdfPath({bool isDebugBuild = false, bool isLib = false}) =>
-      p.join(
-        Directory.current.path,
-        'build',
-        'macos',
-        'Build',
-        'Products',
-        isDebugBuild ? 'Debug' : 'Release',
-        'komodo_defi_framework',
-        'kdf_resources.bundle',
-        'Contents',
-        'Resources',
-        isLib ? 'libkdf.dylib' : 'kdf',
-      );
-
-  Future<File?> _getExecutable() async {
-    final macosKdfResourcePath = p.joinAll([
-      p.dirname(p.dirname(Platform.resolvedExecutable)),
-      'Frameworks',
-      'komodo_defi_framework.framework',
-      'Resources',
-      'kdf_resources.bundle',
-      'Contents',
-      'Resources',
-      'kdf',
-    ]);
-
-    final files = [
-      '/usr/local/bin/kdf',
-      '/usr/bin/kdf',
-      p.join(Directory.current.path, 'kdf'),
-      p.join(Directory.current.path, 'kdf.exe'),
-      p.join(Directory.current.path, 'lib/kdf'),
-      p.join(Directory.current.path, 'lib/kdf.exe'),
-      macosKdfResourcePath,
-
-      // Paths specifically for running/debugging client applications like
-      // Komodo Wallet. Looks inside of the build directory for the KDF
-      // executable, since it won't be in the same directory as the IDE
-      // execution context (usually the root directory of the project).
-      windowsBuildKdfPath(isDebugBuild: true),
-      windowsBuildKdfPath(),
-      linuxBuildKdfPath(isDebugBuild: true),
-      linuxBuildKdfPath(),
-      macosBuildKdfPath(isDebugBuild: true),
-      macosBuildKdfPath(),
-    ].map((path) => File(p.normalize(path))).toList();
-
-    for (final file in files) {
-      if (file.existsSync()) {
-        _logCallback('Found executable: ${file.path}');
-        return file.absolute;
-      }
-    }
-
-    _logCallback(
-      'Executable not found in paths: ${files.map((e) => e.absolute.path).join('\n')}. '
-      'If you are using the KDF Flutter SDK, open an issue on GitHub.',
-    );
-
-    return null;
   }
 
   @override
@@ -324,10 +250,48 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       return StopStatus.notRunning;
     }
 
-    final stopResult = await _kdfRemote.kdfStop();
-    _process!.kill();
+    _logCallback('Starting KDF process cleanup');
+    try {
+      if (_process!.pid == 0) {
+        _logCallback('Process is not running, skipping shutdown.');
+        return StopStatus.notRunning;
+      }
 
-    return stopResult;
+      try {
+        await _kdfRemote.kdfStop().timeout(
+              const Duration(seconds: 5),
+              onTimeout: () => StopStatus.errorStopping,
+            );
+
+        // On Windows, wait a moment after sending stop command
+        if (Platform.isWindows) {
+          _logCallback(
+            'Windows platform detected, adding delay before process termination',
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+        }
+      } catch (e) {
+        _logCallback('Error during graceful shutdown: $e');
+      }
+
+      await Future.wait([
+        stdoutSub?.cancel() ?? Future<void>.value(),
+        stderrSub?.cancel() ?? Future<void>.value(),
+      ]);
+
+      try {
+        _process!.kill();
+      } catch (e) {
+        _logCallback('Error killing KDF process: $e');
+      }
+
+      _process = null;
+      _logCallback('KDF process cleanup complete');
+    } catch (e, stack) {
+      _logCallback('Critical error during KDF cleanup: $e\n$stack');
+    }
+
+    return StopStatus.ok;
   }
 
   @override
@@ -350,12 +314,5 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         type: KdfExceptionType.notRunning,
       );
     }
-  }
-
-  void dispose() {
-    _process?.kill();
-    stdoutSub?.cancel();
-    stderrSub?.cancel();
-    _logCallback('Process killed and resources cleaned up.');
   }
 }
