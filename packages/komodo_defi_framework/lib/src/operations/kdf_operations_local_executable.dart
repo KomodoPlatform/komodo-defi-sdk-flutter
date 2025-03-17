@@ -209,33 +209,30 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       int? exitCode;
       unawaited(_process?.exitCode.then((code) => exitCode = code));
 
-    while (timer.elapsed < _startupTimeout) {
+      while (timer.elapsed < _startupTimeout) {
+        if (await isRunning()) {
+          break;
+        }
+
+        if (exitCode != null) {
+          return KdfStartupResult.tryFromDefaultInt(exitCode!);
+        }
+
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
+
       if (await isRunning()) {
-        break;
+        return KdfStartupResult.ok;
       }
 
-      if (exitCode != null) {
-        throw KdfException(
-          'Error starting KDF: Exit code: $exitCode',
-          type: KdfExceptionType.startupFailed,
-          details: {'exitCode': exitCode},
-          stackTrace: StackTrace.current,
-        );
+      return KdfStartupResult.spawnError;
+    } catch (e) {
+      _logCallback('Error starting KDF: $e');
+      if (e is ArgumentError) {
+        return KdfStartupResult.invalidParams;
       }
-
-      await Future<void>.delayed(const Duration(milliseconds: 500));
+      return KdfStartupResult.initError;
     }
-
-    if (await isRunning()) {
-      return KdfStartupResult.ok;
-    }
-
-    throw KdfException(
-      'Error starting KDF: Process not running after timeout.',
-      type: KdfExceptionType.startupFailed,
-      details: {'timeout': _startupTimeout.inSeconds},
-      stackTrace: StackTrace.current,
-    );
   }
 
   @override
@@ -248,14 +245,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   @override
   Future<StopStatus> kdfStop() async {
-    var stopResult =
-        await _kdfRemote.kdfStop().catchError((_) => StopStatus.errorStopping);
-
-    if (_process == null || _process!.pid == 0) {
-      return stopResult;
-    }
-
-    _logCallback('Starting KDF process cleanup');
+    var stopStatus = StopStatus.ok;
     try {
       if (_process!.pid == 0) {
         _logCallback('Process is not running, skipping shutdown.');
@@ -263,18 +253,14 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       }
 
       try {
-        await _kdfRemote.kdfStop().timeout(
+        stopStatus = await _kdfRemote
+            .kdfStop()
+            .catchError((_) => StopStatus.errorStopping)
+            .timeout(
               const Duration(seconds: 5),
               onTimeout: () => StopStatus.errorStopping,
             );
-
-        // On Windows, wait a moment after sending stop command
-        if (Platform.isWindows) {
-          _logCallback(
-            'Windows platform detected, adding delay before process termination',
-          );
-          await Future<void>.delayed(const Duration(milliseconds: 500));
-        }
+        _logCallback('KDF stop result: $stopStatus');
       } catch (e) {
         _logCallback('Error during graceful shutdown: $e');
       }
@@ -285,7 +271,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       ]);
 
       try {
-        _process!.kill();
+        if (_process?.pid != 0) {
+          _process!.kill();
+        }
       } catch (e) {
         _logCallback('Error killing KDF process: $e');
       }
@@ -296,7 +284,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       _logCallback('Critical error during KDF cleanup: $e\n$stack');
     }
 
-    return StopStatus.ok;
+    return stopStatus;
   }
 
   @override
