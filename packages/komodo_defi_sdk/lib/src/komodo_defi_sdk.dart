@@ -1,11 +1,12 @@
-import 'package:flutter/foundation.dart';
+import 'package:get_it/get_it.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/addresses/address_operations.dart';
+import 'package:komodo_defi_sdk/src/bootstrap.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
-import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -130,25 +131,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     );
   }
 
-  KomodoDefiSdk._(this._hostConfig, this._config, this._kdfFramework);
+  KomodoDefiSdk._(this._hostConfig, this._config, this._kdfFramework) {
+    _container = GetIt.asNewInstance();
+  }
 
   final IKdfHostConfig? _hostConfig;
   final KomodoDefiSdkConfig _config;
   KomodoDefiFramework? _kdfFramework;
-
-  // Private nullable fields
-  ApiClient? _apiClient;
-  LogCallback? _logCallback;
-  KomodoDefiLocalAuth? _auth;
-  AssetManager? _assets;
-  PubkeyManager? _pubkeys;
-  AddressOperations? _addresses;
-  MnemonicValidator? _mnemonicValidator;
-  TransactionHistoryManager? _transactionHistory;
-  WithdrawalManager? _withdrawals;
-  MessageSigningManager? _messageSigning;
-  BalanceManager? _balances;
-
+  late final GetIt _container;
   bool _isInitialized = false;
   Future<void>? _initializationFuture;
 
@@ -158,35 +148,38 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// the client can be used for direct API access when needed.
   ///
   /// Throws [StateError] if accessed before initialization.
-  ApiClient get client => _assertSdkInitialized(_apiClient);
+  ApiClient get client => _assertSdkInitialized(_container<ApiClient>());
 
   /// The authentication manager instance.
   ///
   /// Handles user authentication, wallet management, and session state.
   ///
   /// Throws [StateError] if accessed before initialization.
-  KomodoDefiLocalAuth get auth => _assertSdkInitialized(_auth);
+  KomodoDefiLocalAuth get auth =>
+      _assertSdkInitialized(_container<KomodoDefiLocalAuth>());
 
   /// The pubkey manager instance.
   ///
   /// Handles generation and management of addresses for assets.
   ///
   /// Throws [StateError] if accessed before initialization.
-  PubkeyManager get pubkeys => _assertSdkInitialized(_pubkeys);
+  PubkeyManager get pubkeys =>
+      _assertSdkInitialized(_container<PubkeyManager>());
 
   /// The address operations instance.
   ///
   /// Provides functionality for address validation and format conversion.
   ///
   /// Throws [StateError] if accessed before initialization.
-  AddressOperations get addresses => _assertSdkInitialized(_addresses);
+  AddressOperations get addresses =>
+      _assertSdkInitialized(_container<AddressOperations>());
 
   /// The asset manager instance.
   ///
   /// Handles coin/token activation and configuration.
   ///
   /// Throws [StateError] if accessed before initialization.
-  AssetManager get assets => _assertSdkInitialized(_assets);
+  AssetManager get assets => _assertSdkInitialized(_container<AssetManager>());
 
   /// The transaction history manager instance.
   ///
@@ -194,7 +187,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   ///
   /// Throws [StateError] if accessed before initialization.
   TransactionHistoryManager get transactions =>
-      _assertSdkInitialized(_transactionHistory);
+      _assertSdkInitialized(_container<TransactionHistoryManager>());
 
   /// The message signing manager instance.
   ///
@@ -202,16 +195,15 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   ///
   /// Throws [StateError] if accessed before initialization.
   MessageSigningManager get messageSigning =>
-      _assertSdkInitialized(_messageSigning);
+      _assertSdkInitialized(_container<MessageSigningManager>());
 
-  T _assertSdkInitialized<T>(T? val) {
-    if (!_isInitialized || val == null) {
+  T _assertSdkInitialized<T>(T val) {
+    if (!_isInitialized) {
       throw StateError(
-        'Cannot call ${val.runtimeType} because KomodoDefiSdk is not '
+        'Cannot call $T because KomodoDefiSdk is not '
         'initialized. Call initialize() or await ensureInitialized() first.',
       );
     }
-
     return val;
   }
 
@@ -221,24 +213,23 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   ///
   /// Throws [StateError] if accessed before initialization.
   MnemonicValidator get mnemonicValidator =>
-      _assertSdkInitialized(_mnemonicValidator);
+      _assertSdkInitialized(_container<MnemonicValidator>());
 
   /// The withdrawal manager instance.
   ///
   /// Handles asset withdrawal operations.
   ///
   /// Throws [StateError] if accessed before initialization.
-  WithdrawalManager get withdrawals => _assertSdkInitialized(_withdrawals);
+  WithdrawalManager get withdrawals =>
+      _assertSdkInitialized(_container<WithdrawalManager>());
 
-  /// Gets a reference to the balance manager for checking asset balances
-  BalanceManager get balances {
-    if (_balances == null) {
-      throw StateError(
-        'SDK has not been initialized. Call initialize() first.',
-      );
-    }
-    return _balances!;
-  }
+  /// Gets a reference to the balance manager for checking asset balances.
+  ///
+  /// Provides functionality for checking and monitoring asset balances.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  BalanceManager get balances =>
+      _assertSdkInitialized(_container<BalanceManager>());
 
   /// Initializes the SDK instance.
   ///
@@ -254,7 +245,6 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// ```
   Future<void> initialize() async {
     if (_isInitialized) return;
-
     _initializationFuture ??= _initialize();
     await _initializationFuture;
   }
@@ -276,75 +266,12 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   }
 
   Future<void> _initialize() async {
-    final rpcPassword = await ensureRpcPassword();
-
-    final hostConfig =
-        _hostConfig ?? LocalConfig(https: true, rpcPassword: rpcPassword);
-
-    _kdfFramework ??= KomodoDefiFramework.create(
-      hostConfig: hostConfig,
-      externalLogger: kDebugMode ? print : null,
+    await bootstrap(
+      hostConfig: _hostConfig,
+      config: _config,
+      kdfFramework: _kdfFramework,
+      container: _container,
     );
-
-    _apiClient = _kdfFramework!.client;
-
-    // Initialize auth first as other managers depend on it
-    _auth = KomodoDefiLocalAuth(kdf: _kdfFramework!, hostConfig: hostConfig);
-    await _auth!.ensureInitialized();
-
-    // Initialize asset history storage for sharing between managers
-    final assetHistory = AssetHistoryStorage();
-    final customAssetHistory = CustomAssetHistoryStorage();
-
-    // Initialize asset manager first as it implements IAssetLookup
-    _assets = AssetManager(
-      _apiClient!,
-      _auth!,
-      _config,
-      assetHistory,
-      customAssetHistory,
-    );
-    await _assets!.init();
-
-    // Initialize activation manager with asset lookup capabilities
-    final activationManager = ActivationManager(
-      _apiClient!,
-      _auth!,
-      assetHistory,
-      customAssetHistory,
-      _assets!,
-    );
-
-    // Set activation manager in AssetManager to complete circular dependency
-    _assets!.setActivationManager(activationManager);
-
-    // Initialize remaining managers with proper dependencies
-    _pubkeys = PubkeyManager(_apiClient!, _auth!, _assets!);
-    _addresses = AddressOperations(_apiClient!);
-    _mnemonicValidator = MnemonicValidator();
-    await _mnemonicValidator!.init();
-
-    // Initialize balance manager
-    _balances = BalanceManager(
-      _apiClient!,
-      activationManager,
-      _assets!,
-      _auth!,
-    );
-
-    // Initialize managers that work with transactions
-    _transactionHistory = TransactionHistoryManager(
-      _apiClient!,
-      _auth!,
-      _assets!,
-      pubkeyManager: _pubkeys!,
-    );
-
-    // Initialize withdrawal manager last as it depends on asset activation
-    _withdrawals = WithdrawalManager(_apiClient!, _auth!, _assets!);
-
-    _messageSigning = MessageSigningManager(_apiClient!);
-
     _isInitialized = true;
   }
 
@@ -380,24 +307,10 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     if (!_isInitialized) return;
     _isInitialized = false;
 
-    // Dispose managers in reverse order of initialization
-    await _withdrawals?.dispose();
-    await _transactionHistory?.dispose();
-    await _pubkeys?.dispose();
-    await _assets?.dispose();
-    await _auth?.dispose();
-    await _balances?.dispose();
+    // Reset scoped container
+    await _container.reset();
 
-    // Clear references to managers
-    _withdrawals = null;
-    _transactionHistory = null;
-    _messageSigning = null;
-    _pubkeys = null;
-    _assets = null;
-    _auth = null;
-    _balances = null;
-
-    // Clean up framework
+    // Clean up framework if we created it
     if (_kdfFramework != null) {
       await _kdfFramework!.dispose();
       _kdfFramework = null;
