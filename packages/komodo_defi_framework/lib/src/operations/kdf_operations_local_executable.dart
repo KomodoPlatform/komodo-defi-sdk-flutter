@@ -60,7 +60,8 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
     try {
       return await _executableFinder.findExecutable(
-              executableName: executableName) !=
+            executableName: executableName,
+          ) !=
           null;
     } catch (e) {
       _logCallback('Error checking availability: $e');
@@ -247,22 +248,13 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   Future<StopStatus> kdfStop() async {
     var stopStatus = StopStatus.ok;
     try {
-      if (_process!.pid == 0) {
+      stopStatus = await _kdfRemote
+          .kdfStop()
+          .catchError((_) => StopStatus.errorStopping);
+
+      if (_process == null || _process?.pid == 0) {
         _logCallback('Process is not running, skipping shutdown.');
         return StopStatus.notRunning;
-      }
-
-      try {
-        stopStatus = await _kdfRemote
-            .kdfStop()
-            .catchError((_) => StopStatus.errorStopping)
-            .timeout(
-              const Duration(seconds: 5),
-              onTimeout: () => StopStatus.errorStopping,
-            );
-        _logCallback('KDF stop result: $stopStatus');
-      } catch (e) {
-        _logCallback('Error during graceful shutdown: $e');
       }
 
       await Future.wait([
@@ -270,12 +262,15 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         stderrSub?.cancel() ?? Future<void>.value(),
       ]);
 
-      try {
-        if (_process?.pid != 0) {
-          _process!.kill();
-        }
-      } catch (e) {
-        _logCallback('Error killing KDF process: $e');
+      if (_process != null && _process!.pid != 0) {
+        await _process?.exitCode.timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            _logCallback('KDF Process did not terminate in time.');
+            stopStatus = StopStatus.errorStopping;
+            return -1; // not used
+          },
+        );
       }
 
       _process = null;
