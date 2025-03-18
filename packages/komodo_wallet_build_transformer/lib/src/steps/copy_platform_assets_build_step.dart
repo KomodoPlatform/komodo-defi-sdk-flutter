@@ -154,6 +154,9 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
           if (!destFile.parent.existsSync()) {
             destFile.parent.createSync(recursive: true);
           }
+          if (destFile.existsSync()) {
+            destFile.deleteSync();
+          }
           entity.copySync(destFile.path);
         }
       }
