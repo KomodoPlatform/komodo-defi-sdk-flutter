@@ -3,10 +3,12 @@ library;
 
 export 'package:komodo_defi_framework/komodo_defi_framework.dart'
     show LocalConfig, RemoteConfig;
-// export 'package:komodo_defi_sdk/src/addresses/address_operations.dart'
-//     show AddressValidation;
+export 'package:komodo_defi_sdk/src/addresses/address_operations.dart'
+    show AddressOperations;
 export 'package:komodo_defi_sdk/src/balances/balance_manager.dart'
     show BalanceManager;
+// export 'package:komodo_defi_sdk/src/prices/price_manager.dart'
+//     show PriceManager, IPriceManager;
 export 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 
 export 'src/assets/_assets_index.dart' show AssetHdWalletAddressesExtension;
@@ -17,9 +19,5 @@ export 'src/assets/asset_extensions.dart'
         AssetValidation;
 export 'src/assets/asset_pubkey_extensions.dart';
 export 'src/assets/legacy_asset_extensions.dart';
-// // Export coin activation extension
-// export 'package:komodo_defi_sdk/src/assets/asset_manager.dart'
-//     show AssetActivation;
-
-export 'src/komodo_defi_sdk.dart';
+export 'src/komodo_defi_sdk.dart' show KomodoDefiSdk;
 export 'src/widgets/asset_balance_text.dart';

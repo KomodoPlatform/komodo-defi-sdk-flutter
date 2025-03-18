@@ -123,7 +123,7 @@ class AssetManager implements IAssetProvider {
   @override
   Future<List<Asset>> getActivatedAssets() async {
     final enabled = await getEnabledCoins();
-    return enabled.expand(findAssetsByTicker).toList();
+    return enabled.expand(findAssetsByConfigId).toList();
   }
 
   /// Returns the set of enabled coin tickers for the current user.
@@ -137,7 +137,7 @@ class AssetManager implements IAssetProvider {
     return enabled.result.map((e) => e.ticker).toSet();
   }
 
-  /// Finds all assets matching the given ticker symbol.
+  /// Finds all assets matching the given ID String (as is in the coins config).
   ///
   /// Example:
   /// ```dart
@@ -147,7 +147,7 @@ class AssetManager implements IAssetProvider {
   /// }
   /// ```
   @override
-  Set<Asset> findAssetsByTicker(String ticker) {
+  Set<Asset> findAssetsByConfigId(String ticker) {
     return available.values.where((asset) => asset.id.id == ticker).toSet();
   }
 

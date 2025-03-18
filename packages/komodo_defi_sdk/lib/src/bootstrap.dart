@@ -2,11 +2,12 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
+import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
-import 'package:komodo_defi_sdk/src/addresses/address_operations.dart';
+import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
@@ -68,31 +69,64 @@ Future<void> bootstrap({
       () => container<ActivationManager>(),
     );
     await assetManager.init();
+    // Will be removed in near future after KW is fully migrated to KDF
+    await assetManager.initTickerIndex();
     return assetManager;
   }, dependsOn: [ApiClient, KomodoDefiLocalAuth]);
+
+  // Register BalanceManager BEFORE ActivationManager to avoid circular dependency
+  container.registerSingletonAsync<BalanceManager>(() async {
+    final assets = await container.getAsync<AssetManager>();
+    final auth = await container.getAsync<KomodoDefiLocalAuth>();
+
+    // Create BalanceManager without its dependencies on ActivationManager and PubkeyManager initially
+    return BalanceManager(
+      activationManager: null, // Will be set after ActivationManager is created
+      assetLookup: assets,
+      pubkeyManager: null, // Will be set after PubkeyManager is created
+      auth: auth,
+    );
+  }, dependsOn: [AssetManager, KomodoDefiLocalAuth]);
 
   // Register activation manager with asset manager dependency
   container.registerSingletonAsync<ActivationManager>(() async {
     final client = await container.getAsync<ApiClient>();
     final auth = await container.getAsync<KomodoDefiLocalAuth>();
     final assetManager = await container.getAsync<AssetManager>();
+    final balanceManager = await container.getAsync<BalanceManager>();
+
     final activationManager = ActivationManager(
       client,
       auth,
       container<AssetHistoryStorage>(),
       container<CustomAssetHistoryStorage>(),
       assetManager,
+      balanceManager,
     );
 
+    // Now that we have the ActivationManager, we can set it in BalanceManager
+    // This assumes BalanceManager has a setter for activationManager
+    if (balanceManager.activationManager == null) {
+      balanceManager.setActivationManager(activationManager);
+    }
+
     return activationManager;
-  }, dependsOn: [ApiClient, KomodoDefiLocalAuth, AssetManager]);
+  }, dependsOn: [ApiClient, KomodoDefiLocalAuth, AssetManager, BalanceManager]);
 
   // Register remaining managers
   container.registerSingletonAsync<PubkeyManager>(() async {
     final client = await container.getAsync<ApiClient>();
     final auth = await container.getAsync<KomodoDefiLocalAuth>();
     final activationManager = await container.getAsync<ActivationManager>();
-    return PubkeyManager(client, auth, activationManager);
+    final pubkeyManager = PubkeyManager(client, auth, activationManager);
+
+    // Set the PubkeyManager on BalanceManager now that it's available
+    final balanceManager = await container.getAsync<BalanceManager>();
+    if (balanceManager.pubkeyManager == null) {
+      balanceManager.setPubkeyManager(pubkeyManager);
+    }
+
+    return pubkeyManager;
   }, dependsOn: [ApiClient, KomodoDefiLocalAuth, ActivationManager]);
 
   container.registerSingleton(
@@ -105,16 +139,26 @@ Future<void> bootstrap({
     return validator;
   });
 
-  container.registerSingletonAsync<BalanceManager>(() async {
-    final activationManager = await container.getAsync<ActivationManager>();
-    final assets = await container.getAsync<AssetManager>();
-    return BalanceManager(
-      activationManager: activationManager,
-      assetLookup: assets,
-      pubkeyManager: await container.getAsync<PubkeyManager>(),
-      auth: await container.getAsync<KomodoDefiLocalAuth>(),
+  // TODO: Consider if more appropropriate for initialization of these
+  // dependencies to be done internally in the `cex_market_data` package.
+  container.registerSingleton<CexRepository>(
+    BinanceRepository(binanceProvider: const BinanceProvider()),
+  );
+
+  container.registerSingleton<KomodoPriceProvider>(KomodoPriceProvider());
+
+  container.registerSingleton<KomodoPriceRepository>(
+    KomodoPriceRepository(cexPriceProvider: container<KomodoPriceProvider>()),
+  );
+
+  container.registerSingletonAsync<CexMarketDataManager>(() async {
+    final manager = CexMarketDataManager(
+      priceRepository: container<CexRepository>(),
+      komodoPriceRepository: container<KomodoPriceRepository>(),
     );
-  }, dependsOn: [ActivationManager, AssetManager, KomodoDefiLocalAuth]);
+    await manager.init();
+    return manager;
+  });
 
   container.registerSingletonAsync<TransactionHistoryManager>(
     () async {

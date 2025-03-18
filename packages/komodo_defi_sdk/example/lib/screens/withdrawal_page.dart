@@ -462,41 +462,20 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                     ),
                   ),
                 ),
-
               // Replace the dropdown with SourceAddressField
               if (widget.asset.supportsMultipleAddresses) ...[
-                DropdownButtonFormField<PubkeyInfo>(
-                  value: _selectedFromAddress,
-                  decoration: InputDecoration(
-                    labelText: 'From Address',
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.copy),
-                      onPressed: () => _onCopyAddress(_selectedFromAddress),
-                    ),
-                  ),
-                  items:
-                      widget.pubkeys.keys
-                          .map(
-                            (addr) => DropdownMenuItem(
-                              value: addr,
-                              child: Text(
-                                '${addr.address} (${addr.balance.spendable})',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                  onChanged:
-                      widget.pubkeys.keys.any((k) => k.derivationPath == null)
-                          ? null
-                          : (value) =>
-                              setState(() => _selectedFromAddress = value),
-                  validator:
-                      (value) =>
-                          value == null
-                              ? 'Please select a source address'
-                              : null,
+                AddressSelectInput(
+                  addresses: widget.pubkeys.keys,
+                  onAddressSelected: (address) {
+                    setState(() => _selectedFromAddress = address);
+                  },
+                  assetName: widget.asset.id.id,
+                  selectedAddress: _selectedFromAddress,
+                  hint: 'Select Source Address',
+                  verified: (address) => address.derivationPath != null,
+                  onCopied: _onCopyAddress,
                 ),
+
                 const SizedBox(height: 16),
               ],
 

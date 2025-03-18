@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/balances/balance_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mutex/mutex.dart';
 
@@ -15,6 +16,7 @@ class ActivationManager {
     this._assetHistory,
     this._customTokenHistory,
     this._assetLookup,
+    this._balanceManager,
   ) : _activator = ActivationStrategyFactory.createStrategy(_client);
 
   final ApiClient _client;
@@ -23,6 +25,7 @@ class ActivationManager {
   final CustomAssetHistoryStorage _customTokenHistory;
   final SmartAssetActivator _activator;
   final IAssetLookup _assetLookup;
+  final IBalanceManager _balanceManager;
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
 
@@ -127,7 +130,7 @@ class ActivationManager {
           await _client.rpc.generalActivation.getEnabledCoins();
       final enabledAssetIds =
           enabledCoins.result
-              .map((coin) => _assetLookup.findAssetsByTicker(coin.ticker))
+              .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
               .expand((assets) => assets)
               .map((asset) => asset.id)
               .toSet();
@@ -192,6 +195,8 @@ class ActivationManager {
           if (asset.protocol.isCustomToken) {
             await _customTokenHistory.addAssetToWallet(user.walletId, asset);
           }
+          // Pre-cache balance for the activated asset
+          await _balanceManager.preCacheBalance(asset);
         }
       }
 
@@ -222,7 +227,7 @@ class ActivationManager {
       final enabledCoins =
           await _client.rpc.generalActivation.getEnabledCoins();
       return enabledCoins.result
-          .map((coin) => _assetLookup.findAssetsByTicker(coin.ticker))
+          .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
           .expand((assets) => assets)
           .map((asset) => asset.id)
           .toSet();

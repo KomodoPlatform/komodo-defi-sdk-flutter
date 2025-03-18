@@ -61,18 +61,15 @@ class KdfPlugin {
 
     final completer = Completer<void>();
 
-    final script =
-        (document.createElement('script') as HTMLScriptElement)
-          ..src = 'kdf/kdflib.js'
-          ..onload =
-              () {
-                _libraryLoaded = true;
-                completer.complete();
-              }.toJS
-          ..onerror =
-              (event) {
-                completer.completeError('Failed to load kdflib.js');
-              }.toJS;
+    final script = (document.createElement('script') as HTMLScriptElement)
+      ..src = 'kdf/kdflib.js'
+      ..onload = () {
+        _libraryLoaded = true;
+        completer.complete();
+      }.toJS
+      ..onerror = (event) {
+        completer.completeError('Failed to load kdflib.js');
+      }.toJS;
 
     document.head!.appendChild(script);
 

@@ -348,7 +348,7 @@ class FetchDefiApiStep extends BuildStep {
     final npmPath = findNode();
     final installResult = await Process.run(npmPath, [
       'install',
-    ], workingDirectory: artifactOutputPath);
+    ], workingDirectory: artifactOutputPath,);
     if (installResult.exitCode != 0) {
       throw Exception('npm install failed: ${installResult.stderr}');
     }
@@ -357,7 +357,7 @@ class FetchDefiApiStep extends BuildStep {
     final buildResult = await Process.run(npmPath, [
       'run',
       'build',
-    ], workingDirectory: artifactOutputPath);
+    ], workingDirectory: artifactOutputPath,);
     if (buildResult.exitCode != 0) {
       throw Exception('npm run build failed: ${buildResult.stderr}');
     }

@@ -84,7 +84,8 @@ class WithdrawalManager {
   Stream<WithdrawalProgress> withdraw(WithdrawParameters parameters) async* {
     int? taskId;
     try {
-      final asset = _assetProvider.findAssetsByTicker(parameters.asset).single;
+      final asset =
+          _assetProvider.findAssetsByConfigId(parameters.asset).single;
       final activationStatus =
           await _activationManager.activateAsset(asset).last;
 

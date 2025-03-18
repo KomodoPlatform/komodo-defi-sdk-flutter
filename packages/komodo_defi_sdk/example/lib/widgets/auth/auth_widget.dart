@@ -1,6 +1,5 @@
 // lib/widgets/auth/auth_widget.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:kdf_sdk_example/widgets/auth/seed_dialog.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
