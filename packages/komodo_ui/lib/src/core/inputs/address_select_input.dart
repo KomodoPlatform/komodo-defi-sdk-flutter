@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_ui/komodo_ui.dart';
+import 'package:komodo_ui/src/core/helpers/address_select_helper.dart';
+import 'package:komodo_ui/src/utils/formatters/address_formatting.dart';
 
 class AddressSelectInput extends StatelessWidget {
   const AddressSelectInput({
@@ -23,202 +23,88 @@ class AddressSelectInput extends StatelessWidget {
   final bool Function(PubkeyInfo)? verified;
   final void Function(PubkeyInfo)? onCopied;
 
+  Future<void> _showSearch(BuildContext context) async {
+    final result = await showAddressSearch(
+      context,
+      addresses: addresses,
+      assetNameLabel: assetName,
+      verified: verified,
+      onCopied: onCopied,
+      searchHint: hint,
+    );
+
+    if (result != null) {
+      onAddressSelected?.call(result);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: SearchableSelect<PubkeyInfo>(
-        items:
-            addresses.map((address) {
-              final truncatedAddress = _truncateAddress(address.address);
-              final isVerified = verified?.call(address) ?? false;
-
-              return DropdownMenuItem<PubkeyInfo>(
-                value: address,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      // Address icon or indicator
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color:
-                              isVerified
-                                  ? theme.colorScheme.primary.withOpacity(0.1)
-                                  : theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: theme.colorScheme.outline.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            Icons.account_balance_wallet_outlined,
-                            size: 18,
-                            color:
-                                isVerified
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.onSurface.withOpacity(
-                                      0.7,
-                                    ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-
-                      // Address details column
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  truncatedAddress,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontFamily: 'monospace',
-                                    fontWeight: FontWeight.w500,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                if (isVerified)
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 4),
-                                    child: Icon(
-                                      Icons.verified,
-                                      size: 16,
-                                      color: theme.colorScheme.primary,
-                                    ),
-                                  ),
-                              ],
+    return InkWell(
+      onTap: () => _showSearch(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.5)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 20,
+              color: theme.inputDecorationTheme.prefixIconColor,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child:
+                  selectedAddress != null
+                      ? Row(
+                        children: [
+                          Text(
+                            selectedAddress!.formatted,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.5,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${address.balance.spendable} $assetName available',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(
-                                  0.7,
-                                ),
+                          ),
+                          const SizedBox(width: 4),
+                          if (verified?.call(selectedAddress!) ?? false) ...[
+                            Icon(
+                              Icons.verified,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Text(
+                            '(${selectedAddress!.balance.spendable} $assetName)',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.7,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-
-                      // Copy button with improved styling
-                      if (onCopied != null)
-                        IconButton(
-                          icon: const Icon(Icons.copy_outlined, size: 18),
-                          style: IconButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.all(8),
                           ),
-                          onPressed: () {
-                            Clipboard.setData(
-                              ClipboardData(text: address.address),
-                            );
-                            onCopied?.call(address);
-                          },
-                          tooltip: 'Copy address',
+                          const SizedBox(width: 8),
+                        ],
+                      )
+                      : Text(
+                        hint,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
                         ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-        value: selectedAddress,
-        hint: hint,
-        onChanged: onAddressSelected,
-        // Define a custom decoration for the select field
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: theme.colorScheme.surface,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(
-              color: theme.colorScheme.outline.withOpacity(0.5),
+                      ),
             ),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(
-              color: theme.colorScheme.outline.withOpacity(0.5),
+            Icon(
+              Icons.arrow_drop_down,
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
             ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(
-              color: theme.colorScheme.primary,
-              width: 1.5,
-            ),
-          ),
-          prefixIcon: Icon(
-            Icons.account_balance_wallet_outlined,
-            size: 20,
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
-          ),
-          suffixIcon: Icon(
-            Icons.arrow_drop_down,
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
-          ),
-          hintStyle: TextStyle(
-            color: theme.colorScheme.onSurface.withOpacity(0.5),
-          ),
+          ],
         ),
-        // Custom builder for the selected item
-        selectedItemBuilder: (context, selected) {
-          if (selected == null) return null;
-
-          final isVerified = verified?.call(selected) ?? false;
-
-          return Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Text(
-                      _truncateAddress(selected.address),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontFamily: 'monospace',
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    if (isVerified)
-                      Icon(
-                        Icons.verified,
-                        size: 16,
-                        color: theme.colorScheme.primary,
-                      ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '(${selected.balance.spendable} $assetName)',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
       ),
     );
-  }
-
-  String _truncateAddress(String address) {
-    if (address.length <= 12) return address;
-    return '${address.substring(0, 6)}...${address.substring(address.length - 6)}';
   }
 }

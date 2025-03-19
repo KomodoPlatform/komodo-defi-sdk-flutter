@@ -448,7 +448,12 @@ Future<T?> showSearchableSelect<T>({
       delegate: SearchableSelectorDelegate(items, searchHint: searchHint),
     );
   } else {
-    return showDropdownSearch(context, items, searchHint: searchHint);
+    return showDropdownSearch(
+      context,
+      items,
+      searchHint: searchHint,
+      minWidth: 300,
+    );
   }
 }
 
@@ -459,6 +464,7 @@ Future<T?> showDropdownSearch<T>(
   BuildContext context,
   List<DropdownMenuItem<T>> items, {
   String searchHint = 'Search',
+  double? minWidth,
 }) async {
   final renderBox = context.findRenderObject()! as RenderBox;
   final offset = renderBox.localToGlobal(Offset.zero);
@@ -488,6 +494,12 @@ Future<T?> showDropdownSearch<T>(
   _completer = Completer<T?>();
   _overlayEntry = OverlayEntry(
     builder: (context) {
+      // Calculate width based on minWidth parameter if provided
+      final dropdownWidth =
+          minWidth != null
+              ? math.max(renderBox.size.width, minWidth)
+              : renderBox.size.width;
+
       return GestureDetector(
         onTap: () => onItemSelected(null),
         behavior: HitTestBehavior.translucent,
@@ -500,7 +512,7 @@ Future<T?> showDropdownSearch<T>(
                   showAbove
                       ? offset.dy - requiredSpace
                       : offset.dy + renderBox.size.height,
-              width: renderBox.size.width,
+              width: dropdownWidth,
               child: _SearchOverlay(
                 items: items,
                 onSelected: onItemSelected,

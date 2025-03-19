@@ -6,13 +6,11 @@ class AssetPubkeys {
   const AssetPubkeys({
     required this.assetId,
     required this.keys,
-    // required this.usedAddressesCount,
     required this.availableAddressesCount,
     required this.syncStatus,
   });
   final AssetId assetId;
   final List<PubkeyInfo> keys;
-  // final int usedAddressesCount;
   final int availableAddressesCount;
   final SyncStatusEnum syncStatus;
 
@@ -27,10 +25,14 @@ class AssetPubkeys {
     return {
       'assetId': assetId.toJson(),
       'addresses': keys.map((e) => e.toJson()).toList(),
-      // 'usedAddressesCount': usedAddressesCount,
       'availableAddressesCount': availableAddressesCount,
       'syncStatus': syncStatus.toString(),
     };
+  }
+
+  @override
+  String toString() {
+    return 'AssetPubkeys${toJson().toJsonString()}';
   }
 }
 
@@ -44,7 +46,10 @@ class PubkeyInfo extends NewAddressInfo {
     required super.derivationPath,
     required super.chain,
     required super.balance,
+    this.name,
   });
+
+  final String? name;
 
   // The coin is active for swap if it is non-HD or if it is HD and is the
   // first address index. e.g. "m/44'/141'/0'/0/0", where the last 0 is the
@@ -56,35 +61,26 @@ class PubkeyInfo extends NewAddressInfo {
   bool get isActiveForSwap =>
       derivationPath == null || derivationPath!.endsWith('/0');
 
-  // TODO: Consider moving to an extension in the UI library since this
-  // could be considered a UI concern.
+  @override
+  JsonMap toJson() {
+    return {
+      ...super.toJson(),
+      'address': address,
+      'derivationPath': derivationPath,
+      'chain': chain,
+      'balance': balance.toJson(),
+      'name': name,
+    };
+  }
+
+  @Deprecated('Use the formatters in the UI library instead')
   String get addressShort =>
       '${address.substring(0, 6)}...${address.substring(address.length - 6)}';
+
+  @override
+  String toString() {
+    return 'PubkeyInfo{${toJson().toJsonString()}}';
+  }
 }
 
 typedef Balance = BalanceInfo;
-
-// class PubkeyInfo {
-//   PubkeyInfo({
-//     required this.address,
-//     required this.chain,
-//     required this.spendableBalance,
-//     required this.unspendableBalance,
-//     this.derivationPath,
-//   });
-//   final String address;
-//   final String? derivationPath;
-//   final String chain;
-//   final Decimal spendableBalance;
-//   final Decimal unspendableBalance;
-
-//   JsonMap toJson() {
-//     return {
-//       'address': address,
-//       'derivationPath': derivationPath,
-//       'chain': chain,
-//       'spendableBalance': spendableBalance.toString(),
-//       'unspendableBalance': unspendableBalance.toString(),
-//     };
-//   }
-// }

@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:flutter/foundation.dart'; // Add this import for debugPrint
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
@@ -10,6 +10,10 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 abstract class IBalanceManager {
   /// Gets the current balance for an asset.
   /// Will ensure the asset is activated before querying.
+  ///
+  /// Note: If the asset was recently activated through [ActivationManager],
+  /// the balance will typically be pre-cached and return immediately. However,
+  /// this should not be relied upon as a way to check activation status.
   ///
   /// Throws [AuthException] if user is not signed in.
   /// Throws [ArgumentError] if asset is not found.
@@ -33,6 +37,10 @@ abstract class IBalanceManager {
 
   /// Disposes of all resources and stops all balance watching
   Future<void> dispose();
+
+  /// Pre-caches the balance for an asset.
+  /// This is an internal method used during activation to optimize initial balance fetches.
+  Future<void> preCacheBalance(Asset asset);
 }
 
 /// Implementation of the [IBalanceManager] interface for managing asset balances.
@@ -42,14 +50,14 @@ abstract class IBalanceManager {
 class BalanceManager implements IBalanceManager {
   /// Creates a new instance of [BalanceManager].
   ///
-  /// Requires an [ActivationManager] to ensure assets are activated when needed,
-  /// an [AssetLookup] to find asset information, and an [ApiClient] for network
-  /// communication.
+  /// Requires an [IAssetLookup] to find asset information and [KomodoDefiLocalAuth] for auth.
+  /// The [activationManager] and [pubkeyManager] can be initialized as null and set later
+  /// to break circular dependencies.
   BalanceManager({
-    required PubkeyManager pubkeyManager,
-    required ActivationManager activationManager,
     required IAssetLookup assetLookup,
     required KomodoDefiLocalAuth auth,
+    required PubkeyManager? pubkeyManager,
+    required ActivationManager? activationManager,
   }) : _activationManager = activationManager,
        _pubkeyManager = pubkeyManager,
        _assetLookup = assetLookup,
@@ -58,12 +66,11 @@ class BalanceManager implements IBalanceManager {
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
   }
 
-  final ActivationManager _activationManager;
-  final PubkeyManager _pubkeyManager;
+  ActivationManager? _activationManager;
+  PubkeyManager? _pubkeyManager;
   final IAssetLookup _assetLookup;
   final KomodoDefiLocalAuth _auth;
   StreamSubscription<KdfUser?>? _authSubscription;
-
   final Duration _defaultPollingInterval = const Duration(seconds: 30);
 
   /// Cache of the latest known balances for each asset
@@ -84,12 +91,26 @@ class BalanceManager implements IBalanceManager {
   /// Flag indicating if the manager has been disposed
   bool _isDisposed = false;
 
+  /// Getter for activationManager to make it accessible
+  ActivationManager? get activationManager => _activationManager;
+
+  /// Getter for pubkeyManager to make it accessible
+  PubkeyManager? get pubkeyManager => _pubkeyManager;
+
+  /// Setter for activationManager to resolve circular dependencies
+  void setActivationManager(ActivationManager manager) {
+    _activationManager = manager;
+  }
+
+  /// Setter for pubkeyManager to resolve circular dependencies
+  void setPubkeyManager(PubkeyManager manager) {
+    _pubkeyManager = manager;
+  }
+
   /// Handle authentication state changes
   Future<void> _handleAuthStateChanged(KdfUser? user) async {
     if (_isDisposed) return;
-
     final newWalletId = user?.walletId;
-
     // If the wallet ID has changed, reset all state
     if (_currentWalletId != newWalletId) {
       await _resetState();
@@ -135,6 +156,11 @@ class BalanceManager implements IBalanceManager {
       throw StateError('BalanceManager has been disposed');
     }
 
+    // Check if dependencies are properly initialized
+    if (_pubkeyManager == null) {
+      throw StateError('PubkeyManager is not initialized');
+    }
+
     // Check if user is authenticated
     final user = await _auth.currentUser;
     if (user == null) {
@@ -147,10 +173,9 @@ class BalanceManager implements IBalanceManager {
     }
 
     try {
-      final balance = await _pubkeyManager
+      final balance = await _pubkeyManager!
           .getPubkeys(asset)
           .then((pubkeys) => pubkeys.balance);
-
       // Update cache with the latest balance
       _balanceCache[assetId] = balance;
       return balance;
@@ -168,6 +193,7 @@ class BalanceManager implements IBalanceManager {
     if (_isDisposed) {
       throw StateError('BalanceManager has been disposed');
     }
+
     final lastKnownBalance = lastKnown(assetId);
     if (lastKnownBalance != null) {
       yield lastKnownBalance;
@@ -186,11 +212,17 @@ class BalanceManager implements IBalanceManager {
 
   /// Ensures an asset is activated, with protection against duplicate activations
   Future<bool> _ensureAssetActivated(Asset asset, bool activateIfNeeded) async {
-    if (!activateIfNeeded) {
-      return _activationManager.isAssetActive(asset.id);
+    // Check if activationManager is initialized
+    if (_activationManager == null) {
+      debugPrint('ActivationManager not initialized, cannot activate asset');
+      return false;
     }
 
-    final isActive = await _activationManager.isAssetActive(asset.id);
+    if (!activateIfNeeded) {
+      return _activationManager!.isAssetActive(asset.id);
+    }
+
+    final isActive = await _activationManager!.isAssetActive(asset.id);
     if (isActive) {
       return true;
     }
@@ -200,7 +232,7 @@ class BalanceManager implements IBalanceManager {
       try {
         // Wait for the existing activation to complete
         await _pendingActivations[asset.id]!.future;
-        return await _activationManager.isAssetActive(asset.id);
+        return await _activationManager!.isAssetActive(asset.id);
       } catch (e) {
         // If the activation fails, we'll try again
         return false;
@@ -213,9 +245,9 @@ class BalanceManager implements IBalanceManager {
 
     try {
       // Activate the asset
-      await _activationManager.activateAsset(asset).last;
+      await _activationManager!.activateAsset(asset).last;
       completer.complete();
-      return await _activationManager.isAssetActive(asset.id);
+      return await _activationManager!.isAssetActive(asset.id);
     } catch (e) {
       completer.completeError(e);
       return false;
@@ -231,6 +263,16 @@ class BalanceManager implements IBalanceManager {
   ) async {
     final controller = _balanceControllers[assetId];
     if (controller == null || _isDisposed) return;
+
+    // Check if dependencies are initialized
+    if (_activationManager == null || _pubkeyManager == null) {
+      if (!controller.isClosed) {
+        controller.addError(
+          StateError('Dependencies not fully initialized yet'),
+        );
+      }
+      return;
+    }
 
     // Cancel any existing watcher for this asset
     await _activeWatchers[assetId]?.cancel();
@@ -275,6 +317,11 @@ class BalanceManager implements IBalanceManager {
       _activeWatchers[assetId] = periodicStream
           .asyncMap<BalanceInfo?>((void _) async {
             if (_isDisposed) return null;
+
+            // Check if dependencies are still initialized
+            if (_activationManager == null || _pubkeyManager == null) {
+              return null;
+            }
 
             // Check if user is still authenticated
             final currentUser = await _auth.currentUser;
@@ -329,7 +376,6 @@ class BalanceManager implements IBalanceManager {
       watcher.cancel();
       _activeWatchers.remove(assetId);
     }
-
     // Don't close the controller here, just remove the watcher
     // The controller will be closed when all listeners are gone
   }
@@ -367,5 +413,35 @@ class BalanceManager implements IBalanceManager {
     _pendingActivations.clear();
     _balanceCache.clear();
     _currentWalletId = null;
+  }
+
+  @override
+  Future<void> preCacheBalance(Asset asset) async {
+    if (_isDisposed) return;
+
+    // Check if pubkeyManager is initialized
+    if (_pubkeyManager == null) {
+      debugPrint('Cannot pre-cache balance: PubkeyManager not initialized');
+      return;
+    }
+
+    final user = await _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final balance = await _pubkeyManager!
+          .getPubkeys(asset)
+          .then((pubkeys) => pubkeys.balance);
+      _balanceCache[asset.id] = balance;
+
+      // If there's an active stream controller for this asset, emit the balance
+      final controller = _balanceControllers[asset.id];
+      if (controller != null && !controller.isClosed) {
+        controller.add(balance);
+      }
+    } catch (e) {
+      // Silently fail pre-caching - this is just an optimization
+      debugPrint('Failed to pre-cache balance for ${asset.id.name}: $e');
+    }
   }
 }

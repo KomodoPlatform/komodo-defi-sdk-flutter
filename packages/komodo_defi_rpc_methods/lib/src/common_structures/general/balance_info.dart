@@ -91,4 +91,10 @@ class BalanceInfo {
     spendable: spendable - other.spendable,
     unspendable: unspendable - other.unspendable,
   );
+
+  BalanceInfo operator *(Decimal multiplier) => BalanceInfo(
+    total: total * multiplier,
+    spendable: spendable * multiplier,
+    unspendable: unspendable * multiplier,
+  );
 }

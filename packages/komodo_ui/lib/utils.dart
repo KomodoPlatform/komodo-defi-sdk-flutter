@@ -7,7 +7,7 @@
 /// Utility functions and hooks
 library komodo_ui.utils;
 
-export 'package:intl/intl.dart' show NumberFormat, DateFormat;
+export 'package:intl/intl.dart' show DateFormat, NumberFormat;
 
 export 'src/utils/formatters/address_formatting.dart';
 export 'src/utils/formatters/asset_formatting.dart';

@@ -8,7 +8,7 @@ abstract class IAssetLookup {
   Map<AssetId, Asset> get available;
 
   /// Find assets by ticker symbol
-  Set<Asset> findAssetsByTicker(String ticker);
+  Set<Asset> findAssetsByConfigId(String ticker);
 
   /// Get an asset by its ID
   Asset? fromId(AssetId id);

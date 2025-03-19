@@ -3,8 +3,8 @@ import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
-import 'package:komodo_defi_sdk/src/addresses/address_operations.dart';
 import 'package:komodo_defi_sdk/src/bootstrap.dart';
+import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
@@ -222,6 +222,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Throws [StateError] if accessed before initialization.
   WithdrawalManager get withdrawals =>
       _assertSdkInitialized(_container<WithdrawalManager>());
+
+  /// The price manager instance.
+  ///
+  /// Provides functionality for fetching asset prices.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  MarketDataManager get marketData =>
+      _assertSdkInitialized(_container<MarketDataManager>());
 
   /// Gets a reference to the balance manager for checking asset balances.
   ///
