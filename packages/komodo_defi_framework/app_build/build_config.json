@@ -1,6 +1,6 @@
 {
     "api": {
-        "api_commit_hash": "64aa8997730cf0a192199ade05c05c189be90457",
+        "api_commit_hash": "cb893003abc90adae8f568c023292745c8b474f0",
         "branch": "fix-wasm-exit-codes",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
@@ -12,49 +12,49 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "a62098e9cfe3d500ceb569dffc595577d33b08060c662defb5022815a61d9988"
+                    "76fe279a4b883f1a7529c93e28d871e64ff18a593ab1b7d8919df45647ff3e87"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "ed486a0ad55266931ff2bbb43ecc8cad7a36a22d7cc12cecfc3cc38788872eb5"
+                    "ba89ea598ef4bc75dece4082f8877fdab7b3e2e7c200f209fefa4c46c076377f"
                 ],
                 "path": "ios"
             },
             "macos": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "5359350db71a6c9dcc796197bf412dfcfaca282a6f7f44c72bad5ad92315dc37"
+                    "ff41a8d65161c739ace410eef0ecce9482632717cce9f5b908adf276a47fd100"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "c167528facd1792357ad00fce1a2e240fabcecb49d317d6d436150cec024eade"
+                    "a0e7a2128259fc6254a90c67c0bc8625f287bbec28fb1e33791787d6de18813c"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "071f5dd7fc0cb27cde968fa2f99b0ce36a2b2700803b7f04bda4fbbb123edc6e"
+                    "007a7505cf939470c94d0bd997e31bf2f7889ea19652038ba436ee7aba0ecf2f"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "c93d862d8485e0457ee997b3f6c0470067b621ffc0691180b0e68e1ad0fe57b8"
+                    "98785f7e0a8dfdcf43350d7c0777811f603a302bac5779fda3fc9afa9b14a31e"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "17cf3df61bf6466e1613ac9eb68ea2563ebd1486b79212760aa623fdd51d5744"
+                    "e4fad6d4d9999aa49cfa5a7f19de2ad34c061390c47dff9c8ffb5945c4d7385a"
                 ],
                 "path": "linux/bin"
             }
