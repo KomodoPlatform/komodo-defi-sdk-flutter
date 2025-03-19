@@ -151,7 +151,7 @@ Future<void> bootstrap({
     KomodoPriceRepository(cexPriceProvider: container<KomodoPriceProvider>()),
   );
 
-  container.registerSingletonAsync<CexMarketDataManager>(() async {
+  container.registerSingletonAsync<MarketDataManager>(() async {
     final manager = CexMarketDataManager(
       priceRepository: container<CexRepository>(),
       komodoPriceRepository: container<KomodoPriceRepository>(),
