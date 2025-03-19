@@ -17,6 +17,5 @@ class KdfLoggingConfig {
   /// such as full RPC responses. Default is false to reduce log noise.
   static bool verboseLogging = false;
 
-  static bool get verboseDebugLogging =>
-      KdfLoggingConfig.verboseLogging && kDebugMode;
+  static bool get debugLogging => KdfLoggingConfig.verboseLogging && kDebugMode;
 }

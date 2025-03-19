@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:js_interop' as js_interop;
 import 'dart:js_interop_unsafe';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:http/http.dart';
@@ -242,7 +241,7 @@ class KdfOperationsWasm implements IKdfOperations {
 
   /// Makes the JavaScript RPC call and returns the raw JS response
   Future<js_interop.JSObject> _makeJsCall(JsonMap request) async {
-    if (KdfLoggingConfig.verboseDebugLogging) {
+    if (KdfLoggingConfig.debugLogging) {
       _log('mm2Rpc request: ${request.censored()}');
     }
     request['userpass'] = _config.rpcPassword;
@@ -281,7 +280,7 @@ class KdfOperationsWasm implements IKdfOperations {
       );
     }
 
-    if (KdfLoggingConfig.verboseDebugLogging) {
+    if (KdfLoggingConfig.debugLogging) {
       _log('Raw JS response: $jsResponse');
     }
     return jsResponse as js_interop.JSObject;
@@ -322,7 +321,7 @@ class KdfOperationsWasm implements IKdfOperations {
       );
     }
 
-    if (KdfLoggingConfig.verboseDebugLogging) {
+    if (KdfLoggingConfig.debugLogging) {
       _log('JS response validated: $dartResponse');
     }
   }

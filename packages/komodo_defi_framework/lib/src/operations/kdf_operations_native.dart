@@ -207,7 +207,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
 
   @override
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
-    if (KdfLoggingConfig.verboseDebugLogging) {
+    if (KdfLoggingConfig.debugLogging) {
       _log('mm2 config: ${_config.toJson().censored()}');
       _log('mm2Rpc request (pre-process): ${request.censored()}');
     }
