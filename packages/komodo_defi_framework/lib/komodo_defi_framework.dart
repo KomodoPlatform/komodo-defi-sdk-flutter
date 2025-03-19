@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
+import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
@@ -158,7 +159,9 @@ class KomodoDefiFramework implements ApiClient {
       request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
     ))
         .ensureJson();
-    _log('RPC response: ${response.toJsonString()}');
+    if (KdfLoggingConfig.verboseLogging) {
+      _log('RPC response: ${response.toJsonString()}');
+    }
     return response;
   }
 

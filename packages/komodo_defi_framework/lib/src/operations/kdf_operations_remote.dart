@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
+import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
@@ -157,7 +158,9 @@ class KdfOperationsRemote implements IKdfOperations {
       request['userpass'] = _userpass;
     }
 
-    _logCallback('mm2Rpc request: ${json.encode(request.censored())}');
+    if (KdfLoggingConfig.verboseLogging) {
+      _logCallback('mm2Rpc request: ${json.encode(request.censored())}');
+    }
 
     late final http.Response response;
 
