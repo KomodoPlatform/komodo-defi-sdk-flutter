@@ -36,9 +36,9 @@ index_generator:
       exports:
         - package: package:flutter/material.dart
           show: 
-            - Widget
-            - StatelessWidget
             - StatefulWidget
+            - StatelessWidget
+            - Widget
         - package: package:flutter/foundation.dart
           show:
             - Key
@@ -133,8 +133,8 @@ index_generator:
       exports:
         - package: package:intl/intl.dart
           show:
-            - NumberFormat
             - DateFormat
+            - NumberFormat
 
     # Constants (single index)
     - directory_path: lib
@@ -157,6 +157,6 @@ index_generator:
       exports:
         - package: package:flutter/material.dart
           show:
-            - ThemeData
             - Colors
             - TextTheme
+            - ThemeData

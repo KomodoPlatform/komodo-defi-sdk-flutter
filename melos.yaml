@@ -39,6 +39,8 @@ scripts:
 
   assets:generate:
     run: flutter build bundle
+    exec:
+      concurrency: 1
     packageFilters:
       dependsOn:
-        - komodo_defi_framework
+        - flutter
