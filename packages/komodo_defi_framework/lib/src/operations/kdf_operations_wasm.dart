@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:js_interop' as js_interop;
 import 'dart:js_interop_unsafe';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:http/http.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
+import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:mutex/mutex.dart';
 
@@ -241,7 +241,9 @@ class KdfOperationsWasm implements IKdfOperations {
 
   /// Makes the JavaScript RPC call and returns the raw JS response
   Future<js_interop.JSObject> _makeJsCall(JsonMap request) async {
-    if (kDebugMode) _log('mm2Rpc request: ${request.censored()}');
+    if (KdfLoggingConfig.debugLogging) {
+      _log('mm2Rpc request: ${request.censored()}');
+    }
     request['userpass'] = _config.rpcPassword;
 
     final jsRequest = request.jsify() as js_interop.JSObject?;
@@ -278,7 +280,9 @@ class KdfOperationsWasm implements IKdfOperations {
       );
     }
 
-    if (kDebugMode) _log('Raw JS response: $jsResponse');
+    if (KdfLoggingConfig.debugLogging) {
+      _log('Raw JS response: $jsResponse');
+    }
     return jsResponse as js_interop.JSObject;
   }
 
@@ -315,6 +319,10 @@ class KdfOperationsWasm implements IKdfOperations {
         'Invalid response format for method ${request['method']}\nResponse: '
         '$dartResponse\nRaw JS Response: $jsResponse\nRequest: $request',
       );
+    }
+
+    if (KdfLoggingConfig.debugLogging) {
+      _log('JS response validated: $dartResponse');
     }
   }
 

@@ -7,6 +7,7 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
+import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/native/komodo_defi_framework_bindings_generated.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_local_executable.dart';
@@ -173,7 +174,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     ).whenComplete(() => calloc.free(startParamsPtr));
 
     if (kDebugMode) _log('KDF started in ${timer.elapsedMilliseconds}ms');
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future<void>.delayed(const Duration(milliseconds: 500));
     if (kDebugMode) _log('KDF started with result: $result');
     if (kDebugMode) _log('Status after starting KDF: ${_kdfMainStatus()}');
 
@@ -206,8 +207,11 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
 
   @override
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
-    if (kDebugMode) _log('mm2 config: ${_config.toJson().censored()}');
-    if (kDebugMode) _log('mm2Rpc request (pre-process): ${request.censored()}');
+    if (KdfLoggingConfig.debugLogging) {
+      _log('mm2 config: ${_config.toJson().censored()}');
+      _log('mm2Rpc request (pre-process): ${request.censored()}');
+    }
+
     request['userpass'] = _config.rpcPassword;
     final response = await _client.post(
       _url,
