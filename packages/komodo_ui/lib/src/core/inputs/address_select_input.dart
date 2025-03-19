@@ -56,7 +56,7 @@ class AddressSelectInput extends StatelessWidget {
             Icon(
               Icons.account_balance_wallet_outlined,
               size: 20,
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.inputDecorationTheme.prefixIconColor,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -67,19 +67,19 @@ class AddressSelectInput extends StatelessWidget {
                           Text(
                             selectedAddress!.formatted,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              fontFamily: 'monospace',
                               fontWeight: FontWeight.w500,
                               letterSpacing: 0.5,
                             ),
                           ),
                           const SizedBox(width: 4),
-                          if (verified?.call(selectedAddress!) ?? false)
+                          if (verified?.call(selectedAddress!) ?? false) ...[
                             Icon(
                               Icons.verified,
                               size: 16,
                               color: theme.colorScheme.primary,
                             ),
-                          const SizedBox(width: 8),
+                            const SizedBox(width: 8),
+                          ],
                           Text(
                             '(${selectedAddress!.balance.spendable} $assetName)',
                             style: theme.textTheme.bodySmall?.copyWith(
@@ -88,6 +88,7 @@ class AddressSelectInput extends StatelessWidget {
                               ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                         ],
                       )
                       : Text(

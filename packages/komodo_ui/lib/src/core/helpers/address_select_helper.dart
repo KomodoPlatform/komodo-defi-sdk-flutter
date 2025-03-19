@@ -32,12 +32,10 @@ Future<PubkeyInfo?> showAddressSearch(
                       decoration: BoxDecoration(
                         color:
                             isVerified
-                                ? theme.colorScheme.primary.withOpacity(0.1)
+                                ? theme.colorScheme.primaryContainer
                                 : theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: theme.colorScheme.outline.withOpacity(0.3),
-                        ),
+                        border: Border.all(color: theme.colorScheme.outline),
                       ),
                       child: Center(
                         child: Icon(
@@ -45,10 +43,8 @@ Future<PubkeyInfo?> showAddressSearch(
                           size: 18,
                           color:
                               isVerified
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurface.withOpacity(
-                                    0.7,
-                                  ),
+                                  ? theme.colorScheme.onPrimaryContainer
+                                  : theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -84,9 +80,7 @@ Future<PubkeyInfo?> showAddressSearch(
                             // TODO: Properly localize this (including param)
                             '${address.balance.spendable} $assetNameLabel available',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(
-                                0.7,
-                              ),
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -156,11 +150,11 @@ Widget showAddressSelectDropdown({
                           decoration: BoxDecoration(
                             color:
                                 isVerified
-                                    ? theme.colorScheme.primary.withOpacity(0.1)
+                                    ? theme.colorScheme.primaryContainer
                                     : theme.colorScheme.surface,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: theme.colorScheme.outline.withOpacity(0.3),
+                              color: theme.colorScheme.outline,
                             ),
                           ),
                           child: Center(
@@ -169,10 +163,8 @@ Widget showAddressSelectDropdown({
                               size: 18,
                               color:
                                   isVerified
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.onSurface.withOpacity(
-                                        0.7,
-                                      ),
+                                      ? theme.colorScheme.onPrimaryContainer
+                                      : theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -206,10 +198,10 @@ Widget showAddressSelectDropdown({
                               const SizedBox(height: 2),
                               Text(
                                 '${address.balance.spendable} $assetName available',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.7),
-                                ),
+                                style: theme.listTileTheme.subtitleTextStyle
+                                    ?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
                               ),
                             ],
                           ),
@@ -248,15 +240,11 @@ Widget showAddressSelectDropdown({
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.5),
-              ),
+              borderSide: BorderSide(color: theme.colorScheme.outline),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.5),
-              ),
+              borderSide: BorderSide(color: theme.colorScheme.outline),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -268,15 +256,13 @@ Widget showAddressSelectDropdown({
             prefixIcon: Icon(
               Icons.account_balance_wallet_outlined,
               size: 20,
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
             suffixIcon: Icon(
               Icons.arrow_drop_down,
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            hintStyle: TextStyle(
-              color: theme.colorScheme.onSurface.withOpacity(0.5),
-            ),
+            hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
           ),
       selectedItemBuilder: (context, selected) {
         if (selected == null) return null;
@@ -299,17 +285,18 @@ Widget showAddressSelectDropdown({
                     ),
                   ),
                   const SizedBox(width: 4),
-                  if (isVerified)
+                  if (isVerified) ...[
                     Icon(
                       Icons.verified,
                       size: 16,
                       color: theme.colorScheme.primary,
                     ),
-                  const SizedBox(width: 8),
+                    const SizedBox(width: 8),
+                  ],
                   Text(
                     '(${selected.balance.spendable} $assetName)',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

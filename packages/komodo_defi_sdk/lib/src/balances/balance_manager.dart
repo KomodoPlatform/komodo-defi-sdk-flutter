@@ -54,10 +54,10 @@ class BalanceManager implements IBalanceManager {
   /// The [activationManager] and [pubkeyManager] can be initialized as null and set later
   /// to break circular dependencies.
   BalanceManager({
-    PubkeyManager? pubkeyManager,
-    ActivationManager? activationManager,
     required IAssetLookup assetLookup,
     required KomodoDefiLocalAuth auth,
+    required PubkeyManager? pubkeyManager,
+    required ActivationManager? activationManager,
   }) : _activationManager = activationManager,
        _pubkeyManager = pubkeyManager,
        _assetLookup = assetLookup,
@@ -267,7 +267,9 @@ class BalanceManager implements IBalanceManager {
     // Check if dependencies are initialized
     if (_activationManager == null || _pubkeyManager == null) {
       if (!controller.isClosed) {
-        controller.addError(StateError('Dependencies not fully initialized yet'));
+        controller.addError(
+          StateError('Dependencies not fully initialized yet'),
+        );
       }
       return;
     }
@@ -416,7 +418,7 @@ class BalanceManager implements IBalanceManager {
   @override
   Future<void> preCacheBalance(Asset asset) async {
     if (_isDisposed) return;
-    
+
     // Check if pubkeyManager is initialized
     if (_pubkeyManager == null) {
       debugPrint('Cannot pre-cache balance: PubkeyManager not initialized');
