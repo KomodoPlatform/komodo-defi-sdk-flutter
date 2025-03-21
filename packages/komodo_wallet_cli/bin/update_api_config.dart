@@ -627,7 +627,7 @@ class KdfFetcher {
 
     // Write config back to disk
     final configFile = File(configPath);
-    const encoder = JsonEncoder.withIndent('  ');
+    const encoder = JsonEncoder.withIndent('    ');
     await configFile.writeAsString(encoder.convert(config));
 
     log.info('Updated build config with commit hash: $commitHash');
