@@ -11,6 +11,7 @@ class SourceAddressField extends StatelessWidget {
     this.networkError,
     this.onRetry,
     this.isLoading = false,
+    this.showBalanceIndicator = true,
     super.key,
   });
 
@@ -21,6 +22,7 @@ class SourceAddressField extends StatelessWidget {
   final String? networkError;
   final VoidCallback? onRetry;
   final bool isLoading;
+  final bool showBalanceIndicator;
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +72,7 @@ class SourceAddressField extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _buildAddressSelector(context),
-        if (selectedAddress != null) ...[
+        if (selectedAddress != null && showBalanceIndicator) ...[
           const SizedBox(height: 12),
           _BalanceIndicator(
             balance: selectedAddress!.balance,
