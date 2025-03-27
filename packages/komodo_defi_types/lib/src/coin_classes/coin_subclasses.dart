@@ -43,14 +43,14 @@ enum CoinSubClass {
       case CoinSubClass.slp:
         return 'SLP';
       case CoinSubClass.sia:
-        return 'SC';
+        return 'SIA';
       case CoinSubClass.qrc20:
         return 'QTUM';
       case CoinSubClass.avx20:
         return 'AVAX';
       case CoinSubClass.utxo:
       case CoinSubClass.smartChain:
-        return 'KMD';
+        return 'UTXO';
       case CoinSubClass.moonriver:
         return 'MOVR';
       case CoinSubClass.ethereumClassic:
@@ -151,7 +151,6 @@ enum CoinSubClass {
 
     return CoinSubClass.values.firstWhere(
       (e) => e.toString().toLowerCase().contains(sanitizedValue),
-      // orElse: () => CoinSubClass.unknown,
     );
   }
 
@@ -170,29 +169,27 @@ enum CoinSubClass {
       case CoinSubClass.moonbeam:
         return 'Moonbeam';
       case CoinSubClass.ftm20:
-        return 'FTM20';
+        return 'Fantom';
       case CoinSubClass.arbitrum:
         return 'Arbitrum';
       case CoinSubClass.slp:
-        return 'SLP';
+        return 'Simple Ledger Protocol';
       case CoinSubClass.sia:
         return 'Sia';
       case CoinSubClass.qrc20:
-        return 'QRC20';
+        return 'Qtum';
       case CoinSubClass.avx20:
-        return 'AVX20';
+        return 'Avalanche C-Chain';
       case CoinSubClass.smartChain:
-        return 'Smart Chain';
+        return 'Komodo Smart Chain';
       case CoinSubClass.moonriver:
         return 'Moonriver';
       case CoinSubClass.ethereumClassic:
         return 'Ethereum Classic';
-      case CoinSubClass.tendermintToken:
-        return 'Tendermint Token';
       case CoinSubClass.ubiq:
         return 'Ubiq';
       case CoinSubClass.bep20:
-        return 'BEP20';
+        return 'Binance Smart Chain';
       case CoinSubClass.matic:
         return 'Polygon';
       case CoinSubClass.utxo:
@@ -200,21 +197,23 @@ enum CoinSubClass {
       case CoinSubClass.smartBch:
         return 'SmartBCH';
       case CoinSubClass.erc20:
-        return 'ERC20';
+        return 'Ethereum';
+      case CoinSubClass.tendermintToken:
+        return 'Tendermint Token';
       case CoinSubClass.tendermint:
         return 'Tendermint';
       case CoinSubClass.krc20:
-        return 'KRC20';
+        return 'KuCoin Chain';
       case CoinSubClass.ewt:
-        return 'EWT';
+        return 'Energy Web Token';
       case CoinSubClass.hrc20:
-        return 'HRC20';
+        return 'Huobi Token';
       case CoinSubClass.hecoChain:
-        return 'Heco Chain';
+        return 'Huobi ECO Chain';
       case CoinSubClass.rskSmartBitcoin:
         return 'RSK Smart Bitcoin';
       case CoinSubClass.zhtlc:
-        return 'ZHTLC';
+        return 'Pirate Network';
       case CoinSubClass.unknown:
         return 'Unknown';
     }
