@@ -13,11 +13,7 @@ dependencies:
   equatable: 2.0.7
 
   # Approved via https://github.com/KomodoPlatform/komodo-wallet/pull/1106
-  hive:
-    git:
-      url: https://github.com/KomodoPlatform/hive.git
-      path: hive/
-      ref: 470473ffc1ba39f6c90f31ababe0ee63b76b69fe #2.2.3
+  hive: ^2.2.3 # Changed from git to pub.dev because git dependencies are not allowed in published packages
 
 dev_dependencies:
   flutter_lints: ^5.0.0 # flutter.dev
