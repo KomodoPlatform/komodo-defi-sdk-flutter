@@ -1,14 +1,16 @@
-/// A high-level opinionated library that provides a simple way to build cross-platform Komodo Defi Framework applications (primarily focused on wallets). This package consists of multiple sub-packages in the packages folder which are orchestrated by this package (komodo_defi_sdk)
+/// A high-level opinionated library that provides a simple way to build
+/// cross-platform Komodo Defi Framework applications
+/// (primarily focused on wallets). This package consists of multiple
+/// sub-packages in the packages folder which are orchestrated by this
+/// package (komodo_defi_sdk)
 library;
 
 export 'package:komodo_defi_framework/komodo_defi_framework.dart'
-    show LocalConfig, RemoteConfig;
+    show IKdfHostConfig, LocalConfig, RemoteConfig;
 export 'package:komodo_defi_sdk/src/addresses/address_operations.dart'
     show AddressOperations;
 export 'package:komodo_defi_sdk/src/balances/balance_manager.dart'
     show BalanceManager;
-// export 'package:komodo_defi_sdk/src/prices/price_manager.dart'
-//     show PriceManager, IPriceManager;
 export 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 
 export 'src/assets/_assets_index.dart' show AssetHdWalletAddressesExtension;

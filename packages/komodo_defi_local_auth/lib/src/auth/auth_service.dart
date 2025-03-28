@@ -58,6 +58,15 @@ abstract interface class IAuthService {
     required String? walletPassword,
   });
 
+  /// Changes the password for the current user.
+  ///
+  /// Throws [AuthException] if the current password is incorrect or if no user
+  /// is signed in.
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+
   /// Method to store custom metadata for the user.
   ///
   /// Overwrites any existing metadata.
@@ -268,6 +277,33 @@ class KdfAuthService implements IAuthService {
       }
 
       return _getMnemonic(encrypted: encrypted, walletPassword: walletPassword);
+    });
+  }
+
+  @override
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    return _runReadOperation(() async {
+      if (await getActiveUser() == null) {
+        throw AuthException(
+          'No user signed in',
+          type: AuthExceptionType.unauthorized,
+        );
+      }
+
+      try {
+        await _client.rpc.wallet.changeMnemonicPassword(
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
+      } catch (e) {
+        throw AuthException(
+          'Failed to change password: $e',
+          type: AuthExceptionType.generalAuthError,
+        );
+      }
     });
   }
 

@@ -57,6 +57,19 @@ class TaskMethods extends BaseRpcMethodNamespace {
 class WalletMethods extends BaseRpcMethodNamespace {
   WalletMethods(super.client);
 
+  /// Changes the password used to encrypt/decrypt the mnemonic
+  Future<BaseResponse> changeMnemonicPassword({
+    required String currentPassword,
+    required String newPassword,
+    String? rpcPass,
+  }) => execute(
+    ChangeMnemonicPasswordRequest(
+      rpcPass: rpcPass ?? '',
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    ),
+  );
+
   Future<GetWalletNamesResponse> getWalletNames([String? rpcPass]) =>
       execute(GetWalletNamesRequest(rpcPass));
 

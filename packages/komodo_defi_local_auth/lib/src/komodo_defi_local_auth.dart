@@ -96,6 +96,18 @@ abstract interface class KomodoDefiAuth {
   /// is signed in.
   Future<Mnemonic> getMnemonicPlainText(String walletPassword);
 
+  /// Changes the password used to encrypt/decrypt the mnemonic.
+  ///
+  /// This is used to change the password that protects the wallet's seed phrase.
+  /// Both the current and new passwords must be provided.
+  ///
+  /// Throws [AuthException] if the current password is incorrect or if no user
+  /// is signed in.
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+
   /// Sets the value of a single key in the active user's metadata.
   ///
   /// This preserves any existing metadata, and overwrites the value only for
@@ -326,6 +338,29 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     } catch (e) {
       throw AuthException(
         'An unexpected error occurred while retrieving the mnemonic: $e',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+  }
+
+  @override
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await ensureInitialized();
+    await _assertAuthState(true);
+
+    try {
+      await _authService.updatePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException(
+        'An unexpected error occurred while changing the password: $e',
         type: AuthExceptionType.generalAuthError,
       );
     }
