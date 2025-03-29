@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class WithdrawAmountField extends StatelessWidget {
+/// A text input field for entering the withdrawal amount
+class WithdrawAmountField extends StatefulWidget {
+  /// Creates a [WithdrawAmountField].
   const WithdrawAmountField({
     required this.asset,
     required this.amount,
@@ -14,14 +16,68 @@ class WithdrawAmountField extends StatelessWidget {
     super.key,
   });
 
+  /// The asset for which the withdrawal amount is being entered.
   final Asset asset;
+
+  /// The current amount entered in the field.
   final String amount;
+
+  /// Whether the maximum amount is selected.
   final bool isMaxAmount;
+
+  /// Callback for when the amount changes.
   final ValueChanged<String> onChanged;
+
+  /// Callback for when the maximum amount is toggled.
   final ValueChanged<bool> onMaxToggled;
+
+  /// Error message for the amount field.
   final String? amountError;
+
+  /// Whether the user has insufficient balance.
   final bool hasInsufficientBalance;
+
+  /// The available balance for the asset.
   final String? availableBalance;
+
+  @override
+  State<WithdrawAmountField> createState() => _WithdrawAmountFieldState();
+}
+
+class _WithdrawAmountFieldState extends State<WithdrawAmountField> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.amount);
+  }
+
+  @override
+  void didUpdateWidget(WithdrawAmountField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.amount != oldWidget.amount && _controller.text != widget.amount) {
+      // Save current cursor position
+      final selection = _controller.selection;
+      
+      // Update text
+      _controller.text = widget.amount;
+      
+      // Restore cursor position, but handle potential out-of-bounds
+      if (widget.amount.length >= selection.baseOffset) {
+        _controller.selection = selection;
+      } else {
+        // If new text is shorter, move cursor to end
+        _controller.selection = TextSelection.collapsed(offset: widget.amount.length);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,29 +94,29 @@ class WithdrawAmountField extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            if (availableBalance != null)
+            if (widget.availableBalance != null)
               Text(
-                'Available: $availableBalance ${asset.id.id}',
+                'Available: ${widget.availableBalance} ${widget.asset.id.id}',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
           ],
         ),
         const SizedBox(height: 8),
         TextFormField(
-          initialValue: amount,
-          enabled: !isMaxAmount,
+          controller: _controller,
+          enabled: !widget.isMaxAmount,
           decoration: InputDecoration(
             border: const OutlineInputBorder(),
-            errorText: amountError,
+            errorText: widget.amountError,
             suffixIcon: Padding(
               padding: const EdgeInsets.only(right: 12),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    asset.id.id,
+                    widget.asset.id.id,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -69,7 +125,7 @@ class WithdrawAmountField extends StatelessWidget {
               ),
             ),
             prefixIcon:
-                hasInsufficientBalance
+                widget.hasInsufficientBalance
                     ? Tooltip(
                       message: 'Insufficient balance',
                       child: Icon(
@@ -79,16 +135,16 @@ class WithdrawAmountField extends StatelessWidget {
                     )
                     : null,
             helperText:
-                hasInsufficientBalance
+                widget.hasInsufficientBalance
                     ? 'Insufficient balance'
                     : 'Enter the amount to send',
             helperStyle:
-                hasInsufficientBalance
+                widget.hasInsufficientBalance
                     ? TextStyle(color: theme.colorScheme.error)
                     : null,
           ),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          onChanged: onChanged,
+          onChanged: widget.onChanged,
         ),
         const SizedBox(height: 12),
         Row(
@@ -97,16 +153,16 @@ class WithdrawAmountField extends StatelessWidget {
             Row(
               children: [
                 Checkbox(
-                  value: isMaxAmount,
-                  onChanged: (value) => onMaxToggled(value ?? false),
+                  value: widget.isMaxAmount,
+                  onChanged: (value) => widget.onMaxToggled(value ?? false),
                 ),
                 const Text('Send maximum available'),
               ],
             ),
-            if (!isMaxAmount)
+            if (!widget.isMaxAmount)
               TextButton(
                 onPressed: () {
-                  onMaxToggled(true);
+                  widget.onMaxToggled(true);
                 },
                 child: const Text('MAX'),
               ),
