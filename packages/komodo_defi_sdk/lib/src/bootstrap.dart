@@ -8,6 +8,7 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
+import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
@@ -146,6 +147,11 @@ Future<void> bootstrap({
   );
 
   container.registerSingleton<KomodoPriceProvider>(KomodoPriceProvider());
+
+  container.registerSingletonAsync<MessageSigningManager>(
+    () async => MessageSigningManager(await container.getAsync<ApiClient>()),
+    dependsOn: [ApiClient],
+  );
 
   container.registerSingleton<KomodoPriceRepository>(
     KomodoPriceRepository(cexPriceProvider: container<KomodoPriceProvider>()),

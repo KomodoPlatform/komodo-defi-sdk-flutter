@@ -445,10 +445,13 @@ class _AssetHeaderState extends State<AssetHeader> {
 
     setState(() => _isSigningMessage = true);
     try {
-      final signature = await context
-          .read<KomodoDefiSdk>()
-          .messageSigning
-          .signMessage(coin: widget.asset.id.id, message: message);
+      final signature = await context.read<KomodoDefiSdk>().messageSigning
+      // TODO: Dropdown for address selection
+      .signMessage(
+        coin: widget.asset.id.id,
+        message: message,
+        address: widget.pubkeys!.keys.first.address,
+      );
       setState(() => _signedMessage = signature);
     } catch (e) {
       ScaffoldMessenger.of(

@@ -60,10 +60,10 @@ class Asset extends Equatable {
   final bool isWalletOnly;
 
   JsonMap toJson() => {
-    ...protocol.toJson(),
-    ...id.toJson(),
-    'wallet_only': isWalletOnly,
-  };
+        ...protocol.toJson(),
+        ...id.toJson(),
+        'wallet_only': isWalletOnly,
+      };
 
   @override
   List<Object?> get props => [id, protocol, isWalletOnly];
