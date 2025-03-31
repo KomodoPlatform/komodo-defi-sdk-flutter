@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:hive/hive.dart';
-import 'package:komodo_persistence_layer/komodo_persistence_layer.dart';
+import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
 
 import 'address_format.dart';
 import 'electrum.dart';

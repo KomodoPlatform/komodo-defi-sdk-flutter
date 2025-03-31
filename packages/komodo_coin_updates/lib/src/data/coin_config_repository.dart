@@ -1,4 +1,6 @@
-import 'package:komodo_persistence_layer/komodo_persistence_layer.dart';
+import 'package:komodo_coin_updates/src/persistence/hive/hive.dart';
+import 'package:komodo_coin_updates/src/persistence/persisted_types.dart';
+import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
 
 import '../../komodo_coin_updates.dart';
 import '../models/coin_info.dart';
