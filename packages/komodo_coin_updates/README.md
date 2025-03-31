@@ -1,7 +1,6 @@
 # Komodo Coin Updater
 
-This package provides the funcionality to update the coins list and configuration files for the Komodo Platform at runtime.
-
+This package provides the functionality to update the coins list and configuration files for the Komodo Platform at runtime.
 ## Usage
 
 To use this package, you need to add `komodo_coin_updater` to your `pubspec.yaml` file.
