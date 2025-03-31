@@ -4,10 +4,7 @@ import 'package:hive/hive.dart';
 part 'adapters/links_adapter.dart';
 
 class Links extends Equatable {
-  const Links({
-    this.github,
-    this.homepage,
-  });
+  const Links({this.github, this.homepage});
 
   factory Links.fromJson(Map<String, dynamic> json) {
     return Links(
@@ -20,10 +17,7 @@ class Links extends Equatable {
   final String? homepage;
 
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'github': github,
-      'homepage': homepage,
-    };
+    return <String, dynamic>{'github': github, 'homepage': homepage};
   }
 
   @override

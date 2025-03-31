@@ -7,17 +7,13 @@ class RpcUrl extends Equatable {
   const RpcUrl({this.url});
 
   factory RpcUrl.fromJson(Map<String, dynamic> json) {
-    return RpcUrl(
-      url: json['url'] as String?,
-    );
+    return RpcUrl(url: json['url'] as String?);
   }
 
   final String? url;
 
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'url': url,
-    };
+    return <String, dynamic>{'url': url};
   }
 
   @override

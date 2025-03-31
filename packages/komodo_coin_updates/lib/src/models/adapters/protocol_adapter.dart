@@ -6,8 +6,8 @@ class ProtocolAdapter extends TypeAdapter<Protocol> {
 
   @override
   Protocol read(BinaryReader reader) {
-    final int numOfFields = reader.readByte();
-    final Map<int, dynamic> fields = <int, dynamic>{
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Protocol(

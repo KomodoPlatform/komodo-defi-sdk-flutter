@@ -1,10 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:hive/hive.dart';
+import 'package:komodo_coin_updates/src/models/address_format.dart';
+import 'package:komodo_coin_updates/src/models/links.dart';
+import 'package:komodo_coin_updates/src/models/protocol.dart';
 import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
-
-import 'address_format.dart';
-import 'links.dart';
-import 'protocol.dart';
 
 part 'adapters/coin_adapter.dart';
 
@@ -68,14 +67,16 @@ class Coin extends Equatable implements ObjectWithPrimaryKey<String> {
       requiredConfirmations: json['required_confirmations'] as num?,
       avgBlocktime: json['avg_blocktime'] as num?,
       decimals: json['decimals'] as num?,
-      protocol: json['protocol'] != null
-          ? Protocol.fromJson(json['protocol'] as Map<String, dynamic>)
-          : null,
+      protocol:
+          json['protocol'] != null
+              ? Protocol.fromJson(json['protocol'] as Map<String, dynamic>)
+              : null,
       derivationPath: json['derivation_path'] as String?,
       trezorCoin: json['trezor_coin'] as String?,
-      links: json['links'] != null
-          ? Links.fromJson(json['links'] as Map<String, dynamic>)
-          : null,
+      links:
+          json['links'] != null
+              ? Links.fromJson(json['links'] as Map<String, dynamic>)
+              : null,
       isPoS: json['isPoS'] as num?,
       pubtype: json['pubtype'] as num?,
       p2shtype: json['p2shtype'] as num?,
@@ -95,11 +96,12 @@ class Coin extends Equatable implements ObjectWithPrimaryKey<String> {
       forkId: json['fork_id'] as String?,
       signatureVersion: json['signature_version'] as String?,
       confpath: json['confpath'] as String?,
-      addressFormat: json['address_format'] != null
-          ? AddressFormat.fromJson(
-              json['address_format'] as Map<String, dynamic>,
-            )
-          : null,
+      addressFormat:
+          json['address_format'] != null
+              ? AddressFormat.fromJson(
+                json['address_format'] as Map<String, dynamic>,
+              )
+              : null,
       aliasTicker: json['alias_ticker'] as String?,
       estimateFeeMode: json['estimate_fee_mode'] as String?,
       orderbookTicker: json['orderbook_ticker'] as String?,

@@ -4,12 +4,7 @@ import 'package:hive/hive.dart';
 part 'adapters/checkpoint_block_adapter.dart';
 
 class CheckPointBlock extends Equatable {
-  const CheckPointBlock({
-    this.height,
-    this.time,
-    this.hash,
-    this.saplingTree,
-  });
+  const CheckPointBlock({this.height, this.time, this.hash, this.saplingTree});
 
   factory CheckPointBlock.fromJson(Map<String, dynamic> json) {
     return CheckPointBlock(

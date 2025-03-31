@@ -31,12 +31,18 @@ class ConsensusParams extends Equatable {
       hrpSaplingExtendedFullViewingKey:
           json['hrp_sapling_extended_full_viewing_key'] as String?,
       hrpSaplingPaymentAddress: json['hrp_sapling_payment_address'] as String?,
-      b58PubkeyAddressPrefix: json['b58_pubkey_address_prefix'] != null
-          ? List<num>.from(json['b58_pubkey_address_prefix'] as List<dynamic>)
-          : null,
-      b58ScriptAddressPrefix: json['b58_script_address_prefix'] != null
-          ? List<num>.from(json['b58_script_address_prefix'] as List<dynamic>)
-          : null,
+      b58PubkeyAddressPrefix:
+          json['b58_pubkey_address_prefix'] != null
+              ? List<num>.from(
+                json['b58_pubkey_address_prefix'] as List<dynamic>,
+              )
+              : null,
+      b58ScriptAddressPrefix:
+          json['b58_script_address_prefix'] != null
+              ? List<num>.from(
+                json['b58_script_address_prefix'] as List<dynamic>,
+              )
+              : null,
     );
   }
 
@@ -70,16 +76,16 @@ class ConsensusParams extends Equatable {
 
   @override
   List<Object?> get props => <Object?>[
-        overwinterActivationHeight,
-        saplingActivationHeight,
-        blossomActivationHeight,
-        heartwoodActivationHeight,
-        canopyActivationHeight,
-        coinType,
-        hrpSaplingExtendedSpendingKey,
-        hrpSaplingExtendedFullViewingKey,
-        hrpSaplingPaymentAddress,
-        b58PubkeyAddressPrefix,
-        b58ScriptAddressPrefix,
-      ];
+    overwinterActivationHeight,
+    saplingActivationHeight,
+    blossomActivationHeight,
+    heartwoodActivationHeight,
+    canopyActivationHeight,
+    coinType,
+    hrpSaplingExtendedSpendingKey,
+    hrpSaplingExtendedFullViewingKey,
+    hrpSaplingPaymentAddress,
+    b58PubkeyAddressPrefix,
+    b58ScriptAddressPrefix,
+  ];
 }

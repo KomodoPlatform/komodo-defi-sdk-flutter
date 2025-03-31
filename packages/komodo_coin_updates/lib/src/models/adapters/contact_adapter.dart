@@ -6,14 +6,11 @@ class ContactAdapter extends TypeAdapter<Contact> {
 
   @override
   Contact read(BinaryReader reader) {
-    final int numOfFields = reader.readByte();
-    final Map<int, dynamic> fields = <int, dynamic>{
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Contact(
-      email: fields[0] as String?,
-      github: fields[1] as String?,
-    );
+    return Contact(email: fields[0] as String?, github: fields[1] as String?);
   }
 
   @override

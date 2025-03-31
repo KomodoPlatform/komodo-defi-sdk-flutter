@@ -36,10 +36,10 @@ class RuntimeUpdateConfig extends Equatable {
 
   @override
   List<Object?> get props => <Object?>[
-        bundledCoinsRepoCommit,
-        coinsRepoApiUrl,
-        coinsRepoContentUrl,
-        coinsRepoBranch,
-        runtimeUpdatesEnabled,
-      ];
+    bundledCoinsRepoCommit,
+    coinsRepoApiUrl,
+    coinsRepoContentUrl,
+    coinsRepoBranch,
+    runtimeUpdatesEnabled,
+  ];
 }

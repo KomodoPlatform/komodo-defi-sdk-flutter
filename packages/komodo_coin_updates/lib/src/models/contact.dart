@@ -17,10 +17,7 @@ class Contact extends Equatable {
   final String? github;
 
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'email': email,
-      'github': github,
-    };
+    return <String, dynamic>{'email': email, 'github': github};
   }
 
   @override

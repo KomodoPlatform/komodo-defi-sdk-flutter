@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:hive/hive.dart';
 
-import '../../komodo_coin_updates.dart';
+import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 
 part 'adapters/node_adapter.dart';
 
@@ -13,9 +13,10 @@ class Node extends Equatable {
       url: json['url'] as String?,
       wsUrl: json['ws_url'] as String?,
       guiAuth: (json['gui_auth'] ?? json['komodo_proxy']) as bool?,
-      contact: json['contact'] != null
-          ? Contact.fromJson(json['contact'] as Map<String, dynamic>)
-          : null,
+      contact:
+          json['contact'] != null
+              ? Contact.fromJson(json['contact'] as Map<String, dynamic>)
+              : null,
     );
   }
 

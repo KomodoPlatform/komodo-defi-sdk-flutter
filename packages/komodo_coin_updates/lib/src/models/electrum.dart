@@ -1,26 +1,22 @@
 import 'package:equatable/equatable.dart';
 import 'package:hive/hive.dart';
-import 'contact.dart';
+import 'package:komodo_coin_updates/src/models/contact.dart';
 
 part 'adapters/electrum_adapter.dart';
 
 // ignore: must_be_immutable
 class Electrum extends Equatable {
-  Electrum({
-    this.url,
-    this.wsUrl,
-    this.protocol,
-    this.contact,
-  });
+  Electrum({this.url, this.wsUrl, this.protocol, this.contact});
 
   factory Electrum.fromJson(Map<String, dynamic> json) {
     return Electrum(
       url: json['url'] as String?,
       wsUrl: json['ws_url'] as String?,
       protocol: json['protocol'] as String?,
-      contact: (json['contact'] as List<dynamic>?)
-          ?.map((dynamic e) => Contact.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      contact:
+          (json['contact'] as List<dynamic>?)
+              ?.map((dynamic e) => Contact.fromJson(e as Map<String, dynamic>))
+              .toList(),
     );
   }
 

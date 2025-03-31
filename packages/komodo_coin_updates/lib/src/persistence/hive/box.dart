@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-import '../persistence_provider.dart';
+import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
 
 /// A [PersistenceProvider] that uses a Hive box as the underlying storage.
 ///
@@ -10,23 +10,16 @@ import '../persistence_provider.dart';
 /// implement the [ObjectWithPrimaryKey] interface.
 class HiveBoxProvider<K, T extends ObjectWithPrimaryKey<K>>
     extends PersistenceProvider<K, T> {
-  HiveBoxProvider({
-    required this.name,
-  });
+  HiveBoxProvider({required this.name});
 
-  HiveBoxProvider.init({
-    required this.name,
-    required Box<T> box,
-  }) : _box = box;
+  HiveBoxProvider.init({required this.name, required Box<T> box}) : _box = box;
 
   final String name;
   Box<T>? _box;
 
   static Future<HiveBoxProvider<K, T>>
-      create<K, T extends ObjectWithPrimaryKey<K>>({
-    required String name,
-  }) async {
-    final Box<T> box = await Hive.openBox<T>(name);
+  create<K, T extends ObjectWithPrimaryKey<K>>({required String name}) async {
+    final box = await Hive.openBox<T>(name);
     return HiveBoxProvider<K, T>.init(name: name, box: box);
   }
 
@@ -64,8 +57,8 @@ class HiveBoxProvider<K, T extends ObjectWithPrimaryKey<K>>
   Future<void> insertAll(List<T> objects) async {
     _box ??= await Hive.openBox<T>(name);
 
-    final Map<K, T> map = <K, T>{};
-    for (final T object in objects) {
+    final map = <K, T>{};
+    for (final object in objects) {
       map[object.primaryKey] = object;
     }
 

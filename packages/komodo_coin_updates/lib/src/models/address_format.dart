@@ -4,10 +4,7 @@ import 'package:hive/hive.dart';
 part 'adapters/address_format_adapter.dart';
 
 class AddressFormat extends Equatable {
-  const AddressFormat({
-    this.format,
-    this.network,
-  });
+  const AddressFormat({this.format, this.network});
 
   factory AddressFormat.fromJson(Map<String, dynamic> json) {
     return AddressFormat(
@@ -20,10 +17,7 @@ class AddressFormat extends Equatable {
   final String? network;
 
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'format': format,
-      'network': network,
-    };
+    return <String, dynamic>{'format': format, 'network': network};
   }
 
   @override

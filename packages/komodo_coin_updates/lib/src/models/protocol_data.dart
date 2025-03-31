@@ -1,8 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:hive/hive.dart';
 
-import 'checkpoint_block.dart';
-import 'consensus_params.dart';
+import 'package:komodo_coin_updates/src/models/checkpoint_block.dart';
+import 'package:komodo_coin_updates/src/models/consensus_params.dart';
 
 part 'adapters/protocol_data_adapter.dart';
 
@@ -26,16 +26,18 @@ class ProtocolData extends Equatable {
     return ProtocolData(
       platform: json['platform'] as String?,
       contractAddress: json['contract_address'] as String?,
-      consensusParams: json['consensus_params'] != null
-          ? ConsensusParams.fromJson(
-              json['consensus_params'] as Map<String, dynamic>,
-            )
-          : null,
-      checkPointBlock: json['check_point_block'] != null
-          ? CheckPointBlock.fromJson(
-              json['check_point_block'] as Map<String, dynamic>,
-            )
-          : null,
+      consensusParams:
+          json['consensus_params'] != null
+              ? ConsensusParams.fromJson(
+                json['consensus_params'] as Map<String, dynamic>,
+              )
+              : null,
+      checkPointBlock:
+          json['check_point_block'] != null
+              ? CheckPointBlock.fromJson(
+                json['check_point_block'] as Map<String, dynamic>,
+              )
+              : null,
       slpPrefix: json['slp_prefix'] as String?,
       decimals: json['decimals'] as num?,
       tokenId: json['token_id'] as String?,
@@ -79,17 +81,17 @@ class ProtocolData extends Equatable {
 
   @override
   List<Object?> get props => <Object?>[
-        platform,
-        contractAddress,
-        consensusParams,
-        checkPointBlock,
-        slpPrefix,
-        decimals,
-        tokenId,
-        requiredConfirmations,
-        denom,
-        accountPrefix,
-        chainId,
-        gasPrice,
-      ];
+    platform,
+    contractAddress,
+    consensusParams,
+    checkPointBlock,
+    slpPrefix,
+    decimals,
+    tokenId,
+    requiredConfirmations,
+    denom,
+    accountPrefix,
+    chainId,
+    gasPrice,
+  ];
 }

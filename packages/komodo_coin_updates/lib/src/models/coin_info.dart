@@ -1,16 +1,12 @@
 import 'package:equatable/equatable.dart';
 import 'package:hive/hive.dart';
+import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
-
-import '../../komodo_coin_updates.dart';
 
 part 'adapters/coin_info_adapter.dart';
 
 class CoinInfo extends Equatable implements ObjectWithPrimaryKey<String> {
-  const CoinInfo({
-    required this.coin,
-    required this.coinConfig,
-  });
+  const CoinInfo({required this.coin, required this.coinConfig});
 
   final Coin coin;
   final CoinConfig? coinConfig;

@@ -1,13 +1,12 @@
 import 'package:equatable/equatable.dart';
 import 'package:hive/hive.dart';
+import 'package:komodo_coin_updates/src/models/address_format.dart';
+import 'package:komodo_coin_updates/src/models/electrum.dart';
+import 'package:komodo_coin_updates/src/models/links.dart';
+import 'package:komodo_coin_updates/src/models/node.dart';
+import 'package:komodo_coin_updates/src/models/protocol.dart';
+import 'package:komodo_coin_updates/src/models/rpc_url.dart';
 import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
-
-import 'address_format.dart';
-import 'electrum.dart';
-import 'links.dart';
-import 'node.dart';
-import 'protocol.dart';
-import 'rpc_url.dart';
 
 part 'adapters/coin_config_adapter.dart';
 
@@ -97,9 +96,10 @@ class CoinConfig extends Equatable implements ObjectWithPrimaryKey<String> {
       explorerUrl: json['explorer_url'] as String?,
       explorerTxUrl: json['explorer_tx_url'] as String?,
       explorerAddressUrl: json['explorer_address_url'] as String?,
-      supported: (json['supported'] as List<dynamic>?)
-          ?.map((dynamic e) => e as String)
-          .toList(),
+      supported:
+          (json['supported'] as List<dynamic>?)
+              ?.map((dynamic e) => e as String)
+              .toList(),
       active: json['active'] as bool?,
       isTestnet: json['is_testnet'] as bool?,
       currentlyEnabled: json['currently_enabled'] as bool?,
@@ -111,36 +111,41 @@ class CoinConfig extends Equatable implements ObjectWithPrimaryKey<String> {
       requiredConfirmations: json['required_confirmations'] as num?,
       avgBlocktime: json['avg_blocktime'] as num?,
       decimals: json['decimals'] as num?,
-      protocol: json['protocol'] == null
-          ? null
-          : Protocol.fromJson(json['protocol'] as Map<String, dynamic>),
+      protocol:
+          json['protocol'] == null
+              ? null
+              : Protocol.fromJson(json['protocol'] as Map<String, dynamic>),
       derivationPath: json['derivation_path'] as String?,
       contractAddress: json['contractAddress'] as String?,
       parentCoin: json['parent_coin'] as String?,
       swapContractAddress: json['swap_contract_address'] as String?,
       fallbackSwapContract: json['fallback_swap_contract'] as String?,
-      nodes: (json['nodes'] as List<dynamic>?)
-          ?.map((dynamic e) => Node.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      nodes:
+          (json['nodes'] as List<dynamic>?)
+              ?.map((dynamic e) => Node.fromJson(e as Map<String, dynamic>))
+              .toList(),
       explorerBlockUrl: json['explorer_block_url'] as String?,
       tokenAddressUrl: json['token_address_url'] as String?,
       trezorCoin: json['trezor_coin'] as String?,
-      links: json['links'] == null
-          ? null
-          : Links.fromJson(json['links'] as Map<String, dynamic>),
+      links:
+          json['links'] == null
+              ? null
+              : Links.fromJson(json['links'] as Map<String, dynamic>),
       pubtype: json['pubtype'] as num?,
       p2shtype: json['p2shtype'] as num?,
       wiftype: json['wiftype'] as num?,
       txfee: json['txfee'] as num?,
       dust: json['dust'] as num?,
       segwit: json['segwit'] as bool?,
-      electrum: (json['electrum'] as List<dynamic>?)
-          ?.map((dynamic e) => Electrum.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      electrum:
+          (json['electrum'] as List<dynamic>?)
+              ?.map((dynamic e) => Electrum.fromJson(e as Map<String, dynamic>))
+              .toList(),
       signMessagePrefix: json['sign_message_refix'] as String?,
-      lightWalletDServers: (json['light_wallet_d_servers'] as List<dynamic>?)
-          ?.map((dynamic e) => e as String)
-          .toList(),
+      lightWalletDServers:
+          (json['light_wallet_d_servers'] as List<dynamic>?)
+              ?.map((dynamic e) => e as String)
+              .toList(),
       asset: json['asset'] as String?,
       txversion: json['txversion'] as num?,
       overwintered: json['overwintered'] as num?,
@@ -153,17 +158,20 @@ class CoinConfig extends Equatable implements ObjectWithPrimaryKey<String> {
       signatureVersion: json['signature_version'] as String?,
       confpath: json['confpath'] as String?,
       matureConfirmations: json['mature_confirmations'] as num?,
-      bchdUrls: (json['bchd_urls'] as List<dynamic>?)
-          ?.map((dynamic e) => e as String)
-          .toList(),
-      otherTypes: (json['other_types'] as List<dynamic>?)
-          ?.map((dynamic e) => e as String)
-          .toList(),
-      addressFormat: json['address_format'] == null
-          ? null
-          : AddressFormat.fromJson(
-              json['address_format'] as Map<String, dynamic>,
-            ),
+      bchdUrls:
+          (json['bchd_urls'] as List<dynamic>?)
+              ?.map((dynamic e) => e as String)
+              .toList(),
+      otherTypes:
+          (json['other_types'] as List<dynamic>?)
+              ?.map((dynamic e) => e as String)
+              .toList(),
+      addressFormat:
+          json['address_format'] == null
+              ? null
+              : AddressFormat.fromJson(
+                json['address_format'] as Map<String, dynamic>,
+              ),
       allowSlpUnsafeConf: json['allow_slp_unsafe_conf'] as bool?,
       slpPrefix: json['slp_prefix'] as String?,
       tokenId: json['token_id'] as String?,
@@ -180,9 +188,10 @@ class CoinConfig extends Equatable implements ObjectWithPrimaryKey<String> {
       versionGroupId: json['version_group_id'] as String?,
       consensusBranchId: json['consensus_branch_id'] as String?,
       estimateFeeBlocks: json['estimate_fee_blocks'] as num?,
-      rpcUrls: (json['rpc_urls'] as List<dynamic>?)
-          ?.map((dynamic e) => RpcUrl.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      rpcUrls:
+          (json['rpc_urls'] as List<dynamic>?)
+              ?.map((dynamic e) => RpcUrl.fromJson(e as Map<String, dynamic>))
+              .toList(),
     );
   }
 
@@ -338,79 +347,79 @@ class CoinConfig extends Equatable implements ObjectWithPrimaryKey<String> {
 
   @override
   List<Object?> get props => <Object?>[
-        coin,
-        type,
-        name,
-        coingeckoId,
-        livecoinwatchId,
-        explorerUrl,
-        explorerTxUrl,
-        explorerAddressUrl,
-        supported,
-        active,
-        isTestnet,
-        currentlyEnabled,
-        walletOnly,
-        fname,
-        rpcport,
-        mm2,
-        chainId,
-        requiredConfirmations,
-        avgBlocktime,
-        decimals,
-        protocol,
-        derivationPath,
-        contractAddress,
-        parentCoin,
-        swapContractAddress,
-        fallbackSwapContract,
-        nodes,
-        explorerBlockUrl,
-        tokenAddressUrl,
-        trezorCoin,
-        links,
-        pubtype,
-        p2shtype,
-        wiftype,
-        txfee,
-        dust,
-        segwit,
-        electrum,
-        signMessagePrefix,
-        lightWalletDServers,
-        asset,
-        txversion,
-        overwintered,
-        requiresNotarization,
-        checkpointHeight,
-        checkpointBlocktime,
-        binanceId,
-        bech32Hrp,
-        forkId,
-        signatureVersion,
-        confpath,
-        matureConfirmations,
-        bchdUrls,
-        otherTypes,
-        addressFormat,
-        allowSlpUnsafeConf,
-        slpPrefix,
-        tokenId,
-        forexId,
-        isPoS,
-        aliasTicker,
-        estimateFeeMode,
-        orderbookTicker,
-        taddr,
-        forceMinRelayFee,
-        isClaimable,
-        minimalClaimAmount,
-        isPoSV,
-        versionGroupId,
-        consensusBranchId,
-        estimateFeeBlocks,
-        rpcUrls,
-      ];
+    coin,
+    type,
+    name,
+    coingeckoId,
+    livecoinwatchId,
+    explorerUrl,
+    explorerTxUrl,
+    explorerAddressUrl,
+    supported,
+    active,
+    isTestnet,
+    currentlyEnabled,
+    walletOnly,
+    fname,
+    rpcport,
+    mm2,
+    chainId,
+    requiredConfirmations,
+    avgBlocktime,
+    decimals,
+    protocol,
+    derivationPath,
+    contractAddress,
+    parentCoin,
+    swapContractAddress,
+    fallbackSwapContract,
+    nodes,
+    explorerBlockUrl,
+    tokenAddressUrl,
+    trezorCoin,
+    links,
+    pubtype,
+    p2shtype,
+    wiftype,
+    txfee,
+    dust,
+    segwit,
+    electrum,
+    signMessagePrefix,
+    lightWalletDServers,
+    asset,
+    txversion,
+    overwintered,
+    requiresNotarization,
+    checkpointHeight,
+    checkpointBlocktime,
+    binanceId,
+    bech32Hrp,
+    forkId,
+    signatureVersion,
+    confpath,
+    matureConfirmations,
+    bchdUrls,
+    otherTypes,
+    addressFormat,
+    allowSlpUnsafeConf,
+    slpPrefix,
+    tokenId,
+    forexId,
+    isPoS,
+    aliasTicker,
+    estimateFeeMode,
+    orderbookTicker,
+    taddr,
+    forceMinRelayFee,
+    isClaimable,
+    minimalClaimAmount,
+    isPoSV,
+    versionGroupId,
+    consensusBranchId,
+    estimateFeeBlocks,
+    rpcUrls,
+  ];
 
   @override
   String get primaryKey => coin;

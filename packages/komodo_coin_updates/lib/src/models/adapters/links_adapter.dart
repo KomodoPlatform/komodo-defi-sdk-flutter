@@ -6,14 +6,11 @@ class LinksAdapter extends TypeAdapter<Links> {
 
   @override
   Links read(BinaryReader reader) {
-    final int numOfFields = reader.readByte();
-    final Map<int, dynamic> fields = <int, dynamic>{
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Links(
-      github: fields[0] as String?,
-      homepage: fields[1] as String?,
-    );
+    return Links(github: fields[0] as String?, homepage: fields[1] as String?);
   }
 
   @override

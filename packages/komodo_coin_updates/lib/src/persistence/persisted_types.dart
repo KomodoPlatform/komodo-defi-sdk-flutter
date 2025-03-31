@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-import 'persistence_provider.dart';
+import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
 
 abstract class PersistedBasicType<T> implements ObjectWithPrimaryKey<T> {
   PersistedBasicType(this.primaryKey, this.value);
@@ -21,14 +21,11 @@ class PersistedStringAdapter extends TypeAdapter<PersistedString> {
 
   @override
   PersistedString read(BinaryReader reader) {
-    final int numOfFields = reader.readByte();
-    final Map<int, dynamic> fields = <int, dynamic>{
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return PersistedString(
-      fields[0] as String,
-      fields[1] as String,
-    );
+    return PersistedString(fields[0] as String, fields[1] as String);
   }
 
   @override

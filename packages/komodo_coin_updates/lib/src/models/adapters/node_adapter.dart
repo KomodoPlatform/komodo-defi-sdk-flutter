@@ -6,14 +6,11 @@ class NodeAdapter extends TypeAdapter<Node> {
 
   @override
   Node read(BinaryReader reader) {
-    final int numOfFields = reader.readByte();
-    final Map<int, dynamic> fields = <int, dynamic>{
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Node(
-      url: fields[0] as String?,
-      guiAuth: fields[1] as bool?,
-    );
+    return Node(url: fields[0] as String?, guiAuth: fields[1] as bool?);
   }
 
   @override

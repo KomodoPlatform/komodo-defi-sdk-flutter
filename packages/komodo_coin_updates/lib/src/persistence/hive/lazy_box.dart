@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-import '../persistence_provider.dart';
+import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
 
 /// A [PersistenceProvider] that uses a Hive box as the underlying storage.
 ///
@@ -10,23 +10,17 @@ import '../persistence_provider.dart';
 /// implement the [ObjectWithPrimaryKey] interface.
 class HiveLazyBoxProvider<K, T extends ObjectWithPrimaryKey<K>>
     extends PersistenceProvider<K, T> {
-  HiveLazyBoxProvider({
-    required this.name,
-  });
+  HiveLazyBoxProvider({required this.name});
 
-  HiveLazyBoxProvider.init({
-    required this.name,
-    required LazyBox<T> box,
-  }) : _box = box;
+  HiveLazyBoxProvider.init({required this.name, required LazyBox<T> box})
+    : _box = box;
 
   final String name;
   LazyBox<T>? _box;
 
   static Future<HiveLazyBoxProvider<K, T>>
-      create<K, T extends ObjectWithPrimaryKey<K>>({
-    required String name,
-  }) async {
-    final LazyBox<T> box = await Hive.openLazyBox<T>(name);
+  create<K, T extends ObjectWithPrimaryKey<K>>({required String name}) async {
+    final box = await Hive.openLazyBox<T>(name);
     return HiveLazyBoxProvider<K, T>.init(name: name, box: box);
   }
 
@@ -52,9 +46,8 @@ class HiveLazyBoxProvider<K, T extends ObjectWithPrimaryKey<K>>
   Future<List<T?>> getAll() async {
     _box ??= await Hive.openLazyBox<T>(name);
 
-    final Iterable<Future<T?>> valueFutures =
-        _box!.keys.map((dynamic key) => _box!.get(key as K));
-    final List<T?> result = await Future.wait<T?>(valueFutures);
+    final valueFutures = _box!.keys.map((dynamic key) => _box!.get(key as K));
+    final result = await Future.wait<T?>(valueFutures);
     return result;
   }
 
@@ -68,8 +61,8 @@ class HiveLazyBoxProvider<K, T extends ObjectWithPrimaryKey<K>>
   Future<void> insertAll(List<T> objects) async {
     _box ??= await Hive.openLazyBox<T>(name);
 
-    final Map<K, T> map = <K, T>{};
-    for (final T object in objects) {
+    final map = <K, T>{};
+    for (final object in objects) {
       map[object.primaryKey] = object;
     }
 

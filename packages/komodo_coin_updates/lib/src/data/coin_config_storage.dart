@@ -1,5 +1,5 @@
-import '../models/coin.dart';
-import '../models/coin_config.dart';
+import 'package:komodo_coin_updates/src/models/coin.dart';
+import 'package:komodo_coin_updates/src/models/coin_config.dart';
 
 /// A storage provider that fetches the coins and coin configs from the storage.
 /// The storage provider is responsible for fetching the coins and coin configs

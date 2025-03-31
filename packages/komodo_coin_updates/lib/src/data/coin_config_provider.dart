@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../models/models.dart';
+import 'package:komodo_coin_updates/src/models/models.dart';
 
 /// A provider that fetches the coins and coin configs from the repository.
 /// The repository is hosted on GitHub.
@@ -20,9 +20,7 @@ class CoinConfigProvider {
 
   factory CoinConfigProvider.fromConfig(RuntimeUpdateConfig config) {
     // TODO(Francois): derive all the values from the config
-    return CoinConfigProvider(
-      branch: config.coinsRepoBranch,
-    );
+    return CoinConfigProvider(branch: config.coinsRepoBranch);
   }
 
   final String branch;
@@ -37,9 +35,9 @@ class CoinConfigProvider {
   /// Returns a list of [Coin] objects.
   /// Throws an [Exception] if the request fails.
   Future<List<Coin>> getCoins(String commit) async {
-    final Uri url = _contentUri(coinsPath, branchOrCommit: commit);
-    final http.Response response = await http.get(url);
-    final List<dynamic> items = jsonDecode(response.body) as List<dynamic>;
+    final url = _contentUri(coinsPath, branchOrCommit: commit);
+    final response = await http.get(url);
+    final items = jsonDecode(response.body) as List<dynamic>;
     return items
         .map((dynamic e) => Coin.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -60,10 +58,9 @@ class CoinConfigProvider {
   /// Throws an [Exception] if the request fails.
   /// The key of the map is the coin symbol.
   Future<Map<String, CoinConfig>> getCoinConfigs(String commit) async {
-    final Uri url = _contentUri(coinsConfigPath, branchOrCommit: commit);
-    final http.Response response = await http.get(url);
-    final Map<String, dynamic> items =
-        jsonDecode(response.body) as Map<String, dynamic>;
+    final url = _contentUri(coinsConfigPath, branchOrCommit: commit);
+    final response = await http.get(url);
+    final items = jsonDecode(response.body) as Map<String, dynamic>;
     return <String, CoinConfig>{
       for (final String key in items.keys)
         key: CoinConfig.fromJson(items[key] as Map<String, dynamic>),
@@ -81,17 +78,14 @@ class CoinConfigProvider {
   /// Returns the latest commit hash.
   /// Throws an [Exception] if the request fails.
   Future<String> getLatestCommit() async {
-    final http.Client client = http.Client();
-    final Uri url = Uri.parse('$coinsGithubApiUrl/branches/$branch');
-    final Map<String, String> header = <String, String>{
-      'Accept': 'application/vnd.github+json',
-    };
-    final http.Response response = await client.get(url, headers: header);
+    final client = http.Client();
+    final url = Uri.parse('$coinsGithubApiUrl/branches/$branch');
+    final header = <String, String>{'Accept': 'application/vnd.github+json'};
+    final response = await client.get(url, headers: header);
 
-    final Map<String, dynamic> json =
-        jsonDecode(response.body) as Map<String, dynamic>;
-    final Map<String, dynamic> commit = json['commit'] as Map<String, dynamic>;
-    final String latestCommitHash = commit['sha'] as String;
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final commit = json['commit'] as Map<String, dynamic>;
+    final latestCommitHash = commit['sha'] as String;
     return latestCommitHash;
   }
 
