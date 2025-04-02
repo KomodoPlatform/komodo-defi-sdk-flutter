@@ -14,6 +14,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  intl: ^0.20.2
   komodo_defi_types:
     path: ../komodo_defi_types
   mobile_scanner: ^6.0.3

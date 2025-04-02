@@ -22,6 +22,7 @@ dependencies:
     sdk: flutter
   flutter_secure_storage: ^10.0.0-beta.4
   get_it: ^8.0.3
+  http: ^1.3.0
   komodo_cex_market_data:
     path: ../komodo_cex_market_data
   komodo_coins:

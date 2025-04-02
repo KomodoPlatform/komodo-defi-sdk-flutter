@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:developer' show log;
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Balance strategy for single address assets (non-HD wallets)
@@ -18,8 +18,8 @@ class IguananaWalletBalanceStrategy extends BalanceStrategy {
 
   @override
   Future<BalanceInfo> getBalance(AssetId assetId, ApiClient client) async {
-    int retryCount = 0;
-    Duration timeout = _initialTimeout;
+    var retryCount = 0;
+    var timeout = _initialTimeout;
 
     while (true) {
       try {
@@ -56,7 +56,7 @@ class IguananaWalletBalanceStrategy extends BalanceStrategy {
               ),
             );
 
-            debugPrint(
+            log(
               'Retrying balance fetch for $assetId after delay of ${delay.inMilliseconds}ms. '
               'Attempt ${retryCount + 1}/${_maxRetries + 1} with timeout ${timeout.inSeconds}s',
             );
@@ -94,7 +94,7 @@ class IguananaWalletBalanceStrategy extends BalanceStrategy {
     scheduleMicrotask(() async {
       try {
         BalanceInfo? lastBalance;
-        int consecutiveErrors = 0;
+        var consecutiveErrors = 0;
 
         while (!controller.isClosed) {
           try {

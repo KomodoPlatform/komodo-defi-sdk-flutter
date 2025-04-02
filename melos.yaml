@@ -3,7 +3,6 @@ repository: https://github.com/KomodoPlatform/komodo_defi_framework
 
 packages:
   - packages/**
-  - products/**
 
 command:
   bootstrap:
@@ -32,10 +31,6 @@ scripts:
     run: flutter pub upgrade --major-versions
     exec:
       concurrency: 1
-    # packageFilters:
-    #   exclude:
-    #     - packages/**
-    #     - products/**
 
   assets:generate:
     run: flutter build bundle
