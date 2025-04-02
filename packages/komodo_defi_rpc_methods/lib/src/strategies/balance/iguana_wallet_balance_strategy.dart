@@ -112,7 +112,7 @@ class IguananaWalletBalanceStrategy extends BalanceStrategy {
             consecutiveErrors++;
 
             // Log the error
-            debugPrint(
+            log(
               'Error fetching balance for $assetId (attempt $consecutiveErrors): $e',
             );
 
