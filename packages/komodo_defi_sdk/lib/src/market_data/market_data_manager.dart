@@ -81,7 +81,7 @@ class CexMarketDataManager implements MarketDataManager {
   Future<void> init() async {
     // Initialize any resources if needed
     _knownTickers = UnmodifiableSetView(
-      (await _priceRepository.getCoinList()).map((e) => e.id).toSet(),
+      (await _priceRepository.getCoinList()).map((e) => e.symbol).toSet(),
     );
 
     // Start cache clearing timer
@@ -113,15 +113,19 @@ class CexMarketDataManager implements MarketDataManager {
     DateTime? priceDate,
     String fiatCurrency = 'usdt',
   }) {
-    return '${assetId.id}_${fiatCurrency}_${priceDate?.millisecondsSinceEpoch ?? 'current'}';
+    return '${assetId.symbol.configSymbol}_${fiatCurrency}_${priceDate?.millisecondsSinceEpoch ?? 'current'}';
   }
 
   // Helper method to generate change cache keys
   String _getChangeCacheKey(AssetId assetId, {String fiatCurrency = 'usdt'}) {
-    return '${assetId.id}_${fiatCurrency}_change24h';
+    return '${assetId.symbol.configSymbol}_${fiatCurrency}_change24h';
   }
 
-  
+  /// Gets the trading symbol to use for price lookups.
+  /// Prefers the binanceId if available, falls back to configSymbol
+  String _getTradingSymbol(AssetId assetId) {
+    return assetId.symbol.configSymbol;
+  }
 
   @override
   Decimal? priceIfKnown(
@@ -167,7 +171,7 @@ class CexMarketDataManager implements MarketDataManager {
 
     try {
       final priceDouble = await _priceRepository.getCoinFiatPrice(
-        assetId.id,
+        _getTradingSymbol(assetId),
         priceDate: priceDate,
         fiatCoinId: fiatCurrency,
       );
@@ -204,10 +208,8 @@ class CexMarketDataManager implements MarketDataManager {
       return cachedPrice;
     }
 
-    final maybeKnownTicker =
-        assetId.symbol.binanceId ?? assetId.symbol.configSymbol;
-
-    final isKnownTicker = _knownTickers?.contains(maybeKnownTicker) ?? false;
+    final tradingSymbol = _getTradingSymbol(assetId);
+    final isKnownTicker = _knownTickers?.contains(tradingSymbol) ?? false;
 
     if (!isKnownTicker) {
       return null;
@@ -248,7 +250,7 @@ class CexMarketDataManager implements MarketDataManager {
       final prices = await _komodoPriceRepository.getKomodoPrices();
 
       // Find the price for the requested asset
-      final priceData = prices[assetId.id];
+      final priceData = prices[assetId.symbol.configSymbol];
 
       if (priceData == null || priceData.change24h == null) {
         return null;
@@ -281,7 +283,7 @@ class CexMarketDataManager implements MarketDataManager {
 
     try {
       final priceDoubleMap = await _priceRepository.getCoinFiatPrices(
-        assetId.id,
+        assetId.symbol.configSymbol,
         dates,
         fiatCoinId: fiatCurrency,
       );

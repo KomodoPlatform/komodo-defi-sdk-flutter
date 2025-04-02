@@ -58,7 +58,9 @@ class SourceAddressField extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.secondaryContainer.withOpacity(0.7),
+                  color: theme.colorScheme.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -71,7 +73,30 @@ class SourceAddressField extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        _buildAddressSelector(context),
+        AddressSelectInput(
+          addresses: pubkeys!.keys,
+          selectedAddress: selectedAddress,
+          onAddressSelected: onChanged,
+          assetName: asset.id.name,
+          hint: 'Choose source address',
+          onCopied: (address) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white, size: 16),
+                    SizedBox(width: 8),
+                    Text('Address copied to clipboard'),
+                  ],
+                ),
+                behavior: SnackBarBehavior.floating,
+                width: 280,
+                backgroundColor: theme.colorScheme.primary,
+              ),
+            );
+          },
+          verified: _isAddressVerified,
+        ),
         if (selectedAddress != null && showBalanceIndicator) ...[
           const SizedBox(height: 12),
           _BalanceIndicator(
@@ -84,38 +109,8 @@ class SourceAddressField extends StatelessWidget {
     );
   }
 
-  Widget _buildAddressSelector(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // Remove the Container wrapper that was causing the double border
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: AddressSelectInput(
-        addresses: pubkeys!.keys,
-        selectedAddress: selectedAddress,
-        onAddressSelected: onChanged,
-        assetName: asset.id.name,
-        hint: 'Choose source address',
-        onCopied: (address) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white, size: 16),
-                  SizedBox(width: 8),
-                  Text('Address copied to clipboard'),
-                ],
-              ),
-              behavior: SnackBarBehavior.floating,
-              width: 280,
-              backgroundColor: theme.colorScheme.primary,
-            ),
-          );
-        },
-        verified:
-            (address) => _getAddressStatus(address) == AddressStatus.available,
-      ),
-    );
+  bool _isAddressVerified(PubkeyInfo address) {
+    return _getAddressStatus(address) == AddressStatus.available;
   }
 
   AddressStatus _getAddressStatus(PubkeyInfo address) {
@@ -146,7 +141,9 @@ class _LoadingState extends StatelessWidget {
       color: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.2)),
+        side: BorderSide(
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -167,7 +164,7 @@ class _LoadingState extends StatelessWidget {
             Text(
               'Fetching your ${asset.id.name} addresses',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -189,7 +186,7 @@ class _ErrorState extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: theme.colorScheme.errorContainer.withOpacity(0.8),
+      color: theme.colorScheme.errorContainer.withValues(alpha: 0.8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -218,9 +215,12 @@ class _ErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              "We couldn't load your wallet addresses. Please check your connection and try again.",
+              "We couldn't load your wallet addresses. "
+              'Please check your connection and try again.',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onErrorContainer.withOpacity(0.8),
+                color: theme.colorScheme.onErrorContainer.withValues(
+                  alpha: 0.8,
+                ),
               ),
             ),
             if (onRetry != null) ...[
@@ -282,10 +282,10 @@ class _BalanceIndicator extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: statusColor.withOpacity(0.08),
+      color: statusColor.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: statusColor.withOpacity(0.3)),
+        side: BorderSide(color: statusColor.withValues(alpha: 0.3)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -311,7 +311,7 @@ class _BalanceIndicator extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.15),
+                      color: statusColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
@@ -347,14 +347,14 @@ class _BalanceIndicator extends StatelessWidget {
                   Text(
                     'Locked:',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   Text(
                     '${balance.unspendable} $assetName',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontStyle: FontStyle.italic,
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -367,7 +367,7 @@ class _BalanceIndicator extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 alignment: Alignment.center,
