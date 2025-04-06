@@ -76,35 +76,17 @@ extension KdfExtensions on KdfAuthService {
 
   // consider moving to kdf api
   Future<void> _restartKdf(KdfStartupConfig config) async {
-    final foundAuthExceptions = <AuthException>[];
-    late StreamSubscription<String> sub;
+    await _stopKdf();
+    final kdfResult = await _kdfFramework.startKdf(config);
 
-    sub = _kdfFramework.logStream.listen((log) {
-      final exceptions = AuthException.findExceptionsInLog(log);
-      if (exceptions.isNotEmpty) {
-        foundAuthExceptions.addAll(exceptions);
-      }
-    });
-
-    try {
-      await _stopKdf();
-      final kdfResult = await _kdfFramework.startKdf(config);
-
-      if (!kdfResult.isStartingOrAlreadyRunning()) {
-        throw AuthException(
-          'Failed to start KDF: ${kdfResult.name}',
-          type: AuthExceptionType.generalAuthError,
-        );
-      }
-
-      await _waitUntilKdfRpcIsUp();
-
-      if (foundAuthExceptions.isNotEmpty) {
-        throw foundAuthExceptions.first;
-      }
-    } finally {
-      await sub.cancel();
+    if (!kdfResult.isStartingOrAlreadyRunning()) {
+      throw AuthException(
+        'Failed to start KDF: ${kdfResult.name}',
+        type: AuthExceptionType.generalAuthError,
+      );
     }
+
+    await _waitUntilKdfRpcIsUp();
   }
 
   Future<void> _waitUntilKdfRpcIsUp({
