@@ -71,6 +71,7 @@ extension CensoredJsonMap on JsonMap {
   JsonMap censored() {
     // Search recursively for the following keys and replace their values
     // with "*" characters.
+    // TODO: consider adding regex or wildcard support for "*password*" or "*key*"
     const sensitive = [
       'seed',
       'userpass',
@@ -86,6 +87,7 @@ extension CensoredJsonMap on JsonMap {
       'privkey',
       'userpass',
       'rpc_password',
+      'wallet_password',
     ];
 
     return censorKeys(sensitive);
