@@ -174,9 +174,32 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     ).whenComplete(() => calloc.free(startParamsPtr));
 
     if (kDebugMode) _log('KDF started in ${timer.elapsedMilliseconds}ms');
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (kDebugMode) _log('KDF started with result: $result');
-    if (kDebugMode) _log('Status after starting KDF: ${_kdfMainStatus()}');
+
+    // Wait for RPC to be fully up instead of just a fixed delay
+    // This is a workaround for the race condition where KDF is started but
+    // the RPC server is not yet ready to accept requests.
+    bool isRpcReady = false;
+    for (int i = 0; i < 20; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      if (_kdfMainStatus() == MainStatus.rpcIsUp) {
+        isRpcReady = true;
+        if (kDebugMode) {
+          _log('RPC server ready after ${timer.elapsedMilliseconds}ms');
+        }
+        break;
+      }
+    }
+
+    if (!isRpcReady && kDebugMode) {
+      _log(
+        'Warning: RPC server not ready after ${timer.elapsedMilliseconds}ms',
+      );
+    }
+
+    if (kDebugMode) {
+      _log('KDF started with result: $result');
+      _log('Status after starting KDF: ${_kdfMainStatus()}');
+    }
 
     return KdfStartupResult.fromDefaultInt(result);
   }
