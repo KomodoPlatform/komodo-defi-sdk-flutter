@@ -10,22 +10,22 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
 
   @override
   Set<CoinSubClass> get supportedProtocols => {
-        CoinSubClass.erc20,
-        CoinSubClass.bep20,
-        CoinSubClass.ftm20,
-        CoinSubClass.matic,
-        CoinSubClass.avx20,
-        CoinSubClass.hrc20,
-        CoinSubClass.moonbeam,
-        CoinSubClass.moonriver,
-        CoinSubClass.ethereumClassic,
-        CoinSubClass.ubiq,
-        CoinSubClass.krc20,
-        CoinSubClass.ewt,
-        CoinSubClass.hecoChain,
-        CoinSubClass.rskSmartBitcoin,
-        CoinSubClass.arbitrum,
-      };
+    CoinSubClass.erc20,
+    CoinSubClass.bep20,
+    CoinSubClass.ftm20,
+    CoinSubClass.matic,
+    CoinSubClass.avx20,
+    CoinSubClass.hrc20,
+    CoinSubClass.moonbeam,
+    CoinSubClass.moonriver,
+    CoinSubClass.ethereumClassic,
+    CoinSubClass.ubiq,
+    CoinSubClass.krc20,
+    CoinSubClass.ewt,
+    CoinSubClass.hecoChain,
+    CoinSubClass.rskSmartBitcoin,
+    CoinSubClass.arbitrum,
+  };
 
   @override
   bool get supportsCustomTokenActivation => true;
@@ -51,8 +51,10 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
     );
 
     try {
-      final protocolData = asset.protocol.config
-          .valueOrNull<JsonMap>('protocol', 'protocol_data');
+      final protocolData = asset.protocol.config.valueOrNull<JsonMap>(
+        'protocol',
+        'protocol_data',
+      );
       if (protocolData == null) {
         throw StateError('Protocol data is missing from custom token config');
       }

@@ -68,12 +68,12 @@ class NftProvider {
   const NftProvider({required this.type, required this.info});
 
   factory NftProvider.moralis() => const NftProvider(
-        type: 'Moralis',
-        info: NftProviderInfo(
-          url: 'https://moralis-proxy.komodo.earth',
-          komodoProxy: true,
-        ),
-      );
+    type: 'Moralis',
+    info: NftProviderInfo(
+      url: 'https://moralis-proxy.komodo.earth',
+      komodoProxy: true,
+    ),
+  );
 
   factory NftProvider.fromJson(JsonMap json) {
     return NftProvider(

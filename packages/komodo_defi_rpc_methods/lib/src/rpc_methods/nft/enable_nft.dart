@@ -10,11 +10,11 @@ class EnableNftRequest
     required this.ticker,
     required this.activationParams,
   }) : super(
-          method: 'enable_nft',
-          rpcPass: rpcPass,
-          mmrpc: '2.0',
-          params: activationParams,
-        );
+         method: 'enable_nft',
+         rpcPass: rpcPass,
+         mmrpc: '2.0',
+         params: activationParams,
+       );
 
   final String ticker;
   final NftActivationParams activationParams;
@@ -47,11 +47,10 @@ class EnableNftResponse extends BaseResponse {
 
     return EnableNftResponse(
       mmrpc: json.value<String>('mmrpc'),
-      nfts: result.value<JsonMap>('nfts').map(
-            (key, value) => MapEntry(
-              key,
-              NftInfo.fromJson(value as JsonMap),
-            ),
+      nfts: result
+          .value<JsonMap>('nfts')
+          .map(
+            (key, value) => MapEntry(key, NftInfo.fromJson(value as JsonMap)),
           ),
       platformCoin: result.value<String>('platform_coin'),
     );
@@ -62,12 +61,12 @@ class EnableNftResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': {
-          'nfts': nfts.map((key, value) => MapEntry(key, value.toJson())),
-          'platform_coin': platformCoin,
-        },
-      };
+    'mmrpc': mmrpc,
+    'result': {
+      'nfts': nfts.map((key, value) => MapEntry(key, value.toJson())),
+      'platform_coin': platformCoin,
+    },
+  };
 }
 
 /// Information about an NFT
@@ -81,6 +80,20 @@ class NftInfo {
   });
 
   factory NftInfo.fromJson(JsonMap json) {
+    // Validate required fields exist
+    final requiredFields = [
+      'token_address',
+      'token_id',
+      'chain',
+      'contract_type',
+      'amount',
+    ];
+    for (final field in requiredFields) {
+      if (!json.containsKey(field)) {
+        throw FormatException('Missing required field: $field in NftInfo JSON');
+      }
+    }
+
     return NftInfo(
       tokenAddress: json.value<String>('token_address'),
       tokenId: json.value<String>('token_id'),
@@ -97,10 +110,10 @@ class NftInfo {
   final String amount;
 
   Map<String, dynamic> toJson() => {
-        'token_address': tokenAddress,
-        'token_id': tokenId,
-        'chain': chain,
-        'contract_type': contractType,
-        'amount': amount,
-      };
+    'token_address': tokenAddress,
+    'token_id': tokenId,
+    'chain': chain,
+    'contract_type': contractType,
+    'amount': amount,
+  };
 }

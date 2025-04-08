@@ -61,6 +61,8 @@ class CoinFilter {
     'SLP': 'Simple Ledger Protocol',
   };
 
+  // NFT was previosly filtered out, but it is now required with the NFT v2
+  // migration. NFT_<COIN> coins are used to represent NFTs on the chain.
   static const _filteredProtocolTypes = {};
 
   /// Returns true if the given coin should be filtered out.
