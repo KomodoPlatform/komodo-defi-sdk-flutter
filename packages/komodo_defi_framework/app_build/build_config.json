@@ -1,7 +1,7 @@
 {
     "api": {
-        "api_commit_hash": "74674638ca352a348b69720851309e2b63e97e57",
-        "branch": "fix-update-nft-hd",
+        "api_commit_hash": "bd480a45f2a6b770b032697de298a400cc2e434a",
+        "branch": "fix-wasm-exit-codes",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
@@ -12,49 +12,49 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "c7ed394e29f6bc2c78a3db3cdaa4927c9ce5848c2e8157a0979f300823d5e995"
+                    "a5823c60a41be52fcd10ace7cb97a43978df581b0bb484c6b983068c137c82dc"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "6d69bf895fdbba26c216ccf480a6a8ba3da40bdb79ca2e741c400fb0fa8b675d"
+                    "dface559ebb7554949ecbfb316333efe86b97d6ce7a8cd5bbb1eb59e3ea6bd86"
                 ],
                 "path": "ios"
             },
             "macos": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "ebbe8d3fafd0b077e72f79dd37aba9cad328df9908f9db8442e773451575306f"
+                    "961223c100a0a984f674cc3ea85e18f931f085049c2848a6856459975012da26"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "970c8a8992d3c6add9581aa5cce6a8b817f33362f18eeae3dc1760a1fc9060ab"
+                    "1e232f7fb23456ea5107e972e662c10d4f6cf57f9ffe293fe764c63758ebffaa"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "a9292e61ae66566bc4a25c8a0d872a0a0dbf4adcfdfeefcd96ff7144d0ee2a11"
+                    "254f42107a75a21ccd4bd5030ea7e7d7715a2ede4d6603db5d0fdcc028aeabb5"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "46f7e11e8ccff80df5be3bd4b774d3caebe1baab6468f25e48807553724cdc4e"
+                    "4dfcf7da9cf7b26c8d767d18f95892e857c93d2cae33f707db39a84f7c5a5363"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "2c16d5b86df7a94a7eaed920bb1d0bbb82da4327f74ee476fb83099556043528"
+                    "ffdd08f4e3f9e546bcbd78ad3b5018c9c51a11d41bbdd8302e6ef55cc10f76a6"
                 ],
                 "path": "linux/bin"
             }
