@@ -4,8 +4,6 @@
 // ignore_for_file: unused_field, unused_element
 
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
-import 'package:komodo_defi_rpc_methods/src/rpc_methods/nft/nft_rpc_namespace.dart';
-import 'package:komodo_defi_rpc_methods/src/rpc_methods/utility/get_token_info.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A class that provides a library of RPC methods used by the Komodo DeFi
