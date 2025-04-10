@@ -22,6 +22,8 @@ export 'hd_wallet/get_new_address.dart';
 export 'hd_wallet/scan_for_new_addresses_init.dart';
 export 'hd_wallet/scan_for_new_addresses_status.dart';
 export 'methods.dart';
+export 'nft/enable_nft.dart';
+export 'nft/nft_rpc_namespace.dart';
 export 'qtum/enable_qtum.dart';
 export 'qtum/qtum_rpc_namespace.dart';
 export 'tendermint/enable_tendermint_token.dart';

@@ -9,16 +9,10 @@ class CustomAssetHistoryStorage {
   final _storage = const FlutterSecureStorage();
 
   /// Store custom tokens used by a wallet
-  Future<void> storeWalletAssets(
-    WalletId walletId,
-    Set<Asset> assets,
-  ) async {
+  Future<void> storeWalletAssets(WalletId walletId, Set<Asset> assets) async {
     final key = _getStorageKey(walletId);
     final assetsJsonArray = assets.map((asset) => asset.toJson()).toList();
-    await _storage.write(
-      key: key,
-      value: assetsJsonArray.toJsonString(),
-    );
+    await _storage.write(key: key, value: assetsJsonArray.toJsonString());
   }
 
   /// Add a single asset to wallet's history
