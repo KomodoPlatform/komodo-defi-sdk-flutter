@@ -298,7 +298,20 @@ class KdfAuthService implements IAuthService {
           currentPassword: currentPassword,
           newPassword: newPassword,
         );
+      } on ChangeMnemonicIncorrectPasswordErrorResponse catch (e) {
+        throw AuthException(
+          'Incorrect current password',
+          type: AuthExceptionType.incorrectPassword,
+          details: {'error': e.error, 'errorType': e.errorType},
+        );
       } catch (e) {
+        final knownExceptions = AuthException.findExceptionsInLog(
+          e.toString().toLowerCase(),
+        );
+        if (knownExceptions.isNotEmpty) {
+          throw knownExceptions.first;
+        }
+
         throw AuthException(
           'Failed to change password: $e',
           type: AuthExceptionType.generalAuthError,

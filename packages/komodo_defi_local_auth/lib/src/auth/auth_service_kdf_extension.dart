@@ -98,10 +98,12 @@ extension KdfExtensions on KdfAuthService {
       // TODO(takenagain): Integrate the log scanning if KDF team does not
       // implement the proposal in the GH Issue above.
       case KdfStartupResult.initError:
-        // This is typically caused by an incorrect password
+        // This is typically caused by an incorrect password. As a temporary
+        // solution, this can be narrowed down to incorrect password by
+        // validating the mnemonic. See the note above.
         throw AuthException(
           'Incorrect password or invalid seed',
-          type: AuthExceptionType.invalidWalletPassword,
+          type: AuthExceptionType.incorrectPassword,
         );
 
       case KdfStartupResult.alreadyRunning:

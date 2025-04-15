@@ -77,28 +77,39 @@ mixin RequestHandlingMixin<
   E extends GeneralErrorResponse
 >
     on BaseRequest<T, E> {
-  // @override
-  // Future<T> send() async {
-  //   final response = await client.sendRequest(toJson());
-  //   return parseResponse(jsonEncode(response));
-  // }
 
   // Parse response from JSON
   @override
   T parseResponse(String responseBody) {
     final json = jsonFromString(responseBody);
 
-    // TODO!
-    final maybeErrorResponse = tryParseErrorResponse(json);
-    if (maybeErrorResponse != null) {
-      throw maybeErrorResponse;
+    // First check if this is an error response
+    if (GeneralErrorResponse.isErrorResponse(json)) {
+      // Allow subclasses to handle specific error types first
+      final customError = parseCustomErrorResponse(json);
+      if (customError != null) {
+        throw customError;
+      }
+
+      // Fall back to general error handling
+      final generalError = parseGeneralErrorResponse(json);
+      if (generalError != null) {
+        throw generalError;
+      }
     }
 
     return parse(json);
   }
 
-  @mustCallSuper
-  GeneralErrorResponse? tryParseErrorResponse(JsonMap json) {
+  /// Override this method to provide custom error handling for specific error
+  /// types.
+  /// Return null if the error is not of a type that this request can handle.
+  E? parseCustomErrorResponse(JsonMap json) => null;
+
+  /// Handles general error responses. This is a fallback for when 
+  /// [parseCustomErrorResponse] returns null.
+  @protected
+  GeneralErrorResponse? parseGeneralErrorResponse(JsonMap json) {
     if (GeneralErrorResponse.isErrorResponse(json)) {
       return GeneralErrorResponse.parse(json);
     }

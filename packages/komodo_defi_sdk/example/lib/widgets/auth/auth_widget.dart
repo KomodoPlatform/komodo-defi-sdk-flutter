@@ -51,7 +51,13 @@ class _AuthWidgetState extends State<AuthWidget> {
 
       widget.onUserChanged(user);
     } on AuthException catch (e) {
-      setState(() => _error = 'Auth Error: ${e.message}');
+      setState(() {
+        if (e.type == AuthExceptionType.incorrectPassword) {
+          _error = 'Incorrect Password: ${e.message}';
+        } else {
+          _error = 'Auth Error (${e.type.name}): ${e.message}';
+        }
+      });
     } catch (e) {
       setState(() => _error = 'Unexpected error: $e');
     }
@@ -91,7 +97,7 @@ class _AuthWidgetState extends State<AuthWidget> {
     } on AuthException catch (e) {
       setState(() {
         _error =
-            e.type == AuthExceptionType.invalidWalletPassword
+            e.type == AuthExceptionType.incorrectPassword
                 ? 'HD mode requires a valid BIP39 seed phrase. The imported encrypted seed is not compatible.'
                 : 'Registration failed: ${e.message}';
       });

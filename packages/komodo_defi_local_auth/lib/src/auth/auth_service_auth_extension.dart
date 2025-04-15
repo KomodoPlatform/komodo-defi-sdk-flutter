@@ -116,7 +116,7 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
         await _stopKdf();
         throw AuthException(
           'HD wallets require a valid BIP39 seed phrase',
-          type: AuthExceptionType.invalidWalletPassword,
+          type: AuthExceptionType.invalidBip39Mnemonic,
         );
       }
 

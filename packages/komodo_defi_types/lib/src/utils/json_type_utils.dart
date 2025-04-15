@@ -297,8 +297,8 @@ extension JsonMapExtension<T extends JsonMap> on T {
     }
   }
 
-  // Ensure the entire map has been serialized to JSON types and that no
-  // non-serializable types are present
+  /// Ensure the entire map has been serialized to JSON types and that no
+  /// non-serializable types are present
   JsonMap ensureJson() {
     return jsonFromString(toJsonString());
   }

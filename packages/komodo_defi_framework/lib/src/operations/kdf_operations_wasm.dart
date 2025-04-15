@@ -81,7 +81,7 @@ class KdfOperationsWasm implements IKdfOperations {
       } on int catch (errorCode) {
         return KdfStartupResult.fromDefaultInt(errorCode);
       } on js_interop.JSAny catch (jsError) {
-        return _handleJsError(jsError);
+        return _handleStartupJsError(jsError);
       } catch (e) {
         _log('Unknown error starting KDF: [${e.runtimeType}] $e');
 
@@ -118,7 +118,7 @@ class KdfOperationsWasm implements IKdfOperations {
     );
   }
 
-  KdfStartupResult _handleJsError(js_interop.JSAny jsError) {
+  KdfStartupResult _handleStartupJsError(js_interop.JSAny jsError) {
     try {
       _log('Handling JSAny error: [${jsError.runtimeType}] $jsError');
 

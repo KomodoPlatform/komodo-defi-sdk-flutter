@@ -138,7 +138,7 @@ class _AuthScreenState extends State<AuthScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            e.type == AuthExceptionType.invalidWalletPassword
+            e.type == AuthExceptionType.incorrectPassword
                 ? 'HD mode requires a valid BIP39 seed phrase. The imported encrypted seed is not compatible.'
                 : 'Registration failed: ${e.message}',
           ),

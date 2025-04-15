@@ -174,7 +174,7 @@ class _InstanceViewState extends State<InstanceView> {
       widget.onUserChanged(user);
     } on AuthException catch (e) {
       _showError(
-        e.type == AuthExceptionType.invalidWalletPassword
+        e.type == AuthExceptionType.incorrectPassword
             ? 'HD mode requires a valid BIP39 seed phrase. The imported encrypted seed is not compatible.'
             : 'Registration failed: ${e.message}',
       );

@@ -1,7 +1,9 @@
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 enum AuthExceptionType {
-  invalidWalletPassword,
+  /// Used for any incorrect password scenario (login, changing password, etc.)
+  incorrectPassword,
+  invalidBip39Mnemonic,
   walletAlreadyRunning,
   walletStartFailed,
   generalAuthError,
@@ -79,8 +81,8 @@ class AuthException implements Exception {
 
   static List<String> _getMatchingPatterns(AuthExceptionType type) {
     switch (type) {
-      case AuthExceptionType.invalidWalletPassword:
-        return matchingPatterns[AuthExceptionType.invalidWalletPassword]!;
+      case AuthExceptionType.incorrectPassword:
+        return matchingPatterns[AuthExceptionType.incorrectPassword]!;
       case AuthExceptionType.walletAlreadyRunning:
         return matchingPatterns[AuthExceptionType.walletAlreadyRunning]!;
       case AuthExceptionType.walletStartFailed:
@@ -98,16 +100,19 @@ class AuthException implements Exception {
       case AuthExceptionType.unauthorized:
       case AuthExceptionType.alreadySignedIn:
       case AuthExceptionType.internalError:
+      case AuthExceptionType.invalidBip39Mnemonic:
         return [];
     }
   }
 
   static Map<AuthExceptionType, List<String>> get matchingPatterns => {
-        AuthExceptionType.invalidWalletPassword: [
-          'Error decrypting mnemonic: HMAC error: MAC tag mismatch',
+        AuthExceptionType.incorrectPassword: [
           'Incorrect wallet password',
           'Error generating or decrypting mnemonic',
           'HMAC',
+          'Error decrypting mnemonic: HMAC error: MAC tag mismatch',
+          'MAC tag mismatch',
+          'Error decrypting mnemonic',
         ],
         AuthExceptionType.walletAlreadyRunning: [
           'Wallet is already running',
