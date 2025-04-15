@@ -80,13 +80,62 @@ extension KdfExtensions on KdfAuthService {
     final kdfResult = await _kdfFramework.startKdf(config);
 
     if (!kdfResult.isStartingOrAlreadyRunning()) {
-      throw AuthException(
-        'Failed to start KDF: ${kdfResult.name}',
-        type: AuthExceptionType.generalAuthError,
-      );
+      throw _mapStartupErrorToAuthException(kdfResult);
     }
 
     await _waitUntilKdfRpcIsUp();
+  }
+
+  static AuthException _mapStartupErrorToAuthException(
+    KdfStartupResult result,
+  ) {
+    switch (result) {
+      // TODO! NB: The only user-caused reason for this is if the user
+      // enters the wrong password. However (!!) we must migrate soon to a
+      // more robust error handling system. Either log scanning, or a more
+      // reliable solution as detailed in:
+      // https://github.com/KomodoPlatform/komodo-defi-framework/issues/2383
+      // TODO(takenagain): Integrate the log scanning if KDF team does not
+      // implement the proposal in the GH Issue above.
+      case KdfStartupResult.initError:
+        // This is typically caused by an incorrect password
+        throw AuthException(
+          'Incorrect password or invalid seed',
+          type: AuthExceptionType.invalidWalletPassword,
+        );
+
+      case KdfStartupResult.alreadyRunning:
+        // This should not be reached due to isStartingOrAlreadyRunning check
+        throw AuthException(
+          'Wallet is already running',
+          type: AuthExceptionType.walletAlreadyRunning,
+        );
+
+      case KdfStartupResult.configError:
+        throw AuthException(
+          'Invalid wallet configuration',
+          type: AuthExceptionType.walletStartFailed,
+          details: {'kdf_error': result.name},
+        );
+
+      case KdfStartupResult.invalidParams:
+        throw AuthException(
+          'Invalid parameters provided to wallet',
+          type: AuthExceptionType.walletStartFailed,
+          details: {'kdf_error': result.name},
+        );
+
+      case KdfStartupResult.spawnError:
+        throw AuthException(
+          'Failed to start wallet process',
+          type: AuthExceptionType.walletStartFailed,
+          details: {'kdf_errosr': result.name},
+        );
+
+      case KdfStartupResult.unknownError:
+      case KdfStartupResult.ok:
+        throw ArgumentError('Unexpected startup result: $result');
+    }
   }
 
   Future<void> _waitUntilKdfRpcIsUp({
