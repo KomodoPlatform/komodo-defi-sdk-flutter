@@ -59,7 +59,7 @@ class TrendPercentageText extends StatelessWidget {
 
   /// Spacing between icon and text
   final double spacing;
-  
+
   /// Spacing between contents and prefix/suffix
   final double contentSpacing;
 

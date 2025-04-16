@@ -56,19 +56,22 @@ class _WithdrawAmountFieldState extends State<WithdrawAmountField> {
   @override
   void didUpdateWidget(WithdrawAmountField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.amount != oldWidget.amount && _controller.text != widget.amount) {
+    if (widget.amount != oldWidget.amount &&
+        _controller.text != widget.amount) {
       // Save current cursor position
       final selection = _controller.selection;
-      
+
       // Update text
       _controller.text = widget.amount;
-      
+
       // Restore cursor position, but handle potential out-of-bounds
       if (widget.amount.length >= selection.baseOffset) {
         _controller.selection = selection;
       } else {
         // If new text is shorter, move cursor to end
-        _controller.selection = TextSelection.collapsed(offset: widget.amount.length);
+        _controller.selection = TextSelection.collapsed(
+          offset: widget.amount.length,
+        );
       }
     }
   }

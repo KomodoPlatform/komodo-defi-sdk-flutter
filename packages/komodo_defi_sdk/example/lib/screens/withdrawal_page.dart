@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -37,10 +36,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   WithdrawalPreview? _preview;
   String? _error;
   bool _isIbcTransfer = false;
-  bool _isLoadingAddresses = false;
+  final bool _isLoadingAddresses = false;
 
   AddressValidation? _addressValidation;
-  Timer? _validationDebounce;
+  final _validationDebouncer = Debouncer();
 
   @override
   void initState() {
@@ -55,14 +54,11 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     // Clear validation when input changes
     setState(() => _addressValidation = null);
 
-    // Cancel previous validation if it exists
-    _validationDebounce?.cancel();
-
     final address = _toAddressController.text;
     if (address.isEmpty) return;
 
     // Start new validation after debounce
-    _validationDebounce = Timer(const Duration(milliseconds: 500), () {
+    _validationDebouncer.run(() {
       _validateAddress(address);
     });
   }
@@ -137,25 +133,14 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   @override
   void dispose() {
-    _validationDebounce?.cancel();
-    _toAddressController.removeListener(_onAddressChanged);
-    _toAddressController.dispose();
+    _validationDebouncer.dispose();
+    _toAddressController
+      ..removeListener(_onAddressChanged)
+      ..dispose();
     _amountController.dispose();
     _memoController.dispose();
     _ibcChannelController.dispose();
     super.dispose();
-  }
-
-  // Simulates a network retry to fetch addresses
-  Future<void> _retryFetchingAddresses() async {
-    setState(() => _isLoadingAddresses = true);
-
-    // Simulate network request
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (mounted) {
-      setState(() => _isLoadingAddresses = false);
-    }
   }
 
   Future<void> _showPreviewDialog(WithdrawParameters params) async {
@@ -216,45 +201,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   Widget _buildFeeDetails(FeeInfo details) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 8),
-        const Text(
-          'Fee Details:',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-
-        // If it's an ETH gas variant:
-        if (details is FeeInfoEthGas) ...[
-          Text('Gas: ${details.gas} units'),
-          Text('Gas Price: ${details.gasPrice} ETH/1gas'),
-        ],
-
-        if (details is FeeInfoQrc20Gas) ...[
-          Text('Gas Limit: ${details.gasLimit}'),
-          Text('Gas Price: ${details.gasPrice} (coin units)'),
-        ],
-
-        if (details is FeeInfoCosmosGas) ...[
-          Text('Gas Limit: ${details.gasLimit}'),
-          Text('Gas Price: ${details.gasPrice} (coin units)'),
-        ],
-
-        if (details is FeeInfoUtxoFixed) ...[
-          Text('Amount: ${details.amount} ${details.coin} (fixed)'),
-        ],
-        if (details is FeeInfoUtxoPerKbyte) ...[
-          Text('Amount per KB: ${details.amount} ${details.coin}'),
-        ],
-
-        const SizedBox(height: 4),
-        Text(
-          'Total Fee: ${details.totalFee} ${details.coin}',
-          style: const TextStyle(fontWeight: FontWeight.w500),
-        ),
-      ],
-    );
+    return FeeInfoDisplay(feeInfo: details);
   }
 
   Future<void> _executeWithdrawal(WithdrawParameters params) async {
@@ -310,133 +257,6 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   bool isCustomFee = false;
-
-  /// Convert Gwei -> ETH by dividing by 10^9
-  static final Decimal _gweiToEth = Decimal.fromInt(1000000000);
-
-  Widget _buildFeeSelection() {
-    final protocol = widget.asset.protocol;
-
-    if (protocol is Erc20Protocol) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Gas Settings'),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  enabled: isCustomFee,
-                  decoration: const InputDecoration(
-                    labelText: 'Gas Price (Gwei)',
-                  ),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
-                    final gweiInput = Decimal.tryParse(value);
-                    if (gweiInput != null) {
-                      final ethPrice = gweiInput / _gweiToEth;
-
-                      setState(() {
-                        final oldFee = _selectedFee;
-                        final oldGasLimit = oldFee?.maybeMap(
-                          ethGas: (eth) => eth.gas,
-                          orElse: () => 21000,
-                        );
-
-                        _selectedFee = FeeInfo.ethGas(
-                          coin: widget.asset.id.id,
-                          gasPrice: ethPrice.toDecimal(),
-                          gas: oldGasLimit ?? 21000,
-                        );
-                      });
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: TextFormField(
-                  enabled: isCustomFee,
-                  decoration: const InputDecoration(labelText: 'Gas Limit'),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
-                    final gasLimit = int.tryParse(value);
-                    if (gasLimit != null) {
-                      setState(() {
-                        final oldFee = _selectedFee;
-                        final oldGasPrice = oldFee?.maybeMap(
-                          ethGas: (eth) => eth.gasPrice,
-                          orElse: () => Decimal.parse('0.000000003'),
-                        );
-
-                        _selectedFee = FeeInfo.ethGas(
-                          coin: widget.asset.id.id,
-                          gasPrice: oldGasPrice ?? Decimal.parse('0.000000003'),
-                          gas: gasLimit,
-                        );
-                      });
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    }
-
-    // UTXO fee selection
-    if (protocol is UtxoProtocol) {
-      final defaultFee = protocol.txFee ?? 10000;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Transaction Fee'),
-          const SizedBox(height: 8),
-          SegmentedButton<Decimal>(
-            segments: [
-              ButtonSegment(
-                value: Decimal.parse(defaultFee.toString()),
-                label: Text('Standard ($defaultFee)'),
-              ),
-              ButtonSegment(
-                value: Decimal.parse((defaultFee * 2).toString()),
-                label: Text('Fast (${defaultFee * 2})'),
-              ),
-              ButtonSegment(
-                value: Decimal.parse((defaultFee * 5).toString()),
-                label: Text('Urgent (${defaultFee * 5})'),
-              ),
-            ],
-            selected: {
-              if (_selectedFee != null)
-                _selectedFee!.maybeMap(
-                  utxoFixed: (f) => f.amount,
-                  utxoPerKbyte: (p) => p.amount,
-                  orElse: () => Decimal.zero,
-                )
-              else
-                Decimal.parse(defaultFee.toString()),
-            },
-            onSelectionChanged:
-                !isCustomFee
-                    ? null
-                    : (value) {
-                      setState(() {
-                        _selectedFee = FeeInfo.utxoFixed(
-                          coin: widget.asset.id.id,
-                          amount: value.first,
-                        );
-                      });
-                    },
-          ),
-        ],
-      );
-    }
-
-    return const SizedBox.shrink();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -718,17 +538,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   String _getFeeDisplay() {
     final fee = _selectedFee;
     if (fee == null) return 'Calculating...';
-
-    return switch (fee) {
-      FeeInfoUtxoFixed(:final amount, :final coin) => '$amount $coin',
-      FeeInfoUtxoPerKbyte(:final amount, :final coin) => '$amount $coin',
-      FeeInfoEthGas(:final gasPrice, :final gas) =>
-        '${(gasPrice * Decimal.fromInt(gas)) * Decimal.fromInt(1000000000)} Gwei',
-      FeeInfoQrc20Gas(:final gasPrice, :final gasLimit, :final coin) =>
-        '${gasPrice * Decimal.fromInt(gasLimit)} $coin',
-      FeeInfoCosmosGas(:final gasPrice, :final gasLimit, :final coin) =>
-        '${gasPrice * Decimal.fromInt(gasLimit)} $coin',
-    };
+    return fee.formatTotal();
   }
 }
 

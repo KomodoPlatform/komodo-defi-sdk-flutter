@@ -78,9 +78,7 @@ class DividedButton extends StatelessWidget {
       style: (segmentedStyle ?? const ButtonStyle()).copyWith(
         shape: WidgetStatePropertyAll(
           shape ??
-              RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         textStyle: WidgetStatePropertyAll(theme.textTheme.labelMedium),
         padding: const WidgetStatePropertyAll(EdgeInsets.zero),
@@ -95,10 +93,7 @@ class DividedButton extends StatelessWidget {
         children: [
           for (int i = 0; i < children.length; i++) ...[
             if (childPadding != null)
-              Padding(
-                padding: childPadding!,
-                child: children[i],
-              )
+              Padding(padding: childPadding!, child: children[i])
             else
               children[i],
             if (i < children.length - 1)

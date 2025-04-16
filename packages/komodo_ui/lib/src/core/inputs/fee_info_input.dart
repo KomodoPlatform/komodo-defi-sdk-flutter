@@ -1,8 +1,12 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_ui/src/utils/formatters/fee_info_formatters.dart';
 
 typedef FeeInfoChanged = void Function(FeeInfo? fee);
+
+/// Constants for fee calculations
+const _gweiInEth = 1000000000; // 10^9
 
 class FeeInfoInput extends StatelessWidget {
   const FeeInfoInput({
@@ -17,9 +21,6 @@ class FeeInfoInput extends StatelessWidget {
   final FeeInfo? selectedFee;
   final bool isCustomFee;
   final FeeInfoChanged onFeeSelected;
-
-  /// Convert Gwei -> ETH by dividing by 10^9
-  static final Decimal _gweiToEth = Decimal.fromInt(1000000000);
 
   @override
   Widget build(BuildContext context) {
@@ -42,10 +43,13 @@ class FeeInfoInput extends StatelessWidget {
 
   /// Builds the gas price/limit fields for Erc20-based assets (e.g. ETH).
   Widget _buildErc20GasInputs(BuildContext context) {
+    // Get current ETH gas fee if set, or create a default one
+    final currentFee = selectedFee as FeeInfoEthGas?;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Gas Settings'),
+        Text('Gas Settings', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -53,6 +57,7 @@ class FeeInfoInput extends StatelessWidget {
             Expanded(
               child: TextFormField(
                 enabled: isCustomFee,
+                initialValue: currentFee?.formatGasPrice(),
                 decoration: const InputDecoration(
                   labelText: 'Gas Price (Gwei)',
                 ),
@@ -60,7 +65,9 @@ class FeeInfoInput extends StatelessWidget {
                 onChanged: (value) {
                   final gweiInput = Decimal.tryParse(value);
                   if (gweiInput != null) {
-                    final ethPrice = gweiInput / _gweiToEth;
+                    // Convert Gwei to ETH
+                    final ethPrice = gweiInput / Decimal.fromInt(_gweiInEth);
+                    final ethPriceDecimal = Decimal.parse(ethPrice.toString());
 
                     // Get the old gas limit from the current fee (if ethGas)
                     final oldGasLimit = selectedFee?.maybeMap(
@@ -68,11 +75,10 @@ class FeeInfoInput extends StatelessWidget {
                       orElse: () => 21000,
                     );
 
-                    // Fire callback with the new fee
                     onFeeSelected(
                       FeeInfo.ethGas(
                         coin: asset.id.id,
-                        gasPrice: ethPrice.toDecimal(),
+                        gasPrice: ethPriceDecimal,
                         gas: oldGasLimit ?? 21000,
                       ),
                     );
@@ -86,15 +92,16 @@ class FeeInfoInput extends StatelessWidget {
             Expanded(
               child: TextFormField(
                 enabled: isCustomFee,
+                initialValue: currentFee?.gas.toString(),
                 decoration: const InputDecoration(labelText: 'Gas Limit'),
                 keyboardType: TextInputType.number,
                 onChanged: (value) {
                   final gasLimit = int.tryParse(value);
                   if (gasLimit != null) {
-                    // Get the old gasPrice from the current fee (if ethGas)
+                    // Keep existing gas price or use default
                     final oldGasPrice = selectedFee?.maybeMap(
                       ethGas: (eth) => eth.gasPrice,
-                      orElse: () => Decimal.parse('0.000000003'), // default
+                      orElse: () => Decimal.parse('0.000000003'),
                     );
 
                     onFeeSelected(
@@ -110,6 +117,22 @@ class FeeInfoInput extends StatelessWidget {
             ),
           ],
         ),
+
+        // Show estimated time if we have a valid fee
+        if (currentFee != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Estimated Time: ${currentFee.estimatedTime}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (currentFee.isHighFee)
+            Text(
+              'Warning: High gas price',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+        ],
       ],
     );
   }
@@ -119,7 +142,7 @@ class FeeInfoInput extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Gas Settings'),
+        Text('Gas Settings', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -188,7 +211,7 @@ class FeeInfoInput extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Gas Settings'),
+        Text('Gas Settings', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         Row(
           children: [

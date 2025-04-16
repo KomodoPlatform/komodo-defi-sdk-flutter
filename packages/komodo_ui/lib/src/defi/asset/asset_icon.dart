@@ -28,8 +28,8 @@ class AssetIcon extends StatelessWidget {
     this.size = 20,
     this.suspended = false,
     super.key,
-  })  : _legacyTicker = ticker.toLowerCase(),
-        assetId = null;
+  }) : _legacyTicker = ticker.toLowerCase(),
+       assetId = null;
 
   final AssetId? assetId;
   final String? _legacyTicker;
