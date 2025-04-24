@@ -635,7 +635,7 @@ class KdfFetcher {
     final fileName = path.basename(url);
     final filePath = path.join(outputDir, fileName);
 
-    await File(filePath).writeAsBytes(response.bodyBytes);
+    await File(filePath).writeAsBytes(response.bodyBytes, flush: true);
     log.info('Downloaded to: $filePath');
 
     return filePath;
@@ -668,7 +668,7 @@ class KdfFetcher {
     // Write config back to disk
     final configFile = File(configPath);
     const encoder = JsonEncoder.withIndent('    ');
-    await configFile.writeAsString(encoder.convert(config));
+    await configFile.writeAsString(encoder.convert(config), flush: true);
 
     log.info('Updated build config with commit hash: $commitHash');
   }
@@ -683,6 +683,10 @@ class KdfFetcher {
 
     log.info('Current commit: $currentCommit');
     log.info('Latest commit: $latestCommit');
+
+
+    final hasUpdates = currentCommit != latestCommit;
+    log.info('Update status: ${hasUpdates ? "Updates available" : "No updates"}');
 
     return {
       'current_commit': currentCommit,

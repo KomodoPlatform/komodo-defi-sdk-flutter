@@ -5,8 +5,8 @@
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
-            "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework",
-            "https://sdk.devbuilds.komodo.earth/"
+            "https://sdk.devbuilds.komodo.earth/",
+            "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework"
         ],
         "platforms": {
             "web": {
