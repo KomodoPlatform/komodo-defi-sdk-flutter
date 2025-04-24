@@ -80,7 +80,6 @@ jobs:
           else
             echo "No updates available."
             echo "has_updates=false" >> $GITHUB_OUTPUT
-          fi
 
   roll-kdf-version:
     needs: check-for-updates
@@ -130,30 +129,48 @@ jobs:
               SOURCE_TYPE="github"
             else
               SOURCE_TYPE="mirror"
+              MIRROR_URL="$SOURCE_URL"
             fi
             
             echo "Using source type: $SOURCE_TYPE"
             
             # Try roll with this source
-            if dart bin/update_api_config.dart \
-              --branch "$BRANCH" \
-              --source "$SOURCE_TYPE" \
-              --config ../komodo_defi_framework/app_build/build_config.json \
-              --output-dir ../komodo_defi_framework/app_build/temp_downloads \
-              --verbose; then
-              
-              echo "Successfully rolled using $SOURCE_URL"
-              SUCCESS=true
-              break
+            if [[ "$SOURCE_TYPE" == "mirror" ]]; then
+              if dart bin/update_api_config.dart \
+                --branch "$BRANCH" \
+                --source "$SOURCE_TYPE" \
+                --mirror-url "$MIRROR_URL" \
+                --config ../komodo_defi_framework/app_build/build_config.json \
+                --output-dir ../komodo_defi_framework/app_build/temp_downloads \
+                --verbose; then
+                
+                echo "Successfully rolled using $SOURCE_URL (mirror)"
+                SUCCESS=true
+                break
+              else
+                echo "Failed to roll using $SOURCE_URL (mirror), trying next source..."
+              fi
             else
-              echo "Failed to roll using $SOURCE_URL, trying next source..."
+              if dart bin.update_api_config.dart \
+                --branch "$BRANCH" \
+                --source "$SOURCE_TYPE" \
+                --repo "KomodoPlatform/komodo-defi-framework" \
+                --config ../komodo_defi_framework/app_build/build_config.json \
+                --output-dir ../komodo_defi_framework/app_build/temp_downloads \
+                --verbose; then
+                
+                echo "Successfully rolled using $SOURCE_URL (github)"
+                SUCCESS=true
+                break
+              else
+                echo "Failed to roll using $SOURCE_URL (github), trying next source..."
+              fi
             fi
           done
 
           if [ "$SUCCESS" = false ]; then
             echo "All sources failed. Exiting with error."
             exit 1
-          fi
 
       - name: Commit changes
         run: |
@@ -169,7 +186,7 @@ jobs:
 
           git add packages/komodo_defi_framework/app_build/build_config.json
           git commit -m "chore: roll KDF version to commit $SHORT_COMMIT for branch $BRANCH"
-          git push origin kdf-roll/$BRANCH-$SHORT_COMMIT
+          # git push origin kdf-roll/$BRANCH-$SHORT_COMMIT
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -190,7 +207,15 @@ jobs:
             exit 1
           else
             echo "Flutter build bundle successful. Configuration appears valid."
-          fi
+
+      - name: Push changes
+        run: |
+          BRANCH="${{ needs.check-for-updates.outputs.branch }}"
+          NEW_COMMIT="${{ needs.check-for-updates.outputs.new_commit }}"
+          SHORT_COMMIT="${NEW_COMMIT:0:7}"
+
+          git push origin kdf-roll/$BRANCH-$SHORT_COMMIT --force
+          echo "Changes pushed to branch kdf-roll/$BRANCH-$SHORT_COMMIT"
 
       - name: Create Pull Request
         env:
