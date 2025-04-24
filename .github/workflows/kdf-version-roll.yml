@@ -18,9 +18,8 @@ jobs:
     outputs:
       has_updates: ${{ steps.check-updates.outputs.has_updates }}
       branch: ${{ steps.determine-branch.outputs.branch }}
-      current_commit: ${{ steps.current-details.outputs.commit }}
+      current_commit: ${{ steps.check-updates.outputs.current_commit }}
       new_commit: ${{ steps.check-updates.outputs.new_commit }}
-      source_urls: ${{ steps.get-source-urls.outputs.source_urls }}
 
     steps:
       - name: Checkout repository
@@ -30,7 +29,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           # NB! Keep up-to-date with the flutter version used for development
-          flutter-version: '3.x'
+          flutter-version: "3.x"
           channel: "stable"
 
       - name: Install dependencies
