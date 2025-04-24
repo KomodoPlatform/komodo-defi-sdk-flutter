@@ -6,26 +6,15 @@ on:
     - cron: "0 0 * * *"
   workflow_dispatch:
     inputs:
-      kdf_branch:
-        description: "KDF branch to check for updates (defaults to branch in build config)"
-        required: false
-        default: ""
-        type: string
-      sdk_branch:
-        description: "SDK branch to create PR against (defaults to the current branch)"
+      branch:
+        description: "Branch to check for rolls (dev or main)"
         required: false
         default: ""
         type: string
 
 jobs:
-  # Job for scheduled runs, uses matrix to check both dev and main
-  schedule-check:
+  check-for-updates:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'schedule' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        kdf_branch: ["dev", "main"]
     outputs:
       has_updates: ${{ steps.check-updates.outputs.has_updates }}
       branch: ${{ steps.determine-branch.outputs.branch }}
@@ -36,8 +25,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Fetch all history to ensure branch information is available
 
       - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
@@ -47,41 +34,28 @@ jobs:
           cd packages/komodo_wallet_cli
           dart pub get
 
-      - name: Determine KDF branch
+      - name: Determine branch from config
         id: determine-branch
         run: |
-          # For scheduled runs, use the matrix branch value
-          KDF_BRANCH="${{ matrix.kdf_branch }}"
-          echo "Using KDF branch: $KDF_BRANCH"
-          echo "branch=$KDF_BRANCH" >> $GITHUB_OUTPUT
+          BRANCH=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -r '.api.branch')
+          # If workflow dispatch provided a branch, use that instead
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.branch }}" ]]; then
+            BRANCH="${{ github.event.inputs.branch }}"
+          fi
+          echo "Using branch: $BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
       - name: Get source URLs from config
         id: get-source-urls
         run: |
-          CONFIG_PATH="packages/komodo_defi_framework/app_build/build_config.json"
-          if [ ! -f "$CONFIG_PATH" ]; then
-            echo "::error::Config file not found at $CONFIG_PATH"
-            exit 1
-          fi
-
-          SOURCE_URLS=$(cat "$CONFIG_PATH" | jq -c '.api.source_urls')
-          if [ -z "$SOURCE_URLS" ] || [ "$SOURCE_URLS" == "null" ]; then
-            echo "::error::Source URLs not found in config or empty"
-            exit 1
-          fi
-
+          SOURCE_URLS=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -c '.api.source_urls')
           echo "source_urls=$SOURCE_URLS" >> $GITHUB_OUTPUT
           echo "Source URLs: $SOURCE_URLS"
 
       - name: Get current commit details
         id: current-details
         run: |
-          CONFIG_PATH="packages/komodo_defi_framework/app_build/build_config.json"
-          COMMIT=$(cat "$CONFIG_PATH" | jq -r '.api.api_commit_hash')
-          if [ -z "$COMMIT" ] || [ "$COMMIT" == "null" ]; then
-            echo "::error::Commit hash not found in config or empty"
-            exit 1
-          fi
+          COMMIT=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -r '.api.api_commit_hash')
           echo "commit=$COMMIT" >> $GITHUB_OUTPUT
 
       - name: Check for new commit
@@ -94,115 +68,6 @@ jobs:
           TOKEN=${{ secrets.GITHUB_TOKEN }}
           RESPONSE=$(curl -s -H "Authorization: token $TOKEN" \
             "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework/commits/$BRANCH")
-
-          # Check if API request was successful
-          if [[ $(echo $RESPONSE | jq -r 'has("sha")') != "true" ]]; then
-            echo "::error::Failed to fetch latest commit. API response: $RESPONSE"
-            exit 1
-          fi
-
-          NEW_COMMIT=$(echo $RESPONSE | jq -r '.sha')
-
-          echo "Current commit: $CURRENT_COMMIT"
-          echo "Latest commit: $NEW_COMMIT"
-
-          if [[ "$CURRENT_COMMIT" != "$NEW_COMMIT" ]]; then
-            echo "New commit found!"
-            echo "has_updates=true" >> $GITHUB_OUTPUT
-            echo "new_commit=$NEW_COMMIT" >> $GITHUB_OUTPUT
-          else
-            echo "No updates available."
-            echo "has_updates=false" >> $GITHUB_OUTPUT
-          fi
-
-  # Job for manual workflow dispatch, uses the specified branch
-  manual-check:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' }}
-    outputs:
-      has_updates: ${{ steps.check-updates.outputs.has_updates }}
-      branch: ${{ steps.determine-branch.outputs.branch }}
-      current_commit: ${{ steps.current-details.outputs.commit }}
-      new_commit: ${{ steps.check-updates.outputs.new_commit }}
-      source_urls: ${{ steps.get-source-urls.outputs.source_urls }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Fetch all history to ensure branch information is available
-
-      - name: Set up Dart SDK
-        uses: dart-lang/setup-dart@v1
-
-      - name: Install dependencies
-        run: |
-          cd packages/komodo_wallet_cli
-          dart pub get
-
-      - name: Determine KDF branch
-        id: determine-branch
-        run: |
-          CONFIG_PATH="packages/komodo_defi_framework/app_build/build_config.json"
-          if [ ! -f "$CONFIG_PATH" ]; then
-            echo "::error::Config file not found at $CONFIG_PATH"
-            exit 1
-          fi
-
-          # For manual workflow runs, check for specified branch
-          if [[ -n "${{ github.event.inputs.kdf_branch }}" ]]; then
-            KDF_BRANCH="${{ github.event.inputs.kdf_branch }}"
-          # Otherwise fallback to branch in config
-          else
-            KDF_BRANCH=$(cat "$CONFIG_PATH" | jq -r '.api.branch')
-            if [ -z "$KDF_BRANCH" ] || [ "$KDF_BRANCH" == "null" ]; then
-              echo "::error::Branch not specified and not found in config"
-              exit 1
-            fi
-          fi
-          echo "Using KDF branch: $KDF_BRANCH"
-          echo "branch=$KDF_BRANCH" >> $GITHUB_OUTPUT
-
-      - name: Get source URLs from config
-        id: get-source-urls
-        run: |
-          CONFIG_PATH="packages/komodo_defi_framework/app_build/build_config.json"
-          SOURCE_URLS=$(cat "$CONFIG_PATH" | jq -c '.api.source_urls')
-          if [ -z "$SOURCE_URLS" ] || [ "$SOURCE_URLS" == "null" ]; then
-            echo "::error::Source URLs not found in config or empty"
-            exit 1
-          fi
-          echo "source_urls=$SOURCE_URLS" >> $GITHUB_OUTPUT
-          echo "Source URLs: $SOURCE_URLS"
-
-      - name: Get current commit details
-        id: current-details
-        run: |
-          CONFIG_PATH="packages/komodo_defi_framework/app_build/build_config.json"
-          COMMIT=$(cat "$CONFIG_PATH" | jq -r '.api.api_commit_hash')
-          if [ -z "$COMMIT" ] || [ "$COMMIT" == "null" ]; then
-            echo "::error::Commit hash not found in config or empty"
-            exit 1
-          fi
-          echo "commit=$COMMIT" >> $GITHUB_OUTPUT
-
-      - name: Check for new commit
-        id: check-updates
-        run: |
-          BRANCH="${{ steps.determine-branch.outputs.branch }}"
-          CURRENT_COMMIT="${{ steps.current-details.outputs.commit }}"
-
-          # Get latest commit for the branch
-          TOKEN=${{ secrets.GITHUB_TOKEN }}
-          RESPONSE=$(curl -s -H "Authorization: token $TOKEN" \
-            "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework/commits/$BRANCH")
-            
-          # Check if API request was successful
-          if [[ $(echo $RESPONSE | jq -r 'has("sha")') != "true" ]]; then
-            echo "::error::Failed to fetch latest commit. API response: $RESPONSE"
-            exit 1
-          fi
-
           NEW_COMMIT=$(echo $RESPONSE | jq -r '.sha')
 
           echo "Current commit: $CURRENT_COMMIT"
@@ -218,23 +83,16 @@ jobs:
           fi
 
   roll-kdf-version:
-    needs: [schedule-check, manual-check]
-    if: |
-      (needs.schedule-check.outputs.has_updates == 'true' && github.event_name == 'schedule') || 
-      (needs.manual-check.outputs.has_updates == 'true' && github.event_name == 'workflow_dispatch')
+    needs: check-for-updates
+    if: ${{ needs.check-for-updates.outputs.has_updates == 'true' }}
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: stable
-          channel: stable
 
       - name: Install dependencies
         run: |
@@ -243,61 +101,28 @@ jobs:
 
       - name: Create branch for roll
         run: |
-          # Determine which job's outputs to use based on event type
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            KDF_BRANCH="${{ needs.schedule-check.outputs.branch }}"
-            NEW_COMMIT="${{ needs.schedule-check.outputs.new_commit }}"
-          else
-            KDF_BRANCH="${{ needs.manual-check.outputs.branch }}"
-            NEW_COMMIT="${{ needs.manual-check.outputs.new_commit }}"
-          fi
-
+          BRANCH="${{ needs.check-for-updates.outputs.branch }}"
+          NEW_COMMIT="${{ needs.check-for-updates.outputs.new_commit }}"
           SHORT_COMMIT="${NEW_COMMIT:0:7}"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Actions"
-          git checkout -b kdf-roll/$KDF_BRANCH-$SHORT_COMMIT
+          git checkout -b kdf-roll/$BRANCH-$SHORT_COMMIT
 
       - name: Roll KDF version
         id: roll-version
         run: |
-          # Determine which job's outputs to use based on event type
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            KDF_BRANCH="${{ needs.schedule-check.outputs.branch }}"
-            CURRENT_COMMIT="${{ needs.schedule-check.outputs.current_commit }}"
-            NEW_COMMIT="${{ needs.schedule-check.outputs.new_commit }}"
-            SOURCE_URLS='${{ needs.schedule-check.outputs.source_urls }}'
-          else
-            KDF_BRANCH="${{ needs.manual-check.outputs.branch }}"
-            CURRENT_COMMIT="${{ needs.manual-check.outputs.current_commit }}"
-            NEW_COMMIT="${{ needs.manual-check.outputs.new_commit }}"
-            SOURCE_URLS='${{ needs.manual-check.outputs.source_urls }}'
-          fi
+          BRANCH="${{ needs.check-for-updates.outputs.branch }}"
+          CURRENT_COMMIT="${{ needs.check-for-updates.outputs.current_commit }}"
+          NEW_COMMIT="${{ needs.check-for-updates.outputs.new_commit }}"
+          SOURCE_URLS='${{ needs.check-for-updates.outputs.source_urls }}'
 
           echo "Running update_api_config tool..."
           cd packages/komodo_wallet_cli
           mkdir -p ../komodo_defi_framework/app_build/temp_downloads
 
-          # Make a backup of the original config for comparison later
-          cp ../komodo_defi_framework/app_build/build_config.json ../komodo_defi_framework/app_build/build_config.json.bak
-
-          # Validate SOURCE_URLS is valid JSON before trying to process it
-          if ! echo "$SOURCE_URLS" | jq -e . > /dev/null 2>&1; then
-            echo "::error::Invalid JSON in SOURCE_URLS: $SOURCE_URLS"
-            exit 1
-          fi
-
           # Try each source URL in order until one succeeds
           SUCCESS=false
-          # Use jq array iteration to properly handle JSON array
-          URL_COUNT=$(echo "$SOURCE_URLS" | jq -r '. | length')
-
-          if [ "$URL_COUNT" -eq 0 ]; then
-            echo "::error::No source URLs available in configuration"
-            exit 1
-          fi
-
-          for (( i=0; i<$URL_COUNT; i++ )); do
-            SOURCE_URL=$(echo "$SOURCE_URLS" | jq -r ".[$i]")
+          for SOURCE_URL in $(echo $SOURCE_URLS | jq -r '.[]'); do
             echo "Trying source URL: $SOURCE_URL"
             
             # Determine source type from URL
@@ -309,133 +134,82 @@ jobs:
             
             echo "Using source type: $SOURCE_TYPE"
             
-            # Try roll with this source - capture output for debugging
-            OUTPUT=$(dart bin/update_api_config.dart \
-              --branch "$KDF_BRANCH" \
+            # Try roll with this source
+            if dart bin/update_api_config.dart \
+              --branch "$BRANCH" \
               --source "$SOURCE_TYPE" \
               --config ../komodo_defi_framework/app_build/build_config.json \
               --output-dir ../komodo_defi_framework/app_build/temp_downloads \
-              --verbose 2>&1)
-            
-            EXIT_CODE=$?
-            echo "$OUTPUT"
-            
-            if [ $EXIT_CODE -eq 0 ]; then
+              --verbose; then
+              
               echo "Successfully rolled using $SOURCE_URL"
               SUCCESS=true
               break
             else
               echo "Failed to roll using $SOURCE_URL, trying next source..."
-              echo "Error output: $OUTPUT"
             fi
           done
 
           if [ "$SUCCESS" = false ]; then
-            echo "::error::All sources failed. Exiting with error."
+            echo "All sources failed. Exiting with error."
             exit 1
           fi
-
-          # Check if the config actually changed
-          if diff -q ../komodo_defi_framework/app_build/build_config.json ../komodo_defi_framework/app_build/build_config.json.bak > /dev/null; then
-            echo "No changes detected in build_config.json despite successful roll operation"
-            echo "Original commit: $CURRENT_COMMIT"
-            echo "Target commit: $NEW_COMMIT"
-            
-            # Force update the commit hash in the config if needed
-            NEW_CONFIG=$(cat ../komodo_defi_framework/app_build/build_config.json | jq --arg new_commit "$NEW_COMMIT" '.api.api_commit_hash = $new_commit')
-            echo "$NEW_CONFIG" > ../komodo_defi_framework/app_build/build_config.json
-            echo "Manually updated api_commit_hash in build_config.json to $NEW_COMMIT"
-          else
-            echo "Changes detected in build_config.json"
-          fi
-
-          # Remove backup file
-          rm ../komodo_defi_framework/app_build/build_config.json.bak
-
-      - name: Test build the SDK example project
-        run: |
-          echo "Running flutter build bundle in the SDK example to validate the configuration"
-          cd packages/komodo_defi_sdk/example
-          flutter pub get
-          flutter build bundle
-          if [ $? -ne 0 ]; then
-            echo "::error::Failed to build SDK example project. The KDF version roll might have introduced incompatibilities."
-            exit 1
-          fi
-          echo "SDK example project built successfully!"
-          cd ../../../
 
       - name: Commit changes
-        id: commit
         run: |
-          # Determine which job's outputs to use based on event type
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            KDF_BRANCH="${{ needs.schedule-check.outputs.branch }}"
-            NEW_COMMIT="${{ needs.schedule-check.outputs.new_commit }}"
-          else
-            KDF_BRANCH="${{ needs.manual-check.outputs.branch }}"
-            NEW_COMMIT="${{ needs.manual-check.outputs.new_commit }}"
-          fi
-
+          BRANCH="${{ needs.check-for-updates.outputs.branch }}"
+          NEW_COMMIT="${{ needs.check-for-updates.outputs.new_commit }}"
           SHORT_COMMIT="${NEW_COMMIT:0:7}"
 
           # Check if there are changes to commit
           if git diff --quiet; then
             echo "No changes to commit"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           git add packages/komodo_defi_framework/app_build/build_config.json
-          git commit -m "chore: roll KDF version to commit $SHORT_COMMIT for branch $KDF_BRANCH"
-          git push origin kdf-roll/$KDF_BRANCH-$SHORT_COMMIT
-          echo "has_changes=true" >> $GITHUB_OUTPUT
+          git commit -m "chore: roll KDF version to commit $SHORT_COMMIT for branch $BRANCH"
+          git push origin kdf-roll/$BRANCH-$SHORT_COMMIT
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Validate with Flutter Build Bundle
+        run: |
+          echo "Validating updated config by building the example project..."
+          cd playground
+          flutter pub get
+          flutter build bundle --release
+
+          # Check if build was successful
+          if [ $? -ne 0 ]; then
+            echo "Flutter build bundle failed, indicating the updated configuration may have issues."
+            exit 1
+          else
+            echo "Flutter build bundle successful. Configuration appears valid."
+          fi
 
       - name: Create Pull Request
-        if: steps.commit.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Determine which job's outputs to use based on event type
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            KDF_BRANCH="${{ needs.schedule-check.outputs.branch }}"
-            NEW_COMMIT="${{ needs.schedule-check.outputs.new_commit }}"
-            CURRENT_COMMIT="${{ needs.schedule-check.outputs.current_commit }}"
-          else
-            KDF_BRANCH="${{ needs.manual-check.outputs.branch }}"
-            NEW_COMMIT="${{ needs.manual-check.outputs.new_commit }}"
-            CURRENT_COMMIT="${{ needs.manual-check.outputs.current_commit }}"
-          fi
-
+          BRANCH="${{ needs.check-for-updates.outputs.branch }}"
+          NEW_COMMIT="${{ needs.check-for-updates.outputs.new_commit }}"
           SHORT_COMMIT="${NEW_COMMIT:0:7}"
 
-          # Determine SDK branch for PR base
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.sdk_branch }}" ]]; then
-            # Use the branch specified in the manual trigger
-            SDK_BRANCH="${{ github.event.inputs.sdk_branch }}"
-          else
-            # For scheduled runs or when no branch is specified, use the current branch
-            SDK_BRANCH="${GITHUB_REF#refs/heads/}"
-            
-            # If we're in a detached HEAD state (like in scheduled runs), default to the default branch
-            if [[ "$SDK_BRANCH" == "HEAD" || -z "$SDK_BRANCH" ]]; then
-              SDK_BRANCH=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
-            fi
-          fi
-
-          echo "Using KDF branch: $KDF_BRANCH"
-          echo "Using SDK branch: $SDK_BRANCH"
-
-          PR_TITLE="chore: roll KDF version to commit $SHORT_COMMIT for branch $KDF_BRANCH"
-          PR_BODY="This PR rolls the KDF version to the latest commit ($SHORT_COMMIT) for the '$KDF_BRANCH' branch.
+          PR_TITLE="chore: roll KDF version to commit $SHORT_COMMIT for branch $BRANCH"
+          PR_BODY="This PR rolls the KDF version to the latest commit ($SHORT_COMMIT) for the '$BRANCH' branch.
 
           **Changes:**
-          - Rolled KDF version from \`$CURRENT_COMMIT\` to \`$NEW_COMMIT\`
+          - Rolled KDF version from \`${{ needs.check-for-updates.outputs.current_commit }}\` to \`$NEW_COMMIT\`
 
-          This PR was automatically generated by GitHub Actions workflow."
+          This PR was automatically generated by GitHub Actions."
 
           gh pr create \
             --title "$PR_TITLE" \
             --body "$PR_BODY" \
-            --base "$SDK_BRANCH" \
-            --head "kdf-roll/$KDF_BRANCH-$SHORT_COMMIT"
+            --base "$BRANCH" \
+            --head "kdf-roll/$BRANCH-$SHORT_COMMIT"
