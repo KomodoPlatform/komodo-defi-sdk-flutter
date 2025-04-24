@@ -743,19 +743,45 @@ class KdfFetcher {
     try {
       // Find the example path relative to the config path
       final configDir = path.dirname(configPath);
-      final examplePath = path.join(
-        configDir,
-        '..',
-        '..',
-        'komodo_defi_sdk',
-        'example',
-      );
 
-      log.info('Using example path: $examplePath');
+      // Try multiple potential paths to find the example directory
+      final possiblePaths = [
+        // Standard path (packages/komodo_defi_framework/app_build/build_config.json -> packages/komodo_defi_sdk/example)
+        path.join(configDir, '..', '..', 'komodo_defi_sdk', 'example'),
 
-      // Check if the directory exists
-      if (!Directory(examplePath).existsSync()) {
-        log.severe('Example directory not found: $examplePath');
+        // CI path (if working from root of repo)
+        path.join(
+          configDir,
+          '..',
+          '..',
+          '..',
+          'packages',
+          'komodo_defi_sdk',
+          'example',
+        ),
+
+        // Absolute path based on current directory
+        path.join(
+          Directory.current.path,
+          'packages',
+          'komodo_defi_sdk',
+          'example',
+        ),
+      ].map(((e)=>Directory(e)));
+
+      String? examplePath;
+      for (final testPath in possiblePaths) {
+        if (testPath.existsSync()) {
+          examplePath = testPath.path;
+          log.info('Found example directory at: $examplePath');
+          break;
+        }
+      }
+
+      if (examplePath == null) {
+        log.severe(
+          'Example directory not found in any of the expected locations: ${possiblePaths.join(', ')}',
+        );
         return false;
       }
 
