@@ -14,6 +14,12 @@ description: A sample command-line application with basic argument parsing.
 version: 0.2.0+1
 repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/
 
+# Define the executables that can be run when the package is activated
+executables:
+  upgrade-sdk: upgrade_sdk_packages
+  flutter-upgrade-nested: flutter_upgrade_nested
+  update-api-config: update_api_config
+
 environment:
   sdk: ^3.7.0
 
@@ -54,7 +60,3 @@ assets:
             # support for native/web build hooks may simplify this process.
             --config_output_path=packages/komodo_wallet_cli/config/build_config.yaml
           ]
-
-executables:
-  flutter_upgrade_nested:
-  update_api_config:

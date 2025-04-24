@@ -3,6 +3,7 @@ import 'package:args/args.dart';
 // TODO: Reference as a package.
 import '../../komodo_wallet_build_transformer/bin/komodo_wallet_build_transformer.dart'
     as build_transformer;
+import 'upgrade_sdk_packages.dart' as upgrade_sdk;
 
 const String version = '0.0.1';
 
@@ -20,11 +21,7 @@ ArgParser buildParser() {
       negatable: false,
       help: 'Show additional command output.',
     )
-    ..addFlag(
-      'version',
-      negatable: false,
-      help: 'Print the tool version.',
-    );
+    ..addFlag('version', negatable: false, help: 'Print the tool version.');
 }
 
 void printUsage(ArgParser argParser) {
@@ -33,14 +30,16 @@ void printUsage(ArgParser argParser) {
 }
 
 void main(List<String> arguments) {
-  final ArgParser argParser = buildParser()
-    ..addFlag(
-      'verbose',
-      abbr: 'v',
-      negatable: false,
-      help: 'Show additional command output.',
-    )
-    ..addCommand('get');
+  final ArgParser argParser =
+      buildParser()
+        ..addFlag(
+          'verbose',
+          abbr: 'v',
+          negatable: false,
+          help: 'Show additional command output.',
+        )
+        ..addCommand('get')
+        ..addCommand('upgrade-sdk');
   try {
     final ArgResults results = argParser.parse(arguments);
     bool verbose = results.flag('verbose');
@@ -49,6 +48,8 @@ void main(List<String> arguments) {
       switch (results.command!.name) {
         case 'get':
           return build_transformer.main(results.command!.rest);
+        case 'upgrade-sdk':
+          return upgrade_sdk.main(results.command!.rest);
         default:
           printUsage(argParser);
       }

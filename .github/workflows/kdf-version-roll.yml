@@ -44,39 +44,28 @@ jobs:
           fi
           echo "Using branch: $BRANCH"
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-
-      - name: Get source URLs from config
-        id: get-source-urls
-        run: |
-          SOURCE_URLS=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -c '.api.source_urls')
-          echo "source_urls=$SOURCE_URLS" >> $GITHUB_OUTPUT
-          echo "Source URLs: $SOURCE_URLS"
-
-      - name: Get current commit details
-        id: current-details
-        run: |
-          COMMIT=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -r '.api.api_commit_hash')
-          echo "commit=$COMMIT" >> $GITHUB_OUTPUT
-
-      - name: Check for new commit
+          
+      - name: Check for updates using Dart CLI utility
         id: check-updates
         run: |
           BRANCH="${{ steps.determine-branch.outputs.branch }}"
-          CURRENT_COMMIT="${{ steps.current-details.outputs.commit }}"
-
-          # Get latest commit for the branch
-          TOKEN=${{ secrets.GITHUB_TOKEN }}
-          RESPONSE=$(curl -s -H "Authorization: token $TOKEN" \
-            "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework/commits/$BRANCH")
-          NEW_COMMIT=$(echo $RESPONSE | jq -r '.sha')
-
+          cd packages/komodo_wallet_cli
+          RESULT=$(dart bin/update_api_config.dart \
+            --branch "$BRANCH" \
+            --config ../komodo_defi_framework/app_build/build_config.json \
+            --verbose | grep "Current commit\|Latest commit")
+          
+          CURRENT_COMMIT=$(echo "$RESULT" | grep "Current commit" | cut -d':' -f2 | xargs)
+          NEW_COMMIT=$(echo "$RESULT" | grep "Latest commit" | cut -d':' -f2 | xargs)
+          
           echo "Current commit: $CURRENT_COMMIT"
           echo "Latest commit: $NEW_COMMIT"
-
+          
           if [[ "$CURRENT_COMMIT" != "$NEW_COMMIT" ]]; then
             echo "New commit found!"
             echo "has_updates=true" >> $GITHUB_OUTPUT
             echo "new_commit=$NEW_COMMIT" >> $GITHUB_OUTPUT
+            echo "current_commit=$CURRENT_COMMIT" >> $GITHUB_OUTPUT
           else
             echo "No updates available."
             echo "has_updates=false" >> $GITHUB_OUTPUT
@@ -112,65 +101,22 @@ jobs:
         id: roll-version
         run: |
           BRANCH="${{ needs.check-for-updates.outputs.branch }}"
-          CURRENT_COMMIT="${{ needs.check-for-updates.outputs.current_commit }}"
-          NEW_COMMIT="${{ needs.check-for-updates.outputs.new_commit }}"
-          SOURCE_URLS='${{ needs.check-for-updates.outputs.source_urls }}'
-
-          echo "Running update_api_config tool..."
+          
+          echo "Running update_api_config tool with auto-roll..."
           cd packages/komodo_wallet_cli
           mkdir -p ../komodo_defi_framework/app_build/temp_downloads
-
-          # Try each source URL in order until one succeeds
-          SUCCESS=false
-          for SOURCE_URL in $(echo $SOURCE_URLS | jq -r '.[]'); do
-            echo "Trying source URL: $SOURCE_URL"
+          
+          # Use the new auto-roll functionality
+          if dart bin/update_api_config.dart \
+            --auto-roll \
+            --branch "$BRANCH" \
+            --config ../komodo_defi_framework/app_build/build_config.json \
+            --output-dir ../komodo_defi_framework/app_build/temp_downloads \
+            --verbose; then
             
-            # Determine source type from URL
-            if [[ "$SOURCE_URL" == *"api.github.com"* ]]; then
-              SOURCE_TYPE="github"
-            else
-              SOURCE_TYPE="mirror"
-              MIRROR_URL="$SOURCE_URL"
-            fi
-            
-            echo "Using source type: $SOURCE_TYPE"
-            
-            # Try roll with this source
-            if [[ "$SOURCE_TYPE" == "mirror" ]]; then
-              if dart bin/update_api_config.dart \
-                --branch "$BRANCH" \
-                --source "$SOURCE_TYPE" \
-                --mirror-url "$MIRROR_URL" \
-                --config ../komodo_defi_framework/app_build/build_config.json \
-                --output-dir ../komodo_defi_framework/app_build/temp_downloads \
-                --verbose; then
-                
-                echo "Successfully rolled using $SOURCE_URL (mirror)"
-                SUCCESS=true
-                break
-              else
-                echo "Failed to roll using $SOURCE_URL (mirror), trying next source..."
-              fi
-            else
-              if dart bin/update_api_config.dart \
-                --branch "$BRANCH" \
-                --source "$SOURCE_TYPE" \
-                --repo "KomodoPlatform/komodo-defi-framework" \
-                --config ../komodo_defi_framework/app_build/build_config.json \
-                --output-dir ../komodo_defi_framework/app_build/temp_downloads \
-                --verbose; then
-                
-                echo "Successfully rolled using $SOURCE_URL (github)"
-                SUCCESS=true
-                break
-              else
-                echo "Failed to roll using $SOURCE_URL (github), trying next source..."
-              fi
-            fi
-          done
-
-          if [ "$SUCCESS" = false ]; then
-            echo "All sources failed. Exiting with error."
+            echo "Successfully rolled KDF version"
+          else
+            echo "Failed to roll KDF version. Exiting with error."
             exit 1
           fi
 
@@ -189,25 +135,7 @@ jobs:
           git add packages/komodo_defi_framework/app_build/build_config.json
           git commit -m "chore: roll KDF version to commit $SHORT_COMMIT for branch $BRANCH"
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-
-      - name: Validate with Flutter Build Bundle
-        run: |
-          echo "Validating updated config by building the example project..."
-          cd packages/komodo_defi_sdk/example
-          flutter pub get
-          flutter build web --release
-
-          # Check if build was successful
-          if [ $? -ne 0 ]; then
-            echo "Flutter build bundle failed, indicating the updated configuration may have issues."
-            exit 1
-          else
-            echo "Flutter build bundle successful. Configuration appears valid."
+      # Validation is now handled by the Dart CLI auto-roll functionality
 
       - name: Push changes
         run: |
