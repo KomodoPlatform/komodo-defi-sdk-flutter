@@ -182,7 +182,7 @@ jobs:
           echo "Validating updated config by building the example project..."
           cd packages/komodo_defi_sdk/example
           flutter pub get
-          flutter build bundle --release
+          flutter build web --release
 
           # Check if build was successful
           if [ $? -ne 0 ]; then
