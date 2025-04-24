@@ -106,7 +106,7 @@ jobs:
           cd packages/komodo_wallet_cli
           mkdir -p ../komodo_defi_framework/app_build/temp_downloads
 
-          # Use the new auto-roll functionality
+          # Use the new auto-roll functionality but skip validation in CI
           if dart bin/update_api_config.dart \
             --auto-roll \
             --branch "$BRANCH" \
