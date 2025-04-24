@@ -12,9 +12,9 @@ on:
         default: ""
         type: string
       sdk_branch:
-        description: "SDK branch to create PR against (defaults to current branch)"
+        description: "SDK branch to create PR against (defaults to main)"
         required: false
-        default: ""
+        default: "main"
         type: string
 
 jobs:
@@ -36,6 +36,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history to ensure branch information is available
 
       - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
@@ -56,14 +58,30 @@ jobs:
       - name: Get source URLs from config
         id: get-source-urls
         run: |
-          SOURCE_URLS=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -c '.api.source_urls')
+          CONFIG_PATH="packages/komodo_defi_framework/app_build/build_config.json"
+          if [ ! -f "$CONFIG_PATH" ]; then
+            echo "::error::Config file not found at $CONFIG_PATH"
+            exit 1
+          fi
+
+          SOURCE_URLS=$(cat "$CONFIG_PATH" | jq -c '.api.source_urls')
+          if [ -z "$SOURCE_URLS" ] || [ "$SOURCE_URLS" == "null" ]; then
+            echo "::error::Source URLs not found in config or empty"
+            exit 1
+          fi
+
           echo "source_urls=$SOURCE_URLS" >> $GITHUB_OUTPUT
           echo "Source URLs: $SOURCE_URLS"
 
       - name: Get current commit details
         id: current-details
         run: |
-          COMMIT=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -r '.api.api_commit_hash')
+          CONFIG_PATH="packages/komodo_defi_framework/app_build/build_config.json"
+          COMMIT=$(cat "$CONFIG_PATH" | jq -r '.api.api_commit_hash')
+          if [ -z "$COMMIT" ] || [ "$COMMIT" == "null" ]; then
+            echo "::error::Commit hash not found in config or empty"
+            exit 1
+          fi
           echo "commit=$COMMIT" >> $GITHUB_OUTPUT
 
       - name: Check for new commit
@@ -76,6 +94,13 @@ jobs:
           TOKEN=${{ secrets.GITHUB_TOKEN }}
           RESPONSE=$(curl -s -H "Authorization: token $TOKEN" \
             "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework/commits/$BRANCH")
+
+          # Check if API request was successful
+          if [[ $(echo $RESPONSE | jq -r 'has("sha")') != "true" ]]; then
+            echo "::error::Failed to fetch latest commit. API response: $RESPONSE"
+            exit 1
+          fi
+
           NEW_COMMIT=$(echo $RESPONSE | jq -r '.sha')
 
           echo "Current commit: $CURRENT_COMMIT"
@@ -104,6 +129,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history to ensure branch information is available
 
       - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
@@ -116,12 +143,22 @@ jobs:
       - name: Determine KDF branch
         id: determine-branch
         run: |
+          CONFIG_PATH="packages/komodo_defi_framework/app_build/build_config.json"
+          if [ ! -f "$CONFIG_PATH" ]; then
+            echo "::error::Config file not found at $CONFIG_PATH"
+            exit 1
+          fi
+
           # For manual workflow runs, check for specified branch
           if [[ -n "${{ github.event.inputs.kdf_branch }}" ]]; then
             KDF_BRANCH="${{ github.event.inputs.kdf_branch }}"
           # Otherwise fallback to branch in config
           else
-            KDF_BRANCH=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -r '.api.branch')
+            KDF_BRANCH=$(cat "$CONFIG_PATH" | jq -r '.api.branch')
+            if [ -z "$KDF_BRANCH" ] || [ "$KDF_BRANCH" == "null" ]; then
+              echo "::error::Branch not specified and not found in config"
+              exit 1
+            fi
           fi
           echo "Using KDF branch: $KDF_BRANCH"
           echo "branch=$KDF_BRANCH" >> $GITHUB_OUTPUT
@@ -129,14 +166,24 @@ jobs:
       - name: Get source URLs from config
         id: get-source-urls
         run: |
-          SOURCE_URLS=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -c '.api.source_urls')
+          CONFIG_PATH="packages/komodo_defi_framework/app_build/build_config.json"
+          SOURCE_URLS=$(cat "$CONFIG_PATH" | jq -c '.api.source_urls')
+          if [ -z "$SOURCE_URLS" ] || [ "$SOURCE_URLS" == "null" ]; then
+            echo "::error::Source URLs not found in config or empty"
+            exit 1
+          fi
           echo "source_urls=$SOURCE_URLS" >> $GITHUB_OUTPUT
           echo "Source URLs: $SOURCE_URLS"
 
       - name: Get current commit details
         id: current-details
         run: |
-          COMMIT=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -r '.api.api_commit_hash')
+          CONFIG_PATH="packages/komodo_defi_framework/app_build/build_config.json"
+          COMMIT=$(cat "$CONFIG_PATH" | jq -r '.api.api_commit_hash')
+          if [ -z "$COMMIT" ] || [ "$COMMIT" == "null" ]; then
+            echo "::error::Commit hash not found in config or empty"
+            exit 1
+          fi
           echo "commit=$COMMIT" >> $GITHUB_OUTPUT
 
       - name: Check for new commit
@@ -149,6 +196,13 @@ jobs:
           TOKEN=${{ secrets.GITHUB_TOKEN }}
           RESPONSE=$(curl -s -H "Authorization: token $TOKEN" \
             "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework/commits/$BRANCH")
+            
+          # Check if API request was successful
+          if [[ $(echo $RESPONSE | jq -r 'has("sha")') != "true" ]]; then
+            echo "::error::Failed to fetch latest commit. API response: $RESPONSE"
+            exit 1
+          fi
+
           NEW_COMMIT=$(echo $RESPONSE | jq -r '.sha')
 
           echo "Current commit: $CURRENT_COMMIT"
@@ -175,6 +229,12 @@ jobs:
 
       - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: stable
+          channel: stable
 
       - name: Install dependencies
         run: |
@@ -217,9 +277,24 @@ jobs:
           cd packages/komodo_wallet_cli
           mkdir -p ../komodo_defi_framework/app_build/temp_downloads
 
+          # Validate SOURCE_URLS is valid JSON before trying to process it
+          if ! echo "$SOURCE_URLS" | jq -e . > /dev/null 2>&1; then
+            echo "::error::Invalid JSON in SOURCE_URLS: $SOURCE_URLS"
+            exit 1
+          fi
+
           # Try each source URL in order until one succeeds
           SUCCESS=false
-          for SOURCE_URL in $(echo $SOURCE_URLS | jq -r '.[]'); do
+          # Use jq array iteration to properly handle JSON array
+          URL_COUNT=$(echo "$SOURCE_URLS" | jq -r '. | length')
+
+          if [ "$URL_COUNT" -eq 0 ]; then
+            echo "::error::No source URLs available in configuration"
+            exit 1
+          fi
+
+          for (( i=0; i<$URL_COUNT; i++ )); do
+            SOURCE_URL=$(echo "$SOURCE_URLS" | jq -r ".[$i]")
             echo "Trying source URL: $SOURCE_URL"
             
             # Determine source type from URL
@@ -248,7 +323,7 @@ jobs:
           done
 
           if [ "$SUCCESS" = false ]; then
-            echo "All sources failed. Exiting with error."
+            echo "::error::All sources failed. Exiting with error."
             exit 1
           fi
 
@@ -266,6 +341,7 @@ jobs:
           cd ../../../
 
       - name: Commit changes
+        id: commit
         run: |
           # Determine which job's outputs to use based on event type
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
@@ -281,14 +357,17 @@ jobs:
           # Check if there are changes to commit
           if git diff --quiet; then
             echo "No changes to commit"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           git add packages/komodo_defi_framework/app_build/build_config.json
           git commit -m "chore: roll KDF version to commit $SHORT_COMMIT for branch $KDF_BRANCH"
           git push origin kdf-roll/$KDF_BRANCH-$SHORT_COMMIT
+          echo "has_changes=true" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
+        if: steps.commit.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -306,17 +385,11 @@ jobs:
           SHORT_COMMIT="${NEW_COMMIT:0:7}"
 
           # Determine SDK branch for PR base
-          SDK_BRANCH="$KDF_BRANCH"  # Default to same as KDF branch
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.sdk_branch }}" ]]; then
             SDK_BRANCH="${{ github.event.inputs.sdk_branch }}"
-          fi
-
-          # If running on a branch (not via workflow_dispatch), use current branch as SDK branch
-          if [[ "${{ github.event_name }}" != "workflow_dispatch" && "$SDK_BRANCH" == "$KDF_BRANCH" ]]; then
-            CURRENT_BRANCH=$(git branch --show-current)
-            if [[ -n "$CURRENT_BRANCH" ]]; then
-              SDK_BRANCH="$CURRENT_BRANCH"
-            fi
+          else
+            # Default to main for scheduled runs
+            SDK_BRANCH="main"
           fi
 
           echo "Using KDF branch: $KDF_BRANCH"
@@ -328,7 +401,7 @@ jobs:
           **Changes:**
           - Rolled KDF version from \`$CURRENT_COMMIT\` to \`$NEW_COMMIT\`
 
-          This PR was automatically generated by GitHub Actions."
+          This PR was automatically generated by GitHub Actions workflow."
 
           gh pr create \
             --title "$PR_TITLE" \
