@@ -180,7 +180,7 @@ jobs:
       - name: Validate with Flutter Build Bundle
         run: |
           echo "Validating updated config by building the example project..."
-          cd playground
+          cd packages/komodo_defi_sdk/example
           flutter pub get
           flutter build bundle --release
 
