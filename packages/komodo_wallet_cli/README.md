@@ -116,6 +116,9 @@ dart run packages/komodo_wallet_cli/bin/update_api_config.dart [options]
 - `--config` - Path to the build config JSON file to update
 - `--output-dir` - Directory for temporary downloads
 - `--source` - Source to use for downloads ('github' or 'mirror')
+- `--mirror-url` - Custom URL for mirror source if not using the default SDK mirror
+- `--auto-roll` - Automatically detect and process updates in a single operation
+- `--validate` - Whether to validate the configuration by building the example app (default: true)
 - `--verbose` - Enable verbose output
 - `--help` - Show usage information
 
@@ -136,6 +139,22 @@ update-api-config \
   --config packages/komodo_defi_framework/app_build/build_config.json \
   --output-dir temp_downloads \
   --source github
+
+# Automatic update detection and processing (ideal for CI environments)
+update-api-config \
+  --auto-roll \
+  --branch dev \
+  --config packages/komodo_defi_framework/app_build/build_config.json \
+  --output-dir temp_downloads \
+  --verbose
+
+# Using a custom mirror URL for updates
+update-api-config \
+  --branch dev \
+  --source mirror \
+  --mirror-url https://custom-mirror.example.com \
+  --config packages/komodo_defi_framework/app_build/build_config.json \
+  --output-dir temp_downloads
 ```
 
 ## SDK Packages Covered

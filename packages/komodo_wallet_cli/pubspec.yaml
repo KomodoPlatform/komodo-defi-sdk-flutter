@@ -1,8 +1,14 @@
 # To activate the CLI package from a local path, run:
 # `dart pub global activate --source=path packages/komodo_wallet_cli`
 # To upgrade the CLI package, first delete the cached package.
+# 
 # The KDF version can be updated by running:
+# Manual update:
 # `dart run packages/komodo_wallet_cli/bin/update_api_config.dart --branch dev --config packages/komodo_defi_framework/app_build/build_config.json --output-dir temp_downloads --source mirror --verbose`
+# 
+# Automatic detection and update (recommended for CI):
+# `dart run packages/komodo_wallet_cli/bin/update_api_config.dart --auto-roll --branch dev --config packages/komodo_defi_framework/app_build/build_config.json --output-dir temp_downloads --verbose`
+#
 # macOS/Linux:
 # `flutter clean && rm -rf ~/.pub-cache/global_packages/komodo_wallet_cli`
 # Windows:

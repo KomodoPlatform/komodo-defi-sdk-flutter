@@ -129,7 +129,7 @@ void main(List<String> arguments) async {
   try {
     final autoRoll = args['auto-roll'] as bool;
     final shouldValidate = args['validate'] as bool;
-    
+
     final fetcher = KdfFetcher(
       branch: branch,
       repo: repo,
@@ -140,29 +140,35 @@ void main(List<String> arguments) async {
       mirrorUrl: mirrorUrl,
       verbose: verbose,
     );
-    
+
     if (autoRoll) {
-      log.info('Running in auto-roll mode. Will check for updates and process if found...');
-      final success = await fetcher.performCompleteRoll(validate: shouldValidate);
-      
+      log.info(
+        'Running in auto-roll mode. Will check for updates and process if found...',
+      );
+      final success = await fetcher.performCompleteRoll(
+        validate: shouldValidate,
+      );
+
       if (!success) {
-        log.info('Auto-roll process completed without updates or encountered errors.');
+        log.info(
+          'Auto-roll process completed without updates or encountered errors.',
+        );
         exit(1); // Exit with error code if no updates or process failed
       }
-      
+
       log.info('Auto-roll process completed successfully.');
     } else {
       // Original flow for manual updates
       await fetcher.loadBuildConfig();
-  
+
       log.info('Fetching latest commit for branch: $branch');
       final commitHash = await fetcher.fetchLatestCommit();
       log.info('Latest commit: $commitHash');
-  
+
       if (platform == 'all') {
         final platforms = fetcher.getSupportedPlatforms();
         log.info('Updating config for all platforms: ${platforms.join(', ')}');
-  
+
         for (final plat in platforms) {
           await fetcher.updatePlatformConfig(plat, commitHash);
         }
@@ -170,7 +176,7 @@ void main(List<String> arguments) async {
         log.info('Updating config for platform: $platform');
         await fetcher.updatePlatformConfig(platform, commitHash);
       }
-  
+
       await fetcher.updateBuildConfig(commitHash);
       log.info('Build config updated successfully');
     }
@@ -672,12 +678,12 @@ class KdfFetcher {
     final currentConfig = await loadBuildConfig();
     final apiConfig = currentConfig['api'] as Map<String, dynamic>;
     final currentCommit = apiConfig['api_commit_hash'] as String;
-    
+
     final latestCommit = await fetchLatestCommit();
-    
+
     log.info('Current commit: $currentCommit');
     log.info('Latest commit: $latestCommit');
-    
+
     return {
       'current_commit': currentCommit,
       'latest_commit': latestCommit,
@@ -690,15 +696,15 @@ class KdfFetcher {
     final config = await loadBuildConfig();
     final apiConfig = config['api'] as Map<String, dynamic>;
     final sourceUrls = List<String>.from(apiConfig['source_urls'] as List);
-    
+
     for (final sourceUrl in sourceUrls) {
       try {
         final isGithubSource = sourceUrl.contains('api.github.com');
         final sourceType = isGithubSource ? 'github' : 'mirror';
         final mirrorUrlToUse = isGithubSource ? mirrorUrl : sourceUrl;
-        
+
         log.info('Trying source URL: $sourceUrl (${sourceType})');
-        
+
         // Create a new fetcher with these parameters
         final fetcher = KdfFetcher(
           branch: this.branch,
@@ -710,15 +716,15 @@ class KdfFetcher {
           mirrorUrl: mirrorUrlToUse,
           verbose: this.verbose,
         );
-        
+
         await fetcher.loadBuildConfig();
-        
+
         // Update all platforms
         final platforms = fetcher.getSupportedPlatforms();
         for (final platform in platforms) {
           await fetcher.updatePlatformConfig(platform, commitHash);
         }
-        
+
         await fetcher.updateBuildConfig(commitHash);
         log.info('Successfully updated using $sourceUrl');
         return true;
@@ -726,44 +732,55 @@ class KdfFetcher {
         log.warning('Failed to update using $sourceUrl: $e');
       }
     }
-    
+
     return false; // All sources failed
   }
 
   /// Validates the configuration by building the example app
   Future<bool> validateConfig() async {
     log.info('Validating configuration by building example app...');
-    
+
     try {
       // Find the example path relative to the config path
       final configDir = path.dirname(configPath);
-      final examplePath = path.join(configDir, '..', '..', 'komodo_defi_sdk', 'example');
-      
+      final examplePath = path.join(
+        configDir,
+        '..',
+        '..',
+        'komodo_defi_sdk',
+        'example',
+      );
+
       log.info('Using example path: $examplePath');
-      
+
       // Check if the directory exists
       if (!Directory(examplePath).existsSync()) {
         log.severe('Example directory not found: $examplePath');
         return false;
       }
-      
+
       // Run flutter commands
-      final pubGetResult = await Process.run('flutter', ['pub', 'get'], 
-          workingDirectory: examplePath);
-      
+      final pubGetResult = await Process.run('flutter', [
+        'pub',
+        'get',
+      ], workingDirectory: examplePath);
+
       if (pubGetResult.exitCode != 0) {
         log.severe('Flutter pub get failed: ${pubGetResult.stderr}');
         return false;
       }
-      
-      final buildResult = await Process.run('flutter', ['build', 'web', '--release'],
-          workingDirectory: examplePath);
-      
+
+      final buildResult = await Process.run('flutter', [
+        'build',
+        'web',
+        '--release',
+      ], workingDirectory: examplePath);
+
       if (buildResult.exitCode != 0) {
         log.severe('Flutter build failed: ${buildResult.stderr}');
         return false;
       }
-      
+
       log.info('Validation successful');
       return true;
     } catch (e) {
@@ -775,27 +792,27 @@ class KdfFetcher {
   /// Performs the complete roll process (check for updates, update, validate)
   Future<bool> performCompleteRoll({bool validate = true}) async {
     await loadBuildConfig();
-    
+
     // Check if there's a new commit
     final updateInfo = await checkForNewCommit();
     final currentCommit = updateInfo['current_commit'] as String;
     final latestCommit = updateInfo['latest_commit'] as String;
     final hasUpdates = updateInfo['has_updates'] as bool;
-    
+
     if (!hasUpdates) {
       log.info('No updates available.');
       return false;
     }
-    
+
     log.info('New commit found, updating configuration...');
-    
+
     // Try all sources
     final success = await tryAllSources(latestCommit);
     if (!success) {
       log.severe('All sources failed. Update failed.');
       return false;
     }
-    
+
     // Validate the configuration if requested
     if (validate) {
       final isValid = await validateConfig();
@@ -806,7 +823,7 @@ class KdfFetcher {
         return false;
       }
     }
-    
+
     log.info('Update completed successfully.');
     return true;
   }

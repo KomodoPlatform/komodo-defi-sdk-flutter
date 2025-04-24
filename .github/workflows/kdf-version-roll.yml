@@ -44,7 +44,7 @@ jobs:
           fi
           echo "Using branch: $BRANCH"
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          
+
       - name: Check for updates using Dart CLI utility
         id: check-updates
         run: |
@@ -54,13 +54,13 @@ jobs:
             --branch "$BRANCH" \
             --config ../komodo_defi_framework/app_build/build_config.json \
             --verbose | grep "Current commit\|Latest commit")
-          
+
           CURRENT_COMMIT=$(echo "$RESULT" | grep "Current commit" | cut -d':' -f2 | xargs)
           NEW_COMMIT=$(echo "$RESULT" | grep "Latest commit" | cut -d':' -f2 | xargs)
-          
+
           echo "Current commit: $CURRENT_COMMIT"
           echo "Latest commit: $NEW_COMMIT"
-          
+
           if [[ "$CURRENT_COMMIT" != "$NEW_COMMIT" ]]; then
             echo "New commit found!"
             echo "has_updates=true" >> $GITHUB_OUTPUT
@@ -101,11 +101,11 @@ jobs:
         id: roll-version
         run: |
           BRANCH="${{ needs.check-for-updates.outputs.branch }}"
-          
+
           echo "Running update_api_config tool with auto-roll..."
           cd packages/komodo_wallet_cli
           mkdir -p ../komodo_defi_framework/app_build/temp_downloads
-          
+
           # Use the new auto-roll functionality
           if dart bin/update_api_config.dart \
             --auto-roll \
