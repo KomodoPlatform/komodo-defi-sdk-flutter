@@ -80,6 +80,7 @@ jobs:
           else
             echo "No updates available."
             echo "has_updates=false" >> $GITHUB_OUTPUT
+          fi
 
   roll-kdf-version:
     needs: check-for-updates
@@ -105,7 +106,7 @@ jobs:
           SHORT_COMMIT="${NEW_COMMIT:0:7}"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Actions"
-          git checkout -b kdf-roll/$BRANCH-$SHORT_COMMIT
+          git checkout -b chore/kdf-roll/$BRANCH-$SHORT_COMMIT
 
       - name: Roll KDF version
         id: roll-version
@@ -151,7 +152,7 @@ jobs:
                 echo "Failed to roll using $SOURCE_URL (mirror), trying next source..."
               fi
             else
-              if dart bin.update_api_config.dart \
+              if dart bin/update_api_config.dart \
                 --branch "$BRANCH" \
                 --source "$SOURCE_TYPE" \
                 --repo "KomodoPlatform/komodo-defi-framework" \
@@ -171,6 +172,7 @@ jobs:
           if [ "$SUCCESS" = false ]; then
             echo "All sources failed. Exiting with error."
             exit 1
+          fi
 
       - name: Commit changes
         run: |
@@ -186,7 +188,6 @@ jobs:
 
           git add packages/komodo_defi_framework/app_build/build_config.json
           git commit -m "chore: roll KDF version to commit $SHORT_COMMIT for branch $BRANCH"
-          # git push origin kdf-roll/$BRANCH-$SHORT_COMMIT
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -214,8 +215,8 @@ jobs:
           NEW_COMMIT="${{ needs.check-for-updates.outputs.new_commit }}"
           SHORT_COMMIT="${NEW_COMMIT:0:7}"
 
-          git push origin kdf-roll/$BRANCH-$SHORT_COMMIT --force
-          echo "Changes pushed to branch kdf-roll/$BRANCH-$SHORT_COMMIT"
+          git push origin chore/kdf-roll/$BRANCH-$SHORT_COMMIT --force
+          echo "Changes pushed to branch chore/kdf-roll/$BRANCH-$SHORT_COMMIT"
 
       - name: Create Pull Request
         env:
@@ -237,4 +238,4 @@ jobs:
             --title "$PR_TITLE" \
             --body "$PR_BODY" \
             --base "$BRANCH" \
-            --head "kdf-roll/$BRANCH-$SHORT_COMMIT"
+            --head "chore/kdf-roll/$BRANCH-$SHORT_COMMIT"
