@@ -11,6 +11,14 @@ on:
         required: false
         default: ""
         type: string
+      source:
+        description: "Source to fetch from"
+        required: false
+        default: "mirror"
+        type: choice
+        options:
+          - mirror
+          - github
 
 jobs:
   check-for-updates:
@@ -37,24 +45,33 @@ jobs:
           cd packages/komodo_wallet_cli
           dart pub get
 
-      - name: Determine branch from config
+      - name: Determine branch and source from config
         id: determine-branch
         run: |
           BRANCH=$(cat packages/komodo_defi_framework/app_build/build_config.json | jq -r '.api.branch')
+          SOURCE="mirror"
           # If workflow dispatch provided a branch, use that instead
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.branch }}" ]]; then
             BRANCH="${{ github.event.inputs.branch }}"
           fi
+          # If workflow dispatch provided a source, use that instead
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.source }}" ]]; then
+            SOURCE="${{ github.event.inputs.source }}"
+          fi
           echo "Using branch: $BRANCH"
+          echo "Using source: $SOURCE"
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "source=$SOURCE" >> $GITHUB_OUTPUT
 
       - name: Check for updates using Dart CLI utility
         id: check-updates
         run: |
           BRANCH="${{ steps.determine-branch.outputs.branch }}"
+          SOURCE="${{ steps.determine-branch.outputs.source }}"
           cd packages/komodo_wallet_cli
           RESULT=$(dart bin/update_api_config.dart \
             --branch "$BRANCH" \
+            --source "$SOURCE" \
             --config ../komodo_defi_framework/app_build/build_config.json \
             --verbose | grep "Current commit\|Latest commit")
 
@@ -108,16 +125,28 @@ jobs:
         id: roll-version
         run: |
           BRANCH="${{ needs.check-for-updates.outputs.branch }}"
+          SOURCE="mirror"
+
+          # If workflow dispatch provided a source, use that
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.source }}" ]]; then
+            SOURCE="${{ github.event.inputs.source }}"
+          fi
 
           echo "Running update_api_config tool with auto-roll..."
           cd packages/komodo_wallet_cli
           mkdir -p ../komodo_defi_framework/app_build/temp_downloads
 
+          # Temporarily modify build config to skip coins fetch during validation
+          TEMP_CONFIG_FILE="../komodo_defi_framework/app_build/temp_build_config.json"
+          cat ../komodo_defi_framework/app_build/build_config.json | \
+            jq '.coins.fetch_at_build_enabled = false | .coins.update_commit_on_build = false' > $TEMP_CONFIG_FILE
+
           # Use the new auto-roll functionality but skip validation in CI
           if dart bin/update_api_config.dart \
             --auto-roll \
             --branch "$BRANCH" \
-            --config ../komodo_defi_framework/app_build/build_config.json \
+            --source "$SOURCE" \
+            --config $TEMP_CONFIG_FILE \
             --output-dir ../komodo_defi_framework/app_build/temp_downloads \
             --verbose; then
             

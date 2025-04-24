@@ -12,6 +12,8 @@ import 'package:path/path.dart' as path;
 
 /// CLI script to fetch the latest commit for a branch, fetch the URL and checksum for binaries,
 /// and update the build config. Can also perform automatic detection and rolling of updates.
+// TODO: Share code with komodo_wallet_build_transformer's API fetch step
+// if viable.
 void main(List<String> arguments) async {
   final log = Logger('kdf-fetch-cli');
 
