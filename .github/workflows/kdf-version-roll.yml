@@ -277,6 +277,9 @@ jobs:
           cd packages/komodo_wallet_cli
           mkdir -p ../komodo_defi_framework/app_build/temp_downloads
 
+          # Make a backup of the original config for comparison later
+          cp ../komodo_defi_framework/app_build/build_config.json ../komodo_defi_framework/app_build/build_config.json.bak
+
           # Validate SOURCE_URLS is valid JSON before trying to process it
           if ! echo "$SOURCE_URLS" | jq -e . > /dev/null 2>&1; then
             echo "::error::Invalid JSON in SOURCE_URLS: $SOURCE_URLS"
@@ -306,19 +309,24 @@ jobs:
             
             echo "Using source type: $SOURCE_TYPE"
             
-            # Try roll with this source
-            if dart bin/update_api_config.dart \
+            # Try roll with this source - capture output for debugging
+            OUTPUT=$(dart bin/update_api_config.dart \
               --branch "$KDF_BRANCH" \
               --source "$SOURCE_TYPE" \
               --config ../komodo_defi_framework/app_build/build_config.json \
               --output-dir ../komodo_defi_framework/app_build/temp_downloads \
-              --verbose; then
-              
+              --verbose 2>&1)
+            
+            EXIT_CODE=$?
+            echo "$OUTPUT"
+            
+            if [ $EXIT_CODE -eq 0 ]; then
               echo "Successfully rolled using $SOURCE_URL"
               SUCCESS=true
               break
             else
               echo "Failed to roll using $SOURCE_URL, trying next source..."
+              echo "Error output: $OUTPUT"
             fi
           done
 
@@ -326,6 +334,23 @@ jobs:
             echo "::error::All sources failed. Exiting with error."
             exit 1
           fi
+
+          # Check if the config actually changed
+          if diff -q ../komodo_defi_framework/app_build/build_config.json ../komodo_defi_framework/app_build/build_config.json.bak > /dev/null; then
+            echo "No changes detected in build_config.json despite successful roll operation"
+            echo "Original commit: $CURRENT_COMMIT"
+            echo "Target commit: $NEW_COMMIT"
+            
+            # Force update the commit hash in the config if needed
+            NEW_CONFIG=$(cat ../komodo_defi_framework/app_build/build_config.json | jq --arg new_commit "$NEW_COMMIT" '.api.api_commit_hash = $new_commit')
+            echo "$NEW_CONFIG" > ../komodo_defi_framework/app_build/build_config.json
+            echo "Manually updated api_commit_hash in build_config.json to $NEW_COMMIT"
+          else
+            echo "Changes detected in build_config.json"
+          fi
+
+          # Remove backup file
+          rm ../komodo_defi_framework/app_build/build_config.json.bak
 
       - name: Test build the SDK example project
         run: |
