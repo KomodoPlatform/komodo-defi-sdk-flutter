@@ -12,9 +12,9 @@ on:
         default: ""
         type: string
       sdk_branch:
-        description: "SDK branch to create PR against (defaults to main)"
+        description: "SDK branch to create PR against (defaults to the current branch)"
         required: false
-        default: "main"
+        default: ""
         type: string
 
 jobs:
@@ -386,10 +386,16 @@ jobs:
 
           # Determine SDK branch for PR base
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.sdk_branch }}" ]]; then
+            # Use the branch specified in the manual trigger
             SDK_BRANCH="${{ github.event.inputs.sdk_branch }}"
           else
-            # Default to main for scheduled runs
-            SDK_BRANCH="main"
+            # For scheduled runs or when no branch is specified, use the current branch
+            SDK_BRANCH="${GITHUB_REF#refs/heads/}"
+            
+            # If we're in a detached HEAD state (like in scheduled runs), default to the default branch
+            if [[ "$SDK_BRANCH" == "HEAD" || -z "$SDK_BRANCH" ]]; then
+              SDK_BRANCH=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
+            fi
           fi
 
           echo "Using KDF branch: $KDF_BRANCH"
