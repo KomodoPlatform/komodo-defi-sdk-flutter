@@ -40,6 +40,7 @@ dependencies:
   flutter_inappwebview: ^6.1.4
   flutter_json_view: ^1.1.2
   flutter_secure_storage: ^10.0.0-beta.4
+  http: ^1.4.0
   json_editor_flutter: ^1.4.2
 
   komodo_defi_framework:

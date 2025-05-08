@@ -1,8 +1,11 @@
 // ignore_for_file: avoid_print
 
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:json_editor_flutter/json_editor_flutter.dart';
 import 'package:komodo_defi_framework_example/models/postman_collection_types.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,7 +23,7 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
   late Collection _collection;
   late final List<CollectionItem> _requests = [];
   int _selectedRequestIndex = 0;
-  late Map<String, dynamic> _jsonData = {};
+  Map<String, dynamic> _jsonData = {};
   String _response = '';
   List<Map<String, dynamic>> _history = [];
   bool _isLoading = true;
@@ -37,29 +40,74 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
     setState(() => _isLoading = true);
     try {
       final defaultBundle = DefaultAssetBundle.of(context);
-
       final prefs = await SharedPreferences.getInstance();
       String? storedConfig = prefs.getString('postman_config');
-      storedConfig = null; // Remove this line to use stored config
+      String jsonString;
 
-      if (storedConfig == null) {
-        // Load the default configuration from assets
-        String jsonString = await defaultBundle.loadString(
-          'assets/komodo_defi.postman_collection.json',
-        );
-
-        _collection = Collection.fromJson(
-          parseJsonWithCommentStripping(jsonString),
-        );
+      if (storedConfig != null) {
+        // Use stored configuration if available
+        jsonString = storedConfig;
+        if (kDebugMode) {
+          print('Using stored Postman collection configuration');
+        }
       } else {
-        _collection = Collection.fromJson(
-          parseJsonWithCommentStripping(storedConfig),
-        );
+        // Try to download from GitHub first
+        try {
+          if (kDebugMode) {
+            print('Attempting to download Postman collection from GitHub...');
+          }
+          final response = await http
+              .get(
+                Uri.parse(
+                  'https://raw.githubusercontent.com/KomodoPlatform/komodo-docs-mdx/refs/heads/dev/postman/collections/komodo_defi.postman_collection.json',
+                ),
+              )
+              .timeout(const Duration(seconds: 10));
+
+          if (response.statusCode == 200) {
+            jsonString = response.body;
+            if (kDebugMode) {
+              print('Successfully downloaded Postman collection from GitHub');
+            }
+
+            // Optionally save the downloaded collection to preferences
+            // await prefs.setString('postman_config', jsonString);
+          } else {
+            throw HttpException(
+              'Failed to download: HTTP ${response.statusCode}',
+            );
+          }
+        } catch (e) {
+          // Fallback to local asset if download fails
+          if (kDebugMode) {
+            print('Failed to download Postman collection: $e');
+            print('Falling back to local asset');
+          }
+          jsonString = await defaultBundle.loadString(
+            'assets/komodo_defi.postman_collection.json',
+          );
+          if (kDebugMode) {
+            print('Loaded local Postman collection');
+          }
+        }
       }
 
+      _collection = Collection.fromJson(
+        parseJsonWithCommentStripping(jsonString),
+      );
+
       _extractRequests(_collection.item);
-      _selectRequest(0);
+      if (_requests.isNotEmpty) {
+        _selectRequest(0);
+      } else {
+        if (kDebugMode) {
+          print('Warning: No requests found in the collection');
+        }
+      }
     } catch (e) {
+      if (kDebugMode) {
+        print('Error loading collection: $e');
+      }
       _showErrorDialog('Failed to load collection: $e');
     } finally {
       setState(() => _isLoading = false);
@@ -99,16 +147,29 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
   }
 
   void _selectRequest(int index) {
+    if (index < 0 || index >= _requests.length) {
+      if (kDebugMode) {
+        print('Invalid request index: $index');
+      }
+      return;
+    }
+
     setState(() {
       _selectedRequestIndex = index;
       String rawBody = _requests[index].request?.body?.raw ?? '{}';
       try {
         _jsonData = parseJsonWithCommentStripping(rawBody);
       } catch (e) {
-        print('Error parsing JSON for request: ${_requests[index].name}');
+        if (kDebugMode) {
+          print(
+            'Error parsing JSON for request: ${_requests[index].name} - $e',
+          );
+        }
         _jsonData = {};
       }
-      print('Selected request: ${_requests[index].name}');
+      if (kDebugMode) {
+        print('Selected request: ${_requests[index].name}');
+      }
       _response = ''; // Clear previous response
     });
   }
@@ -184,7 +245,18 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading Postman Collection...'),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -251,10 +323,11 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
                     json: jsonEncode(_jsonData),
                     onChanged: (value) {
                       setState(() {
-                        _jsonData = value;
+                        _jsonData = value is String ? jsonDecode(value) : value;
                       });
                     },
                     themeColor: Colors.blue,
+                    enableHorizontalScroll: true,
                   ),
                 ),
                 Expanded(child: SingleChildScrollView(child: Text(_response))),

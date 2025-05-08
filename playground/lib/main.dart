@@ -39,7 +39,8 @@ String _generateDefaultRpcPassword() =>
 class _ConfigureDialogState extends State<ConfigureDialog> {
   String _selectedHostType = 'local';
   String _selectedProtocol = 'https';
-  bool _exposeHttp = false;
+  // Null to indicate that the feature is disabled.
+  bool? _exposeHttp;
   final TextEditingController _walletNameController = TextEditingController();
   final TextEditingController _walletPasswordController =
       TextEditingController();
@@ -132,16 +133,21 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   controller: _passphraseController,
                   decoration: const InputDecoration(
                     labelText: 'Passphrase/Seed (Optional)',
+                    hintText: 'Import existing seed',
                   ),
                 ),
               if (_selectedHostType == 'local' && kIsWeb) ...[
                 CheckboxListTile(
-                  value: _exposeHttp,
-                  onChanged: (value) {
-                    setState(() {
-                      _exposeHttp = value!;
-                    });
-                  },
+                  value: _exposeHttp ?? false,
+                  // TODO: Re-enable when fully implemented
+                  onChanged:
+                      _exposeHttp == null
+                          ? null
+                          : (value) {
+                            setState(() {
+                              _exposeHttp = value!;
+                            });
+                          },
                   title: const Text('Expose WASM via HTTP'),
                   subtitle: const Text(
                     'Enable this to access the WASM instance through a REST API. '
@@ -613,12 +619,12 @@ class _MyAppState extends State<MyApp> {
     final String walletName = result['walletName'];
     final String walletPassword = result['walletPassword'];
     final String passphrase = result['passphrase'];
-    final bool exposeHttp = result['exposeHttp'];
+    final exposeHttp = result.valueOrNull<bool>('exposeHttp');
 
     setState(() {
       _kdfHostConfig = config;
       _kdfFramework =
-          exposeHttp && !kIsWeb
+          (exposeHttp ?? false) && !kIsWeb
               ? KomodoDefiFramework.createWithOperations(
                 hostConfig: config,
                 kdfOperations: KdfHttpServerOperations(config as LocalConfig),
