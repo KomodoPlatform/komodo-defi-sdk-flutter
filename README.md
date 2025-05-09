@@ -1,92 +1,124 @@
-# komodo_defi_framework
+<p align="center">
+    <a href="https://github.com/KomodoPlatform/komodo-defi-framework" alt="Contributors">
+        <img width="420" src="https://user-images.githubusercontent.com/24797699/252396802-de8f9264-8056-4430-a17d-5ecec9668dfc.png" />
+    </a>
+</p>
 
-A new Flutter FFI plugin project.
+# Komodo Defi Framework SDK for Flutter
 
-## Getting Started
+This is a series of Flutter packages for integrating the [Komodo DeFi Framework](https://komodoplatform.com/en/komodo-defi-framework.html) into Flutter applications. This enhances devex by providing an intuitive abstraction layer and handling all binary/media file fetching, reducing what previously would have taken months to understand the API and build a Flutter dApp with KDF integration into a few days.
 
-This project is a starting point for a Flutter
-[FFI plugin](https://flutter.dev/to/ffi-package),
-a specialized package that includes native code directly invoked with Dart FFI.
+See the Komodo DeFi Framework (API) source repository at [KomodoPlatform/komodo-defi-framework](https://github.com/KomodoPlatform/komodo-defi-framework) and view the demo site (source in [example](./example)) project at [https://komodo-playground.web.app](https://komodo-playground.web.app).
 
-## Project structure
+The recommended entry point ([komodo_defi_sdk](/packages/komodo_defi_sdk/README.md)) is a high-level opinionated library that provides a simple way to build cross-platform Komodo Defi Framework applications (primarily focused on wallets). This repository consists of multiple other child packages in the [packages](./packages) folder, which is orchestrated by the [komodo_defi_sdk](/packages/komodo_defi_sdk/README.md) package.
 
-This template uses the following structure:
+Note: Most of this README focuses on the lower-level `komodo-defi-framework` package and still needs to be updated to focus on the primary package, `komodo_defi_sdk`.
 
-* `src`: Contains the native source code, and a CmakeFile.txt file for building
-  that source code into a dynamic library.
+This project supports building for macOS (more native platforms coming soon) and the web. KDF can either be run as a local Rust binary or you can connect to a remote instance. 1-Click setup for DigitalOcean and AWS deployment is in progress.
 
-* `lib`: Contains the Dart code that defines the API of the plugin, and which
-  calls into the native code using `dart:ffi`.
+Use the [komodo_defi_framework](packages/komodo_defi_sdk) package for an unopinionated implementation that gives access to the underlying KDF methods.
 
-* platform folders (`android`, `ios`, `windows`, etc.): Contains the build files
-  for building and bundling the native code library with the platform application.
+The structure for this repository is inspired by the [Flutter BLoC](https://github.com/felangel/bloc) project.
 
-## Building and bundling native code
+This project generally follows the guidelines and high standards set by [Very Good Ventures](https://vgv.dev/).
 
-The `pubspec.yaml` specifies FFI plugins as follows:
+TODO: Add a comprehensive README
 
-```yaml
-  plugin:
-    platforms:
-      some_platform:
-        ffiPlugin: true
+TODO: Contribution guidelines and architecture overview
+
+## Example
+
+Below is an extract from the [example project](https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/blob/dev/example/lib/main.dart) showing the straightforward integration. Note that this is for the [komodo_defi_framework](packages/komodo_defi_framework), and the [komodo_defi_sdk](/packages/komodo_defi_sdk/README.md) will provide a higher-layer abstraction.
+
+Create the configuration for the desired runtime:
+```dart
+    switch (_selectedHostType) {
+      case 'remote':
+        config = RemoteConfig(
+          userpass: _userpassController.text,
+          ipAddress: '$_selectedProtocol://${_ipController.text}',
+          port: int.parse(_portController.text),
+        );
+        break;
+      case 'aws':
+        config = AwsConfig(
+          userpass: _userpassController.text,
+          region: _awsRegionController.text,
+          accessKey: _awsAccessKeyController.text,
+          secretKey: _awsSecretKeyController.text,
+          instanceType: _awsInstanceTypeController.text,
+        );
+        break;
+      case 'local':
+        config = LocalConfig(userpass: _userpassController.text);
+        break;
+      default:
+        throw Exception(
+          'Invalid/unsupported host type: $_selectedHostType',
+        );
+    }
 ```
 
-This configuration invokes the native build for the various target platforms
-and bundles the binaries in Flutter applications using these FFI plugins.
+Start KDF:
 
-This can be combined with dartPluginClass, such as when FFI is used for the
-implementation of one platform in a federated plugin:
+```dart
+void _startKdf(String passphrase) async {
+    _statusMessage = null;
 
-```yaml
-  plugin:
-    implements: some_other_plugin
-    platforms:
-      some_platform:
-        dartPluginClass: SomeClass
-        ffiPlugin: true
+    if (_kdfFramework == null) {
+      _showMessage('Please configure the framework first.');
+      return;
+    }
+
+    try {
+      final result = await _kdfFramework!.startKdf(passphrase);
+      setState(() {
+        _statusMessage = 'KDF running: $result';
+        _isRunning = true;
+      });
+
+      if (!result.isRunning()) {
+        _showMessage('Failed to start KDF: $result');
+        // return;
+      }
+    } catch (e) {
+      _showMessage('Failed to start KDF: $e');
+    }
+
+    await _saveData();
+  }
 ```
 
-A plugin can have both FFI and method channels:
-
-```yaml
-  plugin:
-    platforms:
-      some_platform:
-        pluginClass: SomeName
-        ffiPlugin: true
+Execute RPC requests:
+```dart
+executeRequest: (rpcInput) async {
+      if (_kdfFramework == null || !_isRunning) {
+        _showMessage('KDF is not running.');
+        throw Exception('KDF is not running.');
+      }
+      return (await _kdfFramework!.executeRpc(rpcInput)).toString();
+    },
 ```
 
-The native build systems that are invoked by FFI (and method channel) plugins are:
+Stop KDF:
+```dart
 
-* For Android: Gradle, which invokes the Android NDK for native builds.
-  * See the documentation in android/build.gradle.
-* For iOS and MacOS: Xcode, via CocoaPods.
-  * See the documentation in ios/komodo_defi_framework.podspec.
-  * See the documentation in macos/komodo_defi_framework.podspec.
-* For Linux and Windows: CMake.
-  * See the documentation in linux/CMakeLists.txt.
-  * See the documentation in windows/CMakeLists.txt.
+  void _stopKdf() async {
+    if (_kdfFramework == null) {
+      _showMessage('Please configure the framework first.');
+      return;
+    }
 
-## Binding to native code
+    try {
+      final result = await _kdfFramework!.kdfStop();
+      setState(() {
+        _statusMessage = 'KDF stopped: $result';
+        _isRunning = false;
+      });
 
-To use the native code, bindings in Dart are needed.
-To avoid writing these by hand, they are generated from the header file
-(`src/komodo_defi_framework.h`) by `package:ffigen`.
-Regenerate the bindings by running `dart run ffigen --config ffigen.yaml`.
-
-## Invoking native code
-
-Very short-running native functions can be directly invoked from any isolate.
-For example, see `sum` in `lib/komodo_defi_framework.dart`.
-
-Longer-running functions should be invoked on a helper isolate to avoid
-dropping frames in Flutter applications.
-For example, see `sumAsync` in `lib/komodo_defi_framework.dart`.
-
-## Flutter help
-
-For help getting started with Flutter, view our
-[online documentation](https://docs.flutter.dev), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
+      _checkStatus().ignore();
+    } catch (e) {
+      _showMessage('Failed to stop KDF: $e');
+    }
+  }
+```
