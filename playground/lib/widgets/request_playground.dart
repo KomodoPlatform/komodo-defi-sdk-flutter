@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, unused_element
 
 import 'dart:convert';
 import 'dart:io';
@@ -8,7 +8,69 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:json_editor_flutter/json_editor_flutter.dart';
 import 'package:komodo_defi_framework_example/models/postman_collection_types.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:komodo_defi_framework_example/services/secure_storage_service.dart';
+
+/// History service that can be used across the app to access request history
+class RequestHistoryService {
+  static final List<Map<String, dynamic>> _history = [];
+  static const String _historyStorageKey = 'request_history';
+
+  /// Get the current history list
+  static List<Map<String, dynamic>> get history => _history;
+
+  /// Add a new item to history and save it
+  static Future<void> addToHistory(
+    Map<String, dynamic> request,
+    String response,
+  ) async {
+    _history.add({
+      'request': request,
+      'response': response,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+    await _saveHistory();
+  }
+
+  /// Load history from storage
+  static Future<void> loadHistory() async {
+    try {
+      final secureStorage = SecureStorageService();
+      String? historyString = await secureStorage.read(key: _historyStorageKey);
+      if (historyString != null) {
+        _history.clear();
+        _history.addAll(
+          List<Map<String, dynamic>>.from(json.decode(historyString)),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to load history: $e');
+      }
+    }
+  }
+
+  /// Save history to storage
+  static Future<void> _saveHistory() async {
+    try {
+      final secureStorage = SecureStorageService();
+      await secureStorage.write(
+        key: _historyStorageKey,
+        value: json.encode(_history),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to save history: $e');
+      }
+    }
+  }
+
+  /// Show the history screen
+  static void showHistory(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const RequestHistoryScreen()),
+    );
+  }
+}
 
 class RequestPlayground extends StatefulWidget {
   final Future<String> Function(Map<String, dynamic> payload) executeRequest;
@@ -20,28 +82,74 @@ class RequestPlayground extends StatefulWidget {
 }
 
 class _RequestPlaygroundState extends State<RequestPlayground> {
-  late Collection _collection;
-  late final List<CollectionItem> _requests = [];
+  // Static variables for caching the collection data across instances
+  static Collection? _collection;
+  static String? _rawCollectionData;
+  static final List<CollectionItem> _requests = [];
+
+  final TextEditingController _searchController = TextEditingController();
+  List<CollectionItem> _filteredRequests = [];
   int _selectedRequestIndex = 0;
   Map<String, dynamic> _jsonData = {};
-  String _response = '';
-  List<Map<String, dynamic>> _history = [];
-  bool _isLoading = true;
+  String _response = '{}';
+  bool _isLoading = false;
   bool _isSending = false;
+
+  String get _responseJson =>
+      isValidJson(_response) ? _response : jsonEncode({'response': _response});
+
+  bool isValidJson(String str) {
+    try {
+      jsonDecode(str);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadCollection();
-    _loadHistory();
+    if (_requests.isEmpty) {
+      _isLoading = true;
+      _loadCollection();
+    }
+    _searchController.addListener(_filterRequests);
+    _filteredRequests = _requests;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterRequests() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredRequests =
+          _requests
+              .where((request) => request.name.toLowerCase().contains(query))
+              .toList();
+    });
   }
 
   Future<void> _loadCollection() async {
     setState(() => _isLoading = true);
     try {
+      // If we already have cached collection data, use it
+      if (_rawCollectionData != null) {
+        if (kDebugMode) {
+          print('Using cached Postman collection data from session');
+        }
+        _parseAndSetupCollection(_rawCollectionData!);
+        setState(() => _isLoading = false);
+        return;
+      }
+
       final defaultBundle = DefaultAssetBundle.of(context);
-      final prefs = await SharedPreferences.getInstance();
-      String? storedConfig = prefs.getString('postman_config');
+      final secureStorage = SecureStorageService();
+      String? storedConfig = await secureStorage.read(key: 'postman_config');
       String jsonString;
 
       if (storedConfig != null) {
@@ -70,8 +178,8 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
               print('Successfully downloaded Postman collection from GitHub');
             }
 
-            // Optionally save the downloaded collection to preferences
-            // await prefs.setString('postman_config', jsonString);
+            // Save the downloaded collection to secure storage
+            await secureStorage.write(key: 'postman_config', value: jsonString);
           } else {
             throw HttpException(
               'Failed to download: HTTP ${response.statusCode}',
@@ -92,18 +200,9 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
         }
       }
 
-      _collection = Collection.fromJson(
-        parseJsonWithCommentStripping(jsonString),
-      );
-
-      _extractRequests(_collection.item);
-      if (_requests.isNotEmpty) {
-        _selectRequest(0);
-      } else {
-        if (kDebugMode) {
-          print('Warning: No requests found in the collection');
-        }
-      }
+      // Cache the raw collection data for future uses
+      _rawCollectionData = jsonString;
+      _parseAndSetupCollection(jsonString);
     } catch (e) {
       if (kDebugMode) {
         print('Error loading collection: $e');
@@ -111,6 +210,24 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
       _showErrorDialog('Failed to load collection: $e');
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  void _parseAndSetupCollection(String jsonString) {
+    _collection = Collection.fromJson(
+      parseJsonWithCommentStripping(jsonString),
+    );
+
+    // Clear the existing requests first to avoid duplicates when reloading
+    _requests.clear();
+    _extractRequests(_collection!.item);
+
+    if (_requests.isNotEmpty) {
+      _selectRequest(0);
+    } else {
+      if (kDebugMode) {
+        print('Warning: No requests found in the collection');
+      }
     }
   }
 
@@ -159,6 +276,13 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
       String rawBody = _requests[index].request?.body?.raw ?? '{}';
       try {
         _jsonData = parseJsonWithCommentStripping(rawBody);
+
+        // If userpass is set to a masked value, replace it with the placeholder
+        if (_jsonData.containsKey('userpass') &&
+            (_jsonData['userpass'] == '********' ||
+                _jsonData['userpass'] == '')) {
+          _jsonData['userpass'] = '{{userpass}}';
+        }
       } catch (e) {
         if (kDebugMode) {
           print(
@@ -170,33 +294,8 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
       if (kDebugMode) {
         print('Selected request: ${_requests[index].name}');
       }
-      _response = ''; // Clear previous response
+      _response = '{}';
     });
-  }
-
-  Future<void> _loadHistory() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      String? historyString = prefs.getString('request_history');
-      if (historyString != null) {
-        setState(() {
-          _history = List<Map<String, dynamic>>.from(
-            json.decode(historyString),
-          );
-        });
-      }
-    } catch (e) {
-      _showErrorDialog('Failed to load history: $e');
-    }
-  }
-
-  Future<void> _saveHistory() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('request_history', json.encode(_history));
-    } catch (e) {
-      _showErrorDialog('Failed to save history: $e');
-    }
   }
 
   Future<void> _executeRequest() async {
@@ -205,13 +304,9 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
       String response = await widget.executeRequest(_jsonData);
       setState(() {
         _response = response;
-        _history.add({
-          'request': _jsonData,
-          'response': response,
-          'timestamp': DateTime.now().toIso8601String(),
-        });
       });
-      await _saveHistory();
+      // Add to history via the service
+      await RequestHistoryService.addToHistory(_jsonData, response);
     } catch (e) {
       setState(() {
         _response = 'Error: $e';
@@ -245,136 +340,198 @@ class _RequestPlaygroundState extends State<RequestPlayground> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading Postman Collection...'),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Loading Postman Collection...'),
+              Expanded(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: const InputDecoration(
+                          hintText: 'Search collection...',
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _filteredRequests.length,
+                        itemBuilder: (context, index) {
+                          final request = _filteredRequests[index];
+                          return ListTile(
+                            title: Text(request.name),
+                            selected:
+                                _requests.indexOf(request) ==
+                                _selectedRequestIndex,
+                            onTap:
+                                () =>
+                                    _selectRequest(_requests.indexOf(request)),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Request:',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: JsonEditor(
+                        key: Key(_selectedRequestIndex.toString()),
+                        json: jsonEncode(_jsonData),
+                        onChanged: (value) {
+                          setState(() {
+                            _jsonData =
+                                value is String ? jsonDecode(value) : value;
+                          });
+                        },
+                        themeColor: Colors.blue,
+                        enableHorizontalScroll: true,
+                        actions: [
+                          IconButton(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            icon: Icon(Icons.send),
+                            onPressed: _isSending ? null : _executeRequest,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Response:',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      key: ValueKey(_responseJson),
+                      child: JsonEditor(
+                        editors:
+                            isValidJson(_response)
+                                ? Editors.values
+                                : [Editors.text, Editors.tree],
+                        json: _responseJson,
+                        enableKeyEdit: false,
+                        enableValueEdit: false,
+                        themeColor: Colors.green,
+                        onChanged: (_) {},
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// Widget that displays request history after loading it
+class RequestHistoryScreen extends StatefulWidget {
+  const RequestHistoryScreen({super.key});
+
+  @override
+  State<RequestHistoryScreen> createState() => _RequestHistoryScreenState();
+}
+
+class _RequestHistoryScreenState extends State<RequestHistoryScreen> {
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    setState(() => _isLoading = true);
+    await RequestHistoryService.loadHistory();
+    setState(() => _isLoading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Request History')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Postman collection: ${_collection.info.name}'),
+        title: const Text('Request History'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
-      body: Row(
-        children: [
-          Expanded(
-            flex: 1,
-            child: ListView.builder(
-              itemCount: _requests.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(_requests[index].name),
-                  selected: index == _selectedRequestIndex,
-                  onTap: () => _selectRequest(index),
-                );
-              },
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    FilledButton.icon(
-                      onPressed: _isSending ? null : _executeRequest,
-                      label:
-                          _isSending
-                              ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                              : const Text('Send'),
-                      icon: const Icon(Icons.send),
-                    ),
-                    const Spacer(),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder:
-                                (context) => HistoryScreen(history: _history),
-                          ),
-                        );
-                      },
-                      label: const Text('History'),
-                      icon: const Icon(Icons.history),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      label: const Text('Upload Collection'),
-                      icon: const Icon(Icons.upload_file),
-                      // onPressed: _onUploadCollection,
-                      onPressed: null,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: JsonEditor(
-                    key: Key(_selectedRequestIndex.toString()),
-                    json: jsonEncode(_jsonData),
-                    onChanged: (value) {
-                      setState(() {
-                        _jsonData = value is String ? jsonDecode(value) : value;
-                      });
-                    },
-                    themeColor: Colors.blue,
-                    enableHorizontalScroll: true,
-                  ),
-                ),
-                Expanded(child: SingleChildScrollView(child: Text(_response))),
-              ],
-            ),
-          ),
-        ],
-      ),
+      body: RequestHistoryList(history: RequestHistoryService.history),
     );
   }
-
-  void _onUploadCollection() async {
-    // TODO! Implement this method
-  }
 }
-// HistoryScreen and HistoryDetailScreen remain unchanged
 
-class HistoryScreen extends StatelessWidget {
+/// Widget that displays the history items list
+class RequestHistoryList extends StatelessWidget {
   final List<Map<String, dynamic>> history;
 
-  const HistoryScreen({super.key, required this.history});
+  const RequestHistoryList({super.key, required this.history});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Request History')),
-      body: ListView.builder(
-        itemCount: history.length,
-        itemBuilder: (context, index) {
-          final item = history[history.length - 1 - index];
-          return ListTile(
-            title: Text('Request ${history.length - index}'),
-            subtitle: Text(item['timestamp']),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => HistoryDetailScreen(item: item),
-                ),
-              );
-            },
-          );
-        },
-      ),
+    if (history.isEmpty) {
+      return const Center(child: Text('No request history available'));
+    }
+
+    return ListView.builder(
+      itemCount: history.length,
+      itemBuilder: (context, index) {
+        final item = history[history.length - 1 - index];
+        return ListTile(
+          title: Text('Request ${history.length - index}'),
+          subtitle: Text(item['timestamp']),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => HistoryDetailScreen(item: item),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
 
+/// Screen that shows the details of a history item
 class HistoryDetailScreen extends StatelessWidget {
   final Map<String, dynamic> item;
 

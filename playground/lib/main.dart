@@ -4,17 +4,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:json_editor_flutter/json_editor_flutter.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
-import 'package:komodo_defi_framework_example/kdf_operations/kdf_operations_server.dart';
+import 'package:komodo_defi_framework_example/services/secure_storage_service.dart';
 import 'package:komodo_defi_framework_example/widgets/request_playground.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // (await SharedPreferences.getInstance()).clear();
+  // Initialize secure storage if needed
   runApp(const MaterialApp(home: MyApp()));
 }
 
@@ -39,8 +37,12 @@ String _generateDefaultRpcPassword() =>
 class _ConfigureDialogState extends State<ConfigureDialog> {
   String _selectedHostType = 'local';
   String _selectedProtocol = 'https';
-  // Null to indicate that the feature is disabled.
-  bool? _exposeHttp;
+  // Always false and disabled until fully implemented
+  bool? _exposeHttp = false;
+  // HD wallet mode toggle
+  bool _enableHdWallet = false;
+  // Flag to determine whether to save wallet password
+  bool _saveWalletPassword = false;
   final TextEditingController _walletNameController = TextEditingController();
   final TextEditingController _walletPasswordController =
       TextEditingController();
@@ -96,10 +98,13 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                 value: _selectedHostType,
                 onChanged: _hostTypeChanged,
                 items: const [
-                  DropdownMenuItem(value: 'local', child: Text('Local')),
+                  DropdownMenuItem(
+                    value: 'local',
+                    child: Text('Embedded Binary'),
+                  ),
                   DropdownMenuItem(
                     value: 'remote',
-                    child: Text('Remote (LAN/Internet)'),
+                    child: Text('Network (LAN/Internet)'),
                   ),
                   DropdownMenuItem(
                     value: 'aws',
@@ -113,41 +118,75 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   ),
                 ],
               ),
-              TextField(
-                controller: _walletNameController,
-                decoration: const InputDecoration(labelText: 'Wallet Name'),
-              ),
-              TextField(
-                controller: _walletPasswordController,
-                decoration: InputDecoration(
-                  labelText: 'Wallet Password',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.remove_red_eye),
-                    onPressed: _togglePasswordVisibility,
+              if (_selectedHostType == 'local') ...[
+                TextField(
+                  controller: _walletNameController,
+                  decoration: const InputDecoration(labelText: 'Wallet Name'),
+                ),
+
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: _walletPasswordController,
+                  decoration: InputDecoration(
+                    labelText: 'Wallet Password',
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.remove_red_eye),
+                      onPressed: _togglePasswordVisibility,
+                    ),
+                  ),
+                  obscureText: !_passwordVisible,
+                ),
+
+                const SizedBox(height: 16),
+
+                // Add checkbox for wallet password storage option
+                CheckboxListTile(
+                  value: _saveWalletPassword,
+                  onChanged: (value) {
+                    setState(() {
+                      _saveWalletPassword = value!;
+                    });
+                  },
+                  title: const Text('Save Wallet Password'),
+                  subtitle: const Text(
+                    'Store the wallet password in secure storage for convenience (use with caution)',
                   ),
                 ),
-                obscureText: _passwordVisible,
-              ),
-              if (_selectedHostType != 'remote')
+
+                const SizedBox(height: 16),
+
                 TextField(
                   controller: _passphraseController,
                   decoration: const InputDecoration(
-                    labelText: 'Passphrase/Seed (Optional)',
+                    labelText: 'Mnemonic/Seed (Optional)',
                     hintText: 'Import existing seed',
+                    helperText:
+                        'Warning: Never stored, only used during wallet creation',
+                    helperStyle: TextStyle(color: Colors.orange),
                   ),
                 ),
+
+                const SizedBox(height: 16),
+
+                // HD wallet mode toggle
+                CheckboxListTile(
+                  value: _enableHdWallet,
+                  onChanged: (value) {
+                    setState(() {
+                      _enableHdWallet = value!;
+                    });
+                  },
+                  title: const Text('Enable HD Wallet'),
+                  subtitle: const Text(
+                    'Hierarchical Deterministic wallet mode allows for generating multiple addresses from a single seed',
+                  ),
+                ),
+              ],
               if (_selectedHostType == 'local' && kIsWeb) ...[
                 CheckboxListTile(
-                  value: _exposeHttp ?? false,
-                  // TODO: Re-enable when fully implemented
-                  onChanged:
-                      _exposeHttp == null
-                          ? null
-                          : (value) {
-                            setState(() {
-                              _exposeHttp = value!;
-                            });
-                          },
+                  value: false,
+                  onChanged: null, // Disabled until fully implemented
                   title: const Text('Expose WASM via HTTP'),
                   subtitle: const Text(
                     'Enable this to access the WASM instance through a REST API. '
@@ -168,12 +207,18 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 16),
+
                 TextField(
                   controller: _rpcPasswordController,
                   decoration: const InputDecoration(
                     labelText: 'RPC Password (userpass)',
                   ),
                 ),
+
+                const SizedBox(height: 16),
+
                 TextField(
                   controller: _ipController,
                   decoration: InputDecoration(
@@ -210,6 +255,9 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                             : null,
                   ),
                 ),
+
+                const SizedBox(height: 16),
+
                 TextField(
                   controller: _portController,
                   keyboardType: TextInputType.number,
@@ -222,18 +270,27 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   controller: _awsRegionController,
                   decoration: const InputDecoration(labelText: 'AWS Region'),
                 ),
+
+                const SizedBox(height: 16),
+
                 TextField(
                   controller: _awsAccessKeyController,
                   decoration: const InputDecoration(
                     labelText: 'AWS Access Key',
                   ),
                 ),
+
+                const SizedBox(height: 16),
+
                 TextField(
                   controller: _awsSecretKeyController,
                   decoration: const InputDecoration(
                     labelText: 'AWS Secret Key',
                   ),
                 ),
+
+                const SizedBox(height: 16),
+
                 TextField(
                   controller: _awsInstanceTypeController,
                   decoration: const InputDecoration(labelText: 'Instance Type'),
@@ -252,16 +309,48 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
         ),
         TextButton(
           onPressed: () async {
+            // Validate required fields before saving
+            if (_selectedHostType == 'remote') {
+              if (_ipController.text.isEmpty) {
+                _showMessage(context, 'Please enter a host or IP address');
+                return;
+              }
+              if (_portController.text.isEmpty) {
+                _showMessage(context, 'Please enter a port number');
+                return;
+              }
+              if (_rpcPasswordController.text.isEmpty) {
+                _showMessage(context, 'Please enter an RPC password');
+                return;
+              }
+            } else if (_selectedHostType == 'local') {
+              // For local configs, ensure wallet name and password are set
+              if (_walletNameController.text.isEmpty) {
+                _showMessage(context, 'Please enter a wallet name');
+                return;
+              }
+              if (_walletPasswordController.text.isEmpty) {
+                _showMessage(context, 'Please enter a wallet password');
+                return;
+              }
+            }
+
             await _saveConfiguration();
             IKdfHostConfig config;
 
             // Determine the host configuration.
             switch (_selectedHostType) {
               case 'remote':
+                // Use int.tryParse to safely handle port conversion
+                final portNumber = int.tryParse(_portController.text);
+                if (portNumber == null) {
+                  _showMessage(context, 'Invalid port number format');
+                  return;
+                }
                 config = RemoteConfig(
                   rpcPassword: _rpcPasswordController.text,
                   ipAddress: _ipController.text,
-                  port: int.parse(_portController.text),
+                  port: portNumber,
                   https: _selectedProtocol == 'https',
                 );
                 break;
@@ -294,6 +383,8 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
               'port': _portController.text,
               'protocol': _selectedProtocol,
               'exposeHttp': _exposeHttp,
+              'enableHdWallet': _enableHdWallet,
+              'savePassphrase': _saveWalletPassword,
             });
           },
           child: const Text('Save'),
@@ -358,27 +449,36 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
   }
 
   Future<void> _loadSavedConfiguration() async {
-    final prefs = await SharedPreferences.getInstance();
-    // TODO: Fix. host type is stored in 'lastUsedConfig' key with the rest of the host config.
-    String? savedHostType =
-        prefs.getString('hostType') == null
-            ? null
-            : prefs.getString('lastUsedConfig') == null
-            ? null
-            : jsonDecode(prefs.getString('lastUsedConfig')!)['hostType'];
-    String? savedIp = prefs.getString('ipAddress');
-    String? savedWalletPassword = prefs.getString('walletPassword');
-    String? savedPort = prefs.getString('port');
-    String? savedProtocol = prefs.getString('protocol');
-    String? savedAwsRegion = prefs.getString('awsRegion');
-    String? savedAwsAccessKey = prefs.getString('awsAccessKey');
-    String? savedAwsSecretKey = prefs.getString('awsSecretKey');
-    String? savedAwsInstanceType = prefs.getString('awsInstanceType');
-    String? savedRpcPassword = prefs.getString('rpcPassword'); // Add this line
+    final secureStorage = SecureStorageService();
+    // Host type is stored in 'lastUsedConfig' object with the rest of the host config
+    String? savedConfigData = await secureStorage.read(key: 'lastUsedConfig');
+    Map<String, dynamic>? savedConfig =
+        savedConfigData != null ? jsonDecode(savedConfigData) : null;
+
+    String? savedHostType = savedConfig?['hostType'];
+    String? savedWalletName = await secureStorage.read(key: 'walletName');
+    String? savedIp = await secureStorage.read(key: 'ipAddress');
+    String? savedWalletPassword = await secureStorage.read(
+      key: 'walletPassword',
+    );
+    String? savedPort = await secureStorage.read(key: 'port');
+    String? savedProtocol = await secureStorage.read(key: 'protocol');
+    String? savedAwsRegion = await secureStorage.read(key: 'awsRegion');
+    String? savedAwsAccessKey = await secureStorage.read(key: 'awsAccessKey');
+    String? savedAwsSecretKey = await secureStorage.read(key: 'awsSecretKey');
+    String? savedAwsInstanceType = await secureStorage.read(
+      key: 'awsInstanceType',
+    );
+    String? savedRpcPassword = await secureStorage.read(key: 'rpc_password');
+    // We ignore the stored exposeHttp value as the feature is disabled
+    // Load HD wallet setting
+    String? savedHdWallet = await secureStorage.read(key: 'enableHdWallet');
 
     setState(() {
       _selectedHostType = savedHostType ?? 'local';
-      _passphraseController.text = '';
+      _walletNameController.text = savedWalletName ?? '';
+      _passphraseController.text =
+          ''; // We don't store/restore the passphrase for security
       _walletPasswordController.text = savedWalletPassword ?? '';
       _ipController.text = savedIp ?? '';
       _portController.text = savedPort ?? '7783';
@@ -389,23 +489,60 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
       _awsInstanceTypeController.text = savedAwsInstanceType ?? '';
       _rpcPasswordController.text =
           savedRpcPassword ?? _generateDefaultRpcPassword();
+      _exposeHttp = false; // Always false until fully implemented
+      _enableHdWallet = savedHdWallet?.toLowerCase() == 'true' ? true : false;
     });
   }
 
   Future<void> _saveConfiguration() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('hostType', _selectedHostType);
-    await prefs.setString('walletPassword', _walletPasswordController.text);
-    await prefs.setString('ipAddress', _ipController.text);
-    await prefs.setString('port', _portController.text);
-    await prefs.setString('protocol', _selectedProtocol);
-    await prefs.setString('awsRegion', _awsRegionController.text);
-    await prefs.setString('awsAccessKey', _awsAccessKeyController.text);
-    await prefs.setString('awsSecretKey', _awsSecretKeyController.text);
-    await prefs.setString('awsInstanceType', _awsInstanceTypeController.text);
-    await prefs.setString('rpcPassword', _rpcPasswordController.text);
+    final secureStorage = SecureStorageService();
+    await secureStorage.write(key: 'hostType', value: _selectedHostType);
+    await secureStorage.write(
+      key: 'walletName',
+      value: _walletNameController.text,
+    );
+    await secureStorage.write(
+      key: 'walletPassword',
+      value: _walletPasswordController.text,
+    );
+    await secureStorage.write(key: 'ipAddress', value: _ipController.text);
+    await secureStorage.write(key: 'port', value: _portController.text);
+    await secureStorage.write(key: 'protocol', value: _selectedProtocol);
+    await secureStorage.write(
+      key: 'awsRegion',
+      value: _awsRegionController.text,
+    );
+    await secureStorage.write(
+      key: 'awsAccessKey',
+      value: _awsAccessKeyController.text,
+    );
+    await secureStorage.write(
+      key: 'awsSecretKey',
+      value: _awsSecretKeyController.text,
+    );
+    await secureStorage.write(
+      key: 'awsInstanceType',
+      value: _awsInstanceTypeController.text,
+    );
+    await secureStorage.write(
+      key: 'rpc_password',
+      value: _rpcPasswordController.text,
+    );
+    await secureStorage.write(
+      key: 'exposeHttp',
+      value: _exposeHttp?.toString() ?? 'false',
+    );
+    // Save HD wallet setting
+    await secureStorage.write(
+      key: 'enableHdWallet',
+      value: _enableHdWallet.toString(),
+    );
+  }
 
-    //! IMPORTANT: Replace SharedPreferences with a more secure solution before using this in production.
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -414,16 +551,11 @@ class _MyAppState extends State<MyApp> {
   String? _statusMessage;
   String? _version;
   bool _isRunning = false;
+  bool _showRequestPlayground = true;
   IKdfHostConfig? _kdfHostConfig;
   final _logController = StreamController<String>.broadcast();
   final ScrollController _scrollController = ScrollController();
   final List<String> _logMessages = [];
-
-  Map<String, dynamic> rpcInput = {
-    'userpass': '********',
-    'method': 'get_enabled_coins',
-    'params': {},
-  };
 
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
@@ -431,6 +563,12 @@ class _MyAppState extends State<MyApp> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   bool get _canInteract => _kdfFramework != null;
+
+  // Check if the current configuration is a remote config
+  bool _isRemoteConfig() {
+    if (_kdfHostConfig == null) return false;
+    return _kdfHostConfig.runtimeType.toString() == 'RemoteConfig';
+  }
 
   @override
   void initState() {
@@ -440,7 +578,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    const textStyle = TextStyle(fontSize: 18);
+    final textStyle = Theme.of(context).textTheme.titleMedium;
     const verticalSpacerSmall = SizedBox(height: 12);
     const horizontalSpacerSmall = SizedBox(width: 12);
     return MaterialApp(
@@ -451,7 +589,7 @@ class _MyAppState extends State<MyApp> {
           title: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Komodo DeFi Framework Flutter SDK Example'),
+              const Text('Komodo DeFi Framework Flutter Playground'),
               const SizedBox(width: 16),
               IconButton(
                 icon: const Icon(Icons.code),
@@ -477,10 +615,19 @@ class _MyAppState extends State<MyApp> {
                     icon: const Icon(Icons.settings),
                   ),
                   horizontalSpacerSmall,
-                  FilledButton.icon(
-                    onPressed: _isRunning || !_canInteract ? null : _startKdf,
-                    label: const Text('Start KDF'),
-                    icon: const Icon(Icons.play_arrow),
+                  Tooltip(
+                    message:
+                        _isRemoteConfig()
+                            ? 'For remote configurations, KDF must be started on the server'
+                            : 'Start the Komodo DeFi Framework',
+                    child: FilledButton.icon(
+                      onPressed:
+                          _isRunning || !_canInteract || _isRemoteConfig()
+                              ? null
+                              : _startKdf,
+                      label: const Text('Start KDF'),
+                      icon: const Icon(Icons.play_arrow),
+                    ),
                   ),
                   horizontalSpacerSmall,
                   ElevatedButton.icon(
@@ -493,88 +640,171 @@ class _MyAppState extends State<MyApp> {
                   ),
                   horizontalSpacerSmall,
                   OutlinedButton.icon(
-                    onPressed: _canInteract ? _checkStatus : null,
+                    onPressed: _checkStatus,
                     label: const Text('Refresh Status'),
                     icon: const Icon(Icons.refresh),
                   ),
                   horizontalSpacerSmall,
-                  OutlinedButton(
-                    onPressed: _canInteract && _isRunning ? _executeRpc : null,
-                    child: const Text('Execute RPC'),
+                  OutlinedButton.icon(
+                    onPressed:
+                        _canInteract && _isRunning
+                            ? () => setState(
+                              () =>
+                                  _showRequestPlayground =
+                                      !_showRequestPlayground,
+                            )
+                            : null,
+                    label: Text(
+                      _showRequestPlayground
+                          ? 'Hide Playground'
+                          : 'Show Playground',
+                    ),
+                    icon: Icon(
+                      _showRequestPlayground
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                  ),
+                  horizontalSpacerSmall,
+                  ElevatedButton.icon(
+                    onPressed: () => RequestHistoryService.showHistory(context),
+                    label: const Text('History'),
+                    icon: const Icon(Icons.history),
                   ),
                 ],
               ),
               verticalSpacerSmall,
-              Text('Status: $_statusMessage', style: textStyle),
-              verticalSpacerSmall,
-              Text('Version: $_version', style: textStyle),
-              verticalSpacerSmall,
-              Text(
-                'Host type: ${_kdfFramework?.operationsName ?? 'None selected.'}',
-                style: textStyle,
+              Wrap(
+                spacing: 16,
+                children: [
+                  Text(
+                    'Status: ${_statusMessage ?? 'Unknown'}',
+                    style: textStyle,
+                  ),
+                  Text('Version: ${_version ?? 'Unknown'}', style: textStyle),
+                  Text(
+                    'Host type: ${_kdfFramework?.operationsName ?? 'None selected'} ${_kdfHostConfig is RemoteConfig ? "(Remote - Manual Start Required)" : ""}',
+                    style: textStyle,
+                  ),
+                ],
               ),
+
               const Divider(),
-              const Text('Logs:', style: textStyle),
               Expanded(
-                child: Container(
-                  color: Colors.black,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      child: StreamBuilder<String>(
-                        stream: _logController.stream,
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            _logMessages.add(snapshot.data!);
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Logs:', style: textStyle),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            child: Container(
+                              color: Colors.black,
+                              width: double.infinity,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: SingleChildScrollView(
+                                  controller: _scrollController,
+                                  child: StreamBuilder<String>(
+                                    stream: _logController.stream,
+                                    builder: (context, snapshot) {
+                                      if (snapshot.hasData) {
+                                        _logMessages.add(snapshot.data!);
 
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (_scrollController.hasClients) {
-                                _scrollController.jumpTo(
-                                  _scrollController.position.maxScrollExtent,
-                                );
-                              }
-                            });
-                          }
+                                        WidgetsBinding.instance
+                                            .addPostFrameCallback((_) {
+                                              if (_scrollController
+                                                  .hasClients) {
+                                                _scrollController.jumpTo(
+                                                  _scrollController
+                                                      .position
+                                                      .maxScrollExtent,
+                                                );
+                                              }
+                                            });
+                                      }
 
-                          if (_logMessages.isEmpty) {
-                            return const Text(
-                              'No logs available.',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontFamily: 'Courier',
+                                      if (_logMessages.isEmpty) {
+                                        return const Text(
+                                          'No logs available.',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontFamily: 'Courier',
+                                          ),
+                                        );
+                                      }
+
+                                      return SelectableText(
+                                        key: const Key('log_text'),
+                                        _logMessages.join('\n'),
+                                        style: const TextStyle(
+                                          color: Colors.greenAccent,
+                                          fontFamily: 'Courier',
+                                          fontSize: 16,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
                               ),
-                            );
-                          }
-
-                          return Text(
-                            _logMessages.join('\n'),
-                            style: const TextStyle(
-                              color: Colors.greenAccent,
-                              fontFamily: 'Courier',
-                              fontSize: 16,
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                    if (_showRequestPlayground) ...[
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 2,
+                        child: Material(
+                          elevation: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: RequestPlayground(
+                                    key: const Key('request_playground'),
+                                    executeRequest: (rpcInput) async {
+                                      if (_kdfFramework == null ||
+                                          !_isRunning) {
+                                        _showMessage('KDF is not running.');
+                                        throw Exception('KDF is not running.');
+                                      }
+
+                                      // Check if userpass is set to the placeholder and replace it
+                                      final modifiedInput =
+                                          Map<String, dynamic>.from(rpcInput);
+                                      if (modifiedInput.containsKey(
+                                            'userpass',
+                                          ) &&
+                                          modifiedInput['userpass'] ==
+                                              '{{userpass}}') {
+                                        // Replace with actual RPC password from config
+                                        modifiedInput['userpass'] =
+                                            _kdfHostConfig?.rpcPassword ?? '';
+                                      }
+
+                                      return (await _kdfFramework!.executeRpc(
+                                        modifiedInput,
+                                      )).toJsonString();
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
-          ),
-        ),
-        endDrawer: SizedBox(
-          width: 600,
-          height: double.infinity,
-          child: RequestPlayground(
-            executeRequest: (rpcInput) async {
-              if (_kdfFramework == null || !_isRunning) {
-                _showMessage('KDF is not running.');
-                throw Exception('KDF is not running.');
-              }
-              return (await _kdfFramework!.executeRpc(rpcInput)).toString();
-            },
           ),
         ),
       ),
@@ -603,6 +833,13 @@ class _MyAppState extends State<MyApp> {
       _statusMessage = status.toString();
       _version = version;
     });
+
+    // Show a message if status is checked for a remote configuration
+    if (_kdfHostConfig is RemoteConfig && !_isRunning) {
+      _showMessage(
+        'Starting KDF is not available for remote configurations. KDF must be started on the remote server.',
+      );
+    }
   }
 
   void _configure() async {
@@ -618,128 +855,62 @@ class _MyAppState extends State<MyApp> {
     final IKdfHostConfig config = result['config'];
     final String walletName = result['walletName'];
     final String walletPassword = result['walletPassword'];
-    final String passphrase = result['passphrase'];
-    final exposeHttp = result.valueOrNull<bool>('exposeHttp');
+    // We get the passphrase from the UI but don't store it
+    final String? passphrase = result['passphrase'];
+    final bool enableHdWallet = result['enableHdWallet'] ?? false;
+    final bool saveWalletPassword = result['savePassphrase'] ?? false;
+    // Ignore exposeHttp as the feature is disabled
 
     setState(() {
       _kdfHostConfig = config;
-      _kdfFramework =
-          (exposeHttp ?? false) && !kIsWeb
-              ? KomodoDefiFramework.createWithOperations(
-                hostConfig: config,
-                kdfOperations: KdfHttpServerOperations(config as LocalConfig),
-                externalLogger: _logController.add,
-              )
-              : KomodoDefiFramework.create(
-                hostConfig: config,
-                externalLogger: _logController.add,
-              );
+      // Always create with standard operations
+      _kdfFramework = KomodoDefiFramework.create(
+        hostConfig: config,
+        externalLogger: _logController.add,
+      );
     });
 
     await _saveConfig(config);
-    await _saveStartupData(walletName, walletPassword, passphrase);
-  }
 
-  void _startHttpServer() {
-    if (_kdfFramework == null) {
-      _showMessage('KDF is not configured.');
-      return;
+    // Save startup data
+    final secureStorage = SecureStorageService();
+    await secureStorage.write(key: 'walletName', value: walletName);
+
+    // Only save wallet password if explicitly enabled by user
+    if (saveWalletPassword) {
+      await secureStorage.write(key: 'walletPassword', value: walletPassword);
+    } else {
+      // Clear any previously stored wallet password if save is disabled
+      await secureStorage.write(key: 'walletPassword', value: '');
     }
 
-    // Start the HTTP server with the KDF instance
-    // final KdfServer kdfServer = KdfServer(_kdfFramework!.operations);
-    // kdfServer.start();
-  }
-
-  void _executeRpc() async {
-    if (_scaffoldKey.currentState != null) {
-      return _scaffoldKey.currentState?.openEndDrawer();
+    // Note: We never save passphrase/seed to secure storage for security reasons
+    // We only use it during wallet creation with the current session
+    if (passphrase?.isNotEmpty ?? false) {
+      _logController.add(
+        'Note: Using provided seed for wallet creation only (not stored)',
+      );
     }
 
-    if (_kdfFramework == null || !_isRunning) {
-      _showMessage('KDF is not running.');
-      return;
-    }
-
-    String updatedInput = jsonEncode(rpcInput);
-
-    final didSave = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Execute RPC'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: 500,
-                  width: 500,
-                  child: JsonEditor(
-                    json: jsonEncode({
-                      'userpass': '********',
-                      'method': 'get_enabled_coins',
-                    }),
-                    onChanged: (json) => updatedInput = json,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(false);
-                },
-                child: const Text('Cancel'),
-              ),
-              FilledButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop(true);
-                },
-                label: const Text('Execute'),
-                icon: const Icon(Icons.play_arrow_rounded),
-              ),
-            ],
-          ),
+    await secureStorage.write(
+      key: 'enableHdWallet',
+      value: enableHdWallet.toString(),
     );
 
-    if (didSave == false || didSave == null) {
-      return;
-    }
-    final decoded = jsonDecode(updatedInput);
-
-    rpcInput = decoded;
-
-    await _saveData();
-
-    final rpcResponse = await _kdfFramework!.executeRpc(decoded);
-
-    _showMessage('RPC Response: ${rpcResponse.toString()}');
-  }
-
-  Future<void> _saveStartupData(
-    String walletName,
-    String walletPassword,
-    String passphrase,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('walletName', walletName);
-    await prefs.setString('walletPassword', walletPassword);
-    await prefs.setString('passphrase', passphrase);
+    // Check status after configuration is complete
+    _checkStatus();
   }
 
   Future<void> _loadSavedData() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? savedRpcInput = prefs.getString('rpcInput');
-    String? savedConfig = prefs.getString('lastUsedConfig');
-
-    if (savedRpcInput != null) {
-      rpcInput = jsonDecode(savedRpcInput);
-    }
+    final secureStorage = SecureStorageService();
+    String? savedConfig = await secureStorage.read(key: 'lastUsedConfig');
+    // Ignore the exposeHttp setting as the feature is disabled
 
     if (savedConfig != null) {
       final configMap = jsonDecode(savedConfig) as Map<String, dynamic>;
       _kdfHostConfig = _configFromMap(configMap);
       setState(() {
+        // Always create with standard operations, exposeHttp feature is disabled
         _kdfFramework = KomodoDefiFramework.create(
           hostConfig: _kdfHostConfig!,
           externalLogger: _logController.add,
@@ -750,27 +921,25 @@ class _MyAppState extends State<MyApp> {
   }
 
   IKdfHostConfig _configFromMap(Map<String, dynamic> map) {
+    final bool useHttps = map['https'] == true;
     switch (map['hostType']) {
       case 'local':
-        return LocalConfig(
-          rpcPassword: map['rpcPassword'],
-          https: map['https'],
-        );
+        return LocalConfig(rpcPassword: map['rpc_password'], https: useHttps);
       case 'remote':
         return RemoteConfig(
-          rpcPassword: map['rpcPassword'],
+          rpcPassword: map['rpc_password'],
           ipAddress: map['ipAddress'],
-          port: map['port'],
-          https: map['https'],
+          port: int.tryParse(map['port']?.toString() ?? '') ?? 7783,
+          https: useHttps,
         );
       case 'aws':
         return AwsConfig(
-          rpcPassword: map['rpcPassword'],
+          rpcPassword: map['rpc_password'],
           region: map['region'],
           accessKey: map['accessKey'],
           secretKey: map['secretKey'],
           instanceType: map['instanceType'],
-          https: map['https'],
+          https: useHttps,
         );
       default:
         throw Exception('Invalid/unsupported host type: ${map['hostType']}');
@@ -778,16 +947,24 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _saveConfig(IKdfHostConfig config) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      'lastUsedConfig',
-      jsonEncode(config.getConnectionParams()),
-    );
-  }
+    final Map<String, dynamic> connectionParams = config.getConnectionParams();
 
-  Future<void> _saveData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('rpcInput', jsonEncode(rpcInput));
+    // Add the host type to the saved configuration
+    String hostType = '';
+    if (config is LocalConfig) {
+      hostType = 'local';
+    } else if (config is RemoteConfig) {
+      hostType = 'remote';
+    } else if (config is AwsConfig) {
+      hostType = 'aws';
+    }
+    connectionParams['hostType'] = hostType;
+
+    final secureStorage = SecureStorageService();
+    await secureStorage.write(
+      key: 'lastUsedConfig',
+      value: jsonEncode(connectionParams),
+    );
   }
 
   void _showMessage(String message) {
@@ -805,24 +982,31 @@ class _MyAppState extends State<MyApp> {
     }
 
     // Load saved startup data
-    final prefs = await SharedPreferences.getInstance();
-    final walletName = prefs.getString('walletName') ?? '';
-    final walletPassword = prefs.getString('walletPassword') ?? '';
-    final passphrase = prefs.getString('passphrase');
+    final secureStorage = SecureStorageService();
+    final walletName = await secureStorage.read(key: 'walletName') ?? '';
+    final walletPassword =
+        await secureStorage.read(key: 'walletPassword') ?? '';
+
+    // Note: We don't use passphrase from storage for security reasons
+    // It should be provided each time in the configuration dialog if needed
+
+    final enableHdWallet = await secureStorage.read(key: 'enableHdWallet');
+    final useHdWallet = enableHdWallet?.toLowerCase() == 'true';
 
     try {
-      final KdfStartupConfig startupConfig =
-          await KdfStartupConfig.generateWithDefaults(
-            enableHd: false, // TODO: Add as checkbox
-            walletName: walletName,
-            walletPassword:
-                walletPassword, // This is the wallet account password
-            rpcPassword: _kdfHostConfig!.rpcPassword, // RPC password
-            seed:
-                (passphrase?.isNotEmpty ?? false)
-                    ? passphrase
-                    : null, // Optional passphrase
-          );
+      // Show a dialog to enter passphrase if this is not a new wallet creation
+      // For existing wallets, no passphrase needed as it was already used during wallet creation
+
+      final KdfStartupConfig
+      startupConfig = await KdfStartupConfig.generateWithDefaults(
+        allowWeakPassword: true,
+        enableHd: useHdWallet,
+        walletName: walletName,
+        walletPassword: walletPassword,
+        rpcPassword: _kdfHostConfig!.rpcPassword,
+        // No seed passed during normal startups - seed is only used during wallet creation
+        seed: null,
+      );
 
       final result = await _kdfFramework!.startKdf(startupConfig);
 
@@ -833,9 +1017,29 @@ class _MyAppState extends State<MyApp> {
 
       if (!result.isStartingOrAlreadyRunning()) {
         _showMessage('Failed to start KDF: $result');
+      } else {
+        _showMessage('KDF started successfully');
       }
     } catch (e) {
-      _showMessage('Failed to start KDF: $e');
+      String errorMessage = 'Failed to start KDF: $e';
+
+      // Provide more specific error messages for common issues
+      if (e == KdfStartupResult.initError) {
+        errorMessage =
+            'Authentication error. Please check your wallet password and ensure it is strong enough.';
+      } else if (e == KdfStartupResult.alreadyRunning) {
+        errorMessage = 'KDF is already running.';
+      } else if (e == KdfStartupResult.configError) {
+        errorMessage =
+            'Configuration error. Please check your wallet settings.';
+      }
+
+      setState(() {
+        _statusMessage = errorMessage;
+        _isRunning = false;
+      });
+
+      _showMessage(errorMessage);
     }
   }
 
