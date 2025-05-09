@@ -147,7 +147,9 @@ void main(List<String> arguments) async {
     }
 
     await fetcher.updateBuildConfig(commitHash);
-    log.info('Build config updated successfully');
+    log.info(
+      'Build config updated successfully with commit hash and branch info',
+    );
 
     // Clean up temporary directory
     final tempDir = Directory(outputDir);
@@ -167,8 +169,9 @@ void printUsage(ArgParser parser) {
 KDF Fetch CLI Tool
 
 This script fetches the latest commit for a specified branch, locates available binaries,
-calculates their checksums, and updates the build config with this information. It does not
-extract or set up the files - that is the responsibility of the build step.
+calculates their checksums, and updates the build config with this information including
+the branch name and commit hash. It does not extract or set up the files - that is the 
+responsibility of the build step.
 
 It supports both GitHub releases and the internal mirror site at:
 https://sdk.devbuilds.komodo.earth/
@@ -617,7 +620,7 @@ class KdfFetcher {
     return checksum;
   }
 
-  /// Updates the build config with the new commit hash and writes it back to disk
+  /// Updates the build config with the new commit hash and branch name, then writes it back to disk
   Future<void> updateBuildConfig(String commitHash) async {
     final config = await loadBuildConfig();
     final apiConfig = config['api'] as Map<String, dynamic>;
@@ -625,12 +628,23 @@ class KdfFetcher {
     // Update commit hash
     apiConfig['api_commit_hash'] = commitHash;
 
+    // Update branch name
+    final currentBranch = apiConfig['branch'] as String?;
+    if (currentBranch != branch) {
+      log.info(
+        'Updating branch from ${currentBranch ?? 'undefined'} to $branch',
+      );
+      apiConfig['branch'] = branch;
+    }
+
     // Write config back to disk
     final configFile = File(configPath);
     const encoder = JsonEncoder.withIndent('    ');
     await configFile.writeAsString(encoder.convert(config));
 
-    log.info('Updated build config with commit hash: $commitHash');
+    log.info(
+      'Updated build config with commit hash: $commitHash${currentBranch != branch ? ' and branch: $branch' : ''}',
+    );
   }
 }
 

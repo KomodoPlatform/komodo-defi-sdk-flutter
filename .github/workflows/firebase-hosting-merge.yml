@@ -42,6 +42,8 @@ jobs:
         run: dart pub global activate melos
       - name: Bootstrap workspace
         run: melos bootstrap
+      - name: Run dry web build to generate assets (expected to fail)
+        run: cd playground && flutter build web --release || echo "Dry build completed (failure expected)"
       - name: Build playground web
         run: cd playground && flutter build web --release
       - uses: FirebaseExtended/action-hosting-deploy@v0
