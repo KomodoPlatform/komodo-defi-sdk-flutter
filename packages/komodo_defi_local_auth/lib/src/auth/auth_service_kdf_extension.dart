@@ -169,6 +169,7 @@ extension KdfExtensions on KdfAuthService {
     required bool hdEnabled,
     String? plaintextMnemonic,
     String? encryptedMnemonic,
+    bool allowWeakPassword = false,
   }) async {
     if (plaintextMnemonic != null && encryptedMnemonic != null) {
       throw AuthException(
@@ -184,6 +185,7 @@ extension KdfExtensions on KdfAuthService {
       rpcPassword: _hostConfig.rpcPassword,
       allowRegistrations: allowRegistrations,
       enableHd: hdEnabled,
+      allowWeakPassword: allowWeakPassword,
     );
   }
 }

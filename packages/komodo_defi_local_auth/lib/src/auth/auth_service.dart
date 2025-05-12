@@ -143,6 +143,7 @@ class KdfAuthService implements IAuthService {
         walletPassword: password,
         allowRegistrations: false,
         hdEnabled: options.derivationMethod == DerivationMethod.hdWallet,
+        allowWeakPassword: options.allowWeakPassword,
       );
 
       final user = await _authenticateUser(config);
@@ -188,6 +189,7 @@ class KdfAuthService implements IAuthService {
       allowRegistrations: true,
       plaintextMnemonic: mnemonic?.plaintextMnemonic,
       hdEnabled: options.derivationMethod == DerivationMethod.hdWallet,
+      allowWeakPassword: options.allowWeakPassword,
     );
 
     return _lockWriteOperation(() async {
