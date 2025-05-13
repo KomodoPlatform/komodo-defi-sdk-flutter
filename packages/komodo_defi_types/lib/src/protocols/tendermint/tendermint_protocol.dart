@@ -41,8 +41,8 @@ class TendermintProtocol extends ProtocolClass {
 
   String? get accountPrefix => config.valueOrNull<String>('account_prefix');
 
-  String get chainId =>
-      config.value<String>('protocol', 'protocol_data', 'chain_id');
+  String? get chainId =>
+      config.valueOrNull<String>('protocol', 'protocol_data', 'chain_id');
 
   @override
   bool get supportsMultipleAddresses => false;
