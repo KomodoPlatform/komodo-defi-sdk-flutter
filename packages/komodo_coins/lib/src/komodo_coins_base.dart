@@ -37,7 +37,7 @@ class KomodoCoins {
     if (_assets != null) return _assets!;
 
     final url = Uri.parse(
-      'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
+      'https://raw.githubusercontent.com/KomodoPlatform/coins/refs/heads/chain-id-struct/utils/coins_config_unfiltered.json',
     );
   
     try {
