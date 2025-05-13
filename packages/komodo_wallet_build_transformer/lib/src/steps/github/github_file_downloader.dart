@@ -131,14 +131,17 @@ class GitHubFileDownloader {
   }
 
   Future<String> _fetchFileContent(String fileUrl, String repoCommit) async {
-    final isRawContentUrl =
-        fileUrl.startsWith('https://raw.githubusercontent.com');
+    final isRawContentUrl = fileUrl.startsWith(
+      'https://raw.githubusercontent.com',
+    );
 
     final fileContentUrl = Uri.parse(
       isRawContentUrl
           ? '$repoContentUrl/$repoCommit/$fileUrl'
           : '$repoContentUrl/$fileUrl',
     );
+
+    _log.fine('Fetching file content from: $fileContentUrl');
 
     final response = await http.get(fileContentUrl);
     if (response.statusCode != 200) {
@@ -171,14 +174,18 @@ class GitHubFileDownloader {
     Map<String, String> mappedFolders, {
     Duration timeout = const Duration(seconds: 60),
   }) async {
-    final folderContents =
-        await _getMappedFolderContents(mappedFolders, repoCommit);
+    final folderContents = await _getMappedFolderContents(
+      mappedFolders,
+      repoCommit,
+    );
 
     final List<Future<void>> downloadFutures =
         folderContents.entries.map((entry) async {
-      _log.fine('Downloading ${entry.value.length} files from ${entry.key}');
-      await _downloadFolderContents(entry.key, entry.value);
-    }).toList();
+          _log.fine(
+            'Downloading ${entry.value.length} files from ${entry.key}',
+          );
+          await _downloadFolderContents(entry.key, entry.value);
+        }).toList();
 
     await Future.wait(downloadFutures);
 
@@ -197,8 +204,10 @@ class GitHubFileDownloader {
     Map<String, String> mappedFolders, {
     Duration timeout = const Duration(seconds: 60),
   }) async {
-    final folderContents =
-        await _getMappedFolderContents(mappedFolders, repoCommit);
+    final folderContents = await _getMappedFolderContents(
+      mappedFolders,
+      repoCommit,
+    );
     for (final entry in folderContents.entries) {
       _log.fine('Downloading ${entry.value.length} files from ${entry.key}');
       await _downloadFolderContentsSync(entry.key, entry.value);
@@ -218,8 +227,10 @@ class GitHubFileDownloader {
     String key,
     List<GitHubFile> value,
   ) async {
-    await for (final GitHubFileDownloadEvent event
-        in downloadFiles(value, key)) {
+    await for (final GitHubFileDownloadEvent event in downloadFiles(
+      value,
+      key,
+    )) {
       switch (event.event) {
         case GitHubDownloadEvent.downloaded:
           _downloadedFiles++;
@@ -234,9 +245,7 @@ class GitHubFileDownloader {
             success: true,
           );
         case GitHubDownloadEvent.failed:
-          sendProgressMessage(
-            'Failed to download file: ${event.localPath}',
-          );
+          sendProgressMessage('Failed to download file: ${event.localPath}');
       }
     }
   }
@@ -245,29 +254,31 @@ class GitHubFileDownloader {
     String key,
     List<GitHubFile> value,
   ) async {
-    final List<Future<void>> downloadFutures = value.map((file) async {
-      await for (final GitHubFileDownloadEvent event
-          in downloadFiles([file], key)) {
-        switch (event.event) {
-          case GitHubDownloadEvent.downloaded:
-            _downloadedFiles++;
-            sendProgressMessage(
-              'Downloading file: ${event.localPath}',
-              success: true,
-            );
-          case GitHubDownloadEvent.skipped:
-            _skippedFiles++;
-            sendProgressMessage(
-              'Skipped file: ${event.localPath}',
-              success: true,
-            );
-          case GitHubDownloadEvent.failed:
-            sendProgressMessage(
-              'Failed to download file: ${event.localPath}',
-            );
-        }
-      }
-    }).toList();
+    final List<Future<void>> downloadFutures =
+        value.map((file) async {
+          await for (final GitHubFileDownloadEvent event in downloadFiles([
+            file,
+          ], key)) {
+            switch (event.event) {
+              case GitHubDownloadEvent.downloaded:
+                _downloadedFiles++;
+                sendProgressMessage(
+                  'Downloading file: ${event.localPath}',
+                  success: true,
+                );
+              case GitHubDownloadEvent.skipped:
+                _skippedFiles++;
+                sendProgressMessage(
+                  'Skipped file: ${event.localPath}',
+                  success: true,
+                );
+              case GitHubDownloadEvent.failed:
+                sendProgressMessage(
+                  'Failed to download file: ${event.localPath}',
+                );
+            }
+          }
+        }).toList();
 
     await Future.wait(downloadFutures);
   }
@@ -282,8 +293,10 @@ class GitHubFileDownloader {
       createFolders(mappedFolders.keys.toList());
       final localPath = entry.key;
       final repoPath = entry.value;
-      final coins =
-          await apiProvider.getDirectoryContents(repoPath, repoCommit);
+      final coins = await apiProvider.getDirectoryContents(
+        repoPath,
+        repoCommit,
+      );
 
       _totalFiles += coins.length;
       folderContents[localPath] = coins;
