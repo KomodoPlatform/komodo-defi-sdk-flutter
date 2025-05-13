@@ -45,6 +45,15 @@ class CoinBuildConfig {
     );
   }
 
+  bool get isMainBranch =>
+      coinsRepoBranch == 'master' || coinsRepoBranch == 'main';
+
+  String get rawContentUrl =>
+      'https://raw.githubusercontent.com/KomodoPlatform/coins/refs/heads/$coinsRepoBranch';
+
+  static const String cdnContentUrl =
+      'https://api.github.com/repos/KomodoPlatform/coins';
+
   /// Indicates whether fetching updates of the coins assets are enabled.
   final bool fetchAtBuildEnabled;
 
@@ -119,17 +128,17 @@ class CoinBuildConfig {
 
   /// Converts the [CoinBuildConfig] instance to a JSON object.
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'fetch_at_build_enabled': fetchAtBuildEnabled,
-        'update_commit_on_build': updateCommitOnBuild,
-        'bundled_coins_repo_commit': bundledCoinsRepoCommit,
-        'coins_repo_api_url': coinsRepoApiUrl,
-        'coins_repo_content_url': coinsRepoContentUrl,
-        'coins_repo_branch': coinsRepoBranch,
-        'runtime_updates_enabled': runtimeUpdatesEnabled,
-        'mapped_files': mappedFiles,
-        'mapped_folders': mappedFolders,
-        'concurrent_downloads_enabled': concurrentDownloadsEnabled,
-      };
+    'fetch_at_build_enabled': fetchAtBuildEnabled,
+    'update_commit_on_build': updateCommitOnBuild,
+    'bundled_coins_repo_commit': bundledCoinsRepoCommit,
+    'coins_repo_api_url': coinsRepoApiUrl,
+    'coins_repo_content_url': coinsRepoContentUrl,
+    'coins_repo_branch': coinsRepoBranch,
+    'runtime_updates_enabled': runtimeUpdatesEnabled,
+    'mapped_files': mappedFiles,
+    'mapped_folders': mappedFolders,
+    'concurrent_downloads_enabled': concurrentDownloadsEnabled,
+  };
 
   /// Loads the coins runtime update configuration synchronously from the
   /// specified [path].
@@ -170,13 +179,11 @@ class CoinBuildConfig {
     required String assetPath,
     BuildConfig? originalBuildConfig,
   }) async {
-    final foldersToCreate = <String>[
-      path.dirname(assetPath),
-    ];
+    final foldersToCreate = <String>[path.dirname(assetPath)];
     createFolders(foldersToCreate);
 
-    final mergedConfig = (originalBuildConfig?.toJson() ?? {})
-      ..addAll({'coins': toJson()});
+    final mergedConfig =
+        (originalBuildConfig?.toJson() ?? {})..addAll({'coins': toJson()});
 
     print('Saving coin assets config to $assetPath');
     const encoder = JsonEncoder.withIndent('    ');

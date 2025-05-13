@@ -41,9 +41,10 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       // If the branch is `master`, use the repository mirror URL to avoid
       // rate limiting issues. Consider refactoring config to allow branch
       // specific mirror URLs to remove this workaround.
-      coinsRepoContentUrl: buildConfig.coinCIConfig.coinsRepoBranch == 'master'
-          ? 'https://komodoplatform.github.io/coins'
-          : null,
+      coinsRepoContentUrl:
+          buildConfig.coinCIConfig.isMainBranch
+              ? buildConfig.coinCIConfig.coinsRepoContentUrl
+              : buildConfig.coinCIConfig.rawContentUrl,
     );
 
     final provider = GithubApiProvider.withBaseUrl(
@@ -91,7 +92,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
     final isDebugBuild =
         (Platform.environment['FLUTTER_BUILD_MODE'] ?? '').toLowerCase() ==
-            'debug';
+        'debug';
     final latestCommitHash = await githubApiProvider.getLatestCommitHash(
       branch: config.coinsRepoBranch,
     );
@@ -100,28 +101,32 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
     if (config.updateCommitOnBuild) {
       _log.info('Updating commit hash in build config');
-      configWithUpdatedCommit =
-          config.copyWith(bundledCoinsRepoCommit: latestCommitHash);
+      configWithUpdatedCommit = config.copyWith(
+        bundledCoinsRepoCommit: latestCommitHash,
+      );
       await configWithUpdatedCommit.save(
         assetPath: buildConfigOutput.path,
         originalBuildConfig: originalBuildConfig,
       );
     }
 
-    final downloadMethod = config.concurrentDownloadsEnabled
-        ? downloader.download
-        : downloader.downloadSync;
+    final downloadMethod =
+        config.concurrentDownloadsEnabled
+            ? downloader.download
+            : downloader.downloadSync;
     await downloadMethod(
       configWithUpdatedCommit.bundledCoinsRepoCommit,
       _adjustPaths(configWithUpdatedCommit.mappedFiles),
       _adjustPaths(configWithUpdatedCommit.mappedFolders),
     );
 
-    final wasCommitHashUpdated = config.bundledCoinsRepoCommit !=
+    final wasCommitHashUpdated =
+        config.bundledCoinsRepoCommit !=
         configWithUpdatedCommit.bundledCoinsRepoCommit;
 
     if (wasCommitHashUpdated || !alreadyHadCoinAssets) {
-      const errorMessage = 'Coin assets have been updated. '
+      const errorMessage =
+          'Coin assets have been updated. '
           'Please re-run the build process for the changes to take effect.';
 
       // If it's not a debug build and the commit hash was updated, throw an
@@ -183,8 +188,10 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       return;
     }
 
-    _log.info('Reverting fetch coin assets build step. '
-        'Reverting or deleting downloaded files.');
+    _log.info(
+      'Reverting fetch coin assets build step. '
+      'Reverting or deleting downloaded files.',
+    );
 
     // Try `git checkout` to revert changes instead of deleting all files
     // because there may be mapped files/folders that are tracked by git
@@ -193,7 +200,8 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
     final mappedFolderFilePaths = mappedFolderPaths.map(_getFilesInFolder);
 
-    final allFiles = mappedFilePaths +
+    final allFiles =
+        mappedFilePaths +
         mappedFolderFilePaths.expand((List<String> x) => x).toList();
 
     await GitHubFileDownloader.revertOrDeleteGitFiles(allFiles);
@@ -201,8 +209,9 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
   Future<bool> _canSkipMappedFiles(Map<String, String> files) async {
     for (final mappedFile in files.entries) {
-      final remoteFile =
-          await githubApiProvider.getFileMetadata(mappedFile.value);
+      final remoteFile = await githubApiProvider.getFileMetadata(
+        mappedFile.value,
+      );
       final canSkipFile = await _canSkipFile(
         path.join(artifactOutputDirectory, mappedFile.key),
         remoteFile,
@@ -242,9 +251,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     final localFile = File(localFilePath);
 
     if (!localFile.existsSync()) {
-      return Result.error(
-        '$localFilePath does not exist',
-      );
+      return Result.error('$localFilePath does not exist');
     }
 
     final localFileSize = await localFile.length();
@@ -278,10 +285,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
     for (final remoteFile in remoteDirectoryContents) {
       final localFilePath = path.join(directory, remoteFile.name);
-      final canSkipFile = await _canSkipFile(
-        localFilePath,
-        remoteFile,
-      );
+      final canSkipFile = await _canSkipFile(localFilePath, remoteFile);
       if (!canSkipFile.success) {
         return Result.error('Cannot skip build step: ${canSkipFile.error}');
       }
