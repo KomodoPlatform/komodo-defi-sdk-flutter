@@ -191,7 +191,8 @@ class KdfStartupConfig {
   //       'mm2': 1,
   //     };
 
-  static const coinsUrl = 'https://komodoplatform.github.io/coins/coins';
+  static const coinsUrl =
+      'https://raw.githubusercontent.com/KomodoPlatform/coins/refs/heads/chain-id-struct/coins';
 
   static Future<JsonList> _fetchCoinsData() async {
     if (_memoizedCoins != null) return _memoizedCoins!;
