@@ -39,7 +39,7 @@ class KomodoCoins {
     final url = Uri.parse(
       'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
     );
-  
+
     try {
       final response = await http.get(url);
       if (response.statusCode != 200) {
@@ -132,5 +132,14 @@ class KomodoCoins {
         .where((e) => e.key.isChildAsset && e.key.parentId == parentId)
         .map((e) => e.value)
         .toSet();
+  }
+
+  static Future<JsonList> fetchAndTransformCoinsList() async {
+    const coinsUrl = 'https://komodoplatform.github.io/coins/coins';
+
+    final coins =
+        jsonListFromString((await http.get(Uri.parse(coinsUrl))).body);
+
+    return coins.applyTransforms;
   }
 }

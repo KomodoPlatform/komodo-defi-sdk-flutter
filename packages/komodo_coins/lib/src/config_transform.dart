@@ -20,6 +20,7 @@ class CoinConfigTransformer {
   static final _transforms = [
     const WssWebsocketTransform(),
     const ParentCoinTransform(),
+    const EthProtocolDataTransform(),
     // Add more transforms as needed
   ];
 
@@ -43,8 +44,39 @@ class CoinConfigTransformer {
   }
 }
 
+/// This class is responsible for transforming a list of coin configurations.
+/// It applies the necessary transforms to each configuration in the list.
+class CoinConfigListTransformer {
+  const CoinConfigListTransformer();
+  static JsonList applyTransforms(JsonList configs) {
+    final result = JsonList.of(configs);
+
+    for (var i = 0; i < result.length; i++) {
+      result[i] = CoinConfigTransformer.applyTransforms(result[i]);
+    }
+
+    return result;
+  }
+
+  /// Applies transforms to each config in the list and filters out coins that should be excluded.
+  static JsonList applyTransformsAndFilter(JsonList configs) {
+    final transformedList = applyTransforms(configs);
+    return transformedList
+        .where((config) => !const CoinFilter().shouldFilter(config))
+        .toList();
+  }
+}
+
 extension CoinConfigTransformExtension on JsonMap {
   JsonMap get applyTransforms => CoinConfigTransformer.applyTransforms(this);
+}
+
+extension CoinConfigListTransformExtension on JsonList {
+  JsonList get applyTransforms =>
+      CoinConfigListTransformer.applyTransforms(this);
+
+  JsonList get applyTransformsAndFilter =>
+      CoinConfigListTransformer.applyTransformsAndFilter(this);
 }
 
 const bool _isTestCoinsOnly = false;
@@ -167,4 +199,25 @@ class _ParentCoinResolver {
   /// Returns true if this parent coin identifier needs remapping
   static bool needsRemapping(String? parentCoin) =>
       _parentCoinMappings.containsKey(parentCoin);
+}
+
+/// Removes protocol_data from ETH protocol configurations as it's not needed
+/// for ETH coins.
+class EthProtocolDataTransform implements CoinConfigTransform {
+  const EthProtocolDataTransform();
+
+  @override
+  bool needsTransform(JsonMap config) {
+    final protocol = config.valueOrNull<JsonMap>('protocol');
+    return protocol != null &&
+        protocol.valueOrNull<String>('type') == 'ETH' &&
+        protocol.containsKey('protocol_data');
+  }
+
+  @override
+  JsonMap transform(JsonMap config) {
+    final protocol = JsonMap.of(config.value<JsonMap>('protocol'))
+      ..remove('protocol_data');
+    return config..['protocol'] = protocol;
+  }
 }
