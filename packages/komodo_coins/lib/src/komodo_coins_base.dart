@@ -33,7 +33,6 @@ class KomodoCoins {
   }
 
   Future<Map<AssetId, Asset>> fetchAssets() async {
-    
     if (_assets != null) return _assets!;
 
     final url = Uri.parse(
@@ -137,9 +136,21 @@ class KomodoCoins {
   static Future<JsonList> fetchAndTransformCoinsList() async {
     const coinsUrl = 'https://komodoplatform.github.io/coins/coins';
 
-    final coins =
-        jsonListFromString((await http.get(Uri.parse(coinsUrl))).body);
+    try {
+      final response = await http.get(Uri.parse(coinsUrl));
 
-    return coins.applyTransforms;
+      if (response.statusCode != 200) {
+        throw HttpException(
+          'Failed to fetch coins list. Status code: ${response.statusCode}',
+          uri: Uri.parse(coinsUrl),
+        );
+      }
+
+      final coins = jsonListFromString(response.body);
+      return coins.applyTransforms;
+    } catch (e) {
+      debugPrint('Error fetching and transforming coins list: $e');
+      throw Exception('Failed to fetch or process coins list: $e');
+    }
   }
 }
