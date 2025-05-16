@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:komodo_coins/komodo_coins.dart';
 
 class KdfStartupConfig {
   KdfStartupConfig._({
@@ -191,13 +192,10 @@ class KdfStartupConfig {
   //       'mm2': 1,
   //     };
 
-  static const coinsUrl = 'https://komodoplatform.github.io/coins/coins';
-
   static Future<JsonList> _fetchCoinsData() async {
     if (_memoizedCoins != null) return _memoizedCoins!;
 
-    return _memoizedCoins =
-        jsonListFromString((await http.get(Uri.parse(coinsUrl))).body);
+    return _memoizedCoins = await KomodoCoins.fetchAndTransformCoinsList();
 
     // TODO: Implement getting from local asset as a fallback
     // final coinsDataAssetOrEmpty = await rootBundle

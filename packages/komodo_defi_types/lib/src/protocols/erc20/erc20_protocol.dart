@@ -38,7 +38,6 @@ class Erc20Protocol extends ProtocolClass {
 
   static void _validateErc20Config(JsonMap json) {
     final requiredFields = {
-      'chain_id': 'Chain ID',
       'nodes': 'RPC nodes',
       'swap_contract_address': 'Swap contract',
       'fallback_swap_contract': 'Fallback swap contract',
@@ -53,8 +52,6 @@ class Erc20Protocol extends ProtocolClass {
       }
     }
   }
-
-  int get chainId => config.value<int>('chain_id');
 
   List<EvmNode> get nodes =>
       config.value<JsonList>('nodes').map(EvmNode.fromJson).toList();

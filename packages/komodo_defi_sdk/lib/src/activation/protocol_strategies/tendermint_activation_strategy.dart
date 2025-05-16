@@ -47,7 +47,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
           stepCount: 4,
           additionalInfo: {
             'rpcEndpoints': protocol.rpcUrlsMap.length,
-            'chainId': protocol.chainId,
+            if (protocol.chainId != null) 'chainId': protocol.chainId,
           },
         ),
       );
@@ -98,7 +98,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
           additionalInfo: {
             'activatedChain': asset.id.name,
             'activationTime': DateTime.now().toIso8601String(),
-            'chainId': protocol.chainId,
+            if (protocol.chainId != null) 'chainId': protocol.chainId,
             'accountPrefix': protocol.accountPrefix,
           },
         ),
