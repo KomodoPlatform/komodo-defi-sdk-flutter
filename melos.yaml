@@ -22,7 +22,7 @@ scripts:
   runners:generate:
     run: dart run build_runner build --delete-conflicting-outputs
     exec:
-      concurrency: 1
+      concurrency: 5
     packageFilters:
       dependsOn:
         - build_runner
