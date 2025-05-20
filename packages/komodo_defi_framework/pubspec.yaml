@@ -20,6 +20,8 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
   http: ^1.2.2
+  komodo_coins:
+    path: ../komodo_coins
   komodo_defi_types:
     path: ../komodo_defi_types
   komodo_wallet_build_transformer:

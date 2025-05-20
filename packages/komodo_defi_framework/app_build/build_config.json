@@ -1,6 +1,6 @@
 {
     "api": {
-        "api_commit_hash": "c1140d0e08f9b0421f4669fbf0b8a296cb8422a6",
+        "api_commit_hash": "ecb17ecf1a8b8fdded17e68f378856285acea4e1",
         "branch": "dev",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
@@ -12,49 +12,49 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "f9064c6be6c65439e0e1ec5d480e42499ad4743c05259cb89c95ead6c789abff"
+                    "0b1fda628cde4d1385b1c7c8ae35d9ea77595cfd7b36f7eba03742303cb409c8"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "d8be99daf595ad39a4ed02ed836d0d8ddf74ae226b0d5de11185c6b9cfa7d99a"
+                    "f27ca38c52588fa88ecdcdb50b89ac1c4d4d7503d94ecbdd8b0cd2cb374c6d1f"
                 ],
                 "path": "ios"
             },
             "macos": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "c9f498b6199071fe501682ac8c89a732e06edf8bf257cb230f03df2a73e9f065"
+                    "b2fd696152c4708f8a21d3564ebcfb8849612e2107c56f6feec5cde38d1f88e3"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "903f8d63ec649f725aa03a538a9064ba33ae4ef7d74434764a0996b3d022ecf0"
+                    "691ff4326eae640c01479194b95d177e20459d0eef1cee8972c631defdf4be4d"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "74d6ea55b5fc669d4d3a07291ac1690977bb7ba414196c8518e79d7fc5c70bbb"
+                    "606cce8867a25c0e398d9c1aab8fa2cdd9603c115b1203014e09253a255878c5"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "25dc3964c100583e2b5b0ccfd62bceb1e30beef699c5c6f620fe3ac15c89be97"
+                    "fb906c25ea523fa0af8b5444d8334c4bd3a912511cb0069da3fbba9cc006ff62"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "475854cfa65337c597a5131d56ae68938b3efc7d4d6da8a37e258bf27e8253a2"
+                    "c021d56ad106f5648b89bda89e22f523c9751b2bd92557e1602ffddc307881b1"
                 ],
                 "path": "linux/bin"
             }
@@ -63,7 +63,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "189c0cfa2ee8804a32f35a44f9dea2fe8198d646",
+        "bundled_coins_repo_commit": "ae2c6a5bd477216bdea92e76e4b3b2fb29e9ba0f",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://raw.githubusercontent.com/KomodoPlatform/coins/refs/heads/chain-id-struct",
         "coins_repo_branch": "chain-id-struct",
