@@ -15,7 +15,7 @@ scripts:
   indexes:generate:
     run: dart run index_generator
     exec:
-      concurrency: 1
+      concurrency: 5
     packageFilters:
       dependsOn: index_generator
 
