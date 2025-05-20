@@ -20,7 +20,6 @@ class CoinConfigTransformer {
   static final _transforms = [
     const WssWebsocketTransform(),
     const ParentCoinTransform(),
-    const EthProtocolDataTransform(),
     // Add more transforms as needed
   ];
 
@@ -199,25 +198,4 @@ class _ParentCoinResolver {
   /// Returns true if this parent coin identifier needs remapping
   static bool needsRemapping(String? parentCoin) =>
       _parentCoinMappings.containsKey(parentCoin);
-}
-
-/// Removes protocol_data from ETH protocol configurations as it's not needed
-/// for ETH coins.
-class EthProtocolDataTransform implements CoinConfigTransform {
-  const EthProtocolDataTransform();
-
-  @override
-  bool needsTransform(JsonMap config) {
-    final protocol = config.valueOrNull<JsonMap>('protocol');
-    return protocol != null &&
-        protocol.valueOrNull<String>('type') == 'ETH' &&
-        protocol.containsKey('protocol_data');
-  }
-
-  @override
-  JsonMap transform(JsonMap config) {
-    final protocol = JsonMap.of(config.value<JsonMap>('protocol'))
-      ..remove('protocol_data');
-    return config..['protocol'] = protocol;
-  }
 }
