@@ -13,14 +13,14 @@ class PubkeyManager {
 
   /// Get pubkeys for a given asset, handling HD/non-HD differences internally
   Future<AssetPubkeys> getPubkeys(Asset asset) async {
-    await retryWithBackoff(() => _activationManager.activateAsset(asset).last);
+    await retry(() => _activationManager.activateAsset(asset).last);
     final strategy = await _resolvePubkeyStrategy(asset);
     return strategy.getPubkeys(asset.id, _client);
   }
 
   /// Create a new pubkey for an asset if supported
   Future<PubkeyInfo> createNewPubkey(Asset asset) async {
-    await retryWithBackoff(() => _activationManager.activateAsset(asset).last);
+    await retry(() => _activationManager.activateAsset(asset).last);
     final strategy = await _resolvePubkeyStrategy(asset);
     if (!strategy.supportsMultipleAddresses) {
       throw UnsupportedError(
