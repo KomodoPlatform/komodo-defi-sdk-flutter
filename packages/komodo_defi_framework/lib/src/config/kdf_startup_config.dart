@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:komodo_coins/komodo_coins.dart';
@@ -218,10 +219,7 @@ class KdfStartupConfig {
   }
 
   static bool _validateRPCPassword(String src) {
-    final exp =
-        RegExp(r'^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,32}$');
-    if (!exp.hasMatch(src)) return false;
-    if (RegExp(r'(.)\1\1').hasMatch(src)) return false;
-    return true;
+    final error = SecurityUtils.checkPasswordRequirements(src);
+    return error == PasswordValidationError.none;
   }
 }

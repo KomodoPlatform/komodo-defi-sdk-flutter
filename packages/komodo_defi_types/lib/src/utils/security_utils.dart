@@ -1,6 +1,19 @@
 import 'dart:math';
 
+import 'package:characters/characters.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+
+/// Enum representing different types of password validation errors
+enum PasswordValidationError {
+  containsPassword,
+  tooShort,
+  missingDigit,
+  missingLowercase,
+  missingUppercase,
+  missingSpecialCharacter,
+  consecutiveCharacters,
+  none
+}
 
 // ignore: one_member_abstracts
 abstract class SecurityUtils {
@@ -12,59 +25,111 @@ abstract class SecurityUtils {
         length,
         extendedSpecialCharacters: extendedSpecialCharacters,
       );
-}
 
-// TODO: unit tests
+  /// /// Validates password according to KDF password policy
+  ///
+  /// Password requirements:
+  /// - At least 8 characters long
+  /// - Can't contain the word "password"
+  /// - At least 1 digit
+  /// - At least 1 lowercase character
+  /// - At least 1 uppercase character
+  /// - At least 1 special character
+  /// - No same character 3 times in a row
+  static PasswordValidationError checkPasswordRequirements(String password) {
+    // Use Unicode-aware character counting
+    if (password.characters.length < 8) {
+      return PasswordValidationError.tooShort;
+    }
 
-String _generateSecurePassword(
-  int length, {
-  bool extendedSpecialCharacters = false,
-}) {
-  const upperCaseLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const lowerCaseLetters = 'abcdefghijklmnopqrstuvwxyz';
-  const digits = '0123456789';
+    if (password
+        .toLowerCase()
+        .contains(RegExp('password', caseSensitive: false, unicode: true))) {
+      return PasswordValidationError.containsPassword;
+    }
 
-  // Standard special characters that are generally safe in most contexts,
-  // including JSON
-  const specialCharacters = '@';
-  // const specialCharacters = r"*.!@#$%^(){}:;',.?/~`_+-=|";
+    // Check for digits (any numerical digit in any script)
+    if (!RegExp(r'.*\p{N}.*', unicode: true).hasMatch(password)) {
+      return PasswordValidationError.missingDigit;
+    }
 
-  const extendedSpecial = r'~`$^*+=<>?';
+    // Check for lowercase (any lowercase letter in any script)
+    if (!RegExp(r'.*\p{Ll}.*', unicode: true).hasMatch(password)) {
+      return PasswordValidationError.missingLowercase;
+    }
 
-  final allCharacters = upperCaseLetters +
-      lowerCaseLetters +
-      digits +
-      specialCharacters +
-      (extendedSpecialCharacters ? extendedSpecial : '');
+    // Check for uppercase (any uppercase letter in any script)
+    if (!RegExp(r'.*\p{Lu}.*', unicode: true).hasMatch(password)) {
+      return PasswordValidationError.missingUppercase;
+    }
 
-  // Ensure the password length is at least 8 characters
-  if (length < 8) {
-    throw ArgumentError('Password length must be at least 8 characters.');
+    // Check for special characters
+    if (!RegExp(r'.*[^\p{L}\p{N}].*', unicode: true).hasMatch(password)) {
+      return PasswordValidationError.missingSpecialCharacter;
+    }
+
+    // Unicode-aware check for consecutive repeated characters using Characters class
+    final charactersList = password.characters.toList();
+    for (var i = 0; i < charactersList.length - 2; i++) {
+      if (charactersList[i] == charactersList[i + 1] &&
+          charactersList[i] == charactersList[i + 2]) {
+        return PasswordValidationError.consecutiveCharacters;
+      }
+    }
+
+    return PasswordValidationError.none;
   }
 
-  // Random number generator
-  final random = Random.secure();
+  static String _generateSecurePassword(
+    int length, {
+    bool extendedSpecialCharacters = false,
+  }) {
+    const upperCaseLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowerCaseLetters = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
 
-  // Pick one character from each category to ensure password strength
-  final password = <String>[
-    upperCaseLetters[random.nextInt(upperCaseLetters.length)],
-    lowerCaseLetters[random.nextInt(lowerCaseLetters.length)],
-    digits[random.nextInt(digits.length)],
-    specialCharacters[random.nextInt(specialCharacters.length)],
-    if (extendedSpecialCharacters)
-      extendedSpecial[random.nextInt(extendedSpecial.length)],
-  ];
+    // Standard special characters that are generally safe in most contexts,
+    // including JSON
+    const specialCharacters = '@';
+    // const specialCharacters = r"*.!@#$%^(){}:;',.?/~`_+-=|";
 
-  // Fill the rest of the password length with random characters from the pool
-  for (var i = 4; i < length; i++) {
-    password.add(allCharacters[random.nextInt(allCharacters.length)]);
+    const extendedSpecial = r'~`$^*+=<>?';
+
+    final allCharacters = upperCaseLetters +
+        lowerCaseLetters +
+        digits +
+        specialCharacters +
+        (extendedSpecialCharacters ? extendedSpecial : '');
+
+    // Ensure the password length is at least 8 characters
+    if (length < 8) {
+      throw ArgumentError('Password length must be at least 8 characters.');
+    }
+
+    // Random number generator
+    final random = Random.secure();
+
+    // Pick one character from each category to ensure password strength
+    final password = <String>[
+      upperCaseLetters[random.nextInt(upperCaseLetters.length)],
+      lowerCaseLetters[random.nextInt(lowerCaseLetters.length)],
+      digits[random.nextInt(digits.length)],
+      specialCharacters[random.nextInt(specialCharacters.length)],
+      if (extendedSpecialCharacters)
+        extendedSpecial[random.nextInt(extendedSpecial.length)],
+    ];
+
+    // Fill the rest of the password length with random characters from the pool
+    for (var i = 4; i < length; i++) {
+      password.add(allCharacters[random.nextInt(allCharacters.length)]);
+    }
+
+    // Shuffle the password to ensure randomness
+    password.shuffle(random);
+
+    // Join the list into a string and return it
+    return password.join();
   }
-
-  // Shuffle the password to ensure randomness
-  password.shuffle(random);
-
-  // Join the list into a string and return it
-  return password.join();
 }
 
 extension CensoredJsonMap on JsonMap {
