@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/screens/withdrawal_page.dart';
+import 'package:kdf_sdk_example/screens/swap_page.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -348,6 +349,18 @@ class _AssetHeaderState extends State<AssetHeader> {
                   },
           icon: const Icon(Icons.send),
           label: const Text('Send'),
+        ),
+        FilledButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (context) => SwapPage(widget.asset),
+              ),
+            );
+          },
+          icon: const Icon(Icons.currency_exchange),
+          label: const Text('Swap'),
         ),
         FilledButton.tonalIcon(
           onPressed: () {},
