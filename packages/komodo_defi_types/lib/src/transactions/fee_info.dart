@@ -47,6 +47,16 @@ sealed class FeeInfo with _$FeeInfo {
           gasPrice: Decimal.parse(json['gas_price'].toString()),
           gasLimit: json['gas_limit'] as int,
         );
+      // Legacy withdraw API returns "Tendermint" instead of "CosmosGas",
+      // so add this case for compatibility and as a fallback.
+      case 'Tendermint':
+        return FeeInfo.cosmosGas(
+          coin: json['coin'] as String? ?? '',
+          // The doc sometimes shows 0.05 as a number (double),
+          // so we convert it to string, then parse:
+          gasPrice: Decimal.parse(json['amount'].toString()),
+          gasLimit: json['gas_limit'] as int,
+        );
       case 'CosmosGas':
         return FeeInfo.cosmosGas(
           coin: json['coin'] as String? ?? '',

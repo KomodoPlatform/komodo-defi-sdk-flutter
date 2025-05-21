@@ -45,7 +45,8 @@ class LegacyWithdrawalManager implements WithdrawalManager {
           coin: result.coin,
           toAddress: result.to.first,
           fee: result.fee,
-          kmdRewardsEligible: result.kmdRewards != null &&
+          kmdRewardsEligible:
+              result.kmdRewards != null &&
               Decimal.parse(result.kmdRewards!.amount) > Decimal.zero,
         ),
       );
@@ -67,7 +68,8 @@ class LegacyWithdrawalManager implements WithdrawalManager {
             coin: parameters.asset,
             toAddress: parameters.toAddress,
             fee: result.fee,
-            kmdRewardsEligible: result.kmdRewards != null &&
+            kmdRewardsEligible:
+                result.kmdRewards != null &&
                 Decimal.parse(result.kmdRewards!.amount) > Decimal.zero,
           ),
         );
@@ -112,7 +114,7 @@ class LegacyWithdrawalManager implements WithdrawalManager {
       }
 
       return response.details as WithdrawResult;
-    } catch (e) {
+    } catch (e, s) {
       if (e is WithdrawalException) {
         rethrow;
       }

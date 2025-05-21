@@ -1,5 +1,6 @@
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manager responsible for handling pubkey operations across different assets
@@ -12,33 +13,20 @@ class PubkeyManager {
 
   /// Get pubkeys for a given asset, handling HD/non-HD differences internally
   Future<AssetPubkeys> getPubkeys(Asset asset) async {
-    final finalStatus = await _activationManager.activateAsset(asset).last;
-    if (finalStatus.isComplete && !finalStatus.isSuccess) {
-      throw StateError(
-        'Failed to activate asset ${asset.id.name}. ${finalStatus.toJson()}',
-      );
-    }
-
+    await retry(() => _activationManager.activateAsset(asset).last);
     final strategy = await _resolvePubkeyStrategy(asset);
     return strategy.getPubkeys(asset.id, _client);
   }
 
   /// Create a new pubkey for an asset if supported
   Future<PubkeyInfo> createNewPubkey(Asset asset) async {
-    final activationStatus = await _activationManager.activateAsset(asset).last;
-    if (activationStatus.isComplete && !activationStatus.isSuccess) {
-      throw StateError(
-        'Failed to activate asset ${asset.id.name}. ${activationStatus.toJson()}',
-      );
-    }
-
+    await retry(() => _activationManager.activateAsset(asset).last);
     final strategy = await _resolvePubkeyStrategy(asset);
     if (!strategy.supportsMultipleAddresses) {
       throw UnsupportedError(
         'Asset ${asset.id.name} does not support multiple addresses',
       );
     }
-
     return strategy.getNewAddress(asset.id, _client);
   }
 

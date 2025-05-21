@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/withdrawals/legacy_withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manages asset withdrawals using task-based API
@@ -42,6 +43,18 @@ class WithdrawalManager {
     WithdrawParameters parameters,
   ) async {
     try {
+      final asset =
+          _assetProvider.findAssetsByConfigId(parameters.asset).single;
+      final isTendermintProtocol = asset.protocol is TendermintProtocol;
+
+      // Tendermint assets are not yet supported by the task-based API
+      // and require a legacy implementation
+      if (isTendermintProtocol) {
+        final legacyManager = LegacyWithdrawalManager(_client);
+        return await legacyManager.previewWithdrawal(parameters);
+      }
+
+      // Use task-based approach for non-Tendermint assets
       final stream = (await _client.rpc.withdraw.init(
         parameters,
       )).watch<WithdrawStatusResponse>(
@@ -86,6 +99,16 @@ class WithdrawalManager {
     try {
       final asset =
           _assetProvider.findAssetsByConfigId(parameters.asset).single;
+      final isTendermintProtocol = asset.protocol is TendermintProtocol;
+
+      // Tendermint assets are not yet supported by the task-based API
+      // and require a legacy implementation
+      if (isTendermintProtocol) {
+        final legacyManager = LegacyWithdrawalManager(_client);
+        yield* legacyManager.withdraw(parameters);
+        return;
+      }
+
       final activationStatus =
           await _activationManager.activateAsset(asset).last;
 
