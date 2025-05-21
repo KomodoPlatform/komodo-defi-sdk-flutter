@@ -5,12 +5,13 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 part 'fee_info.freezed.dart';
 // We are doing manual fromJson/toJson, so no need for part 'fee_info.g.dart';
 
-/// A union representing five possible fee types:
+/// A union representing six possible fee types:
 /// - UtxoFixed
 /// - UtxoPerKbyte
 /// - EthGas
 /// - Qrc20Gas
 /// - CosmosGas
+/// - Tendermint
 @Freezed()
 sealed class FeeInfo with _$FeeInfo {
   //////////////////////////////////////////////////////////////////////////////
@@ -47,14 +48,10 @@ sealed class FeeInfo with _$FeeInfo {
           gasPrice: Decimal.parse(json['gas_price'].toString()),
           gasLimit: json['gas_limit'] as int,
         );
-      // Legacy withdraw API returns "Tendermint" instead of "CosmosGas",
-      // so add this case for compatibility and as a fallback.
       case 'Tendermint':
-        return FeeInfo.cosmosGas(
+        return FeeInfo.tendermint(
           coin: json['coin'] as String? ?? '',
-          // The doc sometimes shows 0.05 as a number (double),
-          // so we convert it to string, then parse:
-          gasPrice: Decimal.parse(json['amount'].toString()),
+          amount: Decimal.parse(json['amount'].toString()),
           gasLimit: json['gas_limit'] as int,
         );
       case 'CosmosGas':
@@ -141,6 +138,28 @@ sealed class FeeInfo with _$FeeInfo {
     required int gasLimit,
   }) = FeeInfoCosmosGas;
 
+  /// 6) Tendermint fee, with fixed `amount` and `gasLimit`.
+  ///
+  /// Example JSON:
+  /// ```json
+  /// {
+  ///   "type": "Tendermint",
+  ///   "coin": "IRIS",
+  ///   "amount": "0.038553",
+  ///   "gas_limit": 100000
+  /// }
+  /// ```
+  /// Total fee is just the amount (not calculated from gas * price)
+  const factory FeeInfo.tendermint({
+    required String coin,
+
+    /// The fee amount in coin units
+    required Decimal amount,
+
+    /// Gas limit
+    required int gasLimit,
+  }) = FeeInfoTendermint;
+
   /// A convenience getter returning the *total fee* in the coin's main units.
   Decimal get totalFee => switch (this) {
         FeeInfoUtxoFixed(:final amount) => amount,
@@ -151,6 +170,7 @@ sealed class FeeInfo with _$FeeInfo {
           gasPrice * Decimal.fromInt(gasLimit),
         FeeInfoCosmosGas(:final gasPrice, :final gasLimit) =>
           gasPrice * Decimal.fromInt(gasLimit),
+        FeeInfoTendermint(:final amount) => amount,
       };
 
   /// Convert this [FeeInfo] to a JSON object matching the mmRPC 2.0 docs.
@@ -174,13 +194,19 @@ sealed class FeeInfo with _$FeeInfo {
         FeeInfoQrc20Gas(:final coin, :final gasPrice, :final gasLimit) => {
             'type': 'Qrc20Gas',
             'coin': coin,
-            'gas_price': gasPrice.toString(),
+            'gas_price': gasPrice.toDouble(),
             'gas_limit': gasLimit,
           },
         FeeInfoCosmosGas(:final coin, :final gasPrice, :final gasLimit) => {
             'type': 'CosmosGas',
             'coin': coin,
-            'gas_price': gasPrice.toString(),
+            'gas_price': gasPrice.toDouble(),
+            'gas_limit': gasLimit,
+          },
+        FeeInfoTendermint(:final coin, :final amount, :final gasLimit) => {
+            'type': 'Tendermint',
+            'coin': coin,
+            'amount': amount.toString(),
             'gas_limit': gasLimit,
           },
       };
@@ -197,6 +223,7 @@ extension FeeInfoMaybeMap on FeeInfo {
     TResult Function(FeeInfoEthGas value)? ethGas,
     TResult Function(FeeInfoQrc20Gas value)? qrc20Gas,
     TResult Function(FeeInfoCosmosGas value)? cosmosGas,
+    TResult Function(FeeInfoTendermint value)? tendermint,
   }) =>
       switch (this) {
         final FeeInfoUtxoFixed fee when utxoFixed != null => utxoFixed(fee),
@@ -205,6 +232,7 @@ extension FeeInfoMaybeMap on FeeInfo {
         final FeeInfoEthGas fee when ethGas != null => ethGas(fee),
         final FeeInfoQrc20Gas fee when qrc20Gas != null => qrc20Gas(fee),
         final FeeInfoCosmosGas fee when cosmosGas != null => cosmosGas(fee),
+        final FeeInfoTendermint fee when tendermint != null => tendermint(fee),
         _ => orElse(),
       };
 }

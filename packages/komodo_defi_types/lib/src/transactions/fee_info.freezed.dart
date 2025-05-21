@@ -497,4 +497,93 @@ class _$FeeInfoCosmosGasCopyWithImpl<$Res>
   }
 }
 
+/// @nodoc
+
+class FeeInfoTendermint extends FeeInfo {
+  const FeeInfoTendermint(
+      {required this.coin, required this.amount, required this.gasLimit})
+      : super._();
+
+  @override
+  final String coin;
+
+  /// The fee amount in coin units
+  final Decimal amount;
+
+  /// Gas limit
+  final int gasLimit;
+
+  /// Create a copy of FeeInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $FeeInfoTendermintCopyWith<FeeInfoTendermint> get copyWith =>
+      _$FeeInfoTendermintCopyWithImpl<FeeInfoTendermint>(this, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is FeeInfoTendermint &&
+            (identical(other.coin, coin) || other.coin == coin) &&
+            (identical(other.amount, amount) || other.amount == amount) &&
+            (identical(other.gasLimit, gasLimit) ||
+                other.gasLimit == gasLimit));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, coin, amount, gasLimit);
+
+  @override
+  String toString() {
+    return 'FeeInfo.tendermint(coin: $coin, amount: $amount, gasLimit: $gasLimit)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $FeeInfoTendermintCopyWith<$Res>
+    implements $FeeInfoCopyWith<$Res> {
+  factory $FeeInfoTendermintCopyWith(
+          FeeInfoTendermint value, $Res Function(FeeInfoTendermint) _then) =
+      _$FeeInfoTendermintCopyWithImpl;
+  @override
+  @useResult
+  $Res call({String coin, Decimal amount, int gasLimit});
+}
+
+/// @nodoc
+class _$FeeInfoTendermintCopyWithImpl<$Res>
+    implements $FeeInfoTendermintCopyWith<$Res> {
+  _$FeeInfoTendermintCopyWithImpl(this._self, this._then);
+
+  final FeeInfoTendermint _self;
+  final $Res Function(FeeInfoTendermint) _then;
+
+  /// Create a copy of FeeInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? coin = null,
+    Object? amount = null,
+    Object? gasLimit = null,
+  }) {
+    return _then(FeeInfoTendermint(
+      coin: null == coin
+          ? _self.coin
+          : coin // ignore: cast_nullable_to_non_nullable
+              as String,
+      amount: null == amount
+          ? _self.amount
+          : amount // ignore: cast_nullable_to_non_nullable
+              as Decimal,
+      gasLimit: null == gasLimit
+          ? _self.gasLimit
+          : gasLimit // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
 // dart format on
