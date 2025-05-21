@@ -36,17 +36,25 @@ sealed class FeeInfo with _$FeeInfo {
           amount: Decimal.parse(json['amount'] as String),
         );
       case 'EthGas' || 'Eth':
+        final totalGasFee = json['total_fee'] != null
+            ? Decimal.parse(json['total_fee'].toString())
+            : null;
         return FeeInfo.ethGas(
           coin: json['coin'] as String? ?? '',
           // If JSON provides e.g. "0.000000003", parse to Decimal => 3e-9
           gasPrice: Decimal.parse(json['gas_price'].toString()),
           gas: json['gas'] as int,
+          totalGasFee: totalGasFee,
         );
       case 'Qrc20Gas':
+        final totalGasFee = json['total_gas_fee'] != null
+            ? Decimal.parse(json['total_gas_fee'].toString())
+            : null;
         return FeeInfo.qrc20Gas(
           coin: json['coin'] as String? ?? '',
           gasPrice: Decimal.parse(json['gas_price'].toString()),
           gasLimit: json['gas_limit'] as int,
+          totalGasFee: totalGasFee,
         );
       case 'Tendermint':
         return FeeInfo.tendermint(
@@ -92,10 +100,12 @@ sealed class FeeInfo with _$FeeInfo {
   ///   "type": "EthGas",
   ///   "coin": "ETH",
   ///   "gas_price": "0.000000003",
-  ///   "gas": 21000
+  ///   "gas": 21000,
+  ///   "total_fee": "0.000021"
   /// }
   /// ```
   /// Interpreted as: 3 Gwei -> total fee = 0.000000003 ETH * 21000 = 0.000063 ETH.
+  /// If `totalGasFee` is provided, it will be used directly instead of calculating from gasPrice * gas.
   const factory FeeInfo.ethGas({
     required String coin,
 
@@ -104,6 +114,10 @@ sealed class FeeInfo with _$FeeInfo {
 
     /// Gas limit (number of gas units)
     required int gas,
+
+    /// Optional total fee override. If provided, this value will be used directly
+    /// instead of calculating from gasPrice * gas.
+    Decimal? totalGasFee,
   }) = FeeInfoEthGas;
 
   /// 4) Qtum/QRC20-like gas, specifying `gasPrice` (in coin units) and `gasLimit`.
@@ -115,6 +129,10 @@ sealed class FeeInfo with _$FeeInfo {
 
     /// Gas limit
     required int gasLimit,
+
+    /// Optional total gas fee in coin units. If not provided, it will be calculated
+    /// as `gasPrice * gasLimit`.
+    Decimal? totalGasFee,
   }) = FeeInfoQrc20Gas;
 
   /// 5) Cosmos-like gas, specifying `gasPrice` (in coin units) and `gasLimit`.
@@ -164,10 +182,10 @@ sealed class FeeInfo with _$FeeInfo {
   Decimal get totalFee => switch (this) {
         FeeInfoUtxoFixed(:final amount) => amount,
         FeeInfoUtxoPerKbyte(:final amount) => amount,
-        FeeInfoEthGas(:final gasPrice, :final gas) =>
-          gasPrice * Decimal.fromInt(gas),
-        FeeInfoQrc20Gas(:final gasPrice, :final gasLimit) =>
-          gasPrice * Decimal.fromInt(gasLimit),
+        FeeInfoEthGas(:final gasPrice, :final gas, :final totalGasFee) =>
+          totalGasFee ?? (gasPrice * Decimal.fromInt(gas)),
+        FeeInfoQrc20Gas(:final gasPrice, :final gasLimit, :final totalGasFee) =>
+          totalGasFee ?? (gasPrice * Decimal.fromInt(gasLimit)),
         FeeInfoCosmosGas(:final gasPrice, :final gasLimit) =>
           gasPrice * Decimal.fromInt(gasLimit),
         FeeInfoTendermint(:final amount) => amount,
@@ -185,17 +203,31 @@ sealed class FeeInfo with _$FeeInfo {
             'coin': coin,
             'amount': amount.toString(),
           },
-        FeeInfoEthGas(:final coin, :final gasPrice, :final gas) => {
+        FeeInfoEthGas(
+          :final coin,
+          :final gasPrice,
+          :final gas,
+          :final totalGasFee
+        ) =>
+          {
             'type': 'Eth',
             'coin': coin,
             'gas_price': gasPrice.toString(),
             'gas': gas,
+            if (totalGasFee != null) 'total_fee': totalGasFee.toString(),
           },
-        FeeInfoQrc20Gas(:final coin, :final gasPrice, :final gasLimit) => {
+        FeeInfoQrc20Gas(
+          :final coin,
+          :final gasPrice,
+          :final gasLimit,
+          :final totalGasFee
+        ) =>
+          {
             'type': 'Qrc20Gas',
             'coin': coin,
             'gas_price': gasPrice.toDouble(),
             'gas_limit': gasLimit,
+            if (totalGasFee != null) 'total_gas_fee': totalGasFee.toString(),
           },
         FeeInfoCosmosGas(:final coin, :final gasPrice, :final gasLimit) => {
             'type': 'CosmosGas',
