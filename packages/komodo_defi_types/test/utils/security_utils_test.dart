@@ -570,8 +570,8 @@ void main() {
         extendedSpecialCharacters: true,
       );
 
-      // Check for at least one extended special character
       expect(RegExp(r'[~`$^*+=<>?]').hasMatch(password), isTrue);
+      expect(password.length, equals(20));
     });
 
     test('Generated passwords should be different (randomness check)', () {
@@ -634,6 +634,32 @@ void main() {
       expect(password.length, equals(100));
       expect(
         SecurityUtils.checkPasswordRequirements(password),
+        equals(PasswordValidationError.none),
+      );
+    });
+
+    test(
+        'Should generate exact length password with extended special characters',
+        () {
+      final password12 = SecurityUtils.generatePasswordSecure(
+        12,
+        extendedSpecialCharacters: true,
+      );
+      final password16 = SecurityUtils.generatePasswordSecure(
+        16,
+        extendedSpecialCharacters: true,
+      );
+      final password24 = SecurityUtils.generatePasswordSecure(
+        24,
+        extendedSpecialCharacters: true,
+      );
+
+      expect(password12.length, equals(12));
+      expect(password16.length, equals(16));
+      expect(password24.length, equals(24));
+
+      expect(
+        SecurityUtils.checkPasswordRequirements(password12),
         equals(PasswordValidationError.none),
       );
     });

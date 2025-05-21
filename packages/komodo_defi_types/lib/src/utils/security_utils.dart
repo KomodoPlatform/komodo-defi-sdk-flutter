@@ -128,7 +128,7 @@ abstract class SecurityUtils {
     ];
 
     // Fill the rest of the password length with random characters from the pool
-    for (var i = 4; i < length; i++) {
+    for (var i = password.length; i < length; i++) {
       password.add(allCharacters[random.nextInt(allCharacters.length)]);
     }
 
