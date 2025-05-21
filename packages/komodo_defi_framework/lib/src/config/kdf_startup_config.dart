@@ -91,7 +91,7 @@ class KdfStartupConfig {
     return KdfStartupConfig._(
       walletName: walletName,
       walletPassword: walletPassword,
-      rpcPassword: rpcPassword ?? generatePassword(),
+      rpcPassword: rpcPassword ?? SecurityUtils.generatePasswordSecure(32),
       seed: seed,
       dbDir: dbPath,
       userHome: userHomePath,
@@ -137,7 +137,7 @@ class KdfStartupConfig {
       walletName: null,
       walletPassword: null,
       seed: null,
-      rpcPassword: rpcPassword ?? generatePassword(),
+      rpcPassword: rpcPassword ?? SecurityUtils.generatePasswordSecure(32),
       userHome: home,
       dbDir: dbDir,
       allowWeakPassword: true,
@@ -209,17 +209,4 @@ class KdfStartupConfig {
   }
 
   static JsonList? _memoizedCoins;
-
-  static String generatePassword() {
-    var result = '';
-    while (!_validateRPCPassword(result)) {
-      result = SecurityUtils.generatePasswordSecure(32);
-    }
-    return result;
-  }
-
-  static bool _validateRPCPassword(String src) {
-    final error = SecurityUtils.checkPasswordRequirements(src);
-    return error == PasswordValidationError.none;
-  }
 }

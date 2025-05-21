@@ -12,7 +12,9 @@ enum PasswordValidationError {
   missingUppercase,
   missingSpecialCharacter,
   consecutiveCharacters,
-  none
+  none;
+
+  bool get isValid => this == PasswordValidationError.none;
 }
 
 // ignore: one_member_abstracts
@@ -20,11 +22,17 @@ abstract class SecurityUtils {
   static String generatePasswordSecure(
     int length, {
     bool extendedSpecialCharacters = false,
-  }) =>
-      _generateSecurePassword(
+  }) {
+    var result = '';
+    while (!SecurityUtils.checkPasswordRequirements(result).isValid) {
+      result = _generateSecurePassword(
         length,
         extendedSpecialCharacters: extendedSpecialCharacters,
       );
+    }
+
+    return result;
+  }
 
   /// /// Validates password according to KDF password policy
   ///
