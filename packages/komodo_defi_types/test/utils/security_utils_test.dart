@@ -10,8 +10,10 @@ void main() {
         SecurityUtils.checkPasswordRequirements('Abc1!'),
         PasswordValidationError.tooShort,
       );
-      expect(SecurityUtils.checkPasswordRequirements(''),
-          PasswordValidationError.tooShort);
+      expect(
+        SecurityUtils.checkPasswordRequirements(''),
+        PasswordValidationError.tooShort,
+      );
       expect(
         SecurityUtils.checkPasswordRequirements('A1b!'),
         PasswordValidationError.tooShort,
@@ -304,7 +306,8 @@ void main() {
     test('Unicode edge cases and challenging patterns', () {
       expect(
         SecurityUtils.checkPasswordRequirements(
-            'Раssw0rd!'), // Cyrillic 'Р' (not Latin 'P')
+          'Раssw0rd!',
+        ), // Cyrillic 'Р' (not Latin 'P')
         PasswordValidationError.none,
       );
 
@@ -355,31 +358,36 @@ void main() {
       // Right-to-left marks and embedding
       expect(
         SecurityUtils.checkPasswordRequirements(
-            'Pass\u200Eword123!A'), // Contains LTR mark
+          'Pass\u200Eword123!A',
+        ), // Contains LTR mark
         PasswordValidationError.none,
       );
       expect(
         SecurityUtils.checkPasswordRequirements(
-            'Pass\u200Fword123!A'), // Contains RTL mark
+          'Pass\u200Fword123!A',
+        ), // Contains RTL mark
         PasswordValidationError.none,
       );
 
       // Mixed directionality
       expect(
         SecurityUtils.checkPasswordRequirements(
-            'Abcהמסיסמ123!'), // Hebrew mixed with Latin
+          'Abcהמסיסמ123!',
+        ), // Hebrew mixed with Latin
         PasswordValidationError.none,
       );
 
       // Special spaces
       expect(
         SecurityUtils.checkPasswordRequirements(
-            'Pass\u2007word123!A'), // Figure space
+          'Pass\u2007word123!A',
+        ), // Figure space
         PasswordValidationError.none,
       );
       expect(
         SecurityUtils.checkPasswordRequirements(
-            'Pass\u00A0word123!A'), // Non-breaking space
+          'Pass\u00A0word123!A',
+        ), // Non-breaking space
         PasswordValidationError.none,
       );
     });
@@ -511,6 +519,123 @@ void main() {
       for (final String input in problematicInputs) {
         SecurityUtils.checkPasswordRequirements(input);
       }
+    });
+  });
+
+  group('Password generation tests', () {
+    test('Should throw error when length is less than 8', () {
+      expect(
+        () => SecurityUtils.generatePasswordSecure(7),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => SecurityUtils.generatePasswordSecure(0),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => SecurityUtils.generatePasswordSecure(-1),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('Should generate password of specified length', () {
+      final password8 = SecurityUtils.generatePasswordSecure(8);
+      final password16 = SecurityUtils.generatePasswordSecure(16);
+      final password32 = SecurityUtils.generatePasswordSecure(32);
+
+      expect(password8.length, equals(8));
+      expect(password16.length, equals(16));
+      expect(password32.length, equals(32));
+    });
+
+    test('Should include all required character types', () {
+      final password = SecurityUtils.generatePasswordSecure(12);
+
+      // Check for at least one uppercase letter
+      expect(RegExp(r'[A-Z]').hasMatch(password), isTrue);
+
+      // Check for at least one lowercase letter
+      expect(RegExp(r'[a-z]').hasMatch(password), isTrue);
+
+      // Check for at least one digit
+      expect(RegExp(r'[0-9]').hasMatch(password), isTrue);
+
+      // Check for at least one special character
+      expect(RegExp(r'[@]').hasMatch(password), isTrue);
+    });
+
+    test('Should include extended special characters when flag is set', () {
+      final password = SecurityUtils.generatePasswordSecure(
+        20,
+        extendedSpecialCharacters: true,
+      );
+
+      // Check for at least one extended special character
+      expect(RegExp(r'[~`$^*+=<>?]').hasMatch(password), isTrue);
+    });
+
+    test('Generated passwords should be different (randomness check)', () {
+      final passwords = <String>{};
+
+      // Generate multiple passwords and check they're unique
+      for (var i = 0; i < 10; i++) {
+        passwords.add(SecurityUtils.generatePasswordSecure(12));
+      }
+
+      // If passwords are truly random, they should all be different
+      expect(passwords.length, equals(10));
+    });
+
+    test('Generated passwords should pass checkPasswordRequirements validation',
+        () {
+      for (var i = 0; i < 10; i++) {
+        final password = SecurityUtils.generatePasswordSecure(12);
+        final validationResult =
+            SecurityUtils.checkPasswordRequirements(password);
+        expect(validationResult, equals(PasswordValidationError.none));
+      }
+
+      // Test with extended characters too
+      for (var i = 0; i < 10; i++) {
+        final password = SecurityUtils.generatePasswordSecure(
+          12,
+          extendedSpecialCharacters: true,
+        );
+        final validationResult =
+            SecurityUtils.checkPasswordRequirements(password);
+        expect(validationResult, equals(PasswordValidationError.none));
+      }
+    });
+
+    test('Should not generate passwords with consecutive identical characters',
+        () {
+      // Generate multiple passwords and confirm none have 3+ consecutive identical characters
+      for (var i = 0; i < 20; i++) {
+        final password = SecurityUtils.generatePasswordSecure(32);
+
+        // Check for consecutive identical characters with regular expressions
+        final hasConsecutiveChars = RegExp(r'(.)\1{2,}').hasMatch(password);
+
+        expect(hasConsecutiveChars, isFalse);
+      }
+    });
+
+    test('Should generate valid passwords at minimum length (8)', () {
+      final password = SecurityUtils.generatePasswordSecure(8);
+      expect(password.length, equals(8));
+      expect(
+        SecurityUtils.checkPasswordRequirements(password),
+        equals(PasswordValidationError.none),
+      );
+    });
+
+    test('Should generate valid passwords at large lengths', () {
+      final password = SecurityUtils.generatePasswordSecure(100);
+      expect(password.length, equals(100));
+      expect(
+        SecurityUtils.checkPasswordRequirements(password),
+        equals(PasswordValidationError.none),
+      );
     });
   });
 }
