@@ -99,6 +99,19 @@ class FeeInfoDisplay extends StatelessWidget {
                 style: Theme.of(context).textTheme.labelLarge,
               ),
             ],
+
+            final FeeInfoTendermint fee => [
+              Text('Gas Limit:', style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                '${fee.gasLimit}',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              Text('Amount:', style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                fee.formatTotal(precision: 8),
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+            ],
           },
 
           const SizedBox(height: 4),
