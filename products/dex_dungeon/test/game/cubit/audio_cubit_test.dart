@@ -33,9 +33,9 @@ void main() {
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('xyz.luan/audioplayers'),
-        (_) => null,
-      );
+            const MethodChannel('xyz.luan/audioplayers'),
+            (_) => null,
+          );
     });
 
     test('can be instantiated', () {

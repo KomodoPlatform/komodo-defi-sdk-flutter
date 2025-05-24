@@ -2,9 +2,7 @@ import 'package:dex_dungeon/game/game.dart';
 import 'package:flame/components.dart';
 
 class CounterComponent extends PositionComponent with HasGameRef<DexDungeon> {
-  CounterComponent({
-    required super.position,
-  }) : super(anchor: Anchor.center);
+  CounterComponent({required super.position}) : super(anchor: Anchor.center);
 
   late final TextComponent text;
 
@@ -13,9 +11,7 @@ class CounterComponent extends PositionComponent with HasGameRef<DexDungeon> {
     await add(
       text = TextComponent(
         anchor: Anchor.center,
-        textRenderer: TextPaint(
-          style: game.textStyle,
-        ),
+        textRenderer: TextPaint(style: game.textStyle),
       ),
     );
   }

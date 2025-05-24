@@ -24,14 +24,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String loadingPhaseLabel(String loadingPhase) {
-    String _temp0 = intl.Intl.selectLogic(
-      loadingPhase,
-      {
-        'audio': 'Delightful music',
-        'images': 'Beautiful scenery',
-        'other': ' ',
-      },
-    );
+    String _temp0 = intl.Intl.selectLogic(loadingPhase, {
+      'audio': 'Delightful music',
+      'images': 'Beautiful scenery',
+      'other': ' ',
+    });
     return '$_temp0';
   }
 

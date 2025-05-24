@@ -6,21 +6,16 @@ import 'package:flame_behaviors/flame_behaviors.dart';
 import 'package:flutter/material.dart';
 
 class Unicorn extends PositionedEntity with HasGameRef {
-  Unicorn({
-    required super.position,
-  }) : super(
-          anchor: Anchor.center,
-          size: Vector2.all(32),
-          behaviors: [
-            TappingBehavior(),
-          ],
-        );
+  Unicorn({required super.position})
+    : super(
+        anchor: Anchor.center,
+        size: Vector2.all(32),
+        behaviors: [TappingBehavior()],
+      );
 
   @visibleForTesting
-  Unicorn.test({
-    required super.position,
-    super.behaviors,
-  }) : super(size: Vector2.all(32));
+  Unicorn.test({required super.position, super.behaviors})
+    : super(size: Vector2.all(32));
 
   late SpriteAnimationComponent _animationComponent;
 

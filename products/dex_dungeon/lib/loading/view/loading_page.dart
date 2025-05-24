@@ -27,11 +27,7 @@ class _LoadingPageState extends State<LoadingPage> {
       listenWhen: (prevState, state) =>
           !prevState.isComplete && state.isComplete,
       listener: (context, state) => onPreloadComplete(context),
-      child: const Scaffold(
-        body: Center(
-          child: _LoadingInternal(),
-        ),
-      ),
+      child: const Scaffold(body: Center(child: _LoadingInternal())),
     );
   }
 }

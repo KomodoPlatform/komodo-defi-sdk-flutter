@@ -11,9 +11,7 @@ class GamePage extends StatelessWidget {
   const GamePage({super.key});
 
   static Route<void> route() {
-    return MaterialPageRoute<void>(
-      builder: (_) => const GamePage(),
-    );
+    return MaterialPageRoute<void>(builder: (_) => const GamePage());
   }
 
   @override
@@ -22,9 +20,7 @@ class GamePage extends StatelessWidget {
       create: (context) {
         return AudioCubit(audioCache: context.read<PreloadCubit>().audio);
       },
-      child: const Scaffold(
-        body: SafeArea(child: GameView()),
-      ),
+      child: const Scaffold(body: SafeArea(child: GameView())),
     );
   }
 }
@@ -58,12 +54,12 @@ class _GameViewState extends State<GameView> {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = Theme.of(context).textTheme.bodySmall!.copyWith(
-          color: Colors.white,
-          fontSize: 4,
-        );
+    final textStyle = Theme.of(
+      context,
+    ).textTheme.bodySmall!.copyWith(color: Colors.white, fontSize: 4);
 
-    _game ??= widget.game ??
+    _game ??=
+        widget.game ??
         DexDungeon(
           l10n: context.l10n,
           effectPlayer: context.read<AudioCubit>().effectPlayer,
