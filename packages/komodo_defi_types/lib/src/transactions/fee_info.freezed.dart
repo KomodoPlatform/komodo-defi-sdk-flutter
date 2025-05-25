@@ -232,7 +232,10 @@ class _$FeeInfoUtxoPerKbyteCopyWithImpl<$Res>
 
 class FeeInfoEthGas extends FeeInfo {
   const FeeInfoEthGas(
-      {required this.coin, required this.gasPrice, required this.gas})
+      {required this.coin,
+      required this.gasPrice,
+      required this.gas,
+      this.totalGasFee})
       : super._();
 
   @override
@@ -243,6 +246,10 @@ class FeeInfoEthGas extends FeeInfo {
 
   /// Gas limit (number of gas units)
   final int gas;
+
+  /// Optional total fee override. If provided, this value will be used directly
+  /// instead of calculating from gasPrice * gas.
+  final Decimal? totalGasFee;
 
   /// Create a copy of FeeInfo
   /// with the given fields replaced by the non-null parameter values.
@@ -260,15 +267,18 @@ class FeeInfoEthGas extends FeeInfo {
             (identical(other.coin, coin) || other.coin == coin) &&
             (identical(other.gasPrice, gasPrice) ||
                 other.gasPrice == gasPrice) &&
-            (identical(other.gas, gas) || other.gas == gas));
+            (identical(other.gas, gas) || other.gas == gas) &&
+            (identical(other.totalGasFee, totalGasFee) ||
+                other.totalGasFee == totalGasFee));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, coin, gasPrice, gas);
+  int get hashCode =>
+      Object.hash(runtimeType, coin, gasPrice, gas, totalGasFee);
 
   @override
   String toString() {
-    return 'FeeInfo.ethGas(coin: $coin, gasPrice: $gasPrice, gas: $gas)';
+    return 'FeeInfo.ethGas(coin: $coin, gasPrice: $gasPrice, gas: $gas, totalGasFee: $totalGasFee)';
   }
 }
 
@@ -280,7 +290,7 @@ abstract mixin class $FeeInfoEthGasCopyWith<$Res>
       _$FeeInfoEthGasCopyWithImpl;
   @override
   @useResult
-  $Res call({String coin, Decimal gasPrice, int gas});
+  $Res call({String coin, Decimal gasPrice, int gas, Decimal? totalGasFee});
 }
 
 /// @nodoc
@@ -299,6 +309,7 @@ class _$FeeInfoEthGasCopyWithImpl<$Res>
     Object? coin = null,
     Object? gasPrice = null,
     Object? gas = null,
+    Object? totalGasFee = freezed,
   }) {
     return _then(FeeInfoEthGas(
       coin: null == coin
@@ -313,6 +324,10 @@ class _$FeeInfoEthGasCopyWithImpl<$Res>
           ? _self.gas
           : gas // ignore: cast_nullable_to_non_nullable
               as int,
+      totalGasFee: freezed == totalGasFee
+          ? _self.totalGasFee
+          : totalGasFee // ignore: cast_nullable_to_non_nullable
+              as Decimal?,
     ));
   }
 }
@@ -321,7 +336,10 @@ class _$FeeInfoEthGasCopyWithImpl<$Res>
 
 class FeeInfoQrc20Gas extends FeeInfo {
   const FeeInfoQrc20Gas(
-      {required this.coin, required this.gasPrice, required this.gasLimit})
+      {required this.coin,
+      required this.gasPrice,
+      required this.gasLimit,
+      this.totalGasFee})
       : super._();
 
   @override
@@ -332,6 +350,10 @@ class FeeInfoQrc20Gas extends FeeInfo {
 
   /// Gas limit
   final int gasLimit;
+
+  /// Optional total gas fee in coin units. If not provided, it will be calculated
+  /// as `gasPrice * gasLimit`.
+  final Decimal? totalGasFee;
 
   /// Create a copy of FeeInfo
   /// with the given fields replaced by the non-null parameter values.
@@ -350,15 +372,18 @@ class FeeInfoQrc20Gas extends FeeInfo {
             (identical(other.gasPrice, gasPrice) ||
                 other.gasPrice == gasPrice) &&
             (identical(other.gasLimit, gasLimit) ||
-                other.gasLimit == gasLimit));
+                other.gasLimit == gasLimit) &&
+            (identical(other.totalGasFee, totalGasFee) ||
+                other.totalGasFee == totalGasFee));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, coin, gasPrice, gasLimit);
+  int get hashCode =>
+      Object.hash(runtimeType, coin, gasPrice, gasLimit, totalGasFee);
 
   @override
   String toString() {
-    return 'FeeInfo.qrc20Gas(coin: $coin, gasPrice: $gasPrice, gasLimit: $gasLimit)';
+    return 'FeeInfo.qrc20Gas(coin: $coin, gasPrice: $gasPrice, gasLimit: $gasLimit, totalGasFee: $totalGasFee)';
   }
 }
 
@@ -370,7 +395,8 @@ abstract mixin class $FeeInfoQrc20GasCopyWith<$Res>
       _$FeeInfoQrc20GasCopyWithImpl;
   @override
   @useResult
-  $Res call({String coin, Decimal gasPrice, int gasLimit});
+  $Res call(
+      {String coin, Decimal gasPrice, int gasLimit, Decimal? totalGasFee});
 }
 
 /// @nodoc
@@ -389,6 +415,7 @@ class _$FeeInfoQrc20GasCopyWithImpl<$Res>
     Object? coin = null,
     Object? gasPrice = null,
     Object? gasLimit = null,
+    Object? totalGasFee = freezed,
   }) {
     return _then(FeeInfoQrc20Gas(
       coin: null == coin
@@ -403,6 +430,10 @@ class _$FeeInfoQrc20GasCopyWithImpl<$Res>
           ? _self.gasLimit
           : gasLimit // ignore: cast_nullable_to_non_nullable
               as int,
+      totalGasFee: freezed == totalGasFee
+          ? _self.totalGasFee
+          : totalGasFee // ignore: cast_nullable_to_non_nullable
+              as Decimal?,
     ));
   }
 }
@@ -488,6 +519,95 @@ class _$FeeInfoCosmosGasCopyWithImpl<$Res>
       gasPrice: null == gasPrice
           ? _self.gasPrice
           : gasPrice // ignore: cast_nullable_to_non_nullable
+              as Decimal,
+      gasLimit: null == gasLimit
+          ? _self.gasLimit
+          : gasLimit // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
+class FeeInfoTendermint extends FeeInfo {
+  const FeeInfoTendermint(
+      {required this.coin, required this.amount, required this.gasLimit})
+      : super._();
+
+  @override
+  final String coin;
+
+  /// The fee amount in coin units
+  final Decimal amount;
+
+  /// Gas limit
+  final int gasLimit;
+
+  /// Create a copy of FeeInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $FeeInfoTendermintCopyWith<FeeInfoTendermint> get copyWith =>
+      _$FeeInfoTendermintCopyWithImpl<FeeInfoTendermint>(this, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is FeeInfoTendermint &&
+            (identical(other.coin, coin) || other.coin == coin) &&
+            (identical(other.amount, amount) || other.amount == amount) &&
+            (identical(other.gasLimit, gasLimit) ||
+                other.gasLimit == gasLimit));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, coin, amount, gasLimit);
+
+  @override
+  String toString() {
+    return 'FeeInfo.tendermint(coin: $coin, amount: $amount, gasLimit: $gasLimit)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $FeeInfoTendermintCopyWith<$Res>
+    implements $FeeInfoCopyWith<$Res> {
+  factory $FeeInfoTendermintCopyWith(
+          FeeInfoTendermint value, $Res Function(FeeInfoTendermint) _then) =
+      _$FeeInfoTendermintCopyWithImpl;
+  @override
+  @useResult
+  $Res call({String coin, Decimal amount, int gasLimit});
+}
+
+/// @nodoc
+class _$FeeInfoTendermintCopyWithImpl<$Res>
+    implements $FeeInfoTendermintCopyWith<$Res> {
+  _$FeeInfoTendermintCopyWithImpl(this._self, this._then);
+
+  final FeeInfoTendermint _self;
+  final $Res Function(FeeInfoTendermint) _then;
+
+  /// Create a copy of FeeInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? coin = null,
+    Object? amount = null,
+    Object? gasLimit = null,
+  }) {
+    return _then(FeeInfoTendermint(
+      coin: null == coin
+          ? _self.coin
+          : coin // ignore: cast_nullable_to_non_nullable
+              as String,
+      amount: null == amount
+          ? _self.amount
+          : amount // ignore: cast_nullable_to_non_nullable
               as Decimal,
       gasLimit: null == gasLimit
           ? _self.gasLimit
