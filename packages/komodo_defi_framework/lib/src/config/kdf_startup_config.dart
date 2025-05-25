@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:komodo_coins/komodo_coins.dart';
@@ -90,7 +91,7 @@ class KdfStartupConfig {
     return KdfStartupConfig._(
       walletName: walletName,
       walletPassword: walletPassword,
-      rpcPassword: rpcPassword ?? generatePassword(),
+      rpcPassword: rpcPassword ?? SecurityUtils.generatePasswordSecure(32),
       seed: seed,
       dbDir: dbPath,
       userHome: userHomePath,
@@ -136,7 +137,7 @@ class KdfStartupConfig {
       walletName: null,
       walletPassword: null,
       seed: null,
-      rpcPassword: rpcPassword ?? generatePassword(),
+      rpcPassword: rpcPassword ?? SecurityUtils.generatePasswordSecure(32),
       userHome: home,
       dbDir: dbDir,
       allowWeakPassword: true,
@@ -208,20 +209,4 @@ class KdfStartupConfig {
   }
 
   static JsonList? _memoizedCoins;
-
-  static String generatePassword() {
-    var result = '';
-    while (!_validateRPCPassword(result)) {
-      result = SecurityUtils.generatePasswordSecure(32);
-    }
-    return result;
-  }
-
-  static bool _validateRPCPassword(String src) {
-    final exp =
-        RegExp(r'^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,32}$');
-    if (!exp.hasMatch(src)) return false;
-    if (RegExp(r'(.)\1\1').hasMatch(src)) return false;
-    return true;
-  }
 }
