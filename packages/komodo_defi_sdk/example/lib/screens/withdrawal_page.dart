@@ -113,6 +113,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         memo: _memoController.text.isEmpty ? null : _memoController.text,
         isMax: _isMaxAmount,
         ibcTransfer: _isIbcTransfer ? true : null,
+        ibcSourceChannel: _isIbcTransfer ? _ibcChannelController.text : null,
       );
 
       final preview = await _sdk.withdrawals.previewWithdrawal(params);
