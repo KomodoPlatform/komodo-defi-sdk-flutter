@@ -36,7 +36,6 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   WithdrawalPreview? _preview;
   String? _error;
   bool _isIbcTransfer = false;
-  final bool _isLoadingAddresses = false;
 
   AddressValidation? _addressValidation;
   final _validationDebouncer = Debouncer();
@@ -113,9 +112,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         memo: _memoController.text.isEmpty ? null : _memoController.text,
         isMax: _isMaxAmount,
         ibcTransfer: _isIbcTransfer ? true : null,
-        ibcSourceChannel: _isIbcTransfer
-            ? int.tryParse(_ibcChannelController.text)
-            : null,
+        ibcSourceChannel:
+            _isIbcTransfer
+                ? _parseIbcChannel(_ibcChannelController.text)
+                : null,
       );
 
       final preview = await _sdk.withdrawals.previewWithdrawal(params);
@@ -176,7 +176,9 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                   ],
                   if (_isIbcTransfer) ...[
                     const SizedBox(height: 8),
-                    Text('IBC Channel: ${_ibcChannelController.text}'),
+                    Text(
+                      'IBC Channel: ${_parseIbcChannel(_ibcChannelController.text)} (from "${_ibcChannelController.text}")',
+                    ),
                     const Text(
                       'Note: IBC transfers may take longer to complete',
                       style: TextStyle(fontStyle: FontStyle.italic),
@@ -327,14 +329,19 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                     controller: _ibcChannelController,
                     decoration: const InputDecoration(
                       labelText: 'IBC Channel',
-                      hintText: 'Enter IBC channel ID',
+                      hintText: 'Enter channel ID (e.g., 141 or channel-141)',
+                      helperText:
+                          'Enter numeric channel ID or format like channel-141',
                     ),
-                    keyboardType: TextInputType.number,
-                    validator:
-                        (value) =>
-                            value?.isEmpty == true
-                                ? 'Please enter IBC channel'
-                                : null,
+                    keyboardType: TextInputType.text,
+                    inputFormatters: [
+                      // Allow numbers, letters, and hyphens for formats like
+                      // "channel-141"
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'[0-9a-zA-Z\-]'),
+                      ),
+                    ],
+                    validator: _validateIbcChannel,
                   ),
                 ],
               ],
@@ -470,7 +477,6 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   Widget _buildTransactionSummary() {
-    final protocol = widget.asset.protocol;
     final balance = _selectedFromAddress?.balance ?? widget.pubkeys.balance;
 
     return Column(
@@ -543,6 +549,37 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     final fee = _selectedFee;
     if (fee == null) return 'Calculating...';
     return fee.formatTotal();
+  }
+
+  String? _validateIbcChannel(String? value) {
+    if (value?.isEmpty == true) {
+      return 'Please enter IBC channel';
+    }
+
+    final parsedChannel = _parseIbcChannel(value!);
+    if (parsedChannel == null) {
+      return 'Invalid channel format. Enter a number (e.g., 141) or '
+          'format like "channel-141"';
+    }
+
+    return null;
+  }
+
+  /// Parse IBC channel input to extract numeric channel ID
+  /// Supports formats like "141" or "channel-141"
+  int? _parseIbcChannel(String input) {
+    if (input.isEmpty) return null;
+
+    final directParse = int.tryParse(input.trim());
+    if (directParse != null) return directParse;
+
+    final parts = input.split('-');
+    if (parts.length >= 2) {
+      final lastPart = parts.last.trim();
+      return int.tryParse(lastPart);
+    }
+
+    return null;
   }
 }
 
