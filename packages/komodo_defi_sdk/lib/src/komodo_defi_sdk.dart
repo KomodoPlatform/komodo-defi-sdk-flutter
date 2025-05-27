@@ -9,6 +9,7 @@ import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
+import 'package:komodo_defi_sdk/src/staking/staking_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -54,6 +55,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// * [pubkeys] - Handles address generation and management
 /// * [transactions] - Manages transaction history and monitoring
 /// * [withdrawals] - Handles asset withdrawal operations
+/// * [staking] - Manage staking delegation operations
 /// * [addresses] - Provides address validation and format conversion
 ///
 /// ## Usage Example
@@ -222,6 +224,10 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Throws [StateError] if accessed before initialization.
   WithdrawalManager get withdrawals =>
       _assertSdkInitialized(_container<WithdrawalManager>());
+
+  /// The staking manager instance used for delegation operations.
+  StakingManager get staking =>
+      _assertSdkInitialized(_container<StakingManager>());
 
   /// The price manager instance.
   ///

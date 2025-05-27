@@ -55,3 +55,4 @@ export 'transactions/transaction_results_page.dart';
 export 'withdrawal/withdrawal_enums.dart';
 export 'withdrawal/withdrawal_exceptions.dart';
 export 'withdrawal/withdrawal_types.dart';
+export 'staking/staking_types.dart';
