@@ -113,6 +113,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         memo: _memoController.text.isEmpty ? null : _memoController.text,
         isMax: _isMaxAmount,
         ibcTransfer: _isIbcTransfer ? true : null,
+        ibcSourceChannel: _isIbcTransfer ? _ibcChannelController.text : null,
       );
 
       final preview = await _sdk.withdrawals.previewWithdrawal(params);
@@ -324,13 +325,17 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                     controller: _ibcChannelController,
                     decoration: const InputDecoration(
                       labelText: 'IBC Channel',
-                      hintText: 'Enter IBC channel ID',
+                      hintText: 'Enter IBC channel ID (e.g. channel-141)',
                     ),
-                    validator:
-                        (value) =>
-                            value?.isEmpty == true
-                                ? 'Please enter IBC channel'
-                                : null,
+                    validator: (value) {
+                      if (value?.isEmpty == true) {
+                        return 'Please enter IBC channel';
+                      }
+                      if (!RegExp(r'^channel-\d+$').hasMatch(value!)) {
+                        return 'Channel must be in format "channel-" followed by a number';
+                      }
+                      return null;
+                    },
                   ),
                 ],
               ],
