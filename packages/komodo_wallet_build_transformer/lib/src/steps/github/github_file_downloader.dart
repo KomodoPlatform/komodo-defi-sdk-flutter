@@ -284,7 +284,7 @@ class GitHubFileDownloader {
           );
           await for (final GitHubFileDownloadEvent event in downloadFiles([
             fileWithCdn,
-          ], key,)) {
+          ], key)) {
             switch (event.event) {
               case GitHubDownloadEvent.downloaded:
                 _downloadedFiles++;
@@ -384,6 +384,7 @@ class GitHubFileDownloader {
     }
 
     try {
+      _log.finer('Downloading icon for $coinName: ${item.downloadUrl}');
       final fileResponse = await http.read(Uri.parse(item.downloadUrl));
       if (fileResponse.isEmpty) {
         throw Exception('Failed to download file: ${item.downloadUrl}');
