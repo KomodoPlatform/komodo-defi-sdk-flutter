@@ -235,10 +235,13 @@ sealed class FeeInfo with _$FeeInfo {
             'gas_price': gasPrice.toDouble(),
             'gas_limit': gasLimit,
           },
+        // TODO: update to Tendermint for KDF v2.5.0-beta
         FeeInfoTendermint(:final coin, :final amount, :final gasLimit) => {
-            'type': 'Tendermint',
+            'type': 'CosmosGas',
             'coin': coin,
-            'amount': amount.toString(),
+            'gas_price': gasLimit > 0 
+                ? (amount / Decimal.fromInt(gasLimit)).toDouble()
+                : 0.0,
             'gas_limit': gasLimit,
           },
       };

@@ -1,5 +1,5 @@
 import 'package:dex_dungeon/game/cubit/cubit.dart';
-import 'package:dex_dungeon/l10n/l10n.dart';
+import 'package:dex_dungeon/l10n/arb/app_localizations.dart';
 import 'package:dex_dungeon/loading/loading.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

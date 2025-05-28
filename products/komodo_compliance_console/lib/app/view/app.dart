@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:komodo_compliance_console/counter/counter.dart';
-import 'package:komodo_compliance_console/l10n/l10n.dart';
+import 'package:komodo_compliance_console/l10n/arb/app_localizations.dart';
 
 class App extends StatelessWidget {
   const App({super.key});

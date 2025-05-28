@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
 
 // ignore_for_file: type=lint
 
@@ -62,7 +63,7 @@ import 'app_localizations_en.dart';
 /// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -85,50 +86,23 @@ abstract class AppLocalizations {
   /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('en')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('es')
+  ];
 
-  /// The initial start button of the game application
+  /// Text shown in the AppBar of the Counter Page
   ///
   /// In en, this message translates to:
-  /// **'Start the Very Good Game'**
-  String get startVeryGoodGame;
-
-  /// Text shown in the AppBar of the Title Page
-  ///
-  /// In en, this message translates to:
-  /// **'Dex Dungeon'**
-  String get titleAppBarTitle;
-
-  /// Text shown in the start Button of the Title Page
-  ///
-  /// In en, this message translates to:
-  /// **'Start'**
-  String get titleButtonStart;
-
-  /// Text for the loading page
-  ///
-  /// In en, this message translates to:
-  /// **'Loading {label}...'**
-  String loading(String label);
-
-  /// Loading phases
-  ///
-  /// In en, this message translates to:
-  /// **'{loadingPhase, select, audio{Delightful music} images{Beautiful scenery} other{ }}'**
-  String loadingPhaseLabel(String loadingPhase);
-
-  /// Text for the counter component
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{You have tapped the unicorn 1 time} other{You have tapped the unicorn {count} times}}'**
-  String counterText(int count);
+  /// **'Counter'**
+  String get counterAppBarTitle;
 }
 
 class _AppLocalizationsDelegate
@@ -142,7 +116,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en'].contains(locale.languageCode);
+      <String>['en', 'es'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -153,12 +127,13 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   switch (locale.languageCode) {
     case 'en':
       return AppLocalizationsEn();
+    case 'es':
+      return AppLocalizationsEs();
   }
 
   throw FlutterError(
-    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-    'an issue with the localizations generation tool. Please file an issue '
-    'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
-  );
+      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+      'an issue with the localizations generation tool. Please file an issue '
+      'on GitHub with a reproducible sample app and the gen-l10n configuration '
+      'that was used.');
 }

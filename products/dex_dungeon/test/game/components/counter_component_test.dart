@@ -2,7 +2,7 @@
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:dex_dungeon/game/game.dart';
-import 'package:dex_dungeon/l10n/l10n.dart';
+import 'package:dex_dungeon/l10n/arb/app_localizations.dart';
 import 'package:flame/cache.dart';
 import 'package:flame/extensions.dart';
 import 'package:flame_test/flame_test.dart';
@@ -47,33 +47,25 @@ void main() {
       );
     }
 
-    testWithGame(
-      'has all components',
-      createFlameGame,
-      (game) async {
-        final component = CounterComponent(position: Vector2.all(1));
-        await game.ensureAdd(component);
+    testWithGame('has all components', createFlameGame, (game) async {
+      final component = CounterComponent(position: Vector2.all(1));
+      await game.ensureAdd(component);
 
-        expect(component.text, isNotNull);
-      },
-    );
+      expect(component.text, isNotNull);
+    });
 
-    testWithGame(
-      'changes text count correctly',
-      createFlameGame,
-      (game) async {
-        final component = CounterComponent(position: Vector2.all(1));
-        await game.ensureAdd(component);
+    testWithGame('changes text count correctly', createFlameGame, (game) async {
+      final component = CounterComponent(position: Vector2.all(1));
+      await game.ensureAdd(component);
 
-        expect(component.text.text, equals(''));
-        game.counter = 1;
-        game.update(0.1);
-        expect(component.text.text, equals('counterText: 1'));
+      expect(component.text.text, equals(''));
+      game.counter = 1;
+      game.update(0.1);
+      expect(component.text.text, equals('counterText: 1'));
 
-        game.counter = 2;
-        game.update(0.1);
-        expect(component.text.text, equals('counterText: 2'));
-      },
-    );
+      game.counter = 2;
+      game.update(0.1);
+      expect(component.text.text, equals('counterText: 2'));
+    });
   });
 }

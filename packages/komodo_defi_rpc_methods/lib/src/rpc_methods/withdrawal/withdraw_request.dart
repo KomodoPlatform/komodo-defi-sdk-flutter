@@ -39,6 +39,7 @@ class WithdrawRequest
   final WithdrawalSource? from;
   final String? memo;
   final bool max;
+  // TODO: update to `int?` when the KDF changes in v2.5.0-beta
   final String? ibcSourceChannel;
 
   @override

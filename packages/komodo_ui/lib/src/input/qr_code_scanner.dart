@@ -52,7 +52,7 @@ class _QrCodeReaderOverlayState extends State<QrCodeReaderOverlay> {
           }
         },
         placeholderBuilder:
-            (context, _) => const Center(child: CircularProgressIndicator()),
+            (context) => const Center(child: CircularProgressIndicator()),
       ),
     );
   }
@@ -60,7 +60,6 @@ class _QrCodeReaderOverlayState extends State<QrCodeReaderOverlay> {
   Widget _buildQrScannerError(
     BuildContext context,
     MobileScannerException exception,
-    _,
   ) {
     late String errorMessage;
 
@@ -77,10 +76,12 @@ class _QrCodeReaderOverlayState extends State<QrCodeReaderOverlay> {
       // support scanning
       case MobileScannerErrorCode.unsupported:
         errorMessage = //TODO!l10n: LocaleKeys.qrScannerErrorUnsupported.tr();
-            'Scanning is unsupported on the current device.';
+            'Your device does not support scanning QR codes.';
+      case MobileScannerErrorCode.controllerNotAttached:
       case MobileScannerErrorCode.genericError:
       case MobileScannerErrorCode.controllerDisposed:
       case MobileScannerErrorCode.controllerAlreadyInitialized:
+      case MobileScannerErrorCode.controllerInitializing:
         errorMessage = //TODO!l10n: LocaleKeys.qrScannerErrorGenericError.tr();
             'An error occurred while scanning the QR code. Please try again.';
     }
