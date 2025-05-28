@@ -5,7 +5,7 @@ import 'dart:ui';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:dex_dungeon/game/entities/unicorn/behaviors/behaviors.dart';
 import 'package:dex_dungeon/game/game.dart';
-import 'package:dex_dungeon/l10n/l10n.dart';
+import 'package:dex_dungeon/l10n/arb/app_localizations.dart';
 import 'package:flame/cache.dart';
 import 'package:flame/game.dart';
 import 'package:flame_test/flame_test.dart';

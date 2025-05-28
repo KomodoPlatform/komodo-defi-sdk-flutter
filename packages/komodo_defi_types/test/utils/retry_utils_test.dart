@@ -180,7 +180,7 @@ void main() {
 
               // This future will never complete because the error above
               // should be caught
-              return await Completer<String>().future;
+              return Completer<String>().future;
             },
             maxAttempts: 2,
             backoffStrategy:
@@ -202,7 +202,6 @@ void main() {
     test('uses initialDelay for first attempt', () {
       final strategy = ExponentialBackoff(
         initialDelay: const Duration(milliseconds: 100),
-        withJitter: false,
       );
 
       final delay = strategy.nextDelay(0, Duration.zero);
@@ -213,7 +212,6 @@ void main() {
       final strategy = ExponentialBackoff(
         initialDelay: const Duration(milliseconds: 100),
         maxDelay: const Duration(seconds: 10),
-        withJitter: false,
       );
 
       var delay = strategy.nextDelay(0, Duration.zero);
@@ -233,7 +231,6 @@ void main() {
       final strategy = ExponentialBackoff(
         initialDelay: const Duration(milliseconds: 1000),
         maxDelay: const Duration(milliseconds: 3000),
-        withJitter: false,
       );
 
       var delay = strategy.nextDelay(0, Duration.zero);
@@ -254,7 +251,6 @@ void main() {
     test('produces consistent delays without jitter', () {
       final strategy = ExponentialBackoff(
         initialDelay: const Duration(milliseconds: 100),
-        withJitter: false,
       );
 
       final firstRun = <Duration>[];

@@ -1,5 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
-import 'package:dex_dungeon/l10n/l10n.dart';
+import 'package:dex_dungeon/l10n/arb/app_localizations.dart';
 import 'package:dex_dungeon/loading/loading.dart';
 import 'package:flame/cache.dart';
 import 'package:flutter/material.dart';
@@ -14,10 +14,9 @@ class App extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (_) => PreloadCubit(
-            Images(prefix: ''),
-            AudioCache(prefix: ''),
-          )..loadSequentially(),
+          create: (_) =>
+              PreloadCubit(Images(prefix: ''), AudioCache(prefix: ''))
+                ..loadSequentially(),
         ),
       ],
       child: const AppView(),
