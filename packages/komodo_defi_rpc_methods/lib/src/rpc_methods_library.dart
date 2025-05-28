@@ -5,6 +5,7 @@
 
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'rpc_methods/swap/swap_rpc_namespace.dart';
 
 /// A class that provides a library of RPC methods used by the Komodo DeFi
 /// Framework API. This class is used to group RPC methods together and provide
@@ -43,6 +44,7 @@ class KomodoDefiRpcMethods {
 
   // Add other namespaces here, e.g.:
   // TradeNamespace get trade => TradeNamespace(_client);
+  SwapMethodsNamespace get swap => SwapMethodsNamespace(_client);
   MessageSigningMethodsNamespace get messageSigning =>
       MessageSigningMethodsNamespace(_client);
   UtilityMethods get utility => UtilityMethods(_client);
