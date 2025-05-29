@@ -1,5 +1,7 @@
+import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Request for trade_preimage which calculates details of a potential trade
 class TradePreimageRequest
@@ -8,33 +10,33 @@ class TradePreimageRequest
   TradePreimageRequest({
     required this.base,
     required this.rel,
+    required this.swapMethod,
     required this.price,
-    required this.volume,
-    this.maxVolume,
-    this.dryRun,
+    this.volume,
+    this.max,
     super.rpcPass,
   }) : super(method: 'trade_preimage', mmrpc: '2.0');
 
   final String base;
   final String rel;
-  final dynamic price;
-  final dynamic volume;
-  final bool? maxVolume;
-  final bool? dryRun;
+  final String swapMethod;
+  final Decimal price;
+  final Decimal? volume;
+  final bool? max;
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'params': {
-          'base': base,
-          'rel': rel,
-          'price': price,
-          'volume': volume,
-          if (maxVolume != null) 'max_volume': maxVolume,
-          if (dryRun != null) 'dry_run': dryRun,
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'params': {
+      'base': base,
+      'rel': rel,
+      'swap_method': swapMethod,
+      'price': price.toJsonRationalValue(),
+      if (volume != null) 'volume': volume!.toJsonRationalValue(),
+      if (max != null) 'max': max,
+    },
+  };
 
   @override
   TradePreimageResponse parse(Map<String, dynamic> json) =>
@@ -43,10 +45,7 @@ class TradePreimageRequest
 
 /// Response for trade_preimage
 class TradePreimageResponse extends BaseResponse {
-  TradePreimageResponse({
-    required super.mmrpc,
-    required this.result,
-  });
+  TradePreimageResponse({required super.mmrpc, required this.result});
 
   factory TradePreimageResponse.fromJson(Map<String, dynamic> json) {
     final result = json.value<JsonMap>('result');
@@ -59,124 +58,175 @@ class TradePreimageResponse extends BaseResponse {
   final TradePreimageResult result;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': result.toJson(),
-      };
+  Map<String, dynamic> toJson() => {'mmrpc': mmrpc, 'result': result.toJson()};
 }
 
 /// Result data for trade_preimage
 class TradePreimageResult {
   TradePreimageResult({
-    required this.baseTransactionFee,
-    required this.baseTransactionFeeDetails,
-    required this.relTransactionFee,
-    required this.relTransactionFeeDetails,
+    required this.baseCoinFee,
+    required this.relCoinFee,
     required this.totalFees,
-    required this.totalFeesDetails,
-    this.tradeFee,
-    this.tradeFeeCoin,
-    this.tradeFeeDetails,
-    required this.volumeBaseToRel,
-    required this.volumeBaseToRelRat,
-    required this.volumeRelToBase,
-    required this.volumeRelToBaseRat,
+    this.volume,
+    this.volumeRat,
+    this.volumeFraction,
+    this.takerFee,
+    this.feeToSendTakerFee,
   });
 
   factory TradePreimageResult.fromJson(Map<String, dynamic> json) {
     return TradePreimageResult(
-      baseTransactionFee: json.value<String>('base_transaction_fee'),
-      baseTransactionFeeDetails: TransactionFeeDetails.fromJson(
-        json.value<JsonMap>('base_transaction_fee_details'),
+      baseCoinFee: ExtendedFeeInfo.fromJson(
+        json.value<JsonMap>('base_coin_fee'),
       ),
-      relTransactionFee: json.value<String>('rel_transaction_fee'),
-      relTransactionFeeDetails: TransactionFeeDetails.fromJson(
-        json.value<JsonMap>('rel_transaction_fee_details'),
-      ),
-      totalFees: json.value<JsonMap>('total_fees'),
-      totalFeesDetails: json.value<JsonMap>('total_fees_details'),
-      tradeFee: json.valueOrNull<String>('trade_fee'),
-      tradeFeeCoin: json.valueOrNull<String>('trade_fee_coin'),
-      tradeFeeDetails: json.containsKey('trade_fee_details')
-          ? json.value<JsonMap>('trade_fee_details')
-          : null,
-      volumeBaseToRel: json.value<String>('volume_base_to_rel'),
-      volumeBaseToRelRat: json.value<dynamic>('volume_base_to_rel_rat'),
-      volumeRelToBase: json.value<String>('volume_rel_to_base'),
-      volumeRelToBaseRat: json.value<dynamic>('volume_rel_to_base_rat'),
+      relCoinFee: ExtendedFeeInfo.fromJson(json.value<JsonMap>('rel_coin_fee')),
+      totalFees:
+          json
+              .value<List<dynamic>>('total_fees')
+              .map((e) => TotalFeeInfo.fromJson(e as JsonMap))
+              .toList(),
+      volume: json.valueOrNull<String>('volume'),
+      volumeRat:
+          json.valueOrNull<List<dynamic>>('volume_rat') != null
+              ? RationalValue.fromJson(
+                json.value<List<dynamic>>('volume_rat'),
+              ).toDecimal()
+              : null,
+      volumeFraction:
+          json.valueOrNull<JsonMap>('volume_fraction') != null
+              ? FractionalValue.fromJson(
+                json.value<JsonMap>('volume_fraction'),
+              ).toDecimal()
+              : null,
+      takerFee:
+          json.containsKey('taker_fee')
+              ? ExtendedFeeInfo.fromJson(json.value<JsonMap>('taker_fee'))
+              : null,
+      feeToSendTakerFee:
+          json.containsKey('fee_to_send_taker_fee')
+              ? ExtendedFeeInfo.fromJson(
+                json.value<JsonMap>('fee_to_send_taker_fee'),
+              )
+              : null,
     );
   }
 
-  final String baseTransactionFee;
-  final TransactionFeeDetails baseTransactionFeeDetails;
-  final String relTransactionFee;
-  final TransactionFeeDetails relTransactionFeeDetails;
-  final Map<String, dynamic> totalFees;
-  final Map<String, dynamic> totalFeesDetails;
-  final String? tradeFee;
-  final String? tradeFeeCoin;
-  final Map<String, dynamic>? tradeFeeDetails;
-  final String volumeBaseToRel;
-  final dynamic volumeBaseToRelRat;
-  final String volumeRelToBase;
-  final dynamic volumeRelToBaseRat;
+  final ExtendedFeeInfo baseCoinFee;
+  final ExtendedFeeInfo relCoinFee;
+  final List<TotalFeeInfo> totalFees;
+  final String? volume;
+  final Decimal? volumeRat;
+  final Decimal? volumeFraction;
+  final ExtendedFeeInfo? takerFee;
+  final ExtendedFeeInfo? feeToSendTakerFee;
 
   Map<String, dynamic> toJson() => {
-        'base_transaction_fee': baseTransactionFee,
-        'base_transaction_fee_details': baseTransactionFeeDetails.toJson(),
-        'rel_transaction_fee': relTransactionFee,
-        'rel_transaction_fee_details': relTransactionFeeDetails.toJson(),
-        'total_fees': totalFees,
-        'total_fees_details': totalFeesDetails,
-        if (tradeFee != null) 'trade_fee': tradeFee,
-        if (tradeFeeCoin != null) 'trade_fee_coin': tradeFeeCoin,
-        if (tradeFeeDetails != null) 'trade_fee_details': tradeFeeDetails,
-        'volume_base_to_rel': volumeBaseToRel,
-        'volume_base_to_rel_rat': volumeBaseToRelRat,
-        'volume_rel_to_base': volumeRelToBase,
-        'volume_rel_to_base_rat': volumeRelToBaseRat,
-      };
+    'base_coin_fee': baseCoinFee.toJson(),
+    'rel_coin_fee': relCoinFee.toJson(),
+    'total_fees': totalFees.map((e) => e.toJson()).toList(),
+    if (volume != null) 'volume': volume,
+    if (volumeRat != null) 'volume_rat': volumeRat!.toJsonRationalValue(),
+    if (volumeFraction != null)
+      'volume_fraction': volumeFraction!.toJsonFractionalValue(),
+    if (takerFee != null) 'taker_fee': takerFee!.toJson(),
+    if (feeToSendTakerFee != null)
+      'fee_to_send_taker_fee': feeToSendTakerFee!.toJson(),
+  };
 }
 
-/// Transaction fee details
-class TransactionFeeDetails {
-  TransactionFeeDetails({
-    required this.type,
+/// Extended fee information
+class ExtendedFeeInfo {
+  ExtendedFeeInfo({
     required this.coin,
     required this.amount,
-    this.amountFraction,
-    this.totalAmount,
-    this.gas,
-    this.gasPrice,
+    required this.amountFraction,
+    required this.amountRat,
+    required this.paidFromTradingVol,
   });
 
-  factory TransactionFeeDetails.fromJson(Map<String, dynamic> json) {
-    return TransactionFeeDetails(
-      type: json.value<String>('type'),
+  factory ExtendedFeeInfo.fromJson(Map<String, dynamic> json) {
+    return ExtendedFeeInfo(
       coin: json.value<String>('coin'),
       amount: json.value<String>('amount'),
-      amountFraction: json.valueOrNull<dynamic>('amount_fraction'),
-      totalAmount: json.valueOrNull<String>('total_amount'),
-      gas: json.valueOrNull<int>('gas'),
-      gasPrice: json.valueOrNull<String>('gas_price'),
+      amountFraction:
+          FractionalValue.fromJson(
+            json.value<JsonMap>('amount_fraction'),
+          ).toDecimal(),
+      amountRat:
+          RationalValue.fromJson(
+            json.value<List<dynamic>>('amount_rat'),
+          ).toDecimal(),
+      paidFromTradingVol: json.value<bool>('paid_from_trading_vol'),
     );
   }
 
-  final String type;
   final String coin;
   final String amount;
-  final dynamic amountFraction;
-  final String? totalAmount;
-  final int? gas;
-  final String? gasPrice;
+  final Decimal amountFraction;
+  final Decimal amountRat;
+  final bool paidFromTradingVol;
 
   Map<String, dynamic> toJson() => {
-        'type': type,
-        'coin': coin,
-        'amount': amount,
-        if (amountFraction != null) 'amount_fraction': amountFraction,
-        if (totalAmount != null) 'total_amount': totalAmount,
-        if (gas != null) 'gas': gas,
-        if (gasPrice != null) 'gas_price': gasPrice,
-      };
+    'coin': coin,
+    'amount': amount,
+    'amount_fraction': amountFraction.toJsonFractionalValue(),
+    'amount_rat': amountRat.toJsonRationalValue(),
+    'paid_from_trading_vol': paidFromTradingVol,
+  };
+}
+
+/// Total fee information
+class TotalFeeInfo {
+  TotalFeeInfo({
+    required this.coin,
+    required this.amount,
+    required this.amountFraction,
+    required this.amountRat,
+    required this.requiredBalance,
+    required this.requiredBalanceFraction,
+    required this.requiredBalanceRat,
+  });
+
+  factory TotalFeeInfo.fromJson(Map<String, dynamic> json) {
+    return TotalFeeInfo(
+      coin: json.value<String>('coin'),
+      amount: json.value<String>('amount'),
+      amountFraction:
+          FractionalValue.fromJson(
+            json.value<JsonMap>('amount_fraction'),
+          ).toDecimal(),
+      amountRat:
+          RationalValue.fromJson(
+            json.value<List<dynamic>>('amount_rat'),
+          ).toDecimal(),
+      requiredBalance: json.value<String>('required_balance'),
+      requiredBalanceFraction:
+          FractionalValue.fromJson(
+            json.value<JsonMap>('required_balance_fraction'),
+          ).toDecimal(),
+      requiredBalanceRat:
+          RationalValue.fromJson(
+            json.value<List<dynamic>>('required_balance_rat'),
+          ).toDecimal(),
+    );
+  }
+
+  final String coin;
+  final String amount;
+  final Decimal amountFraction;
+  final Decimal amountRat;
+  final String requiredBalance;
+  final Decimal requiredBalanceFraction;
+  final Decimal requiredBalanceRat;
+
+  Map<String, dynamic> toJson() => {
+    'coin': coin,
+    'amount': amount,
+    'amount_fraction': amountFraction.toJsonFractionalValue(),
+    'amount_rat': amountRat.toJsonRationalValue(),
+    'required_balance': requiredBalance,
+    'required_balance_fraction':
+        requiredBalanceFraction.toJsonFractionalValue(),
+    'required_balance_rat': requiredBalanceRat.toJsonRationalValue(),
+  };
 }

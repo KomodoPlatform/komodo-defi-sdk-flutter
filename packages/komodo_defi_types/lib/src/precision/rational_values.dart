@@ -104,7 +104,8 @@ class RationalValue extends Equatable {
   /// Converts a uint32 array in little-endian order to a [BigInt].
   ///
   /// Each element in the array represents a 32-bit part of the big integer.
-  /// The value is calculated as: sum of (array[i] * (2^32)^i)
+  /// The value is calculated as the sum of each part multiplied by powers
+  /// of 2^32.
   BigInt _uint32ArrayToBigInt(List<dynamic> parts) {
     var result = BigInt.zero;
     final base = BigInt.from(0x100000000); // 2^32 = 4294967296

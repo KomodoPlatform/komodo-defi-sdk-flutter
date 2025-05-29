@@ -34,7 +34,9 @@ class OrderData {
       relMinVolume: VolumeData.fromJson(json.value<JsonMap>('rel_min_volume')),
       confSettings:
           json.valueOrNull<JsonMap>('conf_settings') != null
-              ? ConfSettings.fromJson(json.value<JsonMap>('conf_settings'))
+              ? OrderConfigurationSettings.fromJson(
+                json.value<JsonMap>('conf_settings'),
+              )
               : null,
     );
   }
@@ -70,7 +72,7 @@ class OrderData {
   final VolumeData relMinVolume;
 
   /// Configuration settings for the order
-  final ConfSettings? confSettings;
+  final OrderConfigurationSettings? confSettings;
 
   Map<String, dynamic> toJson() {
     return {
@@ -194,16 +196,16 @@ class FractionData {
 }
 
 /// Configuration settings for an order
-class ConfSettings {
-  ConfSettings({
+class OrderConfigurationSettings {
+  OrderConfigurationSettings({
     this.baseConfirm,
     this.baseNota,
     this.relConfirm,
     this.relNota,
   });
 
-  factory ConfSettings.fromJson(Map<String, dynamic> json) {
-    return ConfSettings(
+  factory OrderConfigurationSettings.fromJson(Map<String, dynamic> json) {
+    return OrderConfigurationSettings(
       baseConfirm: json.valueOrNull<int>('base_confs'),
       baseNota: json.valueOrNull<bool>('base_nota'),
       relConfirm: json.valueOrNull<int>('rel_confs'),

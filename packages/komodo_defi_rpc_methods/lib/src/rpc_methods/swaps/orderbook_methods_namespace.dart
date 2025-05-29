@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 
 /// Namespace for trading and order-related methods
@@ -74,10 +75,7 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
     String? rpcPass,
   }) {
     return execute(
-      MaxMakerVolRequest(
-        rpcPass: rpcPass ?? this.rpcPass ?? '',
-        coin: coin,
-      ),
+      MaxMakerVolRequest(rpcPass: rpcPass ?? this.rpcPass ?? '', coin: coin),
     );
   }
 
@@ -124,10 +122,10 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
   Future<TradePreimageResponse> tradePreimage({
     required String base,
     required String rel,
-    required dynamic price,
-    required dynamic volume,
-    bool? maxVolume,
-    bool? dryRun,
+    required String swapMethod,
+    required Decimal price,
+    Decimal? volume,
+    bool? max,
     String? rpcPass,
   }) {
     return execute(
@@ -135,23 +133,23 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         base: base,
         rel: rel,
+        swapMethod: swapMethod,
         price: price,
         volume: volume,
-        maxVolume: maxVolume,
-        dryRun: dryRun,
+        max: max,
       ),
     );
   }
 
   /// Legacy method to place a maker order on the orderbook
-  Future<SetPriceLegacyResponse> setPriceLegacy({
+  Future<SetPriceResponse> setPriceLegacy({
     required String base,
     required String rel,
-    required dynamic price,
-    dynamic? volume,
+    required Decimal price,
+    Decimal? volume,
     bool max = false,
     bool cancelPrevious = true,
-    dynamic? minVolume,
+    Decimal? minVolume,
     int? baseConfs,
     bool? baseNota,
     int? relConfs,
@@ -160,7 +158,7 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
     String? rpcPass,
   }) {
     return execute(
-      SetPriceLegacyRequest(
+      SetPriceRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         base: base,
         rel: rel,
@@ -179,14 +177,14 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
   }
 
   /// Legacy method to buy base coin with rel coin
-  Future<BuyLegacyResponse> buyLegacy({
+  Future<BuyResponse> buyLegacy({
     required String base,
     required String rel,
-    required dynamic price,
-    required dynamic volume,
-    dynamic? minVolume,
-    Map<String, dynamic>? matchBy,
-    Map<String, dynamic>? orderType,
+    required Decimal price,
+    required Decimal volume,
+    Decimal? minVolume,
+    MatchBy? matchBy,
+    OrderType? orderType,
     int? baseConfs,
     bool? baseNota,
     int? relConfs,
@@ -195,7 +193,7 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
     String? rpcPass,
   }) {
     return execute(
-      BuyLegacyRequest(
+      BuyRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         base: base,
         rel: rel,
@@ -214,14 +212,14 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
   }
 
   /// Legacy method to sell base coin for rel coin
-  Future<SellLegacyResponse> sellLegacy({
+  Future<SellResponse> sellLegacy({
     required String base,
     required String rel,
-    required dynamic price,
-    required dynamic volume,
-    dynamic? minVolume,
-    Map<String, dynamic>? matchBy,
-    Map<String, dynamic>? orderType,
+    required Decimal price,
+    required Decimal volume,
+    Decimal? minVolume,
+    MatchBy? matchBy,
+    OrderType? orderType,
     int? baseConfs,
     bool? baseNota,
     int? relConfs,
@@ -230,7 +228,7 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
     String? rpcPass,
   }) {
     return execute(
-      SellLegacyRequest(
+      SellRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         base: base,
         rel: rel,
@@ -249,21 +247,18 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
   }
 
   /// Cancels a specific order
-  Future<CancelOrderResponse> cancelOrder({
+  Future<CancelOrderResponse> cancelOrderLegacy({
     required String uuid,
     String? rpcPass,
   }) {
     return execute(
-      CancelOrderRequest(
-        rpcPass: rpcPass ?? this.rpcPass ?? '',
-        uuid: uuid,
-      ),
+      CancelOrderRequest(rpcPass: rpcPass ?? this.rpcPass ?? '', uuid: uuid),
     );
   }
 
   /// Cancels all orders based on a condition
-  Future<CancelAllOrdersResponse> cancelAllOrders({
-    required Map<String, dynamic> cancelBy,
+  Future<CancelAllOrdersResponse> cancelAllOrdersLegacy({
+    required CancelBy cancelBy,
     String? rpcPass,
   }) {
     return execute(

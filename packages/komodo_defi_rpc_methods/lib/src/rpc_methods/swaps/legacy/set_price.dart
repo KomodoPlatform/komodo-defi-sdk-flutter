@@ -1,11 +1,12 @@
+import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Legacy request for creating a maker order (setprice)
-class SetPriceLegacyRequest
-    extends BaseRequest<SetPriceLegacyResponse, GeneralErrorResponse>
+class SetPriceRequest
+    extends BaseRequest<SetPriceResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  SetPriceLegacyRequest({
+  SetPriceRequest({
     required this.base,
     required this.rel,
     required this.price,
@@ -23,11 +24,11 @@ class SetPriceLegacyRequest
 
   final String base;
   final String rel;
-  final dynamic price;
-  final dynamic? volume;
+  final Decimal price;
+  final Decimal? volume;
   final bool max;
   final bool cancelPrevious;
-  final dynamic? minVolume;
+  final Decimal? minVolume;
   final int? baseConfs;
   final bool? baseNota;
   final int? relConfs;
@@ -39,11 +40,12 @@ class SetPriceLegacyRequest
     ...super.toJson(),
     'base': base,
     'rel': rel,
-    'price': price,
-    if (volume != null) 'volume': volume,
+    'price': price.toFractionalValue().toJson(),
+    if (volume != null) 'volume': volume?.toFractionalValue().toJson(),
     'max': max,
     'cancel_previous': cancelPrevious,
-    if (minVolume != null) 'min_volume': minVolume,
+    if (minVolume != null)
+      'min_volume': minVolume?.toFractionalValue().toJson(),
     if (baseConfs != null) 'base_confs': baseConfs,
     if (baseNota != null) 'base_nota': baseNota,
     if (relConfs != null) 'rel_confs': relConfs,
@@ -51,22 +53,54 @@ class SetPriceLegacyRequest
     'save_in_history': saveInHistory,
   };
 
+  SetPriceRequest copyWith({
+    String? base,
+    String? rel,
+    Decimal? price,
+    Decimal? volume,
+    bool? max,
+    bool? cancelPrevious,
+    Decimal? minVolume,
+    int? baseConfs,
+    bool? baseNota,
+    int? relConfs,
+    bool? relNota,
+    bool? saveInHistory,
+    String? rpcPass,
+  }) {
+    return SetPriceRequest(
+      base: base ?? this.base,
+      rel: rel ?? this.rel,
+      price: price ?? this.price,
+      volume: volume ?? this.volume,
+      max: max ?? this.max,
+      cancelPrevious: cancelPrevious ?? this.cancelPrevious,
+      minVolume: minVolume ?? this.minVolume,
+      baseConfs: baseConfs ?? this.baseConfs,
+      baseNota: baseNota ?? this.baseNota,
+      relConfs: relConfs ?? this.relConfs,
+      relNota: relNota ?? this.relNota,
+      saveInHistory: saveInHistory ?? this.saveInHistory,
+      rpcPass: rpcPass ?? this.rpcPass,
+    );
+  }
+
   @override
-  SetPriceLegacyResponse parse(Map<String, dynamic> json) =>
-      SetPriceLegacyResponse.fromJson(json);
+  SetPriceResponse parse(Map<String, dynamic> json) =>
+      SetPriceResponse.fromJson(json);
 }
 
 /// Legacy response for creating a maker order (setprice)
-class SetPriceLegacyResponse extends BaseResponse {
-  SetPriceLegacyResponse({
+class SetPriceResponse extends BaseResponse {
+  SetPriceResponse({
     required super.mmrpc,
     required this.result,
     this.baseOrderbookTicker,
     this.relOrderbookTicker,
   });
 
-  factory SetPriceLegacyResponse.fromJson(Map<String, dynamic> json) {
-    return SetPriceLegacyResponse(
+  factory SetPriceResponse.fromJson(Map<String, dynamic> json) {
+    return SetPriceResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
       result: SetPriceResult.fromJson(json.value<JsonMap>('result')),
       baseOrderbookTicker: json.valueOrNull<String>('base_orderbook_ticker'),
@@ -122,7 +156,9 @@ class SetPriceResult {
       matches: json.value<Map<String, dynamic>>('matches'),
       startedSwaps: json.value<List<dynamic>>('started_swaps').cast<String>(),
       uuid: json.value<String>('uuid'),
-      confSettings: ConfSettings.fromJson(json.value<JsonMap>('conf_settings')),
+      confSettings: OrderConfirmationSettings.fromJson(
+        json.value<JsonMap>('conf_settings'),
+      ),
     );
   }
 
@@ -139,7 +175,7 @@ class SetPriceResult {
   final Map<String, dynamic> matches;
   final List<String> startedSwaps;
   final String uuid;
-  final ConfSettings confSettings;
+  final OrderConfirmationSettings confSettings;
 
   Map<String, dynamic> toJson() => {
     'base': base,
@@ -160,11 +196,16 @@ class SetPriceResult {
 }
 
 /// Confirmation settings for order
-class ConfSettings {
-  ConfSettings({this.baseConfs, this.baseNota, this.relConfs, this.relNota});
+class OrderConfirmationSettings {
+  OrderConfirmationSettings({
+    this.baseConfs,
+    this.baseNota,
+    this.relConfs,
+    this.relNota,
+  });
 
-  factory ConfSettings.fromJson(Map<String, dynamic> json) {
-    return ConfSettings(
+  factory OrderConfirmationSettings.fromJson(Map<String, dynamic> json) {
+    return OrderConfirmationSettings(
       baseConfs: json.valueOrNull<int>('base_confs'),
       baseNota: json.valueOrNull<bool>('base_nota'),
       relConfs: json.valueOrNull<int>('rel_confs'),

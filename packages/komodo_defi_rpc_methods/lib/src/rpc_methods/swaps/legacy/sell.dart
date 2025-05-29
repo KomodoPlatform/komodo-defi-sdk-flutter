@@ -1,11 +1,11 @@
+import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Legacy request for creating a sell order
-class SellLegacyRequest
-    extends BaseRequest<SellLegacyResponse, GeneralErrorResponse>
+class SellRequest extends BaseRequest<SellResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  SellLegacyRequest({
+  SellRequest({
     required this.base,
     required this.rel,
     required this.price,
@@ -23,11 +23,11 @@ class SellLegacyRequest
 
   final String base;
   final String rel;
-  final dynamic price;
-  final dynamic volume;
-  final dynamic? minVolume;
-  final Map<String, dynamic>? matchBy;
-  final Map<String, dynamic>? orderType;
+  final Decimal price;
+  final Decimal volume;
+  final Decimal? minVolume;
+  final MatchBy? matchBy;
+  final OrderType? orderType;
   final int? baseConfs;
   final bool? baseNota;
   final int? relConfs;
@@ -39,11 +39,12 @@ class SellLegacyRequest
     ...super.toJson(),
     'base': base,
     'rel': rel,
-    'price': price,
-    'volume': volume,
-    if (minVolume != null) 'min_volume': minVolume,
+    'price': price.toJsonFractionalValue(),
+    'volume': volume.toJsonFractionalValue(),
+    if (minVolume != null)
+      'min_volume': minVolume?.toJsonFractionalValue(),
     if (matchBy != null) 'match_by': matchBy,
-    if (orderType != null) 'order_type': orderType,
+    if (orderType != null) 'order_type': orderType?.toJson(),
     if (baseConfs != null) 'base_confs': baseConfs,
     if (baseNota != null) 'base_nota': baseNota,
     if (relConfs != null) 'rel_confs': relConfs,
@@ -52,22 +53,21 @@ class SellLegacyRequest
   };
 
   @override
-  SellLegacyResponse parse(Map<String, dynamic> json) =>
-      SellLegacyResponse.fromJson(json);
+  SellResponse parse(Map<String, dynamic> json) => SellResponse.fromJson(json);
 }
 
 /// Legacy response for creating a sell order
-class SellLegacyResponse extends BaseResponse {
-  SellLegacyResponse({required super.mmrpc, required this.result});
+class SellResponse extends BaseResponse {
+  SellResponse({required super.mmrpc, required this.result});
 
-  factory SellLegacyResponse.fromJson(Map<String, dynamic> json) {
-    return SellLegacyResponse(
+  factory SellResponse.fromJson(Map<String, dynamic> json) {
+    return SellResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
-      result: LegacyOrderResult.fromJson(json.value<JsonMap>('result')),
+      result: OrderResult.fromJson(json.value<JsonMap>('result')),
     );
   }
 
-  final LegacyOrderResult result;
+  final OrderResult result;
 
   @override
   Map<String, dynamic> toJson() => {

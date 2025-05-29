@@ -1,12 +1,12 @@
+import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Legacy request for creating a buy order
-class BuyLegacyRequest
-    extends BaseRequest<BuyLegacyResponse, GeneralErrorResponse>
+class BuyRequest extends BaseRequest<BuyResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  BuyLegacyRequest({
+  BuyRequest({
     required this.base,
     required this.rel,
     required this.price,
@@ -24,11 +24,11 @@ class BuyLegacyRequest
 
   final String base;
   final String rel;
-  final dynamic price;
-  final dynamic volume;
-  final dynamic minVolume;
-  final Map<String, dynamic>? matchBy;
-  final Map<String, dynamic>? orderType;
+  final Decimal price;
+  final Decimal volume;
+  final Decimal? minVolume;
+  final MatchBy? matchBy;
+  final OrderType? orderType;
   final int? baseConfs;
   final bool? baseNota;
   final int? relConfs;
@@ -43,7 +43,7 @@ class BuyLegacyRequest
     'price': price,
     'volume': volume,
     if (minVolume != null) 'min_volume': minVolume,
-    if (matchBy != null) 'match_by': matchBy,
+    if (matchBy != null) 'match_by': matchBy!.toJson(),
     if (orderType != null) 'order_type': orderType,
     if (baseConfs != null) 'base_confs': baseConfs,
     if (baseNota != null) 'base_nota': baseNota,
@@ -53,22 +53,21 @@ class BuyLegacyRequest
   };
 
   @override
-  BuyLegacyResponse parse(Map<String, dynamic> json) =>
-      BuyLegacyResponse.fromJson(json);
+  BuyResponse parse(Map<String, dynamic> json) => BuyResponse.fromJson(json);
 }
 
 /// Legacy response for creating a buy order
-class BuyLegacyResponse extends BaseResponse {
-  BuyLegacyResponse({required super.mmrpc, required this.result});
+class BuyResponse extends BaseResponse {
+  BuyResponse({required super.mmrpc, required this.result});
 
-  factory BuyLegacyResponse.fromJson(Map<String, dynamic> json) {
-    return BuyLegacyResponse(
+  factory BuyResponse.fromJson(Map<String, dynamic> json) {
+    return BuyResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
-      result: LegacyOrderResult.fromJson(json.value<JsonMap>('result')),
+      result: OrderResult.fromJson(json.value<JsonMap>('result')),
     );
   }
 
-  final LegacyOrderResult result;
+  final OrderResult result;
 
   @override
   Map<String, dynamic> toJson() => {
@@ -78,8 +77,8 @@ class BuyLegacyResponse extends BaseResponse {
 }
 
 /// Result data for buy/sell order responses
-class LegacyOrderResult {
-  LegacyOrderResult({
+class OrderResult {
+  OrderResult({
     required this.action,
     required this.base,
     required this.baseAmount,
@@ -97,28 +96,32 @@ class LegacyOrderResult {
     this.relOrderbookTicker,
   });
 
-  factory LegacyOrderResult.fromJson(Map<String, dynamic> json) {
-    return LegacyOrderResult(
+  factory OrderResult.fromJson(Map<String, dynamic> json) {
+    return OrderResult(
       action: json.value<String>('action'),
       base: json.value<String>('base'),
       baseAmount: json.value<String>('base_amount'),
-      baseAmountRat: RationalValue.fromJson(
-        json.value<List<dynamic>>('base_amount_rat'),
-      ),
+      baseAmountRat:
+          RationalValue.fromJson(
+            json.value<List<dynamic>>('base_amount_rat'),
+          ).toDecimal(),
       destPubKey: json.value<String>('dest_pub_key'),
       method: json.value<String>('method'),
       rel: json.value<String>('rel'),
       relAmount: json.value<String>('rel_amount'),
-      relAmountRat: RationalValue.fromJson(
-        json.value<List<dynamic>>('rel_amount_rat'),
-      ),
+      relAmountRat:
+          RationalValue.fromJson(
+            json.value<List<dynamic>>('rel_amount_rat'),
+          ).toDecimal(),
       senderPubkey: json.value<String>('sender_pubkey'),
       uuid: json.value<String>('uuid'),
       matchBy:
           json.containsKey('match_by')
-              ? json.value<Map<String, dynamic>>('match_by')
+              ? MatchBy.fromJson(json.value<Map<String, dynamic>>('match_by'))
               : null,
-      confSettings: ConfSettings.fromJson(json.value<JsonMap>('conf_settings')),
+      confSettings: OrderConfigurationSettings.fromJson(
+        json.value<JsonMap>('conf_settings'),
+      ),
       baseOrderbookTicker: json.valueOrNull<String>('base_orderbook_ticker'),
       relOrderbookTicker: json.valueOrNull<String>('rel_orderbook_ticker'),
     );
@@ -127,16 +130,16 @@ class LegacyOrderResult {
   final String action;
   final String base;
   final String baseAmount;
-  final RationalValue baseAmountRat;
+  final Decimal baseAmountRat;
   final String destPubKey;
   final String method;
   final String rel;
   final String relAmount;
-  final RationalValue relAmountRat;
+  final Decimal relAmountRat;
   final String senderPubkey;
   final String uuid;
-  final Map<String, dynamic>? matchBy;
-  final ConfSettings confSettings;
+  final MatchBy? matchBy;
+  final OrderConfigurationSettings confSettings;
   final String? baseOrderbookTicker;
   final String? relOrderbookTicker;
 
@@ -144,15 +147,15 @@ class LegacyOrderResult {
     'action': action,
     'base': base,
     'base_amount': baseAmount,
-    'base_amount_rat': baseAmountRat.toJson(),
+    'base_amount_rat': baseAmountRat.toJsonFractionalValue(),
     'dest_pub_key': destPubKey,
     'method': method,
     'rel': rel,
     'rel_amount': relAmount,
-    'rel_amount_rat': relAmountRat.toJson(),
+    'rel_amount_rat': relAmountRat.toJsonFractionalValue(),
     'sender_pubkey': senderPubkey,
     'uuid': uuid,
-    if (matchBy != null) 'match_by': matchBy,
+    if (matchBy != null) 'match_by': matchBy?.toJson(),
     'conf_settings': confSettings.toJson(),
     if (baseOrderbookTicker != null)
       'base_orderbook_ticker': baseOrderbookTicker,

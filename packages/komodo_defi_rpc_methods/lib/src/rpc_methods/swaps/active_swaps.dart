@@ -5,10 +5,8 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 class ActiveSwapsRequest
     extends BaseRequest<ActiveSwapsResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  ActiveSwapsRequest({
-    required String rpcPass,
-    this.includeStatus = false,
-  }) : super(method: 'active_swaps', rpcPass: rpcPass, mmrpc: '2.0');
+  ActiveSwapsRequest({required String rpcPass, this.includeStatus = false})
+    : super(method: 'active_swaps', rpcPass: rpcPass, mmrpc: '2.0');
 
   /// Whether to include swap statuses in response; defaults to false
   final bool includeStatus;
@@ -16,9 +14,7 @@ class ActiveSwapsRequest
   @override
   Map<String, dynamic> toJson() {
     return super.toJson().deepMerge({
-      'params': {
-        'include_status': includeStatus,
-      },
+      'params': {'include_status': includeStatus},
     });
   }
 
@@ -65,9 +61,6 @@ class ActiveSwapsResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() {
-    return {
-      'uuids': uuids,
-      'statuses': statuses,
-    };
+    return {'uuids': uuids, 'statuses': statuses};
   }
 }

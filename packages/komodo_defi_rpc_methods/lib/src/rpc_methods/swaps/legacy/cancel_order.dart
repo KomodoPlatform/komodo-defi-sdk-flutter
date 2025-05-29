@@ -5,21 +5,17 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 class CancelOrderRequest
     extends BaseRequest<CancelOrderResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  CancelOrderRequest({
-    required this.uuid,
-    super.rpcPass,
-  }) : super(method: 'cancel_order', mmrpc: '2.0');
+  CancelOrderRequest({required this.uuid, super.rpcPass})
+    : super(method: 'cancel_order', mmrpc: null);
 
   final String uuid;
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'params': {
-          'uuid': uuid,
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'params': {'uuid': uuid},
+  };
 
   @override
   CancelOrderResponse parse(Map<String, dynamic> json) =>
@@ -28,10 +24,7 @@ class CancelOrderRequest
 
 /// Response for cancel_order
 class CancelOrderResponse extends BaseResponse {
-  CancelOrderResponse({
-    required super.mmrpc,
-    required this.result,
-  });
+  CancelOrderResponse({required super.mmrpc, required this.result});
 
   factory CancelOrderResponse.fromJson(Map<String, dynamic> json) {
     return CancelOrderResponse(
@@ -43,8 +36,5 @@ class CancelOrderResponse extends BaseResponse {
   final String result;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': result,
-      };
+  Map<String, dynamic> toJson() => {'mmrpc': mmrpc, 'result': result};
 }

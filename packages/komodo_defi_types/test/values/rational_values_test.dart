@@ -1,5 +1,5 @@
 import 'package:decimal/decimal.dart';
-import 'package:komodo_defi_types/src/values/rational_values.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:rational/rational.dart';
 import 'package:test/test.dart';
 
@@ -401,7 +401,8 @@ void main() {
         );
         final decimal = rational.toDecimal();
 
-        final expected = (Decimal.one / Decimal.fromInt(3)).toDecimal(scaleOnInfinitePrecision: 28);
+        final expected = (Decimal.one / Decimal.fromInt(3))
+            .toDecimal(scaleOnInfinitePrecision: 28);
         expect(decimal, equals(expected));
       });
     });

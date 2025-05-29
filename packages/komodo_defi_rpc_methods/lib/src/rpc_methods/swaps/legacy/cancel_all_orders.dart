@@ -5,21 +5,17 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 class CancelAllOrdersRequest
     extends BaseRequest<CancelAllOrdersResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  CancelAllOrdersRequest({
-    required this.cancelBy,
-    super.rpcPass,
-  }) : super(method: 'cancel_all_orders', mmrpc: '2.0');
+  CancelAllOrdersRequest({required this.cancelBy, super.rpcPass})
+    : super(method: 'cancel_all_orders', mmrpc: null);
 
-  final Map<String, dynamic> cancelBy;
+  final CancelBy cancelBy;
 
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'userpass': rpcPass,
-        'params': {
-          'cancel_by': cancelBy,
-        },
-      };
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'params': {'cancel_by': cancelBy.toJson()},
+  };
 
   @override
   CancelAllOrdersResponse parse(Map<String, dynamic> json) =>
@@ -28,10 +24,7 @@ class CancelAllOrdersRequest
 
 /// Response for cancel_all_orders
 class CancelAllOrdersResponse extends BaseResponse {
-  CancelAllOrdersResponse({
-    required super.mmrpc,
-    required this.result,
-  });
+  CancelAllOrdersResponse({required super.mmrpc, required this.result});
 
   factory CancelAllOrdersResponse.fromJson(Map<String, dynamic> json) {
     final result = json.value<JsonMap>('result');
@@ -44,10 +37,7 @@ class CancelAllOrdersResponse extends BaseResponse {
   final CancelAllOrdersResult result;
 
   @override
-  Map<String, dynamic> toJson() => {
-        'mmrpc': mmrpc,
-        'result': result.toJson(),
-      };
+  Map<String, dynamic> toJson() => {'mmrpc': mmrpc, 'result': result.toJson()};
 }
 
 /// Result data for cancel_all_orders
@@ -69,7 +59,7 @@ class CancelAllOrdersResult {
   final List<String> currentlyMatching;
 
   Map<String, dynamic> toJson() => {
-        'cancelled': cancelled,
-        'currently_matching': currentlyMatching,
-      };
+    'cancelled': cancelled,
+    'currently_matching': currentlyMatching,
+  };
 }
