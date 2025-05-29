@@ -52,5 +52,8 @@ export 'nft/withdraw_nft_data.dart';
 export 'pagination/history_target.dart';
 export 'pagination/pagination.dart';
 export 'primitive/numeric_value.dart';
+export 'swaps/order_data.dart';
+export 'swaps/request_by.dart';
+export 'swaps/swap_status.dart';
 export 'transaction_history/transaction_info.dart';
 export 'transaction_history/transaction_sync_status.dart';
