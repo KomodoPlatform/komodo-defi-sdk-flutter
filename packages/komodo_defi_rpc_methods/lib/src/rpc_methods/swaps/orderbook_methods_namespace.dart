@@ -81,7 +81,7 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
     );
   }
 
-  /// Returns the data of the most recent atomic swaps executed by the 
+  /// Returns the data of the most recent atomic swaps executed by the
   /// Komodo DeFi Framework API node
   Future<MyRecentSwapsResponse> myRecentSwaps({
     String? myCoin,
@@ -116,6 +116,160 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
       RecreateSwapDataRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         swap: swap,
+      ),
+    );
+  }
+
+  /// Calculates the details of a potential trade including fees and volumes
+  Future<TradePreimageResponse> tradePreimage({
+    required String base,
+    required String rel,
+    required dynamic price,
+    required dynamic volume,
+    bool? maxVolume,
+    bool? dryRun,
+    String? rpcPass,
+  }) {
+    return execute(
+      TradePreimageRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        base: base,
+        rel: rel,
+        price: price,
+        volume: volume,
+        maxVolume: maxVolume,
+        dryRun: dryRun,
+      ),
+    );
+  }
+
+  /// Legacy method to place a maker order on the orderbook
+  Future<SetPriceLegacyResponse> setPriceLegacy({
+    required String base,
+    required String rel,
+    required dynamic price,
+    dynamic? volume,
+    bool max = false,
+    bool cancelPrevious = true,
+    dynamic? minVolume,
+    int? baseConfs,
+    bool? baseNota,
+    int? relConfs,
+    bool? relNota,
+    bool saveInHistory = true,
+    String? rpcPass,
+  }) {
+    return execute(
+      SetPriceLegacyRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        base: base,
+        rel: rel,
+        price: price,
+        volume: volume,
+        max: max,
+        cancelPrevious: cancelPrevious,
+        minVolume: minVolume,
+        baseConfs: baseConfs,
+        baseNota: baseNota,
+        relConfs: relConfs,
+        relNota: relNota,
+        saveInHistory: saveInHistory,
+      ),
+    );
+  }
+
+  /// Legacy method to buy base coin with rel coin
+  Future<BuyLegacyResponse> buyLegacy({
+    required String base,
+    required String rel,
+    required dynamic price,
+    required dynamic volume,
+    dynamic? minVolume,
+    Map<String, dynamic>? matchBy,
+    Map<String, dynamic>? orderType,
+    int? baseConfs,
+    bool? baseNota,
+    int? relConfs,
+    bool? relNota,
+    bool saveInHistory = true,
+    String? rpcPass,
+  }) {
+    return execute(
+      BuyLegacyRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        base: base,
+        rel: rel,
+        price: price,
+        volume: volume,
+        minVolume: minVolume,
+        matchBy: matchBy,
+        orderType: orderType,
+        baseConfs: baseConfs,
+        baseNota: baseNota,
+        relConfs: relConfs,
+        relNota: relNota,
+        saveInHistory: saveInHistory,
+      ),
+    );
+  }
+
+  /// Legacy method to sell base coin for rel coin
+  Future<SellLegacyResponse> sellLegacy({
+    required String base,
+    required String rel,
+    required dynamic price,
+    required dynamic volume,
+    dynamic? minVolume,
+    Map<String, dynamic>? matchBy,
+    Map<String, dynamic>? orderType,
+    int? baseConfs,
+    bool? baseNota,
+    int? relConfs,
+    bool? relNota,
+    bool saveInHistory = true,
+    String? rpcPass,
+  }) {
+    return execute(
+      SellLegacyRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        base: base,
+        rel: rel,
+        price: price,
+        volume: volume,
+        minVolume: minVolume,
+        matchBy: matchBy,
+        orderType: orderType,
+        baseConfs: baseConfs,
+        baseNota: baseNota,
+        relConfs: relConfs,
+        relNota: relNota,
+        saveInHistory: saveInHistory,
+      ),
+    );
+  }
+
+  /// Cancels a specific order
+  Future<CancelOrderResponse> cancelOrder({
+    required String uuid,
+    String? rpcPass,
+  }) {
+    return execute(
+      CancelOrderRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        uuid: uuid,
+      ),
+    );
+  }
+
+  /// Cancels all orders based on a condition
+  Future<CancelAllOrdersResponse> cancelAllOrders({
+    required Map<String, dynamic> cancelBy,
+    String? rpcPass,
+  }) {
+    return execute(
+      CancelAllOrdersRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        cancelBy: cancelBy,
       ),
     );
   }

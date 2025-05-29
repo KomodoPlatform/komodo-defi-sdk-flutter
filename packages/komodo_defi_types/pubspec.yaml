@@ -18,6 +18,7 @@ dependencies:
   komodo_defi_rpc_methods:
     path: ../komodo_defi_rpc_methods
   meta: ^1.9.1
+  rational: ^2.2.3
 
 dev_dependencies:
   build_runner: ^2.4.14

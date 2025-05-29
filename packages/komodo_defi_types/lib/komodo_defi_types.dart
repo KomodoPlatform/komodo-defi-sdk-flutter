@@ -20,4 +20,6 @@ export 'src/public_key/balance_strategy.dart';
 export 'src/types.dart';
 
 // Export activation params types
-// export 'packages:komodo_defi_rpc_methods/lib/src/common_structures/activation/activation_params/activation_params_index.dart
+export 'src/values/rational_values.dart';
+
+// export 'packages:komodo_defi_rpc_methods/lib/src/common_structures/activation/activation_params/activation_params_index.dart'
