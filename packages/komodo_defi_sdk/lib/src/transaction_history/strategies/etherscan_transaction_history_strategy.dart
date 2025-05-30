@@ -213,7 +213,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 class EtherscanProtocolHelper {
   const EtherscanProtocolHelper({
     String? baseUrl,
-  }) : _baseUrl = baseUrl ?? 'https://etherscan-proxy.komodo.earth/api';
+  }) : _baseUrl = baseUrl ?? 'https://etherscan-proxy-v2.komodo.earth/api';
 
   final String _baseUrl;
 
@@ -283,24 +283,24 @@ class EtherscanProtocolHelper {
     return asset.protocol.subClass.formatted;
   }
 
-  String get _ethUrl => '$_baseUrl/v1/eth_tx_history';
+  String get _ethUrl => '$_baseUrl/v2/eth_tx_history';
   String get _ercUrl => '$_baseUrl/v2/erc_tx_history';
-  String get _bnbUrl => '$_baseUrl/v1/bnb_tx_history';
+  String get _bnbUrl => '$_baseUrl/v2/bnb_tx_history';
   String get _bepUrl => '$_baseUrl/v2/bep_tx_history';
-  String get _ftmUrl => '$_baseUrl/v1/ftm_tx_history';
+  String get _ftmUrl => '$_baseUrl/v2/ftm_tx_history';
   String get _ftmTokenUrl => '$_baseUrl/v2/ftm_tx_history';
-  String get _arbUrl => '$_baseUrl/v1/arbitrum_tx_history';
+  String get _arbUrl => '$_baseUrl/v2/arbitrum_tx_history';
   String get _arbTokenUrl => '$_baseUrl/v2/arbitrum_tx_history';
-  String get _etcUrl => '$_baseUrl/v1/etc_tx_history';
-  String get _avaxUrl => '$_baseUrl/v1/avx_tx_history';
+  String get _etcUrl => '$_baseUrl/v2/etc_tx_history';
+  String get _avaxUrl => '$_baseUrl/v2/avx_tx_history';
   String get _avaxTokenUrl => '$_baseUrl/v2/avx_tx_history';
-  String get _mvrUrl => '$_baseUrl/v1/moonriver_tx_history';
+  String get _mvrUrl => '$_baseUrl/v2/moonriver_tx_history';
   String get _mvrTokenUrl => '$_baseUrl/v2/moonriver_tx_history';
-  String get _hecoUrl => '$_baseUrl/v1/heco_tx_history';
+  String get _hecoUrl => '$_baseUrl/v2/heco_tx_history';
   String get _hecoTokenUrl => '$_baseUrl/v2/heco_tx_history';
-  String get _maticUrl => '$_baseUrl/v1/plg_tx_history';
+  String get _maticUrl => '$_baseUrl/v2/plg_tx_history';
   String get _maticTokenUrl => '$_baseUrl/v2/plg_tx_history';
-  String get _kcsUrl => '$_baseUrl/v1/kcs_tx_history';
+  String get _kcsUrl => '$_baseUrl/v2/kcs_tx_history';
   String get _kcsTokenUrl => '$_baseUrl/v2/kcs_tx_history';
-  String get _txByHashUrl => '$_baseUrl/v1/transactions_by_hash';
+  String get _txByHashUrl => '$_baseUrl/v2/transactions_by_hash';
 }

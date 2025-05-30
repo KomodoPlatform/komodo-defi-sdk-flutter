@@ -153,6 +153,7 @@ class WithdrawParameters extends Equatable {
     this.from,
     this.memo,
     this.ibcTransfer,
+    this.ibcSourceChannel,
     this.isMax,
   }) : assert(
           amount != null || (isMax ?? false),
@@ -166,6 +167,7 @@ class WithdrawParameters extends Equatable {
   final WithdrawalSource? from;
   final String? memo;
   final bool? ibcTransfer;
+  final String? ibcSourceChannel;
   final bool? isMax;
 
   JsonMap toJson() => {
@@ -177,6 +179,7 @@ class WithdrawParameters extends Equatable {
         if (from != null) 'from': from!.toRpcParams(),
         if (memo != null) 'memo': memo,
         if (ibcTransfer != null) 'ibc_transfer': ibcTransfer,
+        if (ibcSourceChannel != null) 'ibc_source_channel': ibcSourceChannel,
       };
 
   @override
@@ -188,6 +191,7 @@ class WithdrawParameters extends Equatable {
         from,
         memo,
         ibcTransfer,
+        ibcSourceChannel,
         isMax,
       ];
 }
