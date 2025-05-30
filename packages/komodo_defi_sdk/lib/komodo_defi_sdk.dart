@@ -22,4 +22,7 @@ export 'src/assets/asset_extensions.dart'
 export 'src/assets/asset_pubkey_extensions.dart';
 export 'src/assets/legacy_asset_extensions.dart';
 export 'src/komodo_defi_sdk.dart' show KomodoDefiSdk;
+export 'src/providers/evm_provider.dart';
+export 'src/providers/komodo_provider.dart';
+export 'src/providers/multi_chain_switcher.dart';
 export 'src/widgets/asset_balance_text.dart';
