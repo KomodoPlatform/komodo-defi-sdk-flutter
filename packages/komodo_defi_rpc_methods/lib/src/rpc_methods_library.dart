@@ -40,6 +40,7 @@ class KomodoDefiRpcMethods {
   TendermintMethodsNamespace get tendermint =>
       TendermintMethodsNamespace(_client);
   NftMethodsNamespace get nft => NftMethodsNamespace(_client);
+  StakingMethodsNamespace get staking => StakingMethodsNamespace(_client);
 
   // Add other namespaces here, e.g.:
   // TradeNamespace get trade => TradeNamespace(_client);
