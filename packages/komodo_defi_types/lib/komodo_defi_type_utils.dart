@@ -3,6 +3,7 @@
 /// Utilities for types used throughout the Komodo DeFi Framework ecosystem.
 library komodo_defi_type_utils;
 
+export 'src/utils/api_conversion_extensions.dart';
 export 'src/utils/backoff_strategy.dart';
 export 'src/utils/iterable_type_utils.dart';
 export 'src/utils/json_type_utils.dart';
