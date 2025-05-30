@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:kdf_sdk_example/blocs/swap/swap_bloc.dart';
+import 'package:kdf_sdk_example/widgets/swaps/best_orders_table.dart';
+import 'package:kdf_sdk_example/widgets/swaps/buy_asset_dropdown.dart';
+import 'package:kdf_sdk_example/widgets/swaps/orderbook_table.dart';
+import 'package:kdf_sdk_example/widgets/swaps/sell_asset_dropdown.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
-
-import '../blocs/swap_bloc.dart';
-import '../widgets/buy_asset_dropdown.dart';
-import '../widgets/sell_asset_dropdown.dart';
-import '../widgets/best_orders_table.dart';
-import '../widgets/orderbook_table.dart';
 
 class SwapPage extends StatelessWidget {
   const SwapPage({super.key});
@@ -31,8 +30,8 @@ class _SwapView extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Expanded(child: SellAssetDropdown()),
                 SizedBox(width: 16),
                 Expanded(child: BuyAssetDropdown()),

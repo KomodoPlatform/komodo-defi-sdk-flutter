@@ -271,9 +271,9 @@ class _InstanceViewState extends State<InstanceView> {
           alignment: Alignment.centerLeft,
           child: FilledButton(
             onPressed: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const SwapPage()));
+              Navigator.of(context).push(
+                MaterialPageRoute<SwapPage>(builder: (_) => const SwapPage()),
+              );
             },
             child: const Text('Open DEX'),
           ),

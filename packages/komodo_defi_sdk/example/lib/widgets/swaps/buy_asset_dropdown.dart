@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:kdf_sdk_example/blocs/swap/swap_bloc.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
-
-import '../blocs/swap_bloc.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class BuyAssetDropdown extends StatelessWidget {
   const BuyAssetDropdown({super.key});
@@ -10,8 +10,9 @@ class BuyAssetDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assets = context.select<KomodoDefiSdk, List<Asset>>((sdk) {
-      final list = sdk.assets.available.values.toList();
-      list.sort((a, b) => a.id.id.compareTo(b.id.id));
+      final list =
+          sdk.assets.available.values.toList()
+            ..sort((a, b) => a.id.id.compareTo(b.id.id));
       return list;
     });
     return BlocBuilder<SwapBloc, SwapState>(

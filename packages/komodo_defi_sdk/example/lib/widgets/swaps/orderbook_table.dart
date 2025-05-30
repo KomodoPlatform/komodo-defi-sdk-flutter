@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../blocs/swap_bloc.dart';
+import 'package:kdf_sdk_example/blocs/swap/swap_bloc.dart';
 
 class OrderbookTable extends StatelessWidget {
   const OrderbookTable({super.key});

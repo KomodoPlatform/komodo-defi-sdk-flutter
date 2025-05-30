@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../blocs/swap_bloc.dart';
+import 'package:kdf_sdk_example/blocs/swap/swap_bloc.dart';
 
 class BestOrdersTable extends StatelessWidget {
   const BestOrdersTable({super.key});
@@ -36,7 +35,6 @@ class BestOrdersTable extends StatelessWidget {
           }
         });
         return SingleChildScrollView(
-          scrollDirection: Axis.vertical,
           child: DataTable(
             columns: const [
               DataColumn(label: Text('Pair')),
