@@ -7,6 +7,7 @@ import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/auth/seed_dialog.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_status.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
+import 'package:kdf_sdk_example/screens/swap_page.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -265,6 +266,18 @@ class _InstanceViewState extends State<InstanceView> {
             ),
           ),
         ],
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton(
+            onPressed: () {
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const SwapPage()));
+            },
+            child: const Text('Open DEX'),
+          ),
+        ),
         const SizedBox(height: 16),
         Expanded(
           child: InstanceAssetList(
