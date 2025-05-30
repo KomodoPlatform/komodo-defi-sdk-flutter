@@ -1,0 +1,7 @@
+include: package:very_good_analysis/analysis_options.6.0.0.yaml
+
+# library_private_types_in_public_api: ignore
+analyzer:
+  errors:
+    public_member_api_docs: ignore
+    use_if_null_to_convert_nulls_to_bools: ignore
