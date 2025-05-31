@@ -338,7 +338,9 @@ class KdfAuthService implements IAuthService {
   }
 
   late final Future<KdfStartupConfig> _noAuthConfig =
-      KdfStartupConfig.noAuthStartup(rpcPassword: _hostConfig.rpcPassword);
+      KdfStartupConfig.noAuthStartup(
+        rpcPassword: _hostConfig.rpcPassword,
+      );
 
   Future<bool> verifyEncryptedSeedBip39Compatibility(String password) async {
     final mnemonic = await getMnemonic(

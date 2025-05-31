@@ -6,10 +6,10 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
 
   @override
   Set<CoinSubClass> get supportedProtocols => {
-        CoinSubClass.utxo,
-        CoinSubClass.smartChain,
-        // CoinSubClass.smartBch,
-      };
+    CoinSubClass.utxo,
+    CoinSubClass.smartChain,
+    // CoinSubClass.smartBch,
+  };
 
   @override
   bool get supportsBatchActivation => false;
@@ -62,6 +62,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
           stepCount: 5,
           additionalInfo: {
             'electrumServers': protocol.requiredServers.toJsonRequest(),
+            'protocolType': protocol.subClass.formatted,
           },
         ),
       );
@@ -131,7 +132,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
   }
 
   ({String status, double percentage, String step, Map<String, dynamic> info})
-      _parseUtxoStatus(String status) {
+  _parseUtxoStatus(String status) {
     switch (status) {
       case 'ConnectingElectrum':
         return (
