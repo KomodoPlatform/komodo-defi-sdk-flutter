@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
+import 'package:komodo_defi_remote/komodo_defi_remote.dart';
 
 class KdfInstanceDrawer extends StatefulWidget {
   const KdfInstanceDrawer({super.key});
@@ -14,6 +15,7 @@ class _KdfInstanceDrawerState extends State<KdfInstanceDrawer> {
   final _hostController = TextEditingController();
   final _portController = TextEditingController();
   final _rpcPasswordController = TextEditingController();
+  final _doTokenController = TextEditingController();
 
   @override
   void dispose() {
@@ -21,6 +23,7 @@ class _KdfInstanceDrawerState extends State<KdfInstanceDrawer> {
     _hostController.dispose();
     _portController.dispose();
     _rpcPasswordController.dispose();
+    _doTokenController.dispose();
     super.dispose();
   }
 
@@ -119,6 +122,73 @@ class _KdfInstanceDrawerState extends State<KdfInstanceDrawer> {
     }
   }
 
+  Future<void> _deployDigitalOcean() async {
+    final manager = KdfInstanceManagerProvider.of(context);
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('DigitalOcean Deployment'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _doTokenController,
+                  decoration: const InputDecoration(labelText: 'API Token'),
+                ),
+                TextField(
+                  controller: _rpcPasswordController,
+                  decoration: const InputDecoration(labelText: 'RPC Password'),
+                  obscureText: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Deploy'),
+              ),
+            ],
+          ),
+    );
+
+    if (result != true) return;
+
+    final deploymentManager = RemoteDeploymentManager();
+    final provider = DigitalOceanServerProvider(
+      apiToken: _doTokenController.text,
+    );
+
+    final instance = await deploymentManager.deployNew(provider: provider);
+
+    final sdk = KomodoDefiSdk(
+      host: RemoteConfig(
+        rpcPassword: _rpcPasswordController.text,
+        ipAddress: instance.ip ?? '',
+        port: 7783,
+        https: false,
+      ),
+      config: const KomodoDefiSdkConfig(),
+    );
+
+    await manager.registerInstance(
+      'DO ${instance.id}',
+      const KomodoDefiSdkConfig(),
+      sdk,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('DigitalOcean deployment started')),
+      );
+    }
+  }
+
   String? _selectedInstanceName;
   KdfInstanceState? get _selectedInstance =>
       _selectedInstanceName == null
@@ -143,9 +213,18 @@ class _KdfInstanceDrawerState extends State<KdfInstanceDrawer> {
                   'KDF Instances',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _showAddInstanceDialog,
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.cloud),
+                      onPressed: _deployDigitalOcean,
+                      tooltip: 'Deploy to DigitalOcean',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: _showAddInstanceDialog,
+                    ),
+                  ],
                 ),
               ],
             ),
