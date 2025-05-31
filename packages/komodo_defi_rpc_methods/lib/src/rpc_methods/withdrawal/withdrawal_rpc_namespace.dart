@@ -18,6 +18,7 @@ class WithdrawMethodsNamespace extends BaseRpcMethodNamespace {
         from: params.from,
         memo: params.memo,
         max: params.isMax ?? false,
+        ibcSourceChannel: params.ibcSourceChannel,
       ),
     );
   }

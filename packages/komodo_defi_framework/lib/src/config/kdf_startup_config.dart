@@ -4,12 +4,10 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
-import 'package:komodo_coins/komodo_coins.dart';
 
 class KdfStartupConfig {
   KdfStartupConfig._({

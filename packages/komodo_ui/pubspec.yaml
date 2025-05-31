@@ -17,11 +17,11 @@ dependencies:
   intl: ^0.20.2
   komodo_defi_types:
     path: ../komodo_defi_types
-  mobile_scanner: ^6.0.3
+  mobile_scanner: ^7.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   index_generator: ^4.0.0
   mocktail: ^1.0.4
-  very_good_analysis: ^7.0.0
+  very_good_analysis: ^8.0.0
