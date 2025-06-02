@@ -169,18 +169,12 @@ class _RecipientAddressFieldState extends State<RecipientAddressField> {
   /// Whether the text field currently has focus.
   bool _hasFocus = false;
 
-  /// Whether to show the paste button.
-  /// True when the field is empty, false when it contains text.
-  bool _showPasteButton = true;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.address);
     _focusNode.addListener(_onFocusChange);
-
-    // Update paste button visibility based on initial text
-    _showPasteButton = widget.address.isEmpty;
   }
 
   void _onFocusChange() {
@@ -194,7 +188,6 @@ class _RecipientAddressFieldState extends State<RecipientAddressField> {
     super.didUpdateWidget(oldWidget);
     if (widget.address != _controller.text) {
       _controller.text = widget.address;
-      _showPasteButton = widget.address.isEmpty;
     }
   }
 
@@ -205,19 +198,6 @@ class _RecipientAddressFieldState extends State<RecipientAddressField> {
       ..removeListener(_onFocusChange)
       ..dispose();
     super.dispose();
-  }
-
-  Future<void> _pasteFromClipboard() async {
-    final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
-    if (!mounted) return;
-
-    if (clipboardData?.text != null && clipboardData!.text!.isNotEmpty) {
-      _controller.text = clipboardData.text!;
-      widget.onChanged(clipboardData.text!);
-      setState(() {
-        _showPasteButton = false;
-      });
-    }
   }
 
   @override
@@ -277,20 +257,12 @@ class _RecipientAddressFieldState extends State<RecipientAddressField> {
             suffixIcon: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (_showPasteButton)
-                  TextButton(
-                    onPressed: _pasteFromClipboard,
-                    child: const Text('Paste'),
-                  )
-                else if (_controller.text.isNotEmpty)
+                if (_controller.text.isNotEmpty)
                   IconButton(
                     icon: const Icon(Icons.clear),
                     onPressed: () {
                       _controller.clear();
                       widget.onChanged('');
-                      setState(() {
-                        _showPasteButton = true;
-                      });
                     },
                     tooltip: 'Clear',
                   ),
@@ -311,10 +283,6 @@ class _RecipientAddressFieldState extends State<RecipientAddressField> {
             errorText: _getErrorText(),
           ),
           onChanged: (value) {
-            // Update UI state immediately
-            setState(() {
-              _showPasteButton = value.isEmpty;
-            });
 
             // Debounce the validation callback
             _validationDebouncer.run(() {
@@ -551,9 +519,6 @@ class _RecipientAddressFieldState extends State<RecipientAddressField> {
       _controller.text = scannedAddress;
       widget.onQrScanned?.call(scannedAddress);
       widget.onChanged(scannedAddress);
-      setState(() {
-        _showPasteButton = false;
-      });
     }
   }
 }
