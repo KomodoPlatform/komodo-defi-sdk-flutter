@@ -1,5 +1,6 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Request to get the currently available orders for the specified trading pair
 class OrderbookRequest
@@ -69,16 +70,16 @@ class OrderbookResponse extends BaseResponse {
               .map<OrderData>((bid) => OrderData.fromJson(bid as JsonMap))
               .toList(),
       timestamp: result.value<int>('timestamp'),
-      totalAsksBaseVol: VolumeData.fromJson(
+      totalAsksBaseVol: NumericFormatsValue.fromJson(
         result.value<JsonMap>('total_asks_base_vol'),
       ),
-      totalAsksRelVol: VolumeData.fromJson(
+      totalAsksRelVol: NumericFormatsValue.fromJson(
         result.value<JsonMap>('total_asks_rel_vol'),
       ),
-      totalBidsBaseVol: VolumeData.fromJson(
+      totalBidsBaseVol: NumericFormatsValue.fromJson(
         result.value<JsonMap>('total_bids_base_vol'),
       ),
-      totalBidsRelVol: VolumeData.fromJson(
+      totalBidsRelVol: NumericFormatsValue.fromJson(
         result.value<JsonMap>('total_bids_rel_vol'),
       ),
     );
@@ -109,16 +110,16 @@ class OrderbookResponse extends BaseResponse {
   final int timestamp;
 
   /// Total asks base volume
-  final VolumeData totalAsksBaseVol;
+  final NumericFormatsValue totalAsksBaseVol;
 
   /// Total asks rel volume
-  final VolumeData totalAsksRelVol;
+  final NumericFormatsValue totalAsksRelVol;
 
   /// Total bids base volume
-  final VolumeData totalBidsBaseVol;
+  final NumericFormatsValue totalBidsBaseVol;
 
   /// Total bids rel volume
-  final VolumeData totalBidsRelVol;
+  final NumericFormatsValue totalBidsRelVol;
 
   @override
   Map<String, dynamic> toJson() {

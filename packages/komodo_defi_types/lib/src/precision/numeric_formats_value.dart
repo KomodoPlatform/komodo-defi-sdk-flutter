@@ -10,6 +10,7 @@ import 'package:rational/rational.dart';
 ///   "rational": [[1, [1]], [1, [10000]]],
 ///   "fraction": {"numer": "1", "denom": "10000"}
 /// }
+/// ```
 class NumericFormatsValue extends Equatable {
   /// Creates a new [NumericFormatsValue].
   const NumericFormatsValue({

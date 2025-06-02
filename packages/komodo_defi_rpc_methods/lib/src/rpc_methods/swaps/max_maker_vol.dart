@@ -1,15 +1,14 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Request to get the maximum volume of a coin which can be used to create a
 /// maker order
 class MaxMakerVolRequest
     extends BaseRequest<MaxMakerVolResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  MaxMakerVolRequest({
-    required String rpcPass,
-    required this.coin,
-  }) : super(method: 'max_maker_vol', rpcPass: rpcPass, mmrpc: '2.0');
+  MaxMakerVolRequest({required String rpcPass, required this.coin})
+    : super(method: 'max_maker_vol', rpcPass: rpcPass, mmrpc: '2.0');
 
   /// The ticker of the coin you want to query
   final String coin;
@@ -43,13 +42,9 @@ class MaxMakerVolResponse extends BaseResponse {
       mmrpc: json.valueOrNull<String>('mmrpc'),
       id: json.valueOrNull<String>('id'),
       coin: result.value<String>('coin'),
-      volume: VolumeData.fromJson(
-        result.value<JsonMap>('volume'),
-      ),
-      balance: VolumeData.fromJson(
-        result.value<JsonMap>('balance'),
-      ),
-      lockedBySwaps: VolumeData.fromJson(
+      volume: NumericFormatsValue.fromJson(result.value<JsonMap>('volume')),
+      balance: NumericFormatsValue.fromJson(result.value<JsonMap>('balance')),
+      lockedBySwaps: NumericFormatsValue.fromJson(
         result.value<JsonMap>('locked_by_swaps'),
       ),
     );
@@ -60,15 +55,15 @@ class MaxMakerVolResponse extends BaseResponse {
 
   /// A standard NumericFormatsValue object representing the tradable maker
   /// volume
-  final VolumeData volume;
+  final NumericFormatsValue volume;
 
   /// A standard NumericFormatsValue object representing the tradable taker
   /// balance
-  final VolumeData balance;
+  final NumericFormatsValue balance;
 
   /// A standard NumericFormatsValue object representing the volume of a coin's
   /// balance which is locked by swaps in progress
-  final VolumeData lockedBySwaps;
+  final NumericFormatsValue lockedBySwaps;
 
   @override
   Map<String, dynamic> toJson() {

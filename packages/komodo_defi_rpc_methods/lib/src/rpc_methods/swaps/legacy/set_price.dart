@@ -1,12 +1,13 @@
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Custom exception for SetPrice parameter validation errors
 class SetPriceValidationException implements Exception {
   final String message;
   SetPriceValidationException(this.message);
-  
+
   @override
   String toString() => 'SetPriceValidationException: $message';
 }
@@ -32,31 +33,33 @@ class SetPriceRequest
   }) : super(method: 'setprice', mmrpc: null) {
     _validateInputs();
   }
-  
+
   /// Validates critical input parameters to ensure data integrity
   void _validateInputs() {
     // Validate base and rel are not empty
     if (base.isEmpty) {
       throw SetPriceValidationException('Base coin symbol cannot be empty');
     }
-    
+
     if (rel.isEmpty) {
       throw SetPriceValidationException('Rel coin symbol cannot be empty');
     }
-    
+
     // Validate price is positive
     if (price <= Decimal.zero) {
       throw SetPriceValidationException('Price must be a positive value');
     }
-    
+
     // Validate volume if provided
     if (volume != null && volume! <= Decimal.zero) {
       throw SetPriceValidationException('Volume must be a positive value');
     }
-    
+
     // Validate minVolume if provided
     if (minVolume != null && minVolume! <= Decimal.zero) {
-      throw SetPriceValidationException('Minimum volume must be a positive value');
+      throw SetPriceValidationException(
+        'Minimum volume must be a positive value',
+      );
     }
   }
 
@@ -185,11 +188,15 @@ class SetPriceResult {
       base: json.value<String>('base'),
       rel: json.value<String>('rel'),
       price: json.value<String>('price'),
-      priceRat: json.value<dynamic>('price_rat'),
+      priceRat: RationalValue.fromJson(json.value<List<dynamic>>('price_rat')),
       maxBaseVol: json.value<String>('max_base_vol'),
-      maxBaseVolRat: json.value<dynamic>('max_base_vol_rat'),
+      maxBaseVolRat: RationalValue.fromJson(
+        json.value<List<dynamic>>('max_base_vol_rat'),
+      ),
       minBaseVol: json.value<String>('min_base_vol'),
-      minBaseVolRat: json.value<dynamic>('min_base_vol_rat'),
+      minBaseVolRat: RationalValue.fromJson(
+        json.value<List<dynamic>>('min_base_vol_rat'),
+      ),
       createdAt: json.value<int>('created_at'),
       updatedAt: json.value<int>('updated_at'),
       matches: json.value<Map<String, dynamic>>('matches'),
@@ -204,11 +211,11 @@ class SetPriceResult {
   final String base;
   final String rel;
   final String price;
-  final dynamic priceRat;
+  final RationalValue priceRat;
   final String maxBaseVol;
-  final dynamic maxBaseVolRat;
+  final RationalValue maxBaseVolRat;
   final String minBaseVol;
-  final dynamic minBaseVolRat;
+  final RationalValue minBaseVolRat;
   final int createdAt;
   final int updatedAt;
   final Map<String, dynamic> matches;
@@ -220,47 +227,16 @@ class SetPriceResult {
     'base': base,
     'rel': rel,
     'price': price,
-    'price_rat': priceRat,
+    'price_rat': priceRat.toJson(),
     'max_base_vol': maxBaseVol,
-    'max_base_vol_rat': maxBaseVolRat,
+    'max_base_vol_rat': maxBaseVolRat.toJson(),
     'min_base_vol': minBaseVol,
-    'min_base_vol_rat': minBaseVolRat,
+    'min_base_vol_rat': minBaseVolRat.toJson(),
     'created_at': createdAt,
     'updated_at': updatedAt,
     'matches': matches,
     'started_swaps': startedSwaps,
     'uuid': uuid,
     'conf_settings': confSettings.toJson(),
-  };
-}
-
-/// Confirmation settings for order
-class OrderConfirmationSettings {
-  OrderConfirmationSettings({
-    this.baseConfs,
-    this.baseNota,
-    this.relConfs,
-    this.relNota,
-  });
-
-  factory OrderConfirmationSettings.fromJson(Map<String, dynamic> json) {
-    return OrderConfirmationSettings(
-      baseConfs: json.valueOrNull<int>('base_confs'),
-      baseNota: json.valueOrNull<bool>('base_nota'),
-      relConfs: json.valueOrNull<int>('rel_confs'),
-      relNota: json.valueOrNull<bool>('rel_nota'),
-    );
-  }
-
-  final int? baseConfs;
-  final bool? baseNota;
-  final int? relConfs;
-  final bool? relNota;
-
-  Map<String, dynamic> toJson() => {
-    if (baseConfs != null) 'base_confs': baseConfs,
-    if (baseNota != null) 'base_nota': baseNota,
-    if (relConfs != null) 'rel_confs': relConfs,
-    if (relNota != null) 'rel_nota': relNota,
   };
 }

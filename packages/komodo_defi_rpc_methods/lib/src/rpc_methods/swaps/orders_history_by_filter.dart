@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Request to get orders history filtered by various criteria
 class OrdersHistoryByFilterRequest
@@ -302,11 +303,13 @@ class OrderDataV1 {
       base: json.value<String>('base'),
       rel: json.value<String>('rel'),
       price: json.value<String>('price'),
-      priceRat: json.value<dynamic>('price_rat'),
+      priceRat: RationalValue.fromJson(json.value<List<dynamic>>('price_rat')),
       maxBaseVol: json.value<String>('max_base_vol'),
-      maxBaseVolRat: json.value<dynamic>('max_base_vol_rat'),
+      maxBaseVolRat: RationalValue.fromJson(
+          json.value<List<dynamic>>('max_base_vol_rat')),
       minBaseVol: json.value<String>('min_base_vol'),
-      minBaseVolRat: json.value<dynamic>('min_base_vol_rat'),
+      minBaseVolRat: RationalValue.fromJson(
+          json.value<List<dynamic>>('min_base_vol_rat')),
       createdAt: json.value<int>('created_at'),
       updatedAt: json.value<int>('updated_at'),
       matches: json.value<Map<String, dynamic>>('matches'),
@@ -328,19 +331,19 @@ class OrderDataV1 {
   final String price;
 
   /// Price rational format
-  final dynamic priceRat;
+  final RationalValue priceRat;
 
   /// Maximum base volume as string
   final String maxBaseVol;
 
   /// Maximum base volume rational format
-  final dynamic maxBaseVolRat;
+  final RationalValue maxBaseVolRat;
 
   /// Minimum base volume as string
   final String minBaseVol;
 
   /// Minimum base volume rational format
-  final dynamic minBaseVolRat;
+  final RationalValue minBaseVolRat;
 
   /// Created timestamp
   final int createdAt;
@@ -364,11 +367,11 @@ class OrderDataV1 {
     'base': base,
     'rel': rel,
     'price': price,
-    'price_rat': priceRat,
+    'price_rat': priceRat.toJson(),
     'max_base_vol': maxBaseVol,
-    'max_base_vol_rat': maxBaseVolRat,
+    'max_base_vol_rat': maxBaseVolRat.toJson(),
     'min_base_vol': minBaseVol,
-    'min_base_vol_rat': minBaseVolRat,
+    'min_base_vol_rat': minBaseVolRat.toJson(),
     'created_at': createdAt,
     'updated_at': updatedAt,
     'matches': matches,
