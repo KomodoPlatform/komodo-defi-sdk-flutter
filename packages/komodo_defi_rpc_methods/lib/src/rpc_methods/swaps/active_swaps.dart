@@ -35,7 +35,10 @@ class ActiveSwapsResponse extends BaseResponse {
     final result = json.value<JsonMap>('result');
 
     final uuidsJson = result.value<List<dynamic>>('uuids');
-    final uuids = uuidsJson.cast<String>();
+    final uuids = uuidsJson
+        .where((element) => element is String)
+        .cast<String>()
+        .toList();
 
     final statusesJson = result.value<JsonMap>('statuses');
     final statuses = <String, Map<String, dynamic>>{};

@@ -29,7 +29,7 @@ class CancelAllOrdersResponse extends BaseResponse {
   factory CancelAllOrdersResponse.fromJson(Map<String, dynamic> json) {
     final result = json.value<JsonMap>('result');
     return CancelAllOrdersResponse(
-      mmrpc: json.value<String>('mmrpc'),
+      mmrpc: json.valueOrNull<String>('mmrpc'),
       result: CancelAllOrdersResult.fromJson(result),
     );
   }

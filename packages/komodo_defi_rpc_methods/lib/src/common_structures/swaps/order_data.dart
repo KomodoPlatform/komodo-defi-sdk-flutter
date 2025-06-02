@@ -1,6 +1,9 @@
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-/// Represents order data as returned by trading methods
+/// Represents OrderDataV2 as returned by trading methods
+/// NOTE: Only use this with V2 methods, as it is not compatible
+/// with legacy API methods.
 class OrderData {
   OrderData({
     required this.coin,
@@ -20,18 +23,22 @@ class OrderData {
     return OrderData(
       coin: json.value<String>('coin'),
       address: AddressData.fromJson(json.value<JsonMap>('address')),
-      price: PriceData.fromJson(json.value<JsonMap>('price')),
+      price: NumericFormatsValue.fromJson(json.value<JsonMap>('price')),
       pubkey: json.value<String>('pubkey'),
       uuid: json.value<String>('uuid'),
       isMine: json.value<bool>('is_mine'),
-      baseMaxVolume: VolumeData.fromJson(
+      baseMaxVolume: NumericFormatsValue.fromJson(
         json.value<JsonMap>('base_max_volume'),
       ),
-      baseMinVolume: VolumeData.fromJson(
+      baseMinVolume: NumericFormatsValue.fromJson(
         json.value<JsonMap>('base_min_volume'),
       ),
-      relMaxVolume: VolumeData.fromJson(json.value<JsonMap>('rel_max_volume')),
-      relMinVolume: VolumeData.fromJson(json.value<JsonMap>('rel_min_volume')),
+      relMaxVolume: NumericFormatsValue.fromJson(
+        json.value<JsonMap>('rel_max_volume'),
+      ),
+      relMinVolume: NumericFormatsValue.fromJson(
+        json.value<JsonMap>('rel_min_volume'),
+      ),
       confSettings:
           json.valueOrNull<JsonMap>('conf_settings') != null
               ? OrderConfigurationSettings.fromJson(
@@ -48,7 +55,7 @@ class OrderData {
   final AddressData address;
 
   /// Price information for the order
-  final PriceData price;
+  final NumericFormatsValue price;
 
   /// Public key of the order creator
   final String pubkey;
@@ -60,16 +67,16 @@ class OrderData {
   final bool isMine;
 
   /// Maximum base volume
-  final VolumeData baseMaxVolume;
+  final NumericFormatsValue baseMaxVolume;
 
   /// Minimum base volume
-  final VolumeData baseMinVolume;
+  final NumericFormatsValue baseMinVolume;
 
   /// Maximum relative volume
-  final VolumeData relMaxVolume;
+  final NumericFormatsValue relMaxVolume;
 
   /// Minimum relative volume
-  final VolumeData relMinVolume;
+  final NumericFormatsValue relMinVolume;
 
   /// Configuration settings for the order
   final OrderConfigurationSettings? confSettings;
@@ -104,94 +111,6 @@ class AddressData {
 
   Map<String, dynamic> toJson() {
     return {'address_data': addressData};
-  }
-}
-
-/// Price data for an order
-class PriceData {
-  PriceData({this.decimal, this.rational, this.fraction});
-
-  factory PriceData.fromJson(Map<String, dynamic> json) {
-    return PriceData(
-      decimal: json.valueOrNull<String>('decimal'),
-      rational: json.valueOrNull<List>('rational'),
-      fraction:
-          json.valueOrNull<JsonMap>('fraction') != null
-              ? FractionData.fromJson(json.value<JsonMap>('fraction'))
-              : null,
-    );
-  }
-
-  /// Price in decimal format
-  final String? decimal;
-
-  /// Price in rational format
-  final List<dynamic>? rational;
-
-  /// Price in fraction format
-  final FractionData? fraction;
-
-  Map<String, dynamic> toJson() {
-    return {
-      if (decimal != null) 'decimal': decimal,
-      if (rational != null) 'rational': rational,
-      if (fraction != null) 'fraction': fraction!.toJson(),
-    };
-  }
-}
-
-/// Volume data for an order
-class VolumeData {
-  VolumeData({this.decimal, this.rational, this.fraction});
-
-  factory VolumeData.fromJson(Map<String, dynamic> json) {
-    return VolumeData(
-      decimal: json.valueOrNull<String>('decimal'),
-      rational: json.valueOrNull<List>('rational'),
-      fraction:
-          json.valueOrNull<JsonMap>('fraction') != null
-              ? FractionData.fromJson(json.value<JsonMap>('fraction'))
-              : null,
-    );
-  }
-
-  /// Volume in decimal format
-  final String? decimal;
-
-  /// Volume in rational format
-  final List<dynamic>? rational;
-
-  /// Volume in fraction format
-  final FractionData? fraction;
-
-  Map<String, dynamic> toJson() {
-    return {
-      if (decimal != null) 'decimal': decimal,
-      if (rational != null) 'rational': rational,
-      if (fraction != null) 'fraction': fraction!.toJson(),
-    };
-  }
-}
-
-/// Fraction data representation
-class FractionData {
-  FractionData({required this.numer, required this.denom});
-
-  factory FractionData.fromJson(Map<String, dynamic> json) {
-    return FractionData(
-      numer: json.value<String>('numer'),
-      denom: json.value<String>('denom'),
-    );
-  }
-
-  /// Numerator
-  final String numer;
-
-  /// Denominator
-  final String denom;
-
-  Map<String, dynamic> toJson() {
-    return {'numer': numer, 'denom': denom};
   }
 }
 

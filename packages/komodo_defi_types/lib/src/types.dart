@@ -26,7 +26,7 @@ export 'generic/result.dart';
 export 'generic/sync_status.dart';
 export 'komodo_defi_types_base.dart';
 export 'legacy/legacy_coin_model.dart';
-export 'precision/rational_values.dart';
+export 'precision/numeric_formats_value.dart';
 export 'protocols/base/exceptions.dart';
 export 'protocols/base/explorer_url_pattern.dart';
 export 'protocols/base/protocol_class.dart';

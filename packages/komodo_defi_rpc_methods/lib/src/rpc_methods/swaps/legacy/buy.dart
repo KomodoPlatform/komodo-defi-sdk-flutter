@@ -38,6 +38,7 @@ class BuyRequest extends BaseRequest<BuyResponse, GeneralErrorResponse>
   @override
   Map<String, dynamic> toJson() => {
     ...super.toJson(),
+    'userpass': rpcPass,
     'base': base,
     'rel': rel,
     'price': price,

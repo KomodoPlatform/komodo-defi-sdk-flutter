@@ -2,6 +2,15 @@ import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
+/// Custom exception for SetPrice parameter validation errors
+class SetPriceValidationException implements Exception {
+  final String message;
+  SetPriceValidationException(this.message);
+  
+  @override
+  String toString() => 'SetPriceValidationException: $message';
+}
+
 /// Legacy request for creating a maker order (setprice)
 class SetPriceRequest
     extends BaseRequest<SetPriceResponse, GeneralErrorResponse>
@@ -20,7 +29,36 @@ class SetPriceRequest
     this.relNota,
     this.saveInHistory = true,
     super.rpcPass,
-  }) : super(method: 'setprice', mmrpc: null);
+  }) : super(method: 'setprice', mmrpc: null) {
+    _validateInputs();
+  }
+  
+  /// Validates critical input parameters to ensure data integrity
+  void _validateInputs() {
+    // Validate base and rel are not empty
+    if (base.isEmpty) {
+      throw SetPriceValidationException('Base coin symbol cannot be empty');
+    }
+    
+    if (rel.isEmpty) {
+      throw SetPriceValidationException('Rel coin symbol cannot be empty');
+    }
+    
+    // Validate price is positive
+    if (price <= Decimal.zero) {
+      throw SetPriceValidationException('Price must be a positive value');
+    }
+    
+    // Validate volume if provided
+    if (volume != null && volume! <= Decimal.zero) {
+      throw SetPriceValidationException('Volume must be a positive value');
+    }
+    
+    // Validate minVolume if provided
+    if (minVolume != null && minVolume! <= Decimal.zero) {
+      throw SetPriceValidationException('Minimum volume must be a positive value');
+    }
+  }
 
   final String base;
   final String rel;
@@ -38,6 +76,7 @@ class SetPriceRequest
   @override
   Map<String, dynamic> toJson() => {
     ...super.toJson(),
+    'userpass': rpcPass,
     'base': base,
     'rel': rel,
     'price': price.toFractionalValue().toJson(),

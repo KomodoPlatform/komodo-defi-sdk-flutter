@@ -140,9 +140,7 @@ class _AssetDropdownState extends State<AssetDropdown> {
                             ),
                           ),
                           onChanged: (value) {
-                            setState(() {
-                              _searchQuery = value;
-                            });
+                            _searchQuery = value;
                             // Rebuild the overlay with updated search results
                             _updateOverlay(context, assets);
                           },

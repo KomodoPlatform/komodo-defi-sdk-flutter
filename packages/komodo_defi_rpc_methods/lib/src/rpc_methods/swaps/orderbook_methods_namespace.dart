@@ -81,6 +81,11 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
 
   /// Returns the data of the most recent atomic swaps executed by the
   /// Komodo DeFi Framework API node
+  ///
+  /// [limit] specifies the number of swaps to return per page and must be a positive integer.
+  /// [pageNumber] specifies which page of results to return and must be a positive integer.
+  /// 
+  /// Throws [ArgumentError] if pagination parameters are invalid.
   Future<MyRecentSwapsResponse> myRecentSwaps({
     String? myCoin,
     String? otherCoin,
@@ -91,6 +96,23 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
     int pageNumber = 1,
     String? rpcPass,
   }) {
+    // Validate pagination parameters
+    if (limit <= 0) {
+      throw ArgumentError.value(
+        limit,
+        'limit',
+        'Limit must be a positive integer',
+      );
+    }
+    
+    if (pageNumber <= 0) {
+      throw ArgumentError.value(
+        pageNumber,
+        'pageNumber',
+        'Page number must be a positive integer',
+      );
+    }
+    
     return execute(
       MyRecentSwapsRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
@@ -119,15 +141,30 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
   }
 
   /// Calculates the details of a potential trade including fees and volumes
+  ///
+  /// [volume] and [max] parameters are mutually exclusive and should not be used
+  /// simultaneously. If both are provided, an [ArgumentError] will be thrown.
+  ///
+  /// - Use [volume] to specify an exact amount to trade
+  /// - Use [max] (set to true) to use the maximum available balance
   Future<TradePreimageResponse> tradePreimage({
     required String base,
     required String rel,
     required String swapMethod,
     required Decimal price,
     Decimal? volume,
-    bool? max,
+    bool max = false,
     String? rpcPass,
   }) {
+    // Validate that volume and max are not both provided
+    if (volume != null && max == true) {
+      throw ArgumentError(
+        'Cannot specify both volume and max parameters simultaneously. '
+        'Use either volume to specify an exact amount or max=true to '
+        'use maximum available balance.',
+      );
+    }
+
     return execute(
       TradePreimageRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
@@ -326,10 +363,7 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
     String? rpcPass,
   }) {
     return execute(
-      OrderStatusRequest(
-        rpcPass: rpcPass ?? this.rpcPass ?? '',
-        uuid: uuid,
-      ),
+      OrderStatusRequest(rpcPass: rpcPass ?? this.rpcPass ?? '', uuid: uuid),
     );
   }
 }

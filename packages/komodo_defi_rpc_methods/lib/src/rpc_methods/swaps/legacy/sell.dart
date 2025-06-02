@@ -37,14 +37,15 @@ class SellRequest extends BaseRequest<SellResponse, GeneralErrorResponse>
   @override
   Map<String, dynamic> toJson() => {
     ...super.toJson(),
+    'userpass': rpcPass,
     'base': base,
     'rel': rel,
     'price': price.toJsonFractionalValue(),
     'volume': volume.toJsonFractionalValue(),
     if (minVolume != null)
-      'min_volume': minVolume?.toJsonFractionalValue(),
-    if (matchBy != null) 'match_by': matchBy,
-    if (orderType != null) 'order_type': orderType?.toJson(),
+      'min_volume': minVolume!.toJsonFractionalValue(),
+    if (matchBy != null) 'match_by': matchBy!.toJson(),
+    if (orderType != null) 'order_type': orderType!.toJson(),
     if (baseConfs != null) 'base_confs': baseConfs,
     if (baseNota != null) 'base_nota': baseNota,
     if (relConfs != null) 'rel_confs': relConfs,
