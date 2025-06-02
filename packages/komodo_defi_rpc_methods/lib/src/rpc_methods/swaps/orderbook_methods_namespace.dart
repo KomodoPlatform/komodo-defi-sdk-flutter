@@ -268,4 +268,68 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
       ),
     );
   }
+
+  /// Returns the number of asks and bids for the specified trading pairs
+  Future<OrderbookDepthResponse> orderbookDepthLegacy({
+    required List<List<String>> pairs,
+    String? rpcPass,
+  }) {
+    return execute(
+      OrderbookDepthRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        pairs: pairs,
+      ),
+    );
+  }
+
+  /// Returns all orders whether active or inactive that match the selected
+  /// filters
+  Future<OrdersHistoryByFilterResponse> ordersHistoryByFilterLegacy({
+    String? orderType,
+    String? initialAction,
+    String? base,
+    String? rel,
+    Decimal? fromPrice,
+    Decimal? toPrice,
+    Decimal? fromVolume,
+    Decimal? toVolume,
+    int? fromTimestamp,
+    int? toTimestamp,
+    bool? wasTaker,
+    String? status,
+    bool includeDetails = false,
+    String? rpcPass,
+  }) {
+    return execute(
+      OrdersHistoryByFilterRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        orderType: orderType,
+        initialAction: initialAction,
+        base: base,
+        rel: rel,
+        fromPrice: fromPrice,
+        toPrice: toPrice,
+        fromVolume: fromVolume,
+        toVolume: toVolume,
+        fromTimestamp: fromTimestamp,
+        toTimestamp: toTimestamp,
+        wasTaker: wasTaker,
+        status: status,
+        includeDetails: includeDetails,
+      ),
+    );
+  }
+
+  /// Returns the status of an order by UUID
+  Future<OrderStatusResponse> orderStatusLegacy({
+    required String uuid,
+    String? rpcPass,
+  }) {
+    return execute(
+      OrderStatusRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        uuid: uuid,
+      ),
+    );
+  }
 }
