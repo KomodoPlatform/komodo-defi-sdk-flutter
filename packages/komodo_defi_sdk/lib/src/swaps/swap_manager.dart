@@ -6,8 +6,6 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-import 'swap_strategies/_strategies_index.dart';
-
 /// Manages swap operations using legacy RPC methods
 class SwapManager {
   /// Creates a new instance of [SwapManager]

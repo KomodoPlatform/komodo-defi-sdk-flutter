@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Base class for swap execution strategies
@@ -45,8 +46,9 @@ abstract class BaseSwapStrategy extends SwapStrategy {
       }
 
       final asset = assets.first;
-      final activationStatus =
-          await activationManager.activateAsset(asset).last;
+      final activationStatus = await retry(
+        () => activationManager.activateAsset(asset).last,
+      );
 
       if (activationStatus.isComplete && !activationStatus.isSuccess) {
         throw SwapException(
@@ -63,9 +65,9 @@ abstract class BaseSwapStrategy extends SwapStrategy {
       error is SwapException
           ? error
           : SwapException(
-              'Swap failed: $error',
-              SwapException.mapErrorToCode(error.toString()),
-            ),
+            'Swap failed: $error',
+            SwapException.mapErrorToCode(error.toString()),
+          ),
     );
   }
 }

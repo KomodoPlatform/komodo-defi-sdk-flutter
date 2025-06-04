@@ -4,8 +4,6 @@ import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-import 'swap_strategy.dart';
-
 /// Strategy that places a taker order and fails if it doesn't succeed
 class TakerSwapStrategy extends BaseSwapStrategy {
   /// Creates a new taker swap strategy
@@ -15,7 +13,7 @@ class TakerSwapStrategy extends BaseSwapStrategy {
   String get name => 'Taker';
 
   @override
-  String get description => 
+  String get description =>
       'Places a taker order immediately and fails if it cannot match';
 
   @override

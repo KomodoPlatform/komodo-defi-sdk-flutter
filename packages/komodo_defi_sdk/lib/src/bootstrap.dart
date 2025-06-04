@@ -217,9 +217,9 @@ Future<void> bootstrap({
     () async {
       final client = await container.getAsync<ApiClient>();
       final auth = await container.getAsync<KomodoDefiLocalAuth>();
-      final assetProvider = await container.getAsync<AssetManager>();
       final activationManager = await container.getAsync<ActivationManager>();
-      return SwapHistoryManager(client, auth, assetProvider, activationManager);
+      final assetManager = await container.getAsync<AssetManager>();
+      return SwapHistoryManager(client, auth, activationManager, assetManager);
     },
     dependsOn: [
       ApiClient,

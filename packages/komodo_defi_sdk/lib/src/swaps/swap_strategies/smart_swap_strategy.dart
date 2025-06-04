@@ -4,7 +4,6 @@ import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
     hide SwapStatus;
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
-import 'package:komodo_defi_sdk/src/swaps/swap_strategies/swap_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Strategy that checks the orderbook and decides whether to act as taker or maker

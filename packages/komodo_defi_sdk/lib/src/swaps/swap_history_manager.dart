@@ -3,10 +3,11 @@ import 'dart:math' as math;
 
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
+    as rpc
     show SwapStatus;
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart'
-    show ApiClient, AssetId, KdfUser, KomodoDefiRpcMethodsExtension, WalletId;
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Core interface for swap history manager
 abstract interface class _SwapHistoryManager {
@@ -20,7 +21,7 @@ abstract interface class _SwapHistoryManager {
   });
 
   /// Stream of new swaps
-  Stream<SwapStatus> watchSwaps({AssetId? myCoin, AssetId? otherCoin});
+  Stream<rpc.SwapStatus> watchSwaps({AssetId? myCoin, AssetId? otherCoin});
 
   /// Sync swap history
   Future<void> syncSwapHistory();
@@ -29,7 +30,7 @@ abstract interface class _SwapHistoryManager {
   Future<void> clearSwapHistory();
 
   /// Stream all swaps with initial batch and continuous updates
-  Stream<List<SwapStatus>> getSwapsStreamed({
+  Stream<List<rpc.SwapStatus>> getSwapsStreamed({
     AssetId? myCoin,
     AssetId? otherCoin,
     int? fromTimestamp,
@@ -49,11 +50,11 @@ class SwapHistoryManager implements _SwapHistoryManager {
   SwapHistoryManager(
     this._client,
     this._auth,
-    this._assetProvider,
-    this._activationManager, {
+    this._activationManager,
+    this._assetLookup, {
     SwapHistoryStorage? storage,
   }) : _storage = storage ?? SwapHistoryStorage.defaultForPlatform(),
-       _strategyFactory = SwapHistoryStrategyFactory(_auth) {
+       _strategyFactory = SwapHistoryStrategyFactory() {
     // Subscribe to auth changes directly in constructor
     _authSubscription = _auth.authStateChanges.listen((user) {
       if (user == null) {
@@ -64,19 +65,17 @@ class SwapHistoryManager implements _SwapHistoryManager {
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
-  // ignore: unused_field
-  final IAssetProvider _assetProvider;
-  // ignore: unused_field
   final ActivationManager _activationManager;
+  final IAssetLookup _assetLookup;
   final SwapHistoryStorage _storage;
 
-  final _streamControllers = <String, StreamController<SwapStatus>>{};
+  final _streamControllers = <String, StreamController<rpc.SwapStatus>>{};
   final _activeSwapControllers = <StreamController<List<String>>>{};
   final _pollingTimers = <String, Timer>{};
   final _activeSwapTimer = <Timer>{};
   final _syncInProgress = <String>{};
 
-  /// Rate limiter to prevent API abuse
+  /// Rate limiter to prevent API spamming
   final _rateLimiter = _RateLimiter(const Duration(milliseconds: 500));
 
   static const _defaultPollingInterval = Duration(seconds: 30);
@@ -129,6 +128,8 @@ class SwapHistoryManager implements _SwapHistoryManager {
         throw StateError('SwapHistoryManager has been disposed');
       }
 
+      await _ensureAssetsActivated(myCoin: myCoin, otherCoin: otherCoin);
+
       // Default to first page if no pagination specified
       pagination ??= const PageBasedSwapPagination(
         pageNumber: 1,
@@ -161,7 +162,6 @@ class SwapHistoryManager implements _SwapHistoryManager {
       // Get appropriate strategy for general swap history
       final strategy = _strategyFactory.general;
 
-      // Apply rate limiting
       await _rateLimiter.throttle();
 
       // Fetch from API using the appropriate strategy
@@ -195,7 +195,7 @@ class SwapHistoryManager implements _SwapHistoryManager {
   }
 
   @override
-  Stream<List<SwapStatus>> getSwapsStreamed({
+  Stream<List<rpc.SwapStatus>> getSwapsStreamed({
     AssetId? myCoin,
     AssetId? otherCoin,
     int? fromTimestamp,
@@ -204,6 +204,8 @@ class SwapHistoryManager implements _SwapHistoryManager {
     if (_isDisposed) {
       throw StateError('SwapHistoryManager has been disposed');
     }
+
+    await _ensureAssetsActivated(myCoin: myCoin, otherCoin: otherCoin);
 
     final strategy = _strategyFactory.general;
 
@@ -214,8 +216,6 @@ class SwapHistoryManager implements _SwapHistoryManager {
       otherCoin: otherCoin?.id,
       fromTimestamp: fromTimestamp,
       toTimestamp: toTimestamp,
-      fromUuid: null,
-      pageNumber: null,
       limit: _maxBatchSize,
     );
 
@@ -276,7 +276,7 @@ class SwapHistoryManager implements _SwapHistoryManager {
   }
 
   @override
-  Stream<SwapStatus> watchSwaps({AssetId? myCoin, AssetId? otherCoin}) {
+  Stream<rpc.SwapStatus> watchSwaps({AssetId? myCoin, AssetId? otherCoin}) {
     if (_isDisposed) {
       throw StateError('SwapHistoryManager has been disposed');
     }
@@ -284,9 +284,10 @@ class SwapHistoryManager implements _SwapHistoryManager {
     final key = _generateWatchKey(myCoin?.id, otherCoin?.id);
     final controller = _streamControllers.putIfAbsent(
       key,
-      () => StreamController<SwapStatus>.broadcast(
-        onListen: () {
+      () => StreamController<rpc.SwapStatus>.broadcast(
+        onListen: () async {
           if (!_pollingTimers.containsKey(key)) {
+            await _ensureAssetsActivated(myCoin: myCoin, otherCoin: otherCoin);
             _startPolling(key, myCoin: myCoin?.id, otherCoin: otherCoin?.id);
           }
         },
@@ -486,7 +487,7 @@ class SwapHistoryManager implements _SwapHistoryManager {
     return currentUser.walletId;
   }
 
-  Future<void> _batchStoreSwaps(List<SwapStatus> swaps) async {
+  Future<void> _batchStoreSwaps(List<rpc.SwapStatus> swaps) async {
     if (swaps.isEmpty) return;
 
     try {
@@ -562,6 +563,38 @@ class SwapHistoryManager implements _SwapHistoryManager {
 
     _syncInProgress.clear();
   }
+
+  /// Activates assets if they are provided (not null)
+  /// Similar pattern to PubkeyManager's asset activation
+  Future<void> _ensureAssetsActivated({
+    AssetId? myCoin,
+    AssetId? otherCoin,
+  }) async {
+    final assetsToActivate = <Asset>[];
+
+    // Resolve AssetIds to Assets and collect them
+    if (myCoin != null) {
+      final asset = _assetLookup.fromId(myCoin);
+      if (asset != null) {
+        assetsToActivate.add(asset);
+      }
+    }
+
+    if (otherCoin != null) {
+      final asset = _assetLookup.fromId(otherCoin);
+      if (asset != null) {
+        assetsToActivate.add(asset);
+      }
+    }
+
+    // Activate all assets that need activation
+    for (final asset in assetsToActivate) {
+      await retry(
+        () => _activationManager.activateAsset(asset).last,
+        shouldRetry: (Object e) => e is! StateError,
+      );
+    }
+  }
 }
 
 /// Rate limiter utility class for throttling API calls
@@ -587,14 +620,14 @@ class SwapHistoryPage {
   const SwapHistoryPage({
     required this.swaps,
     required this.total,
-    this.nextFromUuid,
     required this.currentPage,
     required this.totalPages,
     required this.foundRecords,
+    this.nextFromUuid,
   });
 
   /// The swaps in this page
-  final List<SwapStatus> swaps;
+  final List<rpc.SwapStatus> swaps;
 
   /// Total number of swaps available
   final int total;
@@ -631,7 +664,7 @@ abstract class SwapHistoryStorage {
   });
 
   /// Stores swaps in the storage
-  Future<void> storeSwaps(List<SwapStatus> swaps, WalletId walletId);
+  Future<void> storeSwaps(List<rpc.SwapStatus> swaps, WalletId walletId);
 
   /// Gets the latest swap UUID for pagination
   Future<String?> getLatestSwapUuid(
@@ -646,7 +679,7 @@ abstract class SwapHistoryStorage {
 
 /// Default implementation of swap history storage
 class _DefaultSwapHistoryStorage implements SwapHistoryStorage {
-  final Map<String, List<SwapStatus>> _storage = {};
+  final Map<String, List<rpc.SwapStatus>> _storage = {};
 
   @override
   Future<SwapHistoryPage> getSwaps(
@@ -690,10 +723,10 @@ class _DefaultSwapHistoryStorage implements SwapHistoryStorage {
   }
 
   @override
-  Future<void> storeSwaps(List<SwapStatus> swaps, WalletId walletId) async {
+  Future<void> storeSwaps(List<rpc.SwapStatus> swaps, WalletId walletId) async {
     for (final swap in swaps) {
       final myCoin =
-          swap.makerCoin; // This might need adjustment based on SwapStatus structure
+          swap.makerCoin; // This might need adjustment based on rpc.SwapStatus structure
       final otherCoin = swap.takerCoin;
       final key = '${walletId.name}-$myCoin-$otherCoin';
 

@@ -4,8 +4,6 @@ import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-import 'swap_strategy.dart';
-
 /// Strategy that places a maker order and returns the UUID
 class MakerSwapStrategy extends BaseSwapStrategy {
   /// Creates a new maker swap strategy

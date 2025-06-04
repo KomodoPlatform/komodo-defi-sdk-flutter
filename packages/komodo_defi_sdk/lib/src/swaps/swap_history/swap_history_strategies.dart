@@ -37,9 +37,9 @@ abstract class SwapHistoryStrategy {
 /// Factory for creating appropriate swap history strategies
 class SwapHistoryStrategyFactory {
   /// Creates a new strategy factory with authentication context
-  SwapHistoryStrategyFactory(KomodoDefiLocalAuth auth)
+  SwapHistoryStrategyFactory()
     : _strategies = [
-        V2SwapHistoryStrategy(auth),
+        const V2SwapHistoryStrategy(),
         const LegacySwapHistoryStrategy(),
       ];
 
@@ -67,11 +67,7 @@ class SwapHistoryStrategyFactory {
 /// Strategy for fetching swap history using the v2 API
 class V2SwapHistoryStrategy extends SwapHistoryStrategy {
   /// Creates a V2 swap history strategy with authentication context
-  const V2SwapHistoryStrategy(this._auth);
-
-  // Keep for future multi-account support
-  // ignore: unused_field
-  final KomodoDefiLocalAuth _auth;
+  const V2SwapHistoryStrategy();
 
   @override
   Set<Type> get supportedPaginationModes => {
