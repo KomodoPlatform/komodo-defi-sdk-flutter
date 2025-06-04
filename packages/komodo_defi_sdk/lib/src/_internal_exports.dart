@@ -5,4 +5,5 @@ library _internal_exports;
 
 export 'activation/_activation_index.dart';
 export 'assets/_assets_index.dart';
+export 'swaps/_orderbook_index.dart';
 export 'transaction_history/_transaction_history_index.dart';
