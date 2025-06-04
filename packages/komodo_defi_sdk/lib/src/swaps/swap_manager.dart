@@ -6,14 +6,21 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+import 'swap_strategies/_strategies_index.dart';
+
 /// Manages swap operations using legacy RPC methods
 class SwapManager {
+  /// Creates a new instance of [SwapManager]
+  /// with the provided [ApiClient], [IAssetProvider], and [ActivationManager].
+  /// This manager handles swap operations, including previewing swaps,
+  /// executing swaps, and managing active swaps.
   SwapManager(this._client, this._assetProvider, this._activationManager);
 
   final ApiClient _client;
   final IAssetProvider _assetProvider;
   final ActivationManager _activationManager;
   final _activeSwaps = <String, StreamController<SwapProgress>>{};
+  final _strategyFactory = const SwapStrategyFactory();
 
   /// Preview a swap operation to get fees and trade details
   Future<SwapPreview> previewSwap(SwapParameters parameters) async {
@@ -23,8 +30,8 @@ class SwapManager {
 
       // Use trade preimage to get swap preview
       final response = await _client.rpc.swap.tradePreimage(
-        base: parameters.base,
-        rel: parameters.rel,
+        base: parameters.base.id,
+        rel: parameters.rel.id,
         swapMethod: parameters.swapMethod,
         price: parameters.price,
         volume: parameters.volume,
@@ -80,152 +87,42 @@ class SwapManager {
     }
   }
 
-  /// Execute a swap operation
-  Stream<SwapProgress> swap(SwapParameters parameters) async* {
-    StreamController<SwapProgress>? controller;
-    String? uuid;
+  /// Execute a swap operation using the specified strategy
+  Stream<SwapProgress> swap(
+    SwapParameters parameters, {
+    SwapStrategyType strategy = SwapStrategyType.smart,
+  }) async* {
+    final swapStrategy = _strategyFactory.createStrategy(strategy);
 
-    try {
-      // Ensure both assets are activated
-      await _ensureAssetsActivated([parameters.base, parameters.rel]);
-
-      yield const SwapProgress(
-        status: SwapStatus.initializing,
-        message: 'Initializing swap...',
-      );
-
-      // Check for existing orders using bestOrders
-      yield const SwapProgress(
-        status: SwapStatus.searchingForOrders,
-        message: 'Searching for matching orders...',
-      );
-
-      final bestOrders = await _client.rpc.swap.bestOrders(
-        coin: parameters.base,
-        action: 'sell',
-        requestBy: RequestByVolume(value: parameters.volume.toDouble()),
-        excludeMine: true,
-      );
-
-      // If there are matching orders, act as taker
-      if (bestOrders.orders.isNotEmpty) {
-        yield const SwapProgress(
-          status: SwapStatus.placingTakerOrder,
-          message: 'Placing taker order...',
-        );
-
-        final sellResponse = await _client.rpc.swap.sellLegacy(
-          base: parameters.base,
-          rel: parameters.rel,
-          price: parameters.price,
-          volume: parameters.volume,
-          minVolume: parameters.minVolume,
-          baseConfs: parameters.baseConfs,
-          baseNota: parameters.baseNota,
-          relConfs: parameters.relConfs,
-          relNota: parameters.relNota,
-          saveInHistory: parameters.saveInHistory,
-        );
-
-        uuid = sellResponse.result.uuid;
-        controller = StreamController<SwapProgress>();
-        _activeSwaps[uuid] = controller;
-
-        yield SwapProgress(
-          status: SwapStatus.inProgress,
-          message: 'Taker order placed. Swap in progress...',
-          uuid: uuid,
-          swapResult: SwapResult(
-            uuid: sellResponse.result.uuid,
-            base: sellResponse.result.base,
-            rel: sellResponse.result.rel,
-            price: sellResponse.result.baseAmountRat,
-            volume: Decimal.parse(sellResponse.result.baseAmount),
-            orderType: 'taker',
-          ),
-        );
-
-        yield SwapProgress(
-          status: SwapStatus.complete,
-          message: 'Swap completed successfully',
-          uuid: uuid,
-          swapResult: SwapResult(
-            uuid: sellResponse.result.uuid,
-            base: sellResponse.result.base,
-            rel: sellResponse.result.rel,
-            price: sellResponse.result.baseAmountRat,
-            volume: Decimal.parse(sellResponse.result.baseAmount),
-            orderType: 'taker',
-          ),
-        );
-      } else {
-        // No matching orders, act as maker
-        yield const SwapProgress(
-          status: SwapStatus.placingMakerOrder,
-          message: 'No matching orders found. Placing maker order...',
-        );
-
-        final setPriceResponse = await _client.rpc.swap.setPriceLegacy(
-          base: parameters.base,
-          rel: parameters.rel,
-          price: parameters.price,
-          volume: parameters.volume,
-          minVolume: parameters.minVolume,
-          baseConfs: parameters.baseConfs,
-          baseNota: parameters.baseNota,
-          relConfs: parameters.relConfs,
-          relNota: parameters.relNota,
-          saveInHistory: parameters.saveInHistory,
-        );
-
-        uuid = setPriceResponse.result.uuid;
-        controller = StreamController<SwapProgress>();
-        _activeSwaps[uuid] = controller;
-
-        yield SwapProgress(
-          status: SwapStatus.inProgress,
-          message: 'Maker order placed. Waiting for match...',
-          uuid: uuid,
-          swapResult: SwapResult(
-            uuid: setPriceResponse.result.uuid,
-            base: setPriceResponse.result.base,
-            rel: setPriceResponse.result.rel,
-            price: Decimal.parse(setPriceResponse.result.price),
-            volume: Decimal.parse(setPriceResponse.result.maxBaseVol),
-            orderType: 'maker',
-            createdAt: setPriceResponse.result.createdAt,
-          ),
-        );
-
-        yield SwapProgress(
-          status: SwapStatus.complete,
-          message: 'Maker order placed successfully',
-          uuid: uuid,
-          swapResult: SwapResult(
-            uuid: setPriceResponse.result.uuid,
-            base: setPriceResponse.result.base,
-            rel: setPriceResponse.result.rel,
-            price: Decimal.parse(setPriceResponse.result.price),
-            volume: Decimal.parse(setPriceResponse.result.maxBaseVol),
-            orderType: 'maker',
-            createdAt: setPriceResponse.result.createdAt,
-          ),
-        );
-      }
-    } catch (e) {
-      yield* Stream.error(
-        SwapException(
-          'Swap failed: $e',
-          SwapException.mapErrorToCode(e.toString()),
-        ),
-      );
-    } finally {
-      if (uuid != null) {
-        await _activeSwaps[uuid]?.close();
-        _activeSwaps.remove(uuid);
-      }
-    }
+    yield* swapStrategy.execute(
+      parameters,
+      _client,
+      _assetProvider,
+      _activationManager,
+      _activeSwaps,
+    );
   }
+
+  /// Execute a swap operation using a custom strategy
+  Stream<SwapProgress> swapWithStrategy(
+    SwapParameters parameters,
+    SwapStrategy strategy,
+  ) async* {
+    yield* strategy.execute(
+      parameters,
+      _client,
+      _assetProvider,
+      _activationManager,
+      _activeSwaps,
+    );
+  }
+
+  /// Get available swap strategies with their descriptions
+  Map<SwapStrategyType, String> get availableStrategies =>
+      _strategyFactory.availableStrategies;
+
+  /// Get the default swap strategy
+  SwapStrategy get defaultStrategy => _strategyFactory.defaultStrategy;
 
   /// Cancel an active swap/order
   Future<bool> cancelSwap(String uuid) async {
@@ -241,11 +138,11 @@ class SwapManager {
   }
 
   /// Get the maximum volume available for trading
-  Future<Decimal> getMaxTradableVolume(String coin) async {
+  Future<Decimal> getMaxTradableVolume(AssetId assetId) async {
     try {
-      await _ensureAssetsActivated([coin]);
+      await _ensureAssetsActivated([assetId]);
 
-      final response = await _client.rpc.swap.maxMakerVol(coin: coin);
+      final response = await _client.rpc.swap.maxMakerVol(coin: assetId.id);
       return Decimal.parse(response.volume.decimal);
     } catch (e) {
       throw SwapException(
@@ -256,11 +153,11 @@ class SwapManager {
   }
 
   /// Cancel all orders for a specific coin or all orders
-  Future<bool> cancelAllOrders({String? coin}) async {
+  Future<bool> cancelAllOrders({AssetId? assetId}) async {
     try {
       final cancelBy =
-          coin != null
-              ? CancelByCoin(data: CancelByCoinData(ticker: coin))
+          assetId != null
+              ? CancelByCoin(data: CancelByCoinData(ticker: assetId.id))
               : const CancelByAll();
 
       final response = await _client.rpc.swap.cancelAllOrdersLegacy(
@@ -273,12 +170,12 @@ class SwapManager {
     }
   }
 
-  Future<void> _ensureAssetsActivated(List<String> assetIds) async {
+  Future<void> _ensureAssetsActivated(List<AssetId> assetIds) async {
     for (final assetId in assetIds) {
-      final assets = _assetProvider.findAssetsByConfigId(assetId);
+      final assets = _assetProvider.findAssetsByConfigId(assetId.id);
       if (assets.isEmpty) {
         throw SwapException(
-          'Asset $assetId not found',
+          'Asset ${assetId.id} not found',
           SwapErrorCode.assetNotActivated,
         );
       }
@@ -289,7 +186,7 @@ class SwapManager {
 
       if (activationStatus.isComplete && !activationStatus.isSuccess) {
         throw SwapException(
-          'Failed to activate asset $assetId',
+          'Failed to activate asset ${assetId.id}',
           SwapErrorCode.assetNotActivated,
         );
       }

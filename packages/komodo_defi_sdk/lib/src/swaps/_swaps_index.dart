@@ -4,4 +4,5 @@
 library _orderbook_index;
 
 export 'orderbook_manager.dart';
+export 'swap_strategies/_strategies_index.dart';
 export 'swap_manager.dart';

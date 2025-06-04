@@ -8,27 +8,27 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 abstract interface class _OrderbookManager {
   /// Get the orderbook for a trading pair
   Future<OrderbookResponse> getOrderbook({
-    required String base,
-    required String rel,
+    required AssetId base,
+    required AssetId rel,
   });
 
   /// Stream orderbook updates for a trading pair
   Stream<OrderbookResponse> getOrderbookStream({
-    required String base,
-    required String rel,
+    required AssetId base,
+    required AssetId rel,
     Duration? pollingInterval,
   });
 
-  /// Watch orderbook changes for a trading pair (placeholder for future 
+  /// Watch orderbook changes for a trading pair (placeholder for future
   /// task-based streaming)
   Stream<OrderbookResponse> watchOrderbook({
-    required String base,
-    required String rel,
+    required AssetId base,
+    required AssetId rel,
   });
 
   /// Get best orders for a coin
   Future<BestOrdersResponse> getBestOrders({
-    required String coin,
+    required AssetId assetId,
     required String action,
     required RequestBy requestBy,
     bool excludeMine = false,
@@ -36,18 +36,14 @@ abstract interface class _OrderbookManager {
 
   /// Get orderbook depth for multiple trading pairs
   Future<OrderbookDepthResponse> getOrderbookDepth({
-    required List<List<String>> pairs,
+    required List<List<AssetId>> pairs,
   });
 }
 
 /// Implementation of orderbook management functionality
 class OrderbookManager implements _OrderbookManager {
   /// Creates a new orderbook manager instance
-  OrderbookManager(
-    this._client,
-    this._assetProvider,
-    this._activationManager,
-  );
+  OrderbookManager(this._client, this._assetProvider, this._activationManager);
 
   final ApiClient _client;
   final IAssetProvider _assetProvider;
@@ -64,8 +60,8 @@ class OrderbookManager implements _OrderbookManager {
 
   @override
   Future<OrderbookResponse> getOrderbook({
-    required String base,
-    required String rel,
+    required AssetId base,
+    required AssetId rel,
   }) async {
     if (_isDisposed) {
       throw StateError('OrderbookManager has been disposed');
@@ -74,16 +70,13 @@ class OrderbookManager implements _OrderbookManager {
     await _ensureAssetsActivated([base, rel]);
     await _rateLimiter.throttle();
 
-    return _client.rpc.swap.orderbook(
-      base: base,
-      rel: rel,
-    );
+    return _client.rpc.swap.orderbook(base: base.id, rel: rel.id);
   }
 
   @override
   Stream<OrderbookResponse> getOrderbookStream({
-    required String base,
-    required String rel,
+    required AssetId base,
+    required AssetId rel,
     Duration? pollingInterval,
   }) async* {
     if (_isDisposed) {
@@ -102,15 +95,15 @@ class OrderbookManager implements _OrderbookManager {
 
     // Create periodic stream
     final interval = pollingInterval ?? _defaultPollingInterval;
-    
+
     try {
       while (!_isDisposed) {
         await Future<void>.delayed(interval);
         try {
           await _rateLimiter.throttle();
           final orderbook = await _client.rpc.swap.orderbook(
-            base: base,
-            rel: rel,
+            base: base.id,
+            rel: rel.id,
           );
           yield orderbook;
         } catch (e) {
@@ -124,15 +117,15 @@ class OrderbookManager implements _OrderbookManager {
 
   @override
   Stream<OrderbookResponse> watchOrderbook({
-    required String base,
-    required String rel,
+    required AssetId base,
+    required AssetId rel,
   }) {
     if (_isDisposed) {
       throw StateError('OrderbookManager has been disposed');
     }
 
-    final pairKey = '${base}_$rel';
-    
+    final pairKey = '${base.id}_${rel.id}';
+
     final controller = _streamControllers.putIfAbsent(
       pairKey,
       () => StreamController<OrderbookResponse>.broadcast(
@@ -156,7 +149,7 @@ class OrderbookManager implements _OrderbookManager {
 
   @override
   Future<BestOrdersResponse> getBestOrders({
-    required String coin,
+    required AssetId assetId,
     required String action,
     required RequestBy requestBy,
     bool excludeMine = false,
@@ -165,11 +158,11 @@ class OrderbookManager implements _OrderbookManager {
       throw StateError('OrderbookManager has been disposed');
     }
 
-    await _ensureAssetsActivated([coin]);
+    await _ensureAssetsActivated([assetId]);
     await _rateLimiter.throttle();
 
     return _client.rpc.swap.bestOrders(
-      coin: coin,
+      coin: assetId.id,
       action: action,
       requestBy: requestBy,
       excludeMine: excludeMine,
@@ -178,36 +171,42 @@ class OrderbookManager implements _OrderbookManager {
 
   @override
   Future<OrderbookDepthResponse> getOrderbookDepth({
-    required List<List<String>> pairs,
+    required List<List<AssetId>> pairs,
   }) async {
     if (_isDisposed) {
       throw StateError('OrderbookManager has been disposed');
     }
 
     // Extract all unique coins from pairs and ensure they're activated
-    final allCoins = <String>{};
+    final allAssets = <AssetId>{};
     for (final pair in pairs) {
       if (pair.length >= 2) {
-        allCoins.addAll([pair[0], pair[1]]);
+        allAssets.addAll([pair[0], pair[1]]);
       }
     }
 
-    await _ensureAssetsActivated(allCoins.toList());
+    await _ensureAssetsActivated(allAssets.toList());
     await _rateLimiter.throttle();
 
-    return _client.rpc.swap.orderbookDepthLegacy(pairs: pairs);
+    // Convert AssetId pairs to String pairs for the RPC call
+    final stringPairs =
+        pairs
+            .map((pair) => pair.map((assetId) => assetId.id).toList())
+            .toList();
+
+    return _client.rpc.swap.orderbookDepthLegacy(pairs: stringPairs);
   }
 
-  Future<void> _ensureAssetsActivated(List<String> assetIds) async {
+  Future<void> _ensureAssetsActivated(List<AssetId> assetIds) async {
     for (final assetId in assetIds) {
-      final assets = _assetProvider.findAssetsByConfigId(assetId);
+      final assets = _assetProvider.findAssetsByConfigId(assetId.id);
       if (assets.isNotEmpty) {
         final asset = assets.first;
-        final activationStatus = 
+        final activationStatus =
             await _activationManager.activateAsset(asset).last;
         if (activationStatus.isComplete && !activationStatus.isSuccess) {
           throw StateError(
-            'Failed to activate asset $assetId. '
+            'Failed to activate asset ${assetId.id}. '
             '${activationStatus.toJson()}',
           );
         }
@@ -215,12 +214,12 @@ class OrderbookManager implements _OrderbookManager {
     }
   }
 
-  void _startPolling(String base, String rel, String pairKey) {
+  void _startPolling(AssetId base, AssetId rel, String pairKey) {
     _stopPolling(pairKey);
-    
+
     // Initial fetch
     _pollOrderbook(base, rel, pairKey);
-    
+
     // Set up periodic polling
     _pollingTimers[pairKey] = Timer.periodic(
       _defaultPollingInterval,
@@ -229,8 +228,8 @@ class OrderbookManager implements _OrderbookManager {
   }
 
   Future<void> _pollOrderbook(
-    String base, 
-    String rel, 
+    AssetId base,
+    AssetId rel,
     String pairKey, [
     int retryCount = 0,
   ]) async {
@@ -238,10 +237,10 @@ class OrderbookManager implements _OrderbookManager {
 
     try {
       await _rateLimiter.throttle();
-      
+
       final orderbook = await _client.rpc.swap.orderbook(
-        base: base,
-        rel: rel,
+        base: base.id,
+        rel: rel.id,
       );
 
       final controller = _streamControllers[pairKey];
@@ -251,10 +250,7 @@ class OrderbookManager implements _OrderbookManager {
     } catch (e) {
       if (retryCount < _maxPollingRetries) {
         final delay = Duration(seconds: (retryCount + 1) * 2);
-        Timer(
-          delay,
-          () => _pollOrderbook(base, rel, pairKey, retryCount + 1),
-        );
+        Timer(delay, () => _pollOrderbook(base, rel, pairKey, retryCount + 1));
       }
     }
   }

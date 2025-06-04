@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:equatable/equatable.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Parameters for initiating a swap operation
 class SwapParameters extends Equatable {
@@ -17,11 +18,11 @@ class SwapParameters extends Equatable {
     this.saveInHistory = true,
   });
 
-  /// The ticker of the base coin to be traded
-  final String base;
+  /// The ID of the base asset to be traded
+  final AssetId base;
 
-  /// The ticker of the rel coin to be traded  
-  final String rel;
+  /// The ID of the rel asset to be traded
+  final AssetId rel;
 
   /// The price to exchange the coins
   final Decimal price;
@@ -66,8 +67,8 @@ class SwapParameters extends Equatable {
       ];
 
   Map<String, dynamic> toJson() => {
-        'base': base,
-        'rel': rel,
+        'base': base.id,
+        'rel': rel.id,
         'price': price.toString(),
         'volume': volume.toString(),
         'swap_method': swapMethod,

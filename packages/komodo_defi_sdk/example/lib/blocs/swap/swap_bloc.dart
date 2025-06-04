@@ -1,6 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart' show BestOrdersResponse, OrderbookResponse, RequestByNumber;
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
+    show BestOrdersResponse, OrderbookResponse, RequestByNumber;
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -28,7 +29,7 @@ class SwapBloc extends Bloc<SwapEvent, SwapState> {
     );
     try {
       final response = await _sdk.orderbook.getBestOrders(
-        coin: event.asset.id.id,
+        assetId: event.asset.id,
         action: 'sell',
         requestBy: const RequestByNumber(value: 10),
       );
@@ -64,8 +65,8 @@ class SwapBloc extends Bloc<SwapEvent, SwapState> {
     emit(state.copyWith(loadingOrderbook: true, error: null));
     try {
       final response = await _sdk.orderbook.getOrderbook(
-        base: buy.id.id,
-        rel: sell.id.id,
+        base: buy.id,
+        rel: sell.id,
       );
       emit(state.copyWith(orderbook: response));
     } catch (e) {
