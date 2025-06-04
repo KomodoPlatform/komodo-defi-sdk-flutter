@@ -2,9 +2,9 @@ import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 
 /// Namespace for trading and order-related methods
-class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
+class SwapMethodsNamespace extends BaseRpcMethodNamespace {
   /// Creates a new trading methods namespace
-  OrderbookMethodsNamespace(super.client);
+  SwapMethodsNamespace(super.client);
 
   /// Returns the best priced trades available on the orderbook
   Future<BestOrdersResponse> bestOrders({
@@ -84,7 +84,7 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
   ///
   /// [limit] specifies the number of swaps to return per page and must be a positive integer.
   /// [pageNumber] specifies which page of results to return and must be a positive integer.
-  /// 
+  ///
   /// Throws [ArgumentError] if pagination parameters are invalid.
   Future<MyRecentSwapsResponse> myRecentSwaps({
     String? myCoin,
@@ -104,7 +104,7 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
         'Limit must be a positive integer',
       );
     }
-    
+
     if (pageNumber <= 0) {
       throw ArgumentError.value(
         pageNumber,
@@ -112,7 +112,7 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
         'Page number must be a positive integer',
       );
     }
-    
+
     return execute(
       MyRecentSwapsRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',

@@ -41,7 +41,7 @@ export 'swaps/max_maker_vol.dart';
 export 'swaps/my_recent_swaps.dart';
 export 'swaps/orderbook.dart';
 export 'swaps/orderbook_depth.dart';
-export 'swaps/orderbook_methods_namespace.dart';
+export 'swaps/swap_methods_namespace.dart';
 export 'swaps/orders_history_by_filter.dart';
 export 'swaps/recreate_swap_data.dart';
 export 'swaps/trade_preimage.dart';

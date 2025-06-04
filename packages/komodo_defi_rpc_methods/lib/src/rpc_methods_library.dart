@@ -42,7 +42,7 @@ class KomodoDefiRpcMethods {
   NftMethodsNamespace get nft => NftMethodsNamespace(_client);
 
   // Add other namespaces here, e.g.:
-  OrderbookMethodsNamespace get orderbook => OrderbookMethodsNamespace(_client);
+  SwapMethodsNamespace get swap => SwapMethodsNamespace(_client);
   MessageSigningMethodsNamespace get messageSigning =>
       MessageSigningMethodsNamespace(_client);
   UtilityMethods get utility => UtilityMethods(_client);
