@@ -35,6 +35,8 @@ migrate_working_dir/
 build/
 web/src/
 
+!pubspec.lock
+
 # Symbolication related
 app.*.symbols
 
