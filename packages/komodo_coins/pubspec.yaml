@@ -9,10 +9,10 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
-  equatable: ^2.0.5
+  equatable: ^2.0.7
   flutter:
     sdk: flutter
-  http: ^1.2.2
+  http: ^1.4.0
   # meta:
   meta: ^1.15.0
 
