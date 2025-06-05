@@ -9,6 +9,8 @@ import 'package:kdf_sdk_example/widgets/instance_manager/instance_status.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_sdk/src/trezor/trezor_manager.dart';
 
 class InstanceView extends StatefulWidget {
   const InstanceView({
@@ -40,10 +42,13 @@ class _InstanceViewState extends State<InstanceView> {
   final _formKey = GlobalKey<FormState>();
   String? _mnemonic;
   Timer? _refreshUsersTimer;
+  TrezorManager? _trezorManager;
+  bool _isTrezorInitializing = false;
 
   @override
   void initState() {
     super.initState();
+    _trezorManager = TrezorManager(widget.instance.sdk.client);
     _refreshUsersTimer = Timer.periodic(
       const Duration(seconds: 10),
       (_) => _fetchKnownUsers(),
@@ -53,6 +58,7 @@ class _InstanceViewState extends State<InstanceView> {
   @override
   void dispose() {
     _refreshUsersTimer?.cancel();
+    _trezorManager?.dispose();
     super.dispose();
   }
 
@@ -188,6 +194,190 @@ class _InstanceViewState extends State<InstanceView> {
       widget.state.isHdMode =
           user.authOptions.derivationMethod == DerivationMethod.hdWallet;
     });
+  }
+
+  Future<void> _initializeTrezor() async {
+    if (_isTrezorInitializing) return;
+
+    setState(() => _isTrezorInitializing = true);
+
+    try {
+      const walletName = 'My Trezor';
+      final password = SecurityUtils.generatePasswordSecure(16);
+
+      // Check if Trezor wallet already exists
+      final existingUser = widget.state.knownUsers.cast<KdfUser?>().firstWhere(
+        (user) => user?.walletId.name == walletName,
+        orElse: () => null,
+      );
+
+      // Initialize Trezor device
+      TrezorInitializationState? completedState;
+      await for (final state in _trezorManager!.initializeDevice()) {
+        switch (state.status) {
+          case TrezorInitializationStatus.pinRequired:
+            final pin = await _showPinDialog();
+            if (pin != null) {
+              await _trezorManager!.providePin(state.taskId!, pin);
+            } else {
+              await _trezorManager!.cancelInitialization(state.taskId!);
+              return;
+            }
+            break;
+
+          case TrezorInitializationStatus.passphraseRequired:
+            final passphrase = await _showPassphraseDialog();
+            if (passphrase != null) {
+              await _trezorManager!.providePassphrase(
+                state.taskId!,
+                passphrase,
+              );
+            } else {
+              await _trezorManager!.cancelInitialization(state.taskId!);
+              return;
+            }
+            break;
+
+          case TrezorInitializationStatus.completed:
+            completedState = state;
+            break;
+
+          case TrezorInitializationStatus.error:
+            _showError('Trezor initialization failed: ${state.error}');
+            return;
+
+          case TrezorInitializationStatus.cancelled:
+            return;
+
+          default:
+            // Show progress message
+            if (state.message != null) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message!)));
+            }
+        }
+      }
+
+      if (completedState?.deviceInfo == null) {
+        _showError(
+          'Trezor initialization completed but device info is missing',
+        );
+        return;
+      }
+
+      final authOptions = AuthOptions(
+        derivationMethod: DerivationMethod.hdWallet,
+        privKeyPolicy: PrivateKeyPolicy.trezor,
+      );
+
+      KdfUser user;
+      if (existingUser != null) {
+        // Sign in with existing wallet
+        user = await widget.instance.sdk.auth.signIn(
+          walletName: walletName,
+          password: password,
+          options: authOptions,
+        );
+      } else {
+        // Register new wallet
+        user = await widget.instance.sdk.auth.register(
+          walletName: walletName,
+          password: password,
+          options: authOptions,
+        );
+      }
+
+      widget.onUserChanged(user);
+    } on TrezorException catch (e) {
+      _showError('Trezor error: ${e.message}');
+    } on AuthException catch (e) {
+      _showError('Authentication error: ${e.message}');
+    } catch (e) {
+      _showError('Unexpected error: $e');
+    } finally {
+      setState(() => _isTrezorInitializing = false);
+    }
+  }
+
+  Future<String?> _showPinDialog() async {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Enter Trezor PIN'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Look at your Trezor device and enter the PIN using the positions shown on the device.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'PIN',
+                    hintText: 'Use numpad positions as shown on device',
+                  ),
+                  keyboardType: TextInputType.number,
+                  obscureText: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(controller.text),
+                child: const Text('Submit'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Future<String?> _showPassphraseDialog() async {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Enter Trezor Passphrase'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter your passphrase. Leave empty to use the default wallet without passphrase.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Passphrase (optional)',
+                  ),
+                  obscureText: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(controller.text),
+                child: const Text('Submit'),
+              ),
+            ],
+          ),
+    );
   }
 
   @override
@@ -358,6 +548,26 @@ class _InstanceViewState extends State<InstanceView> {
             FilledButton(
               onPressed: _showSeedDialog,
               child: const Text('Register'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FilledButton.icon(
+              onPressed: _isTrezorInitializing ? null : _initializeTrezor,
+              icon:
+                  _isTrezorInitializing
+                      ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Icon(Icons.security),
+              label: Text(
+                _isTrezorInitializing ? 'Initializing...' : 'Use Trezor',
+              ),
             ),
           ],
         ),

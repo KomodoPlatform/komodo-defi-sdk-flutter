@@ -1,0 +1,1 @@
+export 'trezor_manager.dart';
