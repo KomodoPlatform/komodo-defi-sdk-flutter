@@ -1,0 +1,44 @@
+name: dex_dungeon
+description: A Very Good Project created by Very Good CLI.
+version: 1.0.0+1
+publish_to: none
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  audioplayers: ^6.1.0
+  bloc: ^9.0.0
+  equatable: ^2.0.7
+  flame: ^1.20.0
+  flame_audio: ^2.10.4
+  flame_behaviors: ^1.2.0
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  flutter_localizations:
+    sdk: flutter
+  google_fonts: ^6.2.1
+  intl: ^0.20.2
+  komodo_defi_sdk:
+    path: ../../packages/komodo_defi_sdk
+  komodo_defi_types:
+    path: ../../packages/komodo_defi_types
+
+dev_dependencies:
+  bloc_test: ^10.0.0
+  flame_test: ^1.17.1
+  flutter_test:
+    sdk: flutter
+  mockingjay: ^1.0.0
+  mocktail: ^1.0.4
+  very_good_analysis: ^8.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/audio/
+    - assets/images/
+    - assets/licenses/poppins/

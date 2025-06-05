@@ -1,0 +1,36 @@
+name: kdf_sdk_example
+description: "An example application that demonstrates how to use the Komodo Defi SDK."
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  decimal: ^3.2.1
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  flutter_secure_storage: ^10.0.0-beta.4
+
+  komodo_defi_sdk:
+    path: ../
+
+  komodo_defi_types:
+    path: ../../komodo_defi_types
+
+  komodo_ui:
+    path: ../../komodo_ui
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+  flutter_web_plugins:
+    sdk: flutter
+
+  very_good_analysis: ^8.0.0
+
+flutter:
+  uses-material-design: true

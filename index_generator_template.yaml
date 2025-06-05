@@ -1,0 +1,36 @@
+index_generator:
+  page_width: 100
+  exclude:
+    - '**.g.dart'
+    - '{_,**/_}*.dart'
+  indexes:
+    # Default index and library name
+    - path: lib/src
+      # name: common_structures
+    # Custom index and library name
+    # - path: lib
+    #   name: custom_index_name
+    #   library: custom_library_name
+    # # Custom index and library name
+    # - path: lib
+    #   name: export_folders
+    #   include:
+    #     - src/**
+    #   exports:
+    #     - package: package:args/args.dart
+    #       show:
+    #         - ArgResults
+    #     - package: package:path/path.dart
+    #       hide:
+    #         - isRootRelative
+    #         - basenameWithoutExtension
+    #         - canonicalize
+    #         - withoutExtension
+    # - path: lib
+    #   name: docs
+    #   disclaimer: false
+    #   comments: This is a comments.
+    #   docs: |
+    #     This is
+        
+    #     a docs.

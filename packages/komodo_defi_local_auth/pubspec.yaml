@@ -1,0 +1,34 @@
+name: komodo_defi_local_auth
+description: A package responsible for managing and abstracting out an
+  authentication service on top of the API's methods
+version: 0.2.0+0
+publish_to: none
+
+environment:
+  sdk: ^3.7.0
+  flutter: ^3.22.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  flutter_secure_storage: ^10.0.0-beta.4
+
+  komodo_defi_framework:
+    path: ../komodo_defi_framework
+
+  komodo_defi_rpc_methods:
+    path: ../komodo_defi_rpc_methods
+
+  komodo_defi_types:
+    path: ../komodo_defi_types
+
+  local_auth: ^2.3.0
+  mutex: ^3.1.0
+  uuid: ^4.4.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.4
+  very_good_analysis: ^8.0.0
