@@ -41,6 +41,9 @@ class KomodoDefiRpcMethods {
       TendermintMethodsNamespace(_client);
   NftMethodsNamespace get nft => NftMethodsNamespace(_client);
 
+  // Hardware wallet namespaces
+  TrezorMethodsNamespace get trezor => TrezorMethodsNamespace(_client);
+
   // Add other namespaces here, e.g.:
   // TradeNamespace get trade => TradeNamespace(_client);
   MessageSigningMethodsNamespace get messageSigning =>

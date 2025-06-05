@@ -31,6 +31,7 @@ export 'tendermint/enable_tendermint_with_assets.dart';
 export 'tendermint/tendermind_rpc_namespace.dart';
 export 'transaction_history/my_tx_history.dart';
 export 'transaction_history/transaction_history_namespace.dart';
+export 'trezor/trezor_rpc_namespace.dart';
 export 'utility/get_token_info.dart';
 export 'utility/message_signing.dart';
 export 'utility/message_signing_rpc_namespace.dart';
