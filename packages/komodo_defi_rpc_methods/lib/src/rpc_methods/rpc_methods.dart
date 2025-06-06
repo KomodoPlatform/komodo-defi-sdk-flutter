@@ -19,6 +19,8 @@ export 'eth/enable_eth_with_tokens.dart';
 export 'eth/eth_rpc_extensions.dart';
 export 'hd_wallet/account_balance.dart';
 export 'hd_wallet/get_new_address.dart';
+export 'hd_wallet/get_new_address_task.dart';
+export 'hd_wallet/hd_wallet_methods.dart';
 export 'hd_wallet/scan_for_new_addresses_init.dart';
 export 'hd_wallet/scan_for_new_addresses_status.dart';
 export 'methods.dart';
