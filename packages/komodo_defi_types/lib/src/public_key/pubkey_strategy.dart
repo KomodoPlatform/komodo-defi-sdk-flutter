@@ -22,12 +22,14 @@ abstract class PubkeyStrategy {
   bool get supportsMultipleAddresses;
 }
 
-/// Factory to create appropriate strategy based on protocol and HD status
+/// Factory to create appropriate strategy based on protocol and KDF user
 class PubkeyStrategyFactory {
   static PubkeyStrategy createStrategy(
     ProtocolClass protocol, {
-    required bool isHdWallet,
+    required KdfUser kdfUser,
   }) {
+    final isHdWallet = kdfUser.isHd;
+
     if (!isHdWallet && protocol.requiresHdWallet) {
       throw UnsupportedProtocolException(
         'Protocol ${protocol.runtimeType} '
@@ -36,7 +38,15 @@ class PubkeyStrategyFactory {
     }
 
     if (isHdWallet && protocol.supportsMultipleAddresses) {
-      return HDWalletStrategy();
+      // Select specific HD wallet strategy based on private key policy
+      final privKeyPolicy = kdfUser.walletId.authOptions.privKeyPolicy;
+      
+      switch (privKeyPolicy) {
+        case PrivateKeyPolicy.trezor:
+          return TrezorHDWalletStrategy(kdfUser: kdfUser);
+        case PrivateKeyPolicy.contextPrivKey:
+          return ContextPrivKeyHDWalletStrategy(kdfUser: kdfUser);
+      }
     }
 
     return SingleAddressStrategy();
@@ -44,10 +54,10 @@ class PubkeyStrategyFactory {
 }
 
 extension AssetPubkeyStrategy on Asset {
-  PubkeyStrategy pubkeyStrategy({required bool isHdWallet}) {
+  PubkeyStrategy pubkeyStrategy({required KdfUser kdfUser}) {
     return PubkeyStrategyFactory.createStrategy(
       protocol,
-      isHdWallet: isHdWallet,
+      kdfUser: kdfUser,
     );
   }
 }
