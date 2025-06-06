@@ -22,4 +22,10 @@ export 'src/assets/asset_extensions.dart'
 export 'src/assets/asset_pubkey_extensions.dart';
 export 'src/assets/legacy_asset_extensions.dart';
 export 'src/komodo_defi_sdk.dart' show KomodoDefiSdk;
+export 'src/trezor/trezor_manager.dart'
+    show
+        TrezorManager,
+        TrezorInitializationStatus,
+        TrezorInitializationState,
+        TrezorException;
 export 'src/widgets/asset_balance_text.dart';
