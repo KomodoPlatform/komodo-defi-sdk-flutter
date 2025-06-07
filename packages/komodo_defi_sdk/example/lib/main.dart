@@ -7,6 +7,7 @@ import 'package:kdf_sdk_example/screens/asset_page.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_view.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_drawer.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
+import 'package:kdf_sdk_example/screens/dapp_browser_page.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -183,6 +184,10 @@ class _KomodoAppState extends State<KomodoApp> {
             ),
             const SizedBox(width: 16),
           ],
+          IconButton(
+            icon: const Icon(Icons.web),
+            onPressed: () => _openBrowser(instances[_selectedInstanceIndex]),
+          ),
         ],
       ),
       body:
@@ -244,6 +249,14 @@ class _KomodoAppState extends State<KomodoApp> {
   void _onNavigateToAsset(KdfInstanceState instance, Asset asset) {
     _navigatorKey.currentState?.push(
       MaterialPageRoute<void>(builder: (context) => AssetPage(asset)),
+    );
+  }
+
+  void _openBrowser(KdfInstanceState instance) {
+    _navigatorKey.currentState?.push(
+      MaterialPageRoute<void>(
+        builder: (_) => DappBrowserPage(sdk: instance.sdk),
+      ),
     );
   }
 
