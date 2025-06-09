@@ -145,7 +145,7 @@ class TrezorInitializationState {
       );
     }
 
-    if (description.contains('EnterTrezorPin')) {
+    if (description == 'EnterTrezorPin') {
       return TrezorInitializationState(
         status: TrezorInitializationStatus.pinRequired,
         message: 'Please enter your Trezor PIN',
@@ -153,7 +153,7 @@ class TrezorInitializationState {
       );
     }
 
-    if (description.contains('EnterTrezorPassphrase')) {
+    if (description == 'EnterTrezorPassphrase') {
       return TrezorInitializationState(
         status: TrezorInitializationStatus.passphraseRequired,
         message: 'Please enter your Trezor passphrase',

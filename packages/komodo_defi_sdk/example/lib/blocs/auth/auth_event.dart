@@ -85,3 +85,8 @@ class AuthClearError extends AuthEvent {
 class AuthReset extends AuthEvent {
   const AuthReset();
 }
+
+/// Event to start listening to auth state changes
+class AuthStartListeningToAuthStateChanges extends AuthEvent {
+  const AuthStartListeningToAuthStateChanges();
+}

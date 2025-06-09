@@ -111,7 +111,7 @@ class AuthState extends Equatable {
   final int? trezorTaskId;
 
   /// Trezor device information
-  final dynamic trezorDeviceInfo;
+  final TrezorDeviceInfo? trezorDeviceInfo;
 
   @override
   List<Object?> get props => [
@@ -140,7 +140,7 @@ class AuthState extends Equatable {
     TrezorAuthStatus? trezorStatus,
     String? trezorMessage,
     int? trezorTaskId,
-    dynamic trezorDeviceInfo,
+    TrezorDeviceInfo? trezorDeviceInfo,
     bool clearError = false,
     bool clearSelectedUser = false,
     bool clearUser = false,
@@ -304,7 +304,7 @@ class AuthState extends Equatable {
 
   /// Trezor ready state
   factory AuthState.trezorReady({
-    required dynamic deviceInfo,
+    required TrezorDeviceInfo? deviceInfo,
     List<KdfUser> knownUsers = const [],
     String walletName = '',
     bool isHdMode = true,

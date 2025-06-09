@@ -10,9 +10,6 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
 
   KomodoDefiSdk get _sdk;
 
-  /// Must be implemented by the class using this mixin
-  Future<List<KdfUser>> fetchKnownUsersInternal();
-
   /// Gets or generates a secure password for the Trezor wallet
   Future<String> _getTrezorPassword({required bool isNewUser}) async {
     final existingPassword = await _secureStorage.read(key: _trezorPasswordKey);
@@ -73,8 +70,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
         try {
           await _sdk.auth.signOut();
         } catch (e) {
-          // Log the error but continue - we might be in a state where signOut fails
-          // but we still want to proceed with re-authentication
+          // ignore sign out errors
         }
       }
 
@@ -88,7 +84,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
         ),
       );
 
-      final knownUsers = await fetchKnownUsersInternal();
+      final knownUsers = await _fetchKnownUsers();
       final existingTrezorUser =
           knownUsers
               .where(
@@ -168,6 +164,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
           AuthState.error(
             message: 'Trezor initialization error: $error',
             walletName: trezorWalletName,
+            knownUsers: state.knownUsers,
           ),
         );
       }
@@ -176,7 +173,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
         AuthState.error(
           message: 'Failed to prepare Trezor initialization: $e',
           walletName: trezorWalletName,
-          knownUsers: await fetchKnownUsersInternal(),
+          knownUsers: state.knownUsers,
         ),
       );
     }
@@ -256,15 +253,18 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
 
       // The Trezor wallet should already be registered/signed in from the prep step
       // Just fetch the updated known users and emit authenticated state
-      final knownUsers = await fetchKnownUsersInternal();
-      final trezorUser =
-          knownUsers
-              .where(
-                (user) =>
-                    user.walletId.name == trezorWalletName &&
-                    user.authOptions.privKeyPolicy == PrivateKeyPolicy.trezor,
-              )
-              .first;
+      final knownUsers = await _fetchKnownUsers();
+      final trezorUser = knownUsers.firstWhere(
+        (user) =>
+            user.walletId.name == trezorWalletName &&
+            user.authOptions.privKeyPolicy == PrivateKeyPolicy.trezor,
+        orElse:
+            () =>
+                throw Exception(
+                  'Trezor user not found. The Trezor wallet may not be properly '
+                  'registered or the authentication process was incomplete.',
+                ),
+      );
 
       emit(AuthState.authenticated(user: trezorUser, knownUsers: knownUsers));
     } catch (e) {
@@ -272,7 +272,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
         AuthState.error(
           message: 'Trezor authentication failed: $e',
           walletName: trezorWalletName,
-          knownUsers: await fetchKnownUsersInternal(),
+          knownUsers: await _fetchKnownUsers(),
         ),
       );
     }
@@ -290,7 +290,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
         AuthState.error(
           message: 'Failed to provide PIN: $e',
           walletName: trezorWalletName,
-          knownUsers: await fetchKnownUsersInternal(),
+          knownUsers: await _fetchKnownUsers(),
         ),
       );
     }
@@ -308,7 +308,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
         AuthState.error(
           message: 'Failed to provide passphrase: $e',
           walletName: trezorWalletName,
-          knownUsers: await fetchKnownUsersInternal(),
+          knownUsers: await _fetchKnownUsers(),
         ),
       );
     }
@@ -321,29 +321,30 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
     try {
       await _sdk.trezor.cancelInitialization(event.taskId);
 
-      emit(
-        AuthState.unauthenticated(knownUsers: await fetchKnownUsersInternal()),
-      );
+      emit(AuthState.unauthenticated(knownUsers: await _fetchKnownUsers()));
     } catch (e) {
       emit(
         AuthState.error(
           message: 'Failed to cancel Trezor initialization: $e',
           walletName: trezorWalletName,
-          knownUsers: await fetchKnownUsersInternal(),
+          knownUsers: await _fetchKnownUsers(),
         ),
       );
     }
   }
 
-  /// Disposes of Trezor-related resources
-  Future<void> disposeTrezorResources() async {
-    // No longer using subscriptions, so nothing to dispose
-  }
-
   /// Clears stored Trezor password and disposes resources
   /// Use this when you want to completely reset the Trezor wallet
   Future<void> clearTrezorWallet() async {
-    await disposeTrezorResources();
     await _clearTrezorPassword();
+  }
+
+  Future<List<KdfUser>> _fetchKnownUsers() async {
+    try {
+      return await _sdk.auth.getUsers();
+    } catch (e) {
+      debugPrint('Error fetching known users: $e');
+      return [];
+    }
   }
 }

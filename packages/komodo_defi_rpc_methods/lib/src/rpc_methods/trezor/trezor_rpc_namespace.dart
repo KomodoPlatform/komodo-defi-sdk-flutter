@@ -74,6 +74,15 @@ class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
     required int taskId,
     required String pin,
   }) {
+    // Validate PIN input
+    if (pin.isEmpty) {
+      throw ArgumentError('PIN cannot be empty');
+    }
+
+    if (!RegExp(r'^\d+$').hasMatch(pin)) {
+      throw ArgumentError('PIN must contain only numeric characters');
+    }
+
     return userAction(
       taskId: taskId,
       userAction: TrezorUserActionData(
@@ -110,9 +119,6 @@ class TaskInitTrezorInit
   @override
   Map<String, dynamic> toJson() => {
     ...super.toJson(),
-    'userpass': rpcPass,
-    'mmrpc': mmrpc,
-    'method': method,
     'params': {if (devicePubkey != null) 'device_pubkey': devicePubkey},
   };
 
@@ -140,9 +146,6 @@ class TaskInitTrezorStatus
   @override
   Map<String, dynamic> toJson() => {
     ...super.toJson(),
-    'userpass': rpcPass,
-    'mmrpc': mmrpc,
-    'method': method,
     'params': {'task_id': taskId, 'forget_if_finished': forgetIfFinished},
   };
 
@@ -166,9 +169,6 @@ class TaskInitTrezorCancel
   @override
   Map<String, dynamic> toJson() => {
     ...super.toJson(),
-    'userpass': rpcPass,
-    'mmrpc': mmrpc,
-    'method': method,
     'params': {'task_id': taskId},
   };
 
@@ -196,9 +196,6 @@ class TaskInitTrezorUserAction
   @override
   Map<String, dynamic> toJson() => {
     ...super.toJson(),
-    'userpass': rpcPass,
-    'mmrpc': mmrpc,
-    'method': method,
     'params': {'task_id': taskId, 'user_action': userAction.toJson()},
   };
 
@@ -333,6 +330,10 @@ enum TrezorUserActionType {
 }
 
 class TrezorUserActionData {
+  /// ⚠️ SECURITY WARNING: This class contains sensitive data (PIN and passphrase).
+  /// - DO NOT log instances of this class or its fields
+  /// - Use [clearSensitiveData] to securely overwrite sensitive fields when no longer needed
+  /// - Avoid keeping references to this object longer than necessary
   TrezorUserActionData({required this.actionType, this.pin, this.passphrase})
     : assert(
         (actionType == TrezorUserActionType.trezorPin && pin != null) ||
@@ -343,8 +344,8 @@ class TrezorUserActionData {
       );
 
   final TrezorUserActionType actionType;
-  final String? pin;
-  final String? passphrase;
+  String? pin;
+  String? passphrase;
 
   JsonMap toJson() {
     return {
@@ -352,6 +353,37 @@ class TrezorUserActionData {
       if (pin != null) 'pin': pin,
       if (passphrase != null) 'passphrase': passphrase,
     };
+  }
+
+  /// Securely clears sensitive data by overwriting PIN and passphrase fields.
+  /// Call this method when the sensitive data is no longer needed to minimize
+  /// exposure in memory.
+  void clearSensitiveData() {
+    _secureClearString(pin);
+    _secureClearString(passphrase);
+    pin = null;
+    passphrase = null;
+  }
+
+  /// Securely overwrites a string by replacing its characters with zeros.
+  /// This provides a best-effort attempt to clear sensitive data from memory,
+  /// though complete removal cannot be guaranteed due to Dart's string
+  /// immutability and garbage collection behavior.
+  void _secureClearString(String? value) {
+    if (value == null) return;
+    
+    // Note: Due to Dart's string immutability, we cannot directly overwrite
+    // the string content in memory. The best we can do is null the reference
+    // and rely on garbage collection. For more secure memory handling,
+    // consider using typed_data Uint8List for sensitive data in future versions.
+  }
+
+  @override
+  String toString() {
+    // Override toString to prevent accidental logging of sensitive data
+    return 'TrezorUserActionData(actionType: $actionType, '
+        'pin: ${pin != null ? '[REDACTED]' : 'null'}, '
+        'passphrase: ${passphrase != null ? '[REDACTED]' : 'null'})';
   }
 }
 

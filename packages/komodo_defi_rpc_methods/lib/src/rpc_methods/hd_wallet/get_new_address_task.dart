@@ -92,11 +92,18 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
 
   factory GetNewAddressTaskStatusResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
-    final status = _statusFromTaskStatus(result.value<String>('status'));
+    final statusString = result.value<String>('status');
+    final status = _statusFromTaskStatus(statusString);
+
+    if (status == null) {
+      throw FormatException(
+        'Unrecognized task status: "$statusString". Expected one of: Ok, InProgress, Error',
+      );
+    }
 
     return GetNewAddressTaskStatusResponse(
       mmrpc: json.value<String>('mmrpc'),
-      status: status!,
+      status: status,
       details: ResponseDetails<NewAddressInfo, GeneralErrorResponse>(
         data:
             status == SyncStatusEnum.success

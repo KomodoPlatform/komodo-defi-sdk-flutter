@@ -1,28 +1,7 @@
-import 'dart:async';
+import 'dart:async' show StreamController, Timer, unawaited;
 
-import 'package:komodo_defi_sdk/src/trezor/trezor_initialization_state.dart';
+import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-
-/// Helper function for unawaited futures
-void unawaited(Future<void> future) {
-  // Intentionally ignore the future
-}
-
-/// Exception thrown when Trezor operations fail
-class TrezorException implements Exception {
-  /// Creates a new TrezorException with the given message and optional details
-  const TrezorException(this.message, [this.details]);
-
-  /// Human-readable error message
-  final String message;
-
-  /// Optional additional error details
-  final String? details;
-
-  @override
-  String toString() =>
-      'TrezorException: $message${details != null ? ' ($details)' : ''}';
-}
 
 /// Manages Trezor hardware wallet initialization and operations
 class TrezorManager {
@@ -218,8 +197,6 @@ class TrezorManager {
       try {
         await cancelInitialization(taskId);
       } catch (e) {
-        // Log error but continue cleanup
-        // Log error but continue cleanup - could use proper logging here
         // ignore: avoid_print
         print('Error cancelling Trezor task $taskId: $e');
       }

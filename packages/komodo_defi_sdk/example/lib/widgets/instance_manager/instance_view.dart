@@ -46,8 +46,8 @@ class _InstanceViewState extends State<InstanceView> {
   @override
   void initState() {
     super.initState();
-    // Fetch known users on init
     context.read<AuthBloc>().add(const AuthFetchKnownUsers());
+    context.read<AuthBloc>().add(const AuthStartListeningToAuthStateChanges());
   }
 
   @override
@@ -133,44 +133,54 @@ class _InstanceViewState extends State<InstanceView> {
       context: context,
       barrierDismissible: false,
       builder:
-          (context) => AlertDialog(
-            title: const Text('Trezor PIN Required'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(message ?? 'Please enter your Trezor PIN'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: pinController,
-                  decoration: const InputDecoration(
-                    labelText: 'PIN',
-                    border: OutlineInputBorder(),
-                    helperText: 'Use the PIN pad on your Trezor device',
+          (context) => PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) {
+                // Handle back button press - trigger cancel action
+                Navigator.of(context).pop();
+                context.read<AuthBloc>().add(AuthTrezorCancel(taskId: taskId));
+              }
+            },
+            child: AlertDialog(
+              title: const Text('Trezor PIN Required'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(message ?? 'Please enter your Trezor PIN'),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: pinController,
+                    decoration: const InputDecoration(
+                      labelText: 'PIN',
+                      border: OutlineInputBorder(),
+                      helperText: 'Use the PIN pad on your Trezor device',
+                    ),
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    autofocus: true,
                   ),
-                  keyboardType: TextInputType.number,
-                  obscureText: true,
-                  autofocus: true,
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    context.read<AuthBloc>().add(
+                      AuthTrezorCancel(taskId: taskId),
+                    );
+                  },
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final pin = pinController.text;
+                    Navigator.of(context).pop(pin);
+                  },
+                  child: const Text('Submit'),
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  context.read<AuthBloc>().add(
-                    AuthTrezorCancel(taskId: taskId),
-                  );
-                },
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final pin = pinController.text;
-                  Navigator.of(context).pop(pin);
-                },
-                child: const Text('Submit'),
-              ),
-            ],
           ),
     );
 
@@ -187,57 +197,67 @@ class _InstanceViewState extends State<InstanceView> {
       context: context,
       barrierDismissible: false,
       builder:
-          (context) => AlertDialog(
-            title: const Text('Trezor Passphrase Required'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(message ?? 'Please choose your passphrase option'),
-                const SizedBox(height: 16),
-                const Text(
-                  'Choose your passphrase configuration:',
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: passphraseController,
-                  decoration: const InputDecoration(
-                    labelText: 'Hidden passphrase (optional)',
-                    border: OutlineInputBorder(),
-                    helperText:
-                        'Enter your passphrase or leave empty for standard wallet',
+          (context) => PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) {
+                // Handle back button press - trigger cancel action
+                Navigator.of(context).pop();
+                context.read<AuthBloc>().add(AuthTrezorCancel(taskId: taskId));
+              }
+            },
+            child: AlertDialog(
+              title: const Text('Trezor Passphrase Required'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(message ?? 'Please choose your passphrase option'),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Choose your passphrase configuration:',
+                    style: TextStyle(fontWeight: FontWeight.w500),
                   ),
-                  obscureText: true,
-                  autofocus: true,
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passphraseController,
+                    decoration: const InputDecoration(
+                      labelText: 'Hidden passphrase (optional)',
+                      border: OutlineInputBorder(),
+                      helperText:
+                          'Enter your passphrase or leave empty for standard wallet',
+                    ),
+                    obscureText: true,
+                    autofocus: true,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    context.read<AuthBloc>().add(
+                      AuthTrezorCancel(taskId: taskId),
+                    );
+                  },
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.tonal(
+                  onPressed: () {
+                    // Standard wallet with empty passphrase
+                    Navigator.of(context).pop('');
+                  },
+                  child: const Text('Standard Wallet'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    // Hidden passphrase wallet
+                    final passphrase = passphraseController.text;
+                    Navigator.of(context).pop(passphrase);
+                  },
+                  child: const Text('Hidden Wallet'),
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  context.read<AuthBloc>().add(
-                    AuthTrezorCancel(taskId: taskId),
-                  );
-                },
-                child: const Text('Cancel'),
-              ),
-              FilledButton.tonal(
-                onPressed: () {
-                  // Standard wallet with empty passphrase
-                  Navigator.of(context).pop('');
-                },
-                child: const Text('Standard Wallet'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  // Hidden passphrase wallet
-                  final passphrase = passphraseController.text;
-                  Navigator.of(context).pop(passphrase);
-                },
-                child: const Text('Hidden Wallet'),
-              ),
-            ],
           ),
     );
 

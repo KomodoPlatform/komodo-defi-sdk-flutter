@@ -14,7 +14,7 @@ class HdWalletMethods extends BaseRpcMethodNamespace {
     int? gapLimit,
   }) => execute(
     GetNewAddressRequest(
-      rpcPass: rpcPass,
+      rpcPass: rpcPass ?? this.rpcPass,
       coin: coin,
       accountId: accountId,
       chain: chain,
@@ -29,7 +29,7 @@ class HdWalletMethods extends BaseRpcMethodNamespace {
     int? gapLimit,
   }) => execute(
     ScanForNewAddressesInitRequest(
-      rpcPass: rpcPass,
+      rpcPass: rpcPass ?? this.rpcPass,
       coin: coin,
       accountId: accountId,
       gapLimit: gapLimit,
@@ -42,7 +42,7 @@ class HdWalletMethods extends BaseRpcMethodNamespace {
     bool forgetIfFinished = true,
   }) => execute(
     ScanForNewAddressesStatusRequest(
-      rpcPass: rpcPass,
+      rpcPass: rpcPass ?? this.rpcPass,
       taskId: taskId,
       forgetIfFinished: forgetIfFinished,
     ),

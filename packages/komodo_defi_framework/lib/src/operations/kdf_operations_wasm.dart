@@ -282,12 +282,8 @@ class KdfOperationsWasm implements IKdfOperations {
 
     if (KdfLoggingConfig.debugLogging) {
       try {
-        // Try to stringify the JS object for better logging
-        final stringified = js_interop.globalContext.callMethod(
-          'JSON.stringify'.toJS,
-          jsResponse,
-        );
-        _log('Raw JS response: ${stringified?.dartify() ?? jsResponse}');
+        final stringified = jsResponse.dartify().toString();
+        _log('Raw JS response: $stringified');
       } catch (e) {
         _log('Raw JS response: $jsResponse (stringify failed: $e)');
       }

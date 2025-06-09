@@ -3,5 +3,6 @@
 /// Internal/private classes related to the Trezor integration of the Komodo DeFi Framework ecosystem.
 library _trezor;
 
+export 'trezor_exception.dart';
 export 'trezor_initialization_state.dart';
 export 'trezor_manager.dart';
