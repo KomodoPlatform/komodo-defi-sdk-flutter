@@ -3,7 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:kdf_sdk_example/blocs/auth/auth.dart';
+import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
 import 'package:kdf_sdk_example/screens/asset_page.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_view.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';

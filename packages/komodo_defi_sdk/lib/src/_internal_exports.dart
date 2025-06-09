@@ -6,4 +6,4 @@ library _internal_exports;
 export 'activation/_activation_index.dart';
 export 'assets/_assets_index.dart';
 export 'transaction_history/_transaction_history_index.dart';
-export 'trezor/trezor.dart';
+export 'trezor/_trezor_index.dart';

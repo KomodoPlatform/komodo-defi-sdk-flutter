@@ -31,10 +31,11 @@ class PubkeyManager {
   }
 
   Future<PubkeyStrategy> _resolvePubkeyStrategy(Asset asset) async {
-    final isHdWallet =
-        await _auth.currentUser.then((u) => u?.isHd) ??
-        (throw AuthException.notSignedIn());
-    return asset.pubkeyStrategy(isHdWallet: isHdWallet);
+    final currentUser = await _auth.currentUser;
+    if (currentUser == null) {
+      throw AuthException.notSignedIn();
+    }
+    return asset.pubkeyStrategy(kdfUser: currentUser);
   }
 
   /// Dispose of any resources
