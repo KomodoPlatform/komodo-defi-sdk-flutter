@@ -150,7 +150,11 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
       // Start Trezor initialization and wait for completion
       try {
         await for (final state in _sdk.trezor.initializeDevice()) {
-          _handleTrezorInitializationState(state, event, emit);
+          final authState = _handleTrezorInitializationState(state, event);
+          emit(authState);
+          if (authState.status == AuthStatus.authenticated) {
+            await _performTrezorAuthentication(event, emit);
+          }
 
           // Break the loop when initialization is complete or encounters an error
           if (state.status == TrezorInitializationStatus.completed ||
@@ -178,80 +182,67 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
     }
   }
 
-  void _handleTrezorInitializationState(
-    TrezorInitializationState state,
+  AuthState _handleTrezorInitializationState(
+    TrezorInitializationState trezorInitState,
     AuthTrezorInitAndAuth event,
-    Emitter<AuthState> emit,
   ) {
     // Avoid emitting duplicate events by checking current AuthState
     final currentTrezorStatus = TrezorAuthStatus.fromTrezorInitializationStatus(
-      state.status,
+      trezorInitState.status,
     );
-    if (this.state.trezorStatus == currentTrezorStatus) {
-      return;
+    if (state.trezorStatus == currentTrezorStatus) {
+      return state;
     }
 
-    switch (state.status) {
+    switch (trezorInitState.status) {
       case TrezorInitializationStatus.initializing:
-        emit(
-          AuthState.trezorInitializing(
-            message: state.message ?? 'Initializing Trezor device...',
-            taskId: state.taskId,
-          ),
+        return AuthState.trezorInitializing(
+          message: trezorInitState.message ?? 'Initializing Trezor device...',
+          taskId: trezorInitState.taskId,
         );
 
       case TrezorInitializationStatus.waitingForDevice:
-        emit(
-          AuthState.trezorInitializing(
-            message: state.message ?? 'Waiting for Trezor device connection...',
-            taskId: state.taskId,
-          ),
+        return AuthState.trezorInitializing(
+          message:
+              trezorInitState.message ??
+              'Waiting for Trezor device connection...',
+          taskId: trezorInitState.taskId,
         );
 
       case TrezorInitializationStatus.waitingForDeviceConfirmation:
-        emit(
-          AuthState.trezorAwaitingConfirmation(
-            taskId: state.taskId!,
-            message:
-                state.message ??
-                'Please follow instructions on your Trezor device',
-          ),
+        return AuthState.trezorAwaitingConfirmation(
+          taskId: trezorInitState.taskId!,
+          message:
+              trezorInitState.message ??
+              'Please follow instructions on your Trezor device',
         );
 
       case TrezorInitializationStatus.pinRequired:
-        emit(
-          AuthState.trezorPinRequired(
-            taskId: state.taskId!,
-            message: state.message ?? 'Please enter your Trezor PIN',
-          ),
+        return AuthState.trezorPinRequired(
+          taskId: trezorInitState.taskId!,
+          message: trezorInitState.message ?? 'Please enter your Trezor PIN',
         );
 
       case TrezorInitializationStatus.passphraseRequired:
-        emit(
-          AuthState.trezorPassphraseRequired(
-            taskId: state.taskId!,
-            message: state.message ?? 'Please enter your Trezor passphrase',
-          ),
+        return AuthState.trezorPassphraseRequired(
+          taskId: trezorInitState.taskId!,
+          message:
+              trezorInitState.message ?? 'Please enter your Trezor passphrase',
         );
 
       case TrezorInitializationStatus.completed:
-        emit(AuthState.trezorReady(deviceInfo: state.deviceInfo));
-        _performTrezorAuthentication(event, emit);
+        return AuthState.trezorReady(deviceInfo: trezorInitState.deviceInfo);
 
       case TrezorInitializationStatus.error:
-        emit(
-          AuthState.error(
-            message: 'Trezor initialization failed: ${state.error}',
-            walletName: trezorWalletName,
-          ),
+        return AuthState.error(
+          message: 'Trezor initialization failed: ${trezorInitState.error}',
+          walletName: trezorWalletName,
         );
 
       case TrezorInitializationStatus.cancelled:
-        emit(
-          AuthState.error(
-            message: 'Trezor initialization was cancelled',
-            walletName: trezorWalletName,
-          ),
+        return AuthState.error(
+          message: 'Trezor initialization was cancelled',
+          walletName: trezorWalletName,
         );
     }
   }

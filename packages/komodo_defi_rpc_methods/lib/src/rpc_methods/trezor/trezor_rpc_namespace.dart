@@ -6,25 +6,20 @@ class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
   TrezorMethodsNamespace(super.client);
 
   /// Initialize Trezor device for use with Komodo DeFi Framework
-  /// 
-  /// Before using this method, launch the Komodo DeFi Framework API, and 
-  /// plug in your Trezor. If you know the device pubkey, you can specify it 
+  ///
+  /// Before using this method, launch the Komodo DeFi Framework API, and
+  /// plug in your Trezor. If you know the device pubkey, you can specify it
   /// to ensure the correct device is connected.
-  /// 
+  ///
   /// Returns a task ID that can be used to query the initialization status.
-  Future<NewTaskResponse> init({
-    String? devicePubkey,
-  }) {
+  Future<NewTaskResponse> init({String? devicePubkey}) {
     return execute(
-      TaskInitTrezorInit(
-        rpcPass: rpcPass ?? '',
-        devicePubkey: devicePubkey,
-      ),
+      TaskInitTrezorInit(rpcPass: rpcPass ?? '', devicePubkey: devicePubkey),
     );
   }
 
   /// Check the status of Trezor device initialization
-  /// 
+  ///
   /// Query the status of device initialization to check its progress.
   /// The status can be:
   /// - InProgress: Normal initialization or waiting for user action
@@ -45,26 +40,21 @@ class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
   }
 
   /// Cancel Trezor device initialization
-  /// 
+  ///
   /// Use this method to cancel the initialization task if needed.
-  Future<TrezorCancelResponse> cancel({
-    required int taskId,
-  }) {
+  Future<TrezorCancelResponse> cancel({required int taskId}) {
     return execute(
-      TaskInitTrezorCancel(
-        rpcPass: rpcPass ?? '',
-        taskId: taskId,
-      ),
+      TaskInitTrezorCancel(rpcPass: rpcPass ?? '', taskId: taskId),
     );
   }
 
   /// Provide user action (PIN or passphrase) for Trezor device
-  /// 
+  ///
   /// When the device displays a PIN grid or asks for a passphrase,
   /// use this method to provide the required input.
-  /// 
+  ///
   /// For PIN: Enter the PIN as mapped through your keyboard numpad.
-  /// For passphrase: Enter the passphrase (empty string for default 
+  /// For passphrase: Enter the passphrase (empty string for default
   /// wallet).
   Future<TrezorUserActionResponse> userAction({
     required int taskId,
@@ -112,10 +102,8 @@ class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
 
 class TaskInitTrezorInit
     extends BaseRequest<NewTaskResponse, GeneralErrorResponse> {
-  TaskInitTrezorInit({
-    this.devicePubkey,
-    super.rpcPass,
-  }) : super(method: 'task::init_trezor::init', mmrpc: '2.0');
+  TaskInitTrezorInit({this.devicePubkey, super.rpcPass})
+    : super(method: 'task::init_trezor::init', mmrpc: '2.0');
 
   final String? devicePubkey;
 
@@ -125,9 +113,7 @@ class TaskInitTrezorInit
     'userpass': rpcPass,
     'mmrpc': mmrpc,
     'method': method,
-    'params': {
-      if (devicePubkey != null) 'device_pubkey': devicePubkey,
-    },
+    'params': {if (devicePubkey != null) 'device_pubkey': devicePubkey},
   };
 
   @override
@@ -172,10 +158,8 @@ class TaskInitTrezorStatus
 
 class TaskInitTrezorCancel
     extends BaseRequest<TrezorCancelResponse, GeneralErrorResponse> {
-  TaskInitTrezorCancel({
-    required this.taskId,
-    super.rpcPass,
-  }) : super(method: 'task::init_trezor::cancel', mmrpc: '2.0');
+  TaskInitTrezorCancel({required this.taskId, super.rpcPass})
+    : super(method: 'task::init_trezor::cancel', mmrpc: '2.0');
 
   final int taskId;
 
@@ -215,10 +199,7 @@ class TaskInitTrezorUserAction
     'userpass': rpcPass,
     'mmrpc': mmrpc,
     'method': method,
-    'params': {
-      'task_id': taskId,
-      'user_action': userAction.toJson(),
-    },
+    'params': {'task_id': taskId, 'user_action': userAction.toJson()},
   };
 
   @override
@@ -235,34 +216,34 @@ class TaskInitTrezorUserAction
 
 class TrezorDeviceInfo {
   TrezorDeviceInfo({
-    required this.type,
-    required this.model,
-    required this.deviceName,
     required this.deviceId,
     required this.devicePubkey,
+    this.type,
+    this.model,
+    this.deviceName,
   });
 
   factory TrezorDeviceInfo.fromJson(JsonMap json) {
     return TrezorDeviceInfo(
-      type: json.value<String>('type'),
-      model: json.value<String>('model'),
-      deviceName: json.value<String>('device_name'),
+      type: json.valueOrNull<String>('type'),
+      model: json.valueOrNull<String>('model'),
+      deviceName: json.valueOrNull<String>('device_name'),
       deviceId: json.value<String>('device_id'),
       devicePubkey: json.value<String>('device_pubkey'),
     );
   }
 
-  final String type;
-  final String model;
-  final String deviceName;
+  final String? type;
+  final String? model;
+  final String? deviceName;
   final String deviceId;
   final String devicePubkey;
 
   JsonMap toJson() {
     return {
-      'type': type,
-      'model': model,
-      'device_name': deviceName,
+      if (type != null) 'type': type,
+      if (model != null) 'model': model,
+      if (deviceName != null) 'device_name': deviceName,
       'device_id': deviceId,
       'device_pubkey': devicePubkey,
     };
@@ -295,9 +276,7 @@ class TrezorStatusResponse extends BaseResponse {
   TrezorDeviceInfo? get deviceInfo {
     if (status == 'Ok' && details is JsonMap) {
       final detailsMap = details as JsonMap;
-      if (detailsMap.containsKey('result')) {
-        return TrezorDeviceInfo.fromJson(detailsMap.value<JsonMap>('result'));
-      }
+      return TrezorDeviceInfo.fromJson(detailsMap);
     }
     return null;
   }
@@ -322,10 +301,7 @@ class TrezorStatusResponse extends BaseResponse {
   JsonMap toJson() {
     return {
       'mmrpc': mmrpc,
-      'result': {
-        'status': status,
-        'details': details,
-      },
+      'result': {'status': status, 'details': details},
     };
   }
 }
@@ -344,10 +320,7 @@ class TrezorCancelResponse extends BaseResponse {
 
   @override
   JsonMap toJson() {
-    return {
-      'mmrpc': mmrpc,
-      'result': result,
-    };
+    return {'mmrpc': mmrpc, 'result': result};
   }
 }
 
@@ -360,17 +333,14 @@ enum TrezorUserActionType {
 }
 
 class TrezorUserActionData {
-  TrezorUserActionData({
-    required this.actionType,
-    this.pin,
-    this.passphrase,
-  }) : assert(
-          (actionType == TrezorUserActionType.trezorPin && pin != null) ||
-              (actionType == TrezorUserActionType.trezorPassphrase && 
-               passphrase != null),
-          'PIN must be provided for TrezorPin action, passphrase for '
-          'TrezorPassphrase action',
-        );
+  TrezorUserActionData({required this.actionType, this.pin, this.passphrase})
+    : assert(
+        (actionType == TrezorUserActionType.trezorPin && pin != null) ||
+            (actionType == TrezorUserActionType.trezorPassphrase &&
+                passphrase != null),
+        'PIN must be provided for TrezorPin action, passphrase for '
+        'TrezorPassphrase action',
+      );
 
   final TrezorUserActionType actionType;
   final String? pin;
@@ -399,9 +369,6 @@ class TrezorUserActionResponse extends BaseResponse {
 
   @override
   JsonMap toJson() {
-    return {
-      'mmrpc': mmrpc,
-      'result': result,
-    };
+    return {'mmrpc': mmrpc, 'result': result};
   }
 }

@@ -306,7 +306,6 @@ class _InstanceViewState extends State<InstanceView> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
-      listenWhen: (previous, current) => previous.status != current.status,
       listener: (context, state) {
         if (state.status == AuthStatus.error) {
           _showError(state.errorMessage ?? 'Unknown error');

@@ -309,7 +309,7 @@ class AuthState extends Equatable {
     String walletName = '',
     bool isHdMode = true,
   }) => AuthState(
-    status: AuthStatus.loading,
+    status: AuthStatus.authenticated,
     trezorStatus: TrezorAuthStatus.ready,
     trezorDeviceInfo: deviceInfo,
     knownUsers: knownUsers,
