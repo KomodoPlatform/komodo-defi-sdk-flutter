@@ -25,7 +25,7 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
 
     // If a specific type is requested, update the config
     final configToUse = requestedType != null && requestedType != primaryType
-        ? (JsonMap.from(json)
+        ? (JsonMap.of(json)
           ..['type'] = requestedType.toString().split('.').last)
         : json;
     try {
