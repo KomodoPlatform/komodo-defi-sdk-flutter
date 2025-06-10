@@ -46,8 +46,8 @@ class _InstanceViewState extends State<InstanceView> {
   @override
   void initState() {
     super.initState();
-    context.read<AuthBloc>().add(const AuthFetchKnownUsers());
-    context.read<AuthBloc>().add(const AuthStartListeningToAuthStateChanges());
+    context.read<AuthBloc>().add(const AuthKnownUsersFetched());
+    context.read<AuthBloc>().add(const AuthInitialStateChecked());
   }
 
   @override
@@ -123,7 +123,9 @@ class _InstanceViewState extends State<InstanceView> {
   void _initializeTrezor() {
     setState(() => _isTrezorInitializing = true);
     context.read<AuthBloc>().add(
-      const AuthTrezorInitAndAuth(derivationMethod: DerivationMethod.hdWallet),
+      const AuthTrezorInitAndAuthStarted(
+        derivationMethod: DerivationMethod.hdWallet,
+      ),
     );
   }
 
@@ -139,7 +141,9 @@ class _InstanceViewState extends State<InstanceView> {
               if (!didPop) {
                 // Handle back button press - trigger cancel action
                 Navigator.of(context).pop();
-                context.read<AuthBloc>().add(AuthTrezorCancel(taskId: taskId));
+                context.read<AuthBloc>().add(
+                  AuthTrezorCancelled(taskId: taskId),
+                );
               }
             },
             child: AlertDialog(
@@ -167,7 +171,7 @@ class _InstanceViewState extends State<InstanceView> {
                   onPressed: () {
                     Navigator.of(context).pop();
                     context.read<AuthBloc>().add(
-                      AuthTrezorCancel(taskId: taskId),
+                      AuthTrezorCancelled(taskId: taskId),
                     );
                   },
                   child: const Text('Cancel'),
@@ -186,7 +190,7 @@ class _InstanceViewState extends State<InstanceView> {
 
     if (result != null && mounted) {
       context.read<AuthBloc>().add(
-        AuthTrezorProvidePin(taskId: taskId, pin: result),
+        AuthTrezorPinProvided(taskId: taskId, pin: result),
       );
     }
   }
@@ -203,7 +207,9 @@ class _InstanceViewState extends State<InstanceView> {
               if (!didPop) {
                 // Handle back button press - trigger cancel action
                 Navigator.of(context).pop();
-                context.read<AuthBloc>().add(AuthTrezorCancel(taskId: taskId));
+                context.read<AuthBloc>().add(
+                  AuthTrezorCancelled(taskId: taskId),
+                );
               }
             },
             child: AlertDialog(
@@ -236,7 +242,7 @@ class _InstanceViewState extends State<InstanceView> {
                   onPressed: () {
                     Navigator.of(context).pop();
                     context.read<AuthBloc>().add(
-                      AuthTrezorCancel(taskId: taskId),
+                      AuthTrezorCancelled(taskId: taskId),
                     );
                   },
                   child: const Text('Cancel'),
@@ -263,7 +269,7 @@ class _InstanceViewState extends State<InstanceView> {
 
     if (result != null && mounted) {
       context.read<AuthBloc>().add(
-        AuthTrezorProvidePassphrase(taskId: taskId, passphrase: result),
+        AuthTrezorPassphraseProvided(taskId: taskId, passphrase: result),
       );
     }
   }
@@ -309,7 +315,7 @@ class _InstanceViewState extends State<InstanceView> {
     }
 
     context.read<AuthBloc>().add(
-      AuthRegister(
+      AuthRegistered(
         walletName: _walletNameController.text,
         password: _passwordController.text,
         derivationMethod:
@@ -320,7 +326,7 @@ class _InstanceViewState extends State<InstanceView> {
   }
 
   void _onSelectKnownUser(KdfUser user) {
-    context.read<AuthBloc>().add(AuthSelectKnownUser(user));
+    context.read<AuthBloc>().add(AuthKnownUserSelected(user));
   }
 
   @override
@@ -415,7 +421,7 @@ class _InstanceViewState extends State<InstanceView> {
           children: [
             FilledButton.tonalIcon(
               onPressed:
-                  () => context.read<AuthBloc>().add(const AuthSignOut()),
+                  () => context.read<AuthBloc>().add(const AuthSignedOut()),
               icon: const Icon(Icons.logout),
               label: const Text('Sign Out'),
             ),
@@ -553,7 +559,7 @@ class _InstanceViewState extends State<InstanceView> {
                 onPressed: () {
                   if (_formKey.currentState?.validate() ?? false) {
                     context.read<AuthBloc>().add(
-                      AuthSignIn(
+                      AuthSignedIn(
                         walletName: _walletNameController.text,
                         password: _passwordController.text,
                         derivationMethod:
@@ -601,7 +607,7 @@ class _InstanceViewState extends State<InstanceView> {
                       TextButton(
                         onPressed:
                             () => context.read<AuthBloc>().add(
-                              AuthTrezorCancel(taskId: state.trezorTaskId!),
+                              AuthTrezorCancelled(taskId: state.trezorTaskId!),
                             ),
                         child: const Text('Cancel'),
                       ),

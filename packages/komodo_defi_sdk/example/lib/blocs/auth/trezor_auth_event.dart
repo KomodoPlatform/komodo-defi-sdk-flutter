@@ -1,8 +1,8 @@
 part of 'auth_bloc.dart';
 
 /// Event to authenticate with Trezor device
-class AuthTrezorSignIn extends AuthEvent {
-  const AuthTrezorSignIn({
+class AuthTrezorSignedIn extends AuthEvent {
+  const AuthTrezorSignedIn({
     required this.walletName,
     required this.derivationMethod,
   });
@@ -15,8 +15,8 @@ class AuthTrezorSignIn extends AuthEvent {
 }
 
 /// Event to register a new Trezor wallet
-class AuthTrezorRegister extends AuthEvent {
-  const AuthTrezorRegister({
+class AuthTrezorRegistered extends AuthEvent {
+  const AuthTrezorRegistered({
     required this.walletName,
     required this.derivationMethod,
   });
@@ -29,8 +29,8 @@ class AuthTrezorRegister extends AuthEvent {
 }
 
 /// Event to start complete Trezor initialization and authentication flow
-class AuthTrezorInitAndAuth extends AuthEvent {
-  const AuthTrezorInitAndAuth({
+class AuthTrezorInitAndAuthStarted extends AuthEvent {
+  const AuthTrezorInitAndAuthStarted({
     required this.derivationMethod,
     this.isRegister = false,
   });
@@ -43,8 +43,8 @@ class AuthTrezorInitAndAuth extends AuthEvent {
 }
 
 /// Event to provide PIN during Trezor initialization
-class AuthTrezorProvidePin extends AuthEvent {
-  const AuthTrezorProvidePin({required this.taskId, required this.pin});
+class AuthTrezorPinProvided extends AuthEvent {
+  const AuthTrezorPinProvided({required this.taskId, required this.pin});
 
   final int taskId;
   final String pin;
@@ -54,8 +54,8 @@ class AuthTrezorProvidePin extends AuthEvent {
 }
 
 /// Event to provide passphrase during Trezor initialization
-class AuthTrezorProvidePassphrase extends AuthEvent {
-  const AuthTrezorProvidePassphrase({
+class AuthTrezorPassphraseProvided extends AuthEvent {
+  const AuthTrezorPassphraseProvided({
     required this.taskId,
     required this.passphrase,
   });
@@ -68,8 +68,8 @@ class AuthTrezorProvidePassphrase extends AuthEvent {
 }
 
 /// Event to cancel Trezor initialization
-class AuthTrezorCancel extends AuthEvent {
-  const AuthTrezorCancel({required this.taskId});
+class AuthTrezorCancelled extends AuthEvent {
+  const AuthTrezorCancelled({required this.taskId});
 
   final int taskId;
 

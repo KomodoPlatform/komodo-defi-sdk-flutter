@@ -8,13 +8,13 @@ abstract class AuthEvent extends Equatable {
 }
 
 /// Event to fetch all known users from the SDK
-class AuthFetchKnownUsers extends AuthEvent {
-  const AuthFetchKnownUsers();
+class AuthKnownUsersFetched extends AuthEvent {
+  const AuthKnownUsersFetched();
 }
 
 /// Event to sign in with credentials
-class AuthSignIn extends AuthEvent {
-  const AuthSignIn({
+class AuthSignedIn extends AuthEvent {
+  const AuthSignedIn({
     required this.walletName,
     required this.password,
     required this.derivationMethod,
@@ -36,13 +36,13 @@ class AuthSignIn extends AuthEvent {
 }
 
 /// Event to sign out the current user
-class AuthSignOut extends AuthEvent {
-  const AuthSignOut();
+class AuthSignedOut extends AuthEvent {
+  const AuthSignedOut();
 }
 
 /// Event to register a new user
-class AuthRegister extends AuthEvent {
-  const AuthRegister({
+class AuthRegistered extends AuthEvent {
+  const AuthRegistered({
     required this.walletName,
     required this.password,
     required this.derivationMethod,
@@ -67,8 +67,8 @@ class AuthRegister extends AuthEvent {
 }
 
 /// Event to select a known user and populate form fields
-class AuthSelectKnownUser extends AuthEvent {
-  const AuthSelectKnownUser(this.user);
+class AuthKnownUserSelected extends AuthEvent {
+  const AuthKnownUserSelected(this.user);
 
   final KdfUser user;
 
@@ -77,16 +77,23 @@ class AuthSelectKnownUser extends AuthEvent {
 }
 
 /// Event to clear any authentication errors
-class AuthClearError extends AuthEvent {
-  const AuthClearError();
+class AuthErrorCleared extends AuthEvent {
+  const AuthErrorCleared();
 }
 
 /// Event to reset authentication state
-class AuthReset extends AuthEvent {
-  const AuthReset();
+class AuthStateReset extends AuthEvent {
+  const AuthStateReset();
 }
 
 /// Event to start listening to auth state changes
-class AuthStartListeningToAuthStateChanges extends AuthEvent {
-  const AuthStartListeningToAuthStateChanges();
+class AuthStateChangesStarted extends AuthEvent {
+  const AuthStateChangesStarted();
+}
+
+class AuthInitialStateChecked extends AuthEvent {
+  const AuthInitialStateChecked();
+
+  @override
+  List<Object?> get props => [];
 }

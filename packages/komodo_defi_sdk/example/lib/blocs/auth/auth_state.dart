@@ -22,7 +22,7 @@ enum AuthStatus {
 }
 
 /// Enum representing the different Trezor authentication status values
-enum TrezorAuthStatus {
+enum AuthTrezorStatus {
   /// No Trezor operation in progress
   none,
 
@@ -41,25 +41,25 @@ enum TrezorAuthStatus {
   /// Trezor initialization is completed and ready for auth
   ready;
 
-  /// Factory constructor to create TrezorAuthStatus from TrezorInitializationStatus
-  factory TrezorAuthStatus.fromTrezorInitializationStatus(
+  /// Factory constructor to create AuthTrezorStatus from TrezorInitializationStatus
+  factory AuthTrezorStatus.fromTrezorInitializationStatus(
     TrezorInitializationStatus status,
   ) {
     switch (status) {
       case TrezorInitializationStatus.initializing:
       case TrezorInitializationStatus.waitingForDevice:
-        return TrezorAuthStatus.initializing;
+        return AuthTrezorStatus.initializing;
       case TrezorInitializationStatus.waitingForDeviceConfirmation:
-        return TrezorAuthStatus.awaitingConfirmation;
+        return AuthTrezorStatus.awaitingConfirmation;
       case TrezorInitializationStatus.pinRequired:
-        return TrezorAuthStatus.pinRequired;
+        return AuthTrezorStatus.pinRequired;
       case TrezorInitializationStatus.passphraseRequired:
-        return TrezorAuthStatus.passphraseRequired;
+        return AuthTrezorStatus.passphraseRequired;
       case TrezorInitializationStatus.completed:
-        return TrezorAuthStatus.ready;
+        return AuthTrezorStatus.ready;
       case TrezorInitializationStatus.error:
       case TrezorInitializationStatus.cancelled:
-        return TrezorAuthStatus.none;
+        return AuthTrezorStatus.none;
     }
   }
 }
@@ -74,7 +74,7 @@ class AuthState extends Equatable {
     this.walletName = '',
     this.isHdMode = true,
     this.errorMessage,
-    this.trezorStatus = TrezorAuthStatus.none,
+    this.trezorStatus = AuthTrezorStatus.none,
     this.trezorMessage,
     this.trezorTaskId,
     this.trezorDeviceInfo,
@@ -102,7 +102,7 @@ class AuthState extends Equatable {
   final String? errorMessage;
 
   /// Current Trezor-specific status
-  final TrezorAuthStatus trezorStatus;
+  final AuthTrezorStatus trezorStatus;
 
   /// Trezor-specific message
   final String? trezorMessage;
@@ -137,7 +137,7 @@ class AuthState extends Equatable {
     String? walletName,
     bool? isHdMode,
     String? errorMessage,
-    TrezorAuthStatus? trezorStatus,
+    AuthTrezorStatus? trezorStatus,
     String? trezorMessage,
     int? trezorTaskId,
     TrezorDeviceInfo? trezorDeviceInfo,
@@ -243,7 +243,7 @@ class AuthState extends Equatable {
     bool isHdMode = true,
   }) => AuthState(
     status: AuthStatus.loading,
-    trezorStatus: TrezorAuthStatus.initializing,
+    trezorStatus: AuthTrezorStatus.initializing,
     trezorMessage: message,
     trezorTaskId: taskId,
     knownUsers: knownUsers,
@@ -260,7 +260,7 @@ class AuthState extends Equatable {
     bool isHdMode = true,
   }) => AuthState(
     status: AuthStatus.loading,
-    trezorStatus: TrezorAuthStatus.pinRequired,
+    trezorStatus: AuthTrezorStatus.pinRequired,
     trezorTaskId: taskId,
     trezorMessage: message,
     knownUsers: knownUsers,
@@ -277,7 +277,7 @@ class AuthState extends Equatable {
     bool isHdMode = true,
   }) => AuthState(
     status: AuthStatus.loading,
-    trezorStatus: TrezorAuthStatus.passphraseRequired,
+    trezorStatus: AuthTrezorStatus.passphraseRequired,
     trezorTaskId: taskId,
     trezorMessage: message,
     knownUsers: knownUsers,
@@ -294,7 +294,7 @@ class AuthState extends Equatable {
     bool isHdMode = true,
   }) => AuthState(
     status: AuthStatus.loading,
-    trezorStatus: TrezorAuthStatus.awaitingConfirmation,
+    trezorStatus: AuthTrezorStatus.awaitingConfirmation,
     trezorTaskId: taskId,
     trezorMessage: message,
     knownUsers: knownUsers,
@@ -310,7 +310,7 @@ class AuthState extends Equatable {
     bool isHdMode = true,
   }) => AuthState(
     status: AuthStatus.authenticated,
-    trezorStatus: TrezorAuthStatus.ready,
+    trezorStatus: AuthTrezorStatus.ready,
     trezorDeviceInfo: deviceInfo,
     knownUsers: knownUsers,
     walletName: walletName,
@@ -326,13 +326,13 @@ class AuthState extends Equatable {
   bool get isSigningOut => status == AuthStatus.signingOut;
 
   /// Convenience getters for checking Trezor status
-  bool get isTrezorActive => trezorStatus != TrezorAuthStatus.none;
+  bool get isTrezorActive => trezorStatus != AuthTrezorStatus.none;
   bool get isTrezorInitializing =>
-      trezorStatus == TrezorAuthStatus.initializing;
-  bool get isTrezorPinRequired => trezorStatus == TrezorAuthStatus.pinRequired;
+      trezorStatus == AuthTrezorStatus.initializing;
+  bool get isTrezorPinRequired => trezorStatus == AuthTrezorStatus.pinRequired;
   bool get isTrezorPassphraseRequired =>
-      trezorStatus == TrezorAuthStatus.passphraseRequired;
+      trezorStatus == AuthTrezorStatus.passphraseRequired;
   bool get isTrezorAwaitingConfirmation =>
-      trezorStatus == TrezorAuthStatus.awaitingConfirmation;
-  bool get isTrezorReady => trezorStatus == TrezorAuthStatus.ready;
+      trezorStatus == AuthTrezorStatus.awaitingConfirmation;
+  bool get isTrezorReady => trezorStatus == AuthTrezorStatus.ready;
 }

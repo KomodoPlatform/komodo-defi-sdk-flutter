@@ -6,7 +6,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// Mixin containing shared HD wallet logic
 mixin HDWalletMixin on PubkeyStrategy {
   KdfUser get kdfUser;
-  
+
   int get _gapLimit => 20;
 
   @override

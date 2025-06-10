@@ -18,16 +18,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
   AuthBloc({required KomodoDefiSdk sdk})
     : _sdk = sdk,
       super(AuthState.initial()) {
-    on<AuthFetchKnownUsers>(_onFetchKnownUsers);
-    on<AuthSignIn>(_onSignIn);
-    on<AuthSignOut>(_onSignOut);
-    on<AuthRegister>(_onRegister);
-    on<AuthSelectKnownUser>(_onSelectKnownUser);
-    on<AuthClearError>(_onClearError);
-    on<AuthReset>(_onReset);
-    on<AuthStartListeningToAuthStateChanges>(
-      _onStartListeningToAuthStateChanges,
-    );
+    on<AuthKnownUsersFetched>(_onFetchKnownUsers);
+    on<AuthSignedIn>(_onSignIn);
+    on<AuthSignedOut>(_onSignOut);
+    on<AuthRegistered>(_onRegister);
+    on<AuthKnownUserSelected>(_onSelectKnownUser);
+    on<AuthErrorCleared>(_onClearError);
+    on<AuthStateReset>(_onReset);
+    on<AuthInitialStateChecked>(_onCheckInitialState);
+    on<AuthStateChangesStarted>(_onStartListeningToAuthStateChanges);
 
     // Setup Trezor handlers from mixin
     setupTrezorEventHandlers();
@@ -37,7 +36,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
   final KomodoDefiSdk _sdk;
 
   Future<void> _onFetchKnownUsers(
-    AuthFetchKnownUsers event,
+    AuthKnownUsersFetched event,
     Emitter<AuthState> emit,
   ) async {
     try {
@@ -57,7 +56,35 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
     }
   }
 
-  Future<void> _onSignIn(AuthSignIn event, Emitter<AuthState> emit) async {
+  Future<void> _onCheckInitialState(
+    AuthInitialStateChecked event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      final currentUser = await _sdk.auth.currentUser;
+      final knownUsers = await _fetchKnownUsers();
+
+      if (currentUser != null) {
+        emit(
+          AuthState.authenticated(user: currentUser, knownUsers: knownUsers),
+        );
+        // Start listening to auth state changes after confirming authentication
+        add(const AuthStateChangesStarted());
+      } else {
+        emit(AuthState.unauthenticated(knownUsers: knownUsers));
+      }
+    } catch (e) {
+      final knownUsers = await _fetchKnownUsers();
+      emit(
+        AuthState.error(
+          message: 'Failed to check initial auth state: $e',
+          knownUsers: knownUsers,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onSignIn(AuthSignedIn event, Emitter<AuthState> emit) async {
     emit(AuthState.loading());
 
     try {
@@ -74,6 +101,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
       final knownUsers = await _fetchKnownUsers();
 
       emit(AuthState.authenticated(user: user, knownUsers: knownUsers));
+
+      // Start listening to auth state changes after successful sign-in
+      add(const AuthStateChangesStarted());
     } on AuthException catch (e) {
       emit(
         AuthState.error(
@@ -95,7 +125,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
     }
   }
 
-  Future<void> _onSignOut(AuthSignOut event, Emitter<AuthState> emit) async {
+  Future<void> _onSignOut(AuthSignedOut event, Emitter<AuthState> emit) async {
     emit(AuthState.signingOut());
 
     try {
@@ -114,7 +144,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
     }
   }
 
-  Future<void> _onRegister(AuthRegister event, Emitter<AuthState> emit) async {
+  Future<void> _onRegister(
+    AuthRegistered event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthState.loading());
 
     try {
@@ -132,6 +165,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
       final knownUsers = await _fetchKnownUsers();
 
       emit(AuthState.authenticated(user: user, knownUsers: knownUsers));
+
+      // Start listening to auth state changes after successful registration
+      add(const AuthStateChangesStarted());
     } on AuthException catch (e) {
       final errorMessage =
           e.type == AuthExceptionType.incorrectPassword
@@ -159,7 +195,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
     }
   }
 
-  void _onSelectKnownUser(AuthSelectKnownUser event, Emitter<AuthState> emit) {
+  void _onSelectKnownUser(
+    AuthKnownUserSelected event,
+    Emitter<AuthState> emit,
+  ) {
     if (state.status == AuthStatus.unauthenticated) {
       emit(
         state.copyWith(
@@ -181,7 +220,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
     }
   }
 
-  void _onClearError(AuthClearError event, Emitter<AuthState> emit) {
+  void _onClearError(AuthErrorCleared event, Emitter<AuthState> emit) {
     if (state.status == AuthStatus.error) {
       emit(
         AuthState.unauthenticated(
@@ -196,24 +235,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
     }
   }
 
-  void _onReset(AuthReset event, Emitter<AuthState> emit) {
+  void _onReset(AuthStateReset event, Emitter<AuthState> emit) {
     emit(AuthState.unauthenticated());
   }
 
   Future<void> _onStartListeningToAuthStateChanges(
-    AuthStartListeningToAuthStateChanges event,
+    AuthStateChangesStarted event,
     Emitter<AuthState> emit,
   ) async {
     try {
-      final currentUser = await _sdk.auth.currentUser;
-      final knownUsers = await _fetchKnownUsers();
-
-      if (currentUser != null) {
-        emit(
-          AuthState.authenticated(user: currentUser, knownUsers: knownUsers),
-        );
-      }
-
       await emit.forEach<KdfUser?>(
         _sdk.auth.authStateChanges,
         onData: (user) {
@@ -237,7 +267,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
       emit(
         AuthState.error(
           message: 'Failed to start listening to auth state changes: $e',
-          knownUsers: await _fetchKnownUsers(),
+          knownUsers: state.knownUsers,
         ),
       );
     }

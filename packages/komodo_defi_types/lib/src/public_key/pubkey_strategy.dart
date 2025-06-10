@@ -40,7 +40,7 @@ class PubkeyStrategyFactory {
     if (isHdWallet && protocol.supportsMultipleAddresses) {
       // Select specific HD wallet strategy based on private key policy
       final privKeyPolicy = kdfUser.walletId.authOptions.privKeyPolicy;
-      
+
       switch (privKeyPolicy) {
         case PrivateKeyPolicy.trezor:
           return TrezorHDWalletStrategy(kdfUser: kdfUser);

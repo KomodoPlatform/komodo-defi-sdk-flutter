@@ -44,14 +44,14 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
 
   /// Sets up all Trezor-related event handlers
   void setupTrezorEventHandlers() {
-    on<AuthTrezorInitAndAuth>(_onTrezorInitAndAuth);
-    on<AuthTrezorProvidePin>(_onTrezorProvidePin);
-    on<AuthTrezorProvidePassphrase>(_onTrezorProvidePassphrase);
-    on<AuthTrezorCancel>(_onTrezorCancel);
+    on<AuthTrezorInitAndAuthStarted>(_onTrezorInitAndAuth);
+    on<AuthTrezorPinProvided>(_onTrezorProvidePin);
+    on<AuthTrezorPassphraseProvided>(_onTrezorProvidePassphrase);
+    on<AuthTrezorCancelled>(_onTrezorCancel);
   }
 
   Future<void> _onTrezorInitAndAuth(
-    AuthTrezorInitAndAuth event,
+    AuthTrezorInitAndAuthStarted event,
     Emitter<AuthState> emit,
   ) async {
     try {
@@ -181,10 +181,10 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
 
   AuthState _handleTrezorInitializationState(
     TrezorInitializationState trezorInitState,
-    AuthTrezorInitAndAuth event,
+    AuthTrezorInitAndAuthStarted event,
   ) {
     // Avoid emitting duplicate events by checking current AuthState
-    final currentTrezorStatus = TrezorAuthStatus.fromTrezorInitializationStatus(
+    final currentTrezorStatus = AuthTrezorStatus.fromTrezorInitializationStatus(
       trezorInitState.status,
     );
     if (state.trezorStatus == currentTrezorStatus) {
@@ -245,7 +245,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _performTrezorAuthentication(
-    AuthTrezorInitAndAuth event,
+    AuthTrezorInitAndAuthStarted event,
     Emitter<AuthState> emit,
   ) async {
     try {
@@ -279,7 +279,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onTrezorProvidePin(
-    AuthTrezorProvidePin event,
+    AuthTrezorPinProvided event,
     Emitter<AuthState> emit,
   ) async {
     try {
@@ -297,7 +297,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onTrezorProvidePassphrase(
-    AuthTrezorProvidePassphrase event,
+    AuthTrezorPassphraseProvided event,
     Emitter<AuthState> emit,
   ) async {
     try {
@@ -315,7 +315,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onTrezorCancel(
-    AuthTrezorCancel event,
+    AuthTrezorCancelled event,
     Emitter<AuthState> emit,
   ) async {
     try {
