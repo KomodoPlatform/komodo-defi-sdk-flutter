@@ -29,7 +29,7 @@ class ActivationManager {
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
 
-  final Map<AssetId, Completer<void>> _activationCompleters = {};
+  final Map<AssetId, _ActivationState> _activations = {};
   bool _isDisposed = false;
 
   /// Helper for mutex-protected operations with timeout
@@ -60,78 +60,12 @@ class ActivationManager {
     final groups = _AssetGroup._groupByPrimary(assets);
 
     for (final group in groups) {
-      // Check activation status atomically
-      final activationStatus = await _checkActivationStatus(group);
-      if (activationStatus.isComplete) {
-        yield activationStatus;
-        continue;
+      final registration = await _registerActivation(group.primary.id);
+      if (registration.isNew) {
+        unawaited(_startActivation(group, registration.state));
       }
 
-      // Register activation attempt
-      final primaryCompleter = await _registerActivation(group.primary.id);
-      if (primaryCompleter == null) {
-        debugPrint(
-          'Activation already in progress for ${group.primary.id.name}',
-        );
-        continue;
-      }
-
-      final parentAsset =
-          group.parentId == null
-              ? null
-              : _assetLookup.fromId(group.parentId!) ??
-                  (throw StateError(
-                    'Parent asset ${group.parentId} not found',
-                  ));
-
-      yield ActivationProgress(
-        status: 'Starting activation for ${group.primary.id.name}...',
-        progressDetails: ActivationProgressDetails(
-          currentStep: 'group_start',
-          stepCount: 1,
-          additionalInfo: {
-            'primaryAsset': group.primary.id.name,
-            'childCount': group.children?.length ?? 0,
-          },
-        ),
-      );
-
-      try {
-        // Get the current user's auth options to retrieve privKeyPolicy
-        final currentUser = await _auth.currentUser;
-        final privKeyPolicy =
-            currentUser?.walletId.authOptions.privKeyPolicy ??
-            const PrivateKeyPolicy.contextPrivKey();
-
-        // Create activator with the user's privKeyPolicy
-        final activator = ActivationStrategyFactory.createStrategy(
-          _client,
-          privKeyPolicy,
-        );
-
-        await for (final progress in activator.activate(
-          parentAsset ?? group.primary,
-          group.children?.toList(),
-        )) {
-          yield progress;
-
-          if (progress.isComplete) {
-            await _handleActivationComplete(group, progress, primaryCompleter);
-          }
-        }
-      } catch (e) {
-        debugPrint('Activation failed: $e');
-        if (!primaryCompleter.isCompleted) {
-          primaryCompleter.completeError(e);
-        }
-        rethrow;
-      } finally {
-        try {
-          await _cleanupActivation(group.primary.id);
-        } catch (e) {
-          debugPrint('Failed to cleanup activation: $e');
-        }
-      }
+      yield* registration.state.controller.stream;
     }
   }
 
@@ -173,19 +107,97 @@ class ActivationManager {
     );
   }
 
-  /// Register new activation attempt
-  Future<Completer<void>?> _registerActivation(AssetId assetId) async {
-    return _protectedOperation(() async {
-      // Return the existing completer if activation is already in progress
-      // This ensures subsequent callers properly wait for the activation to complete
-      if (_activationCompleters.containsKey(assetId)) {
-        return _activationCompleters[assetId];
+  /// Register new activation attempt and return the activation state
+  Future<_ActivationRegistration> _registerActivation(AssetId assetId) async {
+    bool isNew = false;
+    late final _ActivationState state;
+    await _protectedOperation(() async {
+      final existing = _activations[assetId];
+      if (existing != null) {
+        state = existing;
+        return;
       }
 
-      final completer = Completer<void>();
-      _activationCompleters[assetId] = completer;
-      return completer;
+      state = _ActivationState(
+        controller: StreamController<ActivationProgress>.broadcast(),
+        completer: Completer<void>(),
+      );
+      _activations[assetId] = state;
+      isNew = true;
     });
+
+    return _ActivationRegistration(state, isNew: isNew);
+  }
+
+  /// Start activation for the given group and stream state to the controller
+  Future<void> _startActivation(
+    _AssetGroup group,
+    _ActivationState state,
+  ) async {
+    // Check activation status first
+    final activationStatus = await _checkActivationStatus(group);
+    if (activationStatus.isComplete) {
+      state.controller.add(activationStatus);
+      await _handleActivationComplete(group, activationStatus, state.completer);
+      await _cleanupActivation(group.primary.id);
+      await state.controller.close();
+      return;
+    }
+
+    final parentAsset =
+        group.parentId == null
+            ? null
+            : _assetLookup.fromId(group.parentId!) ??
+                (throw StateError('Parent asset ${group.parentId} not found'));
+
+    state.controller.add(
+      ActivationProgress(
+        status: 'Starting activation for ${group.primary.id.name}...',
+        progressDetails: ActivationProgressDetails(
+          currentStep: 'group_start',
+          stepCount: 1,
+          additionalInfo: {
+            'primaryAsset': group.primary.id.name,
+            'childCount': group.children?.length ?? 0,
+          },
+        ),
+      ),
+    );
+
+    try {
+      final currentUser = await _auth.currentUser;
+      final privKeyPolicy =
+          currentUser?.walletId.authOptions.privKeyPolicy ??
+          PrivateKeyPolicy.contextPrivKey;
+
+      final activator = ActivationStrategyFactory.createStrategy(
+        _client,
+        privKeyPolicy,
+      );
+
+      await for (final progress in activator.activate(
+        parentAsset ?? group.primary,
+        group.children?.toList(),
+      )) {
+        state.controller.add(progress);
+        if (progress.isComplete) {
+          await _handleActivationComplete(group, progress, state.completer);
+        }
+      }
+    } catch (e) {
+      debugPrint('Activation failed: $e');
+      if (!state.completer.isCompleted) {
+        state.completer.completeError(e);
+      }
+      state.controller.addError(e);
+    } finally {
+      try {
+        await _cleanupActivation(group.primary.id);
+      } catch (e) {
+        debugPrint('Failed to cleanup activation: $e');
+      }
+      await state.controller.close();
+    }
   }
 
   /// Handle completion of activation
@@ -225,7 +237,7 @@ class ActivationManager {
   /// Cleanup after activation attempt
   Future<void> _cleanupActivation(AssetId assetId) async {
     await _protectedOperation(() async {
-      _activationCompleters.remove(assetId);
+      _activations.remove(assetId);
     });
   }
 
@@ -270,20 +282,29 @@ class ActivationManager {
 
     await _protectedOperation(() async {
       _isDisposed = true;
-
-      // Complete any pending completers with errors
-      final completers = List<Completer<void>>.from(
-        _activationCompleters.values,
-      );
-      for (final completer in completers) {
-        if (!completer.isCompleted) {
-          completer.completeError('ActivationManager disposed');
+      for (final state in _activations.values) {
+        if (!state.completer.isCompleted) {
+          state.completer.completeError('ActivationManager disposed');
         }
+        await state.controller.close();
       }
-
-      _activationCompleters.clear();
+      _activations.clear();
     });
   }
+}
+
+class _ActivationState {
+  _ActivationState({required this.controller, required this.completer});
+
+  final StreamController<ActivationProgress> controller;
+  final Completer<void> completer;
+}
+
+class _ActivationRegistration {
+  _ActivationRegistration(this.state, {required this.isNew});
+
+  final _ActivationState state;
+  final bool isNew;
 }
 
 /// Internal class for grouping related assets
