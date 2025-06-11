@@ -9,6 +9,7 @@ import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/trezor/trezor_manager.dart';
+import 'package:komodo_defi_sdk/src/trezor/trezor_wallet_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -245,7 +246,13 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Handles Trezor device initialization and operations.
   ///
   /// Throws [StateError] if accessed before initialization.
-  TrezorManager get trezor => _assertSdkInitialized(_container<TrezorManager>());
+  TrezorManager get trezor =>
+      _assertSdkInitialized(_container<TrezorManager>());
+
+  /// Helper manager that combines authentication and device initialization for
+  /// the default Trezor wallet.
+  TrezorWalletManager get trezorWallets =>
+      _assertSdkInitialized(_container<TrezorWalletManager>());
 
   /// Initializes the SDK instance.
   ///

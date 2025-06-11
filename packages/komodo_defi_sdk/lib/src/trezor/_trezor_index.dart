@@ -6,3 +6,4 @@ library _trezor;
 export 'trezor_exception.dart';
 export 'trezor_initialization_state.dart';
 export 'trezor_manager.dart';
+export 'trezor_wallet_manager.dart';
