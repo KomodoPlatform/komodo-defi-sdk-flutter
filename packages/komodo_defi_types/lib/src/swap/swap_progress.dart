@@ -1,44 +1,46 @@
-import 'package:equatable/equatable.dart';
-import 'package:komodo_defi_types/src/swap/swap_error_code.dart';
-import 'package:komodo_defi_types/src/swap/swap_result.dart';
-import 'package:komodo_defi_types/src/swap/swap_status.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'swap_error_code.dart';
+import 'swap_result.dart';
+import 'swap_status.dart';
+
+part 'swap_progress.freezed.dart';
 
 /// Progress information for an ongoing swap
-class SwapProgress extends Equatable {
-  const SwapProgress({
-    required this.status,
-    required this.message,
-    this.swapResult,
-    this.errorCode,
-    this.errorMessage,
-    this.uuid,
-  });
+@Freezed(fromJson: false, toJson: false)
+class SwapProgress with _$SwapProgress {
+  const SwapProgress._();
+  const factory SwapProgress({
+    required SwapStatus status,
+    required String message,
+    SwapResult? swapResult,
+    SwapErrorCode? errorCode,
+    String? errorMessage,
+    String? uuid,
+  }) = _SwapProgress;
 
-  /// Current status of the swap
-  final SwapStatus status;
+  factory SwapProgress.fromJson(JsonMap json) => SwapProgress(
+        status: SwapStatus.values
+            .firstWhere((e) => e.toString() == 'SwapStatus.${json['status']}'),
+        message: json['message'] as String,
+        swapResult: json['swap_result'] != null
+            ? SwapResult.fromJson(json['swap_result'] as JsonMap)
+            : null,
+        errorCode: json['error_code'] != null
+            ? SwapErrorCode.values.firstWhere(
+                (e) => e.toString() == 'SwapErrorCode.${json['error_code']}',
+              )
+            : null,
+        errorMessage: json['error_message'] as String?,
+        uuid: json['uuid'] as String?,
+      );
 
-  /// Descriptive message about the current state
-  final String message;
-
-  /// Result data if swap completed successfully
-  final SwapResult? swapResult;
-
-  /// Error code if swap failed
-  final SwapErrorCode? errorCode;
-
-  /// Error message if swap failed
-  final String? errorMessage;
-
-  /// UUID of the order/swap
-  final String? uuid;
-
-  @override
-  List<Object?> get props => [
-        status,
-        message,
-        swapResult,
-        errorCode,
-        errorMessage,
-        uuid,
-      ];
+  JsonMap toJson() => {
+        'status': status.toString().split('.').last,
+        'message': message,
+        if (swapResult != null) 'swap_result': swapResult!.toJson(),
+        if (errorCode != null) 'error_code': errorCode.toString().split('.').last,
+        if (errorMessage != null) 'error_message': errorMessage,
+        if (uuid != null) 'uuid': uuid,
+      };
 }

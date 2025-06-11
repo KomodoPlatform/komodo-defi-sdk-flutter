@@ -1,155 +1,52 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+
+part 'order_data.freezed.dart';
+part 'order_data.g.dart';
 
 /// Represents OrderDataV2 as returned by trading methods
 /// NOTE: Only use this with V2 methods, as it is not compatible
 /// with legacy API methods.
-class OrderData {
-  OrderData({
-    required this.coin,
-    required this.address,
-    required this.price,
-    required this.pubkey,
-    required this.uuid,
-    required this.isMine,
-    required this.baseMaxVolume,
-    required this.baseMinVolume,
-    required this.relMaxVolume,
-    required this.relMinVolume,
-    this.confSettings,
-  });
+@freezed
+class OrderData with _$OrderData {
+  const factory OrderData({
+    required String coin,
+    required AddressData address,
+    required NumericFormatsValue price,
+    required String pubkey,
+    required String uuid,
+    @JsonKey(name: 'is_mine') required bool isMine,
+    @JsonKey(name: 'base_max_volume') required NumericFormatsValue baseMaxVolume,
+    @JsonKey(name: 'base_min_volume') required NumericFormatsValue baseMinVolume,
+    @JsonKey(name: 'rel_max_volume') required NumericFormatsValue relMaxVolume,
+    @JsonKey(name: 'rel_min_volume') required NumericFormatsValue relMinVolume,
+    @JsonKey(name: 'conf_settings') OrderConfigurationSettings? confSettings,
+  }) = _OrderData;
 
-  factory OrderData.fromJson(Map<String, dynamic> json) {
-    return OrderData(
-      coin: json.value<String>('coin'),
-      address: AddressData.fromJson(json.value<JsonMap>('address')),
-      price: NumericFormatsValue.fromJson(json.value<JsonMap>('price')),
-      pubkey: json.value<String>('pubkey'),
-      uuid: json.value<String>('uuid'),
-      isMine: json.value<bool>('is_mine'),
-      baseMaxVolume: NumericFormatsValue.fromJson(
-        json.value<JsonMap>('base_max_volume'),
-      ),
-      baseMinVolume: NumericFormatsValue.fromJson(
-        json.value<JsonMap>('base_min_volume'),
-      ),
-      relMaxVolume: NumericFormatsValue.fromJson(
-        json.value<JsonMap>('rel_max_volume'),
-      ),
-      relMinVolume: NumericFormatsValue.fromJson(
-        json.value<JsonMap>('rel_min_volume'),
-      ),
-      confSettings:
-          json.valueOrNull<JsonMap>('conf_settings') != null
-              ? OrderConfigurationSettings.fromJson(
-                json.value<JsonMap>('conf_settings'),
-              )
-              : null,
-    );
-  }
-
-  /// The ticker of the coin
-  final String coin;
-
-  /// Address information for the order
-  final AddressData address;
-
-  /// Price information for the order
-  final NumericFormatsValue price;
-
-  /// Public key of the order creator
-  final String pubkey;
-
-  /// Unique identifier for the order
-  final String uuid;
-
-  /// Whether this order belongs to the current user
-  final bool isMine;
-
-  /// Maximum base volume
-  final NumericFormatsValue baseMaxVolume;
-
-  /// Minimum base volume
-  final NumericFormatsValue baseMinVolume;
-
-  /// Maximum relative volume
-  final NumericFormatsValue relMaxVolume;
-
-  /// Minimum relative volume
-  final NumericFormatsValue relMinVolume;
-
-  /// Configuration settings for the order
-  final OrderConfigurationSettings? confSettings;
-
-  Map<String, dynamic> toJson() {
-    return {
-      'coin': coin,
-      'address': address.toJson(),
-      'price': price.toJson(),
-      'pubkey': pubkey,
-      'uuid': uuid,
-      'is_mine': isMine,
-      'base_max_volume': baseMaxVolume.toJson(),
-      'base_min_volume': baseMinVolume.toJson(),
-      'rel_max_volume': relMaxVolume.toJson(),
-      'rel_min_volume': relMinVolume.toJson(),
-      if (confSettings != null) 'conf_settings': confSettings!.toJson(),
-    };
-  }
+  factory OrderData.fromJson(JsonMap json) => _$OrderDataFromJson(json);
 }
 
 /// Address data for an order
-class AddressData {
-  AddressData({required this.addressData});
+@freezed
+class AddressData with _$AddressData {
+  const factory AddressData({
+    @JsonKey(name: 'address_data') required String addressData,
+  }) = _AddressData;
 
-  factory AddressData.fromJson(Map<String, dynamic> json) {
-    return AddressData(addressData: json.value<String>('address_data'));
-  }
-
-  /// The address string
-  final String addressData;
-
-  Map<String, dynamic> toJson() {
-    return {'address_data': addressData};
-  }
+  factory AddressData.fromJson(JsonMap json) => _$AddressDataFromJson(json);
 }
 
 /// Configuration settings for an order
-class OrderConfigurationSettings {
-  OrderConfigurationSettings({
-    this.baseConfirm,
-    this.baseNota,
-    this.relConfirm,
-    this.relNota,
-  });
+@freezed
+class OrderConfigurationSettings with _$OrderConfigurationSettings {
+  const factory OrderConfigurationSettings({
+    @JsonKey(name: 'base_confs') int? baseConfirm,
+    @JsonKey(name: 'base_nota') bool? baseNota,
+    @JsonKey(name: 'rel_confs') int? relConfirm,
+    @JsonKey(name: 'rel_nota') bool? relNota,
+  }) = _OrderConfigurationSettings;
 
-  factory OrderConfigurationSettings.fromJson(Map<String, dynamic> json) {
-    return OrderConfigurationSettings(
-      baseConfirm: json.valueOrNull<int>('base_confs'),
-      baseNota: json.valueOrNull<bool>('base_nota'),
-      relConfirm: json.valueOrNull<int>('rel_confs'),
-      relNota: json.valueOrNull<bool>('rel_nota'),
-    );
-  }
-
-  /// Base confirmations required
-  final int? baseConfirm;
-
-  /// Base nota setting
-  final bool? baseNota;
-
-  /// Relative confirmations required
-  final int? relConfirm;
-
-  /// Relative nota setting
-  final bool? relNota;
-
-  Map<String, dynamic> toJson() {
-    return {
-      if (baseConfirm != null) 'base_confs': baseConfirm,
-      if (baseNota != null) 'base_nota': baseNota,
-      if (relConfirm != null) 'rel_confs': relConfirm,
-      if (relNota != null) 'rel_nota': relNota,
-    };
-  }
+  factory OrderConfigurationSettings.fromJson(JsonMap json) =>
+      _$OrderConfigurationSettingsFromJson(json);
 }

@@ -1,72 +1,45 @@
 import 'package:decimal/decimal.dart';
-import 'package:equatable/equatable.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+
+part 'swap_parameters.freezed.dart';
 
 /// Parameters for initiating a swap operation
-class SwapParameters extends Equatable {
-  const SwapParameters({
-    required this.base,
-    required this.rel,
-    required this.price,
-    required this.volume,
-    this.swapMethod = 'setprice',
-    this.minVolume,
-    this.baseConfs,
-    this.baseNota,
-    this.relConfs,
-    this.relNota,
-    this.saveInHistory = true,
-  });
+@Freezed(fromJson: false, toJson: false)
+class SwapParameters with _$SwapParameters {
+  const SwapParameters._();
+  const factory SwapParameters({
+    required AssetId base,
+    required AssetId rel,
+    required Decimal price,
+    required Decimal volume,
+    @Default('setprice') String swapMethod,
+    Decimal? minVolume,
+    int? baseConfs,
+    bool? baseNota,
+    int? relConfs,
+    bool? relNota,
+    @Default(true) bool saveInHistory,
+  }) = _SwapParameters;
 
-  /// The ID of the base asset to be traded
-  final AssetId base;
+  factory SwapParameters.fromJson(JsonMap json) => SwapParameters(
+        base: AssetId(json['base'] as String),
+        rel: AssetId(json['rel'] as String),
+        price: Decimal.parse(json['price'].toString()),
+        volume: Decimal.parse(json['volume'].toString()),
+        swapMethod: json['swap_method'] as String? ?? 'setprice',
+        minVolume: json['min_volume'] != null
+            ? Decimal.parse(json['min_volume'].toString())
+            : null,
+        baseConfs: json['base_confs'] as int?,
+        baseNota: json['base_nota'] as bool?,
+        relConfs: json['rel_confs'] as int?,
+        relNota: json['rel_nota'] as bool?,
+        saveInHistory: json['save_in_history'] as bool? ?? true,
+      );
 
-  /// The ID of the rel asset to be traded
-  final AssetId rel;
-
-  /// The price to exchange the coins
-  final Decimal price;
-
-  /// The volume of base coin to be traded
-  final Decimal volume;
-
-  /// The swap method to use (default: 'setprice')
-  final String swapMethod;
-
-  /// The minimum volume that will be accepted for partial fills
-  final Decimal? minVolume;
-
-  /// Number of confirmations required for base coin
-  final int? baseConfs;
-
-  /// Whether base coin uses notarization
-  final bool? baseNota;
-
-  /// Number of confirmations required for rel coin
-  final int? relConfs;
-
-  /// Whether rel coin uses notarization
-  final bool? relNota;
-
-  /// Whether to save the swap in history
-  final bool saveInHistory;
-
-  @override
-  List<Object?> get props => [
-        base,
-        rel,
-        price,
-        volume,
-        swapMethod,
-        minVolume,
-        baseConfs,
-        baseNota,
-        relConfs,
-        relNota,
-        saveInHistory,
-      ];
-
-  Map<String, dynamic> toJson() => {
+  JsonMap toJson() => {
         'base': base.id,
         'rel': rel.id,
         'price': price.toString(),

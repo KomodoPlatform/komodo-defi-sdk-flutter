@@ -1,5 +1,9 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+
+part 'orderbook_depth.freezed.dart';
+part 'orderbook_depth.g.dart';
 
 /// Request to get the number of asks and bids for specified trading pairs
 class OrderbookDepthRequest
@@ -21,75 +25,39 @@ class OrderbookDepthRequest
       OrderbookDepthResponse.parse(json);
 }
 
-class OrderbookDepthResponse extends BaseResponse {
-  OrderbookDepthResponse({
-    required super.mmrpc,
-    required this.result,
-    super.id,
-  });
+@freezed
+class OrderbookDepthResponse with _$OrderbookDepthResponse implements BaseResponse {
+  const factory OrderbookDepthResponse({
+    String? mmrpc,
+    String? id,
+    required List<PairDepth> result,
+  }) = _OrderbookDepthResponse;
 
-  factory OrderbookDepthResponse.parse(Map<String, dynamic> json) {
-    final result = json.value<List<dynamic>>('result');
+  factory OrderbookDepthResponse.fromJson(JsonMap json) =>
+      _$OrderbookDepthResponseFromJson(json);
 
-    return OrderbookDepthResponse(
-      mmrpc: json.valueOrNull<String>('mmrpc'),
-      id: json.valueOrNull<String>('id'),
-      result:
-          result
-              .map<PairDepth>((item) => PairDepth.fromJson(item as JsonMap))
-              .toList(),
-    );
-  }
-
-  /// Array of pair depth objects
-  final List<PairDepth> result;
-
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      if (mmrpc != null) 'mmrpc': mmrpc,
-      if (id != null) 'id': id,
-      'result': result.map((item) => item.toJson()).toList(),
-    };
-  }
+  factory OrderbookDepthResponse.parse(Map<String, dynamic> json) =>
+      _$OrderbookDepthResponseFromJson(json);
 }
 
 /// Represents the depth information for a trading pair
-class PairDepth {
-  PairDepth({required this.pair, required this.depth});
+@freezed
+class PairDepth with _$PairDepth {
+  const PairDepth._();
+  const factory PairDepth({required List<String> pair, required DepthInfo depth}) = _PairDepth;
 
-  factory PairDepth.fromJson(Map<String, dynamic> json) {
-    return PairDepth(
-      pair: json.value<List<dynamic>>('pair').cast<String>(),
-      depth: DepthInfo.fromJson(json.value<JsonMap>('depth')),
-    );
-  }
+  factory PairDepth.fromJson(JsonMap json) => _$PairDepthFromJson(json);
 
-  /// The orderbook pair (array of 2 strings)
-  final List<String> pair;
-
-  /// The depth information (asks and bids count)
-  final DepthInfo depth;
-
-  Map<String, dynamic> toJson() => {'pair': pair, 'depth': depth.toJson()};
+  JsonMap toJson() => _$PairDepthToJson(this);
 }
 
 /// Represents the depth information with asks and bids count
-class DepthInfo {
-  DepthInfo({required this.asks, required this.bids});
+@freezed
+class DepthInfo with _$DepthInfo {
+  const DepthInfo._();
+  const factory DepthInfo({required int asks, required int bids}) = _DepthInfo;
 
-  factory DepthInfo.fromJson(Map<String, dynamic> json) {
-    return DepthInfo(
-      asks: json.value<int>('asks'),
-      bids: json.value<int>('bids'),
-    );
-  }
+  factory DepthInfo.fromJson(JsonMap json) => _$DepthInfoFromJson(json);
 
-  /// The number of asks
-  final int asks;
-
-  /// The number of bids
-  final int bids;
-
-  Map<String, dynamic> toJson() => {'asks': asks, 'bids': bids};
+  JsonMap toJson() => _$DepthInfoToJson(this);
 }
