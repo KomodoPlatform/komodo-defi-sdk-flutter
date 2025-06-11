@@ -28,6 +28,7 @@ class KdfStartupConfig {
     required this.hdAccountId,
     required this.allowRegistrations,
     required this.enableHd,
+    required this.seednodes,
   });
 
   final String? walletName;
@@ -46,6 +47,7 @@ class KdfStartupConfig {
   final bool https;
   final bool allowRegistrations;
   final bool? enableHd;
+  final List<String> seednodes;
 
   // Either a list of coin JSON objects or a string of the path to a file
   // containing a list of coin JSON objects.
@@ -69,6 +71,7 @@ class KdfStartupConfig {
     bool https = false,
     bool rpcLocalOnly = true,
     bool allowRegistrations = true,
+    List<String> seednodes = const ["seed01.kmdefi.net", "seed02.kmdefi.net"],
   }) async {
     assert(
       !kIsWeb || userHome == null && dbDir == null,
@@ -104,6 +107,7 @@ class KdfStartupConfig {
       hdAccountId: hdAccountId,
       allowRegistrations: allowRegistrations,
       enableHd: enableHd,
+      seednodes: seednodes,
     );
   }
 
@@ -128,6 +132,7 @@ class KdfStartupConfig {
     String? rpcPassword,
     String? rpcIp,
     int rpcPort = 7783,
+    List<String> seednodes = const ["seed01.kmdefi.net", "seed02.kmdefi.net"],
   }) async {
     final (String? home, String? dbDir) = await _getAndSetupUserHome();
 
@@ -149,6 +154,7 @@ class KdfStartupConfig {
       hdAccountId: null,
       allowRegistrations: false,
       enableHd: false,
+      seednodes: seednodes,
     );
   }
 
@@ -173,6 +179,7 @@ class KdfStartupConfig {
       if (hdAccountId != null) 'hd_account_id': hdAccountId,
       'https': https,
       'coins': coins,
+      'seednodes': seednodes,
       'trading_proto_v2': true,
     };
   }
