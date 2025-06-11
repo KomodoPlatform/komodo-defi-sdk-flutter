@@ -1,12 +1,14 @@
 import 'dart:async' show StreamController, Timer, unawaited;
 
-import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_local_auth/src/auth/auth_state.dart';
+import 'package:komodo_defi_local_auth/src/trezor/trezor_exception.dart';
+import 'package:komodo_defi_local_auth/src/trezor/trezor_initialization_state.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manages Trezor hardware wallet initialization and operations
-class TrezorManager {
+class TrezorRepository {
   /// Creates a new TrezorManager instance with the provided API client
-  TrezorManager(this._client);
+  TrezorRepository(this._client);
 
   /// The API client for making RPC calls
   final ApiClient _client;
@@ -26,15 +28,15 @@ class TrezorManager {
   /// ```dart
   /// await for (final state in trezorManager.initializeDevice()) {
   ///   switch (state.status) {
-  ///     case TrezorInitializationStatus.pinRequired:
+  ///     case AuthenticationStatus.pinRequired:
   ///       final pin = await getUserPin();
   ///       await trezorManager.providePin(state.taskId!, pin);
   ///       break;
-  ///     case TrezorInitializationStatus.passphraseRequired:
+  ///     case AuthenticationStatus.passphraseRequired:
   ///       final passphrase = await getUserPassphrase();
   ///       await trezorManager.providePassphrase(state.taskId!, passphrase);
   ///       break;
-  ///     case TrezorInitializationStatus.completed:
+  ///     case AuthenticationStatus.completed:
   ///       print('Device initialized: ${state.deviceInfo}');
   ///       break;
   ///   }
@@ -50,7 +52,7 @@ class TrezorManager {
     try {
       // Start initialization
       yield const TrezorInitializationState(
-        status: TrezorInitializationStatus.initializing,
+        status: AuthenticationStatus.initializing,
         message: 'Starting Trezor initialization...',
       );
 
@@ -63,7 +65,7 @@ class TrezorManager {
       _activeInitializations[taskId] = controller;
 
       yield TrezorInitializationState(
-        status: TrezorInitializationStatus.initializing,
+        status: AuthenticationStatus.initializing,
         message: 'Initialization started, checking status...',
         taskId: taskId,
       );
@@ -91,9 +93,9 @@ class TrezorManager {
           }
 
           // Check if we should stop polling
-          if (state.status == TrezorInitializationStatus.completed ||
-              state.status == TrezorInitializationStatus.error ||
-              state.status == TrezorInitializationStatus.cancelled) {
+          if (state.status == AuthenticationStatus.completed ||
+              state.status == AuthenticationStatus.error ||
+              state.status == AuthenticationStatus.cancelled) {
             isComplete = true;
             statusTimer?.cancel();
             if (!controller.isClosed) {
@@ -122,7 +124,7 @@ class TrezorManager {
       yield* controller.stream;
     } catch (e) {
       yield TrezorInitializationState(
-        status: TrezorInitializationStatus.error,
+        status: AuthenticationStatus.error,
         error: 'Initialization failed: $e',
         taskId: taskId,
       );
@@ -175,7 +177,7 @@ class TrezorManager {
       if (controller != null && !controller.isClosed) {
         controller.add(
           TrezorInitializationState(
-            status: TrezorInitializationStatus.cancelled,
+            status: AuthenticationStatus.cancelled,
             message: 'Initialization cancelled by user',
             taskId: taskId,
           ),

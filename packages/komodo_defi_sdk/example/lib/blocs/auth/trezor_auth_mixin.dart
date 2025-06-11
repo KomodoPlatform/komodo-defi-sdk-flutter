@@ -5,6 +5,10 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
   KomodoDefiSdk get _sdk;
 
   /// Registers handlers for Trezor specific events.
+  ///
+  /// Note: PIN and passphrase handling is now automatic in the stream-based approach.
+  /// The PIN and passphrase events are kept for backward compatibility but may not
+  /// be needed in the new implementation.
   void setupTrezorEventHandlers() {
     on<AuthTrezorInitAndAuthStarted>(_onTrezorInitAndAuth);
     on<AuthTrezorPinProvided>(_onTrezorProvidePin);
@@ -17,20 +21,33 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
-      await for (final state in _sdk.trezorWallets.initializeAndAuthenticate(
+      final authOptions = AuthOptions(
         derivationMethod: event.derivationMethod,
-        register: event.isRegister,
-      )) {
-        final authState = _handleTrezorInitializationState(state);
-        emit(authState);
+        privKeyPolicy: PrivateKeyPolicy.trezor,
+      );
 
-        if (authState.status == AuthStatus.authenticated) {
-          await _performTrezorAuthentication(emit);
-        }
+      final Stream<AuthenticationState> authStream;
+      if (event.isRegister) {
+        authStream = _sdk.auth.registerStream(
+          walletName: 'My Trezor',
+          password: '', // Password will be handled as passphrase by Trezor
+          options: authOptions,
+        );
+      } else {
+        authStream = _sdk.auth.signInStream(
+          walletName: 'My Trezor',
+          password: '', // Password will be handled as passphrase by Trezor
+          options: authOptions,
+        );
+      }
 
-        if (state.status == TrezorInitializationStatus.completed ||
-            state.status == TrezorInitializationStatus.error ||
-            state.status == TrezorInitializationStatus.cancelled) {
+      await for (final authState in authStream) {
+        final mappedState = _handleAuthenticationState(authState);
+        emit(mappedState);
+
+        if (authState.status == AuthenticationStatus.completed ||
+            authState.status == AuthenticationStatus.error ||
+            authState.status == AuthenticationStatus.cancelled) {
           break;
         }
       }
@@ -38,107 +55,84 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
       emit(
         AuthState.error(
           message: 'Trezor initialization error: $e',
-          walletName: TrezorWalletManager.trezorWalletName,
+          walletName: 'My Trezor',
           knownUsers: state.knownUsers,
         ),
       );
     }
   }
 
-  AuthState _handleTrezorInitializationState(
-    TrezorInitializationState trezorInitState,
-  ) {
-    final currentTrezorStatus = AuthTrezorStatus.fromTrezorInitializationStatus(
-      trezorInitState.status,
-    );
-    if (state.trezorStatus == currentTrezorStatus) {
-      return state;
-    }
-
-    switch (trezorInitState.status) {
-      case TrezorInitializationStatus.initializing:
+  AuthState _handleAuthenticationState(AuthenticationState authState) {
+    switch (authState.status) {
+      case AuthenticationStatus.initializing:
         return AuthState.trezorInitializing(
-          message: trezorInitState.message ?? 'Initializing Trezor device...',
-          taskId: trezorInitState.taskId,
+          message: authState.message ?? 'Initializing Trezor device...',
+          taskId: authState.taskId,
         );
-      case TrezorInitializationStatus.waitingForDevice:
+      case AuthenticationStatus.waitingForDevice:
         return AuthState.trezorInitializing(
           message:
-              trezorInitState.message ??
-              'Waiting for Trezor device connection...',
-          taskId: trezorInitState.taskId,
+              authState.message ?? 'Waiting for Trezor device connection...',
+          taskId: authState.taskId,
         );
-      case TrezorInitializationStatus.waitingForDeviceConfirmation:
+      case AuthenticationStatus.waitingForDeviceConfirmation:
         return AuthState.trezorAwaitingConfirmation(
-          taskId: trezorInitState.taskId!,
+          taskId: authState.taskId!,
           message:
-              trezorInitState.message ??
+              authState.message ??
               'Please follow instructions on your Trezor device',
         );
-      case TrezorInitializationStatus.pinRequired:
+      case AuthenticationStatus.pinRequired:
         return AuthState.trezorPinRequired(
-          taskId: trezorInitState.taskId!,
-          message: trezorInitState.message ?? 'Please enter your Trezor PIN',
+          taskId: authState.taskId!,
+          message: authState.message ?? 'Please enter your Trezor PIN',
         );
-      case TrezorInitializationStatus.passphraseRequired:
+      case AuthenticationStatus.passphraseRequired:
         return AuthState.trezorPassphraseRequired(
-          taskId: trezorInitState.taskId!,
-          message:
-              trezorInitState.message ?? 'Please enter your Trezor passphrase',
+          taskId: authState.taskId!,
+          message: authState.message ?? 'Please enter your Trezor passphrase',
         );
-      case TrezorInitializationStatus.completed:
-        return AuthState.trezorReady(deviceInfo: trezorInitState.deviceInfo);
-      case TrezorInitializationStatus.error:
+      case AuthenticationStatus.authenticating:
+        return AuthState.loading();
+      case AuthenticationStatus.completed:
+        if (authState.user != null) {
+          return AuthState.authenticated(
+            user: authState.user!,
+            knownUsers: state.knownUsers,
+          );
+        } else {
+          return AuthState.trezorReady(deviceInfo: null);
+        }
+      case AuthenticationStatus.error:
         return AuthState.error(
-          message: 'Trezor initialization failed: ${trezorInitState.error}',
-          walletName: TrezorWalletManager.trezorWalletName,
+          message: 'Trezor authentication failed: ${authState.message}',
+          walletName: 'My Trezor',
+          knownUsers: state.knownUsers,
         );
-      case TrezorInitializationStatus.cancelled:
+      case AuthenticationStatus.cancelled:
         return AuthState.error(
-          message: 'Trezor initialization was cancelled',
-          walletName: TrezorWalletManager.trezorWalletName,
+          message: 'Trezor authentication was cancelled',
+          walletName: 'My Trezor',
+          knownUsers: state.knownUsers,
         );
     }
   }
 
-  Future<void> _performTrezorAuthentication(Emitter<AuthState> emit) async {
-    try {
-      emit(AuthState.loading());
-      final knownUsers = await _fetchKnownUsers();
-      final trezorUser = knownUsers.firstWhere(
-        (u) =>
-            u.walletId.name == TrezorWalletManager.trezorWalletName &&
-            u.authOptions.privKeyPolicy == PrivateKeyPolicy.trezor,
-        orElse:
-            () =>
-                throw Exception(
-                  'Trezor user not found. The Trezor wallet may not be properly '
-                  'registered or the authentication process was incomplete.',
-                ),
-      );
-      emit(AuthState.authenticated(user: trezorUser, knownUsers: knownUsers));
-    } catch (e) {
-      emit(
-        AuthState.error(
-          message: 'Trezor authentication failed: $e',
-          walletName: TrezorWalletManager.trezorWalletName,
-          knownUsers: await _fetchKnownUsers(),
-        ),
-      );
-    }
-  }
+  // NOTE: The following methods are kept for backward compatibility but are no longer
+  // needed in the new stream-based approach. PIN and passphrase handling is now
+  // automatic within the TrezorAuthService stream implementation.
 
   Future<void> _onTrezorProvidePin(
     AuthTrezorPinProvided event,
     Emitter<AuthState> emit,
   ) async {
     try {
-      await _sdk.trezorWallets.providePin(event.taskId, event.pin);
+      await _sdk.auth.setHardwareDevicePin(event.taskId, event.pin);
     } catch (e) {
       emit(
         AuthState.error(
           message: 'Failed to provide PIN: $e',
-          walletName: TrezorWalletManager.trezorWalletName,
+          walletName: 'My Trezor',
           knownUsers: await _fetchKnownUsers(),
         ),
       );
@@ -150,7 +144,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
-      await _sdk.trezorWallets.providePassphrase(
+      await _sdk.auth.setHardwareDevicePassphrase(
         event.taskId,
         event.passphrase,
       );
@@ -158,7 +152,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
       emit(
         AuthState.error(
           message: 'Failed to provide passphrase: $e',
-          walletName: TrezorWalletManager.trezorWalletName,
+          walletName: 'My Trezor',
           knownUsers: await _fetchKnownUsers(),
         ),
       );
@@ -169,22 +163,26 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
     AuthTrezorCancelled event,
     Emitter<AuthState> emit,
   ) async {
-    try {
-      await _sdk.trezorWallets.cancelInitialization(event.taskId);
-      emit(AuthState.unauthenticated(knownUsers: await _fetchKnownUsers()));
-    } catch (e) {
-      emit(
-        AuthState.error(
-          message: 'Failed to cancel Trezor initialization: $e',
-          walletName: TrezorWalletManager.trezorWalletName,
-          knownUsers: await _fetchKnownUsers(),
-        ),
-      );
-    }
+    // Cancellation is handled by stopping the stream subscription
+    // This method is kept for backward compatibility
+    emit(AuthState.unauthenticated(knownUsers: await _fetchKnownUsers()));
   }
 
+  /// Clears the stored password for the Trezor wallet.
+  ///
+  /// Note: This method may need to be updated to work with the new TrezorAuthService
+  /// approach, as direct access to clearPassword may not be available through the SDK.
   Future<void> clearTrezorWallet() async {
-    await _sdk.trezorWallets.clearPassword();
+    // TODO: Update this to work with the new TrezorAuthService approach
+    // The clearPassword method may need to be exposed through the SDK
+    try {
+      // For now, we can try to sign out if signed in
+      if (await _sdk.auth.isSignedIn()) {
+        await _sdk.auth.signOut();
+      }
+    } catch (e) {
+      // Ignore errors during sign out
+    }
   }
 
   Future<List<KdfUser>> _fetchKnownUsers() async {

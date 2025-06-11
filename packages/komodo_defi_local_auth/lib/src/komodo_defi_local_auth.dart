@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/src/auth/auth_service.dart';
+import 'package:komodo_defi_local_auth/src/auth/auth_state.dart';
 import 'package:komodo_defi_local_auth/src/auth/storage/secure_storage.dart';
+import 'package:komodo_defi_local_auth/src/trezor/_trezor_index.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -39,16 +42,43 @@ abstract interface class KomodoDefiAuth {
     ),
   });
 
+  /// Signs in a user with the specified [walletName] and [password].
+  ///
+  /// Returns a stream of [AuthenticationState] that provides real-time updates
+  /// of the authentication process. For Trezor wallets, this includes device
+  /// initialization states. For regular wallets, it will emit completion or error states.
+  Stream<AuthenticationState> signInStream({
+    required String walletName,
+    required String password,
+    AuthOptions options = const AuthOptions(
+      derivationMethod: DerivationMethod.hdWallet,
+    ),
+  });
+
   /// Registers a new user with the specified [walletName] and [password].
   ///
   /// By default, the system will launch in HD mode (enabled in the [AuthOptions]),
   /// which may differ from the non-HD mode used in other areas of the KDF API.
-  /// Developers can override the [derivationMethod] in [AuthOptions] to change
+  /// Developers can override the [DerivationMethod] in [AuthOptions] to change
   /// this behavior. An optional [mnemonic] can be provided during registration.
   ///
   /// Throws [AuthException] if registration is disabled or if an error occurs
   /// during registration.
   Future<KdfUser> register({
+    required String walletName,
+    required String password,
+    AuthOptions options = const AuthOptions(
+      derivationMethod: DerivationMethod.hdWallet,
+    ),
+    Mnemonic? mnemonic,
+  });
+
+  /// Registers a new user with the specified [walletName] and [password].
+  ///
+  /// Returns a stream of [AuthenticationState] that provides real-time updates
+  /// of the registration process. For Trezor wallets, this includes device
+  /// initialization states. For regular wallets, it will emit completion or error states.
+  Stream<AuthenticationState> registerStream({
     required String walletName,
     required String password,
     AuthOptions options = const AuthOptions(
@@ -133,10 +163,10 @@ abstract interface class KomodoDefiAuth {
   ///       {
   ///         'foo': 'bar',
   ///         'name': 'Foo Token',
-  // /        'symbol': 'FOO',
+  ///         'symbol': 'FOO',
   ///         // ...
   ///       }
-  // /    ],
+  ///     ],
   ///   }.toJsonString(),
   /// );
   /// final tokenJson = (await _komodoDefiSdk.auth.currentUser)
@@ -146,6 +176,46 @@ abstract interface class KomodoDefiAuth {
   /// print('Custom tokens: $tokenJson');
 
   Future<void> setOrRemoveActiveUserKeyValue(String key, dynamic value);
+
+  /// Provides PIN to a Trezor hardware device during authentication.
+  ///
+  /// The [taskId] should be obtained from the authentication state when the
+  /// device requests PIN input. The [pin] should be entered as it appears on
+  /// your keyboard numpad, mapped according to the grid shown on the Trezor device.
+  ///
+  /// This method should only be called when using Trezor authentication and
+  /// the device is requesting PIN input.
+  ///
+  /// Throws [AuthException] if the device is not connected, the task ID is
+  /// invalid, or if an error occurs during PIN provision.
+  Future<void> setHardwareDevicePin(int taskId, String pin);
+
+  /// Provides passphrase to a Trezor hardware device during authentication.
+  ///
+  /// The [taskId] should be obtained from the authentication state when the
+  /// device requests passphrase input. The [passphrase] acts like an additional
+  /// word in your recovery seed. Use an empty string to access the default
+  /// wallet without passphrase.
+  ///
+  /// This method should only be called when using Trezor authentication and
+  /// the device is requesting passphrase input.
+  ///
+  /// Throws [AuthException] if the device is not connected, the task ID is
+  /// invalid, or if an error occurs during passphrase provision.
+  Future<void> setHardwareDevicePassphrase(int taskId, String passphrase);
+
+  /// Cancels an ongoing Trezor hardware device initialization.
+  ///
+  /// The [taskId] should be obtained from the authentication state when the
+  /// device is being initialized. This method allows cancelling the initialization
+  /// process if needed.
+  ///
+  /// This method should only be called when using Trezor authentication and
+  /// there is an active initialization process.
+  ///
+  /// Throws [AuthException] if the task ID is invalid or if an error occurs
+  /// during cancellation.
+  Future<void> cancelHardwareDeviceInitialization(int taskId);
 
   /// Disposes of any resources held by the authentication service.
   ///
@@ -160,12 +230,14 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     required IKdfHostConfig hostConfig,
     bool allowRegistrations = true,
   }) : _allowRegistrations = allowRegistrations,
-       _authService = KdfAuthService(kdf, hostConfig);
+       _authService = KdfAuthService(kdf, hostConfig) {
+    _trezorAuthService = TrezorAuthService(_authService, TrezorRepository(kdf));
+  }
 
   final SecureLocalStorage _secureStorage = SecureLocalStorage();
-
   final bool _allowRegistrations;
   late final IAuthService _authService;
+  late final TrezorAuthService _trezorAuthService;
   bool _initialized = false;
 
   @override
@@ -187,6 +259,14 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     await ensureInitialized();
     await _assertAuthState(false);
 
+    // Trezor is not supported in non-stream functions
+    if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
+      throw AuthException(
+        'Trezor authentication requires using signInStream() method',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+
     final user = await _findUser(walletName);
     final updatedUser = user.copyWith(
       walletId: user.walletId.copyWith(authOptions: options),
@@ -200,6 +280,28 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
       password: password,
       options: options,
     );
+  }
+
+  @override
+  Stream<AuthenticationState> signInStream({
+    required String walletName,
+    required String password,
+    AuthOptions options = const AuthOptions(
+      derivationMethod: DerivationMethod.hdWallet,
+    ),
+  }) async* {
+    await ensureInitialized();
+    await _assertAuthState(false);
+
+    if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
+      yield* _trezorAuthService.signInStreamed(options: options);
+    } else {
+      yield* _handleRegularSignIn(
+        walletName: walletName,
+        password: password,
+        options: options,
+      );
+    }
   }
 
   Future<KdfUser> _findUser(String walletName) async {
@@ -249,6 +351,14 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
       );
     }
 
+    // Trezor is not supported in non-stream functions
+    if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
+      throw AuthException(
+        'Trezor registration requires using registerStream() method',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+
     final user = await _authService.register(
       walletName: walletName,
       password: password,
@@ -259,6 +369,80 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     await _secureStorage.saveUser(user);
 
     return user;
+  }
+
+  @override
+  Stream<AuthenticationState> registerStream({
+    required String walletName,
+    required String password,
+    AuthOptions options = const AuthOptions(
+      derivationMethod: DerivationMethod.hdWallet,
+    ),
+    Mnemonic? mnemonic,
+  }) async* {
+    await ensureInitialized();
+    await _assertAuthState(false);
+
+    if (!_allowRegistrations) {
+      yield AuthenticationState.error('Registration is not allowed');
+      return;
+    }
+
+    if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
+      yield* _trezorAuthService.registerStream(
+        options: options,
+        mnemonic: mnemonic,
+      );
+    } else {
+      yield* _handleRegularRegister(
+        walletName: walletName,
+        password: password,
+        options: options,
+        mnemonic: mnemonic,
+      );
+    }
+  }
+
+  Stream<AuthenticationState> _handleRegularSignIn({
+    required String walletName,
+    required String password,
+    required AuthOptions options,
+  }) async* {
+    try {
+      yield const AuthenticationState(
+        status: AuthenticationStatus.authenticating,
+      );
+      final user = await signIn(
+        walletName: walletName,
+        password: password,
+        options: options,
+      );
+      yield AuthenticationState.completed(user);
+    } catch (e) {
+      yield AuthenticationState.error('Sign-in failed: $e');
+    }
+  }
+
+  Stream<AuthenticationState> _handleRegularRegister({
+    required String walletName,
+    required String password,
+    required AuthOptions options,
+    Mnemonic? mnemonic,
+  }) async* {
+    try {
+      yield const AuthenticationState(
+        status: AuthenticationStatus.authenticating,
+      );
+      final user = await register(
+        walletName: walletName,
+        password: password,
+        options: options,
+        mnemonic: mnemonic,
+      );
+      yield AuthenticationState.completed(user);
+    } catch (e) {
+      yield AuthenticationState.error('Registration failed: $e');
+    }
   }
 
   @override
@@ -377,6 +561,51 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     if (value == null) updatedMetadata.remove(key);
 
     await _authService.setActiveUserMetadata(updatedMetadata);
+  }
+
+  @override
+  Future<void> setHardwareDevicePin(int taskId, String pin) async {
+    await ensureInitialized();
+
+    try {
+      await _trezorAuthService.provideTrezorPin(taskId, pin);
+    } catch (e) {
+      throw AuthException(
+        'Failed to provide PIN to hardware device: $e',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+  }
+
+  @override
+  Future<void> setHardwareDevicePassphrase(
+    int taskId,
+    String passphrase,
+  ) async {
+    await ensureInitialized();
+
+    try {
+      await _trezorAuthService.provideTrezorPassphrase(taskId, passphrase);
+    } catch (e) {
+      throw AuthException(
+        'Failed to provide passphrase to hardware device: $e',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+  }
+
+  @override
+  Future<void> cancelHardwareDeviceInitialization(int taskId) async {
+    await ensureInitialized();
+
+    try {
+      await _trezorAuthService.cancelTrezorInitialization(taskId);
+    } catch (e) {
+      throw AuthException(
+        'Failed to cancel hardware device initialization: $e',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
   }
 
   Future<void> _assertAuthState(bool expected) async {

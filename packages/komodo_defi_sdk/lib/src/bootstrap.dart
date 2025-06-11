@@ -11,8 +11,6 @@ import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
-import 'package:komodo_defi_sdk/src/trezor/trezor_manager.dart';
-import 'package:komodo_defi_sdk/src/trezor/trezor_wallet_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -198,17 +196,6 @@ Future<void> bootstrap({
     final activationManager = await container.getAsync<ActivationManager>();
     return WithdrawalManager(client, assetProvider, activationManager);
   }, dependsOn: [ApiClient, AssetManager, ActivationManager]);
-
-  container.registerSingletonAsync<TrezorManager>(() async {
-    final client = await container.getAsync<ApiClient>();
-    return TrezorManager(client);
-  }, dependsOn: [ApiClient]);
-
-  container.registerSingletonAsync<TrezorWalletManager>(() async {
-    final auth = await container.getAsync<KomodoDefiLocalAuth>();
-    final trezor = await container.getAsync<TrezorManager>();
-    return TrezorWalletManager(auth, trezor);
-  }, dependsOn: [KomodoDefiLocalAuth, TrezorManager]);
 
   // Wait for all async singletons to initialize
   await container.allReady();
