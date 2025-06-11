@@ -18,3 +18,4 @@ export 'withdraw/recipient_address_field.dart';
 export 'withdraw/source_address_field.dart';
 export 'withdraw/withdraw_amount_field.dart';
 export 'withdraw/withdraw_error_display.dart';
+export 'browser/dapp_browser.dart';

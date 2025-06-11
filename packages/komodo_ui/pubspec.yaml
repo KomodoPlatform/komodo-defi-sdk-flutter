@@ -18,6 +18,7 @@ dependencies:
   komodo_defi_types:
     path: ../komodo_defi_types
   mobile_scanner: ^7.0.0
+  webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_test:
