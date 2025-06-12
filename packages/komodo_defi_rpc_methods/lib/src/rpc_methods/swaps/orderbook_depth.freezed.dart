@@ -81,8 +81,8 @@ as List<PairDepth>,
 /// @nodoc
 @JsonSerializable()
 
-class _OrderbookDepthResponse implements OrderbookDepthResponse {
-  const _OrderbookDepthResponse({this.mmrpc, this.id, required final  List<PairDepth> result}): _result = result;
+class _OrderbookDepthResponse extends OrderbookDepthResponse {
+  const _OrderbookDepthResponse({this.mmrpc, this.id, required final  List<PairDepth> result}): _result = result,super._();
   factory _OrderbookDepthResponse.fromJson(Map<String, dynamic> json) => _$OrderbookDepthResponseFromJson(json);
 
 @override final  String? mmrpc;

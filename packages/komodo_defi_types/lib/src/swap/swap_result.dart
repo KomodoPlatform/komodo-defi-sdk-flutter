@@ -1,15 +1,13 @@
 import 'package:decimal/decimal.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-import '../utils/decimal_converter.dart';
 
 part 'swap_result.freezed.dart';
 part 'swap_result.g.dart';
 
 /// Result of a completed swap operation
 @freezed
-class SwapResult with _$SwapResult {
-  const SwapResult._();
+abstract class SwapResult with _$SwapResult {
   const factory SwapResult({
     required String uuid,
     required String base,
@@ -20,8 +18,7 @@ class SwapResult with _$SwapResult {
     String? txHash,
     int? createdAt,
   }) = _SwapResult;
+  const SwapResult._();
 
   factory SwapResult.fromJson(JsonMap json) => _$SwapResultFromJson(json);
-
-  JsonMap toJson() => _$SwapResultToJson(this);
 }

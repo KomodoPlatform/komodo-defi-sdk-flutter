@@ -4,6 +4,7 @@
 library komodo_defi_type_utils;
 
 export 'src/utils/api_conversion_extensions.dart';
+export 'src/utils/asset_id_converter.dart';
 export 'src/utils/backoff_strategy.dart';
 export 'src/utils/decimal_converter.dart';
 export 'src/utils/iterable_type_utils.dart';
@@ -13,3 +14,5 @@ export 'src/utils/live_data_builder.dart';
 export 'src/utils/mnemonic_validator.dart';
 export 'src/utils/retry_utils.dart';
 export 'src/utils/security_utils.dart';
+export 'src/utils/swap_error_code_converter.dart';
+export 'src/utils/swap_status_converter.dart';

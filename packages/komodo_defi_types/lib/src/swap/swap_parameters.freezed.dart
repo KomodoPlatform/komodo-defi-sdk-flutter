@@ -15,16 +15,28 @@ T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$SwapParameters {
+  @AssetIdConverter()
   AssetId get base;
+  @AssetIdConverter()
   AssetId get rel;
+  @DecimalConverter()
   Decimal get price;
+  @DecimalConverter()
   Decimal get volume;
+  @JsonKey(name: 'swap_method')
   String get swapMethod;
+  @JsonKey(name: 'min_volume')
+  @DecimalConverter()
   Decimal? get minVolume;
+  @JsonKey(name: 'base_confs')
   int? get baseConfs;
+  @JsonKey(name: 'base_nota')
   bool? get baseNota;
+  @JsonKey(name: 'rel_confs')
   int? get relConfs;
+  @JsonKey(name: 'rel_nota')
   bool? get relNota;
+  @JsonKey(name: 'save_in_history')
   bool get saveInHistory;
 
   /// Create a copy of SwapParameters
@@ -34,6 +46,9 @@ mixin _$SwapParameters {
   $SwapParametersCopyWith<SwapParameters> get copyWith =>
       _$SwapParametersCopyWithImpl<SwapParameters>(
           this as SwapParameters, _$identity);
+
+  /// Serializes this SwapParameters to a JSON map.
+  Map<String, dynamic> toJson();
 
   @override
   bool operator ==(Object other) {
@@ -59,6 +74,7 @@ mixin _$SwapParameters {
                 other.saveInHistory == saveInHistory));
   }
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -87,17 +103,17 @@ abstract mixin class $SwapParametersCopyWith<$Res> {
       _$SwapParametersCopyWithImpl;
   @useResult
   $Res call(
-      {AssetId base,
-      AssetId rel,
-      Decimal price,
-      Decimal volume,
-      String swapMethod,
-      Decimal? minVolume,
-      int? baseConfs,
-      bool? baseNota,
-      int? relConfs,
-      bool? relNota,
-      bool saveInHistory});
+      {@AssetIdConverter() AssetId base,
+      @AssetIdConverter() AssetId rel,
+      @DecimalConverter() Decimal price,
+      @DecimalConverter() Decimal volume,
+      @JsonKey(name: 'swap_method') String swapMethod,
+      @JsonKey(name: 'min_volume') @DecimalConverter() Decimal? minVolume,
+      @JsonKey(name: 'base_confs') int? baseConfs,
+      @JsonKey(name: 'base_nota') bool? baseNota,
+      @JsonKey(name: 'rel_confs') int? relConfs,
+      @JsonKey(name: 'rel_nota') bool? relNota,
+      @JsonKey(name: 'save_in_history') bool saveInHistory});
 }
 
 /// @nodoc
@@ -175,45 +191,57 @@ class _$SwapParametersCopyWithImpl<$Res>
 }
 
 /// @nodoc
-
+@JsonSerializable()
 class _SwapParameters extends SwapParameters {
   const _SwapParameters(
-      {required this.base,
-      required this.rel,
-      required this.price,
-      required this.volume,
-      this.swapMethod = 'setprice',
-      this.minVolume,
-      this.baseConfs,
-      this.baseNota,
-      this.relConfs,
-      this.relNota,
-      this.saveInHistory = true})
+      {@AssetIdConverter() required this.base,
+      @AssetIdConverter() required this.rel,
+      @DecimalConverter() required this.price,
+      @DecimalConverter() required this.volume,
+      @JsonKey(name: 'swap_method') this.swapMethod = 'setprice',
+      @JsonKey(name: 'min_volume') @DecimalConverter() this.minVolume,
+      @JsonKey(name: 'base_confs') this.baseConfs,
+      @JsonKey(name: 'base_nota') this.baseNota,
+      @JsonKey(name: 'rel_confs') this.relConfs,
+      @JsonKey(name: 'rel_nota') this.relNota,
+      @JsonKey(name: 'save_in_history') this.saveInHistory = true})
       : super._();
+  factory _SwapParameters.fromJson(Map<String, dynamic> json) =>
+      _$SwapParametersFromJson(json);
 
   @override
+  @AssetIdConverter()
   final AssetId base;
   @override
+  @AssetIdConverter()
   final AssetId rel;
   @override
+  @DecimalConverter()
   final Decimal price;
   @override
+  @DecimalConverter()
   final Decimal volume;
   @override
-  @JsonKey()
+  @JsonKey(name: 'swap_method')
   final String swapMethod;
   @override
+  @JsonKey(name: 'min_volume')
+  @DecimalConverter()
   final Decimal? minVolume;
   @override
+  @JsonKey(name: 'base_confs')
   final int? baseConfs;
   @override
+  @JsonKey(name: 'base_nota')
   final bool? baseNota;
   @override
+  @JsonKey(name: 'rel_confs')
   final int? relConfs;
   @override
+  @JsonKey(name: 'rel_nota')
   final bool? relNota;
   @override
-  @JsonKey()
+  @JsonKey(name: 'save_in_history')
   final bool saveInHistory;
 
   /// Create a copy of SwapParameters
@@ -223,6 +251,13 @@ class _SwapParameters extends SwapParameters {
   @pragma('vm:prefer-inline')
   _$SwapParametersCopyWith<_SwapParameters> get copyWith =>
       __$SwapParametersCopyWithImpl<_SwapParameters>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$SwapParametersToJson(
+      this,
+    );
+  }
 
   @override
   bool operator ==(Object other) {
@@ -248,6 +283,7 @@ class _SwapParameters extends SwapParameters {
                 other.saveInHistory == saveInHistory));
   }
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -278,17 +314,17 @@ abstract mixin class _$SwapParametersCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {AssetId base,
-      AssetId rel,
-      Decimal price,
-      Decimal volume,
-      String swapMethod,
-      Decimal? minVolume,
-      int? baseConfs,
-      bool? baseNota,
-      int? relConfs,
-      bool? relNota,
-      bool saveInHistory});
+      {@AssetIdConverter() AssetId base,
+      @AssetIdConverter() AssetId rel,
+      @DecimalConverter() Decimal price,
+      @DecimalConverter() Decimal volume,
+      @JsonKey(name: 'swap_method') String swapMethod,
+      @JsonKey(name: 'min_volume') @DecimalConverter() Decimal? minVolume,
+      @JsonKey(name: 'base_confs') int? baseConfs,
+      @JsonKey(name: 'base_nota') bool? baseNota,
+      @JsonKey(name: 'rel_confs') int? relConfs,
+      @JsonKey(name: 'rel_nota') bool? relNota,
+      @JsonKey(name: 'save_in_history') bool saveInHistory});
 }
 
 /// @nodoc

@@ -110,8 +110,8 @@ $OrderConfigurationSettingsCopyWith<$Res>? get confSettings {
 /// @nodoc
 @JsonSerializable()
 
-class _OrderData implements OrderData {
-  const _OrderData({required this.coin, required this.address, required this.price, required this.pubkey, required this.uuid, @JsonKey(name: 'is_mine') required this.isMine, @JsonKey(name: 'base_max_volume') required this.baseMaxVolume, @JsonKey(name: 'base_min_volume') required this.baseMinVolume, @JsonKey(name: 'rel_max_volume') required this.relMaxVolume, @JsonKey(name: 'rel_min_volume') required this.relMinVolume, @JsonKey(name: 'conf_settings') this.confSettings});
+class _OrderData extends OrderData {
+  const _OrderData({required this.coin, required this.address, required this.price, required this.pubkey, required this.uuid, @JsonKey(name: 'is_mine') required this.isMine, @JsonKey(name: 'base_max_volume') required this.baseMaxVolume, @JsonKey(name: 'base_min_volume') required this.baseMinVolume, @JsonKey(name: 'rel_max_volume') required this.relMaxVolume, @JsonKey(name: 'rel_min_volume') required this.relMinVolume, @JsonKey(name: 'conf_settings') this.confSettings}): super._();
   factory _OrderData.fromJson(Map<String, dynamic> json) => _$OrderDataFromJson(json);
 
 @override final  String coin;
@@ -284,8 +284,8 @@ as String,
 /// @nodoc
 @JsonSerializable()
 
-class _AddressData implements AddressData {
-  const _AddressData({@JsonKey(name: 'address_data') required this.addressData});
+class _AddressData extends AddressData {
+  const _AddressData({@JsonKey(name: 'address_data') required this.addressData}): super._();
   factory _AddressData.fromJson(Map<String, dynamic> json) => _$AddressDataFromJson(json);
 
 @override@JsonKey(name: 'address_data') final  String addressData;
@@ -420,8 +420,8 @@ as bool?,
 /// @nodoc
 @JsonSerializable()
 
-class _OrderConfigurationSettings implements OrderConfigurationSettings {
-  const _OrderConfigurationSettings({@JsonKey(name: 'base_confs') this.baseConfirm, @JsonKey(name: 'base_nota') this.baseNota, @JsonKey(name: 'rel_confs') this.relConfirm, @JsonKey(name: 'rel_nota') this.relNota});
+class _OrderConfigurationSettings extends OrderConfigurationSettings {
+  const _OrderConfigurationSettings({@JsonKey(name: 'base_confs') this.baseConfirm, @JsonKey(name: 'base_nota') this.baseNota, @JsonKey(name: 'rel_confs') this.relConfirm, @JsonKey(name: 'rel_nota') this.relNota}): super._();
   factory _OrderConfigurationSettings.fromJson(Map<String, dynamic> json) => _$OrderConfigurationSettingsFromJson(json);
 
 @override@JsonKey(name: 'base_confs') final  int? baseConfirm;

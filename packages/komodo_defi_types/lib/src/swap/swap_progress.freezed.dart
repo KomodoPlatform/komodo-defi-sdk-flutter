@@ -15,10 +15,15 @@ T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$SwapProgress {
+  @SwapStatusConverter()
   SwapStatus get status;
   String get message;
+  @JsonKey(name: 'swap_result')
   SwapResult? get swapResult;
+  @JsonKey(name: 'error_code')
+  @SwapErrorCodeConverter()
   SwapErrorCode? get errorCode;
+  @JsonKey(name: 'error_message')
   String? get errorMessage;
   String? get uuid;
 
@@ -29,6 +34,9 @@ mixin _$SwapProgress {
   $SwapProgressCopyWith<SwapProgress> get copyWith =>
       _$SwapProgressCopyWithImpl<SwapProgress>(
           this as SwapProgress, _$identity);
+
+  /// Serializes this SwapProgress to a JSON map.
+  Map<String, dynamic> toJson();
 
   @override
   bool operator ==(Object other) {
@@ -46,6 +54,7 @@ mixin _$SwapProgress {
             (identical(other.uuid, uuid) || other.uuid == uuid));
   }
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType, status, message, swapResult, errorCode, errorMessage, uuid);
@@ -63,11 +72,13 @@ abstract mixin class $SwapProgressCopyWith<$Res> {
       _$SwapProgressCopyWithImpl;
   @useResult
   $Res call(
-      {SwapStatus status,
+      {@SwapStatusConverter() SwapStatus status,
       String message,
-      SwapResult? swapResult,
+      @JsonKey(name: 'swap_result') SwapResult? swapResult,
+      @JsonKey(name: 'error_code')
+      @SwapErrorCodeConverter()
       SwapErrorCode? errorCode,
-      String? errorMessage,
+      @JsonKey(name: 'error_message') String? errorMessage,
       String? uuid});
 
   $SwapResultCopyWith<$Res>? get swapResult;
@@ -136,26 +147,33 @@ class _$SwapProgressCopyWithImpl<$Res> implements $SwapProgressCopyWith<$Res> {
 }
 
 /// @nodoc
-
+@JsonSerializable()
 class _SwapProgress extends SwapProgress {
   const _SwapProgress(
-      {required this.status,
+      {@SwapStatusConverter() required this.status,
       required this.message,
-      this.swapResult,
-      this.errorCode,
-      this.errorMessage,
+      @JsonKey(name: 'swap_result') this.swapResult,
+      @JsonKey(name: 'error_code') @SwapErrorCodeConverter() this.errorCode,
+      @JsonKey(name: 'error_message') this.errorMessage,
       this.uuid})
       : super._();
+  factory _SwapProgress.fromJson(Map<String, dynamic> json) =>
+      _$SwapProgressFromJson(json);
 
   @override
+  @SwapStatusConverter()
   final SwapStatus status;
   @override
   final String message;
   @override
+  @JsonKey(name: 'swap_result')
   final SwapResult? swapResult;
   @override
+  @JsonKey(name: 'error_code')
+  @SwapErrorCodeConverter()
   final SwapErrorCode? errorCode;
   @override
+  @JsonKey(name: 'error_message')
   final String? errorMessage;
   @override
   final String? uuid;
@@ -167,6 +185,13 @@ class _SwapProgress extends SwapProgress {
   @pragma('vm:prefer-inline')
   _$SwapProgressCopyWith<_SwapProgress> get copyWith =>
       __$SwapProgressCopyWithImpl<_SwapProgress>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$SwapProgressToJson(
+      this,
+    );
+  }
 
   @override
   bool operator ==(Object other) {
@@ -184,6 +209,7 @@ class _SwapProgress extends SwapProgress {
             (identical(other.uuid, uuid) || other.uuid == uuid));
   }
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType, status, message, swapResult, errorCode, errorMessage, uuid);
@@ -203,11 +229,13 @@ abstract mixin class _$SwapProgressCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {SwapStatus status,
+      {@SwapStatusConverter() SwapStatus status,
       String message,
-      SwapResult? swapResult,
+      @JsonKey(name: 'swap_result') SwapResult? swapResult,
+      @JsonKey(name: 'error_code')
+      @SwapErrorCodeConverter()
       SwapErrorCode? errorCode,
-      String? errorMessage,
+      @JsonKey(name: 'error_message') String? errorMessage,
       String? uuid});
 
   @override

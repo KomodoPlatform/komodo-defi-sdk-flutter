@@ -1,5 +1,5 @@
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 part 'orderbook_depth.freezed.dart';
@@ -26,38 +26,44 @@ class OrderbookDepthRequest
 }
 
 @freezed
-class OrderbookDepthResponse with _$OrderbookDepthResponse implements BaseResponse {
+abstract class OrderbookDepthResponse
+    with _$OrderbookDepthResponse
+    implements BaseResponse {
   const factory OrderbookDepthResponse({
+    required List<PairDepth> result,
     String? mmrpc,
     String? id,
-    required List<PairDepth> result,
   }) = _OrderbookDepthResponse;
+  const OrderbookDepthResponse._();
 
   factory OrderbookDepthResponse.fromJson(JsonMap json) =>
       _$OrderbookDepthResponseFromJson(json);
 
   factory OrderbookDepthResponse.parse(Map<String, dynamic> json) =>
       _$OrderbookDepthResponseFromJson(json);
+
+  @override
+  BaseResponse parse(Map<String, dynamic> json) =>
+      OrderbookDepthResponse.parse(json);
 }
 
 /// Represents the depth information for a trading pair
 @freezed
-class PairDepth with _$PairDepth {
+abstract class PairDepth with _$PairDepth {
+  const factory PairDepth({
+    required List<String> pair,
+    required DepthInfo depth,
+  }) = _PairDepth;
   const PairDepth._();
-  const factory PairDepth({required List<String> pair, required DepthInfo depth}) = _PairDepth;
 
   factory PairDepth.fromJson(JsonMap json) => _$PairDepthFromJson(json);
-
-  JsonMap toJson() => _$PairDepthToJson(this);
 }
 
 /// Represents the depth information with asks and bids count
 @freezed
-class DepthInfo with _$DepthInfo {
-  const DepthInfo._();
+abstract class DepthInfo with _$DepthInfo {
   const factory DepthInfo({required int asks, required int bids}) = _DepthInfo;
+  const DepthInfo._();
 
   factory DepthInfo.fromJson(JsonMap json) => _$DepthInfoFromJson(json);
-
-  JsonMap toJson() => _$DepthInfoToJson(this);
 }

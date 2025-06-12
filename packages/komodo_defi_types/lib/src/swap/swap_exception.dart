@@ -36,8 +36,7 @@ class SwapException implements Exception {
       return SwapErrorCode.orderMatchingFailed;
     }
 
-    if (errorLower.contains('price') ||
-        errorLower.contains('slippage')) {
+    if (errorLower.contains('price') || errorLower.contains('slippage')) {
       return SwapErrorCode.priceSlippage;
     }
 
@@ -46,8 +45,7 @@ class SwapException implements Exception {
       return SwapErrorCode.assetNotActivated;
     }
 
-    if (errorLower.contains('cancelled') ||
-        errorLower.contains('canceled')) {
+    if (errorLower.contains('cancelled') || errorLower.contains('canceled')) {
       return SwapErrorCode.userCancelled;
     }
 
