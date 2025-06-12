@@ -1,24 +1,18 @@
 import 'package:decimal/decimal.dart';
-import 'package:equatable/equatable.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+
+part 'trading_fee.freezed.dart';
+part 'trading_fee.g.dart';
 
 /// Trading fee information
-class TradingFee extends Equatable {
-  const TradingFee({
-    required this.coin,
-    required this.amount,
-  });
+@freezed
+abstract class TradingFee with _$TradingFee {
+  const factory TradingFee({
+    required String coin,
+    @DecimalConverter() required Decimal amount,
+  }) = _TradingFee;
+  const TradingFee._();
 
-  /// The coin symbol for the fee
-  final String coin;
-
-  /// The amount of the fee
-  final Decimal amount;
-
-  @override
-  List<Object?> get props => [coin, amount];
-
-  Map<String, dynamic> toJson() => {
-        'coin': coin,
-        'amount': amount.toString(),
-      };
+  factory TradingFee.fromJson(JsonMap json) => _$TradingFeeFromJson(json);
 }
