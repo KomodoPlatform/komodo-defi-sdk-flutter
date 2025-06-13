@@ -7,6 +7,7 @@ import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
@@ -16,15 +17,14 @@ export 'package:komodo_defi_framework/src/services/seed_node_service.dart';
 export 'src/operations/kdf_operations_interface.dart';
 
 class KomodoDefiFramework implements ApiClient {
+  final _logger = Logger('KomodoDefiFramework');
   KomodoDefiFramework._({
     required IKdfHostConfig hostConfig,
     void Function(String)? externalLogger,
     // required KdfApiClient? client,
   }) : _hostConfig = hostConfig {
-    _kdfOperations = createKdfOperations(
-      hostConfig: hostConfig,
-      logCallback: _log,
-    );
+    _configureLogging();
+    _kdfOperations = createKdfOperations(hostConfig: hostConfig);
 
     if (externalLogger != null) {
       _initLogStream(externalLogger);
@@ -79,7 +79,16 @@ class KomodoDefiFramework implements ApiClient {
 
   Stream<String> get logStream => _logStream.stream;
 
-  void _log(String message) => _logStream.add(message);
+  void _logToStream(String message) => _logStream.add(message);
+
+  void _configureLogging() {
+    Logger.root.level = KdfLoggingConfig.debugLogging ? Level.FINE : Level.INFO;
+    Logger.root.onRecord.listen((record) {
+      final error = record.error != null ? ' ${record.error}' : '';
+      final stack = record.stackTrace != null ? '\n${record.stackTrace}' : '';
+      _logToStream('${record.level.name}: ${record.message}$error$stack');
+    });
+  }
 
   //TODO! Figure out best way to handle overlap between startup and host
   //TODO! Handle common KDF operations startup log scanning here or in a
@@ -89,21 +98,24 @@ class KomodoDefiFramework implements ApiClient {
     KdfStartupConfig startupConfig, {
     bool validateHostConfig = true,
   }) async {
-    _log('Starting KDF main...');
+    _logger.info('Starting KDF main...');
 
     if (validateHostConfig) {
       _assertHostConfigMatchesStartupConfig(startupConfig, _hostConfig);
     }
 
     final startParams = startupConfig.encodeStartParams();
+    if (KdfLoggingConfig.debugLogging) {
+      _logger.fine('Start params: ${startParams.censored()}');
+    }
     final result = await _kdfOperations.kdfMain(startParams);
-    _log('KDF main result: $result');
+    _logger.info('KDF main result: $result');
     return result;
   }
 
   Future<MainStatus> kdfMainStatus() async {
     final status = await _kdfOperations.kdfMainStatus();
-    _log('KDF main status: $status');
+    _logger.info('KDF main status: $status');
 
     // Checking if KDF is running using `version` method covers the case
     // where implementations do not run as a singleton. E.g. `kdfMainStatus`
@@ -122,7 +134,7 @@ class KomodoDefiFramework implements ApiClient {
   }
 
   Future<StopStatus> kdfStop() async {
-    _log('Stopping KDF...');
+    _logger.info('Stopping KDF...');
     final result = await _kdfOperations.kdfStop();
     _log('KDF stop result: $result');
     // Await a max of 5 seconds for KDF to stop. Check every 500ms.
@@ -140,28 +152,32 @@ class KomodoDefiFramework implements ApiClient {
   }
 
   Future<bool> isRunning() async {
-    final running = await _kdfOperations.isRunning() ||
+    final running =
+        await _kdfOperations.isRunning() ||
         await _kdfOperations.version() != null;
     if (!running) {
-      _log('KDF is not running.');
+      _logger.info('KDF is not running.');
     }
     return running;
   }
 
   Future<String?> version() async {
     final version = await _kdfOperations.version();
-    _log('KDF version: $version');
+    _logger.info('KDF version: $version');
     return version;
   }
 
   @override
   Future<JsonMap> executeRpc(JsonMap request) async {
-    final response = (await _kdfOperations.mm2Rpc(
-      request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
-    ))
-        .ensureJson();
+    if (KdfLoggingConfig.debugLogging) {
+      _logger.finer('RPC request: ${request.censored()}');
+    }
+    final response =
+        (await _kdfOperations.mm2Rpc(
+          request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
+        )).ensureJson();
     if (KdfLoggingConfig.verboseLogging) {
-      _log('RPC response: ${response.toJsonString()}');
+      _logger.finer('RPC response: ${response.toJsonString()}');
     }
     return response;
   }

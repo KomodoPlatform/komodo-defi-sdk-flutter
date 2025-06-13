@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
+import 'package:logging/logging.dart';
 
 enum BuildMode {
   debug,
@@ -22,16 +23,15 @@ enum BuildMode {
 
 /// Helper class for locating the KDF executable across different platforms
 class KdfExecutableFinder {
-  KdfExecutableFinder({
-    required this.logCallback,
-  });
+  KdfExecutableFinder();
 
-  final void Function(String) logCallback;
+  final _log = Logger('KdfExecutableFinder');
 
   /// The build mode of the application
-  BuildMode get currentBuildMode => kDebugMode
-      ? BuildMode.debug
-      : (kProfileMode ? BuildMode.profile : BuildMode.release);
+  BuildMode get currentBuildMode =>
+      kDebugMode
+          ? BuildMode.debug
+          : (kProfileMode ? BuildMode.profile : BuildMode.release);
 
   /// Attempts to find the KDF executable in standard and platform-specific
   /// locations
@@ -47,36 +47,38 @@ class KdfExecutableFinder {
       executableName,
     ]);
 
-    final files = [
-      '/usr/local/bin/$executableName',
-      '/usr/bin/$executableName',
-      p.join(Directory.current.path, executableName),
-      p.join(Directory.current.path, '$executableName.exe'),
-      p.join(Directory.current.path, 'lib/$executableName'),
-      p.join(Directory.current.path, 'lib/$executableName.exe'),
-      macosKdfResourcePath,
-      constructWindowsBuildArtifactPath(
-        mode: currentBuildMode,
-        executableName: executableName,
-      ),
-      constructLinuxBuildArtifactPath(
-        mode: currentBuildMode,
-        executableName: executableName,
-      ),
-      constructMacOsBuildArtifactPath(
-        mode: currentBuildMode,
-        executableName: executableName,
-      ),
-    ].map((path) => File(p.normalize(path))).toList();
+    final files =
+        [
+          '/usr/local/bin/$executableName',
+          '/usr/bin/$executableName',
+          p.join(Directory.current.path, executableName),
+          p.join(Directory.current.path, '$executableName.exe'),
+          p.join(Directory.current.path, 'lib/$executableName'),
+          p.join(Directory.current.path, 'lib/$executableName.exe'),
+          macosKdfResourcePath,
+          constructWindowsBuildArtifactPath(
+            mode: currentBuildMode,
+            executableName: executableName,
+          ),
+          constructLinuxBuildArtifactPath(
+            mode: currentBuildMode,
+            executableName: executableName,
+          ),
+          constructMacOsBuildArtifactPath(
+            mode: currentBuildMode,
+            executableName: executableName,
+          ),
+        ].map((path) => File(p.normalize(path))).toList();
 
     for (final file in files) {
+      _log.finer('Checking executable path: ${file.path}');
       if (file.existsSync()) {
-        logCallback('Found executable: ${file.path}');
+        _log.fine('Found executable: ${file.path}');
         return file.absolute;
       }
     }
 
-    logCallback(
+    _log.warning(
       'Executable not found in paths: ${files.map((e) => e.absolute.path).join('\n')}. '
       'If you are using the KDF Flutter SDK, open an issue on GitHub.',
     );

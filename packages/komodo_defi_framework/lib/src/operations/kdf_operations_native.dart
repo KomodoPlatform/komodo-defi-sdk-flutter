@@ -12,39 +12,24 @@ import 'package:komodo_defi_framework/src/native/komodo_defi_framework_bindings_
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_local_executable.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:logging/logging.dart';
 
-IKdfOperations createLocalKdfOperations({
-  required void Function(String) logCallback,
-  required LocalConfig config,
-}) {
+IKdfOperations createLocalKdfOperations({required LocalConfig config}) {
   try {
-    return KdfOperationsNativeLibrary.create(
-      logCallback: logCallback,
-      config: config,
-    );
+    return KdfOperationsNativeLibrary.create(config: config);
   } catch (e) {
-    final executable = KdfOperationsLocalExecutable.create(
-      logCallback: logCallback,
-      config: config,
-    );
+    final executable = KdfOperationsLocalExecutable.create(config: config);
 
     return executable;
   }
 }
 
 class KdfOperationsNativeLibrary implements IKdfOperations {
-  KdfOperationsNativeLibrary._(
-    this._bindings,
-    this._logCallback,
-    this._config,
-    this._log,
-  );
+  final _logger = Logger('KdfOperationsNativeLibrary');
+  KdfOperationsNativeLibrary._(this._bindings, this._logCallback, this._config);
   @override
-  factory KdfOperationsNativeLibrary.create({
-    required void Function(String)? logCallback,
-    required LocalConfig config,
-  }) {
-    final log = logCallback ?? print;
+  factory KdfOperationsNativeLibrary.create({required LocalConfig config}) {
+    final log = Logger('KdfOperationsNativeLibrary').info;
     final nativeLogCallback = ffi.NativeCallable<LogCallbackFunction>.listener(
       (ffi.Pointer<Utf8> messagePtr) => _logNativeLogMessage(messagePtr, log),
     );
@@ -53,7 +38,6 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       KomodoDefiFrameworkBindings(_library),
       nativeLogCallback,
       config,
-      log,
     );
   }
 
@@ -112,8 +96,9 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       final bytes = messagePtrAsInt.asTypedList(length);
       if (!_isValidUtf8(bytes)) {
         log('Received invalid UTF-8 log message.');
-        final hexString =
-            bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+        final hexString = bytes
+            .map((b) => b.toRadixString(16).padLeft(2, '0'))
+            .join(' ');
         log('Raw bytes: $hexString');
         return '';
       }
@@ -135,7 +120,6 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     }
   }
 
-  void Function(String) _log;
   final KomodoDefiFrameworkBindings _bindings;
   final ffi.NativeCallable<LogCallbackFunction> _logCallback;
   LocalConfig _config;
@@ -173,7 +157,8 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       ),
     ).whenComplete(() => calloc.free(startParamsPtr));
 
-    if (kDebugMode) _log('KDF started in ${timer.elapsedMilliseconds}ms');
+    if (kDebugMode)
+      _logger.fine('KDF started in ${timer.elapsedMilliseconds}ms');
 
     // Wait for RPC to be fully up instead of just a fixed delay
     // This is a workaround for the race condition where KDF is started but
@@ -184,21 +169,21 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       if (_kdfMainStatus() == MainStatus.rpcIsUp) {
         isRpcReady = true;
         if (kDebugMode) {
-          _log('RPC server ready after ${timer.elapsedMilliseconds}ms');
+          _logger.fine('RPC server ready after ${timer.elapsedMilliseconds}ms');
         }
         break;
       }
     }
 
     if (!isRpcReady && kDebugMode) {
-      _log(
+      _logger.warning(
         'Warning: RPC server not ready after ${timer.elapsedMilliseconds}ms',
       );
     }
 
     if (kDebugMode) {
-      _log('KDF started with result: $result');
-      _log('Status after starting KDF: ${_kdfMainStatus()}');
+      _logger.fine('KDF started with result: $result');
+      _logger.fine('Status after starting KDF: ${_kdfMainStatus()}');
     }
 
     return KdfStartupResult.fromDefaultInt(result);
@@ -231,8 +216,8 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   @override
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
     if (KdfLoggingConfig.debugLogging) {
-      _log('mm2 config: ${_config.toJson().censored()}');
-      _log('mm2Rpc request (pre-process): ${request.censored()}');
+      _logger.finer('mm2 config: ${_config.toJson().censored()}');
+      _logger.finer('mm2Rpc request (pre-process): ${request.censored()}');
     }
 
     request['userpass'] = _config.rpcPassword;
@@ -241,6 +226,11 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       body: json.encode(request),
       headers: {'Content-Type': 'application/json'},
     );
+
+    if (KdfLoggingConfig.debugLogging) {
+      _logger.finer('mm2Rpc response: ${response.body}');
+    }
+
     return json.decode(response.body) as Map<String, dynamic>;
   }
 
@@ -259,7 +249,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       final response = await mm2Rpc({'method': 'version'});
       return response['result'] as String?;
     } on Exception catch (e) {
-      _log('Error getting KDF version: $e');
+      _logger.warning('Error getting KDF version: $e');
       return null;
     }
   }
@@ -271,12 +261,13 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       'Symbol mm2_main not found in library',
     );
     final bindings = KomodoDefiFrameworkBindings(dylib);
-    final startParamsPtr =
-        ffi.Pointer<Utf8>.fromAddress(params.startParamsPtrAddress);
+    final startParamsPtr = ffi.Pointer<Utf8>.fromAddress(
+      params.startParamsPtrAddress,
+    );
     final logCallback =
         ffi.Pointer<ffi.NativeFunction<LogCallbackFunction>>.fromAddress(
-      params.logCallbackAddress,
-    );
+          params.logCallbackAddress,
+        );
     return bindings.mm2_main(startParamsPtr, logCallback);
   }
 
@@ -296,10 +287,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
 }
 
 class _KdfMainParams {
-  _KdfMainParams(
-    this.startParamsPtrAddress,
-    this.logCallbackAddress,
-  );
+  _KdfMainParams(this.startParamsPtrAddress, this.logCallbackAddress);
   final int startParamsPtrAddress;
   final int logCallbackAddress;
 }
@@ -308,13 +296,14 @@ ffi.DynamicLibrary _loadLibrary() {
   final paths = _getLibraryPaths();
   for (final path in paths) {
     try {
-      final lib = path == 'PROCESS'
-          ? ffi.DynamicLibrary.process()
-          : path == 'EXECUTABLE'
+      final lib =
+          path == 'PROCESS'
+              ? ffi.DynamicLibrary.process()
+              : path == 'EXECUTABLE'
               ? ffi.DynamicLibrary.executable()
               : ffi.DynamicLibrary.open(path);
       if (lib.providesSymbol('mm2_main')) {
-        if (kDebugMode) print('Loaded library at path: $path');
+        if (kDebugMode) _logger.fine('Loaded library at path: \$path');
         return lib;
       }
     } catch (_) {
@@ -326,19 +315,9 @@ ffi.DynamicLibrary _loadLibrary() {
 
 List<String> _getLibraryPaths() {
   if (Platform.isMacOS) {
-    return [
-      'kdf',
-      'mm2',
-      'libkdflib.dylib',
-      'PROCESS',
-      'EXECUTABLE',
-    ];
+    return ['kdf', 'mm2', 'libkdflib.dylib', 'PROCESS', 'EXECUTABLE'];
   } else if (Platform.isIOS) {
-    return [
-      'libkdflib.dylib',
-      'PROCESS',
-      'EXECUTABLE',
-    ];
+    return ['libkdflib.dylib', 'PROCESS', 'EXECUTABLE'];
   } else if (Platform.isAndroid) {
     return [
       'libkomodo_defi_framework.so',
