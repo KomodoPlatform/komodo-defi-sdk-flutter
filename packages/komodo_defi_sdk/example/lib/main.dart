@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
 import 'package:kdf_sdk_example/screens/asset_page.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_view.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_drawer.dart';
@@ -194,23 +195,31 @@ class _KomodoAppState extends State<KomodoApp> {
                   for (final instance in instances)
                     Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Form(
-                        key: _formKey,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        child: InstanceView(
-                          instance: instance,
-                          state: _getOrCreateInstanceState(instance.name),
-                          currentUser: _currentUsers[instance.name],
-                          statusMessage:
-                              _statusMessages[instance.name] ??
-                              'Not initialized',
-                          onUserChanged:
-                              (user) =>
-                                  _updateInstanceUser(instance.name, user),
-                          searchController: _searchController,
-                          filteredAssets: _filteredAssets,
-                          onNavigateToAsset:
-                              (asset) => _onNavigateToAsset(instance, asset),
+                      child: BlocProvider(
+                        create: (context) => AuthBloc(sdk: instance.sdk),
+                        child: BlocListener<AuthBloc, AuthState>(
+                          listener: (context, state) {
+                            final user =
+                                state.isAuthenticated ? state.user : null;
+                            _updateInstanceUser(instance.name, user);
+                          },
+                          child: Form(
+                            key: _formKey,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            child: InstanceView(
+                              instance: instance,
+                              state: _getOrCreateInstanceState(instance.name),
+                              statusMessage:
+                                  _statusMessages[instance.name] ??
+                                  'Not initialized',
+                              searchController: _searchController,
+                              filteredAssets: _filteredAssets,
+                              onNavigateToAsset:
+                                  (asset) =>
+                                      _onNavigateToAsset(instance, asset),
+                            ),
+                          ),
                         ),
                       ),
                     ),

@@ -28,8 +28,9 @@ class SingleAddressStrategy extends PubkeyStrategy {
   @override
   bool protocolSupported(ProtocolClass protocol) {
     // All protocols are supported, but coins capable of HD/multi-address
-    // should use the HDWalletStrategy instead if launched in HD mode. This
-    // strategy has to be used for HD coins if launched in non-HD mode.
+    // should use the ContextPrivKeyHDWalletStrategy or TrezorHDWalletStrategy
+    // instead if launched in HD mode. This strategy has to be used for HD
+    // coins if launched in non-HD mode.
     return true;
   }
 

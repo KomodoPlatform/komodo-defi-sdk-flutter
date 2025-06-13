@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class HDWalletStrategy extends PubkeyStrategy {
-  HDWalletStrategy();
+/// Mixin containing shared HD wallet logic
+mixin HDWalletMixin on PubkeyStrategy {
+  KdfUser get kdfUser;
 
   int get _gapLimit => 20;
 
@@ -20,34 +21,16 @@ class HDWalletStrategy extends PubkeyStrategy {
 
   @override
   Future<AssetPubkeys> getPubkeys(AssetId assetId, ApiClient client) async {
-    final balanceInfo = await _getAccountBalance(assetId, client);
-    return _convertBalanceInfoToAssetPubkeys(assetId, balanceInfo);
-  }
-
-  @override
-  Future<PubkeyInfo> getNewAddress(AssetId assetId, ApiClient client) async {
-    final newAddress =
-        (await client.rpc.hdWallet.getNewAddress(
-          assetId.id,
-          accountId: 0,
-          chain: 'External',
-          gapLimit: _gapLimit,
-        )).newAddress;
-
-    return PubkeyInfo(
-      address: newAddress.address,
-      derivationPath: newAddress.derivationPath,
-      chain: newAddress.chain,
-      balance: newAddress.balance,
-    );
+    final balanceInfo = await getAccountBalance(assetId, client);
+    return convertBalanceInfoToAssetPubkeys(assetId, balanceInfo);
   }
 
   @override
   Future<void> scanForNewAddresses(AssetId assetId, ApiClient client) async {
-    await _getAccountBalance(assetId, client);
+    await getAccountBalance(assetId, client);
   }
 
-  Future<AccountBalanceInfo> _getAccountBalance(
+  Future<AccountBalanceInfo> getAccountBalance(
     AssetId assetId,
     ApiClient client,
   ) async {
@@ -69,7 +52,7 @@ class HDWalletStrategy extends PubkeyStrategy {
     return result;
   }
 
-  Future<AssetPubkeys> _convertBalanceInfoToAssetPubkeys(
+  Future<AssetPubkeys> convertBalanceInfoToAssetPubkeys(
     AssetId assetId,
     AccountBalanceInfo balanceInfo,
   ) async {
@@ -100,5 +83,75 @@ class HDWalletStrategy extends PubkeyStrategy {
         addresses.lastIndexWhere((addr) => addr.balance.hasValue) + 1;
 
     return Future.value((_gapLimit - gapFromLastUsed).clamp(0, _gapLimit));
+  }
+}
+
+/// HD wallet strategy for context private key wallets
+class ContextPrivKeyHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
+  ContextPrivKeyHDWalletStrategy({required this.kdfUser});
+
+  @override
+  final KdfUser kdfUser;
+
+  @override
+  Future<PubkeyInfo> getNewAddress(AssetId assetId, ApiClient client) async {
+    final newAddress =
+        (await client.rpc.hdWallet.getNewAddress(
+          assetId.id,
+          accountId: 0,
+          chain: 'External',
+          gapLimit: _gapLimit,
+        )).newAddress;
+
+    return PubkeyInfo(
+      address: newAddress.address,
+      derivationPath: newAddress.derivationPath,
+      chain: newAddress.chain,
+      balance: newAddress.balance,
+    );
+  }
+}
+
+/// HD wallet strategy for Trezor wallets
+class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
+  TrezorHDWalletStrategy({required this.kdfUser});
+
+  @override
+  final KdfUser kdfUser;
+
+  @override
+  Future<PubkeyInfo> getNewAddress(AssetId assetId, ApiClient client) async {
+    final newAddress = await _getNewAddressTask(assetId, client);
+
+    return PubkeyInfo(
+      address: newAddress.address,
+      derivationPath: newAddress.derivationPath,
+      chain: newAddress.chain,
+      balance: newAddress.balance,
+    );
+  }
+
+  Future<NewAddressInfo> _getNewAddressTask(
+    AssetId assetId,
+    ApiClient client,
+  ) async {
+    final initResponse = await client.rpc.hdWallet.getNewAddressTaskInit(
+      coin: assetId.id,
+      accountId: 0,
+      chain: 'External',
+      gapLimit: _gapLimit,
+    );
+
+    NewAddressInfo? result;
+    while (result == null) {
+      final status = await client.rpc.hdWallet.getNewAddressTaskStatus(
+        taskId: initResponse.taskId,
+        forgetIfFinished: false,
+      );
+      result = (status.details..throwIfError).data;
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return result;
   }
 }
