@@ -326,16 +326,29 @@ class _AssetGroup {
     final groups = <AssetId, _AssetGroup>{};
 
     for (final asset in assets) {
-      if (asset.id.parentId != null) {
-        // Child asset
-        final group = groups.putIfAbsent(
-          asset.id.parentId!,
-          () => _AssetGroup(primary: asset, children: {}),
+      if (asset.id.parentId == null) {
+        // Primary asset. Preserve any previously added children.
+        final existing = groups[asset.id];
+        groups[asset.id] = _AssetGroup(
+          primary: asset,
+          children: existing?.children,
         );
-        group.children?.add(asset);
       } else {
-        // Primary asset
-        groups.putIfAbsent(asset.id, () => _AssetGroup(primary: asset));
+        // Child asset
+        final parentId = asset.id.parentId!;
+        final existing = groups[parentId];
+
+        if (existing == null) {
+          // Parent not seen yet. Use child as temporary primary.
+          groups[parentId] = _AssetGroup(primary: asset, children: {asset});
+        } else if (existing.children == null) {
+          groups[parentId] = _AssetGroup(
+            primary: existing.primary,
+            children: {asset},
+          );
+        } else {
+          existing.children!.add(asset);
+        }
       }
     }
 
