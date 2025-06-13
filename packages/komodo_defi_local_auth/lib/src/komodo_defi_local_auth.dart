@@ -262,7 +262,8 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     // Trezor is not supported in non-stream functions
     if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
       throw AuthException(
-        'Trezor authentication requires using signInStream() method',
+        'Trezor authentication requires using signInStream() method '
+        'to handle device interactions (PIN, passphrase) asynchronously',
         type: AuthExceptionType.generalAuthError,
       );
     }
@@ -294,6 +295,7 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     await _assertAuthState(false);
 
     if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
+      // Trezor requires streaming to handle interactive device prompts
       yield* _trezorAuthService.signInStreamed(options: options);
     } else {
       yield* _handleRegularSignIn(
@@ -354,7 +356,8 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     // Trezor is not supported in non-stream functions
     if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
       throw AuthException(
-        'Trezor registration requires using registerStream() method',
+        'Trezor registration requires using registerStream() method '
+        'to handle device interactions (PIN, passphrase) asynchronously',
         type: AuthExceptionType.generalAuthError,
       );
     }
@@ -389,6 +392,7 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     }
 
     if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
+      // Trezor requires streaming to handle interactive device prompts
       yield* _trezorAuthService.registerStream(
         options: options,
         mnemonic: mnemonic,
@@ -570,6 +574,9 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     try {
       await _trezorAuthService.provideTrezorPin(taskId, pin);
     } catch (e) {
+      if (e is AuthException) {
+        rethrow;
+      }
       throw AuthException(
         'Failed to provide PIN to hardware device: $e',
         type: AuthExceptionType.generalAuthError,
@@ -587,6 +594,9 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     try {
       await _trezorAuthService.provideTrezorPassphrase(taskId, passphrase);
     } catch (e) {
+      if (e is AuthException) {
+        rethrow;
+      }
       throw AuthException(
         'Failed to provide passphrase to hardware device: $e',
         type: AuthExceptionType.generalAuthError,

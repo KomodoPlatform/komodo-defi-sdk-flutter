@@ -1,7 +1,8 @@
+import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Represents the current state of an authentication process
-class AuthenticationState {
+class AuthenticationState extends Equatable {
   const AuthenticationState({
     required this.status,
     this.message,
@@ -37,6 +38,9 @@ class AuthenticationState {
       user: user ?? this.user,
     );
   }
+
+  @override
+  List<Object?> get props => [status, message, taskId, error, user];
 }
 
 /// General authentication status that can be used for any wallet type

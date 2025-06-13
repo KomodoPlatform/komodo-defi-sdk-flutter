@@ -26,17 +26,19 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
         privKeyPolicy: PrivateKeyPolicy.trezor,
       );
 
+      // Trezor generates and securely stores a random password internally,
+      // and manages PIN/passphrase handling through the streamed events.
       final Stream<AuthenticationState> authStream;
       if (event.isRegister) {
         authStream = _sdk.auth.registerStream(
           walletName: 'My Trezor',
-          password: '', // Password will be handled as passphrase by Trezor
+          password: '',
           options: authOptions,
         );
       } else {
         authStream = _sdk.auth.signInStream(
           walletName: 'My Trezor',
-          password: '', // Password will be handled as passphrase by Trezor
+          password: '',
           options: authOptions,
         );
       }
@@ -166,23 +168,6 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
     // Cancellation is handled by stopping the stream subscription
     // This method is kept for backward compatibility
     emit(AuthState.unauthenticated(knownUsers: await _fetchKnownUsers()));
-  }
-
-  /// Clears the stored password for the Trezor wallet.
-  ///
-  /// Note: This method may need to be updated to work with the new TrezorAuthService
-  /// approach, as direct access to clearPassword may not be available through the SDK.
-  Future<void> clearTrezorWallet() async {
-    // TODO: Update this to work with the new TrezorAuthService approach
-    // The clearPassword method may need to be exposed through the SDK
-    try {
-      // For now, we can try to sign out if signed in
-      if (await _sdk.auth.isSignedIn()) {
-        await _sdk.auth.signOut();
-      }
-    } catch (e) {
-      // Ignore errors during sign out
-    }
   }
 
   Future<List<KdfUser>> _fetchKnownUsers() async {

@@ -41,8 +41,8 @@ enum AuthTrezorStatus {
   /// Trezor initialization is completed and ready for auth
   ready;
 
-  /// Factory constructor to create AuthTrezorStatus from TrezorInitializationStatus
-  factory AuthTrezorStatus.fromTrezorInitializationStatus(
+  /// Factory constructor to create AuthTrezorStatus from AuthenticationStatus
+  factory AuthTrezorStatus.fromAuthenticationStatus(
     AuthenticationStatus status,
   ) {
     switch (status) {

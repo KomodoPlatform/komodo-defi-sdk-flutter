@@ -291,7 +291,7 @@ class TrezorAuthService implements IAuthService {
     if (!isNewUser) {
       if (existing == null) {
         throw AuthException(
-          'Trezor wallet exists but no stored password found',
+          'Authentication failed for Trezor wallet',
           type: AuthExceptionType.generalAuthError,
         );
       }
@@ -309,13 +309,8 @@ class TrezorAuthService implements IAuthService {
   Future<void> clearTrezorPassword() =>
       _secureStorage.delete(key: _passwordKey);
 
-  /// Registers or signs in to the "My Trezor" wallet and initializes the device
-  ///
-  /// Emits [TrezorInitializationState] updates while the device is initializing
-  Stream<TrezorInitializationState> _initializeTrezorAndAuthenticate({
-    required DerivationMethod derivationMethod,
-    bool register = false,
-  }) async* {
+  /// Signs out the current user if they are using the Trezor wallet
+  Future<void> _signOutCurrentTrezorUser() async {
     final current = await _authService.getActiveUser();
     if (current?.walletId.name == trezorWalletName) {
       try {
@@ -324,36 +319,47 @@ class TrezorAuthService implements IAuthService {
         // ignore sign out errors
       }
     }
+  }
 
+  /// Finds an existing Trezor user in the user list
+  Future<KdfUser?> _findExistingTrezorUser() async {
     final users = await _authService.getUsers();
-    final existingUser = users.firstWhereOrNull(
+    return users.firstWhereOrNull(
       (u) =>
           u.walletId.name == trezorWalletName &&
           u.authOptions.privKeyPolicy == PrivateKeyPolicy.trezor,
     );
-    final isNewUser = existingUser == null || register;
-    final password = await _getPassword(isNewUser: isNewUser);
+  }
+
+  /// Authenticates with the Trezor wallet (sign in or register)
+  Future<void> _authenticateWithTrezorWallet({
+    required KdfUser? existingUser,
+    required String password,
+    required DerivationMethod derivationMethod,
+    required bool register,
+  }) async {
+    final authOptions = AuthOptions(
+      derivationMethod: derivationMethod,
+      privKeyPolicy: PrivateKeyPolicy.trezor,
+    );
 
     if (existingUser != null && !register) {
       await _authService.signIn(
         walletName: trezorWalletName,
         password: password,
-        options: AuthOptions(
-          derivationMethod: derivationMethod,
-          privKeyPolicy: PrivateKeyPolicy.trezor,
-        ),
+        options: authOptions,
       );
     } else {
       await _authService.register(
         walletName: trezorWalletName,
         password: password,
-        options: AuthOptions(
-          derivationMethod: derivationMethod,
-          privKeyPolicy: PrivateKeyPolicy.trezor,
-        ),
+        options: authOptions,
       );
     }
+  }
 
+  /// Initializes the Trezor device and yields state updates
+  Stream<TrezorInitializationState> _initializeTrezorDevice() async* {
     await for (final state in _trezor.initializeDevice()) {
       yield state;
       if (state.status == AuthenticationStatus.completed ||
@@ -362,5 +368,28 @@ class TrezorAuthService implements IAuthService {
         break;
       }
     }
+  }
+
+  /// Registers or signs in to the "My Trezor" wallet and initializes the device
+  ///
+  /// Emits [TrezorInitializationState] updates while the device is initializing
+  Stream<TrezorInitializationState> _initializeTrezorAndAuthenticate({
+    required DerivationMethod derivationMethod,
+    bool register = false,
+  }) async* {
+    await _signOutCurrentTrezorUser();
+
+    final existingUser = await _findExistingTrezorUser();
+    final isNewUser = existingUser == null || register;
+    final password = await _getPassword(isNewUser: isNewUser);
+
+    await _authenticateWithTrezorWallet(
+      existingUser: existingUser,
+      password: password,
+      derivationMethod: derivationMethod,
+      register: register,
+    );
+
+    yield* _initializeTrezorDevice();
   }
 }

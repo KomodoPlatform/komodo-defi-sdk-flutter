@@ -26,15 +26,15 @@ class TrezorRepository {
   ///
   /// Example usage:
   /// ```dart
-  /// await for (final state in trezorManager.initializeDevice()) {
+  /// await for (final state in trezorRepository.initializeDevice()) {
   ///   switch (state.status) {
   ///     case AuthenticationStatus.pinRequired:
   ///       final pin = await getUserPin();
-  ///       await trezorManager.providePin(state.taskId!, pin);
+  ///       await trezorRepository.providePin(state.taskId!, pin);
   ///       break;
   ///     case AuthenticationStatus.passphraseRequired:
   ///       final passphrase = await getUserPassphrase();
-  ///       await trezorManager.providePassphrase(state.taskId!, passphrase);
+  ///       await trezorRepository.providePassphrase(state.taskId!, passphrase);
   ///       break;
   ///     case AuthenticationStatus.completed:
   ///       print('Device initialized: ${state.deviceInfo}');
@@ -145,11 +145,11 @@ class TrezorRepository {
   /// The [pin] should be entered as it appears on your keyboard numpad,
   /// mapped according to the grid shown on the Trezor device.
   Future<void> providePin(int taskId, String pin) async {
-    try {
-      await _client.rpc.trezor.providePin(taskId: taskId, pin: pin);
-    } catch (e) {
-      throw TrezorException('Failed to provide PIN', e.toString());
+    if (pin.isEmpty || !RegExp(r'^\d+$').hasMatch(pin)) {
+      throw ArgumentError('PIN must contain only digits and cannot be empty.');
     }
+
+    await _client.rpc.trezor.providePin(taskId: taskId, pin: pin);
   }
 
   /// Provide passphrase when the device requests it
@@ -157,14 +157,10 @@ class TrezorRepository {
   /// The [passphrase] acts like an additional word in your recovery seed.
   /// Use an empty string to access the default wallet without passphrase.
   Future<void> providePassphrase(int taskId, String passphrase) async {
-    try {
-      await _client.rpc.trezor.providePassphrase(
-        taskId: taskId,
-        passphrase: passphrase,
-      );
-    } catch (e) {
-      throw TrezorException('Failed to provide passphrase', e.toString());
-    }
+    await _client.rpc.trezor.providePassphrase(
+      taskId: taskId,
+      passphrase: passphrase,
+    );
   }
 
   /// Cancel an ongoing Trezor initialization
@@ -195,14 +191,16 @@ class TrezorRepository {
   Future<void> dispose() async {
     final activeTaskIds = _activeInitializations.keys.toList();
 
-    for (final taskId in activeTaskIds) {
-      try {
-        await cancelInitialization(taskId);
-      } catch (e) {
-        // ignore: avoid_print
-        print('Error cancelling Trezor task $taskId: $e');
-      }
-    }
+    await Future.wait(
+      activeTaskIds.map((taskId) async {
+        try {
+          await cancelInitialization(taskId);
+        } catch (e) {
+          // ignore: avoid_print
+          print('Error cancelling Trezor task $taskId: $e');
+        }
+      }),
+    );
 
     _activeInitializations.clear();
   }
