@@ -107,7 +107,11 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
       details: ResponseDetails<NewAddressInfo, GeneralErrorResponse>(
         data:
             status == SyncStatusEnum.success
-                ? NewAddressInfo.fromJson(result.value<JsonMap>('details'))
+                ? NewAddressInfo.fromJson(
+                  result
+                      .value<JsonMap>('details')
+                      .value<JsonMap>('new_address'),
+                )
                 : null,
         error:
             status == SyncStatusEnum.error
