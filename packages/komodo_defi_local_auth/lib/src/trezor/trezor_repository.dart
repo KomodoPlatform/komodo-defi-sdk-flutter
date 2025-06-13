@@ -1,12 +1,14 @@
 import 'dart:async' show StreamController, Timer, unawaited;
 
-import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_local_auth/src/auth/auth_state.dart';
+import 'package:komodo_defi_local_auth/src/trezor/trezor_exception.dart';
+import 'package:komodo_defi_local_auth/src/trezor/trezor_initialization_state.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manages Trezor hardware wallet initialization and operations
-class TrezorManager {
+class TrezorRepository {
   /// Creates a new TrezorManager instance with the provided API client
-  TrezorManager(this._client);
+  TrezorRepository(this._client);
 
   /// The API client for making RPC calls
   final ApiClient _client;
@@ -24,17 +26,17 @@ class TrezorManager {
   ///
   /// Example usage:
   /// ```dart
-  /// await for (final state in trezorManager.initializeDevice()) {
+  /// await for (final state in trezorRepository.initializeDevice()) {
   ///   switch (state.status) {
-  ///     case TrezorInitializationStatus.pinRequired:
+  ///     case AuthenticationStatus.pinRequired:
   ///       final pin = await getUserPin();
-  ///       await trezorManager.providePin(state.taskId!, pin);
+  ///       await trezorRepository.providePin(state.taskId!, pin);
   ///       break;
-  ///     case TrezorInitializationStatus.passphraseRequired:
+  ///     case AuthenticationStatus.passphraseRequired:
   ///       final passphrase = await getUserPassphrase();
-  ///       await trezorManager.providePassphrase(state.taskId!, passphrase);
+  ///       await trezorRepository.providePassphrase(state.taskId!, passphrase);
   ///       break;
-  ///     case TrezorInitializationStatus.completed:
+  ///     case AuthenticationStatus.completed:
   ///       print('Device initialized: ${state.deviceInfo}');
   ///       break;
   ///   }
@@ -50,7 +52,7 @@ class TrezorManager {
     try {
       // Start initialization
       yield const TrezorInitializationState(
-        status: TrezorInitializationStatus.initializing,
+        status: AuthenticationStatus.initializing,
         message: 'Starting Trezor initialization...',
       );
 
@@ -63,7 +65,7 @@ class TrezorManager {
       _activeInitializations[taskId] = controller;
 
       yield TrezorInitializationState(
-        status: TrezorInitializationStatus.initializing,
+        status: AuthenticationStatus.initializing,
         message: 'Initialization started, checking status...',
         taskId: taskId,
       );
@@ -91,9 +93,9 @@ class TrezorManager {
           }
 
           // Check if we should stop polling
-          if (state.status == TrezorInitializationStatus.completed ||
-              state.status == TrezorInitializationStatus.error ||
-              state.status == TrezorInitializationStatus.cancelled) {
+          if (state.status == AuthenticationStatus.completed ||
+              state.status == AuthenticationStatus.error ||
+              state.status == AuthenticationStatus.cancelled) {
             isComplete = true;
             statusTimer?.cancel();
             if (!controller.isClosed) {
@@ -122,7 +124,7 @@ class TrezorManager {
       yield* controller.stream;
     } catch (e) {
       yield TrezorInitializationState(
-        status: TrezorInitializationStatus.error,
+        status: AuthenticationStatus.error,
         error: 'Initialization failed: $e',
         taskId: taskId,
       );
@@ -143,11 +145,11 @@ class TrezorManager {
   /// The [pin] should be entered as it appears on your keyboard numpad,
   /// mapped according to the grid shown on the Trezor device.
   Future<void> providePin(int taskId, String pin) async {
-    try {
-      await _client.rpc.trezor.providePin(taskId: taskId, pin: pin);
-    } catch (e) {
-      throw TrezorException('Failed to provide PIN', e.toString());
+    if (pin.isEmpty || !RegExp(r'^\d+$').hasMatch(pin)) {
+      throw ArgumentError('PIN must contain only digits and cannot be empty.');
     }
+
+    await _client.rpc.trezor.providePin(taskId: taskId, pin: pin);
   }
 
   /// Provide passphrase when the device requests it
@@ -155,14 +157,10 @@ class TrezorManager {
   /// The [passphrase] acts like an additional word in your recovery seed.
   /// Use an empty string to access the default wallet without passphrase.
   Future<void> providePassphrase(int taskId, String passphrase) async {
-    try {
-      await _client.rpc.trezor.providePassphrase(
-        taskId: taskId,
-        passphrase: passphrase,
-      );
-    } catch (e) {
-      throw TrezorException('Failed to provide passphrase', e.toString());
-    }
+    await _client.rpc.trezor.providePassphrase(
+      taskId: taskId,
+      passphrase: passphrase,
+    );
   }
 
   /// Cancel an ongoing Trezor initialization
@@ -175,7 +173,7 @@ class TrezorManager {
       if (controller != null && !controller.isClosed) {
         controller.add(
           TrezorInitializationState(
-            status: TrezorInitializationStatus.cancelled,
+            status: AuthenticationStatus.cancelled,
             message: 'Initialization cancelled by user',
             taskId: taskId,
           ),
@@ -193,14 +191,16 @@ class TrezorManager {
   Future<void> dispose() async {
     final activeTaskIds = _activeInitializations.keys.toList();
 
-    for (final taskId in activeTaskIds) {
-      try {
-        await cancelInitialization(taskId);
-      } catch (e) {
-        // ignore: avoid_print
-        print('Error cancelling Trezor task $taskId: $e');
-      }
-    }
+    await Future.wait(
+      activeTaskIds.map((taskId) async {
+        try {
+          await cancelInitialization(taskId);
+        } catch (e) {
+          // ignore: avoid_print
+          print('Error cancelling Trezor task $taskId: $e');
+        }
+      }),
+    );
 
     _activeInitializations.clear();
   }

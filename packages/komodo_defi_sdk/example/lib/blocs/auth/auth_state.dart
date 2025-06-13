@@ -41,24 +41,25 @@ enum AuthTrezorStatus {
   /// Trezor initialization is completed and ready for auth
   ready;
 
-  /// Factory constructor to create AuthTrezorStatus from TrezorInitializationStatus
-  factory AuthTrezorStatus.fromTrezorInitializationStatus(
-    TrezorInitializationStatus status,
+  /// Factory constructor to create AuthTrezorStatus from AuthenticationStatus
+  factory AuthTrezorStatus.fromAuthenticationStatus(
+    AuthenticationStatus status,
   ) {
     switch (status) {
-      case TrezorInitializationStatus.initializing:
-      case TrezorInitializationStatus.waitingForDevice:
+      case AuthenticationStatus.initializing:
+      case AuthenticationStatus.waitingForDevice:
+      case AuthenticationStatus.authenticating:
         return AuthTrezorStatus.initializing;
-      case TrezorInitializationStatus.waitingForDeviceConfirmation:
+      case AuthenticationStatus.waitingForDeviceConfirmation:
         return AuthTrezorStatus.awaitingConfirmation;
-      case TrezorInitializationStatus.pinRequired:
+      case AuthenticationStatus.pinRequired:
         return AuthTrezorStatus.pinRequired;
-      case TrezorInitializationStatus.passphraseRequired:
+      case AuthenticationStatus.passphraseRequired:
         return AuthTrezorStatus.passphraseRequired;
-      case TrezorInitializationStatus.completed:
+      case AuthenticationStatus.completed:
         return AuthTrezorStatus.ready;
-      case TrezorInitializationStatus.error:
-      case TrezorInitializationStatus.cancelled:
+      case AuthenticationStatus.error:
+      case AuthenticationStatus.cancelled:
         return AuthTrezorStatus.none;
     }
   }

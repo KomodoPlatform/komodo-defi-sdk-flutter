@@ -7,6 +7,8 @@ library;
 
 export 'package:komodo_defi_framework/komodo_defi_framework.dart'
     show IKdfHostConfig, LocalConfig, RemoteConfig;
+export 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart'
+    show AuthenticationState, AuthenticationStatus;
 export 'package:komodo_defi_sdk/src/addresses/address_operations.dart'
     show AddressOperations;
 export 'package:komodo_defi_sdk/src/balances/balance_manager.dart'
@@ -22,5 +24,4 @@ export 'src/assets/asset_extensions.dart'
 export 'src/assets/asset_pubkey_extensions.dart';
 export 'src/assets/legacy_asset_extensions.dart';
 export 'src/komodo_defi_sdk.dart' show KomodoDefiSdk;
-export 'src/trezor/trezor_initialization_state.dart';
 export 'src/widgets/asset_balance_text.dart';

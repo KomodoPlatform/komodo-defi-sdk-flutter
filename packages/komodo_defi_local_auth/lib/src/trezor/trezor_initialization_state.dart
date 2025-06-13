@@ -1,31 +1,5 @@
+import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-
-/// Status of Trezor initialization process
-enum TrezorInitializationStatus {
-  /// Initialization is starting
-  initializing,
-
-  /// Waiting for Trezor device to be connected
-  waitingForDevice,
-
-  /// Waiting for user to follow instructions on device
-  waitingForDeviceConfirmation,
-
-  /// User needs to enter PIN
-  pinRequired,
-
-  /// User needs to enter passphrase
-  passphraseRequired,
-
-  /// Initialization completed successfully
-  completed,
-
-  /// Initialization failed with error
-  error,
-
-  /// Initialization was cancelled
-  cancelled,
-}
 
 /// Represents the current state of Trezor initialization
 class TrezorInitializationState {
@@ -48,14 +22,14 @@ class TrezorInitializationState {
         final deviceInfo = response.deviceInfo;
         if (deviceInfo != null) {
           return TrezorInitializationState(
-            status: TrezorInitializationStatus.completed,
+            status: AuthenticationStatus.completed,
             message: 'Trezor device initialized successfully',
             deviceInfo: deviceInfo,
             taskId: taskId,
           );
         } else {
           return TrezorInitializationState(
-            status: TrezorInitializationStatus.error,
+            status: AuthenticationStatus.error,
             error: 'Invalid response: missing device info',
             taskId: taskId,
           );
@@ -64,7 +38,7 @@ class TrezorInitializationState {
       case 'Error':
         final errorInfo = response.errorInfo;
         return TrezorInitializationState(
-          status: TrezorInitializationStatus.error,
+          status: AuthenticationStatus.error,
           error: errorInfo?.error ?? 'Unknown error occurred',
           taskId: taskId,
         );
@@ -85,21 +59,22 @@ class TrezorInitializationState {
 
       default:
         return TrezorInitializationState(
-          status: TrezorInitializationStatus.error,
+          status: AuthenticationStatus.error,
           error: 'Unknown status: ${response.status}',
           taskId: taskId,
         );
     }
   }
 
-  /// Factory constructor that maps in-progress descriptions to appropriate states
+  /// Factory constructor that maps in-progress descriptions
+  /// to appropriate states
   factory TrezorInitializationState.fromInProgressDescription(
     String? description,
     int taskId,
   ) {
     if (description == null) {
       return TrezorInitializationState(
-        status: TrezorInitializationStatus.initializing,
+        status: AuthenticationStatus.initializing,
         message: 'Initializing Trezor device...',
         taskId: taskId,
       );
@@ -110,7 +85,7 @@ class TrezorInitializationState {
     if (descriptionLower.contains('waiting') &&
         descriptionLower.contains('connect')) {
       return TrezorInitializationState(
-        status: TrezorInitializationStatus.waitingForDevice,
+        status: AuthenticationStatus.waitingForDevice,
         message: 'Waiting for Trezor device to be connected',
         taskId: taskId,
       );
@@ -119,27 +94,28 @@ class TrezorInitializationState {
     if (descriptionLower.contains('follow') &&
         descriptionLower.contains('instructions')) {
       return TrezorInitializationState(
-        status: TrezorInitializationStatus.waitingForDeviceConfirmation,
+        status: AuthenticationStatus.waitingForDeviceConfirmation,
         message: 'Please follow the instructions on your Trezor device',
         taskId: taskId,
       );
     }
 
     return TrezorInitializationState(
-      status: TrezorInitializationStatus.initializing,
+      status: AuthenticationStatus.initializing,
       message: description,
       taskId: taskId,
     );
   }
 
-  /// Factory constructor that maps user action requirements to appropriate states
+  /// Factory constructor that maps user action requirements
+  /// to appropriate states
   factory TrezorInitializationState.fromUserActionRequired(
     String? description,
     int taskId,
   ) {
     if (description == null) {
       return TrezorInitializationState(
-        status: TrezorInitializationStatus.initializing,
+        status: AuthenticationStatus.initializing,
         message: 'User action required',
         taskId: taskId,
       );
@@ -147,7 +123,7 @@ class TrezorInitializationState {
 
     if (description == 'EnterTrezorPin') {
       return TrezorInitializationState(
-        status: TrezorInitializationStatus.pinRequired,
+        status: AuthenticationStatus.pinRequired,
         message: 'Please enter your Trezor PIN',
         taskId: taskId,
       );
@@ -155,21 +131,21 @@ class TrezorInitializationState {
 
     if (description == 'EnterTrezorPassphrase') {
       return TrezorInitializationState(
-        status: TrezorInitializationStatus.passphraseRequired,
+        status: AuthenticationStatus.passphraseRequired,
         message: 'Please enter your Trezor passphrase',
         taskId: taskId,
       );
     }
 
     return TrezorInitializationState(
-      status: TrezorInitializationStatus.initializing,
+      status: AuthenticationStatus.initializing,
       message: description,
       taskId: taskId,
     );
   }
 
   /// Current status of the initialization process
-  final TrezorInitializationStatus status;
+  final AuthenticationStatus status;
 
   /// Human-readable message describing current state
   final String? message;
@@ -185,7 +161,7 @@ class TrezorInitializationState {
 
   /// Creates a copy of this state with optional parameter updates
   TrezorInitializationState copyWith({
-    TrezorInitializationStatus? status,
+    AuthenticationStatus? status,
     String? message,
     TrezorDeviceInfo? deviceInfo,
     String? error,
@@ -197,6 +173,15 @@ class TrezorInitializationState {
       deviceInfo: deviceInfo ?? this.deviceInfo,
       error: error ?? this.error,
       taskId: taskId ?? this.taskId,
+    );
+  }
+
+  AuthenticationState toAuthenticationState() {
+    return AuthenticationState(
+      status: status,
+      message: message,
+      taskId: taskId,
+      error: error,
     );
   }
 

@@ -8,7 +8,6 @@ import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
-import 'package:komodo_defi_sdk/src/trezor/trezor_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -240,13 +239,6 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   BalanceManager get balances =>
       _assertSdkInitialized(_container<BalanceManager>());
 
-  /// The Trezor hardware wallet manager instance.
-  ///
-  /// Handles Trezor device initialization and operations.
-  ///
-  /// Throws [StateError] if accessed before initialization.
-  TrezorManager get trezor => _assertSdkInitialized(_container<TrezorManager>());
-
   /// Initializes the SDK instance.
   ///
   /// This must be called before using any SDK functionality. The initialization
@@ -322,14 +314,6 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   Future<void> dispose() async {
     if (!_isInitialized) return;
     _isInitialized = false;
-
-    // Clean up managers that need explicit disposal
-    try {
-      final trezorManager = _container<TrezorManager>();
-      await trezorManager.dispose();
-    } catch (e) {
-      // Manager might not be initialized, ignore
-    }
 
     // Reset scoped container
     await _container.reset();
