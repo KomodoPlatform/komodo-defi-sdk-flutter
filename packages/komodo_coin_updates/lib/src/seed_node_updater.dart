@@ -8,6 +8,8 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// This service handles the downloading and parsing of seed node configurations
 /// from the Komodo Platform repository.
 class SeedNodeUpdater {
+  // TODO(@takenagain): Bring in line with coins config wrt how the file is
+  // fetched, persisted and handles fallback to local asset.
   /// Fetches and parses the seed nodes configuration from the Komodo Platform repository.
   ///
   /// Returns a list of [SeedNode] objects that can be used for P2P networking.
