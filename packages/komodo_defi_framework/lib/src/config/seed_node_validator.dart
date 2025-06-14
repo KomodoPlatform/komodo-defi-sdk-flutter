@@ -13,7 +13,7 @@ class SeedNodeValidator {
     required bool? isBootstrapNode,
   }) {
     // Cannot disable P2P while seed nodes are configured
-    if (disableP2p == true && seedNodes != null && seedNodes.isNotEmpty) {
+    if ((disableP2p ?? false) && seedNodes != null && seedNodes.isNotEmpty) {
       throw KdfException(
         'Cannot disable P2P while seed nodes are configured.',
         type: KdfExceptionType.seedNodeConfigError,
@@ -21,7 +21,7 @@ class SeedNodeValidator {
     }
 
     // If P2P is disabled, no need for further validation
-    if (disableP2p == true) {
+    if (disableP2p ?? false) {
       if (KdfLoggingConfig.verboseLogging) {
         print('WARN P2P is disabled. Features that require a P2P network '
             '(like swaps, peer health checks, etc.) will not work.');
@@ -30,7 +30,7 @@ class SeedNodeValidator {
     }
 
     // Seed nodes cannot disable P2P
-    if (iAmSeed == true && disableP2p == true) {
+    if ((iAmSeed ?? false) && (disableP2p ?? false)) {
       throw KdfException(
         'Seed nodes cannot disable P2P.',
         type: KdfExceptionType.seedNodeConfigError,
@@ -38,7 +38,7 @@ class SeedNodeValidator {
     }
 
     // Bootstrap node must also be a seed node
-    if (isBootstrapNode == true && iAmSeed != true) {
+    if ((isBootstrapNode ?? false) && iAmSeed != true) {
       throw KdfException(
         'Bootstrap node must also be a seed node.',
         type: KdfExceptionType.seedNodeConfigError,

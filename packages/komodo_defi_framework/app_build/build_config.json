@@ -1,7 +1,7 @@
 {
     "api": {
-        "api_commit_hash": "923eb0be25495df1d5a2be357bd69504adf2006c",
-        "branch": "dev",
+        "api_commit_hash": "d988953a6a958e86b4f68d0fb5fdbcc9820f6d57",
+        "branch": "alt-main",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
@@ -12,49 +12,49 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "29a1a0dbbf1be5cadc7e8cb07feaecc7075a92e978858a3a77505b744d1d8886"
+                    "48973f4a4af9b0dd680f7194584b5bbb804ea6c4beec92ab50bb9717957e5256"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "616a1ed9d3d0a49946d8353627f94a3d5f017c0eed202bcaa8d869f850f61bcb"
+                    "9d1f115308f101244d31da54f72b423143ebe7107fc7a7f141ed6fbf9909d1e8"
                 ],
                 "path": "ios"
             },
             "macos": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "5f19126ac8aadb64cd0dfd738ae6f003a11456e8c5062c99fe99ac1ccf1933b1"
+                    "25fc57eaec530b853a5c27467b2ac2af7ddef905d2cee166b3b6993dfe3c576d"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "90b256279b42c1d472efb550532876d3352eca79d50e247301d96a7450cf2505"
+                    "876e4eb05db086f31d6cfe56f2805744486b6b4ea54ffbbc490fd9019a020dfd"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "5afa0e5e99ea1b296f97f3a35a7ac61ea1c2b15df4681a8898ccab6496808725"
+                    "76b92d9633b98863c4b91aa2a70ccb7984d0e481086d7315ec1915edec8c0037"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "33aeb33fa26d84137ad5d95d562e0b9f2e0c921db5f5fd3f3f6d2e5d4e295c25"
+                    "d808cd5cb58618fa41383f71d977b3fe9d03e867ec2635b81d3dc0de9c1f1108"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "7d245261b1249fd710c6c4e803f6f2f4690fb2abdf3182fd8d60d17509c0afd7"
+                    "84599bf1dd024f03b442d821d3208f370eccb8ffe76a99199b3879e904d6ea16"
                 ],
                 "path": "linux/bin"
             }
@@ -63,14 +63,15 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "6e6a864cf3495d61ac69fcd6152a3963b2e032af",
+        "bundled_coins_repo_commit": "0fc30526f08de25d229ae8e14de4467a72720bc5",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://komodoplatform.github.io/coins",
         "coins_repo_branch": "master",
         "runtime_updates_enabled": true,
         "mapped_files": {
             "assets/config/coins_config.json": "utils/coins_config_unfiltered.json",
-            "assets/config/coins.json": "coins"
+            "assets/config/coins.json": "coins",
+            "assets/config/seed_nodes.json": "seed-nodes.json"
         },
         "mapped_folders": {
             "assets/coin_icons/png/": "icons"

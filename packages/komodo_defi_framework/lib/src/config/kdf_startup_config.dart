@@ -109,16 +109,9 @@ class KdfStartupConfig {
         'HD Account ID is not supported yet in the SDK. '
         'Use at your own risk.');
 
-    // Determine final seed nodes configuration
-    // If P2P is disabled, no need for seed nodes
-    // Otherwise, use provided nodes or default ones
-    final finalSeedNodes = disableP2p == true
-        ? null // Don't provide seed nodes if P2P is disabled
-        : (seedNodes ?? SeedNodeValidator.getDefaultSeedNodes());
-
-    // Validate seed node configuration here before creating the object
+    // Validate seed node configuration before creating the object
     SeedNodeValidator.validate(
-      seedNodes: finalSeedNodes,
+      seedNodes: seedNodes,
       disableP2p: disableP2p,
       iAmSeed: iAmSeed,
       isBootstrapNode: isBootstrapNode,
@@ -136,7 +129,7 @@ class KdfStartupConfig {
       gui: gui,
       coins: coinsPath ?? await _fetchCoinsData(),
       https: https,
-      seedNodes: finalSeedNodes,
+      seedNodes: seedNodes,
       disableP2p: disableP2p,
       iAmSeed: iAmSeed,
       isBootstrapNode: isBootstrapNode,
@@ -219,7 +212,7 @@ class KdfStartupConfig {
       if (hdAccountId != null) 'hd_account_id': hdAccountId,
       'https': https,
       'coins': coins,
-      'trading_proto_v2': true,
+      'use_trading_proto_v2': true,
       if (seedNodes != null && seedNodes!.isNotEmpty) 'seednodes': seedNodes,
       if (disableP2p != null) 'disable_p2p': disableP2p,
       if (iAmSeed != null) 'i_am_seed': iAmSeed,
@@ -233,6 +226,5 @@ class KdfStartupConfig {
     if (_memoizedCoins != null) return _memoizedCoins!;
 
     return _memoizedCoins = await KomodoCoins.fetchAndTransformCoinsList();
-
   }
 }
