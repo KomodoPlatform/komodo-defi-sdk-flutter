@@ -405,6 +405,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.3"
+  hive_flutter:
+    dependency: transitive
+    description:
+      name: hive_flutter
+      sha256: dca1da446b1d808a51689fb5d0c6c9510c0a2ba01e22805d492c73b68e33eecc
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   html:
     dependency: transitive
     description:
@@ -476,6 +484,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  komodo_coin_updates:
+    dependency: transitive
+    description:
+      path: "../../packages/komodo_coin_updates"
+      relative: true
+    source: path
+    version: "1.0.0"
   komodo_coins:
     dependency: transitive
     description:

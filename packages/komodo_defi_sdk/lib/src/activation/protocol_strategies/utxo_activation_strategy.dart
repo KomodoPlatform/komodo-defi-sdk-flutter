@@ -69,6 +69,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
           stepCount: 5,
           additionalInfo: {
             'electrumServers': protocol.requiredServers.toJsonRequest(),
+            'protocolType': protocol.subClass.formatted,
           },
         ),
       );

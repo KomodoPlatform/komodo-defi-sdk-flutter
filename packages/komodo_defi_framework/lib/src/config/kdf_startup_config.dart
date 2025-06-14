@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:komodo_coins/komodo_coins.dart';
+import 'package:komodo_defi_framework/src/config/seed_node_validator.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -28,7 +29,18 @@ class KdfStartupConfig {
     required this.hdAccountId,
     required this.allowRegistrations,
     required this.enableHd,
-  });
+    required this.seedNodes,
+    required this.disableP2p,
+    required this.iAmSeed,
+    required this.isBootstrapNode,
+  }) {
+    SeedNodeValidator.validate(
+      seedNodes: seedNodes,
+      disableP2p: disableP2p,
+      iAmSeed: iAmSeed,
+      isBootstrapNode: isBootstrapNode,
+    );
+  }
 
   final String? walletName;
   final String? walletPassword;
@@ -46,6 +58,10 @@ class KdfStartupConfig {
   final bool https;
   final bool allowRegistrations;
   final bool? enableHd;
+  final List<String>? seedNodes;
+  final bool? disableP2p;
+  final bool? iAmSeed;
+  final bool? isBootstrapNode;
 
   // Either a list of coin JSON objects or a string of the path to a file
   // containing a list of coin JSON objects.
@@ -69,6 +85,10 @@ class KdfStartupConfig {
     bool https = false,
     bool rpcLocalOnly = true,
     bool allowRegistrations = true,
+    List<String>? seedNodes,
+    bool? disableP2p,
+    bool? iAmSeed,
+    bool? isBootstrapNode,
   }) async {
     assert(
       !kIsWeb || userHome == null && dbDir == null,
@@ -84,7 +104,18 @@ class KdfStartupConfig {
       dbHome: dbDir,
     );
 
-    assert(hdAccountId == null, 'HD Account ID is not supported yet.');
+    assert(
+        hdAccountId == null,
+        'HD Account ID is not supported yet in the SDK. '
+        'Use at your own risk.');
+
+    // Validate seed node configuration before creating the object
+    SeedNodeValidator.validate(
+      seedNodes: seedNodes,
+      disableP2p: disableP2p,
+      iAmSeed: iAmSeed,
+      isBootstrapNode: isBootstrapNode,
+    );
 
     return KdfStartupConfig._(
       walletName: walletName,
@@ -98,6 +129,10 @@ class KdfStartupConfig {
       gui: gui,
       coins: coinsPath ?? await _fetchCoinsData(),
       https: https,
+      seedNodes: seedNodes,
+      disableP2p: disableP2p,
+      iAmSeed: iAmSeed,
+      isBootstrapNode: isBootstrapNode,
       rpcIp: rpcIp,
       rpcPort: rpcPort,
       rpcLocalOnly: rpcLocalOnly,
@@ -149,6 +184,10 @@ class KdfStartupConfig {
       hdAccountId: null,
       allowRegistrations: false,
       enableHd: false,
+      disableP2p: true,
+      seedNodes: [],
+      iAmSeed: false,
+      isBootstrapNode: false,
     );
   }
 
@@ -173,38 +212,19 @@ class KdfStartupConfig {
       if (hdAccountId != null) 'hd_account_id': hdAccountId,
       'https': https,
       'coins': coins,
-      'trading_proto_v2': true,
+      'use_trading_proto_v2': true,
+      if (seedNodes != null && seedNodes!.isNotEmpty) 'seednodes': seedNodes,
+      if (disableP2p != null) 'disable_p2p': disableP2p,
+      if (iAmSeed != null) 'i_am_seed': iAmSeed,
+      if (isBootstrapNode != null) 'is_bootstrap_node': isBootstrapNode,
     };
   }
 
-  // static Future<KdfStartupConfig> noAuthConfig()
-
-  // Map<String, dynamic> toJson() => {
-  //       'wallet_name': walletName,
-  //       'wallet_password': walletPassword,
-  //       'rpc_password': rpcPassword,
-  //       if (dbDir != null) 'dbdir': dbDir,
-  //       if (userHome != null) 'userhome': userHome,
-  //       'allow_weak_password': allowWeakPassword,
-  //       'netid': netid,
-  //       'gui': gui,
-  //       'mm2': 1,
-  //     };
+  static JsonList? _memoizedCoins;
 
   static Future<JsonList> _fetchCoinsData() async {
     if (_memoizedCoins != null) return _memoizedCoins!;
 
     return _memoizedCoins = await KomodoCoins.fetchAndTransformCoinsList();
-
-    // TODO: Implement getting from local asset as a fallback
-    // final coinsDataAssetOrEmpty = await rootBundle
-    //     .loadString('assets/config/coins.json')
-    //     .catchError((_) => '');
-
-    // return coinsDataAssetOrEmpty.isNotEmpty
-    //     ? ListExtensions.fromJsonString(coinsDataAssetOrEmpty).toJsonString()
-    //     : (await http.get(Uri.parse(coinsUrl))).body;
   }
-
-  static JsonList? _memoizedCoins;
 }
