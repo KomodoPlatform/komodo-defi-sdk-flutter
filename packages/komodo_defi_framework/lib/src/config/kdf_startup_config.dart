@@ -184,8 +184,8 @@ class KdfStartupConfig {
       hdAccountId: null,
       allowRegistrations: false,
       enableHd: false,
-      disableP2p: true,
-      seedNodes: [],
+      disableP2p: false,
+      seedNodes: ['seed01.kmdefi.net', 'seed02.kmdefi.net'],
       iAmSeed: false,
       isBootstrapNode: false,
     );
