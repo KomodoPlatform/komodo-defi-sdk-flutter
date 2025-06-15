@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_framework/src/config/seed_node_validator.dart';
+import 'package:komodo_defi_framework/src/services/seed_node_service.dart'
+    show SeedNodeService;
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -184,8 +186,8 @@ class KdfStartupConfig {
       hdAccountId: null,
       allowRegistrations: false,
       enableHd: false,
-      disableP2p: true,
-      seedNodes: [],
+      disableP2p: false,
+      seedNodes: await SeedNodeService.fetchSeedNodes(),
       iAmSeed: false,
       isBootstrapNode: false,
     );
