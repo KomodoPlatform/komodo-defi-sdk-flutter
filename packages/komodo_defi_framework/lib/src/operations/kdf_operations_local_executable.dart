@@ -7,33 +7,26 @@ import 'package:komodo_defi_framework/src/native/kdf_executable_finder.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 class KdfOperationsLocalExecutable implements IKdfOperations {
   KdfOperationsLocalExecutable._(
-    this._logCallback,
     this._kdfRemote, {
     Duration startupTimeout = const Duration(seconds: 30),
     KdfExecutableFinder? executableFinder,
     this.executableName = 'kdf',
-  })  : _startupTimeout = startupTimeout,
-        _executableFinder =
-            executableFinder ?? KdfExecutableFinder(logCallback: _logCallback);
+  }) : _startupTimeout = startupTimeout,
+       _executableFinder = executableFinder ?? KdfExecutableFinder();
 
   factory KdfOperationsLocalExecutable.create({
-    required void Function(String) logCallback,
     required LocalConfig config,
     Duration startupTimeout = const Duration(seconds: 30),
     String executableName = 'kdf',
   }) {
     return KdfOperationsLocalExecutable._(
-      logCallback,
-      KdfOperationsRemote.create(
-        logCallback: logCallback,
-        rpcUrl: _url,
-        userpass: config.rpcPassword,
-      ),
+      KdfOperationsRemote.create(rpcUrl: _url, userpass: config.rpcPassword),
       startupTimeout: startupTimeout,
       executableName: executableName,
     );
@@ -41,9 +34,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   final KdfOperationsRemote _kdfRemote;
   final Duration _startupTimeout;
-  final void Function(String) _logCallback;
   final KdfExecutableFinder _executableFinder;
   final String executableName;
+  final _log = Logger('KdfOperationsLocalExecutable');
 
   // Use nullable fields instead of late, for the process and listeners,
   // because it is not guaranteed that they will be initialized before
@@ -64,7 +57,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
           ) !=
           null;
     } catch (e) {
-      _logCallback('Error checking availability: $e');
+      _log.severe('Error checking availability: $e');
       return false;
     }
   }
@@ -73,9 +66,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   Future<Process> _startKdf(JsonMap params) async {
     final executablePath =
-        (await _executableFinder.findExecutable(executableName: executableName))
-            ?.absolute
-            .path;
+        (await _executableFinder.findExecutable(
+          executableName: executableName,
+        ))?.absolute.path;
     if (executablePath == null) {
       throw KdfException(
         'KDF executable not found in any of the expected locations. '
@@ -87,6 +80,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     // specifically needed on linux, which currently resets the file permissions
     // on every build.
     await _tryGrantExecutablePermissions(executablePath);
+    _log.fine('Ensured executable permissions for: $executablePath');
 
     if (!params.containsKey('coins')) {
       throw ArgumentError.value(
@@ -111,6 +105,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         coinsList.toJsonString(),
         flush: true,
       );
+      _log.fine('Coins config written to: ${coinsConfigFile.path}');
 
       final environment = Map<String, String>.of(Platform.environment)
         ..['MM_COINS_PATH'] = coinsConfigFile.path;
@@ -122,7 +117,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         runInShell: true,
       );
 
-      _logCallback('Launched executable: $executablePath');
+      _log.info('Launched executable: $executablePath');
       _attachProcessListeners(newProcess, coinsTempDir);
 
       return newProcess;
@@ -131,7 +126,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       // be thrown before process listeners are attached, so ensure that the
       // dangling resources are cleaned up.
       await coinsTempDir?.delete(recursive: true).catchError((Object error) {
-        _logCallback('Failed to delete temporary directory: $error');
+        _log.warning('Failed to delete temporary directory: $error');
         return Directory('');
       });
       if (e is KdfException) {
@@ -149,6 +144,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   /// if not, run chmod +x on it
   Future<void> _tryGrantExecutablePermissions(String executablePath) async {
     if (Platform.isLinux || Platform.isMacOS) {
+      _log.fine('Granting executable permissions for: $executablePath');
       final result = await Process.run('chmod', ['+x', executablePath]);
       if (result.exitCode != 0) {
         throw KdfException(
@@ -162,11 +158,11 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   void _attachProcessListeners(Process newProcess, Directory tempDir) {
     stdoutSub = newProcess.stdout.listen((event) {
-      _logCallback('[INFO]: ${String.fromCharCodes(event)}');
+      _log.info('[INFO]: ${String.fromCharCodes(event)}');
     });
 
     stderrSub = newProcess.stderr.listen((event) {
-      _logCallback('[ERROR]: ${String.fromCharCodes(event)}');
+      _log.warning('[ERROR]: ${String.fromCharCodes(event)}');
     });
 
     newProcess.exitCode
@@ -176,14 +172,14 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   Future<void> _cleanUpOnProcessExit(int exitCode, Directory tempDir) async {
     try {
-      _logCallback('KDF process exited with code: $exitCode');
+      _log.info('KDF process exited with code: $exitCode');
       await stdoutSub?.cancel();
       await stderrSub?.cancel();
 
       await tempDir.delete(recursive: true);
-      _logCallback('Temporary directory deleted successfully.');
+      _log.info('Temporary directory deleted successfully.');
     } catch (error) {
-      _logCallback('Failed to delete temporary directory: $error');
+      _log.warning('Failed to delete temporary directory: $error');
     } finally {
       _process = null;
     }
@@ -196,11 +192,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     }
 
     final coinsCount = params.valueOrNull<List<dynamic>>('coins')?.length;
-    _logCallback('Starting KDF with parameters: ${{
-      ...params,
-      'coins': '{{OMITTED $coinsCount ITEMS}}',
-      'log_level': logLevel ?? 3,
-    }.censored().toJsonString()}');
+    _log.info(
+      'Starting KDF with parameters: ${{...params, 'coins': '{{OMITTED $coinsCount ITEMS}}', 'log_level': logLevel ?? 3}.censored().toJsonString()}',
+    );
 
     try {
       _process = await _startKdf(params);
@@ -228,7 +222,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
       return KdfStartupResult.spawnError;
     } catch (e) {
-      _logCallback('Error starting KDF: $e');
+      _log.severe('Error starting KDF: $e');
       if (e is ArgumentError) {
         return KdfStartupResult.invalidParams;
       }
@@ -248,12 +242,12 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   Future<StopStatus> kdfStop() async {
     var stopStatus = StopStatus.ok;
     try {
-      stopStatus = await _kdfRemote
-          .kdfStop()
-          .catchError((_) => StopStatus.errorStopping);
+      stopStatus = await _kdfRemote.kdfStop().catchError(
+        (_) => StopStatus.errorStopping,
+      );
 
       if (_process == null || _process?.pid == 0) {
-        _logCallback('Process is not running, skipping shutdown.');
+        _log.info('Process is not running, skipping shutdown.');
         return StopStatus.notRunning;
       }
 
@@ -266,7 +260,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         await _process?.exitCode.timeout(
           const Duration(seconds: 10),
           onTimeout: () {
-            _logCallback('KDF Process did not terminate in time.');
+            _log.warning('KDF Process did not terminate in time.');
             stopStatus = StopStatus.errorStopping;
             return -1; // not used
           },
@@ -274,9 +268,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       }
 
       _process = null;
-      _logCallback('KDF process cleanup complete');
+      _log.info('KDF process cleanup complete');
     } catch (e, stack) {
-      _logCallback('Critical error during KDF cleanup: $e\n$stack');
+      _log.severe('Critical error during KDF cleanup: $e\n$stack');
     }
 
     return stopStatus;

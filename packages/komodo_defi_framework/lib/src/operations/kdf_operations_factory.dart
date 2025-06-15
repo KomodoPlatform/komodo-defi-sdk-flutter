@@ -4,23 +4,21 @@ import 'package:komodo_defi_framework/src/operations/kdf_operations_remote.dart'
 import 'package:komodo_defi_framework/src/operations/kdf_operations_wasm.dart'
     if (dart.library.io) 'package:komodo_defi_framework/src/operations/kdf_operations_native.dart'
     as local;
+import 'package:logging/logging.dart';
 
-IKdfOperations createKdfOperations({
-  required void Function(String)? logCallback,
-  required IKdfHostConfig hostConfig,
-}) {
-  return _selectKdfImplementation(
-    logCallback: logCallback,
-    hostConfig: hostConfig,
-  );
+final _log = Logger('KdfOperationsFactory');
+
+IKdfOperations createKdfOperations({required IKdfHostConfig hostConfig}) {
+  _log.finer('createKdfOperations for ${hostConfig.runtimeType}');
+  final implementation = _selectKdfImplementation(hostConfig: hostConfig);
+  _log.fine('Selected implementation: ${implementation.operationsName}');
+  return implementation;
 }
 
 Future<IKdfOperations> createKdfOperationsAsync({
-  required void Function(String)? logCallback,
   required IKdfHostConfig hostConfig,
 }) async {
   final implementation = await _selectKdfImplementationAsync(
-    logCallback: logCallback,
     hostConfig: hostConfig,
   );
   if (await implementation.isAvailable(hostConfig)) {
@@ -31,19 +29,15 @@ Future<IKdfOperations> createKdfOperationsAsync({
   );
 }
 
-IKdfOperations _selectKdfImplementation({
-  required void Function(String)? logCallback,
-  required IKdfHostConfig hostConfig,
-}) {
+IKdfOperations _selectKdfImplementation({required IKdfHostConfig hostConfig}) {
+  _log.finer('Selecting implementation (sync) for ${hostConfig.runtimeType}');
   switch (hostConfig.runtimeType) {
     case LocalConfig:
-      return local.createLocalKdfOperations(
-        logCallback: logCallback ?? print,
-        config: hostConfig as LocalConfig,
-      );
+      _log.finer('Using LocalConfig operations');
+      return local.createLocalKdfOperations(config: hostConfig as LocalConfig);
     case RemoteConfig:
+      _log.finer('Using RemoteConfig operations');
       return KdfOperationsRemote.create(
-        logCallback: logCallback ?? print,
         rpcUrl: (hostConfig as RemoteConfig).rpcUrl,
         userpass: hostConfig.rpcPassword,
       );
@@ -53,19 +47,17 @@ IKdfOperations _selectKdfImplementation({
 }
 
 Future<IKdfOperations> _selectKdfImplementationAsync({
-  required void Function(String)? logCallback,
   required IKdfHostConfig hostConfig,
 }) async {
+  _log.finer('Selecting implementation (async) for ${hostConfig.runtimeType}');
   switch (hostConfig.runtimeType) {
     case LocalConfig:
-      return local.createLocalKdfOperations(
-        logCallback: logCallback ?? print,
-        config: hostConfig as LocalConfig,
-      );
+      _log.finer('Using LocalConfig operations');
+      return local.createLocalKdfOperations(config: hostConfig as LocalConfig);
 
     case RemoteConfig:
+      _log.finer('Using RemoteConfig operations');
       return KdfOperationsRemote.create(
-        logCallback: logCallback ?? print,
         rpcUrl: Uri.parse(
           '${(hostConfig as RemoteConfig).https == true ? 'https' : 'http'}://${hostConfig.ipAddress}:${hostConfig.port}',
         ),
