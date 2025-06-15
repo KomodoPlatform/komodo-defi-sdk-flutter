@@ -84,8 +84,7 @@ class CoinFilter {
   const CoinFilter();
 
   static const _filteredCoins = {
-    // TODO: Remove when BCH is changed to UTXO protocol in the config
-    'BCH': 'Bitcoin Cash',
+    // Add coins to be filtered out here
   };
 
   static const _filteredProtocolSubTypes = {
