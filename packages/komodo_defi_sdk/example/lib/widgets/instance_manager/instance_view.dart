@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kdf_sdk_example/main.dart';
+import 'package:kdf_sdk_example/screens/swap_page.dart';
 import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/auth/seed_dialog.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_status.dart';
@@ -40,6 +41,7 @@ class _InstanceViewState extends State<InstanceView> {
   final _formKey = GlobalKey<FormState>();
   String? _mnemonic;
   Timer? _refreshUsersTimer;
+  int _selectedMenuIndex = 0;
 
   @override
   void initState() {
@@ -175,7 +177,8 @@ class _InstanceViewState extends State<InstanceView> {
     } on AuthException catch (e) {
       _showError(
         e.type == AuthExceptionType.incorrectPassword
-            ? 'HD mode requires a valid BIP39 seed phrase. The imported encrypted seed is not compatible.'
+            ? 'HD mode requires a valid BIP39 seed phrase. '
+                'The imported encrypted seed is not compatible.'
             : 'Registration failed: ${e.message}',
       );
     }
@@ -185,8 +188,7 @@ class _InstanceViewState extends State<InstanceView> {
     setState(() {
       widget.state.walletNameController.text = user.walletId.name;
       widget.state.passwordController.text = '';
-      widget.state.isHdMode =
-          user.authOptions.derivationMethod == DerivationMethod.hdWallet;
+      widget.state.isHdMode = user.isHd;
     });
   }
 
@@ -195,15 +197,21 @@ class _InstanceViewState extends State<InstanceView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        InstanceStatus(instance: widget.instance),
-        const SizedBox(height: 16),
-        Text(widget.statusMessage),
-        if (widget.currentUser != null) ...[
-          Text(
-            'Wallet Mode: ${widget.currentUser!.authOptions.derivationMethod == DerivationMethod.hdWallet ? 'HD' : 'Legacy'}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
+        Row(
+          children: [
+            Expanded(child: Text(widget.statusMessage)),
+            const SizedBox(width: 16),
+            if (widget.currentUser != null) ...[
+              Text(
+                '${widget.currentUser!.walletId.name} • '
+                '${widget.currentUser!.isHd ? 'HD' : 'Legacy'}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(width: 16),
+            ],
+            InstanceStatus(instance: widget.instance),
+          ],
+        ),
         const SizedBox(height: 16),
         if (widget.currentUser == null)
           Expanded(
@@ -212,77 +220,85 @@ class _InstanceViewState extends State<InstanceView> {
               child: Form(
                 key: _formKey,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
-                child: _buildAuthForm(),
+                child: AuthForm(
+                  state: widget.state,
+                  onSignIn: _signIn,
+                  onShowSeedDialog: _showSeedDialog,
+                  onSelectKnownUser: _onSelectKnownUser,
+                  onPasswordVisibilityToggle: () {
+                    setState(() {
+                      widget.state.obscurePassword =
+                          !widget.state.obscurePassword;
+                    });
+                  },
+                  onHdModeToggle: (bool value) {
+                    setState(() => widget.state.isHdMode = value);
+                  },
+                  validator: _validator,
+                ),
               ),
             ),
           )
         else
-          Expanded(child: _buildLoggedInView()),
-      ],
-    );
-  }
-
-  Widget _buildLoggedInView() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            FilledButton.tonalIcon(
-              onPressed: _signOut,
-              icon: const Icon(Icons.logout),
-              label: const Text('Sign Out'),
-            ),
-            if (_mnemonic == null) ...[
-              FilledButton.tonal(
-                onPressed: () => _getMnemonic(encrypted: false),
-                child: const Text('Get Plaintext Mnemonic'),
-              ),
-              FilledButton.tonal(
-                onPressed: () => _getMnemonic(encrypted: true),
-                child: const Text('Get Encrypted Mnemonic'),
-              ),
-            ],
-          ],
-        ),
-        if (_mnemonic != null) ...[
-          const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              subtitle: Text(_mnemonic!),
-              leading: const Icon(Icons.copy),
-              trailing: IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => setState(() => _mnemonic = null),
-              ),
-              onTap: () {
+          Expanded(
+            child: LoggedInView(
+              selectedMenuIndex: _selectedMenuIndex,
+              mnemonic: _mnemonic,
+              onSignOut: _signOut,
+              onGetMnemonic: _getMnemonic,
+              onCloseMnemonic: () => setState(() => _mnemonic = null),
+              onMenuChanged:
+                  (int index) => setState(() => _selectedMenuIndex = index),
+              onMnemonicTap: () {
                 Clipboard.setData(ClipboardData(text: _mnemonic!));
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Mnemonic copied to clipboard')),
                 );
               },
+              filteredAssets: widget.filteredAssets,
+              searchController: widget.searchController,
+              onNavigateToAsset: widget.onNavigateToAsset,
+              authOptions: widget.currentUser!.authOptions,
             ),
           ),
-        ],
-        const SizedBox(height: 16),
-        Expanded(
-          child: InstanceAssetList(
-            assets: widget.filteredAssets,
-            searchController: widget.searchController,
-            onAssetSelected: widget.onNavigateToAsset,
-            authOptions: widget.currentUser!.authOptions,
-          ),
-        ),
       ],
     );
   }
 
-  Widget _buildAuthForm() {
+  String? _validator(String? value) {
+    if (value?.isEmpty ?? true) {
+      return 'This field is required';
+    }
+    return null;
+  }
+}
+
+class AuthForm extends StatelessWidget {
+  const AuthForm({
+    required this.state,
+    required this.onSignIn,
+    required this.onShowSeedDialog,
+    required this.onSelectKnownUser,
+    required this.onPasswordVisibilityToggle,
+    required this.onHdModeToggle,
+    required this.validator,
+    super.key,
+  });
+
+  final InstanceState state;
+  final VoidCallback onSignIn;
+  final VoidCallback onShowSeedDialog;
+  final void Function(KdfUser) onSelectKnownUser;
+  final VoidCallback onPasswordVisibilityToggle;
+  final ValueChanged<bool> onHdModeToggle;
+  final String? Function(String?) validator;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.state.knownUsers.isNotEmpty) ...[
+        if (state.knownUsers.isNotEmpty) ...[
           Text(
             'Saved Wallets:',
             style: Theme.of(context).textTheme.titleMedium,
@@ -292,10 +308,10 @@ class _InstanceViewState extends State<InstanceView> {
             spacing: 8,
             runSpacing: 8,
             children:
-                widget.state.knownUsers.map((user) {
+                state.knownUsers.map((user) {
                   return ActionChip(
                     key: Key(user.walletId.compoundId),
-                    onPressed: () => _onSelectKnownUser(user),
+                    onPressed: () => onSelectKnownUser(user),
                     label: Text(user.walletId.name),
                   );
                 }).toList(),
@@ -303,29 +319,23 @@ class _InstanceViewState extends State<InstanceView> {
           const SizedBox(height: 16),
         ],
         TextFormField(
-          controller: widget.state.walletNameController,
+          controller: state.walletNameController,
           decoration: const InputDecoration(labelText: 'Wallet Name'),
-          validator: _validator,
+          validator: validator,
         ),
         TextFormField(
-          controller: widget.state.passwordController,
-          validator: _validator,
+          controller: state.passwordController,
+          validator: validator,
           decoration: InputDecoration(
             labelText: 'Password',
             suffixIcon: IconButton(
               icon: Icon(
-                widget.state.obscurePassword
-                    ? Icons.visibility
-                    : Icons.visibility_off,
+                state.obscurePassword ? Icons.visibility : Icons.visibility_off,
               ),
-              onPressed: () {
-                setState(() {
-                  widget.state.obscurePassword = !widget.state.obscurePassword;
-                });
-              },
+              onPressed: onPasswordVisibilityToggle,
             ),
           ),
-          obscureText: widget.state.obscurePassword,
+          obscureText: state.obscurePassword,
         ),
         SwitchListTile(
           title: const Row(
@@ -342,21 +352,19 @@ class _InstanceViewState extends State<InstanceView> {
             ],
           ),
           subtitle: const Text('Enable HD multi-address mode'),
-          value: widget.state.isHdMode,
-          onChanged: (value) {
-            setState(() => widget.state.isHdMode = value);
-          },
+          value: state.isHdMode,
+          onChanged: onHdModeToggle,
         ),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             FilledButton.tonal(
-              onPressed: _signIn,
+              onPressed: onSignIn,
               child: const Text('Sign In'),
             ),
             FilledButton(
-              onPressed: _showSeedDialog,
+              onPressed: onShowSeedDialog,
               child: const Text('Register'),
             ),
           ],
@@ -364,11 +372,348 @@ class _InstanceViewState extends State<InstanceView> {
       ],
     );
   }
+}
 
-  String? _validator(String? value) {
-    if (value?.isEmpty ?? true) {
-      return 'This field is required';
+class LoggedInView extends StatelessWidget {
+  const LoggedInView({
+    required this.selectedMenuIndex,
+    required this.mnemonic,
+    required this.onSignOut,
+    required this.onGetMnemonic,
+    required this.onCloseMnemonic,
+    required this.onMenuChanged,
+    required this.onMnemonicTap,
+    required this.filteredAssets,
+    required this.searchController,
+    required this.onNavigateToAsset,
+    required this.authOptions,
+    super.key,
+  });
+
+  final int selectedMenuIndex;
+  final String? mnemonic;
+  final VoidCallback onSignOut;
+  final void Function({required bool encrypted}) onGetMnemonic;
+  final VoidCallback onCloseMnemonic;
+  final ValueChanged<int> onMenuChanged;
+  final VoidCallback onMnemonicTap;
+  final List<Asset> filteredAssets;
+  final TextEditingController searchController;
+  final void Function(Asset) onNavigateToAsset;
+  final AuthOptions authOptions;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth > 800;
+
+        if (isDesktop) {
+          return DesktopLayout(
+            selectedMenuIndex: selectedMenuIndex,
+            onMenuChanged: onMenuChanged,
+            mnemonic: mnemonic,
+            onSignOut: onSignOut,
+            onGetMnemonic: onGetMnemonic,
+            onCloseMnemonic: onCloseMnemonic,
+            onMnemonicTap: onMnemonicTap,
+            filteredAssets: filteredAssets,
+            searchController: searchController,
+            onNavigateToAsset: onNavigateToAsset,
+            authOptions: authOptions,
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Top button row - always visible
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: onSignOut,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Sign Out'),
+                ),
+                if (mnemonic == null) ...[
+                  FilledButton.tonal(
+                    onPressed: () => onGetMnemonic(encrypted: false),
+                    child: const Text('Get Plaintext Mnemonic'),
+                  ),
+                  FilledButton.tonal(
+                    onPressed: () => onGetMnemonic(encrypted: true),
+                    child: const Text('Get Encrypted Mnemonic'),
+                  ),
+                ],
+              ],
+            ),
+            if (mnemonic != null) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  subtitle: Text(mnemonic!),
+                  leading: const Icon(Icons.copy),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: onCloseMnemonic,
+                  ),
+                  onTap: onMnemonicTap,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+
+            // Main content area with responsive layout
+            Expanded(
+              child: MobileLayout(
+                selectedMenuIndex: selectedMenuIndex,
+                onMenuChanged: onMenuChanged,
+                filteredAssets: filteredAssets,
+                searchController: searchController,
+                onNavigateToAsset: onNavigateToAsset,
+                authOptions: authOptions,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class DesktopLayout extends StatelessWidget {
+  const DesktopLayout({
+    required this.selectedMenuIndex,
+    required this.onMenuChanged,
+    required this.mnemonic,
+    required this.onSignOut,
+    required this.onGetMnemonic,
+    required this.onCloseMnemonic,
+    required this.onMnemonicTap,
+    required this.filteredAssets,
+    required this.searchController,
+    required this.onNavigateToAsset,
+    required this.authOptions,
+    super.key,
+  });
+
+  final int selectedMenuIndex;
+  final ValueChanged<int> onMenuChanged;
+  final String? mnemonic;
+  final VoidCallback onSignOut;
+  final void Function({required bool encrypted}) onGetMnemonic;
+  final VoidCallback onCloseMnemonic;
+  final VoidCallback onMnemonicTap;
+  final List<Asset> filteredAssets;
+  final TextEditingController searchController;
+  final void Function(Asset) onNavigateToAsset;
+  final AuthOptions authOptions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left sidebar menu - full height
+        SizedBox(
+          width: 200,
+          child: Card(
+            child: Column(
+              children: [
+                MenuButton(
+                  index: 0,
+                  icon: Icons.account_balance_wallet,
+                  label: 'Wallet',
+                  isSelected: selectedMenuIndex == 0,
+                  onTap: onMenuChanged,
+                ),
+                MenuButton(
+                  index: 1,
+                  icon: Icons.swap_horiz,
+                  label: 'Swap',
+                  isSelected: selectedMenuIndex == 1,
+                  onTap: onMenuChanged,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+
+        // Main content area
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Top button row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: onSignOut,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Sign Out'),
+                  ),
+                  if (mnemonic == null) ...[
+                    FilledButton.tonal(
+                      onPressed: () => onGetMnemonic(encrypted: false),
+                      child: const Text('Get Plaintext Mnemonic'),
+                    ),
+                    FilledButton.tonal(
+                      onPressed: () => onGetMnemonic(encrypted: true),
+                      child: const Text('Get Encrypted Mnemonic'),
+                    ),
+                  ],
+                ],
+              ),
+              if (mnemonic != null) ...[
+                const SizedBox(height: 16),
+                Card(
+                  child: ListTile(
+                    subtitle: Text(mnemonic!),
+                    leading: const Icon(Icons.copy),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: onCloseMnemonic,
+                    ),
+                    onTap: onMnemonicTap,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+
+              // Content area
+              Expanded(
+                child: SelectedContent(
+                  selectedMenuIndex: selectedMenuIndex,
+                  filteredAssets: filteredAssets,
+                  searchController: searchController,
+                  onNavigateToAsset: onNavigateToAsset,
+                  authOptions: authOptions,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class MobileLayout extends StatelessWidget {
+  const MobileLayout({
+    required this.selectedMenuIndex,
+    required this.onMenuChanged,
+    required this.filteredAssets,
+    required this.searchController,
+    required this.onNavigateToAsset,
+    required this.authOptions,
+    super.key,
+  });
+
+  final int selectedMenuIndex;
+  final ValueChanged<int> onMenuChanged;
+  final List<Asset> filteredAssets;
+  final TextEditingController searchController;
+  final void Function(Asset) onNavigateToAsset;
+  final AuthOptions authOptions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Main content area
+        Expanded(
+          child: SelectedContent(
+            selectedMenuIndex: selectedMenuIndex,
+            filteredAssets: filteredAssets,
+            searchController: searchController,
+            onNavigateToAsset: onNavigateToAsset,
+            authOptions: authOptions,
+          ),
+        ),
+
+        // Bottom navigation
+        Card(
+          margin: EdgeInsets.zero,
+          child: BottomNavigationBar(
+            currentIndex: selectedMenuIndex,
+            onTap: onMenuChanged,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.account_balance_wallet),
+                label: 'Wallet',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.swap_horiz),
+                label: 'SwapPage',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class MenuButton extends StatelessWidget {
+  const MenuButton({
+    required this.index,
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    super.key,
+  });
+
+  final int index;
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(label),
+      selected: isSelected,
+      onTap: () => onTap(index),
+    );
+  }
+}
+
+class SelectedContent extends StatelessWidget {
+  const SelectedContent({
+    required this.selectedMenuIndex,
+    required this.filteredAssets,
+    required this.searchController,
+    required this.onNavigateToAsset,
+    required this.authOptions,
+    super.key,
+  });
+
+  final int selectedMenuIndex;
+  final List<Asset> filteredAssets;
+  final TextEditingController searchController;
+  final void Function(Asset) onNavigateToAsset;
+  final AuthOptions authOptions;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (selectedMenuIndex) {
+      case 0:
+        return InstanceAssetList(
+          assets: filteredAssets,
+          searchController: searchController,
+          onAssetSelected: onNavigateToAsset,
+          authOptions: authOptions,
+        );
+      case 1:
+        return const SwapPage();
+      default:
+        return const SizedBox.shrink();
     }
-    return null;
   }
 }

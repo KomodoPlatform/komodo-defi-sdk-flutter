@@ -8,6 +8,7 @@ import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
+import 'package:komodo_defi_sdk/src/swaps/swap_history_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -55,6 +56,9 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// * [transactions] - Manages transaction history and monitoring
 /// * [withdrawals] - Handles asset withdrawal operations
 /// * [addresses] - Provides address validation and format conversion
+/// * [orderbook] - Manages orderbook data, best orders, and depth information
+/// * [swaps] - Handles swap operations including preview, execution, and cancellation
+/// * [swapHistory] - Manages swap history, active swaps monitoring, and swap data streaming
 ///
 /// ## Usage Example
 ///
@@ -75,9 +79,50 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// final btc = sdk.assets.findAssetsByTicker('BTC').first;
 /// await sdk.assets.activateAsset(btc).last;
 ///
+/// // Activate Komodo
+/// final kmd = sdk.assets.findAssetsByTicker('KMD').first;
+/// await sdk.assets.activateAsset(kmd).last;
+///
 /// // Get addresses
 /// final addresses = await sdk.pubkeys.getPubkeys(btc);
 /// print('BTC Addresses: ${addresses.keys.map((k) => k.address).join(", ")}');
+///
+/// // Preview a swap
+/// final swapParams = SwapParameters(
+///   base: btc.id,
+///   rel: kmd.id,
+///   price: Decimal.fromInt(100),
+///   volume: Decimal.parse('0.01'),
+/// );
+/// final preview = await sdk.swaps.previewSwap(swapParams);
+/// print('Swap fees: ${preview.totalFees}');
+///
+/// // Execute a swap
+/// await for (final progress in sdk.swaps.swap(swapParams)) {
+///   print('Swap status: ${progress.status} - ${progress.message}');
+///   if (progress.status == SwapStatus.complete) {
+///     print('Swap completed: ${progress.swapResult?.uuid}');
+///     break;
+///   }
+/// }
+///
+/// // Get swap history
+/// final btcAsset = sdk.assets.findAssetsByTicker('BTC').first;
+/// final kmdAsset = sdk.assets.findAssetsByTicker('KMD').first;
+/// final swapHistory = await sdk.swapHistory.getSwapHistory(
+///   pagination: PageBasedSwapPagination(pageNumber: 1, itemsPerPage: 10),
+///   myCoin: btcAsset.id,
+///   otherCoin: kmdAsset.id,
+/// );
+/// print('Found ${swapHistory.foundRecords} swaps');
+///
+/// // Watch for new swaps
+/// await for (final newSwap in sdk.swapHistory.watchSwaps(
+///   myCoin: btcAsset.id,
+///   otherCoin: kmdAsset.id,
+/// )) {
+///   print('New swap detected: ${newSwap.uuid}');
+/// }
 /// ```
 ///
 /// ## Cleanup
@@ -238,6 +283,29 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Throws [StateError] if accessed before initialization.
   BalanceManager get balances =>
       _assertSdkInitialized(_container<BalanceManager>());
+
+  /// The orderbook manager instance.
+  ///
+  /// Handles orderbook data fetching, streaming, and watching functionality.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  OrderbookManager get orderbook =>
+      _assertSdkInitialized(_container<OrderbookManager>());
+
+  /// The swap manager instance.
+  ///
+  /// Handles swap operations including preview, execution, and cancellation.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  SwapManager get swaps => _assertSdkInitialized(_container<SwapManager>());
+
+  /// The swap history manager instance.
+  ///
+  /// Handles swap history fetching, streaming, and monitoring of active swaps.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  SwapHistoryManager get swapHistory =>
+      _assertSdkInitialized(_container<SwapHistoryManager>());
 
   /// Initializes the SDK instance.
   ///
