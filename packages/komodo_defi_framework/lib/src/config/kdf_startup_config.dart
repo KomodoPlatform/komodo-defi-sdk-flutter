@@ -214,7 +214,7 @@ class KdfStartupConfig {
       if (hdAccountId != null) 'hd_account_id': hdAccountId,
       'https': https,
       'coins': coins,
-      'use_trading_proto_v2': true,
+      // 'use_trading_proto_v2': true,
       if (seedNodes != null && seedNodes!.isNotEmpty) 'seednodes': seedNodes,
       if (disableP2p != null) 'disable_p2p': disableP2p,
       if (iAmSeed != null) 'i_am_seed': iAmSeed,
