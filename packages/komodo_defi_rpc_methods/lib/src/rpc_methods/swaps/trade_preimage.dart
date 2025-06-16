@@ -27,7 +27,6 @@ class TradePreimageRequest
   @override
   Map<String, dynamic> toJson() => {
     ...super.toJson(),
-    'userpass': rpcPass,
     'params': {
       'base': base,
       'rel': rel,
@@ -38,6 +37,7 @@ class TradePreimageRequest
     },
   };
 
+  // Used by BaseRequest to parse the response. Equivalent to fromJson
   @override
   TradePreimageResponse parse(Map<String, dynamic> json) =>
       TradePreimageResponse.fromJson(json);

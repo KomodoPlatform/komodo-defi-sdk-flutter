@@ -35,8 +35,8 @@ class SwapStrategyFactory {
 
   /// Creates a strategy based on swap parameters or defaults to smart
   SwapStrategy createStrategyForParameters(SwapParameters parameters) {
-    // Here you could add logic to automatically select strategy based on parameters
-    // For now, default to smart strategy
+    // Here you could add logic to automatically select strategy based
+    // on parameters. For now, default to smart strategy
     return createStrategy(SwapStrategyType.smart);
   }
 

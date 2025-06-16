@@ -39,9 +39,7 @@ class NumericFormatsValue extends Equatable {
   final FractionalValue fraction;
 
   /// Converts this value to a [Decimal].
-  Decimal toDecimal() {
-    return Decimal.parse(decimal);
-  }
+  Decimal toDecimal() => Decimal.parse(decimal);
 
   /// Converts this value to a JSON map.
   Map<String, dynamic> toJson() => {
@@ -117,17 +115,23 @@ class RationalValue extends Equatable {
 
   /// Creates a [RationalValue] from a JSON list.
   factory RationalValue.fromJson(List<dynamic> json) {
+    if (json.length != 2) {
+      throw const FormatException(
+        'Invalid JSON format for RationalValue: expected exactly 2 elements',
+      );
+    }
+
     return RationalValue(
-      numerator: json[0] as List<dynamic>,
-      denominator: json[1] as List<dynamic>,
+      numerator: BigIntArray.fromJson(json[0] as List<dynamic>),
+      denominator: BigIntArray.fromJson(json[1] as List<dynamic>),
     );
   }
 
   /// The numerator part of the rational value.
-  final List<dynamic> numerator;
+  final BigIntArray numerator;
 
   /// The denominator part of the rational value.
-  final List<dynamic> denominator;
+  final BigIntArray denominator;
 
   /// Converts this value to a [Rational].
   ///
@@ -137,72 +141,11 @@ class RationalValue extends Equatable {
   ///
   /// Throws [FormatException] if the input data is malformed.
   Rational toRational() {
-    // Validate numerator format
-    if (numerator.length != 2) {
-      throw const FormatException(
-        'Invalid numerator format: expected [sign, array]',
-      );
-    }
-
-    final numSign = numerator[0] as int;
-    // Validate sign values are only -1, 0, or 1
-    if (numSign < -1 || numSign > 1) {
-      throw const FormatException(
-        'Invalid numerator sign: must be -1, 0, or 1',
-      );
-    }
-
-    if (numerator[1] is! List) {
-      throw const FormatException(
-        'Invalid numerator: second element must be a list',
-      );
-    }
-
-    final numParts = numerator[1] as List<dynamic>;
-    // Check that array is not empty
-    if (numParts.isEmpty) {
-      throw const FormatException('Invalid numerator: empty parts array');
-    }
-
-    // Validate denominator format
-    if (denominator.length != 2) {
-      throw const FormatException(
-        'Invalid denominator format: expected [sign, array]',
-      );
-    }
-
-    final denomSign = denominator[0] as int;
-    // Validate sign values
-    if (denomSign < -1 || denomSign > 1) {
-      throw const FormatException(
-        'Invalid denominator sign: must be -1, 0, or 1',
-      );
-    }
-
-    if (denominator[1] is! List) {
-      throw const FormatException(
-        'Invalid denominator: second element must be a list',
-      );
-    }
-
-    final denomParts = denominator[1] as List<dynamic>;
-    // Check that array is not empty
-    if (denomParts.isEmpty) {
-      throw const FormatException('Invalid denominator: empty parts array');
-    }
-
-    // Check for excessively large numbers (arbitrary limit of 1000 parts which is more than enough)
-    if (numParts.length > 1000 || denomParts.length > 1000) {
-      throw const FormatException(
-        'Input too large: number of parts exceeds maximum allowed',
-      );
-    }
-
     try {
       // Convert uint32 array to BigInt (little-endian order)
       // Each element represents a 32-bit part: sum of (parts[i] * (2^32)^i)
-      var numValue = _uint32ArrayToBigInt(numParts);
-      var denomValue = _uint32ArrayToBigInt(denomParts);
+      final numValue = numerator.toBigInt();
+      final denomValue = denominator.toBigInt();
 
       // Check for division by zero
       if (denomValue == BigInt.zero) {
@@ -211,10 +154,6 @@ class RationalValue extends Equatable {
         );
       }
 
-      // Apply signs
-      if (numSign < 0) numValue = -numValue;
-      if (denomSign < 0) denomValue = -denomValue;
-
       return Rational(numValue, denomValue);
     } on RangeError catch (e) {
       throw FormatException('Invalid data in array: ${e.message}');
@@ -222,47 +161,6 @@ class RationalValue extends Equatable {
       if (e is FormatException) rethrow;
       throw FormatException('Error converting to Rational: $e');
     }
-  }
-
-  /// Converts a uint32 array in little-endian order to a [BigInt].
-  ///
-  /// Each element in the array represents a 32-bit part of the big integer.
-  /// The value is calculated as the sum of each part multiplied by powers
-  /// of 2^32.
-  ///
-  /// Throws [FormatException] if any part is not a valid uint32 value.
-  BigInt _uint32ArrayToBigInt(List<dynamic> parts) {
-    var result = BigInt.zero;
-    final base = BigInt.from(0x100000000); // 2^32 = 4294967296
-    const maxUint32 = 0xFFFFFFFF; // Maximum value for uint32
-
-    for (var i = 0; i < parts.length; i++) {
-      final partValue = parts[i];
-
-      // Validate part is an integer
-      if (partValue is! int) {
-        throw FormatException('Array element at index $i is not an integer');
-      }
-
-      // Validate part is within uint32 range (0 to 4294967295)
-      if (partValue < 0 || partValue > maxUint32) {
-        throw FormatException(
-          'Array element at index $i is outside uint32 range: $partValue',
-        );
-      }
-
-      final part = BigInt.from(partValue);
-
-      // Guard against overflow in large calculations
-      try {
-        final term = part * base.pow(i);
-        result += term;
-      } catch (e) {
-        throw FormatException('Numeric overflow occurred at index $i');
-      }
-    }
-
-    return result;
   }
 
   /// Converts this value to a [Decimal].
@@ -277,8 +175,103 @@ class RationalValue extends Equatable {
   }
 
   /// Converts this value to a JSON list.
-  List<dynamic> toJson() => [numerator, denominator];
+  List<dynamic> toJson() => [numerator.toJson(), denominator.toJson()];
 
   @override
   List<Object?> get props => [numerator, denominator];
+}
+
+/// Represents a big integer as an array of 32-bit parts in little-endian order.
+/// Used for JSON formats like: [1, ["0", "1", "2"]]
+/// The first element is the sign (1 for positive, -1 for negative),
+/// and the second element is a list of stringified 32-bit parts.
+class BigIntArray extends Equatable {
+  const BigIntArray(this.sign, this.parts);
+
+  /// Creates a [BigIntArray] from a JSON-compatible format.
+  factory BigIntArray.fromJson(List<dynamic> json) {
+    if (json.length != 2) {
+      throw const FormatException('Invalid JSON format for BigIntArray');
+    }
+
+    final sign = json[0] as int;
+    final parts = (json[1] as List<dynamic>)
+        .map((part) => BigInt.from(part as int))
+        .toList();
+
+    return BigIntArray(sign, parts);
+  }
+
+  factory BigIntArray.fromBigInt(BigInt value) {
+    if (value == BigInt.zero) {
+      return BigIntArray(1, [BigInt.zero]);
+    }
+
+    final sign = value.isNegative ? -1 : 1;
+    final absValue = value.abs();
+    final parts = <BigInt>[];
+    final maxUint32 = BigInt.from(0xFFFFFFFF); // 2^32 - 1
+
+    // Convert to uint32 array in little-endian order
+    var current = absValue;
+    while (current > BigInt.zero) {
+      parts.add(current & maxUint32);
+      current >>= 32;
+    }
+
+    return BigIntArray(sign, parts);
+  }
+
+  /// The sign of the big integer: 1 for positive, -1 for negative.
+  final int sign;
+
+  /// The parts of the big integer represented as a list of [BigInt].
+  /// Each part is a 32-bit chunk of the overall value.
+  final List<BigInt> parts;
+
+  @override
+  String toString() {
+    return 'BigIntArray(sign: $sign, parts: $parts)';
+  }
+
+  /// Converts this array to a JSON-compatible format.
+  List<dynamic> toJson() {
+    return [sign, parts.map((e) => e.toInt()).toList()];
+  }
+
+  /// Converts a uint32 array in little-endian order to a [BigInt].
+  ///
+  /// Each element in the array represents a 32-bit part of the big integer.
+  /// The value is calculated as the sum of each part multiplied by powers
+  /// of 2^32.
+  ///
+  /// Throws [FormatException] if any part is not a valid uint32 value.
+  BigInt toBigInt() {
+    var result = BigInt.zero;
+    final base = BigInt.from(0x100000000); // 2^32 = 4294967296
+    final maxUint32 = BigInt.from(0xFFFFFFFF);
+
+    for (var i = 0; i < parts.length; i++) {
+      final bigIntPart = parts[i];
+
+      if (bigIntPart < BigInt.zero || bigIntPart > maxUint32) {
+        throw FormatException(
+          'Array element at index $i is outside uint32 range: $bigIntPart',
+        );
+      }
+
+      // Guard against overflow in large calculations
+      try {
+        final term = bigIntPart * base.pow(i);
+        result += term;
+      } catch (e) {
+        throw FormatException('Numeric overflow occurred at index $i');
+      }
+    }
+
+    return result;
+  }
+
+  @override
+  List<Object?> get props => [sign, parts];
 }

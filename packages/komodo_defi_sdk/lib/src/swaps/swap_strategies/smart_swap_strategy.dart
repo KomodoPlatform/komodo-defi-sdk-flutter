@@ -6,7 +6,8 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-/// Strategy that checks the orderbook and decides whether to act as taker or maker
+/// Strategy that checks the orderbook and decides whether to
+/// act as taker or maker
 class SmartSwapStrategy extends BaseSwapStrategy {
   /// Creates a new smart swap strategy
   const SmartSwapStrategy();
@@ -16,7 +17,8 @@ class SmartSwapStrategy extends BaseSwapStrategy {
 
   @override
   String get description =>
-      'Checks orderbook for matching orders and acts as taker if found, otherwise as maker';
+      'Checks orderbook for matching orders and acts as taker if found, '
+      'otherwise as maker';
 
   @override
   Stream<SwapProgress> execute(
