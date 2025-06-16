@@ -77,8 +77,6 @@ class KdfOperationsRemote implements IKdfOperations {
     }
   }
 
-  void _log(String message) => _log.info(message);
-
   @override
   String operationsName = 'Remote RPC Server';
 
@@ -89,10 +87,9 @@ class KdfOperationsRemote implements IKdfOperations {
 
   @override
   Future<KdfStartupResult> kdfMain(JsonMap startParams, {int? logLevel}) async {
-    const message =
-        'KDF cannot be started using Remote client. '
+    const message = 'KDF cannot be started using Remote client. '
         'Please start the KDF on the remote server manually.';
-    _log(message);
+    _log.info(message);
 
     // return KdfStartupResult.invalidParams;
     throw UnimplementedError(message);
@@ -106,17 +103,17 @@ class KdfOperationsRemote implements IKdfOperations {
 
   @override
   Future<StopStatus> kdfStop() async {
-    // _log('kdfStop is not supported in remote mode.');
+    // _log.info('kdfStop is not supported in remote mode.');
     // return StopStatus.notRunning;
 
     try {
       final stopResultResponse = await mm2Rpc({'method': 'stop'});
 
-      _log('stopResultResponse: $stopResultResponse');
+      _log.info('stopResultResponse: $stopResultResponse');
 
       return _parseStopResult(stopResultResponse);
     } on Exception catch (e) {
-      _log('Error stopping KDF: $e');
+      _log.info('Error stopping KDF: $e');
       return StopStatus.errorStopping;
     }
   }
@@ -133,10 +130,9 @@ class KdfOperationsRemote implements IKdfOperations {
       case 'success':
         return StopStatus.ok;
       default:
-        final maybeResultCode =
-            stopResponse is int?
-                ? stopResponse
-                : int.tryParse(stopResponse.toString());
+        final maybeResultCode = stopResponse is int?
+            ? stopResponse
+            : int.tryParse(stopResponse.toString());
 
         return maybeResultCode != null
             ? StopStatus.fromDefaultInt(maybeResultCode)
@@ -165,11 +161,10 @@ class KdfOperationsRemote implements IKdfOperations {
     if (response.statusCode != 200) {
       return JsonRpcErrorResponse(
         code: response.statusCode,
-        error:
-            {
-              'error': 'HTTP Error',
-              'status': response.statusCode,
-            }.toJsonString(),
+        error: {
+          'error': 'HTTP Error',
+          'status': response.statusCode,
+        }.toJsonString(),
         message: response.body,
       );
     }
