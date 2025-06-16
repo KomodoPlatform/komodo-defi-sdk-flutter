@@ -303,7 +303,7 @@ ffi.DynamicLibrary _loadLibrary() {
               ? ffi.DynamicLibrary.executable()
               : ffi.DynamicLibrary.open(path);
       if (lib.providesSymbol('mm2_main')) {
-        if (kDebugMode) _logger.fine('Loaded library at path: \$path');
+        if (kDebugMode) _logger.fine('Loaded library at path: $path');
         return lib;
       }
     } catch (_) {
