@@ -34,7 +34,7 @@ class SwapBloc extends Bloc<SwapEvent, SwapState> {
         requestBy: const RequestByNumber(value: 10),
       );
       emit(state.copyWith(bestOrders: response));
-    } catch (e) {
+    } catch (e, s) {
       emit(state.copyWith(error: e.toString()));
     } finally {
       emit(state.copyWith(loadingBestOrders: false));
@@ -69,7 +69,7 @@ class SwapBloc extends Bloc<SwapEvent, SwapState> {
         rel: sell.id,
       );
       emit(state.copyWith(orderbook: response));
-    } catch (e) {
+    } catch (e, s) {
       emit(state.copyWith(error: e.toString()));
     } finally {
       emit(state.copyWith(loadingOrderbook: false));

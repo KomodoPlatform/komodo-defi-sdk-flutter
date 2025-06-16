@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kdf_sdk_example/main.dart';
+import 'package:kdf_sdk_example/screens/bridge_page.dart';
+import 'package:kdf_sdk_example/screens/swap_history_page.dart';
+import 'package:kdf_sdk_example/screens/orderbook_page.dart';
 import 'package:kdf_sdk_example/screens/swap_page.dart';
 import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/auth/seed_dialog.dart';
@@ -535,6 +538,27 @@ class DesktopLayout extends StatelessWidget {
                   isSelected: selectedMenuIndex == 1,
                   onTap: onMenuChanged,
                 ),
+                MenuButton(
+                  index: 2,
+                  icon: Icons.book,
+                  label: 'Orderbook',
+                  isSelected: selectedMenuIndex == 2,
+                  onTap: onMenuChanged,
+                ),
+                MenuButton(
+                  index: 3,
+                  icon: Icons.call_split,
+                  label: 'Bridge',
+                  isSelected: selectedMenuIndex == 3,
+                  onTap: onMenuChanged,
+                ),
+                MenuButton(
+                  index: 4,
+                  icon: Icons.history,
+                  label: 'Swap History',
+                  isSelected: selectedMenuIndex == 4,
+                  onTap: onMenuChanged,
+                ),
               ],
             ),
           ),
@@ -638,6 +662,7 @@ class MobileLayout extends StatelessWidget {
         Card(
           margin: EdgeInsets.zero,
           child: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
             currentIndex: selectedMenuIndex,
             onTap: onMenuChanged,
             items: const [
@@ -647,7 +672,15 @@ class MobileLayout extends StatelessWidget {
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.swap_horiz),
-                label: 'SwapPage',
+                label: 'Swap',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.call_split),
+                label: 'Bridge',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.history),
+                label: 'History',
               ),
             ],
           ),
@@ -712,6 +745,12 @@ class SelectedContent extends StatelessWidget {
         );
       case 1:
         return const SwapPage();
+      case 2:
+        return const OrderbookPage();
+      case 3:
+        return const BridgePage();
+      case 4:
+        return const SwapHistoryScreen();
       default:
         return const SizedBox.shrink();
     }

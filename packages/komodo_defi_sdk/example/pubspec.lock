@@ -301,7 +301,7 @@ packages:
     source: path
     version: "0.2.0+0"
   komodo_defi_rpc_methods:
-    dependency: "direct overridden"
+    dependency: "direct main"
     description:
       path: "../../komodo_defi_rpc_methods"
       relative: true

@@ -18,6 +18,9 @@ dependencies:
   komodo_defi_sdk:
     path: ../
 
+  komodo_defi_rpc_methods:
+    path: ../../komodo_defi_rpc_methods
+
   komodo_defi_types:
     path: ../../komodo_defi_types
 

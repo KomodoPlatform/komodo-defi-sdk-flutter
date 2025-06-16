@@ -11,7 +11,6 @@ class BestOrdersTable extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border.all(
           color: Theme.of(context).colorScheme.outline,
-          width: 1,
         ),
         borderRadius: BorderRadius.circular(8),
       ),

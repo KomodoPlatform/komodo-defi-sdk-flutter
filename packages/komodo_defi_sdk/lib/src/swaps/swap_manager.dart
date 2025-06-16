@@ -74,7 +74,7 @@ class SwapManager {
                 )
                 : null,
       );
-    } catch (e) {
+    } catch (e, s) {
       if (e is SwapException) {
         rethrow;
       }
