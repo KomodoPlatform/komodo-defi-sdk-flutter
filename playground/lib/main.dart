@@ -12,7 +12,6 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Initialize secure storage if needed
   runApp(const MaterialApp(home: MyApp()));
 }
 
@@ -57,6 +56,16 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
   final TextEditingController _rpcPasswordController = TextEditingController(
     text: _generateDefaultRpcPassword(),
   );
+
+  // Controllers for seed node configuration
+  final TextEditingController _seedNode1Controller = TextEditingController();
+  final TextEditingController _seedNode2Controller = TextEditingController();
+  final TextEditingController _seedNode3Controller = TextEditingController();
+
+  // P2P configuration state
+  bool _disableP2p = false;
+  bool _iAmSeed = false;
+  bool _isBootstrapNode = false;
 
   void _hostTypeChanged(String? value) {
     if (value == null) {
@@ -131,7 +140,11 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   decoration: InputDecoration(
                     labelText: 'Wallet Password',
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.remove_red_eye),
+                      icon: Icon(
+                        _passwordVisible
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
                       onPressed: _togglePasswordVisibility,
                     ),
                   ),
@@ -264,6 +277,92 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(labelText: 'Port'),
                 ),
+
+                const SizedBox(height: 16),
+
+                // Add seed node configuration
+                const Text(
+                  'Seed Nodes Configuration',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  title: const Text('Disable P2P'),
+                  subtitle: const Text(
+                    'Disables network functionality (removes seed nodes)',
+                  ),
+                  value: _disableP2p,
+                  onChanged: (value) {
+                    setState(() {
+                      _disableP2p = value ?? false;
+                      if (_disableP2p) {
+                        // Clear seed node fields when P2P is disabled
+                        _seedNode1Controller.clear();
+                        _seedNode2Controller.clear();
+                        _seedNode3Controller.clear();
+                        _iAmSeed = false;
+                        _isBootstrapNode = false;
+                      }
+                    });
+                  },
+                ),
+
+                // Only show seed node configuration if P2P is not disabled
+                if (!_disableP2p) ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _seedNode1Controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Seed Node 1',
+                      hintText: 'seed01.kmdefi.net',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _seedNode2Controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Seed Node 2 (Optional)',
+                      hintText: 'seed02.kmdefi.net',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _seedNode3Controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Seed Node 3 (Optional)',
+                      hintText: 'seed03.kmdefi.net',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    title: const Text('I am Seed'),
+                    subtitle: const Text('Run as a seed node'),
+                    value: _iAmSeed,
+                    onChanged: (value) {
+                      setState(() {
+                        _iAmSeed = value ?? false;
+                        if (!_iAmSeed) {
+                          _isBootstrapNode = false;
+                        }
+                      });
+                    },
+                  ),
+                  CheckboxListTile(
+                    title: const Text('Is Bootstrap Node'),
+                    subtitle: const Text(
+                      'Run as a bootstrap node (requires I am Seed)',
+                    ),
+                    value: _isBootstrapNode,
+                    onChanged:
+                        _iAmSeed
+                            ? (value) {
+                              setState(() {
+                                _isBootstrapNode = value ?? false;
+                              });
+                            }
+                            : null, // Disable if not a seed node
+                  ),
+                ],
               ],
               if (_selectedHostType == 'aws') ...[
                 TextField(
@@ -385,6 +484,12 @@ class _ConfigureDialogState extends State<ConfigureDialog> {
               'exposeHttp': _exposeHttp,
               'enableHdWallet': _enableHdWallet,
               'savePassphrase': _saveWalletPassword,
+              'seedNode1': _seedNode1Controller.text,
+              'seedNode2': _seedNode2Controller.text,
+              'seedNode3': _seedNode3Controller.text,
+              'disableP2p': _disableP2p,
+              'iAmSeed': _iAmSeed,
+              'isBootstrapNode': _isBootstrapNode,
             });
           },
           child: const Text('Save'),
@@ -473,6 +578,15 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
     // We ignore the stored exposeHttp value as the feature is disabled
     // Load HD wallet setting
     String? savedHdWallet = await secureStorage.read(key: 'enableHdWallet');
+    // Load seed node configuration
+    String? savedSeedNode1 = await secureStorage.read(key: 'seedNode1');
+    String? savedSeedNode2 = await secureStorage.read(key: 'seedNode2');
+    String? savedSeedNode3 = await secureStorage.read(key: 'seedNode3');
+    String? savedDisableP2p = await secureStorage.read(key: 'disableP2p');
+    String? savedIAmSeed = await secureStorage.read(key: 'iAmSeed');
+    String? savedIsBootstrapNode = await secureStorage.read(
+      key: 'isBootstrapNode',
+    );
 
     setState(() {
       _selectedHostType = savedHostType ?? 'local';
@@ -491,6 +605,14 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
           savedRpcPassword ?? _generateDefaultRpcPassword();
       _exposeHttp = false; // Always false until fully implemented
       _enableHdWallet = savedHdWallet?.toLowerCase() == 'true' ? true : false;
+      // Load seed node configuration
+      _seedNode1Controller.text = savedSeedNode1 ?? '';
+      _seedNode2Controller.text = savedSeedNode2 ?? '';
+      _seedNode3Controller.text = savedSeedNode3 ?? '';
+      _disableP2p = savedDisableP2p?.toLowerCase() == 'true' ? true : false;
+      _iAmSeed = savedIAmSeed?.toLowerCase() == 'true' ? true : false;
+      _isBootstrapNode =
+          savedIsBootstrapNode?.toLowerCase() == 'true' ? true : false;
     });
   }
 
@@ -536,6 +658,25 @@ docker run -p 7783:7783 -v "\$(pwd)":/app -w /app komodoofficial/komodo-defi-fra
     await secureStorage.write(
       key: 'enableHdWallet',
       value: _enableHdWallet.toString(),
+    );
+    // Save seed node configuration
+    await secureStorage.write(
+      key: 'seedNode1',
+      value: _seedNode1Controller.text,
+    );
+    await secureStorage.write(
+      key: 'seedNode2',
+      value: _seedNode2Controller.text,
+    );
+    await secureStorage.write(
+      key: 'seedNode3',
+      value: _seedNode3Controller.text,
+    );
+    await secureStorage.write(key: 'disableP2p', value: _disableP2p.toString());
+    await secureStorage.write(key: 'iAmSeed', value: _iAmSeed.toString());
+    await secureStorage.write(
+      key: 'isBootstrapNode',
+      value: _isBootstrapNode.toString(),
     );
   }
 
@@ -897,6 +1038,24 @@ class _MyAppState extends State<MyApp> {
       value: enableHdWallet.toString(),
     );
 
+    // Save seed node configuration from the dialog
+    final String seedNode1 = result['seedNode1'] ?? '';
+    final String seedNode2 = result['seedNode2'] ?? '';
+    final String seedNode3 = result['seedNode3'] ?? '';
+    final bool disableP2p = result['disableP2p'] ?? false;
+    final bool iAmSeed = result['iAmSeed'] ?? false;
+    final bool isBootstrapNode = result['isBootstrapNode'] ?? false;
+
+    await secureStorage.write(key: 'seedNode1', value: seedNode1);
+    await secureStorage.write(key: 'seedNode2', value: seedNode2);
+    await secureStorage.write(key: 'seedNode3', value: seedNode3);
+    await secureStorage.write(key: 'disableP2p', value: disableP2p.toString());
+    await secureStorage.write(key: 'iAmSeed', value: iAmSeed.toString());
+    await secureStorage.write(
+      key: 'isBootstrapNode',
+      value: isBootstrapNode.toString(),
+    );
+
     // Check status after configuration is complete
     _checkStatus();
   }
@@ -993,6 +1152,26 @@ class _MyAppState extends State<MyApp> {
     final enableHdWallet = await secureStorage.read(key: 'enableHdWallet');
     final useHdWallet = enableHdWallet?.toLowerCase() == 'true';
 
+    // Load seed node configuration
+    final seedNode1 = await secureStorage.read(key: 'seedNode1') ?? '';
+    final seedNode2 = await secureStorage.read(key: 'seedNode2') ?? '';
+    final seedNode3 = await secureStorage.read(key: 'seedNode3') ?? '';
+    final disableP2p = await secureStorage.read(key: 'disableP2p');
+    final iAmSeed = await secureStorage.read(key: 'iAmSeed');
+    final isBootstrapNode = await secureStorage.read(key: 'isBootstrapNode');
+
+    // Build seed nodes list if P2P is not disabled
+    List<String>? seedNodes;
+    if (disableP2p?.toLowerCase() != 'true') {
+      seedNodes = [
+        if (seedNode1.isNotEmpty) seedNode1,
+        if (seedNode2.isNotEmpty) seedNode2,
+        if (seedNode3.isNotEmpty) seedNode3,
+      ];
+      // Use empty list if no seed nodes configured (will use defaults)
+      if (seedNodes.isEmpty) seedNodes = null;
+    }
+
     try {
       // Show a dialog to enter passphrase if this is not a new wallet creation
       // For existing wallets, no passphrase needed as it was already used during wallet creation
@@ -1006,6 +1185,11 @@ class _MyAppState extends State<MyApp> {
         rpcPassword: _kdfHostConfig!.rpcPassword,
         // No seed passed during normal startups - seed is only used during wallet creation
         seed: null,
+        // Add seed node configuration
+        seedNodes: seedNodes,
+        disableP2p: disableP2p?.toLowerCase() == 'true',
+        iAmSeed: iAmSeed?.toLowerCase() == 'true',
+        isBootstrapNode: isBootstrapNode?.toLowerCase() == 'true',
       );
 
       final result = await _kdfFramework!.startKdf(startupConfig);
