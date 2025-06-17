@@ -1,12 +1,14 @@
-import 'dart:async';
+import 'dart:async' show Completer, StreamController, TimeoutException;
 
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
-import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart'
+    show KomodoDefiLocalAuth;
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
+    show PrivateKeyPolicy;
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/balances/balance_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 import 'package:mutex/mutex.dart';
 
 /// Manager responsible for handling asset activation lifecycle
@@ -28,6 +30,7 @@ class ActivationManager {
   final IBalanceManager _balanceManager;
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
+  static final _logger = Logger('ActivationManager');
 
   final Map<AssetId, _ActivationState> _activations = {};
   bool _isDisposed = false;
@@ -60,12 +63,20 @@ class ActivationManager {
     final groups = _AssetGroup._groupByPrimary(assets);
 
     for (final group in groups) {
-      final registration = await _registerActivation(group.primary.id);
-      if (registration.isNew) {
-        unawaited(_startActivation(group, registration.state));
+      final activationStatus = await _checkActivationStatus(group);
+      if (activationStatus.isComplete) {
+        yield activationStatus;
+        continue;
       }
 
-      yield* registration.state.controller.stream;
+      final registration = await _registerActivation(group.primary.id);
+
+      if (registration.isNew) {
+        yield* _startActivation(group, registration.state);
+      } else {
+        yield* Stream.fromIterable(registration.state.history);
+        yield* registration.state.controller.stream;
+      }
     }
   }
 
@@ -95,7 +106,7 @@ class ActivationManager {
         );
       }
     } catch (e) {
-      debugPrint('Failed to check activation status: $e');
+      _logger.warning('Failed to check activation status', e);
     }
 
     return const ActivationProgress(
@@ -109,7 +120,7 @@ class ActivationManager {
 
   /// Register new activation attempt and return the activation state
   Future<_ActivationRegistration> _registerActivation(AssetId assetId) async {
-    bool isNew = false;
+    var isNew = false;
     late final _ActivationState state;
     await _protectedOperation(() async {
       final existing = _activations[assetId];
@@ -130,17 +141,20 @@ class ActivationManager {
   }
 
   /// Start activation for the given group and stream state to the controller
-  Future<void> _startActivation(
+  Stream<ActivationProgress> _startActivation(
     _AssetGroup group,
     _ActivationState state,
-  ) async {
-    // Check activation status first
+  ) async* {
+    // Verify activation status again in case it changed after the initial check
     final activationStatus = await _checkActivationStatus(group);
     if (activationStatus.isComplete) {
-      state.controller.add(activationStatus);
+      _emit(state, activationStatus);
       await _handleActivationComplete(group, activationStatus, state.completer);
       await _cleanupActivation(group.primary.id);
-      await state.controller.close();
+      if (!state.controller.isClosed) {
+        await state.controller.close();
+      }
+      yield activationStatus;
       return;
     }
 
@@ -150,19 +164,19 @@ class ActivationManager {
             : _assetLookup.fromId(group.parentId!) ??
                 (throw StateError('Parent asset ${group.parentId} not found'));
 
-    state.controller.add(
-      ActivationProgress(
-        status: 'Starting activation for ${group.primary.id.name}...',
-        progressDetails: ActivationProgressDetails(
-          currentStep: 'group_start',
-          stepCount: 1,
-          additionalInfo: {
-            'primaryAsset': group.primary.id.name,
-            'childCount': group.children?.length ?? 0,
-          },
-        ),
+    final startProgress = ActivationProgress(
+      status: 'Starting activation for ${group.primary.id.name}...',
+      progressDetails: ActivationProgressDetails(
+        currentStep: 'group_start',
+        stepCount: 1,
+        additionalInfo: {
+          'primaryAsset': group.primary.id.name,
+          'childCount': group.children?.length ?? 0,
+        },
       ),
     );
+    _emit(state, startProgress);
+    yield startProgress;
 
     try {
       final currentUser = await _auth.currentUser;
@@ -179,24 +193,42 @@ class ActivationManager {
         parentAsset ?? group.primary,
         group.children?.toList(),
       )) {
-        state.controller.add(progress);
+        _emit(state, progress);
+        yield progress;
         if (progress.isComplete) {
           await _handleActivationComplete(group, progress, state.completer);
         }
       }
     } catch (e) {
-      debugPrint('Activation failed: $e');
+      _logger.severe('Activation failed for ${group.primary.id.name}', e);
       if (!state.completer.isCompleted) {
         state.completer.completeError(e);
       }
-      state.controller.addError(e);
+      if (!state.controller.isClosed) {
+        state.controller.addError(e);
+      }
+      final failure = ActivationProgress.error(message: e.toString());
+      _emit(state, failure);
+      yield failure;
     } finally {
       try {
         await _cleanupActivation(group.primary.id);
       } catch (e) {
-        debugPrint('Failed to cleanup activation: $e');
+        _logger.warning(
+          'Failed to cleanup activation for ${group.primary.id.name}',
+          e,
+        );
       }
-      await state.controller.close();
+      if (!state.controller.isClosed) {
+        await state.controller.close();
+      }
+    }
+  }
+
+  void _emit(_ActivationState state, ActivationProgress progress) {
+    state.history.add(progress);
+    if (!state.controller.isClosed) {
+      state.controller.add(progress);
     }
   }
 
@@ -256,7 +288,7 @@ class ActivationManager {
           .map((asset) => asset.id)
           .toSet();
     } catch (e) {
-      debugPrint('Failed to get active assets: $e');
+      _logger.warning('Failed to get active assets', e);
       return {};
     }
   }
@@ -271,7 +303,7 @@ class ActivationManager {
       final activeAssets = await getActiveAssets();
       return activeAssets.contains(assetId);
     } catch (e) {
-      debugPrint('Failed to check if asset is active: $e');
+      _logger.warning('Failed to check if asset ${assetId.name} is active', e);
       return false;
     }
   }
@@ -286,7 +318,9 @@ class ActivationManager {
         if (!state.completer.isCompleted) {
           state.completer.completeError('ActivationManager disposed');
         }
-        await state.controller.close();
+        if (!state.controller.isClosed) {
+          await state.controller.close();
+        }
       }
       _activations.clear();
     });
@@ -298,6 +332,7 @@ class _ActivationState {
 
   final StreamController<ActivationProgress> controller;
   final Completer<void> completer;
+  final List<ActivationProgress> history = [];
 }
 
 class _ActivationRegistration {
