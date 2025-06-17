@@ -75,7 +75,7 @@ class SeedNode {
   }
 
   @override
-  int get hashCode => Object.hash(name, host, type, wss, netId, contact);
+  int get hashCode => Object.hash(name, host, type, wss, netId, Object.hashAll(contact));
 
   @override
   String toString() =>
