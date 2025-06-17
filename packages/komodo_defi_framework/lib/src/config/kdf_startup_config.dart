@@ -168,6 +168,11 @@ class KdfStartupConfig {
   }) async {
     final (String? home, String? dbDir) = await _getAndSetupUserHome();
 
+    final (
+      seedNodes: seeds,
+      netId: netId,
+    ) = await SeedNodeService.fetchSeedNodes();
+
     return KdfStartupConfig._(
       walletName: null,
       walletPassword: null,
@@ -176,7 +181,7 @@ class KdfStartupConfig {
       userHome: home,
       dbDir: dbDir,
       allowWeakPassword: true,
-      netid: 8762,
+      netid: netId,
       gui: 'komodo-defi-flutter-auth',
       coins: await _fetchCoinsData(),
       https: false,
@@ -187,7 +192,7 @@ class KdfStartupConfig {
       allowRegistrations: false,
       enableHd: false,
       disableP2p: false,
-      seedNodes: await SeedNodeService.fetchSeedNodes(),
+      seedNodes: seeds,
       iAmSeed: false,
       isBootstrapNode: false,
     );
