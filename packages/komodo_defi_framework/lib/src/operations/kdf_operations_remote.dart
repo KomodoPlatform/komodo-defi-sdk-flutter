@@ -6,29 +6,21 @@ import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:logging/logging.dart';
 
 class KdfOperationsRemote implements IKdfOperations {
   // TODO! Add wallet password and name or add the config object
   factory KdfOperationsRemote.create({
-    required void Function(String) logCallback,
     // required String ipAddress,
     // required int port,
     required Uri rpcUrl,
     required String userpass,
   }) {
-    return KdfOperationsRemote._(
-      logCallback,
-      rpcUrl,
-      userpass,
-    );
+    return KdfOperationsRemote._(rpcUrl, userpass);
   }
 
-  KdfOperationsRemote._(
-    this._logCallback,
-    this._rpcUrl,
-    this._userpass,
-  );
-  final void Function(String) _logCallback;
+  KdfOperationsRemote._(this._rpcUrl, this._userpass);
+  final _log = Logger('KdfOperationsRemote');
   final String _userpass;
 
   final Uri _rpcUrl;
@@ -85,8 +77,6 @@ class KdfOperationsRemote implements IKdfOperations {
     }
   }
 
-  void _log(String message) => _logCallback(message);
-
   @override
   String operationsName = 'Remote RPC Server';
 
@@ -99,7 +89,7 @@ class KdfOperationsRemote implements IKdfOperations {
   Future<KdfStartupResult> kdfMain(JsonMap startParams, {int? logLevel}) async {
     const message = 'KDF cannot be started using Remote client. '
         'Please start the KDF on the remote server manually.';
-    _log(message);
+    _log.info(message);
 
     // return KdfStartupResult.invalidParams;
     throw UnimplementedError(message);
@@ -113,19 +103,17 @@ class KdfOperationsRemote implements IKdfOperations {
 
   @override
   Future<StopStatus> kdfStop() async {
-    // _log('kdfStop is not supported in remote mode.');
+    // _log.info('kdfStop is not supported in remote mode.');
     // return StopStatus.notRunning;
 
     try {
-      final stopResultResponse = await mm2Rpc({
-        'method': 'stop',
-      });
+      final stopResultResponse = await mm2Rpc({'method': 'stop'});
 
-      _log('stopResultResponse: $stopResultResponse');
+      _log.info('stopResultResponse: $stopResultResponse');
 
       return _parseStopResult(stopResultResponse);
     } on Exception catch (e) {
-      _log('Error stopping KDF: $e');
+      _log.info('Error stopping KDF: $e');
       return StopStatus.errorStopping;
     }
   }
@@ -159,7 +147,7 @@ class KdfOperationsRemote implements IKdfOperations {
     }
 
     if (KdfLoggingConfig.verboseLogging) {
-      _logCallback('mm2Rpc request: ${json.encode(request.censored())}');
+      _log.finer('mm2Rpc request: ${json.encode(request.censored())}');
     }
 
     late final http.Response response;
@@ -167,19 +155,22 @@ class KdfOperationsRemote implements IKdfOperations {
     try {
       response = await http.post(_baseUrl, body: json.encode(request));
     } on http.ClientException catch (e) {
-      return ConnectionError(
-        e.message,
-        originalException: e,
-      );
+      return ConnectionError(e.message, originalException: e);
     }
 
     if (response.statusCode != 200) {
       return JsonRpcErrorResponse(
         code: response.statusCode,
-        error: {'error': 'HTTP Error', 'status': response.statusCode}
-            .toJsonString(),
+        error: {
+          'error': 'HTTP Error',
+          'status': response.statusCode,
+        }.toJsonString(),
         message: response.body,
       );
+    }
+
+    if (KdfLoggingConfig.verboseLogging) {
+      _log.finer('mm2Rpc response: ${response.body}');
     }
 
     return json.decode(response.body) as Map<String, dynamic>;
@@ -201,7 +192,7 @@ class KdfOperationsRemote implements IKdfOperations {
       final maybeError = response.valueOrNull<String>('error');
 
       if (maybeError != null) {
-        print('Error getting version: ${response['error']}');
+        _log.warning('Error getting version: ${response['error']}');
         return null;
       }
 
