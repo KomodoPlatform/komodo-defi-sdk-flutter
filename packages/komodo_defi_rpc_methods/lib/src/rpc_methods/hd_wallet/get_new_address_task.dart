@@ -4,17 +4,21 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // Init Request
-class AccountBalanceInitRequest
+class GetNewAddressTaskInitRequest
     extends BaseRequest<NewTaskResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  AccountBalanceInitRequest({
+  GetNewAddressTaskInitRequest({
     required super.rpcPass,
     required this.coin,
-    required this.accountIndex,
-  }) : super(method: 'task::account_balance::init');
+    this.accountId,
+    this.chain,
+    this.gapLimit,
+  }) : super(method: 'task::get_new_address::init');
 
   final String coin;
-  final int accountIndex;
+  final int? accountId;
+  final String? chain;
+  final int? gapLimit;
 
   @override
   JsonMap toJson() {
@@ -23,7 +27,12 @@ class AccountBalanceInitRequest
       'userpass': rpcPass,
       'method': method,
       'mmrpc': mmrpc,
-      'params': {'coin': coin, 'account_index': accountIndex},
+      'params': {
+        'coin': coin,
+        if (accountId != null) 'account_id': accountId,
+        if (chain != null) 'chain': chain,
+        if (gapLimit != null) 'gap_limit': gapLimit,
+      },
     };
   }
 
@@ -32,14 +41,14 @@ class AccountBalanceInitRequest
 }
 
 // Status Request
-class AccountBalanceStatusRequest
-    extends BaseRequest<AccountBalanceStatusResponse, GeneralErrorResponse>
+class GetNewAddressTaskStatusRequest
+    extends BaseRequest<GetNewAddressTaskStatusResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  AccountBalanceStatusRequest({
+  GetNewAddressTaskStatusRequest({
     required super.rpcPass,
     required this.taskId,
     this.forgetIfFinished = true,
-  }) : super(method: 'task::account_balance::status');
+  }) : super(method: 'task::get_new_address::status');
 
   final int taskId;
   final bool forgetIfFinished;
@@ -56,8 +65,8 @@ class AccountBalanceStatusRequest
   }
 
   @override
-  AccountBalanceStatusResponse parse(JsonMap json) =>
-      AccountBalanceStatusResponse.parse(json);
+  GetNewAddressTaskStatusResponse parse(JsonMap json) =>
+      GetNewAddressTaskStatusResponse.parse(json);
 }
 
 SyncStatusEnum? _statusFromTaskStatus(String status) {
@@ -74,26 +83,35 @@ SyncStatusEnum? _statusFromTaskStatus(String status) {
 }
 
 // Status Response
-class AccountBalanceStatusResponse extends BaseResponse {
-  AccountBalanceStatusResponse({
+class GetNewAddressTaskStatusResponse extends BaseResponse {
+  GetNewAddressTaskStatusResponse({
     required super.mmrpc,
     required this.status,
     required this.details,
   });
 
-  // TODO: Move this logic to be re-usable
-  factory AccountBalanceStatusResponse.parse(JsonMap json) {
+  factory GetNewAddressTaskStatusResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
-    final status = _statusFromTaskStatus(result.value<String>('status'));
+    final statusString = result.value<String>('status');
+    final status = _statusFromTaskStatus(statusString);
 
-    return AccountBalanceStatusResponse(
+    if (status == null) {
+      throw FormatException(
+        'Unrecognized task status: "$statusString". Expected one of: Ok, InProgress, Error',
+      );
+    }
+
+    return GetNewAddressTaskStatusResponse(
       mmrpc: json.value<String>('mmrpc'),
-      status: status!,
-      // details: status == 'Ok' ? AccountBalanceInfo.fromJson(details) : details,
-      details: ResponseDetails<AccountBalanceInfo, GeneralErrorResponse>(
+      status: status,
+      details: ResponseDetails<NewAddressInfo, GeneralErrorResponse>(
         data:
             status == SyncStatusEnum.success
-                ? AccountBalanceInfo.fromJson(result.value<JsonMap>('details'))
+                ? NewAddressInfo.fromJson(
+                  result
+                      .value<JsonMap>('details')
+                      .value<JsonMap>('new_address'),
+                )
                 : null,
         error:
             status == SyncStatusEnum.error
@@ -108,27 +126,23 @@ class AccountBalanceStatusResponse extends BaseResponse {
   }
 
   final SyncStatusEnum status;
-  final ResponseDetails<AccountBalanceInfo, GeneralErrorResponse> details;
+  final ResponseDetails<NewAddressInfo, GeneralErrorResponse> details;
 
   @override
   JsonMap toJson() {
     return {
       'mmrpc': mmrpc,
-      'result': {
-        'status': status,
-        // 'details': details is AccountBalanceInfo ? details.toJson() : details,
-        'details': details.toJson(),
-      },
+      'result': {'status': status, 'details': details.toJson()},
     };
   }
 }
 
 // Cancel Request
-class AccountBalanceCancelRequest
-    extends BaseRequest<AccountBalanceCancelResponse, GeneralErrorResponse>
+class GetNewAddressTaskCancelRequest
+    extends BaseRequest<GetNewAddressTaskCancelResponse, GeneralErrorResponse>
     with RequestHandlingMixin {
-  AccountBalanceCancelRequest({required super.rpcPass, required this.taskId})
-    : super(method: 'task::account_balance::cancel');
+  GetNewAddressTaskCancelRequest({required super.rpcPass, required this.taskId})
+    : super(method: 'task::get_new_address::cancel');
 
   final int taskId;
 
@@ -144,16 +158,16 @@ class AccountBalanceCancelRequest
   }
 
   @override
-  AccountBalanceCancelResponse parse(JsonMap json) =>
-      AccountBalanceCancelResponse.parse(json);
+  GetNewAddressTaskCancelResponse parse(JsonMap json) =>
+      GetNewAddressTaskCancelResponse.parse(json);
 }
 
 // Cancel Response
-class AccountBalanceCancelResponse extends BaseResponse {
-  AccountBalanceCancelResponse({required super.mmrpc, required this.result});
+class GetNewAddressTaskCancelResponse extends BaseResponse {
+  GetNewAddressTaskCancelResponse({required super.mmrpc, required this.result});
 
-  factory AccountBalanceCancelResponse.parse(JsonMap json) {
-    return AccountBalanceCancelResponse(
+  factory GetNewAddressTaskCancelResponse.parse(JsonMap json) {
+    return GetNewAddressTaskCancelResponse(
       mmrpc: json.value<String>('mmrpc'),
       result: json.value<String>('result'),
     );
