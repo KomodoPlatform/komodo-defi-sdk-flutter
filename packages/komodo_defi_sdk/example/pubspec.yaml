@@ -7,7 +7,9 @@ environment:
   sdk: ^3.7.0
 
 dependencies:
+  bloc: ^9.0.0
   decimal: ^3.2.1
+  equatable: ^2.0.7
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.1
@@ -15,6 +17,9 @@ dependencies:
 
   komodo_defi_sdk:
     path: ../
+
+  komodo_defi_rpc_methods:
+    path: ../../komodo_defi_rpc_methods
 
   komodo_defi_types:
     path: ../../komodo_defi_types

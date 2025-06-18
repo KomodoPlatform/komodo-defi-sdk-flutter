@@ -11,6 +11,8 @@ import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
+import 'package:komodo_defi_sdk/src/swaps/swap_history_manager.dart';
+
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -196,6 +198,36 @@ Future<void> bootstrap({
     final activationManager = await container.getAsync<ActivationManager>();
     return WithdrawalManager(client, assetProvider, activationManager);
   }, dependsOn: [ApiClient, AssetManager, ActivationManager]);
+
+  container.registerSingletonAsync<OrderbookManager>(() async {
+    final client = await container.getAsync<ApiClient>();
+    final assetProvider = await container.getAsync<AssetManager>();
+    final activationManager = await container.getAsync<ActivationManager>();
+    return OrderbookManager(client, assetProvider, activationManager);
+  }, dependsOn: [ApiClient, AssetManager, ActivationManager]);
+
+  container.registerSingletonAsync<SwapManager>(() async {
+    final client = await container.getAsync<ApiClient>();
+    final assetProvider = await container.getAsync<AssetManager>();
+    final activationManager = await container.getAsync<ActivationManager>();
+    return SwapManager(client, assetProvider, activationManager);
+  }, dependsOn: [ApiClient, AssetManager, ActivationManager]);
+
+  container.registerSingletonAsync<SwapHistoryManager>(
+    () async {
+      final client = await container.getAsync<ApiClient>();
+      final auth = await container.getAsync<KomodoDefiLocalAuth>();
+      final activationManager = await container.getAsync<ActivationManager>();
+      final assetManager = await container.getAsync<AssetManager>();
+      return SwapHistoryManager(client, auth, activationManager, assetManager);
+    },
+    dependsOn: [
+      ApiClient,
+      KomodoDefiLocalAuth,
+      AssetManager,
+      ActivationManager,
+    ],
+  );
 
   // Wait for all async singletons to initialize
   await container.allReady();
