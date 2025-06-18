@@ -5,7 +5,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A high-level library that provides a simple way to access Komodo Platform
-/// coin data.
+/// coin data and seed nodes.
 ///
 /// NB: [init] must be called before accessing any assets.
 class KomodoCoins {

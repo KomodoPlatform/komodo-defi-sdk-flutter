@@ -178,6 +178,9 @@ extension KdfExtensions on KdfAuthService {
       );
     }
 
+    // Fetch seed nodes using the dedicated service
+    final seedNodes = await SeedNodeService.fetchSeedNodes();
+
     return KdfStartupConfig.generateWithDefaults(
       walletName: walletName,
       walletPassword: walletPassword,
@@ -186,6 +189,7 @@ extension KdfExtensions on KdfAuthService {
       allowRegistrations: allowRegistrations,
       enableHd: hdEnabled,
       allowWeakPassword: allowWeakPassword,
+      seedNodes: seedNodes,
     );
   }
 }
