@@ -1,6 +1,7 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_sdk/src/activation/protocol_strategies/sia_activation_strategy.dart';
 
 /// Factory for creating the complete activation strategy stack
 class ActivationStrategyFactory {
@@ -19,6 +20,7 @@ class ActivationStrategyFactory {
         TendermintActivationStrategy(client),
         QtumActivationStrategy(client, privKeyPolicy),
         ZhtlcActivationStrategy(client),
+        SiaActivationStrategy(client),
         CustomErc20ActivationStrategy(client),
       ]),
     );

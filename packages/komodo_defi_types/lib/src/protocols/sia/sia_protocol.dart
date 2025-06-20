@@ -24,6 +24,7 @@ class SiaProtocol extends ProtocolClass {
   static void _validateSiaConfig(JsonMap json) {
     final requiredFields = {
       'nodes': 'RPC URLs',
+      'server_url': 'Siascan server URL',
     };
 
     for (final field in requiredFields.entries) {
@@ -37,6 +38,11 @@ class SiaProtocol extends ProtocolClass {
   }
 
   JsonList get rpcUrlsMap => config.value<JsonList>('rpc_urls');
+
+  String? get serverUrl => config.valueOrNull<String>('server_url');
+
+  int? get requiredConfirmations =>
+      config.valueOrNull<int>('required_confirmations');
 
   String? get accountPrefix => config.valueOrNull<String>('account_prefix');
 
