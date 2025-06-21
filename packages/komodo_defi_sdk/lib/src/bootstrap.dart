@@ -197,6 +197,11 @@ Future<void> bootstrap({
     return WithdrawalManager(client, assetProvider, activationManager);
   }, dependsOn: [ApiClient, AssetManager, ActivationManager]);
 
+  container.registerSingletonAsync<SwapManager>(() async {
+    final client = await container.getAsync<ApiClient>();
+    return SwapManager(client);
+  }, dependsOn: [ApiClient]);
+
   // Wait for all async singletons to initialize
   await container.allReady();
 }
