@@ -1,7 +1,9 @@
-# melos_managed_dependency_overrides: komodo_cex_market_data,komodo_coins,komodo_defi_framework,komodo_defi_local_auth,komodo_defi_rpc_methods,komodo_defi_sdk,komodo_defi_types,komodo_ui,komodo_wallet_build_transformer
+# melos_managed_dependency_overrides: komodo_cex_market_data,komodo_coins,komodo_defi_framework,komodo_defi_local_auth,komodo_defi_rpc_methods,komodo_defi_sdk,komodo_defi_types,komodo_ui,komodo_wallet_build_transformer,komodo_coin_updates
 dependency_overrides:
   komodo_cex_market_data:
     path: ../../komodo_cex_market_data
+  komodo_coin_updates:
+    path: ../../komodo_coin_updates
   komodo_coins:
     path: ../../komodo_coins
   komodo_defi_framework:
