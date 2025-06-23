@@ -288,7 +288,7 @@ packages:
     source: path
     version: "0.0.1"
   komodo_coin_updates:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../komodo_coin_updates"
       relative: true
