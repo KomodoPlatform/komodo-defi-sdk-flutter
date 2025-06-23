@@ -10,6 +10,16 @@ class GetEnabledCoinsRequest
     : super(method: 'get_enabled_coins', mmrpc: '2.0');
 
   @override
+  Map<String, dynamic> toJson() {
+    final json = super.toJson();
+    // Temporarily remove the params key until API bug is fixed:
+    // https://github.com/KomodoPlatform/komodo-defi-framework/issues/2498
+    json.remove('params');
+
+    return {...json, 'userpass': rpcPass};
+  }
+
+  @override
   GetEnabledCoinsResponse parseResponse(String responseBody) {
     return GetEnabledCoinsResponse.fromJson(jsonFromString(responseBody));
   }
