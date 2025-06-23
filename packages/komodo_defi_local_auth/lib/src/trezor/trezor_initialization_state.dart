@@ -1,18 +1,23 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 
-/// Represents the current state of Trezor initialization
-class TrezorInitializationState {
-  /// Creates a new initialization state
-  const TrezorInitializationState({
-    required this.status,
-    this.message,
-    this.deviceInfo,
-    this.error,
-    this.taskId,
-  });
+part 'trezor_initialization_state.freezed.dart';
 
-  /// Factory constructor that maps API status response to domain state
+/// Represents the current state of Trezor initialization
+@freezed
+class TrezorInitializationState with _$TrezorInitializationState {
+  const factory TrezorInitializationState({
+    required AuthenticationStatus status,
+    String? message,
+    TrezorDeviceInfo? deviceInfo,
+    String? error,
+    int? taskId,
+  }) = _TrezorInitializationState;
+
+  const TrezorInitializationState._();
+
+  /// Maps API status response to domain state
   factory TrezorInitializationState.fromStatusResponse(
     TrezorStatusResponse response,
     int taskId,
@@ -34,7 +39,6 @@ class TrezorInitializationState {
             taskId: taskId,
           );
         }
-
       case 'Error':
         final errorInfo = response.errorInfo;
         return TrezorInitializationState(
@@ -42,21 +46,18 @@ class TrezorInitializationState {
           error: errorInfo?.error ?? 'Unknown error occurred',
           taskId: taskId,
         );
-
       case 'InProgress':
         final description = response.progressDescription;
         return TrezorInitializationState.fromInProgressDescription(
           description,
           taskId,
         );
-
       case 'UserActionRequired':
         final description = response.progressDescription;
         return TrezorInitializationState.fromUserActionRequired(
           description,
           taskId,
         );
-
       default:
         return TrezorInitializationState(
           status: AuthenticationStatus.error,
@@ -66,8 +67,7 @@ class TrezorInitializationState {
     }
   }
 
-  /// Factory constructor that maps in-progress descriptions
-  /// to appropriate states
+  /// Maps in-progress descriptions to appropriate states
   factory TrezorInitializationState.fromInProgressDescription(
     String? description,
     int taskId,
@@ -107,8 +107,7 @@ class TrezorInitializationState {
     );
   }
 
-  /// Factory constructor that maps user action requirements
-  /// to appropriate states
+  /// Maps user action requirements to appropriate states
   factory TrezorInitializationState.fromUserActionRequired(
     String? description,
     int taskId,
@@ -144,38 +143,6 @@ class TrezorInitializationState {
     );
   }
 
-  /// Current status of the initialization process
-  final AuthenticationStatus status;
-
-  /// Human-readable message describing current state
-  final String? message;
-
-  /// Device information (available when initialization is complete)
-  final TrezorDeviceInfo? deviceInfo;
-
-  /// Error information (available when status is error)
-  final String? error;
-
-  /// Task ID for the current initialization process
-  final int? taskId;
-
-  /// Creates a copy of this state with optional parameter updates
-  TrezorInitializationState copyWith({
-    AuthenticationStatus? status,
-    String? message,
-    TrezorDeviceInfo? deviceInfo,
-    String? error,
-    int? taskId,
-  }) {
-    return TrezorInitializationState(
-      status: status ?? this.status,
-      message: message ?? this.message,
-      deviceInfo: deviceInfo ?? this.deviceInfo,
-      error: error ?? this.error,
-      taskId: taskId ?? this.taskId,
-    );
-  }
-
   AuthenticationState toAuthenticationState() {
     return AuthenticationState(
       status: status,
@@ -183,15 +150,5 @@ class TrezorInitializationState {
       taskId: taskId,
       error: error,
     );
-  }
-
-  @override
-  String toString() {
-    return 'TrezorInitializationState('
-        'status: $status, '
-        'message: $message, '
-        'deviceInfo: ${deviceInfo?.deviceName}, '
-        'error: $error, '
-        'taskId: $taskId)';
   }
 }
