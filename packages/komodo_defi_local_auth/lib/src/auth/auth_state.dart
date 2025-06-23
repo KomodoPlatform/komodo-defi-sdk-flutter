@@ -5,7 +5,7 @@ part 'auth_state.freezed.dart';
 
 /// Represents the current state of an authentication process
 @freezed
-class AuthenticationState with _$AuthenticationState {
+abstract class AuthenticationState with _$AuthenticationState {
   const factory AuthenticationState({
     required AuthenticationStatus status,
     String? message,

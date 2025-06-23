@@ -6,7 +6,7 @@ part 'trezor_initialization_state.freezed.dart';
 
 /// Represents the current state of Trezor initialization
 @freezed
-class TrezorInitializationState with _$TrezorInitializationState {
+abstract class TrezorInitializationState with _$TrezorInitializationState {
   const factory TrezorInitializationState({
     required AuthenticationStatus status,
     String? message,
