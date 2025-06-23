@@ -5,6 +5,7 @@ index_generator:
   page_width: 80
   exclude:
     - "**.g.dart"
+    - "**.freezed.dart"
 
   libraries:
     # Default index and library name
