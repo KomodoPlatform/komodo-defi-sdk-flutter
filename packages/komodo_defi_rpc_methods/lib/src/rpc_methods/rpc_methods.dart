@@ -44,6 +44,7 @@ export 'wallet/get_public_key_hash.dart';
 export 'wallet/get_wallet.dart';
 export 'wallet/get_wallet_names_request.dart';
 export 'wallet/get_wallet_names_response.dart';
+export 'wallet/delete_wallet.dart';
 export 'wallet/my_balance.dart';
 export 'withdrawal/send_raw_transaction_request.dart';
 export 'withdrawal/withdraw_request.dart';

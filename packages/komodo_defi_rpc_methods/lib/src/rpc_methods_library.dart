@@ -74,6 +74,18 @@ class WalletMethods extends BaseRpcMethodNamespace {
   Future<GetWalletNamesResponse> getWalletNames([String? rpcPass]) =>
       execute(GetWalletNamesRequest(rpcPass));
 
+  Future<DeleteWalletResponse> deleteWallet({
+    required String walletName,
+    required String password,
+    String? rpcPass,
+  }) => execute(
+    DeleteWalletRequest(
+      walletName: walletName,
+      password: password,
+      rpcPass: rpcPass,
+    ),
+  );
+
   Future<MyBalanceResponse> myBalance({
     required String coin,
     String? rpcPass,
