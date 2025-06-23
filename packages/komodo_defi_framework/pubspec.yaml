@@ -66,6 +66,8 @@ flutter:
   assets:
     - assets/config/
     - assets/coin_icons/png/
+    - assets/coin_icons/spritemap.png
+    - assets/coin_icons/spritemap.json
     - app_build/build_config.json
     
     - path: assets/.transformer_invoker

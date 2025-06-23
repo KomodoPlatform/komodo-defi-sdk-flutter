@@ -1,10 +1,13 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// A widget that displays an icon for a given [AssetId].
 ///
-/// The icon is first looked up in the local assets, then falls back to a CDN,
-/// and finally displays a generic icon if neither source has the icon.
+/// The icon is extracted from a sprite map bundled with the app. If the
+/// sprite map doesn't contain the icon, a generic placeholder is shown.
 class AssetIcon extends StatelessWidget {
   /// Creates an [AssetIcon] widget that displays an icon for the given [AssetId].
   /// This is the preferred constructor as it provides type safety and additional
@@ -110,37 +113,38 @@ class _AssetIconResolver extends StatelessWidget {
   final String assetId;
   final double size;
 
-  static const _coinImagesFolder =
-      'packages/komodo_defi_framework/assets/coin_icons/png/';
-  static const _mediaCdnUrl = 'https://komodoplatform.github.io/coins/icons/';
+  static const _spriteImageAsset =
+      'packages/komodo_defi_framework/assets/coin_icons/spritemap.png';
+  static const _spriteJsonAsset =
+      'packages/komodo_defi_framework/assets/coin_icons/spritemap.json';
 
-  static final Map<String, bool> _assetExistenceCache = {};
-  static final Map<String, bool> _cdnExistenceCache = {};
   static final Map<String, ImageProvider> _customIconsCache = {};
+  static SpriteMap? _spriteMap;
+  static Future<SpriteMap> _loadSpriteMap() async {
+    return _spriteMap ??= await SpriteMap.fromAssets(
+      imageAsset: _spriteImageAsset,
+      jsonAsset: _spriteJsonAsset,
+    );
+  }
 
   static void registerCustomIcon(AssetId assetId, ImageProvider imageProvider) {
     _customIconsCache[assetId.symbol.configSymbol] = imageProvider;
   }
 
   static void clearCaches() {
-    _assetExistenceCache.clear();
-    _cdnExistenceCache.clear();
     _customIconsCache.clear();
+    _spriteMap = null;
   }
 
   String get _sanitizedId =>
       AssetSymbol.symbolFromConfigId(assetId).toLowerCase();
-  String get _imagePath => '$_coinImagesFolder$_sanitizedId.png';
-  String get _cdnUrl => '$_mediaCdnUrl$_sanitizedId.png';
 
   static Future<void> precacheAssetIcon(
     BuildContext context,
     AssetId asset, {
     bool throwExceptions = false,
   }) async {
-    final resolver = _AssetIconResolver(assetId: asset.id, size: 20);
-    final sanitizedId = resolver._sanitizedId;
-
+    final sanitizedId = AssetSymbol.symbolFromConfigId(asset.id).toLowerCase();
     try {
       if (_customIconsCache.containsKey(asset.symbol.configSymbol)) {
         if (context.mounted) {
@@ -159,44 +163,15 @@ class _AssetIconResolver extends StatelessWidget {
         return;
       }
 
-      bool? assetExists;
-      bool? cdnExists;
-
-      final assetImage = AssetImage(resolver._imagePath);
-      final cdnImage = NetworkImage(resolver._cdnUrl);
-
-      assetExists = true;
-      await precacheImage(
-        assetImage,
-        context,
-        onError: (e, stackTrace) {
-          assetExists = false;
-          if (throwExceptions) {
-            throw Exception(
-              'Failed to pre-cache image for asset ${asset.id}: $e',
-            );
-          }
-        },
-      );
-
-      if (context.mounted) {
-        cdnExists = true;
+      final map = await _loadSpriteMap();
+      final rect = map.rectFor(sanitizedId);
+      if (rect != null && context.mounted) {
         await precacheImage(
-          cdnImage,
+          AssetImage(_spriteImageAsset),
           context,
-          onError: (e, stackTrace) {
-            cdnExists = false;
-            if (throwExceptions) {
-              throw Exception(
-                'Failed to pre-cache CDN image for asset ${asset.id}: $e',
-              );
-            }
-          },
+          onError: (_, __) {},
         );
       }
-
-      _assetExistenceCache[resolver._imagePath] = assetExists ?? false;
-      if (cdnExists != null) _cdnExistenceCache[sanitizedId] = cdnExists!;
     } catch (e) {
       debugPrint('Error in precacheAssetIcon for ${asset.id}: $e');
       if (throwExceptions) rethrow;
@@ -216,23 +191,43 @@ class _AssetIconResolver extends StatelessWidget {
       );
     }
 
-    _assetExistenceCache[_imagePath] = true;
-    return Image.asset(
-      _imagePath,
-      filterQuality: FilterQuality.high,
-      errorBuilder: (context, error, stackTrace) {
-        _assetExistenceCache[_imagePath] = false;
-        _cdnExistenceCache[_sanitizedId] ??= true;
-
-        return Image.network(
-          _cdnUrl,
-          filterQuality: FilterQuality.high,
-          errorBuilder: (context, error, stackTrace) {
-            _cdnExistenceCache[_sanitizedId] = false;
-            return Icon(Icons.monetization_on_outlined, size: size);
-          },
+    return FutureBuilder<SpriteMap>(
+      future: _loadSpriteMap(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Icon(Icons.monetization_on_outlined, size: size);
+        }
+        final map = snapshot.data!;
+        final rect = map.rectFor(_sanitizedId);
+        if (rect == null) {
+          return Icon(Icons.monetization_on_outlined, size: size);
+        }
+        return CustomPaint(
+          size: Size.square(size),
+          painter: _SpritePainter(map.image, rect, size),
         );
       },
     );
+  }
+}
+
+class _SpritePainter extends CustomPainter {
+  _SpritePainter(this.image, this.source, this.size);
+
+  final ui.Image image;
+  final ui.Rect source;
+  final double size;
+
+  @override
+  void paint(Canvas canvas, Size s) {
+    final dst = ui.Rect.fromLTWH(0, 0, size, size);
+    canvas.drawImageRect(image, source, dst, Paint());
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpritePainter oldDelegate) {
+    return oldDelegate.image != image ||
+        oldDelegate.source != source ||
+        oldDelegate.size != size;
   }
 }

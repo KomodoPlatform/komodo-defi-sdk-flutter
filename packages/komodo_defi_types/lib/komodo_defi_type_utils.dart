@@ -11,3 +11,4 @@ export 'src/utils/live_data_builder.dart';
 export 'src/utils/mnemonic_validator.dart';
 export 'src/utils/retry_utils.dart';
 export 'src/utils/security_utils.dart';
+export 'src/utils/sprite_map.dart';

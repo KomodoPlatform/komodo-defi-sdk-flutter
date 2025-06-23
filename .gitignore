@@ -97,6 +97,8 @@ assets/config/coins_config.json
 assets/config/seed_nodes.json
 assets/config/coins_ci.json
 assets/coin_icons/
+packages/komodo_defi_framework/assets/coin_icons/spritemap.png
+packages/komodo_defi_framework/assets/coin_icons/spritemap.json
 
 # MacOS
 # Flutter-related
