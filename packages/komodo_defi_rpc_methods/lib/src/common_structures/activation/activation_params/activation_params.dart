@@ -160,7 +160,7 @@ class ActivationParams implements RpcRequestParams {
 }
 
 /// Defines the private key policy for activation
-@Freezed(unionKey: 'type', unionValueCase: FreezedUnionCase.snake)
+@Freezed(unionKey: 'type', unionValueCase: FreezedUnionCase.pascal)
 abstract class PrivateKeyPolicy with _$PrivateKeyPolicy {
   /// Private constructor to allow for additional methods and properties
   const PrivateKeyPolicy._();

@@ -16,19 +16,19 @@ PrivateKeyPolicy _$PrivateKeyPolicyFromJson(
   Map<String, dynamic> json
 ) {
         switch (json['type']) {
-                  case 'context_priv_key':
+                  case 'ContextPrivKey':
           return _ContextPrivKey.fromJson(
             json
           );
-                case 'trezor':
+                case 'Trezor':
           return _Trezor.fromJson(
             json
           );
-                case 'metamask':
+                case 'Metamask':
           return _Metamask.fromJson(
             json
           );
-                case 'wallet_connect':
+                case 'WalletConnect':
           return _WalletConnect.fromJson(
             json
           );
@@ -80,7 +80,7 @@ $PrivateKeyPolicyCopyWith(PrivateKeyPolicy _, $Res Function(PrivateKeyPolicy) __
 @JsonSerializable()
 
 class _ContextPrivKey extends PrivateKeyPolicy {
-  const _ContextPrivKey({final  String? $type}): $type = $type ?? 'context_priv_key',super._();
+  const _ContextPrivKey({final  String? $type}): $type = $type ?? 'ContextPrivKey',super._();
   factory _ContextPrivKey.fromJson(Map<String, dynamic> json) => _$ContextPrivKeyFromJson(json);
 
 
@@ -119,7 +119,7 @@ String toString() {
 @JsonSerializable()
 
 class _Trezor extends PrivateKeyPolicy {
-  const _Trezor({final  String? $type}): $type = $type ?? 'trezor',super._();
+  const _Trezor({final  String? $type}): $type = $type ?? 'Trezor',super._();
   factory _Trezor.fromJson(Map<String, dynamic> json) => _$TrezorFromJson(json);
 
 
@@ -158,7 +158,7 @@ String toString() {
 @JsonSerializable()
 
 class _Metamask extends PrivateKeyPolicy {
-  const _Metamask({final  String? $type}): $type = $type ?? 'metamask',super._();
+  const _Metamask({final  String? $type}): $type = $type ?? 'Metamask',super._();
   factory _Metamask.fromJson(Map<String, dynamic> json) => _$MetamaskFromJson(json);
 
 
@@ -197,7 +197,7 @@ String toString() {
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class _WalletConnect extends PrivateKeyPolicy {
-  const _WalletConnect(this.sessionTopic, {final  String? $type}): $type = $type ?? 'wallet_connect',super._();
+  const _WalletConnect(this.sessionTopic, {final  String? $type}): $type = $type ?? 'WalletConnect',super._();
   factory _WalletConnect.fromJson(Map<String, dynamic> json) => _$WalletConnectFromJson(json);
 
  final  String sessionTopic;
