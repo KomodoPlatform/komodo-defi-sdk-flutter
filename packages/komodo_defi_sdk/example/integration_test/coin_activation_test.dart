@@ -25,58 +25,49 @@ void main() {
 
   group('KDF SDK Basic Flow Tests', () {
     testWidgets('Wallet creation and coin activation flow', (tester) async {
-      await runZonedGuarded(
-        () async {
-          // Launch the app
-          print('🚀 Starting KDF SDK Example App...');
-          app.main();
-          await tester.pumpAndSettle(const Duration(seconds: 5));
+      // Launch the app
+      print('🚀 Starting KDF SDK Example App...');
+      app.main();
+      await tester.pumpAndSettle(const Duration(seconds: 5));
 
-          try {
-            // Step 1: Enter wallet name
-            print('📝 Step 1: Entering wallet name...');
-            await _enterWalletCredentials(tester);
+      try {
+        // Step 1: Enter wallet name
+        print('📝 Step 1: Entering wallet name...');
+        await _enterWalletCredentials(tester);
 
-            // Step 2: Register wallet
-            print('🔐 Step 2: Registering wallet...');
-            await _registerWallet(tester);
+        // Step 2: Register wallet
+        print('🔐 Step 2: Registering wallet...');
+        await _registerWallet(tester);
 
-            // Step 3: Handle seed dialog
-            print('🌱 Step 3: Handling seed dialog...');
-            await _handleSeedDialog(tester);
+        // Step 3: Handle seed dialog
+        print('🌱 Step 3: Handling seed dialog...');
+        await _handleSeedDialog(tester);
 
-            // Step 4: Wait for authentication
-            print('⏳ Step 4: Waiting for authentication...');
-            await _waitForAuthentication(tester);
+        // Step 4: Wait for authentication
+        print('⏳ Step 4: Waiting for authentication...');
+        await _waitForAuthentication(tester);
 
-            // Step 5: Activate coins
-            print('🪙 Step 5: Activating coins...');
-            final results = await _activateCoins(tester);
+        // Step 5: Activate coins
+        print('🪙 Step 5: Activating coins...');
+        final results = await _activateCoins(tester);
 
-            print('✅ Test completed successfully!');
-            print(
-              '📊 Results: ${results['activated']} activated, '
-              '${results['failed']} failed',
-            );
+        print('✅ Test completed successfully!');
+        print(
+          '📊 Results: ${results['activated']} activated, '
+          '${results['failed']} failed',
+        );
 
-            // Verify success
-            expect(
-              results['activated'],
-              greaterThan(0),
-              reason: 'Should activate at least one coin',
-            );
-          } catch (e, stackTrace) {
-            print('❌ Test failed with error: $e');
-            print('Stack trace: $stackTrace');
-            // Do not rethrow, just log and ignore
-          }
-        },
-        (Object error, StackTrace stack) {
-          print('❗️ Uncaught exception in test zone: $error');
-          print('Stack trace: $stack');
-          // Ignore uncaught exceptions
-        },
-      );
+        // Verify success
+        expect(
+          results['activated'],
+          greaterThan(0),
+          reason: 'Should activate at least one coin',
+        );
+      } catch (e, stackTrace) {
+        print('❌ Test failed with error: $e');
+        print('Stack trace: $stackTrace');
+        // Do not rethrow, just log and ignore
+      }
     });
   });
 }

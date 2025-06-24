@@ -110,8 +110,10 @@ class ActivationParams implements RpcRequestParams {
       if (requiredConfirmations != null)
         'required_confirmations': requiredConfirmations,
       'requires_notarization': requiresNotarization,
-      // only ETH/ERC20 activations require and support the json enum
-      // format. The rest still use the string-based privkeypolicy format.
+      // IMPORTANT: Serialization format varies by coin type:
+      // - ETH/ERC20: Uses full JSON object format with type discrimination
+      // - Other coins: Uses legacy PascalCase string format for backward compatibility
+      // This difference is maintained for API compatibility reasons.
       'priv_key_policy':
           (privKeyPolicy ?? const PrivateKeyPolicy.contextPrivKey())
               .pascalCaseName,
@@ -160,6 +162,8 @@ class ActivationParams implements RpcRequestParams {
 }
 
 /// Defines the private key policy for activation
+/// API uses pascal case for PrivKeyPolicy types, so we use it as the
+/// union key case to ensure compatibility with existing APIs.
 @Freezed(unionKey: 'type', unionValueCase: FreezedUnionCase.pascal)
 abstract class PrivateKeyPolicy with _$PrivateKeyPolicy {
   /// Private constructor to allow for additional methods and properties
