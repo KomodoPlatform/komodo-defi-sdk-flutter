@@ -31,6 +31,11 @@ class UtxoProtocol extends ProtocolClass {
   UtxoActivationParams defaultActivationParams({
     PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
   }) {
+    var scanPolicy = ScanPolicy.scanIfNewWallet;
+    if (privKeyPolicy == PrivateKeyPolicy.trezor) {
+      scanPolicy = ScanPolicy.scan;
+    }
+
     return UtxoActivationParams.fromJson(config)
         .copyWith(
           txHistory: true,
@@ -38,7 +43,7 @@ class UtxoProtocol extends ProtocolClass {
         )
         .copyWithHd(
           minAddressesNumber: 1,
-          scanPolicy: ScanPolicy.scanIfNewWallet,
+          scanPolicy: scanPolicy,
           gapLimit: 20,
         );
   }

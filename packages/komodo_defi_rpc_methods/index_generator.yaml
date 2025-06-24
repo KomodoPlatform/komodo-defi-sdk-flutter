@@ -4,9 +4,9 @@
 index_generator:
   page_width: 100
   exclude:
-    - "**.g.dart"
-    - "**.freezed.dart"
-    - "{_,**/_}*.dart"
+    - '**.g.dart'
+    - '**.freezed.dart'
+    - '{_,**/_}*.dart'
   libraries:
     - directory_path: lib/src/common_structures
       file_name: common_structures
