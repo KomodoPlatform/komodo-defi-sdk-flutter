@@ -172,6 +172,7 @@ class _SeedDialogState extends State<SeedDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(
+          key: const Key('dialog_register_button'),
           onPressed: canSubmit ? () async => _onSubmit() : null,
           child: const Text('Register'),
         ),
