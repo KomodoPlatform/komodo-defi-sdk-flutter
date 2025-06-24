@@ -32,7 +32,7 @@ class UtxoProtocol extends ProtocolClass {
     PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
   }) {
     var scanPolicy = ScanPolicy.scanIfNewWallet;
-    if (privKeyPolicy == PrivateKeyPolicy.trezor) {
+    if (privKeyPolicy == const PrivateKeyPolicy.trezor()) {
       scanPolicy = ScanPolicy.scan;
     }
 

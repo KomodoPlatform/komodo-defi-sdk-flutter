@@ -18,7 +18,7 @@ class AuthSignedIn extends AuthEvent {
     required this.walletName,
     required this.password,
     required this.derivationMethod,
-    this.privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    this.privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
   });
 
   final String walletName;
@@ -47,7 +47,7 @@ class AuthRegistered extends AuthEvent {
     required this.password,
     required this.derivationMethod,
     this.mnemonic,
-    this.privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    this.privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
   });
 
   final String walletName;

@@ -578,6 +578,7 @@ class _InstanceViewState extends State<InstanceView> {
                 child: const Text('Sign In'),
               ),
               FilledButton(
+                key: const Key('register_button'),
                 onPressed: () {
                   if (_formKey.currentState?.validate() ?? false) {
                     _showSeedDialog();

@@ -260,7 +260,7 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     await _assertAuthState(false);
 
     // Trezor is not supported in non-stream functions
-    if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
+    if (options.privKeyPolicy == const PrivateKeyPolicy.trezor()) {
       throw AuthException(
         'Trezor authentication requires using signInStream() method '
         'to handle device interactions (PIN, passphrase) asynchronously',
@@ -294,7 +294,7 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     await ensureInitialized();
     await _assertAuthState(false);
 
-    if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
+    if (options.privKeyPolicy == const PrivateKeyPolicy.trezor()) {
       // Trezor requires streaming to handle interactive device prompts
       yield* _trezorAuthService.signInStreamed(options: options);
     } else {
@@ -354,7 +354,7 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     }
 
     // Trezor is not supported in non-stream functions
-    if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
+    if (options.privKeyPolicy == const PrivateKeyPolicy.trezor()) {
       throw AuthException(
         'Trezor registration requires using registerStream() method '
         'to handle device interactions (PIN, passphrase) asynchronously',
@@ -391,7 +391,7 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
       return;
     }
 
-    if (options.privKeyPolicy == PrivateKeyPolicy.trezor) {
+    if (options.privKeyPolicy == const PrivateKeyPolicy.trezor()) {
       // Trezor requires streaming to handle interactive device prompts
       yield* _trezorAuthService.registerStream(
         options: options,

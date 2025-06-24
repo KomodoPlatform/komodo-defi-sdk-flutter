@@ -23,7 +23,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
     try {
       final authOptions = AuthOptions(
         derivationMethod: event.derivationMethod,
-        privKeyPolicy: PrivateKeyPolicy.trezor,
+        privKeyPolicy: const PrivateKeyPolicy.trezor(),
       );
 
       // Trezor generates and securely stores a random password internally,
