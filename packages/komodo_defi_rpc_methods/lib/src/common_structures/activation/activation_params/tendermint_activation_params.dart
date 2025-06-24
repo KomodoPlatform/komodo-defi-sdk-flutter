@@ -10,7 +10,7 @@ class TendermintActivationParams extends ActivationParams {
     required this.txHistory,
     super.requiredConfirmations = 3,
     super.requiresNotarization = false,
-    super.privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    super.privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
   }) : _tokensParams = tokensParams;
 
   factory TendermintActivationParams.fromJson(JsonMap json) {
@@ -32,10 +32,9 @@ class TendermintActivationParams extends ActivationParams {
       requiredConfirmations: base.requiredConfirmations,
       requiresNotarization: base.requiresNotarization,
       getBalances: json.valueOrNull<bool>('get_balances') ?? true,
-      privKeyPolicy:
-          json.valueOrNull<String>('priv_key_policy') == 'Trezor'
-              ? PrivateKeyPolicy.trezor
-              : PrivateKeyPolicy.contextPrivKey,
+      privKeyPolicy: PrivateKeyPolicy.fromLegacyJson(
+        json.valueOrNull<dynamic>('priv_key_policy'),
+      ),
       nodes: json.value<JsonList>('rpc_urls').map(EvmNode.fromJson).toList(),
     );
   }
