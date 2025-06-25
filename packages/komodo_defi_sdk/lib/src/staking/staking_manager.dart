@@ -43,6 +43,6 @@ class StakingManager {
 
   String _stakingType(Asset asset) {
     if (asset.protocol is QtumProtocol) return 'Qtum';
-    return asset.protocol.runtimeType.toString();
+    return asset.protocol.id; // Use a stable identifier instead of runtimeType.toString()
   }
 }
