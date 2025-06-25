@@ -424,14 +424,17 @@ class _InstanceViewState extends State<InstanceView> {
                   () => context.read<AuthBloc>().add(const AuthSignedOut()),
               icon: const Icon(Icons.logout),
               label: const Text('Sign Out'),
+              key: const Key('sign_out_button'),
             ),
             if (_mnemonic == null) ...[
               FilledButton.tonal(
                 onPressed: () => _getMnemonic(encrypted: false),
+                key: const Key('get_plaintext_mnemonic_button'),
                 child: const Text('Get Plaintext Mnemonic'),
               ),
               FilledButton.tonal(
                 onPressed: () => _getMnemonic(encrypted: true),
+                key: const Key('get_encrypted_mnemonic_button'),
                 child: const Text('Get Encrypted Mnemonic'),
               ),
             ],
@@ -500,12 +503,14 @@ class _InstanceViewState extends State<InstanceView> {
           const SizedBox(height: 16),
         ],
         TextFormField(
+          key: const Key('wallet_name_field'),
           controller: _walletNameController,
           decoration: const InputDecoration(labelText: 'Wallet Name'),
           validator: _validator,
           enabled: !isLoading,
         ),
         TextFormField(
+          key: const Key('password_field'),
           controller: _passwordController,
           validator: _validator,
           enabled: !isLoading,
@@ -573,6 +578,7 @@ class _InstanceViewState extends State<InstanceView> {
                 child: const Text('Sign In'),
               ),
               FilledButton(
+                key: const Key('register_button'),
                 onPressed: () {
                   if (_formKey.currentState?.validate() ?? false) {
                     _showSeedDialog();

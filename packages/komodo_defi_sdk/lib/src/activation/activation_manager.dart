@@ -101,7 +101,7 @@ class ActivationManager {
         final currentUser = await _auth.currentUser;
         final privKeyPolicy =
             currentUser?.walletId.authOptions.privKeyPolicy ??
-            PrivateKeyPolicy.contextPrivKey;
+            const PrivateKeyPolicy.contextPrivKey();
 
         // Create activator with the user's privKeyPolicy
         final activator = ActivationStrategyFactory.createStrategy(
