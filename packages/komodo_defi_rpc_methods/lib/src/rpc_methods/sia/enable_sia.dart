@@ -81,6 +81,6 @@ class TaskEnableSiaCancel
     if (GeneralErrorResponse.isErrorResponse(json)) {
       throw GeneralErrorResponse.parse(json);
     }
-    return BaseResponse(mmrpc: json.value<String>('mmrpc'), id: null);
+    return GeneralErrorResponse.parse(json);
   }
 }

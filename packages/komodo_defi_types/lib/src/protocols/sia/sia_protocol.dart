@@ -24,7 +24,6 @@ class SiaProtocol extends ProtocolClass {
   static void _validateSiaConfig(JsonMap json) {
     final requiredFields = {
       'nodes': 'RPC URLs',
-      'server_url': 'Siascan server URL',
     };
 
     for (final field in requiredFields.entries) {
@@ -37,7 +36,7 @@ class SiaProtocol extends ProtocolClass {
     }
   }
 
-  JsonList get rpcUrlsMap => config.value<JsonList>('rpc_urls');
+  JsonList get rpcUrlsMap => config.value<JsonList>('nodes');
 
   String? get serverUrl => config.valueOrNull<String>('server_url');
 
@@ -54,19 +53,4 @@ class SiaProtocol extends ProtocolClass {
 
   @override
   bool get requiresHdWallet => false;
-
-  @override
-  Uri? explorerTxUrl(String txHash) {
-    // SIA uses address-based event URLs instead of transaction hashes
-    return null;
-  }
-
-  @override
-  Uri? explorerAddressUrl(String address) {
-    // SIA has a special address events URL format
-    return explorerPattern.buildUrl(
-      'addresses/{ADDRESS}/events/',
-      {'ADDRESS': address},
-    );
-  }
 }
