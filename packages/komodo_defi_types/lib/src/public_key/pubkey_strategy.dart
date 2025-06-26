@@ -42,9 +42,9 @@ class PubkeyStrategyFactory {
       final privKeyPolicy = kdfUser.walletId.authOptions.privKeyPolicy;
 
       switch (privKeyPolicy) {
-        case PrivateKeyPolicy.trezor:
+        case const PrivateKeyPolicy.trezor():
           return TrezorHDWalletStrategy(kdfUser: kdfUser);
-        case PrivateKeyPolicy.contextPrivKey:
+        case const PrivateKeyPolicy.contextPrivKey():
           return ContextPrivKeyHDWalletStrategy(kdfUser: kdfUser);
       }
     }
