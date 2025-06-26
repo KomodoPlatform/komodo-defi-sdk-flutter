@@ -159,7 +159,7 @@ class TrezorAuthService implements IAuthService {
     required AuthOptions options,
   }) async {
     // Throw exception if PrivateKeyPolicy is NOT trezor
-    if (options.privKeyPolicy != PrivateKeyPolicy.trezor) {
+    if (options.privKeyPolicy != const PrivateKeyPolicy.trezor()) {
       throw AuthException(
         'TrezorAuthService only supports Trezor private key policy',
         type: AuthExceptionType.generalAuthError,
@@ -226,7 +226,7 @@ class TrezorAuthService implements IAuthService {
     Mnemonic? mnemonic,
   }) async {
     // Throw exception if PrivateKeyPolicy is NOT trezor
-    if (options.privKeyPolicy != PrivateKeyPolicy.trezor) {
+    if (options.privKeyPolicy != const PrivateKeyPolicy.trezor()) {
       throw AuthException(
         'TrezorAuthService only supports Trezor private key policy',
         type: AuthExceptionType.generalAuthError,
