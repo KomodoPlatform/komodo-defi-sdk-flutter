@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
 import 'package:kdf_sdk_example/main.dart';
 import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/auth/seed_dialog.dart';
@@ -14,9 +16,7 @@ class InstanceView extends StatefulWidget {
   const InstanceView({
     required this.instance,
     required this.state,
-    required this.currentUser,
     required this.statusMessage,
-    required this.onUserChanged,
     required this.searchController,
     required this.filteredAssets,
     required this.onNavigateToAsset,
@@ -25,9 +25,7 @@ class InstanceView extends StatefulWidget {
 
   final KdfInstanceState instance;
   final InstanceState state;
-  final KdfUser? currentUser;
   final String statusMessage;
-  final ValueChanged<KdfUser?> onUserChanged;
   final TextEditingController searchController;
   final List<Asset> filteredAssets;
   final void Function(Asset) onNavigateToAsset;
@@ -38,65 +36,25 @@ class InstanceView extends StatefulWidget {
 
 class _InstanceViewState extends State<InstanceView> {
   final _formKey = GlobalKey<FormState>();
+  final _walletNameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _isHdMode = true;
+  bool _isTrezorInitializing = false;
   String? _mnemonic;
-  Timer? _refreshUsersTimer;
 
   @override
   void initState() {
     super.initState();
-    _refreshUsersTimer = Timer.periodic(
-      const Duration(seconds: 10),
-      (_) => _fetchKnownUsers(),
-    );
+    context.read<AuthBloc>().add(const AuthKnownUsersFetched());
+    context.read<AuthBloc>().add(const AuthInitialStateChecked());
   }
 
   @override
   void dispose() {
-    _refreshUsersTimer?.cancel();
+    _walletNameController.dispose();
+    _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _fetchKnownUsers() async {
-    try {
-      final users = await widget.instance.sdk.auth.getUsers();
-      if (mounted) {
-        setState(() {
-          widget.state.knownUsers = users;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error fetching known users: $e');
-    }
-  }
-
-  Future<void> _signIn() async {
-    try {
-      final user = await widget.instance.sdk.auth.signIn(
-        walletName: widget.state.walletNameController.text,
-        password: widget.state.passwordController.text,
-        options: AuthOptions(
-          derivationMethod:
-              widget.state.isHdMode
-                  ? DerivationMethod.hdWallet
-                  : DerivationMethod.iguana,
-        ),
-      );
-      widget.onUserChanged(user);
-    } on AuthException catch (e) {
-      _showError('Auth Error: ${e.message}');
-    } catch (e) {
-      _showError('Unexpected error: $e');
-    }
-  }
-
-  Future<void> _signOut() async {
-    try {
-      await widget.instance.sdk.auth.signOut();
-      widget.onUserChanged(null);
-      setState(() => _mnemonic = null);
-    } catch (e) {
-      _showError('Error signing out: $e');
-    }
   }
 
   Future<void> _getMnemonic({required bool encrypted}) async {
@@ -104,45 +62,243 @@ class _InstanceViewState extends State<InstanceView> {
       final mnemonic =
           encrypted
               ? await widget.instance.sdk.auth.getMnemonicEncrypted()
-              : await widget.instance.sdk.auth.getMnemonicPlainText(
-                widget.state.passwordController.text,
-              );
+              : await _getMnemonicWithPassword();
 
-      setState(() {
-        _mnemonic = mnemonic.toJson().toJsonString();
-      });
+      if (mnemonic != null && mounted) {
+        setState(() => _mnemonic = mnemonic.toJson().toJsonString());
+      }
     } catch (e) {
-      _showError('Error fetching mnemonic: $e');
+      if (mounted) {
+        _showError('Error getting mnemonic: $e');
+      }
     }
   }
 
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      ),
-    );
+  Future<Mnemonic?> _getMnemonicWithPassword() async {
+    final password = await _showPasswordDialog();
+    if (password == null) return null;
+
+    return widget.instance.sdk.auth.getMnemonicPlainText(password);
   }
 
-  Future<void> _showSeedDialog() async {
-    if (!_formKey.currentState!.validate()) return; // Add form validation
-
-    await showDialog<void>(
+  Future<String?> _showPasswordDialog() async {
+    final passwordController = TextEditingController();
+    return showDialog<String>(
       context: context,
       builder:
-          (context) => SeedDialog(
-            isHdMode: widget.state.isHdMode,
-            sdk: widget.instance.sdk,
-            walletName: widget.state.walletNameController.text,
-            password: widget.state.passwordController.text,
-            onRegister: _handleRegistration,
+          (context) => AlertDialog(
+            title: const Text('Enter Password'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter your wallet password to decrypt the mnemonic:',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  obscureText: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed:
+                    () => Navigator.of(context).pop(passwordController.text),
+                child: const Text('OK'),
+              ),
+            ],
           ),
     );
   }
 
-  Future<void> _handleRegistration(String input, bool isEncrypted) async {
+  void _initializeTrezor() {
+    setState(() => _isTrezorInitializing = true);
+    context.read<AuthBloc>().add(
+      const AuthTrezorInitAndAuthStarted(
+        derivationMethod: DerivationMethod.hdWallet,
+      ),
+    );
+  }
+
+  Future<void> _showTrezorPinDialog(int taskId, String? message) async {
+    final pinController = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) {
+                // Handle back button press - trigger cancel action
+                Navigator.of(context).pop();
+                context.read<AuthBloc>().add(
+                  AuthTrezorCancelled(taskId: taskId),
+                );
+              }
+            },
+            child: AlertDialog(
+              title: const Text('Trezor PIN Required'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(message ?? 'Please enter your Trezor PIN'),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: pinController,
+                    decoration: const InputDecoration(
+                      labelText: 'PIN',
+                      border: OutlineInputBorder(),
+                      helperText: 'Use the PIN pad on your Trezor device',
+                    ),
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    autofocus: true,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    context.read<AuthBloc>().add(
+                      AuthTrezorCancelled(taskId: taskId),
+                    );
+                  },
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final pin = pinController.text;
+                    Navigator.of(context).pop(pin);
+                  },
+                  child: const Text('Submit'),
+                ),
+              ],
+            ),
+          ),
+    );
+
+    if (result != null && mounted) {
+      context.read<AuthBloc>().add(
+        AuthTrezorPinProvided(taskId: taskId, pin: result),
+      );
+    }
+  }
+
+  Future<void> _showTrezorPassphraseDialog(int taskId, String? message) async {
+    final passphraseController = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) {
+                // Handle back button press - trigger cancel action
+                Navigator.of(context).pop();
+                context.read<AuthBloc>().add(
+                  AuthTrezorCancelled(taskId: taskId),
+                );
+              }
+            },
+            child: AlertDialog(
+              title: const Text('Trezor Passphrase Required'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(message ?? 'Please choose your passphrase option'),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Choose your passphrase configuration:',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passphraseController,
+                    decoration: const InputDecoration(
+                      labelText: 'Hidden passphrase (optional)',
+                      border: OutlineInputBorder(),
+                      helperText:
+                          'Enter your passphrase or leave empty for standard wallet',
+                    ),
+                    obscureText: true,
+                    autofocus: true,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    context.read<AuthBloc>().add(
+                      AuthTrezorCancelled(taskId: taskId),
+                    );
+                  },
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.tonal(
+                  onPressed: () {
+                    // Standard wallet with empty passphrase
+                    Navigator.of(context).pop('');
+                  },
+                  child: const Text('Standard Wallet'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    // Hidden passphrase wallet
+                    final passphrase = passphraseController.text;
+                    Navigator.of(context).pop(passphrase);
+                  },
+                  child: const Text('Hidden Wallet'),
+                ),
+              ],
+            ),
+          ),
+    );
+
+    if (result != null && mounted) {
+      context.read<AuthBloc>().add(
+        AuthTrezorPassphraseProvided(taskId: taskId, passphrase: result),
+      );
+    }
+  }
+
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showSeedDialog() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => const SeedDialog(),
+    );
+
+    if (result != null && mounted) {
+      final input = result['input'] as String;
+      final isEncrypted = result['isEncrypted'] as bool;
+      _handleRegistration(input, isEncrypted);
+    }
+  }
+
+  void _handleRegistration(String input, bool isEncrypted) {
     Mnemonic? mnemonic;
 
     if (input.isNotEmpty) {
@@ -158,71 +314,105 @@ class _InstanceViewState extends State<InstanceView> {
       }
     }
 
-    try {
-      final user = await widget.instance.sdk.auth.register(
-        walletName: widget.state.walletNameController.text,
-        password: widget.state.passwordController.text,
-        options: AuthOptions(
-          derivationMethod:
-              widget.state.isHdMode
-                  ? DerivationMethod.hdWallet
-                  : DerivationMethod.iguana,
-        ),
+    context.read<AuthBloc>().add(
+      AuthRegistered(
+        walletName: _walletNameController.text,
+        password: _passwordController.text,
+        derivationMethod:
+            _isHdMode ? DerivationMethod.hdWallet : DerivationMethod.iguana,
         mnemonic: mnemonic,
-      );
-
-      widget.onUserChanged(user);
-    } on AuthException catch (e) {
-      _showError(
-        e.type == AuthExceptionType.incorrectPassword
-            ? 'HD mode requires a valid BIP39 seed phrase. The imported encrypted seed is not compatible.'
-            : 'Registration failed: ${e.message}',
-      );
-    }
+      ),
+    );
   }
 
   void _onSelectKnownUser(KdfUser user) {
-    setState(() {
-      widget.state.walletNameController.text = user.walletId.name;
-      widget.state.passwordController.text = '';
-      widget.state.isHdMode =
-          user.authOptions.derivationMethod == DerivationMethod.hdWallet;
-    });
+    context.read<AuthBloc>().add(AuthKnownUserSelected(user));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InstanceStatus(instance: widget.instance),
-        const SizedBox(height: 16),
-        Text(widget.statusMessage),
-        if (widget.currentUser != null) ...[
-          Text(
-            'Wallet Mode: ${widget.currentUser!.authOptions.derivationMethod == DerivationMethod.hdWallet ? 'HD' : 'Legacy'}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-        const SizedBox(height: 16),
-        if (widget.currentUser == null)
-          Expanded(
-            child: SingleChildScrollView(
-              // Wrap the auth form in a Form widget using the key
-              child: Form(
-                key: _formKey,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                child: _buildAuthForm(),
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state.status == AuthStatus.error) {
+          _showError(state.errorMessage ?? 'Unknown error');
+          setState(() => _isTrezorInitializing = false);
+        }
+
+        // Update form fields when user is selected
+        if (state.status == AuthStatus.unauthenticated &&
+            state.selectedUser != null) {
+          _walletNameController.text = state.walletName;
+          _passwordController.clear();
+          setState(() {
+            _isHdMode = state.isHdMode;
+            _isTrezorInitializing = false;
+          });
+        }
+
+        // Handle Trezor-specific states
+        if (state.isTrezorPinRequired) {
+          _showTrezorPinDialog(
+            state.trezorTaskId!,
+            state.trezorMessage ?? 'Enter PIN',
+          );
+        } else if (state.isTrezorPassphraseRequired) {
+          _showTrezorPassphraseDialog(
+            state.trezorTaskId!,
+            state.trezorMessage ?? 'Enter Passphrase',
+          );
+        } else if (state.isTrezorInitializing) {
+          // Keep the initializing state
+        } else if (state.isTrezorAwaitingConfirmation) {
+          // Show a non-blocking message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                state.trezorMessage ?? 'Please confirm on your Trezor device',
               ),
+              duration: const Duration(seconds: 3),
             ),
-          )
-        else
-          Expanded(child: _buildLoggedInView()),
-      ],
+          );
+        } else if (state.status == AuthStatus.authenticated ||
+            state.status == AuthStatus.unauthenticated) {
+          setState(() => _isTrezorInitializing = false);
+        }
+      },
+      builder: (context, state) {
+        final currentUser =
+            state.status == AuthStatus.authenticated ? state.user : null;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InstanceStatus(instance: widget.instance),
+            const SizedBox(height: 16),
+            Text(widget.statusMessage),
+            if (currentUser != null) ...[
+              Text(
+                currentUser.isHd ? 'HD' : 'Legacy',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            const SizedBox(height: 16),
+            if (currentUser == null)
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: _formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    child: _buildAuthForm(state),
+                  ),
+                ),
+              )
+            else
+              Expanded(child: _buildLoggedInView(currentUser)),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildLoggedInView() {
+  Widget _buildLoggedInView(KdfUser currentUser) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -230,17 +420,21 @@ class _InstanceViewState extends State<InstanceView> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             FilledButton.tonalIcon(
-              onPressed: _signOut,
+              onPressed:
+                  () => context.read<AuthBloc>().add(const AuthSignedOut()),
               icon: const Icon(Icons.logout),
               label: const Text('Sign Out'),
+              key: const Key('sign_out_button'),
             ),
             if (_mnemonic == null) ...[
               FilledButton.tonal(
                 onPressed: () => _getMnemonic(encrypted: false),
+                key: const Key('get_plaintext_mnemonic_button'),
                 child: const Text('Get Plaintext Mnemonic'),
               ),
               FilledButton.tonal(
                 onPressed: () => _getMnemonic(encrypted: true),
+                key: const Key('get_encrypted_mnemonic_button'),
                 child: const Text('Get Encrypted Mnemonic'),
               ),
             ],
@@ -271,18 +465,23 @@ class _InstanceViewState extends State<InstanceView> {
             assets: widget.filteredAssets,
             searchController: widget.searchController,
             onAssetSelected: widget.onNavigateToAsset,
-            authOptions: widget.currentUser!.authOptions,
+            authOptions: currentUser.walletId.authOptions,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildAuthForm() {
+  Widget _buildAuthForm(AuthState state) {
+    final knownUsers = context.read<AuthBloc>().knownUsers;
+    final isLoading =
+        state.status == AuthStatus.loading ||
+        state.status == AuthStatus.signingOut;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.state.knownUsers.isNotEmpty) ...[
+        if (knownUsers.isNotEmpty) ...[
           Text(
             'Saved Wallets:',
             style: Theme.of(context).textTheme.titleMedium,
@@ -292,10 +491,11 @@ class _InstanceViewState extends State<InstanceView> {
             spacing: 8,
             runSpacing: 8,
             children:
-                widget.state.knownUsers.map((user) {
+                knownUsers.map((user) {
                   return ActionChip(
                     key: Key(user.walletId.compoundId),
-                    onPressed: () => _onSelectKnownUser(user),
+                    onPressed:
+                        isLoading ? null : () => _onSelectKnownUser(user),
                     label: Text(user.walletId.name),
                   );
                 }).toList(),
@@ -303,29 +503,31 @@ class _InstanceViewState extends State<InstanceView> {
           const SizedBox(height: 16),
         ],
         TextFormField(
-          controller: widget.state.walletNameController,
+          key: const Key('wallet_name_field'),
+          controller: _walletNameController,
           decoration: const InputDecoration(labelText: 'Wallet Name'),
           validator: _validator,
+          enabled: !isLoading,
         ),
         TextFormField(
-          controller: widget.state.passwordController,
+          key: const Key('password_field'),
+          controller: _passwordController,
           validator: _validator,
+          enabled: !isLoading,
           decoration: InputDecoration(
             labelText: 'Password',
             suffixIcon: IconButton(
               icon: Icon(
-                widget.state.obscurePassword
-                    ? Icons.visibility
-                    : Icons.visibility_off,
+                _obscurePassword ? Icons.visibility : Icons.visibility_off,
               ),
               onPressed: () {
                 setState(() {
-                  widget.state.obscurePassword = !widget.state.obscurePassword;
+                  _obscurePassword = !_obscurePassword;
                 });
               },
             ),
           ),
-          obscureText: widget.state.obscurePassword,
+          obscureText: _obscurePassword,
         ),
         SwitchListTile(
           title: const Row(
@@ -342,31 +544,111 @@ class _InstanceViewState extends State<InstanceView> {
             ],
           ),
           subtitle: const Text('Enable HD multi-address mode'),
-          value: widget.state.isHdMode,
-          onChanged: (value) {
-            setState(() => widget.state.isHdMode = value);
-          },
+          value: _isHdMode,
+          onChanged:
+              isLoading
+                  ? null
+                  : (value) {
+                    setState(() => _isHdMode = value);
+                  },
         ),
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            FilledButton.tonal(
-              onPressed: _signIn,
-              child: const Text('Sign In'),
+        if (isLoading) ...[
+          const Center(child: CircularProgressIndicator()),
+          const SizedBox(height: 16),
+        ] else ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              FilledButton.tonal(
+                onPressed: () {
+                  if (_formKey.currentState?.validate() ?? false) {
+                    context.read<AuthBloc>().add(
+                      AuthSignedIn(
+                        walletName: _walletNameController.text,
+                        password: _passwordController.text,
+                        derivationMethod:
+                            _isHdMode
+                                ? DerivationMethod.hdWallet
+                                : DerivationMethod.iguana,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Sign In'),
+              ),
+              FilledButton(
+                key: const Key('register_button'),
+                onPressed: () {
+                  if (_formKey.currentState?.validate() ?? false) {
+                    _showSeedDialog();
+                  }
+                },
+                child: const Text('Register'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Trezor status message
+          if (state.isTrezorInitializing) ...[
+            Card(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        state.trezorMessage ?? 'Initializing Trezor...',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    if (state.trezorTaskId != null)
+                      TextButton(
+                        onPressed:
+                            () => context.read<AuthBloc>().add(
+                              AuthTrezorCancelled(taskId: state.trezorTaskId!),
+                            ),
+                        child: const Text('Cancel'),
+                      ),
+                  ],
+                ),
+              ),
             ),
-            FilledButton(
-              onPressed: _showSeedDialog,
-              child: const Text('Register'),
-            ),
+            const SizedBox(height: 12),
           ],
-        ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed: _isTrezorInitializing ? null : _initializeTrezor,
+                icon:
+                    _isTrezorInitializing
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.security),
+                label: Text(
+                  _isTrezorInitializing ? 'Initializing...' : 'Use Trezor',
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
 
   String? _validator(String? value) {
-    if (value?.isEmpty ?? true) {
+    if (value == null || value.isEmpty) {
       return 'This field is required';
     }
     return null;

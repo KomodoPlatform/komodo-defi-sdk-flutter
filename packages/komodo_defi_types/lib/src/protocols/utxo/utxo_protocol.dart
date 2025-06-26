@@ -28,14 +28,22 @@ class UtxoProtocol extends ProtocolClass {
   // than adding the activation parameters to the protocol.
   // Hint: It may be useful to refactor `[ActivationStrategy.supportsAssetType]`
   // to be async.
-  UtxoActivationParams defaultActivationParams() {
+  UtxoActivationParams defaultActivationParams({
+    PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
+  }) {
+    var scanPolicy = ScanPolicy.scanIfNewWallet;
+    if (privKeyPolicy == const PrivateKeyPolicy.trezor()) {
+      scanPolicy = ScanPolicy.scan;
+    }
+
     return UtxoActivationParams.fromJson(config)
         .copyWith(
           txHistory: true,
+          privKeyPolicy: privKeyPolicy,
         )
         .copyWithHd(
           minAddressesNumber: 1,
-          scanPolicy: ScanPolicy.scanIfNewWallet,
+          scanPolicy: scanPolicy,
           gapLimit: 20,
         );
   }

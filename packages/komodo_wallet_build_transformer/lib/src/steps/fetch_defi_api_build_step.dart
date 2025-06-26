@@ -444,12 +444,9 @@ class FetchDefiApiStep extends BuildStep {
     required String destinationFolder,
   }) {
     _log.fine('Looking for KDF at: $filePath');
+    final newExecutableName = path.basename(filePath).replaceAll('mm2', 'kdf');
+    final newExecutablePath = path.join(destinationFolder, newExecutableName);
     if (FileSystemEntity.isFileSync(filePath)) {
-      final newExecutableName = path
-          .basename(filePath)
-          .replaceAll('mm2', 'kdf');
-      final newExecutablePath = path.join(destinationFolder, newExecutableName);
-
       try {
         File(filePath).renameSync(newExecutablePath);
         _log.info('Renamed kdf from $filePath to $newExecutableName');
@@ -457,7 +454,10 @@ class FetchDefiApiStep extends BuildStep {
         _log.severe('Failed to rename kdf: $e');
       }
     } else {
-      _log.warning('KDF not found at: $filePath');
+      // If it's already renamed, there's no need to log a warning.
+      if (!FileSystemEntity.isFileSync(newExecutablePath)) {
+        _log.warning('KDF not found at: $filePath');
+      }
     }
   }
 

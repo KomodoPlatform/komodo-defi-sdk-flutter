@@ -47,7 +47,6 @@ web/src/mm2/
 web/src/kdf/
 web/kdf/
 
-
 # Symbolication related
 app.*.symbols
 
@@ -89,12 +88,12 @@ macos/bin/
 # Android C++ files
 android/app/.cxx/
 
-# Coins asset files 
+# Coins asset files
 assets/config/coins.json
 assets/config/coins_config.json
+assets/config/seed_nodes.json
 assets/config/coins_ci.json
 assets/coin_icons/png/*.png
-
 
 # MacOS
 # Flutter-related

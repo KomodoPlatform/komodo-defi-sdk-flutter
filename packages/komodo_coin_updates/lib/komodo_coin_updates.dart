@@ -6,3 +6,4 @@ library;
 export 'src/data/data.dart';
 export 'src/komodo_coin_updater.dart';
 export 'src/models/models.dart';
+export 'src/seed_node_updater.dart';

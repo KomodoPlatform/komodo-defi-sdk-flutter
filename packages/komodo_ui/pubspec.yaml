@@ -9,7 +9,7 @@ environment:
   flutter: ">=3.29.0 <3.30.0"
 
 dependencies:
-  decimal: ^3.0.2
+  decimal: ^3.2.1
 
   flutter:
     sdk: flutter
@@ -22,6 +22,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  index_generator: ^4.0.0
+  index_generator: ^4.0.1
   mocktail: ^1.0.4
   very_good_analysis: ^8.0.0

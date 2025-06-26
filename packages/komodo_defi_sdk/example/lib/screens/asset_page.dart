@@ -571,6 +571,7 @@ class _AddressesSection extends StatelessWidget {
                       ),
                     )
                     : ListView.builder(
+                      key: const Key('asset_addresses_list'),
                       itemCount: pubkeys.keys.length,
                       itemBuilder:
                           (context, index) => ListTile(

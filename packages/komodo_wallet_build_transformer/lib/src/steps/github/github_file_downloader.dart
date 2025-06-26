@@ -130,15 +130,18 @@ class GitHubFileDownloader {
     }
   }
 
-  Future<String> _fetchFileContent(String fileUrl, String repoCommit) async {
-    final isRawContentUrl = fileUrl.startsWith(
+  Future<String> _fetchFileContent(
+    String relativeFilePath,
+    String repoCommit,
+  ) async {
+    final isRawContentUrl = relativeFilePath.startsWith(
       'https://raw.githubusercontent.com',
     );
 
     final fileContentUrl = Uri.parse(
       isRawContentUrl
-          ? '$repoContentUrl/$repoCommit/$fileUrl'
-          : '$repoContentUrl/$fileUrl',
+          ? '$repoContentUrl/$repoCommit/$relativeFilePath'
+          : '$repoContentUrl/$relativeFilePath',
     );
 
     _log.fine('Fetching file content from: $fileContentUrl');
@@ -152,6 +155,15 @@ class GitHubFileDownloader {
     }
 
     return response.body;
+  }
+
+  String _buildFileDownloadUrl(String filePath, String repoCommit) {
+    final isRawContentUrl = repoContentUrl.contains(
+      'raw.githubusercontent.com',
+    );
+    return isRawContentUrl
+        ? '$repoContentUrl/$repoCommit/$filePath'
+        : '$repoContentUrl/$filePath';
   }
 
   /// Downloads the mapped folders from a GitHub repository at a specific commit
@@ -184,7 +196,7 @@ class GitHubFileDownloader {
           _log.fine(
             'Downloading ${entry.value.length} files from ${entry.key}',
           );
-          await _downloadFolderContents(entry.key, entry.value);
+          await _downloadFolderContents(entry.key, entry.value, repoCommit);
         }).toList();
 
     await Future.wait(downloadFutures);
@@ -210,7 +222,7 @@ class GitHubFileDownloader {
     );
     for (final entry in folderContents.entries) {
       _log.fine('Downloading ${entry.value.length} files from ${entry.key}');
-      await _downloadFolderContentsSync(entry.key, entry.value);
+      await _downloadFolderContentsSync(entry.key, entry.value, repoCommit);
     }
 
     sendPort?.send(
@@ -226,9 +238,19 @@ class GitHubFileDownloader {
   Future<void> _downloadFolderContentsSync(
     String key,
     List<GitHubFile> value,
+    String repoCommit,
   ) async {
+    final filesWithCdn =
+        value
+            .map(
+              (file) => file.copyWith(
+                downloadUrl: _buildFileDownloadUrl(file.path, repoCommit),
+              ),
+            )
+            .toList();
+
     await for (final GitHubFileDownloadEvent event in downloadFiles(
-      value,
+      filesWithCdn,
       key,
     )) {
       switch (event.event) {
@@ -253,11 +275,15 @@ class GitHubFileDownloader {
   Future<void> _downloadFolderContents(
     String key,
     List<GitHubFile> value,
+    String repoCommit,
   ) async {
     final List<Future<void>> downloadFutures =
         value.map((file) async {
+          final fileWithCdn = file.copyWith(
+            downloadUrl: _buildFileDownloadUrl(file.path, repoCommit),
+          );
           await for (final GitHubFileDownloadEvent event in downloadFiles([
-            file,
+            fileWithCdn,
           ], key)) {
             switch (event.event) {
               case GitHubDownloadEvent.downloaded:
@@ -358,6 +384,7 @@ class GitHubFileDownloader {
     }
 
     try {
+      _log.finer('Downloading icon for $coinName: ${item.downloadUrl}');
       final fileResponse = await http.read(Uri.parse(item.downloadUrl));
       if (fileResponse.isEmpty) {
         throw Exception('Failed to download file: ${item.downloadUrl}');

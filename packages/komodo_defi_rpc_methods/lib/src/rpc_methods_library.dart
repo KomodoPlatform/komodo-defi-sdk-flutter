@@ -42,6 +42,9 @@ class KomodoDefiRpcMethods {
   NftMethodsNamespace get nft => NftMethodsNamespace(_client);
   StakingMethodsNamespace get staking => StakingMethodsNamespace(_client);
 
+  // Hardware wallet namespaces
+  TrezorMethodsNamespace get trezor => TrezorMethodsNamespace(_client);
+
   // Add other namespaces here, e.g.:
   // TradeNamespace get trade => TradeNamespace(_client);
   MessageSigningMethodsNamespace get messageSigning =>
@@ -137,84 +140,4 @@ class GeneralActivationMethods extends BaseRpcMethodNamespace {
 
   Future<GetEnabledCoinsResponse> getEnabledCoins([String? rpcPass]) =>
       execute(GetEnabledCoinsRequest(rpcPass: rpcPass));
-}
-
-class HdWalletMethods extends BaseRpcMethodNamespace {
-  HdWalletMethods(super.client);
-
-  Future<GetNewAddressResponse> getNewAddress(
-    String coin, {
-    String? rpcPass,
-    int? accountId,
-    String? chain,
-    int? gapLimit,
-  }) => execute(
-    GetNewAddressRequest(
-      rpcPass: rpcPass,
-      coin: coin,
-      accountId: accountId,
-      chain: chain,
-      gapLimit: gapLimit,
-    ),
-  );
-
-  Future<NewTaskResponse> scanForNewAddressesInit(
-    String coin, {
-    String? rpcPass,
-    int? accountId,
-    int? gapLimit,
-  }) => execute(
-    ScanForNewAddressesInitRequest(
-      rpcPass: rpcPass,
-      coin: coin,
-      accountId: accountId,
-      gapLimit: gapLimit,
-    ),
-  );
-
-  Future<ScanForNewAddressesStatusResponse> scanForNewAddressesStatus(
-    int taskId, {
-    String? rpcPass,
-    bool forgetIfFinished = true,
-  }) => execute(
-    ScanForNewAddressesStatusRequest(
-      rpcPass: rpcPass,
-      taskId: taskId,
-      forgetIfFinished: forgetIfFinished,
-    ),
-  );
-
-  Future<NewTaskResponse> accountBalanceInit({
-    required String coin,
-    required int accountIndex,
-    String? rpcPass,
-  }) => execute(
-    AccountBalanceInitRequest(
-      rpcPass: rpcPass ?? this.rpcPass,
-      coin: coin,
-      accountIndex: accountIndex,
-    ),
-  );
-
-  Future<AccountBalanceStatusResponse> accountBalanceStatus({
-    required int taskId,
-    bool forgetIfFinished = true,
-    String? rpcPass,
-  }) => execute(
-    AccountBalanceStatusRequest(
-      rpcPass: rpcPass ?? this.rpcPass,
-      taskId: taskId,
-      forgetIfFinished: forgetIfFinished,
-    ),
-  );
-
-  Future<AccountBalanceCancelResponse> accountBalanceCancel({
-    required int taskId,
-    String? rpcPass,
-  }) => execute(
-    AccountBalanceCancelRequest(
-      rpcPass: rpcPass ?? this.rpcPass,
-      taskId: taskId,
-    ),
-  );
 }
