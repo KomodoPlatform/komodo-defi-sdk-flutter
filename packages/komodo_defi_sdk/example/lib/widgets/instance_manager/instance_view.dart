@@ -116,6 +116,67 @@ class _InstanceViewState extends State<InstanceView> {
     }
   }
 
+  Future<void> _deleteWallet() async {
+    final passwordController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Wallet'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter the wallet password to confirm deletion. This action cannot be undone.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscureText: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await widget.instance.sdk.auth.deleteWallet(
+        walletName: widget.currentUser!.walletId.name,
+        password: passwordController.text,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Wallet deleted')));
+      }
+      widget.onUserChanged(null);
+      await _fetchKnownUsers();
+      setState(() => _mnemonic = null);
+    } on AuthException catch (e) {
+      _showError('Delete wallet failed: ${e.message}');
+    } catch (e) {
+      _showError('Delete wallet failed: $e');
+    }
+  }
+
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -233,6 +294,11 @@ class _InstanceViewState extends State<InstanceView> {
               onPressed: _signOut,
               icon: const Icon(Icons.logout),
               label: const Text('Sign Out'),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: _deleteWallet,
+              icon: const Icon(Icons.delete),
+              label: const Text('Delete Wallet'),
             ),
             if (_mnemonic == null) ...[
               FilledButton.tonal(
