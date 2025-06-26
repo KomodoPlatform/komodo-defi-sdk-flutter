@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:equatable/equatable.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Details about the current staking status returned by the API
@@ -7,9 +8,7 @@ class StakingInfoDetails extends Equatable {
   const StakingInfoDetails({
     required this.type,
     required this.amount,
-    this.staker,
-    required this.amIStaking,
-    required this.isStakingSupported,
+    required this.amIStaking, required this.isStakingSupported, this.staker,
   });
 
   factory StakingInfoDetails.fromJson(JsonMap json) => StakingInfoDetails(
@@ -45,7 +44,7 @@ class StakingInfo extends Equatable {
 
   factory StakingInfo.fromJson(JsonMap json) => StakingInfo(
         details: StakingInfoDetails.fromJson(
-            json.value<JsonMap>('staking_infos_details')),
+            json.value<JsonMap>('staking_infos_details'),),
       );
 
   final StakingInfoDetails details;
