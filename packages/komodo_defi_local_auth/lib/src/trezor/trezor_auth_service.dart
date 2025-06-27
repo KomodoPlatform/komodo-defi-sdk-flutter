@@ -272,30 +272,33 @@ class TrezorAuthService implements IAuthService {
   Stream<AuthenticationState> _authenticateTrezorStream({
     DerivationMethod derivationMethod = DerivationMethod.hdWallet,
   }) async* {
-    // For Trezor, we need to use the built-in trezor wallet name
-    // and let TrezorAuthService handle the credentials
-    await for (final trezorState in _initializeTrezorAndAuthenticate(
-      derivationMethod,
-    )) {
-      if (trezorState.status == AuthenticationStatus.completed) {
-        // TrezorAuthService already completed the sign-in process
-        // Just get the current user
-        final user = await _authService.getActiveUser();
-        if (user != null) {
-          yield AuthenticationState.completed(user);
-        } else {
-          yield AuthenticationState.error('Failed to retrieve signed-in user');
+    try {
+      await for (final trezorState in _initializeTrezorAndAuthenticate(
+        derivationMethod,
+      )) {
+        if (trezorState.status == AuthenticationStatus.completed) {
+          final user = await _authService.getActiveUser();
+          if (user != null) {
+            yield AuthenticationState.completed(user);
+          } else {
+            yield AuthenticationState.error(
+              'Failed to retrieve signed-in user',
+            );
+          }
+          break;
         }
-        break;
-      }
 
-      yield trezorState.toAuthenticationState();
+        yield trezorState.toAuthenticationState();
 
-      if (trezorState.status == AuthenticationStatus.error ||
-          trezorState.status == AuthenticationStatus.cancelled) {
-        await _signOutCurrentTrezorUser();
-        break;
+        if (trezorState.status == AuthenticationStatus.error ||
+            trezorState.status == AuthenticationStatus.cancelled) {
+          await _signOutCurrentTrezorUser();
+          break;
+        }
       }
+    } catch (e) {
+      await _signOutCurrentTrezorUser();
+      yield AuthenticationState.error('Trezor stream error: $e');
     }
   }
 
