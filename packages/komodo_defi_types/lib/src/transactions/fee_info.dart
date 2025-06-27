@@ -239,7 +239,7 @@ sealed class FeeInfo with _$FeeInfo {
         FeeInfoTendermint(:final coin, :final amount, :final gasLimit) => {
             'type': 'CosmosGas',
             'coin': coin,
-            'gas_price': gasLimit > 0 
+            'gas_price': gasLimit > 0
                 ? (amount / Decimal.fromInt(gasLimit)).toDouble()
                 : 0.0,
             'gas_limit': gasLimit,

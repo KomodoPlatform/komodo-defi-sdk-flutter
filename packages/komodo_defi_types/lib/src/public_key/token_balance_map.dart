@@ -1,4 +1,4 @@
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_types/src/common_structures/general/balance_info.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:meta/meta.dart';
 
@@ -7,7 +7,7 @@ import 'package:meta/meta.dart';
 @immutable
 class TokenBalanceMap {
   const TokenBalanceMap({required Map<String, BalanceInfo> balances})
-    : _balances = balances;
+      : _balances = balances;
 
   factory TokenBalanceMap.fromJson(JsonMap json) {
     final balances = <String, BalanceInfo>{};
@@ -28,19 +28,18 @@ class TokenBalanceMap {
       _balances[ticker] ?? BalanceInfo.zero();
 
   /// Gets all tokens that have non-zero balances
-  Set<String> get tokensWithBalance =>
-      _balances.entries
-          .where((e) => e.value.hasValue)
-          .map((e) => e.key)
-          .toSet();
+  Set<String> get tokensWithBalance => _balances.entries
+      .where((e) => e.value.hasValue)
+      .map((e) => e.key)
+      .toSet();
 
   /// Gets total balance across all tokens
   BalanceInfo get totalBalance =>
       _balances.values.fold(BalanceInfo.zero(), (prev, curr) => prev + curr);
 
   JsonMap toJson() => Map.fromEntries(
-    _balances.entries.map((e) => MapEntry(e.key, e.value.toJson())),
-  );
+        _balances.entries.map((e) => MapEntry(e.key, e.value.toJson())),
+      );
 
   @override
   bool operator ==(Object other) {

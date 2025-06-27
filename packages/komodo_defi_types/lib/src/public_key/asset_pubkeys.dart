@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_types/src/common_structures/general/new_address_info.dart';
+import 'package:komodo_defi_types/src/common_structures/general/balance_info.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 

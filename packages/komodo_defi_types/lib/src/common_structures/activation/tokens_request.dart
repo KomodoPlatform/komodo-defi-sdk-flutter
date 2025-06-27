@@ -15,7 +15,7 @@ class TokensRequest {
   final int requiredConfirmations;
 
   Map<String, dynamic> toJson() => {
-    'ticker': ticker,
-    'required_confirmations': requiredConfirmations,
-  };
+        'ticker': ticker,
+        'required_confirmations': requiredConfirmations,
+      };
 }

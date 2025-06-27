@@ -1,7 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -13,8 +12,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
     required this.pubkeyManager,
     http.Client? httpClient,
     String? baseUrl,
-  })  : _client = httpClient ?? http.Client(),
-        _protocolHelper = EtherscanProtocolHelper(baseUrl: baseUrl);
+  }) : _client = httpClient ?? http.Client(),
+       _protocolHelper = EtherscanProtocolHelper(baseUrl: baseUrl);
 
   final http.Client _client;
   final EtherscanProtocolHelper _protocolHelper;
@@ -23,15 +22,15 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   Set<Type> get supportedPaginationModes => {
-        PagePagination,
-        TransactionBasedPagination,
-      };
+    PagePagination,
+    TransactionBasedPagination,
+  };
 
   @override
   bool supportsAsset(Asset asset) => _protocolHelper.supportsProtocol(asset);
 
   @override
-  Future<MyTxHistoryResponse> fetchTransactionHistory(
+  Future<TransactionPage> fetchTransactionHistory(
     ApiClient client,
     Asset asset,
     TransactionPagination pagination,
@@ -44,12 +43,18 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
     // TODO! Remove after resolving tx history spamming issue in KW.
     if (kDebugMode) {
-      return MyTxHistoryResponse.empty();
+      return const TransactionPage(
+        transactions: [],
+        total: 0,
+        currentPage: 1,
+        totalPages: 0,
+      );
     }
 
     validatePagination(pagination);
 
-    final url = _protocolHelper.getApiUrlForAsset(asset) ??
+    final url =
+        _protocolHelper.getApiUrlForAsset(asset) ??
         (throw UnsupportedError(
           'No API URL found for asset ${asset.id.toJson()}',
         ));
@@ -78,16 +83,17 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
       // Apply pagination based on type
       final paginatedResults = switch (pagination) {
         final PagePagination p => _applyPagePagination(
-            allTransactions,
-            p.pageNumber,
-            p.itemsPerPage,
-          ),
+          allTransactions,
+          p.pageNumber,
+          p.itemsPerPage,
+        ),
         final TransactionBasedPagination t => _applyTransactionPagination(
-            allTransactions,
-            t.fromId,
-            t.itemCount,
-          ),
-        _ => throw UnsupportedError(
+          allTransactions,
+          t.fromId,
+          t.itemCount,
+        ),
+        _ =>
+          throw UnsupportedError(
             'Unsupported pagination type: ${pagination.runtimeType}',
           ),
       };
@@ -95,24 +101,18 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
       final currentBlock =
           allTransactions.isNotEmpty ? allTransactions.first.blockHeight : 0;
 
-      return MyTxHistoryResponse(
-        mmrpc: '2.0',
-        currentBlock: currentBlock,
-        fromId: paginatedResults.transactions.lastOrNull?.txHash,
-        limit: paginatedResults.pageSize,
-        skipped: paginatedResults.skipped,
-        syncStatus: SyncStatusResponse(
-          state: TransactionSyncStatusEnum.finished,
-        ),
+      return TransactionPage(
+        transactions:
+            paginatedResults.transactions
+                .map((tx) => tx.asTransaction(asset.id))
+                .toList(),
         total: allTransactions.length,
+        nextPageId: paginatedResults.transactions.lastOrNull?.txHash,
+        currentPage: pagination is PagePagination ? pagination.pageNumber : 1,
         totalPages: (allTransactions.length / paginatedResults.pageSize).ceil(),
-        pageNumber: pagination is PagePagination ? pagination.pageNumber : null,
-        transactions: paginatedResults.transactions,
       );
     } catch (e) {
-      throw HttpException(
-        'Error fetching transaction history: $e',
-      );
+      throw HttpException('Error fetching transaction history: $e');
     }
   }
 
@@ -152,12 +152,13 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
             blockHeight: tx.value<int>('block_height'),
             confirmations: tx.value<int>('confirmations'),
             timestamp: tx.value<int>('timestamp'),
-            feeDetails: tx.valueOrNull<JsonMap>('fee_details') != null
-                ? FeeInfo.fromJson(
-                    tx.value<JsonMap>('fee_details')
-                      ..setIfAbsentOrEmpty('type', 'Eth'),
-                  )
-                : null,
+            feeDetails:
+                tx.valueOrNull<JsonMap>('fee_details') != null
+                    ? FeeInfo.fromJson(
+                      tx.value<JsonMap>('fee_details')
+                        ..setIfAbsentOrEmpty('type', 'Eth'),
+                    )
+                    : null,
             coin: coinId,
             internalId: tx.value<String>('internal_id'),
             memo: tx.valueOrNull<String>('memo'),
@@ -166,11 +167,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
         .toList();
   }
 
-  ({
-    List<TransactionInfo> transactions,
-    int skipped,
-    int pageSize,
-  }) _applyPagePagination(
+  ({List<TransactionInfo> transactions, int skipped, int pageSize})
+  _applyPagePagination(
     List<TransactionInfo> transactions,
     int pageNumber,
     int itemsPerPage,
@@ -183,11 +181,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
     );
   }
 
-  ({
-    List<TransactionInfo> transactions,
-    int skipped,
-    int pageSize,
-  }) _applyTransactionPagination(
+  ({List<TransactionInfo> transactions, int skipped, int pageSize})
+  _applyTransactionPagination(
     List<TransactionInfo> transactions,
     String fromId,
     int itemCount,
@@ -211,9 +206,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
 /// Helper class for managing Etherscan protocol endpoints and URL construction
 class EtherscanProtocolHelper {
-  const EtherscanProtocolHelper({
-    String? baseUrl,
-  }) : _baseUrl = baseUrl ?? 'https://etherscan-proxy-v2.komodo.earth/api';
+  const EtherscanProtocolHelper({String? baseUrl})
+    : _baseUrl = baseUrl ?? 'https://etherscan-proxy-v2.komodo.earth/api';
 
   final String _baseUrl;
 

@@ -1,4 +1,4 @@
-import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/activation_params/activation_params.dart';
 
 /// ZHTLC activation parameters
 ///

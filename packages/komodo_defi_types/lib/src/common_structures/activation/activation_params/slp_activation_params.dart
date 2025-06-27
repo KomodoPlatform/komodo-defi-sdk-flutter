@@ -3,6 +3,6 @@ class SlpActivationParams {
   final int? requiredConfirmations;
 
   Map<String, dynamic> toJson() => {
-    'required_confirmations': requiredConfirmations,
-  };
+        'required_confirmations': requiredConfirmations,
+      };
 }

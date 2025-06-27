@@ -1,4 +1,4 @@
-import 'package:komodo_defi_rpc_methods/src/common_structures/activation/activation_params/activation_params.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/activation_params/activation_params.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class UtxoActivationParams extends ActivationParams {
@@ -97,8 +97,7 @@ class UtxoActivationParams extends ActivationParams {
     final base = ActivationParams.fromConfigJson(json);
 
     return UtxoActivationParams._(
-      mode:
-          base.mode ??
+      mode: base.mode ??
           (throw const FormatException(
             'UTXO activation requires mode parameter',
           )),

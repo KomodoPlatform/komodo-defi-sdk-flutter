@@ -1,2 +1,1 @@
-export 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
-    show DerivationMethod;
+export '../common_structures/hd_wallet/derivation_method.dart';

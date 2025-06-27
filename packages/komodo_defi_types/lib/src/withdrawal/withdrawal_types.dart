@@ -1,8 +1,8 @@
 import 'package:decimal/decimal.dart';
 import 'package:equatable/equatable.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/src/models/params.dart';
 
 /// Raw API response for a withdrawal operation
 class WithdrawResult {
