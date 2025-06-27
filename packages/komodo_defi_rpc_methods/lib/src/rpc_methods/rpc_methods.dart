@@ -40,6 +40,7 @@ export 'utility/message_signing_rpc_namespace.dart';
 export 'utility/rpc_task_shepherd.dart';
 export 'utxo/task_enable_utxo_init.dart';
 export 'utxo/utxo_rpc_extensions.dart';
+export 'staking/staking_rpc_namespace.dart';
 export 'wallet/change_mnemonic_password.dart';
 export 'wallet/get_mnemonic_request.dart';
 export 'wallet/get_mnemonic_response.dart';

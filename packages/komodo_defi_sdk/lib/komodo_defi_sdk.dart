@@ -13,6 +13,8 @@ export 'package:komodo_defi_sdk/src/addresses/address_operations.dart'
     show AddressOperations;
 export 'package:komodo_defi_sdk/src/balances/balance_manager.dart'
     show BalanceManager;
+export 'package:komodo_defi_sdk/src/staking/staking_manager.dart'
+    show StakingManager;
 export 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 
 export 'src/assets/_assets_index.dart' show AssetHdWalletAddressesExtension;

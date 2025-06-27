@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/screens/withdrawal_page.dart';
+import 'package:kdf_sdk_example/screens/staking_page.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -353,6 +354,18 @@ class _AssetHeaderState extends State<AssetHeader> {
           onPressed: () {},
           icon: const Icon(Icons.qr_code),
           label: const Text('Receive'),
+        ),
+        FilledButton.tonalIcon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (context) => StakingScreen(asset: widget.asset),
+              ),
+            );
+          },
+          icon: const Icon(Icons.stacked_line_chart),
+          label: const Text('Stake'),
         ),
 
         Tooltip(
