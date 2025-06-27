@@ -4,6 +4,7 @@ import 'package:komodo_defi_local_auth/src/auth/auth_service.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 /// High level helper that handles sign in/register and Trezor device
 /// initialization for the built in "My Trezor" wallet.
@@ -19,6 +20,7 @@ class TrezorAuthService implements IAuthService {
 
   static const String trezorWalletName = 'My Trezor';
   static const String _passwordKey = 'trezor_wallet_password';
+  static final _log = Logger('TrezorAuthService');
 
   final IAuthService _authService;
   final TrezorRepository _trezor;
@@ -38,33 +40,9 @@ class TrezorAuthService implements IAuthService {
     required AuthOptions options,
   }) async* {
     try {
-      // For Trezor, we need to use the built-in trezor wallet name
-      // and let TrezorAuthService handle the credentials
-      await for (final trezorState in _initializeTrezorAndAuthenticate(
-        derivationMethod: options.derivationMethod,
-      )) {
-        if (trezorState.status == AuthenticationStatus.completed) {
-          // TrezorAuthService already completed the sign-in process
-          // Just get the current user
-          final user = await _authService.getActiveUser();
-          if (user != null) {
-            yield AuthenticationState.completed(user);
-          } else {
-            yield AuthenticationState.error(
-              'Failed to retrieve signed-in user',
-            );
-          }
-          break;
-        }
-
-        yield trezorState.toAuthenticationState();
-
-        if (trezorState.status == AuthenticationStatus.error ||
-            trezorState.status == AuthenticationStatus.cancelled) {
-          break;
-        }
-      }
+      yield* _authenticateTrezorStream();
     } catch (e) {
+      await _signOutCurrentTrezorUser();
       yield AuthenticationState.error('Trezor sign-in failed: $e');
     }
   }
@@ -75,34 +53,9 @@ class TrezorAuthService implements IAuthService {
     Mnemonic? mnemonic,
   }) async* {
     try {
-      // For Trezor, we need to use the built-in trezor wallet name
-      // and let TrezorAuthService handle the credentials
-      await for (final trezorState in _initializeTrezorAndAuthenticate(
-        derivationMethod: options.derivationMethod,
-        register: true,
-      )) {
-        yield trezorState.toAuthenticationState();
-
-        if (trezorState.status == AuthenticationStatus.completed) {
-          // TrezorAuthService already completed the registration process
-          // Just get the current user
-          final user = await _authService.getActiveUser();
-          if (user != null) {
-            yield AuthenticationState.completed(user);
-          } else {
-            yield AuthenticationState.error(
-              'Failed to retrieve registered user',
-            );
-          }
-          break;
-        }
-
-        if (trezorState.status == AuthenticationStatus.error ||
-            trezorState.status == AuthenticationStatus.cancelled) {
-          break;
-        }
-      }
+      yield* _authenticateTrezorStream();
     } catch (e) {
+      await _signOutCurrentTrezorUser();
       yield AuthenticationState.error('Trezor registration failed: $e');
     }
   }
@@ -167,49 +120,10 @@ class TrezorAuthService implements IAuthService {
     }
 
     try {
-      // Copy over contents from the streamed function
-      await for (final trezorState in _initializeTrezorAndAuthenticate(
-        derivationMethod: options.derivationMethod,
-      )) {
-        // If status is passphrase required, use the provided password
-        if (trezorState.status == AuthenticationStatus.passphraseRequired) {
-          await _trezor.providePassphrase(trezorState.taskId!, password);
-        }
-        // Ignore pin required user action - user has to enter PIN on the device
-
-        // Wait for task to finish and return result
-        if (trezorState.status == AuthenticationStatus.completed) {
-          final user = await _authService.getActiveUser();
-          if (user != null) {
-            return user;
-          } else {
-            throw AuthException(
-              'Failed to retrieve signed-in user',
-              type: AuthExceptionType.generalAuthError,
-            );
-          }
-        }
-
-        if (trezorState.status == AuthenticationStatus.error) {
-          throw AuthException(
-            trezorState.message ?? 'Trezor sign-in failed',
-            type: AuthExceptionType.generalAuthError,
-          );
-        }
-
-        if (trezorState.status == AuthenticationStatus.cancelled) {
-          throw AuthException(
-            'Trezor sign-in was cancelled',
-            type: AuthExceptionType.generalAuthError,
-          );
-        }
-      }
-
-      throw AuthException(
-        'Trezor sign-in did not complete',
-        type: AuthExceptionType.generalAuthError,
-      );
+      return await _initializeTrezorWithPassphrase(passphrase: password);
     } catch (e) {
+      await _signOutCurrentTrezorUser();
+
       if (e is AuthException) rethrow;
       throw AuthException(
         'Trezor sign-in failed: $e',
@@ -234,50 +148,10 @@ class TrezorAuthService implements IAuthService {
     }
 
     try {
-      // Copy over contents from the streamed function
-      await for (final trezorState in _initializeTrezorAndAuthenticate(
-        derivationMethod: options.derivationMethod,
-        register: true,
-      )) {
-        // If status is passphrase required, use the provided password
-        if (trezorState.status == AuthenticationStatus.passphraseRequired) {
-          await _trezor.providePassphrase(trezorState.taskId!, password);
-        }
-        // Ignore pin required user action - user has to enter PIN on the device
-
-        // Wait for task to finish and return result
-        if (trezorState.status == AuthenticationStatus.completed) {
-          final user = await _authService.getActiveUser();
-          if (user != null) {
-            return user;
-          } else {
-            throw AuthException(
-              'Failed to retrieve registered user',
-              type: AuthExceptionType.generalAuthError,
-            );
-          }
-        }
-
-        if (trezorState.status == AuthenticationStatus.error) {
-          throw AuthException(
-            trezorState.message ?? 'Trezor registration failed',
-            type: AuthExceptionType.generalAuthError,
-          );
-        }
-
-        if (trezorState.status == AuthenticationStatus.cancelled) {
-          throw AuthException(
-            'Trezor registration was cancelled',
-            type: AuthExceptionType.generalAuthError,
-          );
-        }
-      }
-
-      throw AuthException(
-        'Trezor registration did not complete',
-        type: AuthExceptionType.generalAuthError,
-      );
+      return await _initializeTrezorWithPassphrase(passphrase: password);
     } catch (e) {
+      await _signOutCurrentTrezorUser();
+
       if (e is AuthException) rethrow;
       throw AuthException(
         'Trezor registration failed: $e',
@@ -313,6 +187,7 @@ class TrezorAuthService implements IAuthService {
   Future<void> _signOutCurrentTrezorUser() async {
     final current = await _authService.getActiveUser();
     if (current?.walletId.name == trezorWalletName) {
+      _log.warning("Signing out current '${current?.walletId.name}' user");
       try {
         await _authService.signOut();
       } catch (_) {
@@ -332,18 +207,21 @@ class TrezorAuthService implements IAuthService {
   }
 
   /// Authenticates with the Trezor wallet (sign in or register)
+  /// [derivationMethod] The derivation method to use for the wallet.
+  /// Defaults to [DerivationMethod.hdWallet], since trezor requires HD wallet
+  /// RPCs to function.
+  /// [existingUser] The existing user to authenticate
   Future<void> _authenticateWithTrezorWallet({
     required KdfUser? existingUser,
     required String password,
-    required DerivationMethod derivationMethod,
-    required bool register,
+    DerivationMethod derivationMethod = DerivationMethod.hdWallet,
   }) async {
     final authOptions = AuthOptions(
       derivationMethod: derivationMethod,
       privKeyPolicy: const PrivateKeyPolicy.trezor(),
     );
 
-    if (existingUser != null && !register) {
+    if (existingUser != null) {
       await _authService.signIn(
         walletName: trezorWalletName,
         password: password,
@@ -373,23 +251,111 @@ class TrezorAuthService implements IAuthService {
   /// Registers or signs in to the "My Trezor" wallet and initializes the device
   ///
   /// Emits [TrezorInitializationState] updates while the device is initializing
-  Stream<TrezorInitializationState> _initializeTrezorAndAuthenticate({
-    required DerivationMethod derivationMethod,
-    bool register = false,
-  }) async* {
+  Stream<TrezorInitializationState> _initializeTrezorAndAuthenticate(
+    DerivationMethod derivationMethod,
+  ) async* {
     await _signOutCurrentTrezorUser();
 
     final existingUser = await _findExistingTrezorUser();
-    final isNewUser = existingUser == null || register;
+    final isNewUser = existingUser == null;
     final password = await _getPassword(isNewUser: isNewUser);
 
     await _authenticateWithTrezorWallet(
       existingUser: existingUser,
       password: password,
       derivationMethod: derivationMethod,
-      register: register,
     );
 
     yield* _initializeTrezorDevice();
+  }
+
+  Stream<AuthenticationState> _authenticateTrezorStream({
+    DerivationMethod derivationMethod = DerivationMethod.hdWallet,
+  }) async* {
+    // For Trezor, we need to use the built-in trezor wallet name
+    // and let TrezorAuthService handle the credentials
+    await for (final trezorState in _initializeTrezorAndAuthenticate(
+      derivationMethod,
+    )) {
+      if (trezorState.status == AuthenticationStatus.completed) {
+        // TrezorAuthService already completed the sign-in process
+        // Just get the current user
+        final user = await _authService.getActiveUser();
+        if (user != null) {
+          yield AuthenticationState.completed(user);
+        } else {
+          yield AuthenticationState.error('Failed to retrieve signed-in user');
+        }
+        break;
+      }
+
+      yield trezorState.toAuthenticationState();
+
+      if (trezorState.status == AuthenticationStatus.error ||
+          trezorState.status == AuthenticationStatus.cancelled) {
+        await _signOutCurrentTrezorUser();
+        break;
+      }
+    }
+  }
+
+  /// Initializes the Trezor device and handles passphrase input
+  /// This method is used for both sign-in and registration
+  /// It returns the authenticated [KdfUser] on success.
+  /// If the Trezor device requires a passphrase, it will provide the passphrase
+  /// and return the authenticated user.
+  /// If the Trezor device requires a PIN, it will ignore the PIN prompt and
+  /// wait for the user to enter the PIN on the device.
+  /// This method will throw an [AuthException] if the Trezor device
+  /// initialization fails or if the user is not authenticated successfully.
+  Future<KdfUser> _initializeTrezorWithPassphrase({
+    required String passphrase,
+    DerivationMethod derivationMethod = DerivationMethod.hdWallet,
+  }) async {
+    // Copy over contents from the streamed function
+    await for (final trezorState in _initializeTrezorAndAuthenticate(
+      derivationMethod,
+    )) {
+      // If status is passphrase required, use the provided password
+      if (trezorState.status == AuthenticationStatus.passphraseRequired) {
+        await _trezor.providePassphrase(trezorState.taskId!, passphrase);
+      }
+      // Ignore pin required user action - user has to enter PIN on the device
+
+      // Wait for task to finish and return result
+      if (trezorState.status == AuthenticationStatus.completed) {
+        final user = await _authService.getActiveUser();
+        if (user != null) {
+          return user;
+        } else {
+          throw AuthException(
+            'Failed to retrieve registered user',
+            type: AuthExceptionType.generalAuthError,
+          );
+        }
+      }
+
+      if (trezorState.status == AuthenticationStatus.error) {
+        await _signOutCurrentTrezorUser();
+        throw AuthException(
+          trezorState.message ?? 'Trezor registration failed',
+          type: AuthExceptionType.generalAuthError,
+        );
+      }
+
+      if (trezorState.status == AuthenticationStatus.cancelled) {
+        await _signOutCurrentTrezorUser();
+        throw AuthException(
+          'Trezor registration was cancelled',
+          type: AuthExceptionType.generalAuthError,
+        );
+      }
+    }
+
+    await _signOutCurrentTrezorUser();
+    throw AuthException(
+      'Trezor registration did not complete',
+      type: AuthExceptionType.generalAuthError,
+    );
   }
 }
