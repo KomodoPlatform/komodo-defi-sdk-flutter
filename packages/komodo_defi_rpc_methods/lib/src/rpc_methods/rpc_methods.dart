@@ -17,6 +17,7 @@ export 'eth/enable_custom_erc20.dart';
 export 'eth/enable_erc20.dart';
 export 'eth/enable_eth_with_tokens.dart';
 export 'eth/eth_rpc_extensions.dart';
+export 'eth/task_enable_eth_init.dart';
 export 'hd_wallet/account_balance.dart';
 export 'hd_wallet/get_new_address.dart';
 export 'hd_wallet/get_new_address_task.dart';

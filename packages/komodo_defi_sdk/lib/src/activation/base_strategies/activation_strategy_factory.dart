@@ -19,6 +19,8 @@ class ActivationStrategyFactory {
         // BCH strategy needs to be before UTXO strategy to handle the special case
         // BchActivationStrategy(client),
         UtxoActivationStrategy(client, privKeyPolicy),
+        EthTaskActivationStrategy(client, privKeyPolicy),
+        EthWithTokensActivationStrategy(client, privKeyPolicy),
         Erc20ActivationStrategy(client, privKeyPolicy),
         // SlpActivationStrategy(client),
         TendermintActivationStrategy(client, privKeyPolicy),
