@@ -1,4 +1,3 @@
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Base interface for transaction history strategies
@@ -10,7 +9,7 @@ abstract class TransactionHistoryStrategy {
   Set<Type> get supportedPaginationModes;
 
   /// Fetch transaction history with the specified pagination mode
-  Future<MyTxHistoryResponse> fetchTransactionHistory(
+  Future<TransactionPage> fetchTransactionHistory(
     ApiClient client,
     Asset asset,
     TransactionPagination pagination,

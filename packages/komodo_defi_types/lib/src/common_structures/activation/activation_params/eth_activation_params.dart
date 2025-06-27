@@ -1,4 +1,6 @@
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/activation_params/activation_params.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/evm_node.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/tokens_request.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class EthWithTokensActivationParams extends ActivationParams {
@@ -20,8 +22,7 @@ class EthWithTokensActivationParams extends ActivationParams {
       nodes: json.value<List<JsonMap>>('nodes').map(EvmNode.fromJson).toList(),
       swapContractAddress: json.value<String>('swap_contract_address'),
       fallbackSwapContract: json.value<String>('fallback_swap_contract'),
-      erc20Tokens:
-          json
+      erc20Tokens: json
               .valueOrNull<List<JsonMap>>('erc20_tokens_requests')
               ?.map(TokensRequest.fromJson)
               .toList() ??

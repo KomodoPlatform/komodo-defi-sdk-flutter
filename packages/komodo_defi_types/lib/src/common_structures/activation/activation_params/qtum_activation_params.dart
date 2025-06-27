@@ -1,4 +1,4 @@
-import 'package:komodo_defi_rpc_methods/src/common_structures/activation/activation_params/activation_params.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/activation_params/activation_params.dart';
 
 /// Activation parameters for Qtum
 /// There is no additional parameters for Qtum activation, so an alias to

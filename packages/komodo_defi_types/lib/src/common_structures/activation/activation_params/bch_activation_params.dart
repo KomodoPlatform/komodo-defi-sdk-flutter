@@ -1,5 +1,5 @@
 // bch_activation_params.dart
-import 'package:komodo_defi_rpc_methods/src/common_structures/activation/activation_params/activation_params.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/activation_params/activation_params.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class BchActivationParams extends ActivationParams {
@@ -20,8 +20,7 @@ class BchActivationParams extends ActivationParams {
 
     return BchActivationParams(
       bchdUrls: json.value<List<dynamic>>('bchd_urls').cast<String>(),
-      mode:
-          base.mode ??
+      mode: base.mode ??
           (throw const FormatException(
             'BCH activation requires mode parameter',
           )),

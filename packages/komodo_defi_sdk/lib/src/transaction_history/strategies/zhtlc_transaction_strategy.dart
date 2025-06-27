@@ -5,12 +5,10 @@ class ZhtlcTransactionStrategy extends TransactionHistoryStrategy {
   const ZhtlcTransactionStrategy();
 
   @override
-  Set<Type> get supportedPaginationModes => {
-        PagePagination,
-      };
+  Set<Type> get supportedPaginationModes => {PagePagination};
 
   @override
-  Future<MyTxHistoryResponse> fetchTransactionHistory(
+  Future<TransactionPage> fetchTransactionHistory(
     ApiClient client,
     Asset asset,
     TransactionPagination pagination,
@@ -18,17 +16,24 @@ class ZhtlcTransactionStrategy extends TransactionHistoryStrategy {
     validatePagination(pagination);
 
     if (pagination is! PagePagination) {
-      throw UnsupportedError(
-        'ZHTLC only supports page-based pagination',
-      );
+      throw UnsupportedError('ZHTLC only supports page-based pagination');
     }
 
-    return client.rpc.transactionHistory.zCoinTxHistory(
+    final response = client.rpc.transactionHistory.zCoinTxHistory(
       coin: asset.id.id,
       limit: pagination.itemsPerPage,
-      pagingOptions: Pagination(
-        pageNumber: pagination.pageNumber,
-      ),
+      pagingOptions: Pagination(pageNumber: pagination.pageNumber),
+    );
+
+    return TransactionPage(
+      transactions:
+          response.transactions
+              .map((tx) => tx.asTransaction(asset.id))
+              .toList(),
+      total: response.total,
+      nextPageId: response.fromId,
+      currentPage: response.pageNumber ?? 1,
+      totalPages: response.totalPages,
     );
   }
 

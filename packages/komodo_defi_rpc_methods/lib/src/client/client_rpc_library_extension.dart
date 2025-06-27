@@ -22,3 +22,7 @@ abstract class BaseRpcMethodNamespace {
     return client.post(request);
   }
 }
+
+extension KomodoDefiRpcMethodsExtension on ApiClient {
+  KomodoDefiRpcMethods get rpc => KomodoDefiRpcMethods(this);
+}

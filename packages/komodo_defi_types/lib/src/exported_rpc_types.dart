@@ -1,2 +1,2 @@
-export 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
-    show AddressFormat, BalanceInfo;
+export 'common_structures/general/address_format.dart';
+export 'common_structures/general/balance_info.dart';

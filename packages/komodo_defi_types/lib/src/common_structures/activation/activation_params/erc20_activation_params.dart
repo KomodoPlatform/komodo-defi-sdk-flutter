@@ -1,4 +1,5 @@
-import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/activation_params/activation_params.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/evm_node.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class Erc20ActivationParams extends ActivationParams {
@@ -21,8 +22,8 @@ class Erc20ActivationParams extends ActivationParams {
 
   @override
   JsonMap toRpcParams() => super.toRpcParams().deepMerge({
-    'nodes': nodes.map((e) => e.url).toList(),
-    'swap_contract_address': swapContractAddress,
-    'fallback_swap_contract': fallbackSwapContract,
-  });
+        'nodes': nodes.map((e) => e.url).toList(),
+        'swap_contract_address': swapContractAddress,
+        'fallback_swap_contract': fallbackSwapContract,
+      });
 }

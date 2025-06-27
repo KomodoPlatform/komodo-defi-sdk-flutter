@@ -10,20 +10,22 @@ class TransactionHistoryStrategyFactory {
     PubkeyManager pubkeyManager,
     KomodoDefiLocalAuth auth,
   ) : _strategies = [
-          EtherscanTransactionStrategy(pubkeyManager: pubkeyManager),
-          V2TransactionStrategy(auth),
-          const LegacyTransactionStrategy(),
-          const ZhtlcTransactionStrategy(),
-        ];
+        EtherscanTransactionStrategy(pubkeyManager: pubkeyManager),
+        V2TransactionStrategy(auth),
+        const LegacyTransactionStrategy(),
+        const ZhtlcTransactionStrategy(),
+      ];
 
   final List<TransactionHistoryStrategy> _strategies;
 
   TransactionHistoryStrategy forAsset(Asset asset) {
     final strategy = _strategies.firstWhere(
       (strategy) => strategy.supportsAsset(asset),
-      orElse: () => throw UnsupportedError(
-        'No strategy found for asset ${asset.id.id}',
-      ),
+      orElse:
+          () =>
+              throw UnsupportedError(
+                'No strategy found for asset ${asset.id.id}',
+              ),
     );
 
     return strategy;
@@ -38,15 +40,15 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   Set<Type> get supportedPaginationModes => {
-        PagePagination,
-        TransactionBasedPagination,
-      };
+    PagePagination,
+    TransactionBasedPagination,
+  };
 
   // TODO: Consider for the future how multi-account support will be handled.
   // The HistoryTarget could be added to the abstract strategy, but only if
   // it's applicable to all/most strategies.
   @override
-  Future<MyTxHistoryResponse> fetchTransactionHistory(
+  Future<TransactionPage> fetchTransactionHistory(
     ApiClient client,
     Asset asset,
     TransactionPagination pagination,
@@ -56,28 +58,42 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
 
     final isHdWallet = (await _auth.currentUser)?.isHd ?? false;
 
-    return switch (pagination) {
+    final response = switch (pagination) {
       final PagePagination p => client.rpc.transactionHistory.myTxHistory(
-          coin: asset.id.id,
-          limit: p.itemsPerPage,
-          pagingOptions: Pagination(pageNumber: p.pageNumber),
-          target: isHdWallet
-              ? const HdHistoryTarget.accountId(0)
-              : IguanaHistoryTarget(),
-        ),
-      final TransactionBasedPagination t =>
-        client.rpc.transactionHistory.myTxHistory(
-          coin: asset.id.id,
-          limit: t.itemCount,
-          pagingOptions: Pagination(fromId: t.fromId),
-          target: isHdWallet
-              ? const HdHistoryTarget.accountId(0)
-              : IguanaHistoryTarget(),
-        ),
-      _ => throw UnsupportedError(
+        coin: asset.id.id,
+        limit: p.itemsPerPage,
+        pagingOptions: Pagination(pageNumber: p.pageNumber),
+        target:
+            isHdWallet
+                ? const HdHistoryTarget.accountId(0)
+                : IguanaHistoryTarget(),
+      ),
+      final TransactionBasedPagination t => client.rpc.transactionHistory
+          .myTxHistory(
+            coin: asset.id.id,
+            limit: t.itemCount,
+            pagingOptions: Pagination(fromId: t.fromId),
+            target:
+                isHdWallet
+                    ? const HdHistoryTarget.accountId(0)
+                    : IguanaHistoryTarget(),
+          ),
+      _ =>
+        throw UnsupportedError(
           'Pagination mode ${pagination.runtimeType} not supported',
         ),
     };
+
+    return TransactionPage(
+      transactions:
+          response.transactions
+              .map((tx) => tx.asTransaction(asset.id))
+              .toList(),
+      total: response.total,
+      nextPageId: response.fromId,
+      currentPage: response.pageNumber ?? 1,
+      totalPages: response.totalPages,
+    );
   }
 
   static const List<Type> _supportedProtocols = [
@@ -97,34 +113,46 @@ class LegacyTransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   Set<Type> get supportedPaginationModes => {
-        PagePagination,
-        TransactionBasedPagination,
-      };
+    PagePagination,
+    TransactionBasedPagination,
+  };
 
   @override
-  Future<MyTxHistoryResponse> fetchTransactionHistory(
+  Future<TransactionPage> fetchTransactionHistory(
     ApiClient client,
     Asset asset,
     TransactionPagination pagination,
   ) async {
     validatePagination(pagination);
 
-    return switch (pagination) {
+    final response = switch (pagination) {
       final PagePagination p => client.rpc.transactionHistory.myTxHistoryLegacy(
-          coin: asset.id.id,
-          limit: p.itemsPerPage,
-          pageNumber: p.pageNumber,
-        ),
-      final TransactionBasedPagination t =>
-        client.rpc.transactionHistory.myTxHistoryLegacy(
-          coin: asset.id.id,
-          limit: t.itemCount,
-          fromId: t.fromId,
-        ),
-      _ => throw UnsupportedError(
+        coin: asset.id.id,
+        limit: p.itemsPerPage,
+        pageNumber: p.pageNumber,
+      ),
+      final TransactionBasedPagination t => client.rpc.transactionHistory
+          .myTxHistoryLegacy(
+            coin: asset.id.id,
+            limit: t.itemCount,
+            fromId: t.fromId,
+          ),
+      _ =>
+        throw UnsupportedError(
           'Pagination mode ${pagination.runtimeType} not supported',
         ),
     };
+
+    return TransactionPage(
+      transactions:
+          response.transactions
+              .map((tx) => tx.asTransaction(asset.id))
+              .toList(),
+      total: response.total,
+      nextPageId: response.fromId,
+      currentPage: response.pageNumber ?? 1,
+      totalPages: response.totalPages,
+    );
   }
 
   @override

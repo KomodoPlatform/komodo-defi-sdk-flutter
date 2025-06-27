@@ -8,17 +8,18 @@ class BalanceInfo {
     required Decimal? total,
     required Decimal? spendable,
     required Decimal? unspendable,
-  }) : assert(
-         ((total ?? Decimal.zero) ==
-                 (spendable ?? Decimal.zero) + (unspendable ?? Decimal.zero)) ||
-             [spendable, unspendable, total].where((e) => e != null).length ==
-                 2,
-         'Exactly 2 of the 3 values must be provided, or all 3 must '
-         'add up to the same value',
-       ),
-       _total = total,
-       _spendable = spendable,
-       _unspendable = unspendable;
+  })  : assert(
+          ((total ?? Decimal.zero) ==
+                  (spendable ?? Decimal.zero) +
+                      (unspendable ?? Decimal.zero)) ||
+              [spendable, unspendable, total].where((e) => e != null).length ==
+                  2,
+          'Exactly 2 of the 3 values must be provided, or all 3 must '
+          'add up to the same value',
+        ),
+        _total = total,
+        _spendable = spendable,
+        _unspendable = unspendable;
 
   factory BalanceInfo.fromJson(Map<String, dynamic> json) {
     return BalanceInfo(
@@ -35,9 +36,9 @@ class BalanceInfo {
   }
 
   BalanceInfo.zero()
-    : _total = Decimal.zero,
-      _spendable = Decimal.zero,
-      _unspendable = Decimal.zero;
+      : _total = Decimal.zero,
+        _spendable = Decimal.zero,
+        _unspendable = Decimal.zero;
 
   static Decimal? _parseDecimalKeywords(JsonMap json, List<String> keywords) =>
       keywords
@@ -59,10 +60,10 @@ class BalanceInfo {
   bool get hasValue => spendable > Decimal.zero || unspendable > Decimal.zero;
 
   Map<String, dynamic> toJson() => {
-    // 'total': total.toString(),
-    'spendable': spendable.toString(),
-    'unspendable': unspendable.toString(),
-  };
+        // 'total': total.toString(),
+        'spendable': spendable.toString(),
+        'unspendable': unspendable.toString(),
+      };
 
   @override
   String toString() => toJson().toJsonString();
@@ -81,20 +82,20 @@ class BalanceInfo {
       total.hashCode ^ spendable.hashCode ^ unspendable.hashCode;
 
   BalanceInfo operator +(BalanceInfo other) => BalanceInfo(
-    total: total + other.total,
-    spendable: spendable + other.spendable,
-    unspendable: unspendable + other.unspendable,
-  );
+        total: total + other.total,
+        spendable: spendable + other.spendable,
+        unspendable: unspendable + other.unspendable,
+      );
 
   BalanceInfo operator -(BalanceInfo other) => BalanceInfo(
-    total: total - other.total,
-    spendable: spendable - other.spendable,
-    unspendable: unspendable - other.unspendable,
-  );
+        total: total - other.total,
+        spendable: spendable - other.spendable,
+        unspendable: unspendable - other.unspendable,
+      );
 
   BalanceInfo operator *(Decimal multiplier) => BalanceInfo(
-    total: total * multiplier,
-    spendable: spendable * multiplier,
-    unspendable: unspendable * multiplier,
-  );
+        total: total * multiplier,
+        spendable: spendable * multiplier,
+        unspendable: unspendable * multiplier,
+      );
 }

@@ -1,4 +1,4 @@
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/activation_params/activation_params.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Activation parameters for enabling NFT-like tokens on the platform
@@ -68,12 +68,12 @@ class NftProvider {
   const NftProvider({required this.type, required this.info});
 
   factory NftProvider.moralis() => const NftProvider(
-    type: 'Moralis',
-    info: NftProviderInfo(
-      url: 'https://moralis-proxy.komodo.earth',
-      komodoProxy: true,
-    ),
-  );
+        type: 'Moralis',
+        info: NftProviderInfo(
+          url: 'https://moralis-proxy.komodo.earth',
+          komodoProxy: true,
+        ),
+      );
 
   factory NftProvider.fromJson(JsonMap json) {
     return NftProvider(
