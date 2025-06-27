@@ -3,13 +3,15 @@ import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class TendermintActivationStrategy extends ProtocolActivationStrategy {
-  const TendermintActivationStrategy(super.client);
+  const TendermintActivationStrategy(super.client, this.privKeyPolicy);
+
+  final PrivateKeyPolicy privKeyPolicy;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {
-        CoinSubClass.tendermint,
-        CoinSubClass.tendermintToken,
-      };
+    CoinSubClass.tendermint,
+    CoinSubClass.tendermintToken,
+  };
 
   @override
   bool get supportsBatchActivation => true;
@@ -65,14 +67,14 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
         await client.rpc.tendermint.enableTendermintWithAssets(
           ticker: asset.id.id,
           params: TendermintActivationParams.fromJson(protocol.config).copyWith(
-            tokensParams: children
-                    ?.map(
-                      (child) => TokensRequest(ticker: child.id.id),
-                    )
+            tokensParams:
+                children
+                    ?.map((child) => TokensRequest(ticker: child.id.id))
                     .toList() ??
                 [],
             getBalances: true,
             txHistory: true,
+            privKeyPolicy: privKeyPolicy,
           ),
         );
       } else {
@@ -87,7 +89,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
 
         await client.rpc.tendermint.enableTendermintToken(
           ticker: asset.id.id,
-          params: TendermintTokenActivationParams(),
+          params: TendermintTokenActivationParams(privKeyPolicy: privKeyPolicy),
         );
       }
 

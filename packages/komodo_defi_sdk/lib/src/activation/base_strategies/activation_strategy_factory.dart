@@ -4,6 +4,11 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Factory for creating the complete activation strategy stack
 class ActivationStrategyFactory {
+  /// Creates a complete activation strategy stack with all protocols
+  /// and returns a [SmartAssetActivator] instance.
+  /// [client] The [ApiClient] to use for RPC calls.
+  /// [privKeyPolicy] The [PrivateKeyPolicy] to use for private key management.
+  /// This is used for external wallet support. E.g. trezor, wallet connect, etc
   static SmartAssetActivator createStrategy(
     ApiClient client,
     PrivateKeyPolicy privKeyPolicy,
@@ -14,11 +19,11 @@ class ActivationStrategyFactory {
         // BCH strategy needs to be before UTXO strategy to handle the special case
         // BchActivationStrategy(client),
         UtxoActivationStrategy(client, privKeyPolicy),
-        Erc20ActivationStrategy(client),
+        Erc20ActivationStrategy(client, privKeyPolicy),
         // SlpActivationStrategy(client),
-        TendermintActivationStrategy(client),
+        TendermintActivationStrategy(client, privKeyPolicy),
         QtumActivationStrategy(client, privKeyPolicy),
-        ZhtlcActivationStrategy(client),
+        ZhtlcActivationStrategy(client, privKeyPolicy),
         CustomErc20ActivationStrategy(client),
       ]),
     );

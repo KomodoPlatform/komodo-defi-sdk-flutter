@@ -3,26 +3,30 @@ import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class Erc20ActivationStrategy extends ProtocolActivationStrategy {
-  const Erc20ActivationStrategy(super.client);
+  const Erc20ActivationStrategy(super.client, this.privKeyPolicy);
+
+  /// The private key management policy to use for this strategy.
+  /// Used for external wallet support.
+  final PrivateKeyPolicy privKeyPolicy;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {
-        CoinSubClass.erc20,
-        CoinSubClass.bep20,
-        CoinSubClass.ftm20,
-        CoinSubClass.matic,
-        CoinSubClass.avx20,
-        CoinSubClass.hrc20,
-        CoinSubClass.moonbeam,
-        CoinSubClass.moonriver,
-        CoinSubClass.ethereumClassic,
-        CoinSubClass.ubiq,
-        CoinSubClass.krc20,
-        CoinSubClass.ewt,
-        CoinSubClass.hecoChain,
-        CoinSubClass.rskSmartBitcoin,
-        CoinSubClass.arbitrum,
-      };
+    CoinSubClass.erc20,
+    CoinSubClass.bep20,
+    CoinSubClass.ftm20,
+    CoinSubClass.matic,
+    CoinSubClass.avx20,
+    CoinSubClass.hrc20,
+    CoinSubClass.moonbeam,
+    CoinSubClass.moonriver,
+    CoinSubClass.ethereumClassic,
+    CoinSubClass.ubiq,
+    CoinSubClass.krc20,
+    CoinSubClass.ewt,
+    CoinSubClass.hecoChain,
+    CoinSubClass.rskSmartBitcoin,
+    CoinSubClass.arbitrum,
+  };
 
   @override
   bool get supportsBatchActivation => true;
@@ -53,12 +57,14 @@ class Erc20ActivationStrategy extends ProtocolActivationStrategy {
       if (isPlatformAsset) {
         await client.rpc.erc20.enableEthWithTokens(
           ticker: asset.id.id,
-          params: EthWithTokensActivationParams.fromJson(asset.protocol.config)
-              .copyWith(
+          params: EthWithTokensActivationParams.fromJson(
+            asset.protocol.config,
+          ).copyWith(
             erc20Tokens:
                 children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
-                    [],
+                [],
             txHistory: true,
+            privKeyPolicy: privKeyPolicy,
           ),
         );
       } else {
