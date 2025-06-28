@@ -4,7 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Service responsible for fetching and managing seed nodes from remote sources.
-/// 
+///
 /// This service handles the downloading and parsing of seed node configurations
 /// from the Komodo Platform repository.
 class SeedNodeUpdater {
@@ -15,7 +15,9 @@ class SeedNodeUpdater {
   /// Returns a list of [SeedNode] objects that can be used for P2P networking.
   ///
   /// Throws an exception if the seed nodes cannot be fetched or parsed.
-  static Future<List<SeedNode>> fetchSeedNodes() async {
+  static Future<({List<SeedNode> seedNodes, int netId})> fetchSeedNodes({
+    bool filterForWeb = kIsWeb,
+  }) async {
     const seedNodesUrl =
         'https://komodoplatform.github.io/coins/seed-nodes.json';
 
@@ -29,7 +31,16 @@ class SeedNodeUpdater {
       }
 
       final seedNodesJson = jsonListFromString(response.body);
-      return SeedNode.fromJsonList(seedNodesJson);
+      var seedNodes = SeedNode.fromJsonList(seedNodesJson);
+
+      // Extract netid from the first node if available
+      final netId = seedNodes.isNotEmpty ? seedNodes.first.netId : 8762;
+
+      if (filterForWeb && kIsWeb) {
+        seedNodes = seedNodes.where((e) => e.wss).toList();
+      }
+
+      return (seedNodes: seedNodes, netId: netId);
     } catch (e) {
       debugPrint('Error fetching seed nodes: $e');
       throw Exception('Failed to fetch or process seed nodes: $e');

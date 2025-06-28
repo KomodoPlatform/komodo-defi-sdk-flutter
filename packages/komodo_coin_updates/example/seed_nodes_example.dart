@@ -5,9 +5,10 @@ void main() async {
   try {
     // Fetch seed nodes from the remote source
     print('Fetching seed nodes from remote source...');
-    final seedNodes = await SeedNodeUpdater.fetchSeedNodes();
+    final (seedNodes: seedNodes, netId: netId) =
+        await SeedNodeUpdater.fetchSeedNodes();
 
-    print('Found ${seedNodes.length} seed nodes:');
+    print('Found ${seedNodes.length} seed nodes on netid $netId:');
     for (final node in seedNodes) {
       print('  - ${node.name}: ${node.host}');
       if (node.contact.isNotEmpty && node.contact.first.email.isNotEmpty) {
