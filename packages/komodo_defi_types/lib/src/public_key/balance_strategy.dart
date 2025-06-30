@@ -1,4 +1,4 @@
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_types/src/common_structures/general/balance_info.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Abstract interface for balance strategies
@@ -27,4 +27,3 @@ class BalanceStrategyFactory {
     return IguananaWalletBalanceStrategy();
   }
 }
-

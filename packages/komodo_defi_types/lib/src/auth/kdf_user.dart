@@ -21,14 +21,15 @@ class WalletId extends Equatable {
     String name,
     AuthOptions authOptions,
     String pubkeyHash,
-  ) => WalletId(name: name, pubkeyHash: pubkeyHash, authOptions: authOptions);
+  ) =>
+      WalletId(name: name, pubkeyHash: pubkeyHash, authOptions: authOptions);
 
   /// Create from JSON representation
   factory WalletId.fromJson(JsonMap json) => WalletId(
-    name: json.value<String>('name'),
-    pubkeyHash: json.valueOrNull<String>('pubkey_hash'),
-    authOptions: AuthOptions.fromJson(json.value<JsonMap>('auth_options')),
-  );
+        name: json.value<String>('name'),
+        pubkeyHash: json.valueOrNull<String>('pubkey_hash'),
+        authOptions: AuthOptions.fromJson(json.value<JsonMap>('auth_options')),
+      );
 
   /// The wallet's name (always available)
   final String name;
@@ -56,20 +57,21 @@ class WalletId extends Equatable {
 
   /// Convert to JSON representation
   JsonMap toJson() => {
-    'name': name,
-    'auth_options': authOptions.toJson(),
-    if (pubkeyHash != null) 'pubkey_hash': pubkeyHash,
-  };
+        'name': name,
+        'auth_options': authOptions.toJson(),
+        if (pubkeyHash != null) 'pubkey_hash': pubkeyHash,
+      };
 
   WalletId copyWith({
     String? name,
     String? pubkeyHash,
     AuthOptions? authOptions,
-  }) => WalletId(
-    name: name ?? this.name,
-    pubkeyHash: pubkeyHash ?? this.pubkeyHash,
-    authOptions: authOptions ?? this.authOptions,
-  );
+  }) =>
+      WalletId(
+        name: name ?? this.name,
+        pubkeyHash: pubkeyHash ?? this.pubkeyHash,
+        authOptions: authOptions ?? this.authOptions,
+      );
 }
 
 /// Updated KdfUser to use WalletId
@@ -121,8 +123,8 @@ class KdfUser extends Equatable {
   List<Object?> get props => [walletId, isBip39Seed, metadata];
 
   JsonMap toJson() => {
-    'wallet_id': walletId.toJson(),
-    'is_bip39_seed': isBip39Seed,
-    if (metadata.isNotEmpty) 'metadata': metadata,
-  };
+        'wallet_id': walletId.toJson(),
+        'is_bip39_seed': isBip39Seed,
+        if (metadata.isNotEmpty) 'metadata': metadata,
+      };
 }

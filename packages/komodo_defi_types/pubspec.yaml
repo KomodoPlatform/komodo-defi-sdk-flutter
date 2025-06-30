@@ -15,8 +15,6 @@ dependencies:
     sdk: flutter
   freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
-  komodo_defi_rpc_methods:
-    path: ../komodo_defi_rpc_methods
   meta: ^1.15.0
 
 dev_dependencies:

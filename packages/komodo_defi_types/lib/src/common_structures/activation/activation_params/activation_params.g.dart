@@ -16,15 +16,15 @@ _Trezor _$TrezorFromJson(Map<String, dynamic> json) =>
     _Trezor($type: json['type'] as String?);
 
 Map<String, dynamic> _$TrezorToJson(_Trezor instance) => <String, dynamic>{
-  'type': instance.$type,
-};
+      'type': instance.$type,
+    };
 
 _Metamask _$MetamaskFromJson(Map<String, dynamic> json) =>
     _Metamask($type: json['type'] as String?);
 
 Map<String, dynamic> _$MetamaskToJson(_Metamask instance) => <String, dynamic>{
-  'type': instance.$type,
-};
+      'type': instance.$type,
+    };
 
 _WalletConnect _$WalletConnectFromJson(Map<String, dynamic> json) =>
     _WalletConnect(

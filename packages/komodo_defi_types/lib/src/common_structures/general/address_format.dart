@@ -38,9 +38,9 @@ class AddressFormat {
   final String network;
 
   Map<String, dynamic> toJson() => {
-    'format': format,
-    if (network.isNotEmpty) 'network': network,
-  };
+        'format': format,
+        if (network.isNotEmpty) 'network': network,
+      };
 }
 
 /// The address format to which the input address should be converted.

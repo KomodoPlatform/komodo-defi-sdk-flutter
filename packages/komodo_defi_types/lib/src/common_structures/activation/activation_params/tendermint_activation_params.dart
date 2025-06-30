@@ -1,4 +1,6 @@
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/activation_params/activation_params.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/evm_node.dart';
+import 'package:komodo_defi_types/src/common_structures/activation/tokens_request.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class TendermintActivationParams extends ActivationParams {
@@ -17,13 +19,11 @@ class TendermintActivationParams extends ActivationParams {
     final base = ActivationParams.fromConfigJson(json);
 
     return TendermintActivationParams(
-      rpcUrls:
-          json
-              .value<JsonList>('rpc_urls')
-              .map((e) => EvmNode.fromJson(e).url)
-              .toList(),
-      tokensParams:
-          json
+      rpcUrls: json
+          .value<JsonList>('rpc_urls')
+          .map((e) => EvmNode.fromJson(e).url)
+          .toList(),
+      tokensParams: json
               .valueOrNull<List<dynamic>>('tokens_params')
               ?.map((e) => TokensRequest.fromJson(e as JsonMap))
               .toList() ??
