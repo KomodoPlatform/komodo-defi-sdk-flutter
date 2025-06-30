@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class EnableTendermintWithAssetsRequest
     extends
-        BaseRequest<EnableTendermintWithAssetsResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+        BaseRequest<EnableTendermintWithAssetsResponse, GeneralErrorResponse> {
   EnableTendermintWithAssetsRequest({
     required super.rpcPass,
     required this.ticker,
