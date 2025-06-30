@@ -65,6 +65,7 @@ class AssetManager implements IAssetProvider {
   late final AssetIdMap _orderedCoins;
   StreamSubscription<KdfUser?>? _authSubscription;
   bool _isDisposed = false;
+  AssetFilterStrategy? _currentFilterStrategy;
 
   /// NB: This cannot be used during initialization. This is a workaround
   /// to publicly expose the activation manager's activation methods.
@@ -95,9 +96,11 @@ class AssetManager implements IAssetProvider {
   }
 
   void _refreshCoins(AssetFilterStrategy strategy) {
+    if (_currentFilterStrategy?.name == strategy.name) return;
     _orderedCoins
       ..clear()
       ..addAll(_coins.filteredAssets(strategy));
+    _currentFilterStrategy = strategy;
   }
 
   /// Applies a new [strategy] for filtering available assets.

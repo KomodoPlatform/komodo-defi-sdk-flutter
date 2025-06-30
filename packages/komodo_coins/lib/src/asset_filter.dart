@@ -1,15 +1,24 @@
+import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Strategy interface for filtering assets based on coin configuration.
-abstract class AssetFilterStrategy {
+abstract class AssetFilterStrategy extends Equatable {
+  const AssetFilterStrategy(this.name);
+
+  /// A unique name for the strategy used for comparison and caching.
+  final String name;
+
   /// Returns `true` if the asset should be included.
   bool shouldInclude(Asset asset, JsonMap coinConfig);
+
+  @override
+  List<Object?> get props => [name];
 }
 
 /// Default strategy that includes all assets.
-class NoAssetFilterStrategy implements AssetFilterStrategy {
-  const NoAssetFilterStrategy();
+class NoAssetFilterStrategy extends AssetFilterStrategy {
+  const NoAssetFilterStrategy() : super('none');
 
   @override
   bool shouldInclude(Asset asset, JsonMap coinConfig) => true;
@@ -21,8 +30,8 @@ class NoAssetFilterStrategy implements AssetFilterStrategy {
 /// activate on Trezor.
 /// ERC20, Arbitrum, and MATIC explicitly do not support Trezor via KDF
 /// at this time, so they are also excluded.
-class TrezorAssetFilterStrategy implements AssetFilterStrategy {
-  const TrezorAssetFilterStrategy();
+class TrezorAssetFilterStrategy extends AssetFilterStrategy {
+  const TrezorAssetFilterStrategy() : super('trezor');
 
   @override
   bool shouldInclude(Asset asset, JsonMap coinConfig) {
@@ -37,8 +46,8 @@ class TrezorAssetFilterStrategy implements AssetFilterStrategy {
 }
 
 /// Filters out assets that are not UTXO-based chains.
-class UtxoAssetFilterStrategy implements AssetFilterStrategy {
-  const UtxoAssetFilterStrategy();
+class UtxoAssetFilterStrategy extends AssetFilterStrategy {
+  const UtxoAssetFilterStrategy() : super('utxo');
 
   @override
   bool shouldInclude(Asset asset, JsonMap coinConfig) {
@@ -51,8 +60,8 @@ class UtxoAssetFilterStrategy implements AssetFilterStrategy {
 /// This includes various EVM-compatible chains like Ethereum, Binance, etc.
 /// This strategy is necessary for external wallets like Metamask or
 /// WalletConnect.
-class EvmAssetFilterStrategy implements AssetFilterStrategy {
-  const EvmAssetFilterStrategy();
+class EvmAssetFilterStrategy extends AssetFilterStrategy {
+  const EvmAssetFilterStrategy() : super('evm');
 
   @override
   bool shouldInclude(Asset asset, JsonMap coinConfig) =>
