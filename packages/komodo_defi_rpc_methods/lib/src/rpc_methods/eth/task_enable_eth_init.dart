@@ -29,4 +29,8 @@ class TaskEnableEthInit
     }
     return NewTaskResponse.parse(json);
   }
+
+  @override
+  NewTaskResponse parse(Map<String, dynamic> json) =>
+      NewTaskResponse.parse(json);
 }

@@ -2,15 +2,14 @@
 
 import 'dart:async';
 import 'dart:collection';
+
 import 'package:flutter/foundation.dart' show ValueGetter;
 import 'package:komodo_coins/komodo_coins.dart';
-import 'package:komodo_coins/src/asset_filter.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 
 typedef AssetIdMap = SplayTreeMap<AssetId, Asset>;
 
@@ -129,11 +128,18 @@ class AssetManager implements IAssetProvider {
   /// available assets to only those explicitly supported by that wallet.
   void _handleAuthStateChange(KdfUser? user) {
     if (_isDisposed) return;
-    final isTrezor = user?.authOptions.privKeyPolicy == PrivateKeyPolicy.trezor;
+
+    final isTrezor =
+        user?.authOptions.privKeyPolicy == const PrivateKeyPolicy.trezor();
+
+    // Trezor does not support all assets yet, so we apply a filter here
+    // to only show assets that are compatible with Trezor.
+    // WalletConnect and Metamask will require similar handling in the future.
     final strategy =
         isTrezor
             ? const TrezorAssetFilterStrategy()
             : const NoAssetFilterStrategy();
+
     setFilterStrategy(strategy);
   }
 

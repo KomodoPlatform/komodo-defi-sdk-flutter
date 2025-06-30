@@ -1,5 +1,5 @@
-import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Strategy interface for filtering assets based on coin configuration.
 abstract class AssetFilterStrategy {
@@ -15,14 +15,24 @@ class NoAssetFilterStrategy implements AssetFilterStrategy {
   bool shouldInclude(Asset asset, JsonMap coinConfig) => true;
 }
 
-/// Filters assets that do not specify a `trezor_coin` field.
+/// Filters assets that are not currently supported on Trezor.
+/// This includes assets that are not UTXO-based or EVM-based tokens.
+/// ETH, AVAX, BNB, FTM, etc. are excluded as they currently fail to
+/// activate on Trezor.
+/// ERC20, ARB20, and MATIC explicitly do not support Trezor via KDF
+/// at this time, so they are also excluded.
 class TrezorAssetFilterStrategy implements AssetFilterStrategy {
   const TrezorAssetFilterStrategy();
 
   @override
   bool shouldInclude(Asset asset, JsonMap coinConfig) {
-    final field = coinConfig.valueOrNull<String>('trezor_coin');
-    return field != null && field.isNotEmpty;
+    final subClass = asset.protocol.subClass;
+
+    // AVAX, BNB, ETH, FTM, etc. currently fail to activate on Trezor,
+    // so we exclude them from the Trezor asset list.
+    return subClass == CoinSubClass.utxo ||
+        subClass == CoinSubClass.smartChain ||
+        subClass == CoinSubClass.qrc20;
   }
 }
 
@@ -34,5 +44,33 @@ class UtxoAssetFilterStrategy implements AssetFilterStrategy {
   bool shouldInclude(Asset asset, JsonMap coinConfig) {
     final subClass = asset.protocol.subClass;
     return subClass == CoinSubClass.utxo || subClass == CoinSubClass.smartChain;
+  }
+}
+
+/// Filters assets that are EVM-based tokens.
+/// This includes various EVM-compatible chains like Ethereum, Binance, etc.
+/// This strategy is necessary for external wallets like Metamask or
+/// WalletConnect.
+class EvmAssetFilterStrategy implements AssetFilterStrategy {
+  const EvmAssetFilterStrategy();
+
+  @override
+  bool shouldInclude(Asset asset, JsonMap coinConfig) {
+    final subClass = asset.protocol.subClass;
+    return subClass == CoinSubClass.avx20 ||
+        subClass == CoinSubClass.bep20 ||
+        subClass == CoinSubClass.ftm20 ||
+        subClass == CoinSubClass.matic ||
+        subClass == CoinSubClass.hrc20 ||
+        subClass == CoinSubClass.arbitrum ||
+        subClass == CoinSubClass.moonriver ||
+        subClass == CoinSubClass.moonbeam ||
+        subClass == CoinSubClass.ethereumClassic ||
+        subClass == CoinSubClass.ubiq ||
+        subClass == CoinSubClass.krc20 ||
+        subClass == CoinSubClass.ewt ||
+        subClass == CoinSubClass.hecoChain ||
+        subClass == CoinSubClass.rskSmartBitcoin ||
+        subClass == CoinSubClass.erc20;
   }
 }
