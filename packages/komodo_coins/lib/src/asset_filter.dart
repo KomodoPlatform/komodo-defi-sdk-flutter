@@ -19,7 +19,7 @@ class NoAssetFilterStrategy implements AssetFilterStrategy {
 /// This includes assets that are not UTXO-based or EVM-based tokens.
 /// ETH, AVAX, BNB, FTM, etc. are excluded as they currently fail to
 /// activate on Trezor.
-/// ERC20, ARB20, and MATIC explicitly do not support Trezor via KDF
+/// ERC20, Arbitrum, and MATIC explicitly do not support Trezor via KDF
 /// at this time, so they are also excluded.
 class TrezorAssetFilterStrategy implements AssetFilterStrategy {
   const TrezorAssetFilterStrategy();
@@ -55,22 +55,6 @@ class EvmAssetFilterStrategy implements AssetFilterStrategy {
   const EvmAssetFilterStrategy();
 
   @override
-  bool shouldInclude(Asset asset, JsonMap coinConfig) {
-    final subClass = asset.protocol.subClass;
-    return subClass == CoinSubClass.avx20 ||
-        subClass == CoinSubClass.bep20 ||
-        subClass == CoinSubClass.ftm20 ||
-        subClass == CoinSubClass.matic ||
-        subClass == CoinSubClass.hrc20 ||
-        subClass == CoinSubClass.arbitrum ||
-        subClass == CoinSubClass.moonriver ||
-        subClass == CoinSubClass.moonbeam ||
-        subClass == CoinSubClass.ethereumClassic ||
-        subClass == CoinSubClass.ubiq ||
-        subClass == CoinSubClass.krc20 ||
-        subClass == CoinSubClass.ewt ||
-        subClass == CoinSubClass.hecoChain ||
-        subClass == CoinSubClass.rskSmartBitcoin ||
-        subClass == CoinSubClass.erc20;
-  }
+  bool shouldInclude(Asset asset, JsonMap coinConfig) =>
+      evmCoinSubClasses.contains(asset.protocol.subClass);
 }

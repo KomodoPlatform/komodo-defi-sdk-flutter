@@ -275,3 +275,21 @@ enum CoinSubClass {
     }
   }
 }
+
+const Set<CoinSubClass> evmCoinSubClasses = {
+  CoinSubClass.avx20,
+  CoinSubClass.bep20,
+  CoinSubClass.ftm20,
+  CoinSubClass.matic,
+  CoinSubClass.hrc20,
+  CoinSubClass.arbitrum,
+  CoinSubClass.moonriver,
+  CoinSubClass.moonbeam,
+  CoinSubClass.ethereumClassic,
+  CoinSubClass.ubiq,
+  CoinSubClass.krc20,
+  CoinSubClass.ewt,
+  CoinSubClass.hecoChain,
+  CoinSubClass.rskSmartBitcoin,
+  CoinSubClass.erc20,
+};
