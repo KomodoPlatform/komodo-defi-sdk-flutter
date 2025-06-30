@@ -2,13 +2,12 @@ import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class DeleteWalletRequest
-    extends BaseRequest<DeleteWalletResponse, DeleteWalletErrorResponse>
-    with RequestHandlingMixin<DeleteWalletResponse, DeleteWalletErrorResponse> {
+    extends BaseRequest<DeleteWalletResponse, DeleteWalletErrorResponse> {
   DeleteWalletRequest({
     required this.walletName,
     required this.password,
-    String? rpcPass,
-  }) : super(method: 'delete_wallet', rpcPass: rpcPass, mmrpc: '2.0');
+    super.rpcPass,
+  }) : super(method: 'delete_wallet', mmrpc: '2.0');
 
   final String walletName;
   final String password;

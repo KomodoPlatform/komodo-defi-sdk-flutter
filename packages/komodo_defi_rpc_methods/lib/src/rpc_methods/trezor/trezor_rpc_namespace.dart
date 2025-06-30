@@ -123,11 +123,7 @@ class TaskInitTrezorInit
   };
 
   @override
-  NewTaskResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  NewTaskResponse parse(Map<String, dynamic> json) {
     return NewTaskResponse.parse(json);
   }
 }
@@ -150,11 +146,7 @@ class TaskInitTrezorStatus
   };
 
   @override
-  TrezorStatusResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  TrezorStatusResponse parse(Map<String, dynamic> json) {
     return TrezorStatusResponse.parse(json);
   }
 }
@@ -173,11 +165,7 @@ class TaskInitTrezorCancel
   };
 
   @override
-  TrezorCancelResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  TrezorCancelResponse parse(Map<String, dynamic> json) {
     return TrezorCancelResponse.parse(json);
   }
 }
@@ -200,11 +188,7 @@ class TaskInitTrezorUserAction
   };
 
   @override
-  TrezorUserActionResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  TrezorUserActionResponse parse(Map<String, dynamic> json) {
     return TrezorUserActionResponse.parse(json);
   }
 }
@@ -371,7 +355,7 @@ class TrezorUserActionData {
   /// immutability and garbage collection behavior.
   void _secureClearString(String? value) {
     if (value == null) return;
-    
+
     // Note: Due to Dart's string immutability, we cannot directly overwrite
     // the string content in memory. The best we can do is null the reference
     // and rely on garbage collection. For more secure memory handling,
