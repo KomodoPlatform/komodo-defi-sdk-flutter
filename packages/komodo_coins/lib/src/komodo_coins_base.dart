@@ -18,6 +18,7 @@ class KomodoCoins {
   }
 
   Map<AssetId, Asset>? _assets;
+  final Map<String, Map<AssetId, Asset>> _filterCache = {};
 
   @mustCallSuper
   Future<void> init() async {
@@ -81,9 +82,10 @@ class KomodoCoins {
             coinData,
             knownIds: platformIds,
           ).map(
-            (id) => id.isChildAsset
-                ? AssetId.parse(coinData, knownIds: platformIds)
-                : id,
+            (id) =>
+                id.isChildAsset
+                    ? AssetId.parse(coinData, knownIds: platformIds)
+                    : id,
           );
 
           // Create Asset instance for each valid AssetId
@@ -124,6 +126,10 @@ class KomodoCoins {
     if (!isInitialized) {
       throw StateError('Assets have not been initialized. Call init() first.');
     }
+    final cacheKey = strategy.name;
+    final cached = _filterCache[cacheKey];
+    if (cached != null) return cached;
+
     final result = <AssetId, Asset>{};
     for (final entry in _assets!.entries) {
       final config = entry.value.protocol.config;
@@ -131,6 +137,7 @@ class KomodoCoins {
         result[entry.key] = entry.value;
       }
     }
+    _filterCache[cacheKey] = result;
     return result;
   }
 
