@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Legacy send raw transaction request
 class SendRawTransactionLegacyRequest
-    extends BaseRequest<SendRawTransactionResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<SendRawTransactionResponse, GeneralErrorResponse> {
   SendRawTransactionLegacyRequest({
     required super.rpcPass,
     required this.coin,

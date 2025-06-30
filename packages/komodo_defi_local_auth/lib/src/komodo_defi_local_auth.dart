@@ -138,6 +138,12 @@ abstract interface class KomodoDefiAuth {
     required String newPassword,
   });
 
+  /// Deletes the specified wallet.
+  Future<void> deleteWallet({
+    required String walletName,
+    required String password,
+  });
+
   /// Sets the value of a single key in the active user's metadata.
   ///
   /// This preserves any existing metadata, and overwrites the value only for
@@ -549,6 +555,27 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     } catch (e) {
       throw AuthException(
         'An unexpected error occurred while changing the password: $e',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+  }
+
+  @override
+  Future<void> deleteWallet({
+    required String walletName,
+    required String password,
+  }) async {
+    await ensureInitialized();
+    try {
+      await _authService.deleteWallet(
+        walletName: walletName,
+        password: password,
+      );
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException(
+        'An unexpected error occurred while deleting the wallet: $e',
         type: AuthExceptionType.generalAuthError,
       );
     }

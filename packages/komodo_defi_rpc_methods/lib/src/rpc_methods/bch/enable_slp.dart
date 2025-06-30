@@ -2,8 +2,7 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class EnableSlpRequest
-    extends BaseRequest<EnableSlpResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<EnableSlpResponse, GeneralErrorResponse> {
   EnableSlpRequest({
     required this.ticker,
     required this.activationParams,

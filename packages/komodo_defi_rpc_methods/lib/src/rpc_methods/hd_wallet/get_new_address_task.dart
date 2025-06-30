@@ -5,8 +5,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // Init Request
 class GetNewAddressTaskInitRequest
-    extends BaseRequest<NewTaskResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<NewTaskResponse, GeneralErrorResponse> {
   GetNewAddressTaskInitRequest({
     required super.rpcPass,
     required this.coin,
@@ -42,8 +41,7 @@ class GetNewAddressTaskInitRequest
 
 // Status Request
 class GetNewAddressTaskStatusRequest
-    extends BaseRequest<GetNewAddressTaskStatusResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<GetNewAddressTaskStatusResponse, GeneralErrorResponse> {
   GetNewAddressTaskStatusRequest({
     required super.rpcPass,
     required this.taskId,
@@ -139,8 +137,7 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
 
 // Cancel Request
 class GetNewAddressTaskCancelRequest
-    extends BaseRequest<GetNewAddressTaskCancelResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<GetNewAddressTaskCancelResponse, GeneralErrorResponse> {
   GetNewAddressTaskCancelRequest({required super.rpcPass, required this.taskId})
     : super(method: 'task::get_new_address::cancel');
 

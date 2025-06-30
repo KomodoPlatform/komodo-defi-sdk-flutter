@@ -42,6 +42,7 @@ export 'utility/rpc_task_shepherd.dart';
 export 'utxo/task_enable_utxo_init.dart';
 export 'utxo/utxo_rpc_extensions.dart';
 export 'wallet/change_mnemonic_password.dart';
+export 'wallet/delete_wallet.dart';
 export 'wallet/get_mnemonic_request.dart';
 export 'wallet/get_mnemonic_response.dart';
 export 'wallet/get_public_key_hash.dart';
