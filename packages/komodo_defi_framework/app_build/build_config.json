@@ -1,6 +1,6 @@
 {
     "api": {
-        "api_commit_hash": "d62c20b4c978bf2a8389b31bfbe45b3c0b2cd29f",
+        "api_commit_hash": "a25aea61495534adbadec94068fc67525575ea4d",
         "branch": "staging",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
@@ -12,49 +12,49 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "ca1ae35450181592f28bb456a23356790bdef953e2e78ea88cdea4aaacbd9cae"
+                    "97bea5cde7b3c48ed717ae6a19150c6acd40ba26a8764ff7d11769a36c5bf728"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "dd7eea64702eb15511791584e298e9e7c51567129bdf9f0c2673cba868a40cf7"
+                    "ede15a727b613dea3bbaa805f81f5f732c662b047e26633ce3f628fa43bfb999"
                 ],
                 "path": "ios"
             },
             "macos": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "e676748d79c2d15a1c469a242ddd66a09f5649b82db99cc0cd229a0c204589a4"
+                    "fe80d8229d83eafe44bf156eceed80854561e1212d7f26aa5e6977eb6862c7dd"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "20ca3a10b8567bf52a812aa0d19a3d842f4bec6150237dc1c03a89d8d5a08dba"
+                    "dc65e9617eb31f270839bb4f1ec5d060803028f6b117fd6a7644bcab0cc37144"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "4e1ebef85d3a663419b189917e9ba016e120489ac83723e88d7ca15a9577d505"
+                    "db6555d6a3fba24a1cd4ce7da82c79ec05c8bda50c9336722b32dbce412cc198"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "3541025a2cd7f0cee146ac6abbf572a9814c4aa08dcfdf41d5feb87687d4293d"
+                    "3514305986cd1d867313852fa73bd76b285aea370ed7b43e13a8ab1fbd1ced2d"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "1cd6ad4d063bf02a35e42019c8e19a431f94c5540ebd8bb2de77d73fc39fc3e5"
+                    "7a169dfc02a232cbc5eed1840b7c6d8d664a625be60edd95fc509b70e2d1c631"
                 ],
                 "path": "linux/bin"
             }
@@ -63,7 +63,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "8a610bfe6e71c217e1075e6dec767484e0be523d",
+        "bundled_coins_repo_commit": "11e6af8301317145c8709162bb3ee13f9843d2c9",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://komodoplatform.github.io/coins",
         "coins_repo_branch": "master",
