@@ -4,10 +4,13 @@ import 'dart:async';
 import 'dart:collection';
 import 'package:flutter/foundation.dart' show ValueGetter;
 import 'package:komodo_coins/komodo_coins.dart';
+import 'package:komodo_coins/src/asset_filter.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 
 typedef AssetIdMap = SplayTreeMap<AssetId, Asset>;
 
@@ -37,6 +40,9 @@ typedef AssetIdMap = SplayTreeMap<AssetId, Asset>;
 /// // Get all activated assets
 /// final activeAssets = await assetManager.getActivatedAssets();
 /// ```
+///
+/// The manager listens to authentication changes to keep the available asset
+/// list in sync with the active wallet's capabilities.
 class AssetManager implements IAssetProvider {
   /// Creates a new instance of AssetManager.
   ///
@@ -48,7 +54,9 @@ class AssetManager implements IAssetProvider {
     this._config,
     this._customAssetHistory,
     this._activationManager,
-  );
+  ) {
+    _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChange);
+  }
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
@@ -56,6 +64,8 @@ class AssetManager implements IAssetProvider {
   final CustomAssetHistoryStorage _customAssetHistory;
   final KomodoCoins _coins = KomodoCoins();
   late final AssetIdMap _orderedCoins;
+  StreamSubscription<KdfUser?>? _authSubscription;
+  bool _isDisposed = false;
 
   /// NB: This cannot be used during initialization. This is a workaround
   /// to publicly expose the activation manager's activation methods.
@@ -80,9 +90,25 @@ class AssetManager implements IAssetProvider {
       return keyA.toString().compareTo(keyB.toString());
     });
 
-    _orderedCoins.addAll(_coins.all);
+    _refreshCoins(const NoAssetFilterStrategy());
 
     await _initializeCustomTokens();
+  }
+
+  void _refreshCoins(AssetFilterStrategy strategy) {
+    _orderedCoins
+      ..clear()
+      ..addAll(_coins.filteredAssets(strategy));
+  }
+
+  /// Applies a new [strategy] for filtering available assets.
+  ///
+  /// This is called whenever the authentication state changes so the
+  /// visible asset list always matches the capabilities of the active wallet.
+  void setFilterStrategy(AssetFilterStrategy strategy) {
+    if (_coins.isInitialized) {
+      _refreshCoins(strategy);
+    }
   }
 
   Future<void> _initializeCustomTokens() async {
@@ -95,6 +121,20 @@ class AssetManager implements IAssetProvider {
         _orderedCoins[customToken.id] = customToken;
       }
     }
+  }
+
+  /// Reacts to authentication changes by updating the active asset filter.
+  ///
+  /// When a hardware wallet such as Trezor is connected we limit the list of
+  /// available assets to only those explicitly supported by that wallet.
+  void _handleAuthStateChange(KdfUser? user) {
+    if (_isDisposed) return;
+    final isTrezor = user?.authOptions.privKeyPolicy == PrivateKeyPolicy.trezor;
+    final strategy =
+        isTrezor
+            ? const TrezorAssetFilterStrategy()
+            : const NoAssetFilterStrategy();
+    setFilterStrategy(strategy);
   }
 
   /// Returns an asset by its [AssetId], if available.
@@ -199,6 +239,7 @@ class AssetManager implements IAssetProvider {
   ///
   /// This is called automatically by the SDK when disposing.
   Future<void> dispose() async {
-    // No cleanup needed for now
+    _isDisposed = true;
+    await _authSubscription?.cancel();
   }
 }

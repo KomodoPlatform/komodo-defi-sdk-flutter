@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_coins/src/config_transform.dart';
+import 'package:komodo_coins/src/asset_filter.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -76,8 +77,10 @@ class KomodoCoins {
 
         try {
           // Parse all possible AssetIds for this coin
-          final assetIds =
-              AssetId.parseAllTypes(coinData, knownIds: platformIds).map(
+          final assetIds = AssetId.parseAllTypes(
+            coinData,
+            knownIds: platformIds,
+          ).map(
             (id) => id.isChildAsset
                 ? AssetId.parse(coinData, knownIds: platformIds)
                 : id,
@@ -109,6 +112,26 @@ class KomodoCoins {
   static bool _hasNoParent(JsonMap coinData) {
     return !coinData.containsKey('parent_coin') ||
         coinData.valueOrNull<String>('parent_coin') == null;
+  }
+
+  /// Returns the assets filtered using the provided [strategy].
+  ///
+  /// This allows higher-level components, such as [AssetManager], to tailor
+  /// the visible asset list to the active authentication context. For example,
+  /// a hardware wallet may only support a subset of coins, which can be
+  /// enforced by supplying an appropriate [AssetFilterStrategy].
+  Map<AssetId, Asset> filteredAssets(AssetFilterStrategy strategy) {
+    if (!isInitialized) {
+      throw StateError('Assets have not been initialized. Call init() first.');
+    }
+    final result = <AssetId, Asset>{};
+    for (final entry in _assets!.entries) {
+      final config = entry.value.protocol.config;
+      if (strategy.shouldInclude(entry.value, config)) {
+        result[entry.key] = entry.value;
+      }
+    }
+    return result;
   }
 
   // Helper methods
