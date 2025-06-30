@@ -22,20 +22,92 @@ Future<void> bootstrap({
   required GetIt container,
   KomodoDefiFramework? kdfFramework,
 }) async {
-  final rpcPassword = await SecureRpcPasswordMixin().ensureRpcPassword();
+  final passwordManager = SecureRpcPasswordMixin();
+
+  var storedPassword = await passwordManager.getRpcPassword();
+
+  IKdfHostConfig resolvePassword(IKdfHostConfig base, String password) {
+    if (base is LocalConfig) {
+      return LocalConfig(https: base.https, rpcPassword: password);
+    } else if (base is RemoteConfig) {
+      return RemoteConfig(
+        ipAddress: base.ipAddress,
+        port: base.port,
+        rpcPassword: password,
+        https: base.https,
+      );
+    } else if (base is AwsConfig) {
+      return AwsConfig(
+        region: base.region,
+        accessKey: base.accessKey,
+        secretKey: base.secretKey,
+        instanceType: base.instanceType,
+        instanceId: base.instanceId,
+        keyName: base.keyName,
+        securityGroup: base.securityGroup,
+        amiId: base.amiId,
+        rpcPassword: password,
+        https: base.https,
+      );
+    } else if (base is DigitalOceanConfig) {
+      return DigitalOceanConfig(
+        apiToken: base.apiToken,
+        dropletId: base.dropletId,
+        dropletRegion: base.dropletRegion,
+        dropletSize: base.dropletSize,
+        sshKeyId: base.sshKeyId,
+        image: base.image,
+        rpcPassword: password,
+        https: base.https,
+      );
+    }
+
+    return base;
+  }
+
+  storedPassword ??= hostConfig?.rpcPassword;
+  storedPassword ??= SecurityUtils.generatePasswordSecure(32);
+
+  var resolvedHostConfig =
+      hostConfig != null
+          ? resolvePassword(hostConfig, storedPassword)
+          : LocalConfig(https: true, rpcPassword: storedPassword);
+
+  var framework =
+      kdfFramework ??
+      KomodoDefiFramework.create(
+        hostConfig: resolvedHostConfig,
+        externalLogger: kDebugMode ? print : null,
+      );
+
+  final running = await framework.isRunning();
+
+  if (!running) {
+    final newPassword = SecurityUtils.generatePasswordSecure(32);
+    resolvedHostConfig =
+        hostConfig != null
+            ? resolvePassword(hostConfig, newPassword)
+            : LocalConfig(https: true, rpcPassword: newPassword);
+
+    await passwordManager.setRpcPassword(newPassword);
+
+    if (kdfFramework == null) {
+      framework = KomodoDefiFramework.create(
+        hostConfig: resolvedHostConfig,
+        externalLogger: kDebugMode ? print : null,
+      );
+    }
+  } else {
+    await passwordManager.setRpcPassword(resolvedHostConfig.rpcPassword);
+  }
 
   // Framework and core dependencies
-  container.registerSingletonAsync<KomodoDefiFramework>(() async {
-    if (kdfFramework != null) return kdfFramework;
+  final IKdfHostConfig finalHostConfig = resolvedHostConfig;
+  final KomodoDefiFramework finalFramework = framework;
 
-    final resolvedHostConfig =
-        hostConfig ?? LocalConfig(https: true, rpcPassword: rpcPassword);
-
-    return KomodoDefiFramework.create(
-      hostConfig: resolvedHostConfig,
-      externalLogger: kDebugMode ? print : null,
-    );
-  });
+  container.registerSingletonAsync<KomodoDefiFramework>(
+    () async => finalFramework,
+  );
 
   container.registerSingletonAsync<ApiClient>(() async {
     final framework = await container.getAsync<KomodoDefiFramework>();
@@ -47,8 +119,7 @@ Future<void> bootstrap({
     final framework = await container.getAsync<KomodoDefiFramework>();
     final auth = KomodoDefiLocalAuth(
       kdf: framework,
-      hostConfig:
-          hostConfig ?? LocalConfig(https: true, rpcPassword: rpcPassword),
+      hostConfig: finalHostConfig,
     );
     await auth.ensureInitialized();
     return auth;
