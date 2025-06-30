@@ -325,6 +325,7 @@ class _AssetHeaderState extends State<AssetHeader> {
         _currentUser?.authOptions.derivationMethod == DerivationMethod.hdWallet;
     final hasAddresses =
         widget.pubkeys != null && widget.pubkeys!.keys.isNotEmpty;
+    final supportsSigning = widget.asset.supportsMessageSigning;
 
     return Wrap(
       alignment: WrapAlignment.spaceEvenly,
@@ -357,14 +358,16 @@ class _AssetHeaderState extends State<AssetHeader> {
 
         Tooltip(
           message:
-              !hasAddresses
-                  ? 'No addresses available to sign with'
-                  : isHdWallet
-                  ? 'Will sign with the first address'
-                  : 'Sign a message with this address',
+              supportsSigning
+                  ? !hasAddresses
+                      ? 'No addresses available to sign with'
+                      : isHdWallet
+                      ? 'Will sign with the first address'
+                      : 'Sign a message with this address'
+                  : 'Message signing not supported for this asset',
           child: FilledButton.tonalIcon(
             onPressed:
-                _isSigningMessage || !hasAddresses
+                _isSigningMessage || !hasAddresses || !supportsSigning
                     ? null
                     : () => _showSignMessageDialog(context),
             icon: const Icon(Icons.edit_document),
