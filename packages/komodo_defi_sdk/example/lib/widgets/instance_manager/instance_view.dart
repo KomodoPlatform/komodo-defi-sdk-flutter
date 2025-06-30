@@ -81,7 +81,11 @@ class _InstanceViewState extends State<InstanceView> {
     return widget.instance.sdk.auth.getMnemonicPlainText(password);
   }
 
-  Future<void> _deleteWallet(KdfUser currentUser) async {
+  Future<void> _deleteWallet(String walletName) async {
+    if (walletName.isEmpty) {
+      _showError('Wallet name is required');
+      return;
+    }
     final passwordController = TextEditingController();
 
     final confirmed = await showDialog<bool>(
@@ -124,15 +128,14 @@ class _InstanceViewState extends State<InstanceView> {
 
     try {
       await widget.instance.sdk.auth.deleteWallet(
-        walletName: currentUser.walletId.name,
+        walletName: walletName,
         password: passwordController.text,
       );
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Wallet deleted')));
-        // Trigger sign out after successful deletion
-        context.read<AuthBloc>().add(const AuthSignedOut());
+        context.read<AuthBloc>().add(const AuthKnownUsersFetched());
       }
       setState(() => _mnemonic = null);
     } on AuthException catch (e) {
@@ -487,11 +490,6 @@ class _InstanceViewState extends State<InstanceView> {
               label: const Text('Sign Out'),
               key: const Key('sign_out_button'),
             ),
-            FilledButton.tonalIcon(
-              onPressed: () => _deleteWallet(currentUser),
-              icon: const Icon(Icons.delete),
-              label: const Text('Delete Wallet'),
-            ),
             if (_mnemonic == null) ...[
               FilledButton.tonal(
                 onPressed: () => _getMnemonic(encrypted: false),
@@ -651,6 +649,14 @@ class _InstanceViewState extends State<InstanceView> {
                   }
                 },
                 child: const Text('Register'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed:
+                    _walletNameController.text.isEmpty
+                        ? null
+                        : () => _deleteWallet(_walletNameController.text),
+                icon: const Icon(Icons.delete),
+                label: const Text('Delete Wallet'),
               ),
             ],
           ),
