@@ -133,7 +133,8 @@ class AssetManager implements IAssetProvider {
     if (_isDisposed) return;
 
     final isTrezor =
-        user?.authOptions.privKeyPolicy == const PrivateKeyPolicy.trezor();
+        user?.walletId.authOptions.privKeyPolicy ==
+        const PrivateKeyPolicy.trezor();
 
     // Trezor does not support all assets yet, so we apply a filter here
     // to only show assets that are compatible with Trezor.
