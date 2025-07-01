@@ -208,7 +208,8 @@ class TrezorAuthService implements IAuthService {
     return users.firstWhereOrNull(
       (u) =>
           u.walletId.name == trezorWalletName &&
-          u.authOptions.privKeyPolicy == const PrivateKeyPolicy.trezor(),
+          u.walletId.authOptions.privKeyPolicy ==
+              const PrivateKeyPolicy.trezor(),
     );
   }
 
