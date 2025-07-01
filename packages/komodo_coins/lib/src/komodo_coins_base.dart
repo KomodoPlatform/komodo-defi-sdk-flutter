@@ -82,10 +82,9 @@ class KomodoCoins {
             coinData,
             knownIds: platformIds,
           ).map(
-            (id) =>
-                id.isChildAsset
-                    ? AssetId.parse(coinData, knownIds: platformIds)
-                    : id,
+            (id) => id.isChildAsset
+                ? AssetId.parse(coinData, knownIds: platformIds)
+                : id,
           );
 
           // Create Asset instance for each valid AssetId
@@ -126,7 +125,7 @@ class KomodoCoins {
     if (!isInitialized) {
       throw StateError('Assets have not been initialized. Call init() first.');
     }
-    final cacheKey = strategy.name;
+    final cacheKey = strategy.strategyId;
     final cached = _filterCache[cacheKey];
     if (cached != null) return cached;
 

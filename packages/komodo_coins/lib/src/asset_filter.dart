@@ -4,16 +4,16 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Strategy interface for filtering assets based on coin configuration.
 abstract class AssetFilterStrategy extends Equatable {
-  const AssetFilterStrategy(this.name);
+  const AssetFilterStrategy(this.strategyId);
 
-  /// A unique name for the strategy used for comparison and caching.
-  final String name;
+  /// A unique id for the strategy used for comparison and caching.
+  final String strategyId;
 
   /// Returns `true` if the asset should be included.
   bool shouldInclude(Asset asset, JsonMap coinConfig);
 
   @override
-  List<Object?> get props => [name];
+  List<Object?> get props => [strategyId];
 }
 
 /// Default strategy that includes all assets.

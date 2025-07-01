@@ -96,7 +96,7 @@ class AssetManager implements IAssetProvider {
   }
 
   void _refreshCoins(AssetFilterStrategy strategy) {
-    if (_currentFilterStrategy?.name == strategy.name) return;
+    if (_currentFilterStrategy?.strategyId == strategy.strategyId) return;
     _orderedCoins
       ..clear()
       ..addAll(_coins.filteredAssets(strategy));
