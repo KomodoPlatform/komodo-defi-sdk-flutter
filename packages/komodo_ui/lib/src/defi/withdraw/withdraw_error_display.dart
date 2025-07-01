@@ -10,17 +10,43 @@ class ErrorDisplay extends StatefulWidget {
     this.onActionPressed,
     this.detailedMessage,
     this.showDetails = false,
+    this.showIcon = true,
+    this.narrowBreakpoint = 500,
     super.key,
   });
 
+  /// The main error or warning message to display.
   final String message;
-  final IconData? icon;
-  final bool isWarning;
-  final Widget? child;
-  final String? actionLabel;
-  final VoidCallback? onActionPressed;
+
+  /// An optional detailed message to show when the user opts to see more
+  /// details.
   final String? detailedMessage;
+
+  /// An optional icon to display alongside the message.
+  /// If not provided, a default icon will be used based on the type of message.
+  final IconData? icon;
+
+  /// Whether this is a warning (true) or an error (false).
+  final bool isWarning;
+
+  /// An optional child widget to display below the main message.
+  final Widget? child;
+
+  /// An optional label for an action button.
+  final String? actionLabel;
+
+  /// An optional callback for when the action button is pressed.
+  final VoidCallback? onActionPressed;
+
+  /// Whether to show the detailed message by default or not.
   final bool showDetails;
+
+  /// Whether to show the icon next to the message.
+  final bool showIcon;
+
+  /// The breakpoint width below which the layout will change to a more
+  /// compact form.
+  final int narrowBreakpoint;
 
   @override
   State<ErrorDisplay> createState() => _ErrorDisplayState();
@@ -57,7 +83,7 @@ class _ErrorDisplayState extends State<ErrorDisplay> {
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 500;
+            final isNarrow = constraints.maxWidth < widget.narrowBreakpoint;
 
             return Column(
               mainAxisSize: MainAxisSize.min,
@@ -66,15 +92,17 @@ class _ErrorDisplayState extends State<ErrorDisplay> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      widget.icon ??
-                          (widget.isWarning
-                              ? Icons.warning_amber_rounded
-                              : Icons.error_outline),
-                      color: color,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 16),
+                    if (widget.showIcon) ...[
+                      Icon(
+                        widget.icon ??
+                            (widget.isWarning
+                                ? Icons.warning_amber_rounded
+                                : Icons.error_outline),
+                        color: color,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 16),
+                    ],
                     Expanded(
                       child: _ErrorDisplayMessageSection(
                         message: widget.message,
