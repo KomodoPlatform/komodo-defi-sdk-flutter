@@ -292,13 +292,9 @@ class _ErrorDisplayShowDetailsButton extends StatelessWidget {
     }
 
     return TextButton(
-      onPressed: () {
-        if (showDetailsOverride) {
-          return;
-        }
-
-        onToggle?.call();
-      },
+     return TextButton(
+       onPressed: showDetailsOverride ? null : onToggle,
+       child: Text(
       child: Text(
         shouldShowDetailedMessage ? 'Hide Details' : 'Show Details',
         style: TextStyle(color: color),
