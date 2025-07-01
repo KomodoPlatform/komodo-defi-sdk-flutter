@@ -133,15 +133,13 @@ class _ErrorDisplayState extends State<ErrorDisplay> {
                   const SizedBox(height: 16),
                   widget.child!,
                 ],
-                ...[
-                  const SizedBox(height: 16),
-                  _ErrorDisplayActions(
-                    color: color,
-                    isWarning: widget.isWarning,
-                    actionLabel: widget.actionLabel,
-                    onActionPressed: widget.onActionPressed,
-                  ),
-                ],
+                const SizedBox(height: 16),
+                _ErrorDisplayActions(
+                  color: color,
+                  isWarning: widget.isWarning,
+                  actionLabel: widget.actionLabel,
+                  onActionPressed: widget.onActionPressed,
+                ),
               ],
             );
           },
@@ -157,8 +155,8 @@ class _ErrorDisplayMessageSection extends StatelessWidget {
     required this.isWarning,
     required this.isNarrow,
     required this.color,
-    this.detailedMessage,
     required this.shouldShowDetailedMessage,
+    this.detailedMessage,
     this.showDetailsButton,
   });
 
@@ -292,9 +290,7 @@ class _ErrorDisplayShowDetailsButton extends StatelessWidget {
     }
 
     return TextButton(
-     return TextButton(
-       onPressed: showDetailsOverride ? null : onToggle,
-       child: Text(
+      onPressed: showDetailsOverride ? null : onToggle,
       child: Text(
         shouldShowDetailedMessage ? 'Hide Details' : 'Show Details',
         style: TextStyle(color: color),
