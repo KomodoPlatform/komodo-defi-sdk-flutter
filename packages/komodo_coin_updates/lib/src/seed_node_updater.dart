@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/constants.dart';
 
 /// Service responsible for fetching and managing seed nodes from remote sources.
 ///
@@ -33,14 +34,14 @@ class SeedNodeUpdater {
       final seedNodesJson = jsonListFromString(response.body);
       var seedNodes = SeedNode.fromJsonList(seedNodesJson);
 
-      // Extract netid from the first node if available
-      final netId = seedNodes.isNotEmpty ? seedNodes.first.netId : 8762;
+      // Filter nodes to the configured netId
+      seedNodes = seedNodes.where((e) => e.netId == kDefaultNetId).toList();
 
       if (filterForWeb && kIsWeb) {
         seedNodes = seedNodes.where((e) => e.wss).toList();
       }
 
-      return (seedNodes: seedNodes, netId: netId);
+      return (seedNodes: seedNodes, netId: kDefaultNetId);
     } catch (e) {
       debugPrint('Error fetching seed nodes: $e');
       throw Exception('Failed to fetch or process seed nodes: $e');

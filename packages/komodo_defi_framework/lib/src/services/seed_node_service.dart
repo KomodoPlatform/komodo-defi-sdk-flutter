@@ -2,6 +2,7 @@ import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/config/seed_node_validator.dart';
+import 'package:komodo_defi_types/constants.dart';
 
 /// Service class responsible for fetching and managing seed nodes.
 ///
@@ -36,7 +37,7 @@ class SeedNodeService {
       }
       return (
         seedNodes: getDefaultSeedNodes(),
-        netId: 8762,
+        netId: kDefaultNetId,
       );
     }
   }
