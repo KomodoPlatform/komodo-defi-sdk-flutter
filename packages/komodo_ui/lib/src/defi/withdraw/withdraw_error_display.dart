@@ -55,30 +55,46 @@ class _ErrorDisplayState extends State<ErrorDisplay> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 500;
+
+            final showDetailsButton =
+                widget.detailedMessage != null
+                    ? _ErrorDisplayShowDetailsButton(
+                      color: color,
+                      shouldShowDetailedMessage: shouldShowDetailedMessage,
+                      showDetailsOverride: widget.showDetails,
+                      onToggle: () {
+                        setState(() {
+                          showDetailedMessage = !showDetailedMessage;
+                        });
+                      },
+                    )
+                    : null;
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  widget.icon ??
-                      (widget.isWarning
-                          ? Icons.warning_amber_rounded
-                          : Icons.error_outline),
-                  color: color,
-                  size: 24,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      widget.icon ??
+                          (widget.isWarning
+                              ? Icons.warning_amber_rounded
+                              : Icons.error_outline),
+                      color: color,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
+                          if (isNarrow)
+                            Text(
                               widget.message,
                               style: theme.textTheme.titleSmall?.copyWith(
                                 color:
@@ -87,87 +103,137 @@ class _ErrorDisplayState extends State<ErrorDisplay> {
                                         : theme.colorScheme.onErrorContainer,
                                 fontWeight: FontWeight.bold,
                               ),
-                            ),
-                          ),
-                          if (widget.detailedMessage != null)
-                            TextButton(
-                              onPressed: () {
-                                // If the widget showDetails override is present, then
-                                // we don't want to toggle the showDetailedMessage state
-                                if (widget.showDetails) {
-                                  return;
-                                }
-
-                                setState(() {
-                                  showDetailedMessage = !showDetailedMessage;
-                                });
-                              },
-                              child: Text(
-                                shouldShowDetailedMessage
-                                    ? 'Hide Details'
-                                    : 'Show Details',
-                                style: TextStyle(color: color),
-                              ),
-                            ),
-                        ],
-                      ),
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeInOut,
-                        child:
-                            shouldShowDetailedMessage
-                                ? Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: SelectableText(
-                                    widget.detailedMessage!,
-                                    style: theme.textTheme.bodySmall?.copyWith(
+                            )
+                          else
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    widget.message,
+                                    style: theme.textTheme.titleSmall?.copyWith(
                                       color:
                                           widget.isWarning
                                               ? theme
                                                   .colorScheme
                                                   .onTertiaryContainer
-                                                  .withValues(alpha: 0.8)
                                               : theme
                                                   .colorScheme
-                                                  .onErrorContainer
-                                                  .withValues(alpha: 0.8),
+                                                  .onErrorContainer,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                )
-                                : const SizedBox.shrink(),
+                                ),
+                                if (showDetailsButton != null)
+                                  showDetailsButton,
+                              ],
+                            ),
+                          if (isNarrow && showDetailsButton != null)
+                            Align(
+                              alignment: Alignment.center,
+                              child: showDetailsButton,
+                            ),
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeInOut,
+                            child:
+                                shouldShowDetailedMessage
+                                    ? Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: SelectableText(
+                                        widget.detailedMessage!,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color:
+                                                  widget.isWarning
+                                                      ? theme
+                                                          .colorScheme
+                                                          .onTertiaryContainer
+                                                          .withValues(
+                                                            alpha: 0.8,
+                                                          )
+                                                      : theme
+                                                          .colorScheme
+                                                          .onErrorContainer
+                                                          .withValues(
+                                                            alpha: 0.8,
+                                                          ),
+                                            ),
+                                      ),
+                                    )
+                                    : const SizedBox.shrink(),
+                          ),
+                        ],
                       ),
+                    ),
+                  ],
+                ),
+                if (widget.child != null) ...[
+                  const SizedBox(height: 16),
+                  widget.child!,
+                ],
+                ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (widget.actionLabel != null &&
+                          widget.onActionPressed != null)
+                        ElevatedButton(
+                          onPressed: widget.onActionPressed,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: color,
+                            foregroundColor:
+                                widget.isWarning
+                                    ? theme.colorScheme.onTertiary
+                                    : theme.colorScheme.onError,
+                          ),
+                          child: Text(widget.actionLabel!),
+                        ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            if (widget.child != null) ...[
-              const SizedBox(height: 16),
-              widget.child!,
-            ],
-            ...[
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (widget.actionLabel != null &&
-                      widget.onActionPressed != null)
-                    ElevatedButton(
-                      onPressed: widget.onActionPressed,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: color,
-                        foregroundColor:
-                            widget.isWarning
-                                ? theme.colorScheme.onTertiary
-                                : theme.colorScheme.onError,
-                      ),
-                      child: Text(widget.actionLabel!),
-                    ),
                 ],
-              ),
-            ],
-          ],
+              ],
+            );
+          },
         ),
+      ),
+    );
+  }
+}
+
+class _ErrorDisplayShowDetailsButton extends StatefulWidget {
+  const _ErrorDisplayShowDetailsButton({
+    required this.color,
+    required this.shouldShowDetailedMessage,
+    required this.showDetailsOverride,
+    required this.onToggle,
+  });
+
+  final Color color;
+  final bool shouldShowDetailedMessage;
+  final bool showDetailsOverride;
+  final VoidCallback onToggle;
+
+  @override
+  State<_ErrorDisplayShowDetailsButton> createState() =>
+      _ErrorDisplayShowDetailsButtonState();
+}
+
+class _ErrorDisplayShowDetailsButtonState
+    extends State<_ErrorDisplayShowDetailsButton> {
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: () {
+        if (widget.showDetailsOverride) {
+          return;
+        }
+
+        widget.onToggle();
+      },
+      child: Text(
+        widget.shouldShowDetailedMessage ? 'Hide Details' : 'Show Details',
+        style: TextStyle(color: widget.color),
       ),
     );
   }
