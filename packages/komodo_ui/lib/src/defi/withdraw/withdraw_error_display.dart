@@ -59,20 +59,6 @@ class _ErrorDisplayState extends State<ErrorDisplay> {
           builder: (context, constraints) {
             final isNarrow = constraints.maxWidth < 500;
 
-            final showDetailsButton =
-                widget.detailedMessage != null
-                    ? _ErrorDisplayShowDetailsButton(
-                      color: color,
-                      shouldShowDetailedMessage: shouldShowDetailedMessage,
-                      showDetailsOverride: widget.showDetails,
-                      onToggle: () {
-                        setState(() {
-                          showDetailedMessage = !showDetailedMessage;
-                        });
-                      },
-                    )
-                    : null;
-
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,7 +83,20 @@ class _ErrorDisplayState extends State<ErrorDisplay> {
                         color: color,
                         detailedMessage: widget.detailedMessage,
                         shouldShowDetailedMessage: shouldShowDetailedMessage,
-                        showDetailsButton: showDetailsButton,
+                        showDetailsButton: _ErrorDisplayShowDetailsButton(
+                          color: color,
+                          shouldShowDetailedMessage: shouldShowDetailedMessage,
+                          showDetailsOverride: widget.showDetails,
+                          onToggle:
+                              widget.detailedMessage == null
+                                  ? null
+                                  : () {
+                                    setState(() {
+                                      showDetailedMessage =
+                                          !showDetailedMessage;
+                                    });
+                                  },
+                        ),
                       ),
                     ),
                   ],
@@ -180,7 +179,7 @@ class _ErrorDisplayMessageSection extends StatelessWidget {
             ],
           ),
         if (isNarrow && showDetailsButton != null)
-          Align(alignment: Alignment.center, child: showDetailsButton),
+          Align(child: showDetailsButton),
         AnimatedSize(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
@@ -244,7 +243,7 @@ class _ErrorDisplayActions extends StatelessWidget {
   }
 }
 
-class _ErrorDisplayShowDetailsButton extends StatefulWidget {
+class _ErrorDisplayShowDetailsButton extends StatelessWidget {
   const _ErrorDisplayShowDetailsButton({
     required this.color,
     required this.shouldShowDetailedMessage,
@@ -255,28 +254,26 @@ class _ErrorDisplayShowDetailsButton extends StatefulWidget {
   final Color color;
   final bool shouldShowDetailedMessage;
   final bool showDetailsOverride;
-  final VoidCallback onToggle;
+  final VoidCallback? onToggle;
 
-  @override
-  State<_ErrorDisplayShowDetailsButton> createState() =>
-      _ErrorDisplayShowDetailsButtonState();
-}
-
-class _ErrorDisplayShowDetailsButtonState
-    extends State<_ErrorDisplayShowDetailsButton> {
   @override
   Widget build(BuildContext context) {
+    if (onToggle == null) {
+      // If no toggle function is provided, don't show the button
+      return const SizedBox.shrink();
+    }
+
     return TextButton(
       onPressed: () {
-        if (widget.showDetailsOverride) {
+        if (showDetailsOverride) {
           return;
         }
 
-        widget.onToggle();
+        onToggle?.call();
       },
       child: Text(
-        widget.shouldShowDetailedMessage ? 'Hide Details' : 'Show Details',
-        style: TextStyle(color: widget.color),
+        shouldShowDetailedMessage ? 'Hide Details' : 'Show Details',
+        style: TextStyle(color: color),
       ),
     );
   }
