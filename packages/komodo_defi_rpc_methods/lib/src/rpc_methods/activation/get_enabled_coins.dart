@@ -13,14 +13,14 @@ class GetEnabledCoinsRequest
   Map<String, dynamic> toJson() {
     // Temporary fix: omit the `params` key until API bug is resolved
     // https://github.com/KomodoPlatform/komodo-defi-framework/issues/2498
-    final json = super.toJson();
-    json.remove('params');
+    final json = super..toJson()
+    ..remove('params');
     return json;
   }
 
   @override
-  GetEnabledCoinsResponse parseResponse(String responseBody) {
-    return GetEnabledCoinsResponse.fromJson(jsonFromString(responseBody));
+  GetEnabledCoinsResponse parse(Map<String, dynamic> json) {
+    return GetEnabledCoinsResponse.fromJson(json);
   }
 }
 

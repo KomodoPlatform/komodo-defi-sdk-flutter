@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -7,8 +5,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // Init Request
 class AccountBalanceInitRequest
-    extends BaseRequest<NewTaskResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<NewTaskResponse, GeneralErrorResponse> {
   AccountBalanceInitRequest({
     required super.rpcPass,
     required this.coin,
@@ -35,8 +32,7 @@ class AccountBalanceInitRequest
 
 // Status Request
 class AccountBalanceStatusRequest
-    extends BaseRequest<AccountBalanceStatusResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<AccountBalanceStatusResponse, GeneralErrorResponse> {
   AccountBalanceStatusRequest({
     required super.rpcPass,
     required this.taskId,
@@ -60,46 +56,6 @@ class AccountBalanceStatusRequest
   @override
   AccountBalanceStatusResponse parse(JsonMap json) =>
       AccountBalanceStatusResponse.parse(json);
-}
-
-// TODO: Make re-usable
-class ResponseDetails<T, R extends GeneralErrorResponse> {
-  ResponseDetails({required this.data, required this.error, this.description})
-    : assert(
-        [data, error, description].where((e) => e != null).length == 1,
-        'Of the three fields, exactly one must be non-null',
-      );
-
-  final T? data;
-  final R? error;
-
-  // Usually only non-null for in-progress tasks (TODO! Confirm)
-  final String? description;
-
-  void get throwIfError {
-    if (error != null) {
-      throw error!;
-    }
-  }
-
-  // Result get result => data != null ? Result.success : Result.error;
-
-  // T get dataOrThrow {
-  //   if (data == null) {
-  //     throw error!;
-  //   }
-  //   return data!;
-  // }
-
-  T? get dataOrNull => data;
-
-  JsonMap toJson() {
-    return {
-      if (data != null) 'data': jsonEncode(data),
-      if (error != null) 'error': jsonEncode(error),
-      if (description != null) 'description': description,
-    };
-  }
 }
 
 SyncStatusEnum? _statusFromTaskStatus(String status) {
@@ -167,8 +123,7 @@ class AccountBalanceStatusResponse extends BaseResponse {
 
 // Cancel Request
 class AccountBalanceCancelRequest
-    extends BaseRequest<AccountBalanceCancelResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<AccountBalanceCancelResponse, GeneralErrorResponse> {
   AccountBalanceCancelRequest({required super.rpcPass, required this.taskId})
     : super(method: 'task::account_balance::cancel');
 

@@ -67,6 +67,12 @@ abstract interface class IAuthService {
     required String newPassword,
   });
 
+  /// Deletes the specified wallet.
+  Future<void> deleteWallet({
+    required String walletName,
+    required String password,
+  });
+
   /// Method to store custom metadata for the user.
   ///
   /// Overwrites any existing metadata.
@@ -323,6 +329,60 @@ class KdfAuthService implements IAuthService {
   }
 
   @override
+  Future<void> deleteWallet({
+    required String walletName,
+    required String password,
+  }) async {
+    return _runReadOperation(() async {
+      try {
+        await _client.rpc.wallet.deleteWallet(
+          walletName: walletName,
+          password: password,
+        );
+        await _secureStorage.deleteUser(walletName);
+      } on DeleteWalletInvalidPasswordErrorResponse catch (e) {
+        throw AuthException(
+          e.error ?? 'Invalid password',
+          type: AuthExceptionType.incorrectPassword,
+        );
+      } on DeleteWalletWalletNotFoundErrorResponse {
+        throw AuthException.notFound();
+      } on DeleteWalletCannotDeleteActiveWalletErrorResponse catch (e) {
+        throw AuthException(
+          e.error ?? 'Cannot delete active wallet',
+          type: AuthExceptionType.generalAuthError,
+        );
+      } on DeleteWalletWalletsStorageErrorResponse catch (e) {
+        throw AuthException(
+          e.error ?? 'Wallet storage error',
+          type: AuthExceptionType.internalError,
+        );
+      } on DeleteWalletInvalidRequestErrorResponse catch (e) {
+        throw AuthException(
+          e.error ?? 'Invalid request',
+          type: AuthExceptionType.internalError,
+        );
+      } on DeleteWalletInternalErrorResponse catch (e) {
+        throw AuthException(
+          e.error ?? 'Internal error',
+          type: AuthExceptionType.internalError,
+        );
+      } catch (e) {
+        final knownExceptions = AuthException.findExceptionsInLog(
+          e.toString().toLowerCase(),
+        );
+        if (knownExceptions.isNotEmpty) {
+          throw knownExceptions.first;
+        }
+        throw AuthException(
+          'Failed to delete wallet: $e',
+          type: AuthExceptionType.generalAuthError,
+        );
+      }
+    });
+  }
+
+  @override
   Stream<KdfUser?> get authStateChanges => _authStateController.stream;
 
   @override
@@ -338,9 +398,7 @@ class KdfAuthService implements IAuthService {
   }
 
   late final Future<KdfStartupConfig> _noAuthConfig =
-      KdfStartupConfig.noAuthStartup(
-        rpcPassword: _hostConfig.rpcPassword,
-      );
+      KdfStartupConfig.noAuthStartup(rpcPassword: _hostConfig.rpcPassword);
 
   Future<bool> verifyEncryptedSeedBip39Compatibility(String password) async {
     final mnemonic = await getMnemonic(

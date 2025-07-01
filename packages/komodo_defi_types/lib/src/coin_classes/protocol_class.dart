@@ -137,7 +137,7 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
   }
 
   ActivationParams defaultActivationParams({
-    PrivateKeyPolicy privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
   }) =>
       ActivationParams.fromConfigJson(config).genericCopyWith(
         privKeyPolicy: privKeyPolicy,

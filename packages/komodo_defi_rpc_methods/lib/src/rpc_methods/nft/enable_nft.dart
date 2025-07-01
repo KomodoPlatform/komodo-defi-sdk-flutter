@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to enable NFT functionality for a given coin
 class EnableNftRequest
-    extends BaseRequest<EnableNftResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<EnableNftResponse, GeneralErrorResponse> {
   EnableNftRequest({
     required String rpcPass,
     required this.ticker,

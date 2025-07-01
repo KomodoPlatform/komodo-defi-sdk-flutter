@@ -1,8 +1,7 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 
 class ScanForNewAddressesInitRequest
-    extends BaseRequest<NewTaskResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<NewTaskResponse, GeneralErrorResponse> {
   ScanForNewAddressesInitRequest({
     required super.rpcPass,
     required this.coin,
