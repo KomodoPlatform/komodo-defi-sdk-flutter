@@ -36,7 +36,12 @@ class SiaProtocol extends ProtocolClass {
     }
   }
 
-  JsonList get rpcUrlsMap => config.value<JsonList>('rpc_urls');
+  JsonList get rpcUrlsMap => config.value<JsonList>('nodes');
+
+  String? get serverUrl => config.valueOrNull<String>('server_url');
+
+  int? get requiredConfirmations =>
+      config.valueOrNull<int>('required_confirmations');
 
   String? get accountPrefix => config.valueOrNull<String>('account_prefix');
 
@@ -48,19 +53,4 @@ class SiaProtocol extends ProtocolClass {
 
   @override
   bool get requiresHdWallet => false;
-
-  @override
-  Uri? explorerTxUrl(String txHash) {
-    // SIA uses address-based event URLs instead of transaction hashes
-    return null;
-  }
-
-  @override
-  Uri? explorerAddressUrl(String address) {
-    // SIA has a special address events URL format
-    return explorerPattern.buildUrl(
-      'addresses/{ADDRESS}/events/',
-      {'ADDRESS': address},
-    );
-  }
 }
