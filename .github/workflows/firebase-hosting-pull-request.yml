@@ -77,8 +77,8 @@ jobs:
       #   run: dart pub global activate melos
       # - name: Bootstrap workspace
       #   run: melos bootstrap
-      # - name: Run dry web build to generate assets (expected to fail)
-      #   run: cd packages/komodo_defi_sdk/example && flutter build web --release || echo "Dry build completed (failure expected)"
+      - name: Run dry web build to generate assets (expected to fail)
+        run: cd packages/komodo_defi_sdk/example && flutter build web --release || echo "Dry build completed (failure expected)"
       - name: Build SDK example web
         run: cd packages/komodo_defi_sdk/example && flutter build web --release
       - uses: FirebaseExtended/action-hosting-deploy@v0
