@@ -7,6 +7,9 @@ void main() {
       final json = {
         'name': 'seed-node-1',
         'host': 'seed01.kmdefi.net',
+        'type': 'domain',
+        'wss': true,
+        'netid': 8762,
         'contact': [
           {'email': 'admin@example.com'}
         ]
@@ -24,6 +27,9 @@ void main() {
       final seedNode = SeedNode(
         name: 'seed-node-2',
         host: 'seed02.kmdefi.net',
+        type: 'domain',
+        wss: true,
+        netId: 8762,
         contact: [
           SeedNodeContact(email: 'test@example.com'),
         ],
@@ -44,6 +50,9 @@ void main() {
         {
           'name': 'seed-node-1',
           'host': 'seed01.kmdefi.net',
+          'type': 'domain',
+          'wss': true,
+          'netid': 8762,
           'contact': [
             {'email': ''}
           ]
@@ -51,6 +60,9 @@ void main() {
         {
           'name': 'seed-node-2',
           'host': 'seed02.kmdefi.net',
+          'type': 'domain',
+          'wss': true,
+          'netid': 8762,
           'contact': [
             {'email': ''}
           ]
@@ -70,18 +82,27 @@ void main() {
       final seedNode1 = SeedNode(
         name: 'test',
         host: 'example.com',
+        type: 'domain',
+        wss: true,
+        netId: 8762,
         contact: [SeedNodeContact(email: 'test@example.com')],
       );
 
       final seedNode2 = SeedNode(
         name: 'test',
         host: 'example.com',
+        type: 'domain',
+        wss: true,
+        netId: 8762,
         contact: [SeedNodeContact(email: 'test@example.com')],
       );
 
       final seedNode3 = SeedNode(
         name: 'different',
         host: 'example.com',
+        type: 'domain',
+        wss: true,
+        netId: 8762,
         contact: [SeedNodeContact(email: 'test@example.com')],
       );
 

@@ -8,6 +8,7 @@ import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_framework/src/config/seed_node_validator.dart';
 import 'package:komodo_defi_framework/src/services/seed_node_service.dart'
     show SeedNodeService;
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -82,7 +83,7 @@ class KdfStartupConfig {
     int? hdAccountId,
     bool allowWeakPassword = false,
     int rpcPort = 7783,
-    int netid = 8762,
+    int netid = kDefaultNetId,
     String gui = 'komodo-defi-flutter-auth',
     bool https = false,
     bool rpcLocalOnly = true,
@@ -168,6 +169,11 @@ class KdfStartupConfig {
   }) async {
     final (String? home, String? dbDir) = await _getAndSetupUserHome();
 
+    final (
+      seedNodes: seeds,
+      netId: netId,
+    ) = await SeedNodeService.fetchSeedNodes();
+
     return KdfStartupConfig._(
       walletName: null,
       walletPassword: null,
@@ -176,7 +182,7 @@ class KdfStartupConfig {
       userHome: home,
       dbDir: dbDir,
       allowWeakPassword: true,
-      netid: 8762,
+      netid: netId,
       gui: 'komodo-defi-flutter-auth',
       coins: await _fetchCoinsData(),
       https: false,
@@ -187,7 +193,7 @@ class KdfStartupConfig {
       allowRegistrations: false,
       enableHd: false,
       disableP2p: false,
-      seedNodes: await SeedNodeService.fetchSeedNodes(),
+      seedNodes: seeds,
       iAmSeed: false,
       isBootstrapNode: false,
     );

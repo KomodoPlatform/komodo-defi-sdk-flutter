@@ -9,11 +9,17 @@ void main() {
         SeedNode(
           name: 'seed-node-1',
           host: 'seed01.kmdefi.net',
+          type: 'domain',
+          wss: true,
+          netId: 8762,
           contact: [SeedNodeContact(email: '')],
         ),
         SeedNode(
           name: 'seed-node-2',
           host: 'seed02.kmdefi.net',
+          type: 'domain',
+          wss: true,
+          netId: 8762,
           contact: [SeedNodeContact(email: '')],
         ),
       ];
