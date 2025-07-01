@@ -8,12 +8,8 @@ import 'package:komodo_ui/src/defi/asset/asset_icon.dart';
 /// Similar to the legacy CoinLogo, but built on top of the new [Asset]
 /// and [AssetIcon] APIs.
 class AssetLogo extends StatelessWidget {
-  /// Creates a new [AssetLogo] widget.
+  /// Creates a new [AssetLogo] widget from an [Asset] instance.
   ///
-  /// [asset] is the asset for which the logo should be displayed.
-  /// [isDisabled] indicates whether the asset is disabled, in which case
-  /// the icon will be displayed with reduced opacity.
-  /// [size] is the size of the main asset icon, defaulting to 41 pixels.
   /// Example usage:
   /// ```dart
   /// AssetLogo(asset)
@@ -23,10 +19,35 @@ class AssetLogo extends StatelessWidget {
     this.size = 41,
     this.isDisabled = false,
     super.key,
-  });
+  }) : assetId = null,
+       _legacyTicker = null;
+
+  /// Creates a logo directly from an [AssetId].
+  const AssetLogo.fromId(
+    this.assetId, {
+    this.size = 41,
+    this.isDisabled = false,
+    super.key,
+  }) : asset = null,
+       _legacyTicker = null;
+
+  /// Legacy constructor that accepts a raw ticker string.
+  ///
+  /// This mirrors [AssetIcon.ofTicker] and should only be used when an
+  /// [Asset] or [AssetId] instance isn't available.
+  const AssetLogo.fromTicker(
+    String ticker, {
+    this.size = 41,
+    this.isDisabled = false,
+    super.key,
+  }) : _legacyTicker = ticker,
+       asset = null,
+       assetId = null;
 
   /// Asset to display the logo for.
-  final Asset asset;
+  final Asset? asset;
+  final AssetId? assetId;
+  final String? _legacyTicker;
 
   /// Size of the main asset icon.
   final double size;
@@ -37,16 +58,28 @@ class AssetLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Existing komodo-wallet implementation doesn't show protocol icon
-    // for UTXO assets (like BTC, LTC, etc.) so we follow the same logic here.
-    final protocolTicker = asset.protocol.subClass.iconTicker;
-    final shouldShowProtocolIcon = asset.protocol.subClass != CoinSubClass.utxo;
+    final resolvedId = asset?.id ?? assetId;
+    final resolvedTicker = _legacyTicker;
+    final resolvedSubClass = asset?.protocol.subClass ?? assetId?.subClass;
+
+    final protocolTicker = resolvedSubClass?.iconTicker;
+    final shouldShowProtocolIcon =
+        resolvedSubClass != null && resolvedSubClass != CoinSubClass.utxo;
+
+    final mainIcon =
+        resolvedId != null
+            ? AssetIcon(resolvedId, size: size, suspended: isDisabled)
+            : AssetIcon.ofTicker(
+              resolvedTicker!,
+              size: size,
+              suspended: isDisabled,
+            );
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        AssetIcon(asset.id, size: size, suspended: isDisabled),
-        if (shouldShowProtocolIcon)
+        mainIcon,
+        if (shouldShowProtocolIcon && protocolTicker != null)
           AssetProtocolIcon(protocolTicker: protocolTicker, logoSize: size),
       ],
     );
