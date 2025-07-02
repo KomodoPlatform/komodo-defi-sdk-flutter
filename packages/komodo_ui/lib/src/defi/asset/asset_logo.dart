@@ -19,17 +19,20 @@ class AssetLogo extends StatelessWidget {
     this.size = 41,
     this.isDisabled = false,
     super.key,
-  }) : assetId = null,
-       _legacyTicker = null;
+  }) : _assetId = null,
+       _legacyTicker = null,
+       isBlank = false;
 
   /// Creates a logo directly from an [AssetId].
   const AssetLogo.fromId(
-    this.assetId, {
+    AssetId assetId, {
     this.size = 41,
     this.isDisabled = false,
     super.key,
   }) : asset = null,
-       _legacyTicker = null;
+       _assetId = assetId,
+       _legacyTicker = null,
+       isBlank = false;
 
   /// Legacy constructor that accepts a raw ticker string.
   ///
@@ -42,11 +45,30 @@ class AssetLogo extends StatelessWidget {
     super.key,
   }) : _legacyTicker = ticker,
        asset = null,
-       assetId = null;
+       _assetId = null,
+       isBlank = false;
+
+  /// Creates a placeholder [AssetLogo] widget.
+  ///
+  /// This displays the default placeholder icon (monetization_on_outlined)
+  /// and should be used when no asset data is available or as a fallback.
+  ///
+  /// Set [isBlank] to true to display an empty circular container instead
+  /// of the default icon, similar to the legacy placeholder behavior.
+  const AssetLogo.placeholder({
+    this.size = 41,
+    this.isDisabled = false,
+    this.isBlank = false,
+    super.key,
+  }) : asset = null,
+       _assetId = null,
+       _legacyTicker = null;
 
   /// Asset to display the logo for.
   final Asset? asset;
-  final AssetId? assetId;
+
+  /// AssetId to display the logo for.
+  final AssetId? _assetId;
   final String? _legacyTicker;
 
   /// Size of the main asset icon.
@@ -56,10 +78,23 @@ class AssetLogo extends StatelessWidget {
   /// with reduced opacity.
   final bool isDisabled;
 
+  /// Whether to display a blank placeholder instead of the default icon.
+  /// Only used with the [AssetLogo.placeholder] constructor.
+  final bool isBlank;
+
   @override
   Widget build(BuildContext context) {
-    final resolvedId = asset?.id ?? assetId;
+    final resolvedId = asset?.id ?? _assetId;
     final resolvedTicker = _legacyTicker;
+
+    // Handle placeholder case
+    if (resolvedId == null && resolvedTicker == null) {
+      return _AssetLogoPlaceholder(
+        isBlank: isBlank,
+        isDisabled: isDisabled,
+        size: size,
+      );
+    }
 
     final isChildAsset = resolvedId?.isChildAsset ?? false;
 
@@ -71,11 +106,16 @@ class AssetLogo extends StatelessWidget {
     final mainIcon =
         resolvedId != null
             ? AssetIcon(resolvedId, size: size, suspended: isDisabled)
-            : AssetIcon.ofTicker(
-              resolvedTicker!,
-              size: size,
-              suspended: isDisabled,
-            );
+            : (resolvedTicker != null
+                ? AssetIcon.ofTicker(
+                  resolvedTicker,
+                  size: size,
+                  suspended: isDisabled,
+                )
+                : throw ArgumentError(
+                  'resolvedTicker cannot be null when both asset and '
+                  'assetId are absent.',
+                ));
 
     return Stack(
       clipBehavior: Clip.none,
@@ -84,6 +124,39 @@ class AssetLogo extends StatelessWidget {
         if (shouldShowProtocolIcon)
           AssetProtocolIcon(protocolTicker: protocolTicker, logoSize: size),
       ],
+    );
+  }
+}
+
+class _AssetLogoPlaceholder extends StatelessWidget {
+  const _AssetLogoPlaceholder({
+    required this.isBlank,
+    required this.isDisabled,
+    required this.size,
+  });
+
+  final bool isBlank;
+  final bool isDisabled;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isBlank) {
+      return Opacity(
+        opacity: isDisabled ? 0.4 : 1,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Theme.of(context).colorScheme.secondaryContainer,
+          ),
+        ),
+      );
+    }
+    return Opacity(
+      opacity: isDisabled ? 0.4 : 1,
+      child: Icon(Icons.monetization_on_outlined, size: size),
     );
   }
 }
