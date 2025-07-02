@@ -191,6 +191,9 @@ class KomodoDefiFramework implements ApiClient {
     }
   }
 
+  /// Closes the log stream and cancels the logger subscription.
+  /// 
+  /// NB! This does not stop the KDF operations or the KDF process.
   Future<void> dispose() async {
     await _logStream.close();
 

@@ -93,6 +93,16 @@ abstract interface class KomodoDefiAuth {
   /// user. The stream will emit `null` if the user is signed out.
   Stream<KdfUser?> get authStateChanges;
 
+  /// Watches the current user state and emits updates when it changes.
+  ///
+  /// Returns a [Stream] of [KdfUser?] that continuously monitors the current
+  /// user state. This is useful for reactive UI updates when the user signs
+  /// in, signs out, or when user data is updated.
+  ///
+  /// The stream will emit `null` if no user is signed in, and a [KdfUser]
+  /// object when a user is authenticated.
+  Stream<KdfUser?> watchCurrentUser();
+
   /// Retrieves the current signed-in user, if available.
   ///
   /// Returns a [KdfUser] if a user is signed in, otherwise returns `null`.
@@ -458,6 +468,17 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
   @override
   Stream<KdfUser?> get authStateChanges async* {
     await ensureInitialized();
+    yield* _authService.authStateChanges;
+  }
+
+  @override
+  Stream<KdfUser?> watchCurrentUser() async* {
+    await ensureInitialized();
+
+    // Emit the current user state as the initial value
+    yield await _authService.getActiveUser();
+
+    // Then emit subsequent changes
     yield* _authService.authStateChanges;
   }
 

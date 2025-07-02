@@ -2,8 +2,8 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class UtxoActivationStrategy extends ProtocolActivationStrategy {
-  const UtxoActivationStrategy(super.client, this.privKeyPolicy);
+class EthTaskActivationStrategy extends ProtocolActivationStrategy {
+  const EthTaskActivationStrategy(super.client, this.privKeyPolicy);
 
   /// The private key management policy to use for this strategy.
   /// Used for external wallet support.
@@ -11,24 +11,39 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
 
   @override
   Set<CoinSubClass> get supportedProtocols => {
-    CoinSubClass.utxo,
-    CoinSubClass.smartChain,
-    // CoinSubClass.smartBch,
+    CoinSubClass.erc20,
+    CoinSubClass.bep20,
+    CoinSubClass.ftm20,
+    CoinSubClass.matic,
+    CoinSubClass.avx20,
+    CoinSubClass.hrc20,
+    CoinSubClass.moonbeam,
+    CoinSubClass.moonriver,
+    CoinSubClass.ethereumClassic,
+    CoinSubClass.ubiq,
+    CoinSubClass.krc20,
+    CoinSubClass.ewt,
+    CoinSubClass.hecoChain,
+    CoinSubClass.rskSmartBitcoin,
+    CoinSubClass.arbitrum,
   };
 
   @override
-  bool get supportsBatchActivation => false;
+  bool get supportsBatchActivation => true;
+
+  @override
+  bool canHandle(Asset asset) {
+    // Use task-based activation for Trezor private key policy
+    return privKeyPolicy == const PrivateKeyPolicy.trezor() &&
+        super.canHandle(asset);
+  }
 
   @override
   Stream<ActivationProgress> activate(
     Asset asset, [
     List<Asset>? children,
   ]) async* {
-    if (children?.isNotEmpty == true) {
-      throw UnsupportedError('UTXO protocol does not support batch activation');
-    }
-
-    final protocol = asset.protocol as UtxoProtocol;
+    final protocol = asset.protocol as Erc20Protocol;
 
     yield ActivationProgress(
       status: 'Starting ${asset.id.name} activation...',
@@ -37,13 +52,8 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         stepCount: 5,
         additionalInfo: {
           'chainType': protocol.subClass.formatted,
-          'mode':
-              protocol
-                  .defaultActivationParams(privKeyPolicy: privKeyPolicy)
-                  .mode
-                  ?.rpc,
-          'txVersion': protocol.txVersion,
-          'pubtype': protocol.pubtype,
+          'contractAddress': protocol.contractAddress,
+          'nodes': protocol.nodes.length,
         },
       ),
     );
@@ -58,9 +68,17 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
-      final taskResponse = await client.rpc.utxo.enableUtxoInit(
+      final taskResponse = await client.rpc.erc20.enableEthInit(
         ticker: asset.id.id,
-        params: protocol.defaultActivationParams(privKeyPolicy: privKeyPolicy),
+        params: EthWithTokensActivationParams.fromJson(
+          asset.protocol.config,
+        ).copyWith(
+          erc20Tokens:
+              children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
+              [],
+          txHistory: true,
+          privKeyPolicy: privKeyPolicy,
+        ),
       );
 
       yield ActivationProgress(
@@ -70,15 +88,16 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
           currentStep: 'connection',
           stepCount: 5,
           additionalInfo: {
-            'electrumServers': protocol.requiredServers.toJsonRequest(),
+            'nodes': protocol.requiredServers.toJsonRequest(),
             'protocolType': protocol.subClass.formatted,
+            'tokenCount': children?.length ?? 0,
           },
         ),
       );
 
       var isComplete = false;
       while (!isComplete) {
-        final status = await client.rpc.utxo.taskEnableStatus(
+        final status = await client.rpc.erc20.taskEthStatus(
           taskResponse.taskId,
         );
 
@@ -91,8 +110,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
                 additionalInfo: {
                   'activatedChain': asset.id.name,
                   'activationTime': DateTime.now().toIso8601String(),
-                  'txFee': protocol.txFee,
-                  'overwintered': protocol.overwintered,
+                  'childCount': children?.length ?? 0,
                 },
               ),
             );
@@ -104,14 +122,14 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
               progressDetails: ActivationProgressDetails(
                 currentStep: 'error',
                 stepCount: 5,
-                errorCode: 'UTXO_ACTIVATION_ERROR',
+                errorCode: 'ETH_TASK_ACTIVATION_ERROR',
                 errorDetails: status.details,
               ),
             );
           }
           isComplete = true;
         } else {
-          final progress = _parseUtxoStatus(status.status);
+          final progress = _parseEthStatus(status.status);
           yield ActivationProgress(
             status: progress.status,
             progressPercentage: progress.percentage,
@@ -132,7 +150,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         progressDetails: ActivationProgressDetails(
           currentStep: 'error',
           stepCount: 5,
-          errorCode: 'UTXO_ACTIVATION_ERROR',
+          errorCode: 'ETH_TASK_ACTIVATION_ERROR',
           errorDetails: e.toString(),
           stackTrace: stack.toString(),
         ),
@@ -141,28 +159,49 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
   }
 
   ({String status, double percentage, String step, Map<String, dynamic> info})
-  _parseUtxoStatus(String status) {
+  _parseEthStatus(String status) {
     switch (status) {
-      case 'ConnectingElectrum':
+      case 'ActivatingCoin':
         return (
-          status: 'Connecting to Electrum servers...',
+          status: 'Activating platform coin...',
           percentage: 60,
-          step: 'electrum_connection',
-          info: {'connectionType': 'Electrum'},
+          step: 'coin_activation',
+          info: {'activationType': 'platform'},
         );
-      case 'LoadingBlockchain':
+      case 'RequestingWalletBalance':
         return (
-          status: 'Loading blockchain data...',
+          status: 'Requesting wallet balance...',
+          percentage: 70,
+          step: 'balance_request',
+          info: {'dataType': 'balance'},
+        );
+      case 'ActivatingTokens':
+        return (
+          status: 'Activating ERC20 tokens...',
           percentage: 80,
-          step: 'blockchain_sync',
-          info: {'dataType': 'blockchain'},
+          step: 'token_activation',
+          info: {'activationType': 'tokens'},
         );
-      case 'ScanningTransactions':
+      case 'Finishing':
         return (
-          status: 'Scanning transaction history...',
+          status: 'Finalizing activation...',
           percentage: 90,
-          step: 'tx_scan',
-          info: {'dataType': 'transactions'},
+          step: 'finalization',
+          info: {'stage': 'completion'},
+        );
+      case 'WaitingForTrezorToConnect':
+        return (
+          status: 'Waiting for Trezor device...',
+          percentage: 50,
+          step: 'trezor_connection',
+          info: {'deviceType': 'Trezor', 'action': 'connect'},
+        );
+      case 'FollowHwDeviceInstructions':
+        return (
+          status: 'Follow instructions on hardware device',
+          percentage: 55,
+          step: 'hardware_interaction',
+          info: {'deviceType': 'Hardware', 'action': 'follow_instructions'},
         );
       default:
         return (

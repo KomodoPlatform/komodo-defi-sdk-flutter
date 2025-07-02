@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:get_it/get_it.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
@@ -304,16 +306,29 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
   /// Disposes of this SDK instance and cleans up all resources.
   ///
-  /// This should be called when the SDK is no longer needed to ensure
-  /// proper cleanup of resources and background operations.
+  /// This should be called when the SDK is no longer needed to ensure proper
+  /// cleanup of resources and background operations.
+  ///
+  /// NB! By default, this will terminate the KDF process. If you want to
+  /// keep the KDF process running (e.g. for background operations), set
+  /// [stopKdf] to false.
   ///
   /// Example:
   /// ```dart
   /// await sdk.dispose();
   /// ```
-  Future<void> dispose() async {
+  Future<void> dispose({bool stopKdf = true}) async {
     if (!_isInitialized) return;
     _isInitialized = false;
+
+    if (stopKdf) {
+      try {
+        await _kdfFramework?.kdfStop();
+      } catch (e) {
+        // Log the error but do not throw, as this is a cleanup operation
+        log('Error stopping KDF: $e');
+      }
+    }
 
     // Reset scoped container
     await _container.reset();

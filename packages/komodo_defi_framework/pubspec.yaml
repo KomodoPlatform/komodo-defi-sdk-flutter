@@ -28,7 +28,7 @@ dependencies:
     path: ../komodo_defi_types
   komodo_wallet_build_transformer:
     path: ../komodo_wallet_build_transformer
-  logging: ^1.2.0
+  logging: ^1.3.0
   mutex: ^3.1.0
   path: any
   path_provider: ^2.1.4
