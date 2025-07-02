@@ -8,12 +8,15 @@ class TendermintActivationParams extends ActivationParams {
     required this.getBalances,
     required this.nodes,
     required this.txHistory,
-    super.requiredConfirmations = 3,
-    super.requiresNotarization = false,
-    super.privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
+    super.requiredConfirmations,
+    super.requiresNotarization,
+    super.privKeyPolicy,
   }) : _tokensParams = tokensParams;
 
-  factory TendermintActivationParams.fromJson(JsonMap json) {
+  factory TendermintActivationParams.fromJson(
+    JsonMap json, {
+    PrivateKeyPolicy? privKeyPolicy,
+  }) {
     final base = ActivationParams.fromConfigJson(json);
 
     return TendermintActivationParams(
@@ -32,9 +35,7 @@ class TendermintActivationParams extends ActivationParams {
       requiredConfirmations: base.requiredConfirmations,
       requiresNotarization: base.requiresNotarization,
       getBalances: json.valueOrNull<bool>('get_balances') ?? true,
-      privKeyPolicy: PrivateKeyPolicy.fromLegacyJson(
-        json.valueOrNull<dynamic>('priv_key_policy'),
-      ),
+      privKeyPolicy: privKeyPolicy ?? base.privKeyPolicy,
       nodes: json.value<JsonList>('rpc_urls').map(EvmNode.fromJson).toList(),
     );
   }
@@ -62,10 +63,10 @@ class TendermintActivationParams extends ActivationParams {
       tokensParams: tokensParams ?? _tokensParams,
       txHistory: txHistory ?? this.txHistory,
       requiredConfirmations:
-          requiredConfirmations ?? super.requiredConfirmations,
-      requiresNotarization: requiresNotarization ?? super.requiresNotarization,
+          requiredConfirmations ?? this.requiredConfirmations,
+      requiresNotarization: requiresNotarization ?? this.requiresNotarization,
       getBalances: getBalances ?? this.getBalances,
-      privKeyPolicy: privKeyPolicy ?? super.privKeyPolicy,
+      privKeyPolicy: privKeyPolicy ?? this.privKeyPolicy,
       nodes: nodes ?? this.nodes,
     );
   }
@@ -79,24 +80,39 @@ class TendermintActivationParams extends ActivationParams {
       'get_balances': getBalances,
       'nodes': nodes.map((e) => e.toJson()).toList(),
       'tx_history': txHistory,
+      'priv_key_policy':
+          (privKeyPolicy ?? const PrivateKeyPolicy.contextPrivKey())
+              .pascalCaseName,
     };
   }
 }
 
 // tendermint_token_activation_params.dart
 class TendermintTokenActivationParams extends ActivationParams {
-  TendermintTokenActivationParams({super.requiredConfirmations = 3});
+  TendermintTokenActivationParams({
+    super.requiredConfirmations,
+    super.privKeyPolicy,
+  });
 
-  factory TendermintTokenActivationParams.fromJson(JsonMap json) {
+  factory TendermintTokenActivationParams.fromJson(
+    JsonMap json, {
+    PrivateKeyPolicy? privKeyPolicy,
+  }) {
     final base = ActivationParams.fromConfigJson(json);
 
     return TendermintTokenActivationParams(
       requiredConfirmations: base.requiredConfirmations ?? 3,
+      privKeyPolicy: privKeyPolicy ?? base.privKeyPolicy,
     );
   }
 
   @override
   JsonMap toRpcParams() {
-    return {...super.toRpcParams()};
+    return {
+      ...super.toRpcParams(),
+      'priv_key_policy':
+          (privKeyPolicy ?? const PrivateKeyPolicy.contextPrivKey())
+              .pascalCaseName,
+    };
   }
 }

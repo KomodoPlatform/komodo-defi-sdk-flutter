@@ -6,7 +6,9 @@ import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
-  const ZhtlcActivationStrategy(super.client);
+  const ZhtlcActivationStrategy(super.client, this.privKeyPolicy);
+
+  final PrivateKeyPolicy privKeyPolicy;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {CoinSubClass.zhtlc};
@@ -40,11 +42,13 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
 
     try {
       final protocol = asset.protocol as ZhtlcProtocol;
-      final params =
-          ActivationParams.fromConfigJson(protocol.config).genericCopyWith(
+      final params = ActivationParams.fromConfigJson(
+        protocol.config,
+      ).genericCopyWith(
         scanBlocksPerIteration: 200,
         scanIntervalMs: 200,
         zcashParamsPath: protocol.zcashParamsPath,
+        privKeyPolicy: privKeyPolicy,
       );
 
       // Setup parameters
@@ -64,10 +68,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
 
       // Initialize task
       final taskResponse = await client.rpc.task.execute(
-        TaskEnableZhtlcInit(
-          params: params,
-          ticker: asset.id.id,
-        ),
+        TaskEnableZhtlcInit(params: params, ticker: asset.id.id),
       );
 
       var isComplete = false;
