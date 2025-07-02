@@ -98,6 +98,20 @@ class AssetIcon extends StatelessWidget {
       throwExceptions: throwExceptions,
     );
   }
+
+  /// Checks if the asset icon exists in the local assets or CDN.
+  /// This is useful for verifying if an icon is available before displaying it.
+  /// Returns true if the icon exists, false otherwise.
+  static bool assetExists(AssetId assetId) {
+    return _AssetIconResolver.assetExists(assetId);
+  }
+
+  /// Checks if an asset icon exists for the given asset icon ID.
+  /// This is useful for verifying if an icon is available before displaying it.
+  /// Returns true if the icon exists, false otherwise.
+  static bool assetIconExists(String assetIconId) {
+    return _AssetIconResolver.assetIconExists(assetIconId);
+  }
 }
 
 class _AssetIconResolver extends StatelessWidget {
@@ -201,6 +215,16 @@ class _AssetIconResolver extends StatelessWidget {
       debugPrint('Error in precacheAssetIcon for ${asset.id}: $e');
       if (throwExceptions) rethrow;
     }
+  }
+
+  static bool assetExists(AssetId assetId) {
+    final resolver = _AssetIconResolver(assetId: assetId.id, size: 20);
+    return _assetExistenceCache[resolver._imagePath] ?? false;
+  }
+
+  static bool assetIconExists(String assetIconId) {
+    final resolver = _AssetIconResolver(assetId: assetIconId, size: 20);
+    return _assetExistenceCache[resolver._imagePath] ?? false;
   }
 
   @override
