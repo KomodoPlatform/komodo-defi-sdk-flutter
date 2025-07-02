@@ -142,6 +142,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   KomodoDefiFramework? _kdfFramework;
   late final GetIt _container;
   bool _isInitialized = false;
+  bool _isDisposed = false;
   Future<void>? _initializationFuture;
 
   /// The API client for making direct RPC calls.
@@ -200,6 +201,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       _assertSdkInitialized(_container<MessageSigningManager>());
 
   T _assertSdkInitialized<T>(T val) {
+    _assertNotDisposed();
     if (!_isInitialized) {
       throw StateError(
         'Cannot call $T because KomodoDefiSdk is not '
@@ -207,6 +209,12 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       );
     }
     return val;
+  }
+
+  void _assertNotDisposed() {
+    if (_isDisposed) {
+      throw StateError('KomodoDefiSdk has been disposed');
+    }
   }
 
   /// The mnemonic validator instance.
@@ -254,6 +262,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// await sdk.initialize();
   /// ```
   Future<void> initialize() async {
+    _assertNotDisposed();
     if (_isInitialized) return;
     _initializationFuture ??= _initialize();
     await _initializationFuture;
@@ -270,12 +279,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// // Now safe to use SDK functionality
   /// ```
   Future<void> ensureInitialized() async {
+    _assertNotDisposed();
     if (!_isInitialized) {
       await initialize();
     }
   }
 
   Future<void> _initialize() async {
+    _assertNotDisposed();
     await bootstrap(
       hostConfig: _hostConfig,
       config: _config,
@@ -318,6 +329,8 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// await sdk.dispose();
   /// ```
   Future<void> dispose({bool stopKdf = true}) async {
+    if (_isDisposed) return;
+    _isDisposed = true;
     if (!_isInitialized) return;
     _isInitialized = false;
 
