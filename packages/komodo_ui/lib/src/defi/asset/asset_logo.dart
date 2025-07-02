@@ -24,7 +24,7 @@ class AssetLogo extends StatelessWidget {
        isBlank = false;
 
   /// Creates a logo directly from an [AssetId].
-  const AssetLogo.fromId(
+  const AssetLogo.ofId(
     AssetId assetId, {
     this.size = 41,
     this.isDisabled = false,
@@ -38,7 +38,7 @@ class AssetLogo extends StatelessWidget {
   ///
   /// This mirrors [AssetIcon.ofTicker] and should only be used when an
   /// [Asset] or [AssetId] instance isn't available.
-  const AssetLogo.fromTicker(
+  const AssetLogo.ofTicker(
     String ticker, {
     this.size = 41,
     this.isDisabled = false,
