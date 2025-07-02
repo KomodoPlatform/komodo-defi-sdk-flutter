@@ -127,7 +127,7 @@ class AssetId extends Equatable {
       };
 
   @override
-  List<Object?> get props => [id, subClass.formatted];
+  List<Object?> get props => [id, subClass.formatted, chainId.formattedChainId];
 
   @override
   String toString() =>
