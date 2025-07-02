@@ -60,7 +60,6 @@ class AssetLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final resolvedId = asset?.id ?? assetId;
     final resolvedTicker = _legacyTicker;
-    final resolvedSubClass = asset?.protocol.subClass ?? assetId?.subClass;
 
     final isChildAsset = resolvedId?.isChildAsset ?? false;
 
@@ -82,7 +81,7 @@ class AssetLogo extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         mainIcon,
-        if (shouldShowProtocolIcon && protocolTicker != null)
+        if (shouldShowProtocolIcon)
           AssetProtocolIcon(protocolTicker: protocolTicker, logoSize: size),
       ],
     );
