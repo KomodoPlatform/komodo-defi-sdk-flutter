@@ -682,6 +682,6 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
 
   @override
   Future<void> dispose() async {
-    _authService.dispose();
+    await _authService.dispose();
   }
 }

@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:get_it/get_it.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
@@ -321,22 +319,33 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     if (!_isInitialized) return;
     _isInitialized = false;
 
-    if (stopKdf) {
-      try {
-        await _kdfFramework?.kdfStop();
-      } catch (e) {
-        // Log the error but do not throw, as this is a cleanup operation
-        log('Error stopping KDF: $e');
+    try {
+      // First dispose assets and managers that depend on auth
+      if (_container.isRegistered<AssetManager>()) {
+        await _container<AssetManager>().dispose();
       }
-    }
 
-    // Reset scoped container
-    await _container.reset();
+      // Then dispose auth-related components
+      if (stopKdf && _container.isRegistered<KomodoDefiLocalAuth>()) {
+        await _container<KomodoDefiLocalAuth>().dispose();
+      }
 
-    // Clean up framework if we created it
-    if (_kdfFramework != null) {
-      await _kdfFramework!.dispose();
-      _kdfFramework = null;
+      // Finally stop KDF if needed
+      if (stopKdf && _container.isRegistered<KomodoDefiFramework>()) {
+        await _container<KomodoDefiFramework>().kdfStop();
+      }
+
+      // Clean up framework if we created it
+      if (_kdfFramework != null) {
+        await _kdfFramework!.dispose();
+        _kdfFramework = null;
+      }
+    } catch (e) {
+      // Log the error but do not throw, as this is a cleanup operation
+      print('Error during SDK disposal: $e');
+    } finally {
+      // Reset scoped container to free up resources
+      await _container.reset();
     }
   }
 }
