@@ -22,7 +22,8 @@ class AssetId extends Equatable {
         ? null
         : knownIds?.singleWhere(
             (parent) =>
-                parent.id == parentCoinTicker && parent.subClass == subClass,
+                parent.id == parentCoinTicker &&
+                parent.subClass.canBeParentOf(subClass),
           );
 
     return AssetId(

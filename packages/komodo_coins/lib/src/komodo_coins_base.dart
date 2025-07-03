@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:komodo_coins/src/config_transform.dart';
 import 'package:komodo_coins/src/asset_filter.dart';
+import 'package:komodo_coins/src/config_transform.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
