@@ -40,8 +40,9 @@ class AssetIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final disabledTheme = Theme.of(context).disabledColor;
     return Opacity(
-      opacity: suspended ? 0.4 : 1,
+      opacity: suspended ? disabledTheme.a : 1.0,
       child: SizedBox.square(
         dimension: size,
         child: _AssetIconResolver(

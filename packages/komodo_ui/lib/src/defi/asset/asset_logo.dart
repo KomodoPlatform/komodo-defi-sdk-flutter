@@ -142,21 +142,25 @@ class _AssetLogoPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isBlank) {
-      return Opacity(
-        opacity: isDisabled ? 0.4 : 1,
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Theme.of(context).colorScheme.secondaryContainer,
-          ),
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color:
+              isDisabled
+                  ? Theme.of(context).disabledColor
+                  : Theme.of(context).colorScheme.secondaryContainer,
         ),
       );
     }
-    return Opacity(
-      opacity: isDisabled ? 0.4 : 1,
-      child: Icon(Icons.monetization_on_outlined, size: size),
+    return Icon(
+      Icons.monetization_on_outlined,
+      size: size,
+      color:
+          isDisabled
+              ? Theme.of(context).disabledColor
+              : Theme.of(context).colorScheme.onSecondaryContainer,
     );
   }
 }
