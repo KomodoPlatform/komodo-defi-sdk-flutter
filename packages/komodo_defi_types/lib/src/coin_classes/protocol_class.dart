@@ -80,7 +80,8 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
         //     'Unsupported protocol type: ${subClass.formatted}',
         //   ),
       };
-    } catch (e) {
+    } catch (e, s) {
+      if (kDebugMode) debugPrintStack(stackTrace: s);
       throw ProtocolParsingException(primaryType, e.toString());
     }
   }
