@@ -333,6 +333,7 @@ class KdfAuthService implements IAuthService {
     required String walletName,
     required String password,
   }) async {
+    await _ensureKdfRunning();
     return _runReadOperation(() async {
       try {
         await _client.rpc.wallet.deleteWallet(
