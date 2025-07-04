@@ -99,32 +99,44 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
       );
     }
 
+    final detailsJson = result['details'];
+    Object? description;
+    NewAddressInfo? data;
+    GeneralErrorResponse? error;
+
+    if (status == SyncStatusEnum.success) {
+      data = NewAddressInfo.fromJson(
+        (detailsJson as JsonMap).value<JsonMap>('new_address'),
+      );
+    } else if (status == SyncStatusEnum.error) {
+      error = GeneralErrorResponse.parse(detailsJson as JsonMap);
+    } else if (status == SyncStatusEnum.inProgress) {
+      if (detailsJson is String) {
+        description = detailsJson;
+      } else if (detailsJson is JsonMap) {
+        if (detailsJson.containsKey('ConfirmAddress')) {
+          description = ConfirmAddressDetails.fromJson(
+            detailsJson.value<JsonMap>('ConfirmAddress'),
+          );
+        } else {
+          description = detailsJson;
+        }
+      }
+    }
+
     return GetNewAddressTaskStatusResponse(
       mmrpc: json.value<String>('mmrpc'),
       status: status,
-      details: ResponseDetails<NewAddressInfo, GeneralErrorResponse>(
-        data:
-            status == SyncStatusEnum.success
-                ? NewAddressInfo.fromJson(
-                  result
-                      .value<JsonMap>('details')
-                      .value<JsonMap>('new_address'),
-                )
-                : null,
-        error:
-            status == SyncStatusEnum.error
-                ? GeneralErrorResponse.parse(result.value<JsonMap>('details'))
-                : null,
-        description:
-            status == SyncStatusEnum.inProgress
-                ? result.value<String>('details')
-                : null,
+      details: ResponseDetails<NewAddressInfo, GeneralErrorResponse, Object>(
+        data: data,
+        error: error,
+        description: description,
       ),
     );
   }
 
   final SyncStatusEnum status;
-  final ResponseDetails<NewAddressInfo, GeneralErrorResponse> details;
+  final ResponseDetails<NewAddressInfo, GeneralErrorResponse, Object> details;
 
   @override
   JsonMap toJson() {
@@ -132,6 +144,42 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
       'mmrpc': mmrpc,
       'result': {'status': status, 'details': details.toJson()},
     };
+  }
+
+  /// Convert this RPC response into a [NewAddressState].
+  NewAddressState toState(int taskId) {
+    switch (status) {
+      case SyncStatusEnum.success:
+        final addr = details.data!;
+        return NewAddressState(
+          status: NewAddressStatus.completed,
+          address: PubkeyInfo(
+            address: addr.address,
+            derivationPath: addr.derivationPath,
+            chain: addr.chain,
+            balance: addr.balance,
+          ),
+          taskId: taskId,
+        );
+      case SyncStatusEnum.error:
+        return NewAddressState(
+          status: NewAddressStatus.error,
+          error: details.error?.error ?? 'Unknown error',
+          taskId: taskId,
+        );
+      case SyncStatusEnum.inProgress:
+        return NewAddressState.fromInProgressDescription(
+          details.description,
+          taskId,
+        );
+      case SyncStatusEnum.notStarted:
+        // This case should not happen, but if it does, we treat it as an error
+        return NewAddressState(
+          status: NewAddressStatus.error,
+          error: 'Task not started',
+          taskId: taskId,
+        );
+    }
   }
 }
 

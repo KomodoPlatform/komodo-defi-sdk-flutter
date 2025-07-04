@@ -12,6 +12,12 @@ abstract class PubkeyStrategy {
   /// Get a new address for an asset if supported
   Future<PubkeyInfo> getNewAddress(AssetId assetId, ApiClient client);
 
+  /// Streamed version of [getNewAddress] that emits progress updates
+  Stream<NewAddressState> getNewAddressStream(
+    AssetId assetId,
+    ApiClient client,
+  );
+
   /// Scan for any new addresses
   Future<void> scanForNewAddresses(AssetId assetId, ApiClient client);
 

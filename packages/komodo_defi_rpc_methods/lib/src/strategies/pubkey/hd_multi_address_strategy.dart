@@ -110,6 +110,20 @@ class ContextPrivKeyHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
       balance: newAddress.balance,
     );
   }
+
+  @override
+  Stream<NewAddressState> getNewAddressStream(
+    AssetId assetId,
+    ApiClient client,
+  ) async* {
+    try {
+      yield const NewAddressState(status: NewAddressStatus.processing);
+      final info = await getNewAddress(assetId, client);
+      yield NewAddressState.completed(info);
+    } catch (e) {
+      yield NewAddressState.error('Failed to generate address: $e');
+    }
+  }
 }
 
 /// HD wallet strategy for Trezor wallets
@@ -131,10 +145,44 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
     );
   }
 
+  @override
+  Stream<NewAddressState> getNewAddressStream(
+    AssetId assetId,
+    ApiClient client, {
+    Duration pollingInterval = const Duration(milliseconds: 200),
+  }) async* {
+    final initResponse = await client.rpc.hdWallet.getNewAddressTaskInit(
+      coin: assetId.id,
+      accountId: 0,
+      chain: 'External',
+      gapLimit: _gapLimit,
+    );
+
+    var finished = false;
+    while (!finished) {
+      final status = await client.rpc.hdWallet.getNewAddressTaskStatus(
+        taskId: initResponse.taskId,
+        forgetIfFinished: false,
+      );
+
+      final state = status.toState(initResponse.taskId);
+      yield state;
+
+      if (state.status == NewAddressStatus.completed ||
+          state.status == NewAddressStatus.error ||
+          state.status == NewAddressStatus.cancelled) {
+        finished = true;
+      } else {
+        await Future<void>.delayed(pollingInterval);
+      }
+    }
+  }
+
   Future<NewAddressInfo> _getNewAddressTask(
     AssetId assetId,
-    ApiClient client,
-  ) async {
+    ApiClient client, {
+    Duration pollingInterval = const Duration(milliseconds: 200),
+  }) async {
     final initResponse = await client.rpc.hdWallet.getNewAddressTaskInit(
       coin: assetId.id,
       accountId: 0,
@@ -150,7 +198,7 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
       );
       result = (status.details..throwIfError).data;
 
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(pollingInterval);
     }
     return result;
   }
