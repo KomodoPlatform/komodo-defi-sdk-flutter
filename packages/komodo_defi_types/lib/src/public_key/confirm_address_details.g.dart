@@ -7,10 +7,13 @@ part of 'confirm_address_details.dart';
 // **************************************************************************
 
 _ConfirmAddressDetails _$ConfirmAddressDetailsFromJson(
-  Map<String, dynamic> json,
-) =>
-    _ConfirmAddressDetails(expectedAddress: json['expected_address'] as String);
+        Map<String, dynamic> json) =>
+    _ConfirmAddressDetails(
+      expectedAddress: json['expected_address'] as String,
+    );
 
 Map<String, dynamic> _$ConfirmAddressDetailsToJson(
-  _ConfirmAddressDetails instance,
-) => <String, dynamic>{'expected_address': instance.expectedAddress};
+        _ConfirmAddressDetails instance) =>
+    <String, dynamic>{
+      'expected_address': instance.expectedAddress,
+    };

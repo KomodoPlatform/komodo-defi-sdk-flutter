@@ -1,5 +1,6 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
+// dart format width=80
 // coverage:ignore-file
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -17,7 +18,7 @@ mixin _$NewAddressState {
   NewAddressStatus get status;
   String? get message;
   int? get taskId;
-  PubkeyInfo? get address;
+  NewAddressInfo? get address;
   String? get expectedAddress;
   String? get error;
 
@@ -29,6 +30,9 @@ mixin _$NewAddressState {
       _$NewAddressStateCopyWithImpl<NewAddressState>(
           this as NewAddressState, _$identity);
 
+  /// Serializes this NewAddressState to a JSON map.
+  Map<String, dynamic> toJson();
+
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
@@ -37,15 +41,16 @@ mixin _$NewAddressState {
             (identical(other.status, status) || other.status == status) &&
             (identical(other.message, message) || other.message == message) &&
             (identical(other.taskId, taskId) || other.taskId == taskId) &&
-            const DeepCollectionEquality().equals(other.address, address) &&
+            (identical(other.address, address) || other.address == address) &&
             (identical(other.expectedAddress, expectedAddress) ||
                 other.expectedAddress == expectedAddress) &&
             (identical(other.error, error) || other.error == error));
   }
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, status, message, taskId,
-      const DeepCollectionEquality().hash(address), expectedAddress, error);
+  int get hashCode => Object.hash(
+      runtimeType, status, message, taskId, address, expectedAddress, error);
 
   @override
   String toString() {
@@ -63,7 +68,7 @@ abstract mixin class $NewAddressStateCopyWith<$Res> {
       {NewAddressStatus status,
       String? message,
       int? taskId,
-      PubkeyInfo? address,
+      NewAddressInfo? address,
       String? expectedAddress,
       String? error});
 }
@@ -104,7 +109,7 @@ class _$NewAddressStateCopyWithImpl<$Res>
       address: freezed == address
           ? _self.address
           : address // ignore: cast_nullable_to_non_nullable
-              as PubkeyInfo?,
+              as NewAddressInfo?,
       expectedAddress: freezed == expectedAddress
           ? _self.expectedAddress
           : expectedAddress // ignore: cast_nullable_to_non_nullable
@@ -117,174 +122,8 @@ class _$NewAddressStateCopyWithImpl<$Res>
   }
 }
 
-/// Adds pattern-matching-related methods to [NewAddressState].
-extension NewAddressStatePatterns on NewAddressState {
-  /// A variant of `map` that fallback to returning `orElse`.
-  ///
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case final Subclass value:
-  ///     return ...;
-  ///   case _:
-  ///     return orElse();
-  /// }
-  /// ```
-
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>(
-    TResult Function(_NewAddressState value)? $default, {
-    required TResult orElse(),
-  }) {
-    final _that = this;
-    switch (_that) {
-      case _NewAddressState() when $default != null:
-        return $default(_that);
-      case _:
-        return orElse();
-    }
-  }
-
-  /// A `switch`-like method, using callbacks.
-  ///
-  /// Callbacks receives the raw object, upcasted.
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case final Subclass value:
-  ///     return ...;
-  ///   case final Subclass2 value:
-  ///     return ...;
-  /// }
-  /// ```
-
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>(
-    TResult Function(_NewAddressState value) $default,
-  ) {
-    final _that = this;
-    switch (_that) {
-      case _NewAddressState():
-        return $default(_that);
-      case _:
-        throw StateError('Unexpected subclass');
-    }
-  }
-
-  /// A variant of `map` that fallback to returning `null`.
-  ///
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case final Subclass value:
-  ///     return ...;
-  ///   case _:
-  ///     return null;
-  /// }
-  /// ```
-
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>(
-    TResult? Function(_NewAddressState value)? $default,
-  ) {
-    final _that = this;
-    switch (_that) {
-      case _NewAddressState() when $default != null:
-        return $default(_that);
-      case _:
-        return null;
-    }
-  }
-
-  /// A variant of `when` that fallback to an `orElse` callback.
-  ///
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case Subclass(:final field):
-  ///     return ...;
-  ///   case _:
-  ///     return orElse();
-  /// }
-  /// ```
-
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>(
-    TResult Function(NewAddressStatus status, String? message, int? taskId,
-            PubkeyInfo? address, String? expectedAddress, String? error)?
-        $default, {
-    required TResult orElse(),
-  }) {
-    final _that = this;
-    switch (_that) {
-      case _NewAddressState() when $default != null:
-        return $default(_that.status, _that.message, _that.taskId,
-            _that.address, _that.expectedAddress, _that.error);
-      case _:
-        return orElse();
-    }
-  }
-
-  /// A `switch`-like method, using callbacks.
-  ///
-  /// As opposed to `map`, this offers destructuring.
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case Subclass(:final field):
-  ///     return ...;
-  ///   case Subclass2(:final field2):
-  ///     return ...;
-  /// }
-  /// ```
-
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>(
-    TResult Function(NewAddressStatus status, String? message, int? taskId,
-            PubkeyInfo? address, String? expectedAddress, String? error)
-        $default,
-  ) {
-    final _that = this;
-    switch (_that) {
-      case _NewAddressState():
-        return $default(_that.status, _that.message, _that.taskId,
-            _that.address, _that.expectedAddress, _that.error);
-      case _:
-        throw StateError('Unexpected subclass');
-    }
-  }
-
-  /// A variant of `when` that fallback to returning `null`
-  ///
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case Subclass(:final field):
-  ///     return ...;
-  ///   case _:
-  ///     return null;
-  /// }
-  /// ```
-
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(NewAddressStatus status, String? message, int? taskId,
-            PubkeyInfo? address, String? expectedAddress, String? error)?
-        $default,
-  ) {
-    final _that = this;
-    switch (_that) {
-      case _NewAddressState() when $default != null:
-        return $default(_that.status, _that.message, _that.taskId,
-            _that.address, _that.expectedAddress, _that.error);
-      case _:
-        return null;
-    }
-  }
-}
-
 /// @nodoc
-
+@JsonSerializable()
 class _NewAddressState extends NewAddressState {
   const _NewAddressState(
       {required this.status,
@@ -294,6 +133,8 @@ class _NewAddressState extends NewAddressState {
       this.expectedAddress,
       this.error})
       : super._();
+  factory _NewAddressState.fromJson(Map<String, dynamic> json) =>
+      _$NewAddressStateFromJson(json);
 
   @override
   final NewAddressStatus status;
@@ -302,7 +143,7 @@ class _NewAddressState extends NewAddressState {
   @override
   final int? taskId;
   @override
-  final PubkeyInfo? address;
+  final NewAddressInfo? address;
   @override
   final String? expectedAddress;
   @override
@@ -317,6 +158,13 @@ class _NewAddressState extends NewAddressState {
       __$NewAddressStateCopyWithImpl<_NewAddressState>(this, _$identity);
 
   @override
+  Map<String, dynamic> toJson() {
+    return _$NewAddressStateToJson(
+      this,
+    );
+  }
+
+  @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
@@ -324,15 +172,16 @@ class _NewAddressState extends NewAddressState {
             (identical(other.status, status) || other.status == status) &&
             (identical(other.message, message) || other.message == message) &&
             (identical(other.taskId, taskId) || other.taskId == taskId) &&
-            const DeepCollectionEquality().equals(other.address, address) &&
+            (identical(other.address, address) || other.address == address) &&
             (identical(other.expectedAddress, expectedAddress) ||
                 other.expectedAddress == expectedAddress) &&
             (identical(other.error, error) || other.error == error));
   }
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, status, message, taskId,
-      const DeepCollectionEquality().hash(address), expectedAddress, error);
+  int get hashCode => Object.hash(
+      runtimeType, status, message, taskId, address, expectedAddress, error);
 
   @override
   String toString() {
@@ -352,7 +201,7 @@ abstract mixin class _$NewAddressStateCopyWith<$Res>
       {NewAddressStatus status,
       String? message,
       int? taskId,
-      PubkeyInfo? address,
+      NewAddressInfo? address,
       String? expectedAddress,
       String? error});
 }
@@ -393,7 +242,7 @@ class __$NewAddressStateCopyWithImpl<$Res>
       address: freezed == address
           ? _self.address
           : address // ignore: cast_nullable_to_non_nullable
-              as PubkeyInfo?,
+              as NewAddressInfo?,
       expectedAddress: freezed == expectedAddress
           ? _self.expectedAddress
           : expectedAddress // ignore: cast_nullable_to_non_nullable
