@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart' show PubkeyInfo;
+import 'package:komodo_defi_types/komodo_defi_types.dart'
+    show ConfirmAddressDetails, PubkeyInfo;
 
 part 'new_address_state.freezed.dart';
 
