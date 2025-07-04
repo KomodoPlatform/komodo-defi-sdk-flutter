@@ -5,10 +5,10 @@ import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 /// Generic response details wrapper for task status responses
 class ResponseDetails<T, R extends GeneralErrorResponse, D extends Object> {
   ResponseDetails({required this.data, required this.error, this.description})
-      : assert(
-          [data, error, description].where((e) => e != null).length == 1,
-          'Of the three fields, exactly one must be non-null',
-        );
+    : assert(
+        [data, error, description].where((e) => e != null).length == 1,
+        'Of the three fields, exactly one must be non-null',
+      );
 
   final T? data;
   final R? error;
@@ -30,9 +30,8 @@ class ResponseDetails<T, R extends GeneralErrorResponse, D extends Object> {
       if (data != null) 'data': jsonEncode(data),
       if (error != null) 'error': jsonEncode(error),
       if (description != null)
-        'description': description is String
-            ? description
-            : jsonEncode(description),
+        'description':
+            description is String ? description : jsonEncode(description),
     };
   }
 }

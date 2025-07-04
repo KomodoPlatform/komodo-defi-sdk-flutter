@@ -1,12 +1,12 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 part 'confirm_address_details.freezed.dart';
 part 'confirm_address_details.g.dart';
 
 /// Details returned when the hardware wallet asks to confirm an address.
 @freezed
-class ConfirmAddressDetails with _$ConfirmAddressDetails {
+abstract class ConfirmAddressDetails with _$ConfirmAddressDetails {
   const factory ConfirmAddressDetails({
     @JsonKey(name: 'expected_address') required String expectedAddress,
   }) = _ConfirmAddressDetails;

@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_rpc_methods/src/common_structures/hd_wallet/confirm_address_details.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart' show PubkeyInfo;
 
 part 'new_address_state.freezed.dart';
 
@@ -18,7 +18,7 @@ abstract class NewAddressState with _$NewAddressState {
   const NewAddressState._();
 
   /// Create a success state containing the generated address
-  
+
   factory NewAddressState.completed(PubkeyInfo address) =>
       NewAddressState(status: NewAddressStatus.completed, address: address);
 

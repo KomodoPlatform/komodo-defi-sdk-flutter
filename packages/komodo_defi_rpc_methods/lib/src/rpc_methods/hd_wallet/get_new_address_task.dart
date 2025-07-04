@@ -174,10 +174,11 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
           details.description,
           taskId,
         );
-      default:
+      case SyncStatusEnum.notStarted:
+        // This case should not happen, but if it does, we treat it as an error
         return NewAddressState(
           status: NewAddressStatus.error,
-          error: 'Unknown status',
+          error: 'Task not started',
           taskId: taskId,
         );
     }

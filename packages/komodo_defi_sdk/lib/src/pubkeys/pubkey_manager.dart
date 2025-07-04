@@ -2,7 +2,6 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_types/src/public_key/new_address_state.dart';
 
 /// Manager responsible for handling pubkey operations across different assets
 class PubkeyManager {

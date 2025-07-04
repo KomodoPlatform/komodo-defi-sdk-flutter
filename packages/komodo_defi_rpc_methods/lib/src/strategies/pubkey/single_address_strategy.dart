@@ -1,5 +1,4 @@
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_types/src/public_key/new_address_state.dart';
 
 class SingleAddressStrategy extends PubkeyStrategy {
   SingleAddressStrategy();

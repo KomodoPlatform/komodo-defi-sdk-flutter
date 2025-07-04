@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_types/src/public_key/new_address_state.dart';
 
 /// Mixin containing shared HD wallet logic
 mixin HDWalletMixin on PubkeyStrategy {
@@ -149,8 +148,9 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
   @override
   Stream<NewAddressState> getNewAddressStream(
     AssetId assetId,
-    ApiClient client,
-  ) async* {
+    ApiClient client, {
+    Duration pollingInterval = const Duration(milliseconds: 200),
+  }) async* {
     final initResponse = await client.rpc.hdWallet.getNewAddressTaskInit(
       coin: assetId.id,
       accountId: 0,
@@ -158,7 +158,7 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
       gapLimit: _gapLimit,
     );
 
-    bool finished = false;
+    var finished = false;
     while (!finished) {
       final status = await client.rpc.hdWallet.getNewAddressTaskStatus(
         taskId: initResponse.taskId,
@@ -173,15 +173,16 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
           state.status == NewAddressStatus.cancelled) {
         finished = true;
       } else {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(pollingInterval);
       }
     }
   }
 
   Future<NewAddressInfo> _getNewAddressTask(
     AssetId assetId,
-    ApiClient client,
-  ) async {
+    ApiClient client, {
+    Duration pollingInterval = const Duration(milliseconds: 200),
+  }) async {
     final initResponse = await client.rpc.hdWallet.getNewAddressTaskInit(
       coin: assetId.id,
       accountId: 0,
@@ -197,7 +198,7 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
       );
       result = (status.details..throwIfError).data;
 
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(pollingInterval);
     }
     return result;
   }

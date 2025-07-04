@@ -89,7 +89,7 @@ class ConstantBackoff implements BackoffStrategy {
   /// Creates a constant backoff strategy
   ///
   /// [delay] Fixed delay between retries (default: 1s)
-  ConstantBackoff({
+  const ConstantBackoff({
     this.delay = const Duration(seconds: 1),
   });
 
@@ -117,7 +117,7 @@ class LinearBackoff implements BackoffStrategy {
   /// [initialDelay] Starting delay between retries (default: 200ms)
   /// [increment] Amount to increase delay by after each attempt (default: 200ms)
   /// [maxDelay] Maximum delay between retries (default: 5s)
-  LinearBackoff({
+  const LinearBackoff({
     this.initialDelay = const Duration(milliseconds: 200),
     this.increment = const Duration(milliseconds: 200),
     this.maxDelay = const Duration(seconds: 5),

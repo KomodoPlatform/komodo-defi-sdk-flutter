@@ -88,7 +88,11 @@ class AccountBalanceStatusResponse extends BaseResponse {
       mmrpc: json.value<String>('mmrpc'),
       status: status!,
       // details: status == 'Ok' ? AccountBalanceInfo.fromJson(details) : details,
-      details: ResponseDetails<AccountBalanceInfo, GeneralErrorResponse, String>(
+      details: ResponseDetails<
+        AccountBalanceInfo,
+        GeneralErrorResponse,
+        String
+      >(
         data:
             status == SyncStatusEnum.success
                 ? AccountBalanceInfo.fromJson(result.value<JsonMap>('details'))
@@ -106,7 +110,8 @@ class AccountBalanceStatusResponse extends BaseResponse {
   }
 
   final SyncStatusEnum status;
-  final ResponseDetails<AccountBalanceInfo, GeneralErrorResponse, String> details;
+  final ResponseDetails<AccountBalanceInfo, GeneralErrorResponse, String>
+  details;
 
   @override
   JsonMap toJson() {
