@@ -13,6 +13,7 @@ class AssetIcon extends StatelessWidget {
     this.assetId, {
     this.size = 20,
     this.suspended = false,
+    this.showNetworkIcon = false,
     super.key,
   }) : _legacyTicker = null;
 
@@ -27,6 +28,7 @@ class AssetIcon extends StatelessWidget {
     String ticker, {
     this.size = 20,
     this.suspended = false,
+    this.showNetworkIcon = false,
     super.key,
   }) : _legacyTicker = ticker.toLowerCase(),
        assetId = null;
@@ -35,13 +37,14 @@ class AssetIcon extends StatelessWidget {
   final String? _legacyTicker;
   final double size;
   final bool suspended;
+  final bool showNetworkIcon;
 
   String get _effectiveId => assetId?.id ?? _legacyTicker!;
 
   @override
   Widget build(BuildContext context) {
     final disabledTheme = Theme.of(context).disabledColor;
-    return Opacity(
+    final icon = Opacity(
       opacity: suspended ? disabledTheme.a : 1.0,
       child: SizedBox.square(
         dimension: size,
@@ -51,6 +54,23 @@ class AssetIcon extends StatelessWidget {
           size: size,
         ),
       ),
+    );
+
+    final protocolTicker =
+        showNetworkIcon && assetId?.isChildAsset == true
+            ? assetId!.parentId?.id
+            : null;
+
+    if (protocolTicker == null) {
+      return icon;
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        icon,
+        AssetProtocolIcon(protocolTicker: protocolTicker, logoSize: size),
+      ],
     );
   }
 
@@ -257,6 +277,82 @@ class _AssetIconResolver extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+/// A widget that displays a protocol icon with a circular border and shadow,
+/// positioned absolutely within its parent widget.
+///
+/// Typically used to overlay a protocol icon on top of an asset icon to
+/// indicate the blockchain network the asset belongs to.
+class AssetProtocolIcon extends StatelessWidget {
+  /// Creates an [AssetProtocolIcon] widget.
+  const AssetProtocolIcon({
+    required this.protocolTicker,
+    required this.logoSize,
+    this.protocolSizeWithBorder,
+    this.protocolBorder,
+    this.protocolLeftPosition,
+    this.protocolTopPosition,
+    super.key,
+  });
+
+  /// The ticker symbol of the protocol to display as an icon.
+  final String protocolTicker;
+
+  /// The size of the main logo that this protocol icon will be positioned
+  /// relative to.
+  final double logoSize;
+
+  /// The total size of the protocol icon including its border. If null,
+  /// defaults to `logoSize * 0.45`.
+  final double? protocolSizeWithBorder;
+
+  /// The thickness of the border around the protocol icon. If null, defaults to
+  /// `protocolSizeWithBorder * 0.1`.
+  final double? protocolBorder;
+
+  /// The left position offset for the protocol icon. If null, defaults to
+  /// `logoSize * 0.55`.
+  final double? protocolLeftPosition;
+
+  /// The top position offset for the protocol icon. If null, defaults to
+  /// `logoSize * 0.55`.
+  final double? protocolTopPosition;
+
+  double get _sizeWithBorder => protocolSizeWithBorder ?? logoSize * 0.45;
+  double get _border => protocolBorder ?? _sizeWithBorder * 0.1;
+  double get _leftPosition => protocolLeftPosition ?? logoSize * 0.55;
+  double get _topPosition => protocolTopPosition ?? logoSize * 0.55;
+  double get _iconSize => _sizeWithBorder - _border;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: _leftPosition,
+      top: _topPosition,
+      width: _sizeWithBorder,
+      height: _sizeWithBorder,
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 2),
+          ],
+        ),
+        child: Container(
+          width: _iconSize,
+          height: _iconSize,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+          child: AssetIcon.ofTicker(protocolTicker, size: _iconSize),
+        ),
+      ),
     );
   }
 }

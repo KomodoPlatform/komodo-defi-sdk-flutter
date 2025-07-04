@@ -10,7 +10,6 @@ library komodo_ui.defi;
 export 'package:decimal/decimal.dart' show Decimal;
 
 export 'asset/asset_icon.dart';
-export 'asset/asset_logo.dart';
 export 'asset/crypto_asset_card.dart';
 export 'asset/metric_selector.dart';
 export 'asset/trend_percentage_text.dart';

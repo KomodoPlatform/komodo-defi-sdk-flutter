@@ -26,7 +26,6 @@ export 'src/core/inputs/fee_info_input.dart';
 export 'src/core/inputs/search_coin_select.dart';
 export 'src/core/inputs/searchable_select.dart';
 export 'src/defi/asset/asset_icon.dart';
-export 'src/defi/asset/asset_logo.dart';
 export 'src/defi/asset/crypto_asset_card.dart';
 export 'src/defi/asset/metric_selector.dart';
 export 'src/defi/asset/trend_percentage_text.dart';
