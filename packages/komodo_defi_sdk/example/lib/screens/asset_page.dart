@@ -47,8 +47,7 @@ class _AssetPageState extends State<AssetPage> {
   Future<void> _generateNewAddress() async {
     setState(() => _isLoading = true);
     try {
-      final stream =
-          _sdk.pubkeys.createNewPubkeyStream(widget.asset).asBroadcastStream();
+      final stream = _sdk.pubkeys.createNewPubkeyStream(widget.asset);
 
       final newPubkey = await showDialog<PubkeyInfo>(
         context: context,
@@ -750,6 +749,12 @@ class _NewAddressDialogState extends State<_NewAddressDialog> {
           Text(message, textAlign: TextAlign.center),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 }
