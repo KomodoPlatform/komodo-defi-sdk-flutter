@@ -13,7 +13,7 @@ class AssetIcon extends StatelessWidget {
     this.assetId, {
     this.size = 20,
     this.suspended = false,
-    this.showNetworkIcon = false,
+    this.showNetworkIcon = true,
     super.key,
   }) : _legacyTicker = null;
 
@@ -28,7 +28,7 @@ class AssetIcon extends StatelessWidget {
     String ticker, {
     this.size = 20,
     this.suspended = false,
-    this.showNetworkIcon = false,
+    this.showNetworkIcon = true,
     super.key,
   }) : _legacyTicker = ticker.toLowerCase(),
        assetId = null;
@@ -37,6 +37,10 @@ class AssetIcon extends StatelessWidget {
   final String? _legacyTicker;
   final double size;
   final bool suspended;
+
+  /// Whether to display a protocol badge for child assets.
+  ///
+  /// Defaults to `true`.
   final bool showNetworkIcon;
 
   String get _effectiveId => assetId?.id ?? _legacyTicker!;
@@ -69,7 +73,7 @@ class AssetIcon extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         icon,
-        AssetProtocolIcon(protocolTicker: protocolTicker, logoSize: size),
+        _AssetProtocolIcon(protocolTicker: protocolTicker, logoSize: size),
       ],
     );
   }
@@ -286,9 +290,9 @@ class _AssetIconResolver extends StatelessWidget {
 ///
 /// Typically used to overlay a protocol icon on top of an asset icon to
 /// indicate the blockchain network the asset belongs to.
-class AssetProtocolIcon extends StatelessWidget {
-  /// Creates an [AssetProtocolIcon] widget.
-  const AssetProtocolIcon({
+class _AssetProtocolIcon extends StatelessWidget {
+  /// Creates a protocol icon widget.
+  const _AssetProtocolIcon({
     required this.protocolTicker,
     required this.logoSize,
     this.protocolSizeWithBorder,
