@@ -141,7 +141,7 @@ class AssetManager implements IAssetProvider {
     // WalletConnect and Metamask will require similar handling in the future.
     final strategy =
         isTrezor
-            ? const TrezorAssetFilterStrategy()
+            ? const TrezorAssetFilterStrategy(hiddenAssets: {'BCH'})
             : const NoAssetFilterStrategy();
 
     setFilterStrategy(strategy);

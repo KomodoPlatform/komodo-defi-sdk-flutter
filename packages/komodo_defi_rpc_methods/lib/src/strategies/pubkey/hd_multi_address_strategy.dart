@@ -151,30 +151,34 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
     ApiClient client, {
     Duration pollingInterval = const Duration(milliseconds: 200),
   }) async* {
-    final initResponse = await client.rpc.hdWallet.getNewAddressTaskInit(
-      coin: assetId.id,
-      accountId: 0,
-      chain: 'External',
-      gapLimit: _gapLimit,
-    );
-
-    var finished = false;
-    while (!finished) {
-      final status = await client.rpc.hdWallet.getNewAddressTaskStatus(
-        taskId: initResponse.taskId,
-        forgetIfFinished: false,
+    try {
+      final initResponse = await client.rpc.hdWallet.getNewAddressTaskInit(
+        coin: assetId.id,
+        accountId: 0,
+        chain: 'External',
+        gapLimit: _gapLimit,
       );
 
-      final state = status.toState(initResponse.taskId);
-      yield state;
+      var finished = false;
+      while (!finished) {
+        final status = await client.rpc.hdWallet.getNewAddressTaskStatus(
+          taskId: initResponse.taskId,
+          forgetIfFinished: false,
+        );
 
-      if (state.status == NewAddressStatus.completed ||
-          state.status == NewAddressStatus.error ||
-          state.status == NewAddressStatus.cancelled) {
-        finished = true;
-      } else {
-        await Future<void>.delayed(pollingInterval);
+        final state = status.toState(initResponse.taskId);
+        yield state;
+
+        if (state.status == NewAddressStatus.completed ||
+            state.status == NewAddressStatus.error ||
+            state.status == NewAddressStatus.cancelled) {
+          finished = true;
+        } else {
+          await Future<void>.delayed(pollingInterval);
+        }
       }
+    } catch (e) {
+      yield NewAddressState.error('Failed to generate address: $e');
     }
   }
 

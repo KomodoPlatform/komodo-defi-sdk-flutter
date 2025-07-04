@@ -685,8 +685,7 @@ class _NewAddressDialogState extends State<_NewAddressDialog> {
       setState(() => _state = state);
       if (state.status == NewAddressStatus.completed) {
         Navigator.of(context).pop(state.address);
-      } else if (state.status == NewAddressStatus.error ||
-          state.status == NewAddressStatus.cancelled) {
+      } else if (state.status == NewAddressStatus.cancelled) {
         Navigator.of(context).pop(null);
       }
     });
