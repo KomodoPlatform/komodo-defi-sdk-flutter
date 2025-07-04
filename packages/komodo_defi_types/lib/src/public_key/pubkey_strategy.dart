@@ -1,5 +1,6 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/src/public_key/new_address_state.dart';
 
 // TODO: Refactor strategy consumption so that API client does not need to be
 // passed in. See the activation strategy for an example of how this can
@@ -11,6 +12,12 @@ abstract class PubkeyStrategy {
 
   /// Get a new address for an asset if supported
   Future<PubkeyInfo> getNewAddress(AssetId assetId, ApiClient client);
+
+  /// Streamed version of [getNewAddress] that emits progress updates
+  Stream<NewAddressState> getNewAddressStream(
+    AssetId assetId,
+    ApiClient client,
+  );
 
   /// Scan for any new addresses
   Future<void> scanForNewAddresses(AssetId assetId, ApiClient client);

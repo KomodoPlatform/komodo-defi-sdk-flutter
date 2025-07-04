@@ -1,4 +1,5 @@
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/src/public_key/new_address_state.dart';
 
 class SingleAddressStrategy extends PubkeyStrategy {
   SingleAddressStrategy();
@@ -37,6 +38,16 @@ class SingleAddressStrategy extends PubkeyStrategy {
   @override
   Future<PubkeyInfo> getNewAddress(AssetId _, ApiClient __) async {
     throw UnsupportedError(
+      'Single address coins do not support generating new addresses',
+    );
+  }
+
+  @override
+  Stream<NewAddressState> getNewAddressStream(
+    AssetId assetId,
+    ApiClient client,
+  ) async* {
+    yield NewAddressState.error(
       'Single address coins do not support generating new addresses',
     );
   }

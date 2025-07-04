@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/src/public_key/new_address_state.dart';
 
 /// Mixin containing shared HD wallet logic
 mixin HDWalletMixin on PubkeyStrategy {
@@ -110,6 +111,20 @@ class ContextPrivKeyHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
       balance: newAddress.balance,
     );
   }
+
+  @override
+  Stream<NewAddressState> getNewAddressStream(
+    AssetId assetId,
+    ApiClient client,
+  ) async* {
+    try {
+      yield const NewAddressState(status: NewAddressStatus.processing);
+      final info = await getNewAddress(assetId, client);
+      yield NewAddressState.completed(info);
+    } catch (e) {
+      yield NewAddressState.error('Failed to generate address: $e');
+    }
+  }
 }
 
 /// HD wallet strategy for Trezor wallets
@@ -129,6 +144,38 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
       chain: newAddress.chain,
       balance: newAddress.balance,
     );
+  }
+
+  @override
+  Stream<NewAddressState> getNewAddressStream(
+    AssetId assetId,
+    ApiClient client,
+  ) async* {
+    final initResponse = await client.rpc.hdWallet.getNewAddressTaskInit(
+      coin: assetId.id,
+      accountId: 0,
+      chain: 'External',
+      gapLimit: _gapLimit,
+    );
+
+    bool finished = false;
+    while (!finished) {
+      final status = await client.rpc.hdWallet.getNewAddressTaskStatus(
+        taskId: initResponse.taskId,
+        forgetIfFinished: false,
+      );
+
+      final state = status.toState(initResponse.taskId);
+      yield state;
+
+      if (state.status == NewAddressStatus.completed ||
+          state.status == NewAddressStatus.error ||
+          state.status == NewAddressStatus.cancelled) {
+        finished = true;
+      } else {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+    }
   }
 
   Future<NewAddressInfo> _getNewAddressTask(

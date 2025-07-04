@@ -41,6 +41,7 @@ export 'public_key/address_operations.dart';
 export 'public_key/asset_pubkeys.dart';
 export 'public_key/balance_strategy.dart';
 export 'public_key/derivation_method.dart';
+export 'public_key/new_address_state.dart';
 export 'public_key/pubkey.dart';
 export 'public_key/pubkey_strategy.dart';
 export 'public_key/token_balance_map.dart';
