@@ -25,7 +25,13 @@ class Erc20Protocol extends ProtocolClass {
   bool get requiresHdWallet => false;
 
   @override
-  ActivationParams defaultActivationParams([List<Asset>? childTokens]) {
+  ActivationParams defaultActivationParams({PrivateKeyPolicy? privKeyPolicy}) {
+    // For ERC20, we typically don't need child tokens in the default case
+    // If you need to support child tokens, you can add an overloaded method
+    return Erc20ActivationParams.fromJsonConfig(super.config);
+  }
+
+  ActivationParams activationParamsWithTokens([List<Asset>? childTokens]) {
     return childTokens == null
         ? Erc20ActivationParams.fromJsonConfig(super.config)
         : EthWithTokensActivationParams.fromJson(config).copyWith(

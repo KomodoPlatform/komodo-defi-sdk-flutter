@@ -14,7 +14,6 @@ enum CoinSubClass {
   smartChain,
   moonriver,
   ethereumClassic,
-  tendermintToken,
   ubiq,
   bep20,
   matic,
@@ -22,6 +21,7 @@ enum CoinSubClass {
   smartBch,
   erc20,
   tendermint,
+  tendermintToken,
   krc20,
   ewt,
   hrc20,
@@ -162,6 +162,25 @@ enum CoinSubClass {
     }
   }
 
+  /// Checks if this subclass can be a parent of the given child subclass
+  bool canBeParentOf(CoinSubClass child) {
+    // Tendermint tokens can be a child of Tendermint, but not the
+    // other way around. This allows Tendermint to be a parent
+    // while keeping the existing parent subclass check intact.
+    if (this == CoinSubClass.tendermint &&
+        child == CoinSubClass.tendermintToken) {
+      return true;
+    }
+
+    // For most cases, parent and child should have the same subclass
+    return this == child;
+  }
+
+  /// Checks if this subclass can be a child of the given parent subclass
+  bool canBeChildOf(CoinSubClass parent) {
+    return parent.canBeParentOf(this);
+  }
+
   // TODO: Consider if null or an empty string should be returned for
   // subclasses where they don't have a symbol used in coin IDs.
   String get formatted {
@@ -275,3 +294,21 @@ enum CoinSubClass {
     }
   }
 }
+
+const Set<CoinSubClass> evmCoinSubClasses = {
+  CoinSubClass.avx20,
+  CoinSubClass.bep20,
+  CoinSubClass.ftm20,
+  CoinSubClass.matic,
+  CoinSubClass.hrc20,
+  CoinSubClass.arbitrum,
+  CoinSubClass.moonriver,
+  CoinSubClass.moonbeam,
+  CoinSubClass.ethereumClassic,
+  CoinSubClass.ubiq,
+  CoinSubClass.krc20,
+  CoinSubClass.ewt,
+  CoinSubClass.hecoChain,
+  CoinSubClass.rskSmartBitcoin,
+  CoinSubClass.erc20,
+};

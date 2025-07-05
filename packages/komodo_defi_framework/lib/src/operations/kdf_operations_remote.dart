@@ -113,9 +113,6 @@ class KdfOperationsRemote implements IKdfOperations {
 
   @override
   Future<StopStatus> kdfStop() async {
-    // _log('kdfStop is not supported in remote mode.');
-    // return StopStatus.notRunning;
-
     try {
       final stopResultResponse = await mm2Rpc({
         'method': 'stop',

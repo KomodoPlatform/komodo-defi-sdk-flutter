@@ -9,8 +9,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// will be deprecated in favor of the new task-based withdrawal API.
 // @Deprecated('Use the new task-based withdrawal API')
 class WithdrawRequest
-    extends BaseRequest<WithdrawStatusResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<WithdrawStatusResponse, GeneralErrorResponse> {
   // @Deprecated('Use the new task-based withdrawal API')
   WithdrawRequest({
     required super.rpcPass,
@@ -80,8 +79,7 @@ class WithdrawRequest
 
 /// Request to initialize withdrawal task
 class WithdrawInitRequest
-    extends BaseRequest<WithdrawInitResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<WithdrawInitResponse, GeneralErrorResponse> {
   WithdrawInitRequest({
     required super.rpcPass,
     required WithdrawParameters params,
@@ -130,8 +128,7 @@ typedef WithdrawInitResponse = NewTaskResponse;
 
 /// Request to check withdrawal task status
 class WithdrawStatusRequest
-    extends BaseRequest<WithdrawStatusResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<WithdrawStatusResponse, GeneralErrorResponse> {
   WithdrawStatusRequest({
     required super.rpcPass,
     required this.taskId,
@@ -197,8 +194,7 @@ class WithdrawStatusResponse extends BaseResponse {
 
 /// Request to cancel withdrawal task
 class WithdrawCancelRequest
-    extends BaseRequest<WithdrawCancelResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<WithdrawCancelResponse, GeneralErrorResponse> {
   WithdrawCancelRequest({required super.rpcPass, required this.taskId})
     : super(method: 'task::withdraw::cancel', mmrpc: '2.0');
 

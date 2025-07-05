@@ -54,11 +54,7 @@ class TaskEnableZhtlcInit
   };
 
   @override
-  NewTaskResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  NewTaskResponse parse(Map<String, dynamic> json) {
     return NewTaskResponse.parse(json);
   }
 }
@@ -84,11 +80,7 @@ class TaskEnableZhtlcStatus
   };
 
   @override
-  TaskStatusResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  TaskStatusResponse parse(Map<String, dynamic> json) {
     return TaskStatusResponse.parse(json);
   }
 }

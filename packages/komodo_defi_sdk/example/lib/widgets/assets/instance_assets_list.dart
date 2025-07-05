@@ -47,6 +47,7 @@ class InstanceAssetList extends StatelessWidget {
         const SizedBox(height: 8),
         Expanded(
           child: ListView.builder(
+            key: const Key('asset_list'),
             itemCount: assets.length,
             itemBuilder: (context, index) {
               final asset = assets[index];

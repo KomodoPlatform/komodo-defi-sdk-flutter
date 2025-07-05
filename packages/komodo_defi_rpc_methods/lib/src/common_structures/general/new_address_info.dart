@@ -1,8 +1,9 @@
+import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_rpc_methods/src/common_structures/general/balance_info.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
-class NewAddressInfo {
-  NewAddressInfo({
+class NewAddressInfo extends Equatable {
+  const NewAddressInfo({
     required this.address,
     required this.derivationPath,
     required this.chain,
@@ -34,4 +35,7 @@ class NewAddressInfo {
       'balance': balance.toJson(),
     };
   }
+
+  @override
+  List<Object?> get props => [address, derivationPath, chain, balance];
 }

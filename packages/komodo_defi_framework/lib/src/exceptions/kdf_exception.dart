@@ -11,6 +11,9 @@ enum KdfExceptionType {
   /// Error in KDF configuration
   configurationError,
 
+  /// Error in seed node configuration
+  seedNodeConfigError,
+
   /// KDF executable permission error
   permissionError,
 

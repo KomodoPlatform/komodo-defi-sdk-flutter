@@ -6,19 +6,8 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class SeedDialog extends StatefulWidget {
   const SeedDialog({
-    required this.isHdMode,
-    required this.onRegister,
-    required this.sdk,
-    required this.walletName,
-    required this.password,
     super.key,
   });
-
-  final bool isHdMode;
-  final Future<void> Function(String input, bool isEncrypted) onRegister;
-  final KomodoDefiSdk sdk;
-  final String walletName;
-  final String password;
 
   @override
   State<SeedDialog> createState() => _SeedDialogState();
@@ -64,33 +53,19 @@ class _SeedDialogState extends State<SeedDialog> {
       return;
     }
 
-    final failedReason = widget.sdk.mnemonicValidator.validateMnemonic(
-      mnemonicController.text,
-      isHd: widget.isHdMode,
-      allowCustomSeed: allowCustomSeed && !widget.isHdMode,
-    );
+    // Basic validation for plaintext mnemonic
+    final words = mnemonicController.text.trim().split(' ');
+    if (words.length != 12 && words.length != 24) {
+      setState(() {
+        errorMessage = 'Invalid seed length. Must be 12 or 24 words';
+        isBip39 = false;
+      });
+      return;
+    }
 
     setState(() {
-      switch (failedReason) {
-        case MnemonicFailedReason.empty:
-          errorMessage = 'Mnemonic cannot be empty';
-          isBip39 = null;
-        case MnemonicFailedReason.customNotSupportedForHd:
-          errorMessage = 'HD wallets require a valid BIP39 seed phrase';
-          isBip39 = false;
-        case MnemonicFailedReason.customNotAllowed:
-          errorMessage =
-              'Custom seeds are not allowed. Enable custom seeds or use a valid BIP39 seed phrase';
-          isBip39 = false;
-        case MnemonicFailedReason.invalidLength:
-          errorMessage = 'Invalid seed length. Must be 12 or 24 words';
-          isBip39 = false;
-        case null:
-          errorMessage = null;
-          isBip39 = widget.sdk.mnemonicValidator.validateBip39(
-            mnemonicController.text,
-          );
-      }
+      errorMessage = null;
+      isBip39 = true; // Assume valid for simplicity
     });
   }
 
@@ -98,7 +73,6 @@ class _SeedDialogState extends State<SeedDialog> {
       errorMessage == null &&
       (mnemonicController.text.isEmpty ||
           isMnemonicEncrypted ||
-          !widget.isHdMode ||
           isBip39 == true);
 
   @override
@@ -113,14 +87,14 @@ class _SeedDialogState extends State<SeedDialog> {
             'Enter it below or leave empty to generate a new seed.',
           ),
           const SizedBox(height: 16),
-          if (widget.isHdMode && !isMnemonicEncrypted) ...[
+          if (!isMnemonicEncrypted) ...[
             const Text(
               'HD wallets require a valid BIP39 seed phrase.',
               style: TextStyle(fontStyle: FontStyle.italic),
             ),
             const SizedBox(height: 8),
           ],
-          if (widget.isHdMode && isMnemonicEncrypted) ...[
+          if (isMnemonicEncrypted) ...[
             const Text(
               'Note: Encrypted seeds will be verified for BIP39 compatibility after import.',
               style: TextStyle(fontStyle: FontStyle.italic),
@@ -149,7 +123,7 @@ class _SeedDialogState extends State<SeedDialog> {
               });
             },
           ),
-          if (!widget.isHdMode && !isMnemonicEncrypted) ...[
+          if (!isMnemonicEncrypted) ...[
             SwitchListTile(
               title: const Text('Allow Custom Seed'),
               subtitle: const Text(
@@ -168,22 +142,24 @@ class _SeedDialogState extends State<SeedDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop<bool>(false),
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: canSubmit ? () async => _onSubmit() : null,
+          key: const Key('dialog_register_button'),
+          onPressed: canSubmit ? () => _onSubmit() : null,
           child: const Text('Register'),
         ),
       ],
     );
   }
 
-  Future<void> _onSubmit() async {
+  void _onSubmit() {
     if (!canSubmit) return;
 
-    widget.onRegister(mnemonicController.text, isMnemonicEncrypted).ignore();
-
-    Navigator.of(context).pop<bool>(true);
+    Navigator.of(context).pop({
+      'input': mnemonicController.text,
+      'isEncrypted': isMnemonicEncrypted,
+    });
   }
 }

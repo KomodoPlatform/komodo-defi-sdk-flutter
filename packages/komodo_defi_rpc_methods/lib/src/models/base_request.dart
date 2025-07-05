@@ -69,17 +69,8 @@ abstract class BaseRequest<
     return parseResponse(jsonEncode(response));
   }
 
-  T parseResponse(String responseBody);
-}
-
-mixin RequestHandlingMixin<
-  T extends BaseResponse,
-  E extends GeneralErrorResponse
->
-    on BaseRequest<T, E> {
-
-  // Parse response from JSON
-  @override
+  /// Parse response from JSON. This method should handle both success and error responses.
+  /// Subclasses should override [parse] method for success responses instead.
   T parseResponse(String responseBody) {
     final json = jsonFromString(responseBody);
 
@@ -102,11 +93,10 @@ mixin RequestHandlingMixin<
   }
 
   /// Override this method to provide custom error handling for specific error
-  /// types.
-  /// Return null if the error is not of a type that this request can handle.
+  /// types. Return null if the error is not of a type that this request can handle.
   E? parseCustomErrorResponse(JsonMap json) => null;
 
-  /// Handles general error responses. This is a fallback for when 
+  /// Handles general error responses. This is a fallback for when
   /// [parseCustomErrorResponse] returns null.
   @protected
   GeneralErrorResponse? parseGeneralErrorResponse(JsonMap json) {
@@ -116,5 +106,7 @@ mixin RequestHandlingMixin<
     return null;
   }
 
+  /// Parse successful response from JSON. Override this method in subclasses
+  /// to handle success responses.
   T parse(Map<String, dynamic> json);
 }

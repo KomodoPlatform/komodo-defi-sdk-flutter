@@ -10,8 +10,8 @@ class GetEnabledCoinsRequest
     : super(method: 'get_enabled_coins', mmrpc: '2.0');
 
   @override
-  GetEnabledCoinsResponse parseResponse(String responseBody) {
-    return GetEnabledCoinsResponse.fromJson(jsonFromString(responseBody));
+  GetEnabledCoinsResponse parse(Map<String, dynamic> json) {
+    return GetEnabledCoinsResponse.fromJson(json);
   }
 }
 

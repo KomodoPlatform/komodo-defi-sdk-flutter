@@ -2,8 +2,7 @@ import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class EnableTendermintTokenRequest
-    extends BaseRequest<EnableTendermintTokenResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<EnableTendermintTokenResponse, GeneralErrorResponse> {
   EnableTendermintTokenRequest({
     required super.rpcPass,
     required this.ticker,

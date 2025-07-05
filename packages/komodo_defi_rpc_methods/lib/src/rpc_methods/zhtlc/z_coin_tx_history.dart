@@ -2,8 +2,7 @@ import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 
 /// ZHTLC Transaction History Request
 class ZCoinTxHistoryRequest
-    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse> {
   ZCoinTxHistoryRequest({
     required this.coin,
     this.limit = 10,

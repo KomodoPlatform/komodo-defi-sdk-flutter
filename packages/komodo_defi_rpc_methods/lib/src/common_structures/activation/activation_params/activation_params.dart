@@ -1,6 +1,9 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-import 'package:meta/meta.dart';
+
+part 'activation_params.freezed.dart';
+part 'activation_params.g.dart';
 
 /// Defines additional parameters used for activation. These params may vary depending
 /// on the coin type.
@@ -22,7 +25,7 @@ class ActivationParams implements RpcRequestParams {
   const ActivationParams({
     this.requiredConfirmations,
     this.requiresNotarization = false,
-    this.privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    this.privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
     this.minAddressesNumber,
     this.scanPolicy,
     this.gapLimit,
@@ -38,14 +41,14 @@ class ActivationParams implements RpcRequestParams {
       json,
       type: ActivationModeType.electrum,
     );
+
     return ActivationParams(
       requiredConfirmations: json.valueOrNull<int>('required_confirmations'),
       requiresNotarization:
           json.valueOrNull<bool>('requires_notarization') ?? false,
-      privKeyPolicy:
-          json.valueOrNull<String>('priv_key_policy') == 'Trezor'
-              ? PrivateKeyPolicy.trezor
-              : PrivateKeyPolicy.contextPrivKey,
+      privKeyPolicy: PrivateKeyPolicy.fromLegacyJson(
+        json.valueOrNull<dynamic>('priv_key_policy'),
+      ),
       minAddressesNumber: json.valueOrNull<int>('min_addresses_number'),
       scanPolicy:
           json.valueOrNull<String>('scan_policy') == null
@@ -74,7 +77,7 @@ class ActivationParams implements RpcRequestParams {
 
   /// Whether to use Trezor hardware wallet or context private key.
   /// Defaults to ContextPrivKey.
-  final PrivateKeyPolicy privKeyPolicy;
+  final PrivateKeyPolicy? privKeyPolicy;
 
   /// HD wallets only. How many additional addresses to generate at a minimum.
   final int? minAddressesNumber;
@@ -107,7 +110,13 @@ class ActivationParams implements RpcRequestParams {
       if (requiredConfirmations != null)
         'required_confirmations': requiredConfirmations,
       'requires_notarization': requiresNotarization,
-      'priv_key_policy': privKeyPolicy.id,
+      // IMPORTANT: Serialization format varies by coin type:
+      // - ETH/ERC20: Uses full JSON object format with type discrimination
+      // - Other coins: Uses legacy PascalCase string format for backward compatibility
+      // This difference is maintained for API compatibility reasons.
+      'priv_key_policy':
+          (privKeyPolicy ?? const PrivateKeyPolicy.contextPrivKey())
+              .pascalCaseName,
       if (minAddressesNumber != null)
         'min_addresses_number': minAddressesNumber,
       if (scanPolicy != null) 'scan_policy': scanPolicy!.value,
@@ -136,7 +145,10 @@ class ActivationParams implements RpcRequestParams {
       requiredConfirmations:
           requiredConfirmations ?? this.requiredConfirmations,
       requiresNotarization: requiresNotarization ?? this.requiresNotarization,
-      privKeyPolicy: privKeyPolicy ?? this.privKeyPolicy,
+      privKeyPolicy:
+          privKeyPolicy ??
+          this.privKeyPolicy ??
+          const PrivateKeyPolicy.contextPrivKey(),
       minAddressesNumber: minAddressesNumber ?? this.minAddressesNumber,
       scanPolicy: scanPolicy ?? this.scanPolicy,
       gapLimit: gapLimit ?? this.gapLimit,
@@ -150,20 +162,94 @@ class ActivationParams implements RpcRequestParams {
 }
 
 /// Defines the private key policy for activation
-enum PrivateKeyPolicy {
+/// API uses pascal case for PrivKeyPolicy types, so we use it as the
+/// union key case to ensure compatibility with existing APIs.
+@Freezed(unionKey: 'type', unionValueCase: FreezedUnionCase.pascal)
+abstract class PrivateKeyPolicy with _$PrivateKeyPolicy {
+  /// Private constructor to allow for additional methods and properties
+  const PrivateKeyPolicy._();
+
   /// Use context private key (default)
-  contextPrivKey,
+  const factory PrivateKeyPolicy.contextPrivKey() = _ContextPrivKey;
 
   /// Use Trezor hardware wallet
-  trezor;
+  const factory PrivateKeyPolicy.trezor() = _Trezor;
 
-  /// String identifier for the policy
-  String get id {
-    switch (this) {
-      case PrivateKeyPolicy.contextPrivKey:
+  /// Use MetaMask for activation. WASM (web) only.
+  const factory PrivateKeyPolicy.metamask() = _Metamask;
+
+  /// Use WalletConnect for hardware wallet activation
+  @JsonSerializable(fieldRename: FieldRename.snake)
+  const factory PrivateKeyPolicy.walletConnect(String sessionTopic) =
+      _WalletConnect;
+
+  factory PrivateKeyPolicy.fromJson(Map<String, dynamic> json) =>
+      _$PrivateKeyPolicyFromJson(json);
+
+  /// Converts a string or map to a [PrivateKeyPolicy]
+  /// Throws [ArgumentError] if the input is invalid
+  /// If the input is null, defaults to [PrivateKeyPolicy.contextPrivKey]
+  /// If the input is a string, it must match one of the known policy types.
+  /// If the input is a map, it must contain a 'type' key with a valid policy type.
+  /// If the input is a map with a 'session_topic' key, it will be used for
+  /// [PrivateKeyPolicy.walletConnect].
+  factory PrivateKeyPolicy.fromLegacyJson(dynamic privKeyPolicy) {
+    if (privKeyPolicy == null) {
+      return const PrivateKeyPolicy.contextPrivKey();
+    }
+
+    if (privKeyPolicy is Map && privKeyPolicy['type'] != null) {
+      return PrivateKeyPolicy.fromJson(privKeyPolicy as JsonMap);
+    }
+
+    if (privKeyPolicy is! String) {
+      throw ArgumentError(
+        'Invalid private key policy type: ${privKeyPolicy.runtimeType}',
+      );
+    }
+
+    switch (privKeyPolicy) {
+      case 'ContextPrivKey':
+      case 'context_priv_key':
+        return const PrivateKeyPolicy.contextPrivKey();
+      case 'Trezor':
+      case 'trezor':
+        return const PrivateKeyPolicy.trezor();
+      case 'Metamask':
+      case 'metamask':
+        return const PrivateKeyPolicy.metamask();
+      case 'WalletConnect':
+      case 'wallet_connect':
+        return const PrivateKeyPolicy.walletConnect('');
+      default:
+        throw ArgumentError('Unknown private key policy type: $privKeyPolicy');
+    }
+  }
+
+  /// Returns the PascalCase name of the private key policy type
+  ///
+  /// Examples:
+  /// - `PrivateKeyPolicy.contextPrivKey()` → `"ContextPrivKey"`
+  /// - `PrivateKeyPolicy.trezor()` → `"Trezor"`
+  /// - `PrivateKeyPolicy.metamask()` → `"Metamask"`
+  /// - `PrivateKeyPolicy.walletConnect(...)` → `"WalletConnect"`
+  String get pascalCaseName {
+    switch (runtimeType) {
+      case _ContextPrivKey:
         return 'ContextPrivKey';
-      case PrivateKeyPolicy.trezor:
+      case _Trezor:
         return 'Trezor';
+      case _Metamask:
+        return 'Metamask';
+      case _WalletConnect:
+        return 'WalletConnect';
+      default:
+        // Fallback: convert snake_case from JSON to PascalCase
+        final snakeCaseType = toJson()['type'] as String;
+        return snakeCaseType
+            .split('_')
+            .map((word) => word[0].toUpperCase() + word.substring(1))
+            .join();
     }
   }
 }

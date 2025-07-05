@@ -21,8 +21,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// }
 /// ```
 class GetNewAddressRequest
-    extends BaseRequest<GetNewAddressResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<GetNewAddressResponse, GeneralErrorResponse> {
   GetNewAddressRequest({
     required super.rpcPass,
     required this.coin,

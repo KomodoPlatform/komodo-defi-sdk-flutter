@@ -25,11 +25,7 @@ class TaskEnableQtumInit
   };
 
   @override
-  NewTaskResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  NewTaskResponse parse(Map<String, dynamic> json) {
     return NewTaskResponse.parse(json);
   }
 }
@@ -55,11 +51,7 @@ class TaskEnableQtumStatus
   };
 
   @override
-  TaskStatusResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  TaskStatusResponse parse(Map<String, dynamic> json) {
     return TaskStatusResponse.parse(json);
   }
 }
@@ -90,11 +82,7 @@ class TaskEnableQtumUserAction
   };
 
   @override
-  UserActionResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  UserActionResponse parse(Map<String, dynamic> json) {
     return UserActionResponse.parse(json);
   }
 }

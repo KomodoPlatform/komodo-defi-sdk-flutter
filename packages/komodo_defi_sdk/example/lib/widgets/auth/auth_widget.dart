@@ -116,14 +116,7 @@ class _AuthWidgetState extends State<AuthWidget> {
   Future<void> _showSeedDialog() async {
     final result = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => SeedDialog(
-            isHdMode: _isHdMode,
-            onRegister: _handleRegistration,
-            sdk: widget.sdk,
-            walletName: _walletNameController.text,
-            password: _passwordController.text,
-          ),
+      builder: (context) => const SeedDialog(),
     );
 
     if (result != true) return;

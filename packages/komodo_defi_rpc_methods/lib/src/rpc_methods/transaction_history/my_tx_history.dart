@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// V2 Transaction History Request
 class MyTxHistoryRequest
-    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse> {
   MyTxHistoryRequest({
     required this.coin,
     this.limit = 10,
@@ -44,8 +43,7 @@ class MyTxHistoryRequest
 
 /// Legacy Transaction History Request
 class MyTxHistoryLegacyRequest
-    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse> {
   MyTxHistoryLegacyRequest({
     required this.coin,
     this.limit = 10,

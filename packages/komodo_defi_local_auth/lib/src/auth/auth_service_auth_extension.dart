@@ -56,19 +56,16 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
 
     final walletId = WalletId.fromName(config.walletName!, authOptions);
     // ignore: omit_local_variable_types
-    KdfUser currentUser = KdfUser(
-      walletId: walletId,
-      isBip39Seed: false,
-    );
+    KdfUser currentUser = KdfUser(walletId: walletId, isBip39Seed: false);
     await _secureStorage.saveUser(currentUser);
 
-    try {
-      currentUser = await _verifyBip39Compatibility(
-        walletPassword: config.walletPassword,
-        currentUser,
-      );
-    } on AuthException {
-      if (currentUser.isHd && !currentUser.isBip39Seed) {
+    if (currentUser.isHd) {
+      try {
+        currentUser = await _verifyBip39Compatibility(
+          walletPassword: config.walletPassword,
+          currentUser,
+        );
+      } on AuthException {
         // Verify BIP39 compatibility for HD wallets after registration
         // if verification fails, the user can still log into the wallet in legacy
         // mode.

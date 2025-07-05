@@ -9,8 +9,8 @@ class LegacyGetEnabledCoinsRequest
     : super(method: 'get_enabled_coins', mmrpc: null);
 
   @override
-  LegacyGetEnabledCoinsResponse parseResponse(String responseBody) {
-    return LegacyGetEnabledCoinsResponse.fromJson(jsonFromString(responseBody));
+  LegacyGetEnabledCoinsResponse parse(Map<String, dynamic> json) {
+    return LegacyGetEnabledCoinsResponse.fromJson(json);
   }
 }
 

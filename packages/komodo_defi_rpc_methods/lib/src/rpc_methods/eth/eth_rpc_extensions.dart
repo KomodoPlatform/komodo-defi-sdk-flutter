@@ -49,4 +49,24 @@ class Erc20MethodsNamespace extends BaseRpcMethodNamespace {
       ),
     );
   }
+
+  // ETH Task Methods
+  Future<NewTaskResponse> enableEthInit({
+    required String ticker,
+    required EthWithTokensActivationParams params,
+  }) {
+    return execute(
+      TaskEnableEthInit(rpcPass: rpcPass ?? '', ticker: ticker, params: params),
+    );
+  }
+
+  Future<TaskStatusResponse> taskEthStatus(int taskId, [String? rpcPass]) {
+    return execute(
+      TaskStatusRequest(
+        taskId: taskId,
+        rpcPass: rpcPass,
+        method: 'task::enable_eth::status',
+      ),
+    );
+  }
 }

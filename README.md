@@ -16,6 +16,8 @@ Note: Most of this README focuses on the lower-level `komodo-defi-framework` pac
 
 This project supports building for macOS (more native platforms coming soon) and the web. KDF can either be run as a local Rust binary or you can connect to a remote instance. 1-Click setup for DigitalOcean and AWS deployment is in progress.
 
+From v2.5.0-beta, seed nodes configuration is required for KDF to function properly. The `seednodes` parameter must be specified unless `disable_p2p` is set to true. See the [configuration documentation](https://docs.komodefi.com/komodo-defi-framework/setup/configure-mm2-json/) for more details.
+
 Use the [komodo_defi_framework](packages/komodo_defi_sdk) package for an unopinionated implementation that gives access to the underlying KDF methods.
 
 The structure for this repository is inspired by the [Flutter BLoC](https://github.com/felangel/bloc) project.
@@ -31,6 +33,7 @@ TODO: Contribution guidelines and architecture overview
 Below is an extract from the [example project](https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/blob/dev/example/lib/main.dart) showing the straightforward integration. Note that this is for the [komodo_defi_framework](packages/komodo_defi_framework), and the [komodo_defi_sdk](/packages/komodo_defi_sdk/README.md) will provide a higher-layer abstraction.
 
 Create the configuration for the desired runtime:
+
 ```dart
     switch (_selectedHostType) {
       case 'remote':
@@ -90,6 +93,7 @@ void _startKdf(String passphrase) async {
 ```
 
 Execute RPC requests:
+
 ```dart
 executeRequest: (rpcInput) async {
       if (_kdfFramework == null || !_isRunning) {
@@ -101,6 +105,7 @@ executeRequest: (rpcInput) async {
 ```
 
 Stop KDF:
+
 ```dart
 
   void _stopKdf() async {

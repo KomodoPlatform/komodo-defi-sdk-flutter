@@ -22,7 +22,8 @@ class AssetId extends Equatable {
         ? null
         : knownIds?.singleWhere(
             (parent) =>
-                parent.id == parentCoinTicker && parent.subClass == subClass,
+                parent.id == parentCoinTicker &&
+                parent.subClass.canBeParentOf(subClass),
           );
 
     return AssetId(
@@ -127,7 +128,7 @@ class AssetId extends Equatable {
       };
 
   @override
-  List<Object?> get props => [id, subClass.formatted];
+  List<Object?> get props => [id, subClass.formatted, chainId.formattedChainId];
 
   @override
   String toString() =>

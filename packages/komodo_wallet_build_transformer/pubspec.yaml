@@ -13,7 +13,7 @@ dependencies:
   crypto: ^3.0.3 # dart.dev
   html: ^0.15.4
   http: ^1.4.0 # dart.dev
-  logging: ^1.2.0 # dart.dev
+  logging: ^1.3.0 # dart.dev
   path: ^1.9.1
 
 dev_dependencies:

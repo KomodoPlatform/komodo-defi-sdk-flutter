@@ -2,8 +2,7 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class GetPublicKeyHashRequest
-    extends BaseRequest<GetPublicKeyHashResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<GetPublicKeyHashResponse, GeneralErrorResponse> {
   GetPublicKeyHashRequest({required super.rpcPass})
     : super(method: 'get_public_key_hash', mmrpc: '2.0');
 

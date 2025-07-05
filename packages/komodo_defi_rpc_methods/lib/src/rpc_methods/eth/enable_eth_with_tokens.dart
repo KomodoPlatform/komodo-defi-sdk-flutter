@@ -4,8 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Request to enable ETH with multiple ERC20 tokens
 class EnableEthWithTokensRequest
-    extends BaseRequest<EnableEthWithTokensResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<EnableEthWithTokensResponse, GeneralErrorResponse> {
   EnableEthWithTokensRequest({
     required String rpcPass,
     required this.ticker,

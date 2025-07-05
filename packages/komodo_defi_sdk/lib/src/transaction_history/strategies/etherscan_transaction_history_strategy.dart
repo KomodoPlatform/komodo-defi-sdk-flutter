@@ -257,7 +257,7 @@ class EtherscanProtocolHelper {
       CoinSubClass.hecoChain when isParentChain => _hecoUrl,
       CoinSubClass.hecoChain => _hecoTokenUrl,
       CoinSubClass.bep20 when isParentChain => _bnbUrl,
-      CoinSubClass.bep20 => _bepUrl,
+      CoinSubClass.bep20 => _bnbTokenUrl,
       CoinSubClass.matic when isParentChain => _maticUrl,
       CoinSubClass.matic => _maticTokenUrl,
       CoinSubClass.ftm20 when isParentChain => _ftmUrl,
@@ -266,14 +266,15 @@ class EtherscanProtocolHelper {
       CoinSubClass.avx20 => _avaxTokenUrl,
       CoinSubClass.moonriver when isParentChain => _mvrUrl,
       CoinSubClass.moonriver => _mvrTokenUrl,
-      CoinSubClass.moonbeam => _arbUrl,
-      CoinSubClass.ethereumClassic => _etcUrl,
       CoinSubClass.krc20 when isParentChain => _kcsUrl,
       CoinSubClass.krc20 => _kcsTokenUrl,
       CoinSubClass.erc20 when isParentChain => _ethUrl,
-      CoinSubClass.erc20 => _ercUrl,
+      CoinSubClass.erc20 => _ethTokenUrl,
       CoinSubClass.arbitrum when isParentChain => _arbUrl,
       CoinSubClass.arbitrum => _arbTokenUrl,
+      CoinSubClass.rskSmartBitcoin => _rskUrl,
+      CoinSubClass.moonbeam => _glmrUrl,
+      CoinSubClass.ethereumClassic => _etcUrl,
       _ => null,
     };
   }
@@ -283,24 +284,28 @@ class EtherscanProtocolHelper {
     return asset.protocol.subClass.formatted;
   }
 
-  String get _ethUrl => '$_baseUrl/v2/eth_tx_history';
-  String get _ercUrl => '$_baseUrl/v2/erc_tx_history';
+  String get _arbUrl => '$_baseUrl/v2/arb_tx_history';
+  String get _avaxUrl => '$_baseUrl/v2/avax_tx_history';
   String get _bnbUrl => '$_baseUrl/v2/bnb_tx_history';
-  String get _bepUrl => '$_baseUrl/v2/bep_tx_history';
+  String get _ethUrl => '$_baseUrl/v2/eth_tx_history';
   String get _ftmUrl => '$_baseUrl/v2/ftm_tx_history';
-  String get _ftmTokenUrl => '$_baseUrl/v2/ftm_tx_history';
-  String get _arbUrl => '$_baseUrl/v2/arbitrum_tx_history';
-  String get _arbTokenUrl => '$_baseUrl/v2/arbitrum_tx_history';
+  String get _hecoUrl => '$_baseUrl/v2/ht_tx_history';
+  String get _kcsUrl => '$_baseUrl/v2/krc_tx_history';
+  String get _maticUrl => '$_baseUrl/v2/matic_tx_history';
+  String get _mvrUrl => '$_baseUrl/v2/movr_tx_history';
+
+  String get _arbTokenUrl => '$_baseUrl/v2/arb20_tx_history';
+  String get _avaxTokenUrl => '$_baseUrl/v2/avx20_tx_history';
+  String get _bnbTokenUrl => '$_baseUrl/v2/bep20_tx_history';
+  String get _ethTokenUrl => '$_baseUrl/v2/erc20_tx_history';
+  String get _ftmTokenUrl => '$_baseUrl/v2/ftm20_tx_history';
+  String get _hecoTokenUrl => '$_baseUrl/v2/hco20_tx_history';
+  String get _kcsTokenUrl => '$_baseUrl/v2/krc20_tx_history';
+  String get _maticTokenUrl => '$_baseUrl/v2/plg20_tx_history';
+  String get _mvrTokenUrl => '$_baseUrl/v2/mvr20_tx_history';
+
   String get _etcUrl => '$_baseUrl/v2/etc_tx_history';
-  String get _avaxUrl => '$_baseUrl/v2/avx_tx_history';
-  String get _avaxTokenUrl => '$_baseUrl/v2/avx_tx_history';
-  String get _mvrUrl => '$_baseUrl/v2/moonriver_tx_history';
-  String get _mvrTokenUrl => '$_baseUrl/v2/moonriver_tx_history';
-  String get _hecoUrl => '$_baseUrl/v2/heco_tx_history';
-  String get _hecoTokenUrl => '$_baseUrl/v2/heco_tx_history';
-  String get _maticUrl => '$_baseUrl/v2/plg_tx_history';
-  String get _maticTokenUrl => '$_baseUrl/v2/plg_tx_history';
-  String get _kcsUrl => '$_baseUrl/v2/kcs_tx_history';
-  String get _kcsTokenUrl => '$_baseUrl/v2/kcs_tx_history';
+  String get _glmrUrl => '$_baseUrl/v2/glmr_tx_history';
+  String get _rskUrl => '$_baseUrl/v2/rsk_tx_history';
   String get _txByHashUrl => '$_baseUrl/v2/transactions_by_hash';
 }

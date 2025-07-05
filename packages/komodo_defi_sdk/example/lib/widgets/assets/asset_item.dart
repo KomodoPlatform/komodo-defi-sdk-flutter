@@ -38,7 +38,7 @@ class AssetItemWidget extends StatelessWidget {
         ],
       ),
       tileColor: isCompatible ? null : Colors.grey[200],
-      leading: AssetIcon(asset.id, size: 32),
+      leading: AssetLogo(asset, size: 32),
       trailing: _AssetItemTrailing(asset: asset, isEnabled: isCompatible),
       // ignore: avoid_redundant_argument_values
       enabled: isCompatible,
@@ -55,6 +55,13 @@ class _AssetItemTrailing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isChildAsset = asset.id.isChildAsset;
+
+    // Use the parent coin ticker for child assets so that token logos display
+    // the network they belong to (e.g. ETH for ERC20 tokens).
+    final protocolTicker =
+        isChildAsset ? asset.id.parentId?.id : asset.id.subClass.iconTicker;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -76,7 +83,7 @@ class _AssetItemTrailing extends StatelessWidget {
         CircleAvatar(
           radius: 12,
           foregroundImage: NetworkImage(
-            'https://komodoplatform.github.io/coins/icons/${asset.id.subClass.iconTicker.toLowerCase()}.png',
+            'https://komodoplatform.github.io/coins/icons/${protocolTicker?.toLowerCase()}.png',
           ),
           backgroundColor: Colors.white70,
         ),
