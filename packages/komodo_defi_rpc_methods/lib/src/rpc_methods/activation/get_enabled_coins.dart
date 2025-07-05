@@ -10,6 +10,15 @@ class GetEnabledCoinsRequest
     : super(method: 'get_enabled_coins', mmrpc: '2.0');
 
   @override
+  Map<String, dynamic> toJson() {
+    // Temporary fix: omit the `params` key until API bug is resolved
+    // https://github.com/KomodoPlatform/komodo-defi-framework/issues/2498
+    final json = super..toJson()
+    ..remove('params');
+    return json;
+  }
+
+  @override
   GetEnabledCoinsResponse parse(Map<String, dynamic> json) {
     return GetEnabledCoinsResponse.fromJson(json);
   }
