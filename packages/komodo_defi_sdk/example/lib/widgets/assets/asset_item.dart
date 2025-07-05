@@ -38,7 +38,7 @@ class AssetItemWidget extends StatelessWidget {
         ],
       ),
       tileColor: isCompatible ? null : Colors.grey[200],
-      leading: AssetLogo(asset, size: 32),
+      leading: AssetIcon(asset.id, size: 32, showNetworkIcon: true),
       trailing: _AssetItemTrailing(asset: asset, isEnabled: isCompatible),
       // ignore: avoid_redundant_argument_values
       enabled: isCompatible,
