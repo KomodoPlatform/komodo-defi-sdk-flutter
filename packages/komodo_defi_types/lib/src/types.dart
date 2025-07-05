@@ -19,6 +19,7 @@ export 'auth/kdf_user.dart';
 export 'coin/coin.dart';
 export 'coin_classes/coin_subclasses.dart';
 export 'coin_classes/protocol_class.dart';
+export 'constants.dart';
 export 'cryptography/mnemonic.dart';
 export 'exceptions/http_exceptions.dart';
 export 'exported_rpc_types.dart';
