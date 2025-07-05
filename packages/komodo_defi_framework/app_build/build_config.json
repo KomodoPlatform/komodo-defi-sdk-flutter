@@ -1,7 +1,7 @@
 {
     "api": {
-        "api_commit_hash": "46ab1fbe99048a1aff2aeebc203fdfef85e193e1",
-        "branch": "staging",
+        "api_commit_hash": "fbab8ec85d65f3bb014d894eabd98717f97ec29a",
+        "branch": "main",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
