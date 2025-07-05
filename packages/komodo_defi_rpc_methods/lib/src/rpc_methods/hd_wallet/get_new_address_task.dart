@@ -95,7 +95,8 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
 
     if (status == null) {
       throw FormatException(
-        'Unrecognized task status: "$statusString". Expected one of: Ok, InProgress, Error',
+        'Unrecognized task status: "$statusString". '
+        'Expected one of: Ok, InProgress, Error',
       );
     }
 
@@ -111,17 +112,7 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
     } else if (status == SyncStatusEnum.error) {
       error = GeneralErrorResponse.parse(detailsJson as JsonMap);
     } else if (status == SyncStatusEnum.inProgress) {
-      if (detailsJson is String) {
-        description = detailsJson;
-      } else if (detailsJson is JsonMap) {
-        if (detailsJson.containsKey('ConfirmAddress')) {
-          description = ConfirmAddressDetails.fromJson(
-            detailsJson.value<JsonMap>('ConfirmAddress'),
-          );
-        } else {
-          description = detailsJson;
-        }
-      }
+      description = TaskDescriptionParserFactory.parseDescription(detailsJson);
     }
 
     return GetNewAddressTaskStatusResponse(
@@ -147,7 +138,7 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
   }
 
   /// Convert this RPC response into a [NewAddressState].
-  NewAddressState toState(int taskId) {
+  NewAddressState toNewAddressState(int taskId) {
     switch (status) {
       case SyncStatusEnum.success:
         final addr = details.data!;
@@ -173,7 +164,6 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
           taskId,
         );
       case SyncStatusEnum.notStarted:
-        // This case should not happen, but if it does, we treat it as an error
         return NewAddressState(
           status: NewAddressStatus.error,
           error: 'Task not started',

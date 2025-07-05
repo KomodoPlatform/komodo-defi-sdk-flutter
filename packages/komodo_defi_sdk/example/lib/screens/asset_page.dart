@@ -159,7 +159,7 @@ class _AssetHeaderState extends State<AssetHeader> {
               _balance = balance;
             });
           },
-          onError: (error) {
+          onError: (Object error) {
             setState(() {
               _balanceLoading = false;
               _balanceError = error.toString();
@@ -269,7 +269,7 @@ class _AssetHeaderState extends State<AssetHeader> {
                                   _balance = balance;
                                 });
                               },
-                              onError: (error) {
+                              onError: (Object error) {
                                 setState(() {
                                   _balanceLoading = false;
                                   _balanceError = error.toString();
@@ -697,6 +697,24 @@ class _NewAddressDialogState extends State<_NewAddressDialog> {
     super.dispose();
   }
 
+  Future<void> _cancelAddressGeneration() async {
+    final state = _state;
+    if (state?.taskId != null) {
+      try {
+        final sdk = context.read<KomodoDefiSdk>();
+        await sdk.client.rpc.hdWallet.getNewAddressTaskCancel(
+          taskId: state!.taskId!,
+        );
+      } catch (e) {
+        // If cancellation fails, still dismiss the dialog
+        // The error is likely due to the task already being completed or cancelled
+      }
+    }
+
+    // Always dismiss the dialog
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = _state;
@@ -750,7 +768,7 @@ class _NewAddressDialogState extends State<_NewAddressDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _cancelAddressGeneration,
           child: const Text('Cancel'),
         ),
       ],

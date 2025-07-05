@@ -166,7 +166,7 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
           forgetIfFinished: false,
         );
 
-        final state = status.toState(initResponse.taskId);
+        final state = status.toNewAddressState(initResponse.taskId);
         yield state;
 
         if (state.status == NewAddressStatus.completed ||

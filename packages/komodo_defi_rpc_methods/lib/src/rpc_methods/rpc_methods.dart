@@ -24,6 +24,7 @@ export 'hd_wallet/get_new_address_task.dart';
 export 'hd_wallet/hd_wallet_methods.dart';
 export 'hd_wallet/scan_for_new_addresses_init.dart';
 export 'hd_wallet/scan_for_new_addresses_status.dart';
+export 'hd_wallet/task_description_parser.dart';
 export 'methods.dart';
 export 'nft/enable_nft.dart';
 export 'nft/nft_rpc_namespace.dart';
