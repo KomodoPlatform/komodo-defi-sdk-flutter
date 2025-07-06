@@ -8,7 +8,7 @@ part 'trezor_device_info.g.dart';
 
 /// Information about a connected Trezor device.
 @freezed
-class TrezorDeviceInfo with _$TrezorDeviceInfo {
+abstract class TrezorDeviceInfo with _$TrezorDeviceInfo {
   /// Create a new [TrezorDeviceInfo].
   const factory TrezorDeviceInfo({
     String? type,

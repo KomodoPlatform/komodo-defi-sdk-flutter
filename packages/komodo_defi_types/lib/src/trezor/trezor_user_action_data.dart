@@ -17,7 +17,7 @@ enum TrezorUserActionType {
 
 /// Data sent to the API when providing a PIN or passphrase to a Trezor device.
 @freezed
-class TrezorUserActionData with _$TrezorUserActionData {
+abstract class TrezorUserActionData with _$TrezorUserActionData {
   @Assert(
     '((actionType == TrezorUserActionType.trezorPin && pin != null) || '
         '(actionType == TrezorUserActionType.trezorPassphrase && passphrase != null))',
