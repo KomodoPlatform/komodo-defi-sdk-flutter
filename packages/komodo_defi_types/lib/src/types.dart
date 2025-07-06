@@ -56,6 +56,8 @@ export 'transactions/transaction.dart';
 export 'transactions/transaction_history_strategy.dart';
 export 'transactions/transaction_pagination_strategy.dart';
 export 'transactions/transaction_results_page.dart';
+export 'trezor/trezor_device_info.dart';
+export 'trezor/trezor_user_action_data.dart';
 export 'withdrawal/withdrawal_enums.dart';
 export 'withdrawal/withdrawal_exceptions.dart';
 export 'withdrawal/withdrawal_types.dart';

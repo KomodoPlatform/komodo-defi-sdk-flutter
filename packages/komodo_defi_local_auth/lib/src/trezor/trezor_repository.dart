@@ -4,6 +4,10 @@ import 'package:komodo_defi_local_auth/src/auth/auth_state.dart';
 import 'package:komodo_defi_local_auth/src/trezor/trezor_exception.dart';
 import 'package:komodo_defi_local_auth/src/trezor/trezor_initialization_state.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart'
+    show poll, ConstantBackoff;
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
+    show TrezorConnectionStatusResponse;
 
 /// Manages Trezor hardware wallet initialization and operations
 class TrezorRepository {
@@ -184,6 +188,50 @@ class TrezorRepository {
       return response.result == 'success';
     } catch (e) {
       throw TrezorException('Failed to cancel initialization', e.toString());
+    }
+  }
+
+  /// Polls the Trezor connection status until the device is connected or the
+  /// [timeout] is reached.
+  Future<TrezorConnectionStatusResponse> waitForConnection({
+    String? devicePubkey,
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    return poll<TrezorConnectionStatusResponse>(
+      () => _client.rpc.trezor.connectionStatus(devicePubkey: devicePubkey),
+      isComplete: (resp) => resp.status == 'Connected',
+      maxDuration: timeout,
+      backoffStrategy: const ConstantBackoff(delay: Duration(seconds: 1)),
+      shouldContinueOnError: (_) => true,
+    );
+  }
+
+  /// Returns the current connection status of the Trezor device.
+  Future<TrezorConnectionStatusResponse> connectionStatus({
+    String? devicePubkey,
+  }) {
+    return _client.rpc.trezor.connectionStatus(devicePubkey: devicePubkey);
+  }
+
+  /// Continuously polls the Trezor connection status and emits updates.
+  ///
+  /// The stream immediately yields the current status, then continues to poll
+  /// using [pollInterval]. If the status changes, a new value is emitted. The
+  /// stream closes once a `Disconnected` status is observed.
+  Stream<TrezorConnectionStatusResponse> watchConnectionStatus({
+    String? devicePubkey,
+    Duration pollInterval = const Duration(seconds: 1),
+  }) async* {
+    var last = await connectionStatus(devicePubkey: devicePubkey);
+    yield last;
+
+    while (last.status != 'Disconnected') {
+      await Future<void>.delayed(pollInterval);
+      final current = await connectionStatus(devicePubkey: devicePubkey);
+      if (current.status != last.status) {
+        last = current;
+        yield current;
+      }
     }
   }
 
