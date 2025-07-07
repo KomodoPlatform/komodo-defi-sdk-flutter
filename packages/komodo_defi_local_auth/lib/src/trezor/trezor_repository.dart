@@ -1,13 +1,12 @@
 import 'dart:async' show StreamController, Timer, unawaited;
 
 import 'package:komodo_defi_local_auth/src/auth/auth_state.dart';
+import 'package:komodo_defi_local_auth/src/trezor/trezor_connection_status.dart';
 import 'package:komodo_defi_local_auth/src/trezor/trezor_exception.dart';
 import 'package:komodo_defi_local_auth/src/trezor/trezor_initialization_state.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart'
-    show poll, ConstantBackoff;
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
     show TrezorConnectionStatusResponse;
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manages Trezor hardware wallet initialization and operations
 class TrezorRepository {
@@ -191,21 +190,6 @@ class TrezorRepository {
     }
   }
 
-  /// Polls the Trezor connection status until the device is connected or the
-  /// [timeout] is reached.
-  Future<TrezorConnectionStatusResponse> waitForConnection({
-    String? devicePubkey,
-    Duration timeout = const Duration(seconds: 30),
-  }) async {
-    return poll<TrezorConnectionStatusResponse>(
-      () => _client.rpc.trezor.connectionStatus(devicePubkey: devicePubkey),
-      isComplete: (resp) => resp.status == 'Connected',
-      maxDuration: timeout,
-      backoffStrategy: const ConstantBackoff(delay: Duration(seconds: 1)),
-      shouldContinueOnError: (_) => true,
-    );
-  }
-
   /// Returns the current connection status of the Trezor device.
   Future<TrezorConnectionStatusResponse> connectionStatus({
     String? devicePubkey,
@@ -213,22 +197,30 @@ class TrezorRepository {
     return _client.rpc.trezor.connectionStatus(devicePubkey: devicePubkey);
   }
 
-  /// Continuously polls the Trezor connection status and emits updates.
+  /// Returns the current connection status as a parsed enum.
+  Future<TrezorConnectionStatus> getConnectionStatus({
+    String? devicePubkey,
+  }) async {
+    final response = await connectionStatus(devicePubkey: devicePubkey);
+    return TrezorConnectionStatus.fromString(response.status);
+  }
+
+  /// Continuously polls the Trezor connection status and emits parsed enum updates.
   ///
   /// The stream immediately yields the current status, then continues to poll
   /// using [pollInterval]. If the status changes, a new value is emitted. The
   /// stream closes once a `Disconnected` status is observed.
-  Stream<TrezorConnectionStatusResponse> watchConnectionStatus({
+  Stream<TrezorConnectionStatus> watchConnectionStatus({
     String? devicePubkey,
     Duration pollInterval = const Duration(seconds: 1),
   }) async* {
-    var last = await connectionStatus(devicePubkey: devicePubkey);
+    var last = await getConnectionStatus(devicePubkey: devicePubkey);
     yield last;
 
-    while (last.status != 'Disconnected') {
+    while (last.shouldContinueMonitoring) {
       await Future<void>.delayed(pollInterval);
-      final current = await connectionStatus(devicePubkey: devicePubkey);
-      if (current.status != last.status) {
+      final current = await getConnectionStatus(devicePubkey: devicePubkey);
+      if (current != last) {
         last = current;
         yield current;
       }
