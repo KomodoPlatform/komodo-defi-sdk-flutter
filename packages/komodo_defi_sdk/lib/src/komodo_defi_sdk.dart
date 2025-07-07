@@ -315,6 +315,16 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
         : KomodoDefiLocalAuth.storedAuthOptions(user.walletId.name);
   }
 
+  Future<void> _disposeIfRegistered<T>(Future<void> Function(T) fn) async {
+    if (_container.isRegistered<T>()) {
+      try {
+        await fn(_container<T>());
+      } catch (e) {
+        log('Error disposing $T: $e');
+      }
+    }
+  }
+
   /// Disposes of this SDK instance and cleans up all resources.
   ///
   /// This should be called when the SDK is no longer needed to ensure proper
@@ -333,6 +343,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _isDisposed = true;
     if (!_isInitialized) return;
     _isInitialized = false;
+    _initializationFuture = null;
 
     if (stopKdf) {
       try {
@@ -342,6 +353,17 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
         log('Error stopping KDF: $e');
       }
     }
+
+    await Future.wait([
+      _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
+      _disposeIfRegistered<AssetManager>((m) => m.dispose()),
+      _disposeIfRegistered<ActivationManager>((m) => m.dispose()),
+      _disposeIfRegistered<BalanceManager>((m) => m.dispose()),
+      _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
+      _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
+      _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
+      _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
+    ]);
 
     // Reset scoped container
     await _container.reset();
