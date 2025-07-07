@@ -35,6 +35,20 @@ class TrezorAuthService implements IAuthService {
   Future<void> cancelTrezorInitialization(int taskId) =>
       _trezor.cancelInitialization(taskId);
 
+  /// Watches the Trezor connection status.
+  ///
+  /// The returned stream immediately emits the current connection status and
+  /// continues polling using [pollInterval]. A new value is emitted whenever the
+  /// status changes. Once a `Disconnected` status is observed the stream
+  /// completes.
+  Stream<TrezorConnectionStatusResponse> waitForTrezorConnection({
+    String? devicePubkey,
+    Duration pollInterval = const Duration(seconds: 1),
+  }) => _trezor.watchConnectionStatus(
+    devicePubkey: devicePubkey,
+    pollInterval: pollInterval,
+  );
+
   /// Handles Trezor sign-in with stream-based progress updates
   Stream<AuthenticationState> signInStreamed({
     required AuthOptions options,
