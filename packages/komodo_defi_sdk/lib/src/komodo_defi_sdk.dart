@@ -315,7 +315,9 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
         : KomodoDefiLocalAuth.storedAuthOptions(user.walletId.name);
   }
 
-  Future<void> _disposeIfRegistered<T>(Future<void> Function(T) fn) async {
+  Future<void> _disposeIfRegistered<T extends Object>(
+    Future<void> Function(T) fn,
+  ) async {
     if (_container.isRegistered<T>()) {
       try {
         await fn(_container<T>());
@@ -330,15 +332,24 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// This should be called when the SDK is no longer needed to ensure proper
   /// cleanup of resources and background operations.
   ///
-  /// NB! By default, this will terminate the KDF process. If you want to
-  /// keep the KDF process running (e.g. for background operations), set
-  /// [stopKdf] to false.
+  /// NB! By default, this will terminate the KDF process and dispose of the
+  /// underlying framework. To keep the KDF process running, set [stopKdf] to
+  /// false. To reuse the provided [KomodoDefiFramework] instance, set
+  /// [disposeFramework] to false. If [stopKdf] is true, [disposeFramework]
+  /// must also be true.
   ///
   /// Example:
   /// ```dart
   /// await sdk.dispose();
   /// ```
-  Future<void> dispose({bool stopKdf = true}) async {
+  Future<void> dispose({
+    bool stopKdf = true,
+    bool disposeFramework = true,
+  }) async {
+    assert(
+      !(stopKdf && !disposeFramework),
+      'disposeFramework must be true when stopKdf is true.',
+    );
     if (_isDisposed) return;
     _isDisposed = true;
     if (!_isInitialized) return;
@@ -354,23 +365,30 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       }
     }
 
-    await Future.wait([
-      _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
-      _disposeIfRegistered<AssetManager>((m) => m.dispose()),
-      _disposeIfRegistered<ActivationManager>((m) => m.dispose()),
-      _disposeIfRegistered<BalanceManager>((m) => m.dispose()),
-      _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
-      _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
-      _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
-      _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
-    ]);
+    await _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose());
+    await _disposeIfRegistered<AssetManager>((m) => m.dispose());
+    await _disposeIfRegistered<ActivationManager>((m) => m.dispose());
+    await _disposeIfRegistered<BalanceManager>((m) => m.dispose());
+    await _disposeIfRegistered<PubkeyManager>((m) => m.dispose());
+    await _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose());
+    await _disposeIfRegistered<MarketDataManager>((m) => m.dispose());
+    await _disposeIfRegistered<WithdrawalManager>((m) => m.dispose());
+    await _disposeIfRegistered<MessageSigningManager>((m) => m.dispose());
 
     // Reset scoped container
-    await _container.reset();
+    try {
+      await _container.reset();
+    } catch (e) {
+      log('Error resetting container: $e');
+    }
 
     // Clean up framework if we created it
-    if (_kdfFramework != null) {
-      await _kdfFramework!.dispose();
+    if (disposeFramework && _kdfFramework != null) {
+      try {
+        await _kdfFramework!.dispose();
+      } catch (e) {
+        log('Error disposing KomodoDefiFramework: $e');
+      }
       _kdfFramework = null;
     }
   }

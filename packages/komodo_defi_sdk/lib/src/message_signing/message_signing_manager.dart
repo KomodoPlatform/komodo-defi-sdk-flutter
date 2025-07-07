@@ -78,6 +78,11 @@ class MessageSigningManager {
     );
     return response.isValid;
   }
+
+  /// Dispose of any resources held by this manager.
+  Future<void> dispose() async {
+    // No resources to clean up yet
+  }
 }
 
 /// Exception thrown when an unknown address is used for signing.
