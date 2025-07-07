@@ -88,7 +88,7 @@ abstract interface class IAuthService {
   Future<void> restoreSession(KdfUser user);
 
   Stream<KdfUser?> get authStateChanges;
-  void dispose();
+  Future<void> dispose();
 }
 
 class KdfAuthService implements IAuthService {
@@ -333,6 +333,7 @@ class KdfAuthService implements IAuthService {
     required String walletName,
     required String password,
   }) async {
+    await _ensureKdfRunning();
     return _runReadOperation(() async {
       try {
         await _client.rpc.wallet.deleteWallet(
@@ -386,15 +387,15 @@ class KdfAuthService implements IAuthService {
   Stream<KdfUser?> get authStateChanges => _authStateController.stream;
 
   @override
-  void dispose() {
+  Future<void> dispose() async {
     // Wait for running operations to complete before disposing. Write lock can
     // only be acquired once the active read/write operations complete.
-    _lockWriteOperation(() async {
+    await _lockWriteOperation(() async {
       _healthCheckTimer?.cancel();
-      _stopKdf().ignore();
-      await _authStateController.close();
+      await _stopKdf();
+      _authStateController.close();
       _lastEmittedUser = null;
-    }).ignore();
+    });
   }
 
   late final Future<KdfStartupConfig> _noAuthConfig =

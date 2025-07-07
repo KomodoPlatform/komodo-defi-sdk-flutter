@@ -100,7 +100,7 @@ class TrezorAuthService implements IAuthService {
   Stream<KdfUser?> get authStateChanges => _authService.authStateChanges;
 
   @override
-  void dispose() => _authService.dispose();
+  Future<void> dispose() => _authService.dispose();
 
   @override
   Future<void> signOut() => _authService.signOut();

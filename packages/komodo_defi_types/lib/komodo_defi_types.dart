@@ -5,6 +5,8 @@
 /// More dartdocs go here.
 library;
 
+export 'src/constants.dart';
+
 export 'src/api/api_client.dart';
 export 'src/assets/asset.dart';
 export 'src/assets/asset_id.dart';

@@ -31,7 +31,10 @@ class NoAssetFilterStrategy extends AssetFilterStrategy {
 /// ERC20, Arbitrum, and MATIC explicitly do not support Trezor via KDF
 /// at this time, so they are also excluded.
 class TrezorAssetFilterStrategy extends AssetFilterStrategy {
-  const TrezorAssetFilterStrategy() : super('trezor');
+  const TrezorAssetFilterStrategy({this.hiddenAssets = const {}})
+      : super('trezor');
+
+  final Set<String> hiddenAssets;
 
   @override
   bool shouldInclude(Asset asset, JsonMap coinConfig) {
@@ -39,9 +42,14 @@ class TrezorAssetFilterStrategy extends AssetFilterStrategy {
 
     // AVAX, BNB, ETH, FTM, etc. currently fail to activate on Trezor,
     // so we exclude them from the Trezor asset list.
-    return subClass == CoinSubClass.utxo ||
+    final isProtocolSupported = subClass == CoinSubClass.utxo ||
         subClass == CoinSubClass.smartChain ||
         subClass == CoinSubClass.qrc20;
+
+    final hasTrezorCoinField = coinConfig.containsKey('trezor_coin');
+    final isExcludedAsset = hiddenAssets.contains(asset.id.id);
+
+    return isProtocolSupported && hasTrezorCoinField && !isExcludedAsset;
   }
 }
 

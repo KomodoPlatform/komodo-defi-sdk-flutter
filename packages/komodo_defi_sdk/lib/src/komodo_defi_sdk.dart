@@ -315,7 +315,9 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
         : KomodoDefiLocalAuth.storedAuthOptions(user.walletId.name);
   }
 
-  Future<void> _disposeIfRegistered<T>(Future<void> Function(T) fn) async {
+  Future<void> _disposeIfRegistered<T extends Object>(
+    Future<void> Function(T) fn,
+  ) async {
     if (_container.isRegistered<T>()) {
       try {
         await fn(_container<T>());
@@ -330,29 +332,23 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// This should be called when the SDK is no longer needed to ensure proper
   /// cleanup of resources and background operations.
   ///
-  /// NB! By default, this will terminate the KDF process. If you want to
-  /// keep the KDF process running (e.g. for background operations), set
-  /// [stopKdf] to false.
+  /// NB! By default, this will terminate the KDF process.
+  /// 
+  /// TODO: Consider future refactoring to separate KDF process disposal vs
+  /// Dart object disposal.
   ///
   /// Example:
   /// ```dart
   /// await sdk.dispose();
   /// ```
-  Future<void> dispose({bool stopKdf = true}) async {
+  Future<void> dispose() async {
     if (_isDisposed) return;
     _isDisposed = true;
+
     if (!_isInitialized) return;
+    
     _isInitialized = false;
     _initializationFuture = null;
-
-    if (stopKdf) {
-      try {
-        await _kdfFramework?.kdfStop();
-      } catch (e) {
-        // Log the error but do not throw, as this is a cleanup operation
-        log('Error stopping KDF: $e');
-      }
-    }
 
     await Future.wait([
       _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
