@@ -10,7 +10,7 @@ _TrezorUserActionData _$TrezorUserActionDataFromJson(
         Map<String, dynamic> json) =>
     _TrezorUserActionData(
       actionType:
-          $enumDecode(_$TrezorUserActionTypeEnumMap, json['actionType']),
+          $enumDecode(_$TrezorUserActionTypeEnumMap, json['action_type']),
       pin: json['pin'] as String?,
       passphrase: json['passphrase'] as String?,
     );
@@ -18,12 +18,12 @@ _TrezorUserActionData _$TrezorUserActionDataFromJson(
 Map<String, dynamic> _$TrezorUserActionDataToJson(
         _TrezorUserActionData instance) =>
     <String, dynamic>{
-      'actionType': _$TrezorUserActionTypeEnumMap[instance.actionType]!,
+      'action_type': _$TrezorUserActionTypeEnumMap[instance.actionType]!,
       'pin': instance.pin,
       'passphrase': instance.passphrase,
     };
 
 const _$TrezorUserActionTypeEnumMap = {
-  TrezorUserActionType.trezorPin: 'trezorPin',
-  TrezorUserActionType.trezorPassphrase: 'trezorPassphrase',
+  TrezorUserActionType.trezorPin: 'TrezorPin',
+  TrezorUserActionType.trezorPassphrase: 'TrezorPassphrase',
 };

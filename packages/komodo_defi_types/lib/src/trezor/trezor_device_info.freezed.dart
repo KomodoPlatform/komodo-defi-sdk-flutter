@@ -15,14 +15,11 @@ T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$TrezorDeviceInfo {
+  String get deviceId;
+  String get devicePubkey;
   String? get type;
   String? get model;
-  @JsonKey(name: 'device_name')
   String? get deviceName;
-  @JsonKey(name: 'device_id')
-  String get deviceId;
-  @JsonKey(name: 'device_pubkey')
-  String get devicePubkey;
 
   /// Create a copy of TrezorDeviceInfo
   /// with the given fields replaced by the non-null parameter values.
@@ -40,24 +37,24 @@ mixin _$TrezorDeviceInfo {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is TrezorDeviceInfo &&
-            (identical(other.type, type) || other.type == type) &&
-            (identical(other.model, model) || other.model == model) &&
-            (identical(other.deviceName, deviceName) ||
-                other.deviceName == deviceName) &&
             (identical(other.deviceId, deviceId) ||
                 other.deviceId == deviceId) &&
             (identical(other.devicePubkey, devicePubkey) ||
-                other.devicePubkey == devicePubkey));
+                other.devicePubkey == devicePubkey) &&
+            (identical(other.type, type) || other.type == type) &&
+            (identical(other.model, model) || other.model == model) &&
+            (identical(other.deviceName, deviceName) ||
+                other.deviceName == deviceName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, type, model, deviceName, deviceId, devicePubkey);
+      Object.hash(runtimeType, deviceId, devicePubkey, type, model, deviceName);
 
   @override
   String toString() {
-    return 'TrezorDeviceInfo(type: $type, model: $model, deviceName: $deviceName, deviceId: $deviceId, devicePubkey: $devicePubkey)';
+    return 'TrezorDeviceInfo(deviceId: $deviceId, devicePubkey: $devicePubkey, type: $type, model: $model, deviceName: $deviceName)';
   }
 }
 
@@ -68,11 +65,11 @@ abstract mixin class $TrezorDeviceInfoCopyWith<$Res> {
       _$TrezorDeviceInfoCopyWithImpl;
   @useResult
   $Res call(
-      {String? type,
+      {String deviceId,
+      String devicePubkey,
+      String? type,
       String? model,
-      @JsonKey(name: 'device_name') String? deviceName,
-      @JsonKey(name: 'device_id') String deviceId,
-      @JsonKey(name: 'device_pubkey') String devicePubkey});
+      String? deviceName});
 }
 
 /// @nodoc
@@ -88,13 +85,21 @@ class _$TrezorDeviceInfoCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? deviceId = null,
+    Object? devicePubkey = null,
     Object? type = freezed,
     Object? model = freezed,
     Object? deviceName = freezed,
-    Object? deviceId = null,
-    Object? devicePubkey = null,
   }) {
     return _then(_self.copyWith(
+      deviceId: null == deviceId
+          ? _self.deviceId
+          : deviceId // ignore: cast_nullable_to_non_nullable
+              as String,
+      devicePubkey: null == devicePubkey
+          ? _self.devicePubkey
+          : devicePubkey // ignore: cast_nullable_to_non_nullable
+              as String,
       type: freezed == type
           ? _self.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -107,43 +112,33 @@ class _$TrezorDeviceInfoCopyWithImpl<$Res>
           ? _self.deviceName
           : deviceName // ignore: cast_nullable_to_non_nullable
               as String?,
-      deviceId: null == deviceId
-          ? _self.deviceId
-          : deviceId // ignore: cast_nullable_to_non_nullable
-              as String,
-      devicePubkey: null == devicePubkey
-          ? _self.devicePubkey
-          : devicePubkey // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
 
 /// @nodoc
-@JsonSerializable()
+
+@JsonSerializable(fieldRename: FieldRename.snake)
 class _TrezorDeviceInfo implements TrezorDeviceInfo {
   const _TrezorDeviceInfo(
-      {this.type,
+      {required this.deviceId,
+      required this.devicePubkey,
+      this.type,
       this.model,
-      @JsonKey(name: 'device_name') this.deviceName,
-      @JsonKey(name: 'device_id') required this.deviceId,
-      @JsonKey(name: 'device_pubkey') required this.devicePubkey});
+      this.deviceName});
   factory _TrezorDeviceInfo.fromJson(Map<String, dynamic> json) =>
       _$TrezorDeviceInfoFromJson(json);
 
+  @override
+  final String deviceId;
+  @override
+  final String devicePubkey;
   @override
   final String? type;
   @override
   final String? model;
   @override
-  @JsonKey(name: 'device_name')
   final String? deviceName;
-  @override
-  @JsonKey(name: 'device_id')
-  final String deviceId;
-  @override
-  @JsonKey(name: 'device_pubkey')
-  final String devicePubkey;
 
   /// Create a copy of TrezorDeviceInfo
   /// with the given fields replaced by the non-null parameter values.
@@ -165,24 +160,24 @@ class _TrezorDeviceInfo implements TrezorDeviceInfo {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _TrezorDeviceInfo &&
-            (identical(other.type, type) || other.type == type) &&
-            (identical(other.model, model) || other.model == model) &&
-            (identical(other.deviceName, deviceName) ||
-                other.deviceName == deviceName) &&
             (identical(other.deviceId, deviceId) ||
                 other.deviceId == deviceId) &&
             (identical(other.devicePubkey, devicePubkey) ||
-                other.devicePubkey == devicePubkey));
+                other.devicePubkey == devicePubkey) &&
+            (identical(other.type, type) || other.type == type) &&
+            (identical(other.model, model) || other.model == model) &&
+            (identical(other.deviceName, deviceName) ||
+                other.deviceName == deviceName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, type, model, deviceName, deviceId, devicePubkey);
+      Object.hash(runtimeType, deviceId, devicePubkey, type, model, deviceName);
 
   @override
   String toString() {
-    return 'TrezorDeviceInfo(type: $type, model: $model, deviceName: $deviceName, deviceId: $deviceId, devicePubkey: $devicePubkey)';
+    return 'TrezorDeviceInfo(deviceId: $deviceId, devicePubkey: $devicePubkey, type: $type, model: $model, deviceName: $deviceName)';
   }
 }
 
@@ -195,11 +190,11 @@ abstract mixin class _$TrezorDeviceInfoCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {String? type,
+      {String deviceId,
+      String devicePubkey,
+      String? type,
       String? model,
-      @JsonKey(name: 'device_name') String? deviceName,
-      @JsonKey(name: 'device_id') String deviceId,
-      @JsonKey(name: 'device_pubkey') String devicePubkey});
+      String? deviceName});
 }
 
 /// @nodoc
@@ -215,13 +210,21 @@ class __$TrezorDeviceInfoCopyWithImpl<$Res>
   @override
   @pragma('vm:prefer-inline')
   $Res call({
+    Object? deviceId = null,
+    Object? devicePubkey = null,
     Object? type = freezed,
     Object? model = freezed,
     Object? deviceName = freezed,
-    Object? deviceId = null,
-    Object? devicePubkey = null,
   }) {
     return _then(_TrezorDeviceInfo(
+      deviceId: null == deviceId
+          ? _self.deviceId
+          : deviceId // ignore: cast_nullable_to_non_nullable
+              as String,
+      devicePubkey: null == devicePubkey
+          ? _self.devicePubkey
+          : devicePubkey // ignore: cast_nullable_to_non_nullable
+              as String,
       type: freezed == type
           ? _self.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -234,14 +237,6 @@ class __$TrezorDeviceInfoCopyWithImpl<$Res>
           ? _self.deviceName
           : deviceName // ignore: cast_nullable_to_non_nullable
               as String?,
-      deviceId: null == deviceId
-          ? _self.deviceId
-          : deviceId // ignore: cast_nullable_to_non_nullable
-              as String,
-      devicePubkey: null == devicePubkey
-          ? _self.devicePubkey
-          : devicePubkey // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }

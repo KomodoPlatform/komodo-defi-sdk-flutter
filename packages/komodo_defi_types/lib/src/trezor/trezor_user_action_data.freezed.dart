@@ -96,7 +96,8 @@ class _$TrezorUserActionDataCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
+
+@JsonSerializable(fieldRename: FieldRename.snake)
 class _TrezorUserActionData implements TrezorUserActionData {
   const _TrezorUserActionData(
       {required this.actionType, this.pin, this.passphrase})

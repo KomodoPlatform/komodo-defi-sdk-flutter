@@ -7,6 +7,7 @@ part 'trezor_user_action_data.freezed.dart';
 part 'trezor_user_action_data.g.dart';
 
 /// Type of user action required by the Trezor device.
+@JsonEnum(valueField: 'value')
 enum TrezorUserActionType {
   trezorPin('TrezorPin'),
   trezorPassphrase('TrezorPassphrase');
@@ -23,6 +24,7 @@ abstract class TrezorUserActionData with _$TrezorUserActionData {
         '(actionType == TrezorUserActionType.trezorPassphrase && passphrase != null))',
     'PIN must be provided for TrezorPin action, passphrase for TrezorPassphrase action',
   )
+  @JsonSerializable(fieldRename: FieldRename.snake)
   const factory TrezorUserActionData({
     required TrezorUserActionType actionType,
     String? pin,

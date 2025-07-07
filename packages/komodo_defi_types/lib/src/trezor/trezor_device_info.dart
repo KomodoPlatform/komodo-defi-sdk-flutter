@@ -10,12 +10,13 @@ part 'trezor_device_info.g.dart';
 @freezed
 abstract class TrezorDeviceInfo with _$TrezorDeviceInfo {
   /// Create a new [TrezorDeviceInfo].
+  @JsonSerializable(fieldRename: FieldRename.snake)
   const factory TrezorDeviceInfo({
+    required String deviceId,
+    required String devicePubkey,
     String? type,
     String? model,
-    @JsonKey(name: 'device_name') String? deviceName,
-    @JsonKey(name: 'device_id') required String deviceId,
-    @JsonKey(name: 'device_pubkey') required String devicePubkey,
+    String? deviceName,
   }) = _TrezorDeviceInfo;
 
   /// Construct a [TrezorDeviceInfo] from json.
