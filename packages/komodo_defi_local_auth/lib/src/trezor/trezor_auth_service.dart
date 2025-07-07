@@ -37,7 +37,6 @@ class TrezorAuthService implements IAuthService {
   Future<void> cancelTrezorInitialization(int taskId) =>
       _trezor.cancelInitialization(taskId);
 
-
   /// Handles Trezor sign-in with stream-based progress updates
   Stream<AuthenticationState> signInStreamed({
     required AuthOptions options,
@@ -137,7 +136,6 @@ class TrezorAuthService implements IAuthService {
     try {
       final user = await _initializeTrezorWithPassphrase(passphrase: password);
 
-      // Start connection monitoring after successful authentication
       _startConnectionMonitoring();
 
       return user;
@@ -170,7 +168,6 @@ class TrezorAuthService implements IAuthService {
     try {
       final user = await _initializeTrezorWithPassphrase(passphrase: password);
 
-      // Start connection monitoring after successful registration
       _startConnectionMonitoring();
 
       return user;
@@ -326,7 +323,6 @@ class TrezorAuthService implements IAuthService {
         if (trezorState.status == AuthenticationStatus.completed) {
           final user = await _authService.getActiveUser();
           if (user != null) {
-            // Start connection monitoring after successful authentication
             _startConnectionMonitoring();
             yield AuthenticationState.completed(user);
           } else {

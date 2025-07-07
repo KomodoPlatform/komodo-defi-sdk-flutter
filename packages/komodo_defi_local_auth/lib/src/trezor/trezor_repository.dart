@@ -214,15 +214,29 @@ class TrezorRepository {
     String? devicePubkey,
     Duration pollInterval = const Duration(seconds: 1),
   }) async* {
-    var last = await getConnectionStatus(devicePubkey: devicePubkey);
-    yield last;
+    TrezorConnectionStatus? last;
+    try {
+      last = await getConnectionStatus(devicePubkey: devicePubkey);
+      yield last;
+    } catch (e) {
+      // If initial status check fails, we can't proceed
+      throw TrezorException(
+        'Failed to get initial connection status',
+        e.toString(),
+      );
+    }
 
-    while (last.shouldContinueMonitoring) {
+    while (last!.shouldContinueMonitoring) {
       await Future<void>.delayed(pollInterval);
-      final current = await getConnectionStatus(devicePubkey: devicePubkey);
-      if (current != last) {
-        last = current;
-        yield current;
+      try {
+        final current = await getConnectionStatus(devicePubkey: devicePubkey);
+        if (current != last) {
+          last = current;
+          yield current;
+        }
+      } catch (e) {
+        yield TrezorConnectionStatus.disconnected;
+        return;
       }
     }
   }

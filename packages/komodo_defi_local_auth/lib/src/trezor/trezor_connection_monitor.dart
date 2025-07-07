@@ -46,17 +46,14 @@ class TrezorConnectionMonitor {
             final previousStatus = _lastStatus;
             _lastStatus = status;
 
-            // Notify about any status change
             onStatusChanged?.call(status);
 
-            // Handle connection lost events
             if (status.isUnavailable &&
                 (previousStatus?.isAvailable ?? false)) {
               _log.warning('Trezor connection lost: ${status.value}');
               onConnectionLost?.call();
             }
 
-            // Handle connection restored events
             if (status.isAvailable &&
                 (previousStatus?.isUnavailable ?? false)) {
               _log.info('Trezor connection restored');
@@ -65,7 +62,6 @@ class TrezorConnectionMonitor {
           },
           onError: (Object error) {
             _log.severe('Error monitoring Trezor connection: $error');
-            // Treat monitoring errors as connection lost
             onConnectionLost?.call();
           },
           onDone: () {
