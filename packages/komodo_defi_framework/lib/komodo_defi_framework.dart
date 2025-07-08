@@ -23,7 +23,6 @@ class KomodoDefiFramework implements ApiClient {
     void Function(String)? externalLogger,
     // required KdfApiClient? client,
   }) : _hostConfig = hostConfig {
-    _configureLogging();
     _kdfOperations = createKdfOperations(hostConfig: hostConfig);
 
     if (externalLogger != null) {
@@ -61,34 +60,18 @@ class KomodoDefiFramework implements ApiClient {
   ApiClient get client => this;
 
   Future<void> _initLogStream(LogCallback logCallback) async {
-    if (_loggerSub != null) {
-      await _loggerSub!.cancel();
-
-      _loggerSub = null;
-    }
-
-    _loggerSub = _logStream.stream.listen(logCallback);
+    await _loggerSub?.cancel();
+    _loggerSub = Logger.root.onRecord.listen((record) {
+      final error = record.error != null ? ' ${record.error}' : '';
+      final stack = record.stackTrace != null ? '\n${record.stackTrace}' : '';
+      logCallback('${record.level.name}: ${record.message}$error$stack');
+    });
   }
 
-  StreamSubscription<String>? _loggerSub;
+  StreamSubscription<LogRecord>? _loggerSub;
 
   // final IKdfHostConfig _hostConfig;
   late final IKdfOperations _kdfOperations;
-
-  final StreamController<String> _logStream = StreamController.broadcast();
-
-  Stream<String> get logStream => _logStream.stream;
-
-  void _logToStream(String message) => _logStream.add(message);
-
-  void _configureLogging() {
-    Logger.root.level = KdfLoggingConfig.debugLogging ? Level.FINE : Level.INFO;
-    Logger.root.onRecord.listen((record) {
-      final error = record.error != null ? ' ${record.error}' : '';
-      final stack = record.stackTrace != null ? '\n${record.stackTrace}' : '';
-      _logToStream('${record.level.name}: ${record.message}$error$stack');
-    });
-  }
 
   //TODO! Figure out best way to handle overlap between startup and host
   //TODO! Handle common KDF operations startup log scanning here or in a
@@ -136,7 +119,7 @@ class KomodoDefiFramework implements ApiClient {
   Future<StopStatus> kdfStop() async {
     _logger.info('Stopping KDF...');
     final result = await _kdfOperations.kdfStop();
-    _log('KDF stop result: $result');
+    _logger.info('KDF stop result: $result');
     // Await a max of 5 seconds for KDF to stop. Check every 500ms.
     for (var i = 0; i < 10; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 500));
@@ -211,8 +194,6 @@ class KomodoDefiFramework implements ApiClient {
   ///
   /// NB! This does not stop the KDF operations or the KDF process.
   Future<void> dispose() async {
-    await _logStream.close();
-
     await _loggerSub?.cancel();
   }
 

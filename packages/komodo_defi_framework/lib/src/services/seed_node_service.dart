@@ -3,12 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/config/seed_node_validator.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 /// Service class responsible for fetching and managing seed nodes.
 ///
 /// This class follows the Single Responsibility Principle by focusing
 /// solely on seed node acquisition and management.
 class SeedNodeService {
+  static final _log = Logger('SeedNodeService');
   /// Fetches seed nodes from the remote configuration with fallback to defaults.
   ///
   /// This method attempts to fetch the latest seed nodes from the Komodo Platform
@@ -32,8 +34,8 @@ class SeedNodeService {
       );
     } catch (e) {
       if (KdfLoggingConfig.verboseLogging) {
-        print('WARN Failed to fetch seed nodes from remote: $e');
-        print('WARN Falling back to default seed nodes');
+        _log.warning('Failed to fetch seed nodes from remote: $e');
+        _log.warning('Falling back to default seed nodes');
       }
       return (
         seedNodes: getDefaultSeedNodes(),

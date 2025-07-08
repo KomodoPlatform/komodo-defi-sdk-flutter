@@ -1,8 +1,10 @@
 import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/exceptions/kdf_exception.dart';
+import 'package:logging/logging.dart';
 
 /// Helper class to validate seed node configurations
 class SeedNodeValidator {
+  static final _log = Logger('SeedNodeValidator');
   /// Validates the seed node configuration
   ///
   /// Throws [KdfException] if the configuration is invalid
@@ -23,8 +25,10 @@ class SeedNodeValidator {
     // If P2P is disabled, no need for further validation
     if (disableP2p ?? false) {
       if (KdfLoggingConfig.verboseLogging) {
-        print('WARN P2P is disabled. Features that require a P2P network '
-            '(like swaps, peer health checks, etc.) will not work.');
+        _log.warning(
+          'P2P is disabled. Features that require a P2P network '
+          '(like swaps, peer health checks, etc.) will not work.',
+        );
       }
       return;
     }
@@ -58,8 +62,10 @@ class SeedNodeValidator {
     // Warning about future requirements - updated to be more explicit
     if (seedNodes == null || seedNodes.isEmpty) {
       if (KdfLoggingConfig.verboseLogging) {
-        print('WARN From v2.5.0-beta, there will be no default seed nodes, '
-            'and the seednodes parameter will be required unless disable_p2p is set to true.');
+        _log.warning(
+          'From v2.5.0-beta, there will be no default seed nodes, and the '
+          'seednodes parameter will be required unless disable_p2p is set to true.',
+        );
       }
     }
   }
