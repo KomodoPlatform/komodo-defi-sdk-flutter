@@ -4,8 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Legacy request for creating a buy order
-class BuyRequest extends BaseRequest<BuyResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+class BuyRequest extends BaseRequest<BuyResponse, GeneralErrorResponse> {
   BuyRequest({
     required this.base,
     required this.rel,

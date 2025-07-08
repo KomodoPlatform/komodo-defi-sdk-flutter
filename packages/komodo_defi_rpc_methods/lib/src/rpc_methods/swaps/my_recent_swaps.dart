@@ -4,8 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// Request to get recent atomic swaps executed by the Komodo DeFi Framework
 /// API node
 class MyRecentSwapsRequest
-    extends BaseRequest<MyRecentSwapsResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<MyRecentSwapsResponse, GeneralErrorResponse> {
   MyRecentSwapsRequest({
     required String rpcPass,
     this.myCoin,
@@ -41,7 +40,7 @@ class MyRecentSwapsRequest
   @override
   Map<String, dynamic> toJson() {
     final params = <String, dynamic>{};
-    
+
     if (myCoin != null) params['my_coin'] = myCoin;
     if (otherCoin != null) params['other_coin'] = otherCoin;
     if (fromTimestamp != null) params['from_timestamp'] = fromTimestamp;
@@ -50,9 +49,7 @@ class MyRecentSwapsRequest
     params['limit'] = limit;
     params['page_number'] = pageNumber;
 
-    return super.toJson().deepMerge({
-      'params': params,
-    });
+    return super.toJson().deepMerge({'params': params});
   }
 
   @override
@@ -78,9 +75,10 @@ class MyRecentSwapsResponse extends BaseResponse {
     final result = json.value<JsonMap>('result');
 
     final swapsJson = result.value<List<dynamic>>('swaps');
-    final swaps = swapsJson
-        .map((swap) => SwapStatus.parse(swap as Map<String, dynamic>))
-        .toList();
+    final swaps =
+        swapsJson
+            .map((swap) => SwapStatus.parse(swap as Map<String, dynamic>))
+            .toList();
 
     return MyRecentSwapsResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),

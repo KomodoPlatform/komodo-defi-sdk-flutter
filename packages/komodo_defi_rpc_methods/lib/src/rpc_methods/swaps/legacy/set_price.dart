@@ -14,8 +14,7 @@ class SetPriceValidationException implements Exception {
 
 /// Legacy request for creating a maker order (setprice)
 class SetPriceRequest
-    extends BaseRequest<SetPriceResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<SetPriceResponse, GeneralErrorResponse> {
   SetPriceRequest({
     required this.base,
     required this.rel,

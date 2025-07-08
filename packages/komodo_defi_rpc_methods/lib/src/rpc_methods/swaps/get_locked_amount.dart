@@ -5,8 +5,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// Request to get the amount of a coin which is currently locked by a swap
 /// in progress
 class GetLockedAmountRequest
-    extends BaseRequest<GetLockedAmountResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<GetLockedAmountResponse, GeneralErrorResponse> {
   GetLockedAmountRequest({required String rpcPass, required this.coin})
     : super(method: 'get_locked_amount', rpcPass: rpcPass, mmrpc: '2.0');
 

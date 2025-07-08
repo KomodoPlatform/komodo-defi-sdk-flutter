@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to get the best priced trades available on the orderbook
 class BestOrdersRequest
-    extends BaseRequest<BestOrdersResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<BestOrdersResponse, GeneralErrorResponse> {
   BestOrdersRequest({
     required String rpcPass,
     required this.coin,

@@ -5,8 +5,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// Request to get the maximum volume of a coin which can be used to create a
 /// maker order
 class MaxMakerVolRequest
-    extends BaseRequest<MaxMakerVolResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<MaxMakerVolResponse, GeneralErrorResponse> {
   MaxMakerVolRequest({required String rpcPass, required this.coin})
     : super(method: 'max_maker_vol', rpcPass: rpcPass, mmrpc: '2.0');
 

@@ -5,8 +5,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Request to get orders history filtered by various criteria
 class OrdersHistoryByFilterRequest
-    extends BaseRequest<OrdersHistoryByFilterResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<OrdersHistoryByFilterResponse, GeneralErrorResponse> {
   OrdersHistoryByFilterRequest({
     required String rpcPass,
     this.orderType,
@@ -306,10 +305,12 @@ class OrderDataV1 {
       priceRat: RationalValue.fromJson(json.value<List<dynamic>>('price_rat')),
       maxBaseVol: json.value<String>('max_base_vol'),
       maxBaseVolRat: RationalValue.fromJson(
-          json.value<List<dynamic>>('max_base_vol_rat')),
+        json.value<List<dynamic>>('max_base_vol_rat'),
+      ),
       minBaseVol: json.value<String>('min_base_vol'),
       minBaseVolRat: RationalValue.fromJson(
-          json.value<List<dynamic>>('min_base_vol_rat')),
+        json.value<List<dynamic>>('min_base_vol_rat'),
+      ),
       createdAt: json.value<int>('created_at'),
       updatedAt: json.value<int>('updated_at'),
       matches: json.value<Map<String, dynamic>>('matches'),

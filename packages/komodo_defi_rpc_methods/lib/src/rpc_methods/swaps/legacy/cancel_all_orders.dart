@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to cancel all orders based on a condition
 class CancelAllOrdersRequest
-    extends BaseRequest<CancelAllOrdersResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<CancelAllOrdersResponse, GeneralErrorResponse> {
   CancelAllOrdersRequest({required this.cancelBy, super.rpcPass})
     : super(method: 'cancel_all_orders', mmrpc: null);
 

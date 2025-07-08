@@ -5,8 +5,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Request for trade_preimage which calculates details of a potential trade
 class TradePreimageRequest
-    extends BaseRequest<TradePreimageResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<TradePreimageResponse, GeneralErrorResponse> {
   TradePreimageRequest({
     required this.base,
     required this.rel,

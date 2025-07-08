@@ -7,8 +7,7 @@ part 'orderbook_depth.g.dart';
 
 /// Request to get the number of asks and bids for specified trading pairs
 class OrderbookDepthRequest
-    extends BaseRequest<OrderbookDepthResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<OrderbookDepthResponse, GeneralErrorResponse> {
   OrderbookDepthRequest({required String rpcPass, required this.pairs})
     : super(method: 'orderbook_depth', rpcPass: rpcPass, mmrpc: null);
 

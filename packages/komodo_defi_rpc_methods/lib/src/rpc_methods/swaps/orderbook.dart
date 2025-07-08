@@ -4,8 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Request to get the currently available orders for the specified trading pair
 class OrderbookRequest
-    extends BaseRequest<OrderbookResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<OrderbookResponse, GeneralErrorResponse> {
   OrderbookRequest({
     required String rpcPass,
     required this.base,

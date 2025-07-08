@@ -3,12 +3,9 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to recreate swap data from the opposite side of a trade
 class RecreateSwapDataRequest
-    extends BaseRequest<RecreateSwapDataResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
-  RecreateSwapDataRequest({
-    required String rpcPass,
-    required this.swap,
-  }) : super(method: 'recreate_swap_data', rpcPass: rpcPass, mmrpc: '2.0');
+    extends BaseRequest<RecreateSwapDataResponse, GeneralErrorResponse> {
+  RecreateSwapDataRequest({required String rpcPass, required this.swap})
+    : super(method: 'recreate_swap_data', rpcPass: rpcPass, mmrpc: '2.0');
 
   /// Swap data from other side of trade
   final SwapStatus swap;
@@ -16,9 +13,7 @@ class RecreateSwapDataRequest
   @override
   Map<String, dynamic> toJson() {
     return super.toJson().deepMerge({
-      'params': {
-        'swap': swap.toJson(),
-      },
+      'params': {'swap': swap.toJson()},
     });
   }
 
@@ -50,8 +45,6 @@ class RecreateSwapDataResponse extends BaseResponse {
 
   @override
   Map<String, dynamic> toJson() {
-    return {
-      'swap': swap.toJson(),
-    };
+    return {'swap': swap.toJson()};
   }
 }

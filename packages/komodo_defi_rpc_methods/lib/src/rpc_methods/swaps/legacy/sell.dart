@@ -3,8 +3,7 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Legacy request for creating a sell order
-class SellRequest extends BaseRequest<SellResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+class SellRequest extends BaseRequest<SellResponse, GeneralErrorResponse> {
   SellRequest({
     required this.base,
     required this.rel,
@@ -42,8 +41,7 @@ class SellRequest extends BaseRequest<SellResponse, GeneralErrorResponse>
     'rel': rel,
     'price': price.toJsonFractionalValue(),
     'volume': volume.toJsonFractionalValue(),
-    if (minVolume != null)
-      'min_volume': minVolume!.toJsonFractionalValue(),
+    if (minVolume != null) 'min_volume': minVolume!.toJsonFractionalValue(),
     if (matchBy != null) 'match_by': matchBy!.toJson(),
     if (orderType != null) 'order_type': orderType!.toJson(),
     if (baseConfs != null) 'base_confs': baseConfs,

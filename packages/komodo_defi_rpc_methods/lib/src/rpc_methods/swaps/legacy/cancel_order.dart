@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to cancel a specific order
 class CancelOrderRequest
-    extends BaseRequest<CancelOrderResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<CancelOrderResponse, GeneralErrorResponse> {
   CancelOrderRequest({required this.uuid, super.rpcPass})
     : super(method: 'cancel_order', mmrpc: null);
 

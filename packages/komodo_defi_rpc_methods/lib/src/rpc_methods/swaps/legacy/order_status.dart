@@ -4,8 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Request to get the status of an order by UUID
 class OrderStatusRequest
-    extends BaseRequest<OrderStatusResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<OrderStatusResponse, GeneralErrorResponse> {
   OrderStatusRequest({required this.uuid, super.rpcPass})
     : super(method: 'order_status', mmrpc: null);
 
@@ -109,19 +108,24 @@ class OrderStatusData {
       base: json.valueOrNull<String>('base'),
       cancellable: json.valueOrNull<bool>('cancellable'),
       maxBaseVol: json.valueOrNull<String>('max_base_vol'),
-      maxBaseVolRat: json.valueOrNull<List<dynamic>>('max_base_vol_rat') != null
-          ? RationalValue.fromJson(
-              json.value<List<dynamic>>('max_base_vol_rat'))
-          : null,
+      maxBaseVolRat:
+          json.valueOrNull<List<dynamic>>('max_base_vol_rat') != null
+              ? RationalValue.fromJson(
+                json.value<List<dynamic>>('max_base_vol_rat'),
+              )
+              : null,
       minBaseVol: json.valueOrNull<String>('min_base_vol'),
-      minBaseVolRat: json.valueOrNull<List<dynamic>>('min_base_vol_rat') != null
-          ? RationalValue.fromJson(
-              json.value<List<dynamic>>('min_base_vol_rat'))
-          : null,
+      minBaseVolRat:
+          json.valueOrNull<List<dynamic>>('min_base_vol_rat') != null
+              ? RationalValue.fromJson(
+                json.value<List<dynamic>>('min_base_vol_rat'),
+              )
+              : null,
       price: json.valueOrNull<String>('price'),
-      priceRat: json.valueOrNull<List<dynamic>>('price_rat') != null
-          ? RationalValue.fromJson(json.value<List<dynamic>>('price_rat'))
-          : null,
+      priceRat:
+          json.valueOrNull<List<dynamic>>('price_rat') != null
+              ? RationalValue.fromJson(json.value<List<dynamic>>('price_rat'))
+              : null,
       rel: json.valueOrNull<String>('rel'),
       startedSwaps:
           json.valueOrNull<List<dynamic>>('started_swaps')?.cast<String>(),
@@ -133,12 +137,14 @@ class OrderStatusData {
               )
               : null,
       updatedAt: json.valueOrNull<int>('updated_at'),
-      request: json.valueOrNull<JsonMap>('request') != null
-          ? OrderMatchRequest.fromJson(json.value<JsonMap>('request'))
-          : null,
-      orderType: json.valueOrNull<JsonMap>('order_type') != null
-          ? OrderType.fromJson(json.value<JsonMap>('order_type'))
-          : null,
+      request:
+          json.valueOrNull<JsonMap>('request') != null
+              ? OrderMatchRequest.fromJson(json.value<JsonMap>('request'))
+              : null,
+      orderType:
+          json.valueOrNull<JsonMap>('order_type') != null
+              ? OrderType.fromJson(json.value<JsonMap>('order_type'))
+              : null,
       baseOrderbookTicker: json.valueOrNull<String>('base_orderbook_ticker'),
       relOrderbookTicker: json.valueOrNull<String>('rel_orderbook_ticker'),
     );

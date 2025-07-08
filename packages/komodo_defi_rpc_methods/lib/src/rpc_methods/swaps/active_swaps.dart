@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to get all currently running swaps on the Komodo DeFi Framework API node
 class ActiveSwapsRequest
-    extends BaseRequest<ActiveSwapsResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<ActiveSwapsResponse, GeneralErrorResponse> {
   ActiveSwapsRequest({required String rpcPass, this.includeStatus = false})
     : super(method: 'active_swaps', rpcPass: rpcPass, mmrpc: '2.0');
 
@@ -35,10 +34,7 @@ class ActiveSwapsResponse extends BaseResponse {
     final result = json.value<JsonMap>('result');
 
     final uuidsJson = result.value<List<dynamic>>('uuids');
-    final uuids = uuidsJson
-        .where((element) => element is String)
-        .cast<String>()
-        .toList();
+    final uuids = uuidsJson.whereType<String>().cast<String>().toList();
 
     final statusesJson = result.value<JsonMap>('statuses');
     final statuses = <String, Map<String, dynamic>>{};
