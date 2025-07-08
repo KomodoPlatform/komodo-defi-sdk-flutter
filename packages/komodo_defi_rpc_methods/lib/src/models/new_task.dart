@@ -21,12 +21,7 @@ class TaskStatusRequest
       });
 
   @override
-  TaskStatusResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  TaskStatusResponse parse(Map<String, dynamic> json) {
     return TaskStatusResponse.parse(json);
   }
 }

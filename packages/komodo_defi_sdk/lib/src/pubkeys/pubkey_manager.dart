@@ -30,11 +30,25 @@ class PubkeyManager {
     return strategy.getNewAddress(asset.id, _client);
   }
 
+  /// Streamed version of [createNewPubkey]
+  Stream<NewAddressState> createNewPubkeyStream(Asset asset) async* {
+    await retry(() => _activationManager.activateAsset(asset).last);
+    final strategy = await _resolvePubkeyStrategy(asset);
+    if (!strategy.supportsMultipleAddresses) {
+      yield NewAddressState.error(
+        'Asset ${asset.id.name} does not support multiple addresses',
+      );
+      return;
+    }
+    yield* strategy.getNewAddressStream(asset.id, _client);
+  }
+
   Future<PubkeyStrategy> _resolvePubkeyStrategy(Asset asset) async {
-    final isHdWallet =
-        await _auth.currentUser.then((u) => u?.isHd) ??
-        (throw AuthException.notSignedIn());
-    return asset.pubkeyStrategy(isHdWallet: isHdWallet);
+    final currentUser = await _auth.currentUser;
+    if (currentUser == null) {
+      throw AuthException.notSignedIn();
+    }
+    return asset.pubkeyStrategy(kdfUser: currentUser);
   }
 
   /// Dispose of any resources

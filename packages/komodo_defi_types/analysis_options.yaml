@@ -1,6 +1,7 @@
 analyzer:
   errors:
     public_member_api_docs: ignore
+    invalid_annotation_target: ignore
 
     # This is required to use Freezed in combination with 
     # `json_serializable`: https://github.com/rrousselGit/freezed

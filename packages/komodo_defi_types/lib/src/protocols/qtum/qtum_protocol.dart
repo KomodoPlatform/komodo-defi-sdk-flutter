@@ -55,7 +55,7 @@ class QtumProtocol extends ProtocolClass {
     ScanPolicy? scanPolicy,
     int? gapLimit,
     // TODO! Cater for Trezor
-    PrivateKeyPolicy privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
     List<ActivationServers>? electrum,
   }) {
     return QtumActivationParams.fromConfigJson(config).genericCopyWith(

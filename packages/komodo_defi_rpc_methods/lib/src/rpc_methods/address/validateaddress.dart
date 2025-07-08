@@ -2,8 +2,7 @@ import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class ValidateAddressRequest
-    extends BaseRequest<ValidateAddressResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<ValidateAddressResponse, GeneralErrorResponse> {
   ValidateAddressRequest({
     required super.rpcPass,
     required this.coin,

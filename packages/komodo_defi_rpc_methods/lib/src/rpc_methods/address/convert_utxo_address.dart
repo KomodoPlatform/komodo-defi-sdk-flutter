@@ -2,8 +2,7 @@ import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class ConvertUtxoAddressRequest
-    extends BaseRequest<ConvertUtxoAddressResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<ConvertUtxoAddressResponse, GeneralErrorResponse> {
   ConvertUtxoAddressRequest({
     required super.rpcPass,
     required this.coin,

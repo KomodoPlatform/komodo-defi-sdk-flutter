@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to sign a message with a coin's signing key
 class SignMessageRequest
-    extends BaseRequest<SignMessageResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<SignMessageResponse, GeneralErrorResponse> {
   /// Creates a new request to sign a message
   SignMessageRequest({
     required String rpcPass,
@@ -57,8 +56,7 @@ class SignMessageResponse extends BaseResponse {
 
 /// Request to verify a message signature
 class VerifyMessageRequest
-    extends BaseRequest<VerifyMessageResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<VerifyMessageResponse, GeneralErrorResponse> {
   /// Creates a new request to verify a message
   VerifyMessageRequest({
     required String rpcPass,

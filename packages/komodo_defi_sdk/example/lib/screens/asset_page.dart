@@ -47,10 +47,19 @@ class _AssetPageState extends State<AssetPage> {
   Future<void> _generateNewAddress() async {
     setState(() => _isLoading = true);
     try {
-      final newPubkey = await _sdk.pubkeys.createNewPubkey(widget.asset);
-      setState(() {
-        _pubkeys?.keys.add(newPubkey);
-      });
+      final stream = _sdk.pubkeys.createNewPubkeyStream(widget.asset);
+
+      final newPubkey = await showDialog<PubkeyInfo>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _NewAddressDialog(stream: stream),
+      );
+
+      if (newPubkey != null) {
+        setState(() {
+          _pubkeys?.keys.add(newPubkey);
+        });
+      }
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
@@ -150,7 +159,7 @@ class _AssetHeaderState extends State<AssetHeader> {
               _balance = balance;
             });
           },
-          onError: (error) {
+          onError: (Object error) {
             setState(() {
               _balanceLoading = false;
               _balanceError = error.toString();
@@ -260,7 +269,7 @@ class _AssetHeaderState extends State<AssetHeader> {
                                   _balance = balance;
                                 });
                               },
-                              onError: (error) {
+                              onError: (Object error) {
                                 setState(() {
                                   _balanceLoading = false;
                                   _balanceError = error.toString();
@@ -325,6 +334,7 @@ class _AssetHeaderState extends State<AssetHeader> {
         _currentUser?.authOptions.derivationMethod == DerivationMethod.hdWallet;
     final hasAddresses =
         widget.pubkeys != null && widget.pubkeys!.keys.isNotEmpty;
+    final supportsSigning = widget.asset.supportsMessageSigning;
 
     return Wrap(
       alignment: WrapAlignment.spaceEvenly,
@@ -357,14 +367,16 @@ class _AssetHeaderState extends State<AssetHeader> {
 
         Tooltip(
           message:
-              !hasAddresses
-                  ? 'No addresses available to sign with'
-                  : isHdWallet
-                  ? 'Will sign with the first address'
-                  : 'Sign a message with this address',
+              supportsSigning
+                  ? !hasAddresses
+                      ? 'No addresses available to sign with'
+                      : isHdWallet
+                      ? 'Will sign with the first address'
+                      : 'Sign a message with this address'
+                  : 'Message signing not supported for this asset',
           child: FilledButton.tonalIcon(
             onPressed:
-                _isSigningMessage || !hasAddresses
+                _isSigningMessage || !hasAddresses || !supportsSigning
                     ? null
                     : () => _showSignMessageDialog(context),
             icon: const Icon(Icons.edit_document),
@@ -558,6 +570,7 @@ class _AddressesSection extends StatelessWidget {
                       ),
                     )
                     : ListView.builder(
+                      key: const Key('asset_addresses_list'),
                       itemCount: pubkeys.keys.length,
                       itemBuilder:
                           (context, index) => ListTile(
@@ -649,5 +662,116 @@ class __TransactionsSectionState extends State<_TransactionsSection> {
       print('FAILED TO FETCH TXs');
       print(e);
     }
+  }
+}
+
+class _NewAddressDialog extends StatefulWidget {
+  const _NewAddressDialog({required this.stream});
+
+  final Stream<NewAddressState> stream;
+
+  @override
+  State<_NewAddressDialog> createState() => _NewAddressDialogState();
+}
+
+class _NewAddressDialogState extends State<_NewAddressDialog> {
+  late final StreamSubscription<NewAddressState> _subscription;
+  NewAddressState? _state;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = widget.stream.listen((state) {
+      setState(() => _state = state);
+      if (state.status == NewAddressStatus.completed) {
+        Navigator.of(context).pop(state.address);
+      } else if (state.status == NewAddressStatus.cancelled) {
+        Navigator.of(context).pop(null);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+
+  Future<void> _cancelAddressGeneration() async {
+    final state = _state;
+    if (state?.taskId != null) {
+      try {
+        final sdk = context.read<KomodoDefiSdk>();
+        await sdk.client.rpc.hdWallet.getNewAddressTaskCancel(
+          taskId: state!.taskId!,
+        );
+      } catch (e) {
+        // If cancellation fails, still dismiss the dialog
+        // The error is likely due to the task already being completed or cancelled
+      }
+    }
+
+    // Always dismiss the dialog
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = _state;
+
+    String message;
+    if (state == null) {
+      message = 'Initializing...';
+    } else {
+      switch (state.status) {
+        case NewAddressStatus.initializing:
+        case NewAddressStatus.processing:
+        case NewAddressStatus.waitingForDevice:
+        case NewAddressStatus.waitingForDeviceConfirmation:
+        case NewAddressStatus.pinRequired:
+        case NewAddressStatus.passphraseRequired:
+          message = state.message ?? 'Processing...';
+          break;
+        case NewAddressStatus.confirmAddress:
+          message = 'Confirm the address on your device';
+          break;
+        case NewAddressStatus.completed:
+          message = 'Completed';
+          break;
+        case NewAddressStatus.error:
+          message = state.error ?? 'Error';
+          break;
+        case NewAddressStatus.cancelled:
+          message = 'Cancelled';
+          break;
+      }
+    }
+
+    final showAddress = state?.status == NewAddressStatus.confirmAddress;
+
+    return AlertDialog(
+      title: const Text('Generating Address'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showAddress)
+            SelectableText(state?.expectedAddress ?? '')
+          else
+            const SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(),
+            ),
+          const SizedBox(height: 16),
+          Text(message, textAlign: TextAlign.center),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _cancelAddressGeneration,
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
   }
 }
