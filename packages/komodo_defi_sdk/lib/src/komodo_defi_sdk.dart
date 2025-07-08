@@ -318,9 +318,6 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   Future<void> _disposeIfRegistered<T extends Object>(
     Future<void> Function(T) fn,
   ) async {
-  Future<void> _disposeIfRegistered<T extends Object>(
-    Future<void> Function(T) fn,
-  ) async {
     if (_container.isRegistered<T>()) {
       try {
         await fn(_container<T>());
@@ -357,7 +354,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _isDisposed = true;
 
     if (!_isInitialized) return;
-    
+
     _isInitialized = false;
     _initializationFuture = null;
 
