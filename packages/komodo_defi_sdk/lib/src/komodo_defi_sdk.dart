@@ -367,15 +367,17 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       }
     }
 
-    await _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose());
-    await _disposeIfRegistered<AssetManager>((m) => m.dispose());
-    await _disposeIfRegistered<ActivationManager>((m) => m.dispose());
-    await _disposeIfRegistered<BalanceManager>((m) => m.dispose());
-    await _disposeIfRegistered<PubkeyManager>((m) => m.dispose());
-    await _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose());
-    await _disposeIfRegistered<MarketDataManager>((m) => m.dispose());
-    await _disposeIfRegistered<WithdrawalManager>((m) => m.dispose());
-    await _disposeIfRegistered<MessageSigningManager>((m) => m.dispose());
+    await Future.wait([
+      _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
+      _disposeIfRegistered<AssetManager>((m) => m.dispose()),
+      _disposeIfRegistered<ActivationManager>((m) => m.dispose()),
+      _disposeIfRegistered<BalanceManager>((m) => m.dispose()),
+      _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
+      _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
+      _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
+      _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
+      _disposeIfRegistered<MessageSigningManager>((m) => m.dispose()),
+    ]);
 
     // Reset scoped container
     try {
