@@ -6,8 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
 import 'package:kdf_sdk_example/main.dart';
 import 'package:kdf_sdk_example/screens/bridge_page.dart';
-import 'package:kdf_sdk_example/screens/swap_history_page.dart';
 import 'package:kdf_sdk_example/screens/orderbook_page.dart';
+import 'package:kdf_sdk_example/screens/swap_history_page.dart';
 import 'package:kdf_sdk_example/screens/swap_page.dart';
 import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/auth/seed_dialog.dart';
@@ -39,14 +39,7 @@ class InstanceView extends StatefulWidget {
 }
 
 class _InstanceViewState extends State<InstanceView> {
-  final _formKey = GlobalKey<FormState>();
-  final _walletNameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _isHdMode = true;
-  bool _isTrezorInitializing = false;
   String? _mnemonic;
-  Timer? _refreshUsersTimer;
   int _selectedMenuIndex = 0;
 
   @override
@@ -58,9 +51,11 @@ class _InstanceViewState extends State<InstanceView> {
 
   @override
   void dispose() {
-    _walletNameController.dispose();
-    _passwordController.dispose();
     super.dispose();
+  }
+
+  void _signOut() {
+    context.read<AuthBloc>().add(const AuthSignedOut());
   }
 
   Future<void> _getMnemonic({required bool encrypted}) async {
@@ -85,70 +80,6 @@ class _InstanceViewState extends State<InstanceView> {
     if (password == null) return null;
 
     return widget.instance.sdk.auth.getMnemonicPlainText(password);
-  }
-
-  Future<void> _deleteWallet(String walletName) async {
-    if (walletName.isEmpty) {
-      _showError('Wallet name is required');
-      return;
-    }
-    final passwordController = TextEditingController();
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Delete Wallet'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Enter the wallet password to confirm deletion. This action cannot be undone.',
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  obscureText: true,
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  foregroundColor: Theme.of(context).colorScheme.onError,
-                ),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await widget.instance.sdk.auth.deleteWallet(
-        walletName: walletName,
-        password: passwordController.text,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Wallet deleted')));
-        context.read<AuthBloc>().add(const AuthKnownUsersFetched());
-      }
-      setState(() => _mnemonic = null);
-    } on AuthException catch (e) {
-      _showError('Delete wallet failed: ${e.message}');
-    } catch (e) {
-      _showError('Delete wallet failed: $e');
-    }
   }
 
   Future<String?> _showPasswordDialog() async {
@@ -190,15 +121,6 @@ class _InstanceViewState extends State<InstanceView> {
     );
   }
 
-  void _initializeTrezor() {
-    setState(() => _isTrezorInitializing = true);
-    context.read<AuthBloc>().add(
-      const AuthTrezorInitAndAuthStarted(
-        derivationMethod: DerivationMethod.hdWallet,
-      ),
-    );
-  }
-
   Future<void> _showTrezorPinDialog(int taskId, String? message) async {
     final pinController = TextEditingController();
     final result = await showDialog<String>(
@@ -209,7 +131,6 @@ class _InstanceViewState extends State<InstanceView> {
             canPop: false,
             onPopInvokedWithResult: (didPop, _) {
               if (!didPop) {
-                // Handle back button press - trigger cancel action
                 Navigator.of(context).pop();
                 context.read<AuthBloc>().add(
                   AuthTrezorCancelled(taskId: taskId),
@@ -275,7 +196,6 @@ class _InstanceViewState extends State<InstanceView> {
             canPop: false,
             onPopInvokedWithResult: (didPop, _) {
               if (!didPop) {
-                // Handle back button press - trigger cancel action
                 Navigator.of(context).pop();
                 context.read<AuthBloc>().add(
                   AuthTrezorCancelled(taskId: taskId),
@@ -319,14 +239,12 @@ class _InstanceViewState extends State<InstanceView> {
                 ),
                 FilledButton.tonal(
                   onPressed: () {
-                    // Standard wallet with empty passphrase
                     Navigator.of(context).pop('');
                   },
                   child: const Text('Standard Wallet'),
                 ),
                 FilledButton(
                   onPressed: () {
-                    // Hidden passphrase wallet
                     final passphrase = passphraseController.text;
                     Navigator.of(context).pop(passphrase);
                   },
@@ -350,6 +268,124 @@ class _InstanceViewState extends State<InstanceView> {
         SnackBar(
           content: Text(message),
           backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state.status == AuthStatus.error) {
+          _showError(state.errorMessage ?? 'Unknown error');
+        }
+
+        if (state.isTrezorPinRequired) {
+          _showTrezorPinDialog(
+            state.trezorTaskId!,
+            state.trezorMessage ?? 'Enter PIN',
+          );
+        } else if (state.isTrezorPassphraseRequired) {
+          _showTrezorPassphraseDialog(
+            state.trezorTaskId!,
+            state.trezorMessage ?? 'Enter Passphrase',
+          );
+        } else if (state.isTrezorAwaitingConfirmation) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                state.trezorMessage ?? 'Please confirm on your Trezor device',
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      },
+      builder: (context, state) {
+        final currentUser =
+            state.status == AuthStatus.authenticated ? state.user : null;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InstanceStatus(instance: widget.instance),
+            const SizedBox(height: 16),
+            Text(widget.statusMessage),
+            if (currentUser != null) ...[
+              Text(
+                currentUser.isHd ? 'HD' : 'Legacy',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            const SizedBox(height: 16),
+            if (currentUser == null)
+              Expanded(
+                child: SingleChildScrollView(
+                  child: AuthForm(instance: widget.instance),
+                ),
+              )
+            else
+              Expanded(
+                child: LoggedInView(
+                  selectedMenuIndex: _selectedMenuIndex,
+                  mnemonic: _mnemonic,
+                  onSignOut: _signOut,
+                  onGetMnemonic: _getMnemonic,
+                  onCloseMnemonic: () => setState(() => _mnemonic = null),
+                  onMenuChanged:
+                      (index) => setState(() => _selectedMenuIndex = index),
+                  onMnemonicTap: () {
+                    Clipboard.setData(ClipboardData(text: _mnemonic!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Mnemonic copied to clipboard'),
+                      ),
+                    );
+                  },
+                  filteredAssets: widget.filteredAssets,
+                  searchController: widget.searchController,
+                  onNavigateToAsset: widget.onNavigateToAsset,
+                  authOptions: currentUser!.walletId.authOptions,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class AuthForm extends StatefulWidget {
+  const AuthForm({required this.instance, super.key});
+
+  final KdfInstanceState instance;
+
+  @override
+  State<AuthForm> createState() => _AuthFormState();
+}
+
+class _AuthFormState extends State<AuthForm> {
+  final _formKey = GlobalKey<FormState>();
+  final _walletNameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _isHdMode = true;
+
+  @override
+  void dispose() {
+    _walletNameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _signIn() {
+    if (_formKey.currentState?.validate() ?? false) {
+      context.read<AuthBloc>().add(
+        AuthSignedIn(
+          walletName: _walletNameController.text,
+          password: _passwordController.text,
+          derivationMethod:
+              _isHdMode ? DerivationMethod.hdWallet : DerivationMethod.iguana,
         ),
       );
     }
@@ -391,225 +427,285 @@ class _InstanceViewState extends State<InstanceView> {
         derivationMethod:
             _isHdMode ? DerivationMethod.hdWallet : DerivationMethod.iguana,
         mnemonic: mnemonic,
-      );
+      ),
+    );
+  }
 
-      widget.onUserChanged(user);
-    } on AuthException catch (e) {
-      _showError(
-        e.type == AuthExceptionType.incorrectPassword
-            ? 'HD mode requires a valid BIP39 seed phrase. '
-                'The imported encrypted seed is not compatible.'
-            : 'Registration failed: ${e.message}',
+  Future<void> _deleteWallet(String walletName) async {
+    if (walletName.isEmpty) {
+      _showError('Wallet name is required');
+      return;
+    }
+    final passwordController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Wallet'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter the wallet password to confirm deletion. This action cannot be undone.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscureText: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await widget.instance.sdk.auth.deleteWallet(
+        walletName: walletName,
+        password: passwordController.text,
       );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Wallet deleted')));
+        context.read<AuthBloc>().add(const AuthKnownUsersFetched());
+      }
+    } on AuthException catch (e) {
+      _showError('Delete wallet failed: ${e.message}');
+    } catch (e) {
+      _showError('Delete wallet failed: $e');
     }
   }
 
-  void _onSelectKnownUser(KdfUser user) {
-    setState(() {
-      widget.state.walletNameController.text = user.walletId.name;
-      widget.state.passwordController.text = '';
-      widget.state.isHdMode = user.isHd;
-    });
+  void _initializeTrezor() {
+    context.read<AuthBloc>().add(
+      const AuthTrezorInitAndAuthStarted(
+        derivationMethod: DerivationMethod.hdWallet,
+      ),
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(child: Text(widget.statusMessage)),
-            const SizedBox(width: 16),
-            if (widget.currentUser != null) ...[
-              Text(
-                '${widget.currentUser!.walletId.name} • '
-                '${widget.currentUser!.isHd ? 'HD' : 'Legacy'}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(width: 16),
-            ],
-            InstanceStatus(instance: widget.instance),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (widget.currentUser == null)
-          Expanded(
-            child: SingleChildScrollView(
-              // Wrap the auth form in a Form widget using the key
-              child: Form(
-                key: _formKey,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                child: AuthForm(
-                  state: widget.state,
-                  onSignIn: _signIn,
-                  onShowSeedDialog: _showSeedDialog,
-                  onSelectKnownUser: _onSelectKnownUser,
-                  onPasswordVisibilityToggle: () {
-                    setState(() {
-                      widget.state.obscurePassword =
-                          !widget.state.obscurePassword;
-                    });
-                  },
-                  onHdModeToggle: (bool value) {
-                    setState(() => widget.state.isHdMode = value);
-                  },
-                  validator: _validator,
-                ),
-              ),
-              duration: const Duration(seconds: 3),
-            ),
-          )
-        else
-          Expanded(
-            child: LoggedInView(
-              selectedMenuIndex: _selectedMenuIndex,
-              mnemonic: _mnemonic,
-              onSignOut: _signOut,
-              onGetMnemonic: _getMnemonic,
-              onCloseMnemonic: () => setState(() => _mnemonic = null),
-              onMenuChanged:
-                  (int index) => setState(() => _selectedMenuIndex = index),
-              onMnemonicTap: () {
-                Clipboard.setData(ClipboardData(text: _mnemonic!));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Mnemonic copied to clipboard')),
-                );
-              },
-              filteredAssets: widget.filteredAssets,
-              searchController: widget.searchController,
-              onNavigateToAsset: widget.onNavigateToAsset,
-              authOptions: widget.currentUser!.authOptions,
-            ),
-          ),
-      ],
+  void _onSelectKnownUser(KdfUser user) {
+    context.read<AuthBloc>().add(AuthKnownUserSelected(user));
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
     );
   }
 
   String? _validator(String? value) {
-    if (value?.isEmpty ?? true) {
+    if (value == null || value.isEmpty) {
       return 'This field is required';
     }
     return null;
   }
-}
-
-class AuthForm extends StatelessWidget {
-  const AuthForm({
-    required this.state,
-    required this.onSignIn,
-    required this.onShowSeedDialog,
-    required this.onSelectKnownUser,
-    required this.onPasswordVisibilityToggle,
-    required this.onHdModeToggle,
-    required this.validator,
-    super.key,
-  });
-
-  final InstanceState state;
-  final VoidCallback onSignIn;
-  final VoidCallback onShowSeedDialog;
-  final void Function(KdfUser) onSelectKnownUser;
-  final VoidCallback onPasswordVisibilityToggle;
-  final ValueChanged<bool> onHdModeToggle;
-  final String? Function(String?) validator;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (state.knownUsers.isNotEmpty) ...[
-          Text(
-            'Saved Wallets:',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children:
-                state.knownUsers.map((user) {
-                  return ActionChip(
-                    key: Key(user.walletId.compoundId),
-                    onPressed: () => onSelectKnownUser(user),
-                    label: Text(user.walletId.name),
-                  );
-                }).toList(),
-          ),
-          const SizedBox(height: 16),
-        ],
-        TextFormField(
-          controller: state.walletNameController,
-          decoration: const InputDecoration(labelText: 'Wallet Name'),
-          validator: validator,
-        ),
-        TextFormField(
-          controller: state.passwordController,
-          validator: validator,
-          decoration: InputDecoration(
-            labelText: 'Password',
-            suffixIcon: IconButton(
-              icon: Icon(
-                state.obscurePassword ? Icons.visibility : Icons.visibility_off,
-              ),
-              onPressed: onPasswordVisibilityToggle,
-            ),
-          ),
-          obscureText: state.obscurePassword,
-        ),
-        SwitchListTile(
-          title: const Row(
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final knownUsers = context.read<AuthBloc>().knownUsers;
+        final isLoading =
+            state.status == AuthStatus.loading ||
+            state.status == AuthStatus.signingOut;
+        final isTrezorInitializing = state.isTrezorInitializing;
+        final trezorMessage = state.trezorMessage;
+        final trezorTaskId = state.trezorTaskId;
+
+        if (state.status == AuthStatus.unauthenticated &&
+            state.selectedUser != null) {
+          _walletNameController.text = state.walletName;
+          _passwordController.clear();
+          _isHdMode = state.isHdMode;
+        }
+
+        return Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('HD Wallet Mode'),
-              SizedBox(width: 8),
-              Tooltip(
-                message:
-                    'HD wallets require a valid BIP39 seed phrase.\n'
-                    'NB! Your addresses and balances will be different '
-                    'in HD mode.',
-                child: Icon(Icons.info, size: 16),
-              ),
-            ],
-          ),
-          subtitle: const Text('Enable HD multi-address mode'),
-          value: state.isHdMode,
-          onChanged: onHdModeToggle,
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            FilledButton.tonal(
-              onPressed: onSignIn,
-              child: const Text('Sign In'),
-            ),
-            FilledButton(
-              onPressed: onShowSeedDialog,
-              child: const Text('Register'),
-            ),
-          ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              FilledButton.icon(
-                onPressed: _isTrezorInitializing ? null : _initializeTrezor,
-                icon:
-                    _isTrezorInitializing
-                        ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Icon(Icons.security),
-                label: Text(
-                  _isTrezorInitializing ? 'Initializing...' : 'Use Trezor',
+              if (knownUsers.isNotEmpty) ...[
+                Text(
+                  'Saved Wallets:',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children:
+                      knownUsers
+                          .map(
+                            (user) => ActionChip(
+                              key: Key(user.walletId.compoundId),
+                              onPressed: () => _onSelectKnownUser(user),
+                              label: Text(user.walletId.name),
+                            ),
+                          )
+                          .toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
+              TextFormField(
+                key: const Key('wallet_name_field'),
+                controller: _walletNameController,
+                decoration: const InputDecoration(labelText: 'Wallet Name'),
+                validator: _validator,
+                enabled: !isLoading,
               ),
+              TextFormField(
+                key: const Key('password_field'),
+                controller: _passwordController,
+                validator: _validator,
+                enabled: !isLoading,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed:
+                        () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                  ),
+                ),
+                obscureText: _obscurePassword,
+              ),
+              SwitchListTile(
+                title: const Row(
+                  children: [
+                    Text('HD Wallet Mode'),
+                    SizedBox(width: 8),
+                    Tooltip(
+                      message:
+                          'HD wallets require a valid BIP39 seed phrase.\n'
+                          'NB! Your addresses and balances will be different '
+                          'in HD mode.',
+                      child: Icon(Icons.info, size: 16),
+                    ),
+                  ],
+                ),
+                subtitle: const Text('Enable HD multi-address mode'),
+                value: _isHdMode,
+                onChanged:
+                    isLoading
+                        ? null
+                        : (value) => setState(() => _isHdMode = value),
+              ),
+              const SizedBox(height: 16),
+              if (isLoading) ...[
+                const Center(child: CircularProgressIndicator()),
+                const SizedBox(height: 16),
+              ] else ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    FilledButton.tonal(
+                      onPressed: _signIn,
+                      child: const Text('Sign In'),
+                    ),
+                    FilledButton(
+                      key: const Key('register_button'),
+                      onPressed: _showSeedDialog,
+                      child: const Text('Register'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed:
+                          _walletNameController.text.isEmpty
+                              ? null
+                              : () => _deleteWallet(_walletNameController.text),
+                      icon: const Icon(Icons.delete),
+                      label: const Text('Delete Wallet'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (isTrezorInitializing) ...[
+                  Card(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              trezorMessage ?? 'Initializing Trezor...',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                          if (trezorTaskId != null)
+                            TextButton(
+                              onPressed:
+                                  () => context.read<AuthBloc>().add(
+                                    AuthTrezorCancelled(taskId: trezorTaskId),
+                                  ),
+                              child: const Text('Cancel'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FilledButton.icon(
+                      onPressed:
+                          isTrezorInitializing ? null : _initializeTrezor,
+                      icon:
+                          isTrezorInitializing
+                              ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Icon(Icons.security),
+                      label: Text(
+                        isTrezorInitializing ? 'Initializing...' : 'Use Trezor',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
-        ],
-      ],
+        );
+      },
     );
   }
 }
@@ -649,7 +745,7 @@ class LoggedInView extends StatelessWidget {
         final isDesktop = constraints.maxWidth > 800;
 
         if (isDesktop) {
-          return DesktopLayout(
+          return SideMenuLayout(
             selectedMenuIndex: selectedMenuIndex,
             onMenuChanged: onMenuChanged,
             mnemonic: mnemonic,
@@ -667,7 +763,6 @@ class LoggedInView extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Top button row - always visible
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -703,10 +798,8 @@ class LoggedInView extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 16),
-
-            // Main content area with responsive layout
             Expanded(
-              child: MobileLayout(
+              child: BottomNavLayout(
                 selectedMenuIndex: selectedMenuIndex,
                 onMenuChanged: onMenuChanged,
                 filteredAssets: filteredAssets,
@@ -722,8 +815,8 @@ class LoggedInView extends StatelessWidget {
   }
 }
 
-class DesktopLayout extends StatelessWidget {
-  const DesktopLayout({
+class SideMenuLayout extends StatelessWidget {
+  const SideMenuLayout({
     required this.selectedMenuIndex,
     required this.onMenuChanged,
     required this.mnemonic,
@@ -755,7 +848,6 @@ class DesktopLayout extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left sidebar menu - full height
         SizedBox(
           width: 200,
           child: Card(
@@ -801,13 +893,10 @@ class DesktopLayout extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-
-        // Main content area
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Top button row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -843,8 +932,6 @@ class DesktopLayout extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 16),
-
-              // Content area
               Expanded(
                 child: SelectedContent(
                   selectedMenuIndex: selectedMenuIndex,
@@ -862,8 +949,8 @@ class DesktopLayout extends StatelessWidget {
   }
 }
 
-class MobileLayout extends StatelessWidget {
-  const MobileLayout({
+class BottomNavLayout extends StatelessWidget {
+  const BottomNavLayout({
     required this.selectedMenuIndex,
     required this.onMenuChanged,
     required this.filteredAssets,
@@ -884,7 +971,6 @@ class MobileLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Main content area
         Expanded(
           child: SelectedContent(
             selectedMenuIndex: selectedMenuIndex,
@@ -894,8 +980,6 @@ class MobileLayout extends StatelessWidget {
             authOptions: authOptions,
           ),
         ),
-
-        // Bottom navigation
         Card(
           margin: EdgeInsets.zero,
           child: BottomNavigationBar(
