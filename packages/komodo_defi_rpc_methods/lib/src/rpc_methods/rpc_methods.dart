@@ -42,6 +42,7 @@ export 'swaps/legacy/order_status.dart';
 export 'swaps/legacy/sell.dart';
 export 'swaps/legacy/set_price.dart';
 export 'swaps/max_maker_vol.dart';
+export 'swaps/max_taker_vol.dart';
 export 'swaps/my_recent_swaps.dart';
 export 'swaps/orderbook.dart';
 export 'swaps/orderbook_depth.dart';
