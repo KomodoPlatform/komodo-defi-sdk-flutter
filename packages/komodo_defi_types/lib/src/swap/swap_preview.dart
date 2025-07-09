@@ -8,6 +8,7 @@ part 'swap_preview.g.dart';
 
 /// Preview information for a swap operation
 @freezed
+@JsonSerializable(fieldRename: FieldRename.snake)
 abstract class SwapPreview with _$SwapPreview {
   const factory SwapPreview({
     required TradingFee baseCoinFee,

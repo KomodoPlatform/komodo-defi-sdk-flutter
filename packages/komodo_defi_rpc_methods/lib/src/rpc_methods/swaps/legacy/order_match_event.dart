@@ -2,6 +2,18 @@ import 'package:komodo_defi_rpc_methods/src/rpc_methods/swaps/legacy/order_confi
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+/// Helper method to safely parse RationalValue with error handling
+RationalValue _parseRationalValue(List<dynamic> data, String key) {
+  try {
+    return RationalValue.fromJson(data);
+  } catch (e) {
+    throw FormatException(
+      'Failed to parse RationalValue for key "$key": $e',
+      data,
+    );
+  }
+}
+
 /// Base class for order match events
 abstract class OrderMatchEvent {
   const OrderMatchEvent({
@@ -68,15 +80,20 @@ class OrderMatchRequest extends OrderMatchEvent {
       base: json.value<String>('base'),
       rel: json.value<String>('rel'),
       baseAmount: json.value<String>('base_amount'),
-      baseAmountRat: RationalValue.fromJson(
-          json.value<List<dynamic>>('base_amount_rat')),
+      baseAmountRat: _parseRationalValue(
+        json.value<List<dynamic>>('base_amount_rat'),
+        'base_amount_rat',
+      ),
       relAmount: json.value<String>('rel_amount'),
-      relAmountRat: RationalValue.fromJson(
-          json.value<List<dynamic>>('rel_amount_rat')),
+      relAmountRat: _parseRationalValue(
+        json.value<List<dynamic>>('rel_amount_rat'),
+        'rel_amount_rat',
+      ),
       uuid: json.value<String>('uuid'),
       matchBy: OrderMatchBy.fromJson(json.value<JsonMap>('match_by')),
       confSettings: OrderConfirmationSettings.fromJson(
-          json.value<JsonMap>('conf_settings')),
+        json.value<JsonMap>('conf_settings'),
+      ),
     );
   }
 
@@ -136,13 +153,18 @@ class OrderMatchReserved extends OrderMatchEvent {
       base: json.value<String>('base'),
       rel: json.value<String>('rel'),
       baseAmount: json.value<String>('base_amount'),
-      baseAmountRat: RationalValue.fromJson(
-          json.value<List<dynamic>>('base_amount_rat')),
+      baseAmountRat: _parseRationalValue(
+        json.value<List<dynamic>>('base_amount_rat'),
+        'base_amount_rat',
+      ),
       relAmount: json.value<String>('rel_amount'),
-      relAmountRat: RationalValue.fromJson(
-          json.value<List<dynamic>>('rel_amount_rat')),
+      relAmountRat: _parseRationalValue(
+        json.value<List<dynamic>>('rel_amount_rat'),
+        'rel_amount_rat',
+      ),
       confSettings: OrderConfirmationSettings.fromJson(
-          json.value<JsonMap>('conf_settings')),
+        json.value<JsonMap>('conf_settings'),
+      ),
     );
   }
 
@@ -256,18 +278,22 @@ class OrderMatch {
 
   factory OrderMatch.fromJson(Map<String, dynamic> json) {
     return OrderMatch(
-      request: json.valueOrNull<JsonMap>('request') != null
-          ? OrderMatchRequest.fromJson(json.value<JsonMap>('request'))
-          : null,
-      reserved: json.valueOrNull<JsonMap>('reserved') != null
-          ? OrderMatchReserved.fromJson(json.value<JsonMap>('reserved'))
-          : null,
-      connect: json.valueOrNull<JsonMap>('connect') != null
-          ? OrderMatchConnect.fromJson(json.value<JsonMap>('connect'))
-          : null,
-      connected: json.valueOrNull<JsonMap>('connected') != null
-          ? OrderMatchConnected.fromJson(json.value<JsonMap>('connected'))
-          : null,
+      request:
+          json.valueOrNull<JsonMap>('request') != null
+              ? OrderMatchRequest.fromJson(json.value<JsonMap>('request'))
+              : null,
+      reserved:
+          json.valueOrNull<JsonMap>('reserved') != null
+              ? OrderMatchReserved.fromJson(json.value<JsonMap>('reserved'))
+              : null,
+      connect:
+          json.valueOrNull<JsonMap>('connect') != null
+              ? OrderMatchConnect.fromJson(json.value<JsonMap>('connect'))
+              : null,
+      connected:
+          json.valueOrNull<JsonMap>('connected') != null
+              ? OrderMatchConnected.fromJson(json.value<JsonMap>('connected'))
+              : null,
       lastUpdated: json.value<int>('last_updated'),
     );
   }

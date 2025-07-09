@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:math' as math;
 
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
@@ -679,7 +680,7 @@ abstract class SwapHistoryStorage {
 
 /// Default implementation of swap history storage
 class _DefaultSwapHistoryStorage implements SwapHistoryStorage {
-  final Map<String, List<rpc.SwapStatus>> _storage = {};
+  final Map<String, SplayTreeSet<rpc.SwapStatus>> _storage = {};
 
   @override
   Future<SwapHistoryPage> getSwaps(
@@ -693,11 +694,12 @@ class _DefaultSwapHistoryStorage implements SwapHistoryStorage {
     int? limit,
   }) async {
     final key = '${walletId.name}-$myCoin-$otherCoin';
-    final swaps = _storage[key] ?? [];
+    final swapSet = _storage[key] ?? _createSwapSet();
 
-    // Apply filters
+    // Apply filters - convert to list for easier filtering
+    final swapsList = swapSet.toList();
     final filteredSwaps =
-        swaps.where((swap) {
+        swapsList.where((rpc.SwapStatus swap) {
           final startedAt =
               swap.events.isNotEmpty ? swap.events.first.timestamp : null;
           if (fromTimestamp != null && startedAt != null) {
@@ -730,17 +732,10 @@ class _DefaultSwapHistoryStorage implements SwapHistoryStorage {
       final otherCoin = swap.takerCoin;
       final key = '${walletId.name}-$myCoin-$otherCoin';
 
-      _storage.putIfAbsent(key, () => []);
+      _storage.putIfAbsent(key, _createSwapSet);
 
-      // Add if not already exists
-      if (!_storage[key]!.any((s) => s.uuid == swap.uuid)) {
-        _storage[key]!.add(swap);
-        _storage[key]!.sort((a, b) {
-          final aTime = a.events.isNotEmpty ? a.events.first.timestamp : 0;
-          final bTime = b.events.isNotEmpty ? b.events.first.timestamp : 0;
-          return bTime.compareTo(aTime);
-        });
-      }
+      // Add to the sorted set - duplicates are automatically handled
+      _storage[key]!.add(swap);
     }
   }
 
@@ -751,8 +746,25 @@ class _DefaultSwapHistoryStorage implements SwapHistoryStorage {
     String? otherCoin,
   }) async {
     final key = '${walletId.name}-$myCoin-$otherCoin';
-    final swaps = _storage[key] ?? [];
+    final swaps = _storage[key] ?? _createSwapSet();
     return swaps.isNotEmpty ? swaps.first.uuid : null;
+  }
+
+  /// Creates a new SplayTreeSet with the appropriate comparator for swaps
+  SplayTreeSet<rpc.SwapStatus> _createSwapSet() {
+    return SplayTreeSet<rpc.SwapStatus>((rpc.SwapStatus a, rpc.SwapStatus b) {
+      // First compare by timestamp (most recent first)
+      final aTime = a.events.isNotEmpty ? a.events.first.timestamp : 0;
+      final bTime = b.events.isNotEmpty ? b.events.first.timestamp : 0;
+      final timeComparison = bTime.compareTo(aTime);
+
+      // If timestamps are equal, compare by UUID to ensure uniqueness
+      if (timeComparison == 0) {
+        return a.uuid.compareTo(b.uuid);
+      }
+
+      return timeComparison;
+    });
   }
 
   @override

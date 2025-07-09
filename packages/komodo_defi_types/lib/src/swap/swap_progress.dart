@@ -9,15 +9,14 @@ part 'swap_progress.g.dart';
 
 /// Progress information for an ongoing swap
 @freezed
+@JsonSerializable(fieldRename: FieldRename.snake)
 sealed class SwapProgress with _$SwapProgress {
   const factory SwapProgress({
     @SwapStatusConverter() required SwapStatus status,
     required String message,
-    @JsonKey(name: 'swap_result') SwapResult? swapResult,
-    @JsonKey(name: 'error_code')
-    @SwapErrorCodeConverter()
-    SwapErrorCode? errorCode,
-    @JsonKey(name: 'error_message') String? errorMessage,
+    SwapResult? swapResult,
+    @SwapErrorCodeConverter() SwapErrorCode? errorCode,
+    String? errorMessage,
     String? uuid,
   }) = _SwapProgress;
   const SwapProgress._();

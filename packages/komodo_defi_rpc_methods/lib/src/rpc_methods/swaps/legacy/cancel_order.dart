@@ -27,7 +27,7 @@ class CancelOrderResponse extends BaseResponse {
 
   factory CancelOrderResponse.fromJson(Map<String, dynamic> json) {
     return CancelOrderResponse(
-      mmrpc: json.value<String>('mmrpc'),
+      mmrpc: json.valueOrNull<String>('mmrpc'),
       result: json.value<String>('result'),
     );
   }

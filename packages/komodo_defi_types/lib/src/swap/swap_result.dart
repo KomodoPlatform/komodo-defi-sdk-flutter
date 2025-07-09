@@ -7,6 +7,7 @@ part 'swap_result.g.dart';
 
 /// Result of a completed swap operation
 @freezed
+@JsonSerializable(fieldRename: FieldRename.snake)
 abstract class SwapResult with _$SwapResult {
   const factory SwapResult({
     required String uuid,

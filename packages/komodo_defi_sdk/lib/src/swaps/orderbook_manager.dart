@@ -200,13 +200,12 @@ class OrderbookManager implements _OrderbookManager {
   Future<void> _ensureAssetsActivated(List<AssetId> assetIds) async {
     for (final assetId in assetIds) {
       final assets = _assetProvider.findAssetsByConfigId(assetId.id);
-      if (assets.isNotEmpty) {
-        final asset = assets.first;
+      for (final asset in assets) {
         final activationStatus =
             await _activationManager.activateAsset(asset).last;
         if (activationStatus.isComplete && !activationStatus.isSuccess) {
           throw StateError(
-            'Failed to activate asset ${assetId.id}. '
+            'Failed to activate asset ${asset.id.id}. '
             '${activationStatus.toJson()}',
           );
         }

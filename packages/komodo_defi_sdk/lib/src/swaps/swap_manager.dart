@@ -37,6 +37,7 @@ class SwapManager {
 
       final result = response.result;
 
+    
       return SwapPreview(
         baseCoinFee: TradingFee(
           coin: result.baseCoinFee.coin,
@@ -169,6 +170,8 @@ class SwapManager {
   }
 
   Future<void> _ensureAssetsActivated(List<AssetId> assetIds) async {
+    final activationFutures = <Future<void>>[];
+
     for (final assetId in assetIds) {
       final assets = _assetProvider.findAssetsByConfigId(assetId.id);
       if (assets.isEmpty) {
@@ -178,17 +181,22 @@ class SwapManager {
         );
       }
 
-      final asset = assets.first;
-      final activationStatus =
-          await _activationManager.activateAsset(asset).last;
-
-      if (activationStatus.isComplete && !activationStatus.isSuccess) {
-        throw SwapException(
-          'Failed to activate asset ${assetId.id}',
-          SwapErrorCode.assetNotActivated,
+      // Handle multiple assets with same config ID
+      for (final asset in assets) {
+        activationFutures.add(
+          _activationManager.activateAsset(asset).last.then((status) {
+            if (status.isComplete && !status.isSuccess) {
+              throw SwapException(
+                'Failed to activate asset ${assetId.id}',
+                SwapErrorCode.assetNotActivated,
+              );
+            }
+          }),
         );
       }
     }
+
+    await Future.wait(activationFutures);
   }
 
   /// Cleanup any active swaps

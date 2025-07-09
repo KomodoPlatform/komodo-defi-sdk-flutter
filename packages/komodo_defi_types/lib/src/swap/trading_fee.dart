@@ -7,6 +7,7 @@ part 'trading_fee.g.dart';
 
 /// Trading fee information
 @freezed
+@JsonSerializable(fieldRename: FieldRename.snake)
 abstract class TradingFee with _$TradingFee {
   const factory TradingFee({
     required String coin,
