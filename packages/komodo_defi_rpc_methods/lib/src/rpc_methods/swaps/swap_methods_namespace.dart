@@ -79,6 +79,21 @@ class SwapMethodsNamespace extends BaseRpcMethodNamespace {
     );
   }
 
+  /// Returns the maximum taker volume available for the selected coin
+  Future<MaxTakerVolResponse> maxTakerVol({
+    required String coin,
+    String? tradeWith,
+    String? rpcPass,
+  }) {
+    return execute(
+      MaxTakerVolRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        coin: coin,
+        tradeWith: tradeWith,
+      ),
+    );
+  }
+
   /// Returns the data of the most recent atomic swaps executed by the
   /// Komodo DeFi Framework API node
   ///
