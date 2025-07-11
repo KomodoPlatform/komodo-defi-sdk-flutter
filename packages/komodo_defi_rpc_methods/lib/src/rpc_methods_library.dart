@@ -32,6 +32,8 @@ class KomodoDefiRpcMethods {
 
   TaskMethods get task => TaskMethods(_client);
 
+  StakingMethodsNamespace get staking => StakingMethodsNamespace(_client);
+
   // Protocol-specific namespaces
   Erc20MethodsNamespace get erc20 => Erc20MethodsNamespace(_client);
   UtxoMethodsNamespace get utxo => UtxoMethodsNamespace(_client);

@@ -88,7 +88,7 @@ class StakingManager {
   }
 
   Future<void> _ensureActivated(String ticker) async {
-    final asset = _assetProvider.findAssetsByTicker(ticker).firstOrNull;
+    final asset = _assetProvider.findAssetsByConfigId(ticker).firstOrNull;
     if (asset != null) {
       final progress = await _activationManager.activateAsset(asset).last;
       if (progress.isComplete && !progress.isSuccess) {
@@ -100,15 +100,22 @@ class StakingManager {
   Future<void> dispose() async {}
 }
 
-extension on WithdrawResult {
-  WithdrawResult copyWith({required String txHash}) {
+extension _WithdrawResultExtension on WithdrawResult {
+  /// Creates a copy of this WithdrawResult with an updated transaction hash.
+  WithdrawResult copyWith({String? txHash}) {
     return WithdrawResult(
-      txHash: txHash,
+      txHex: txHex,
+      txHash: txHash ?? this.txHash,
+      from: from,
+      to: to,
       balanceChanges: balanceChanges,
-      coin: coin,
-      toAddress: to.first,
+      blockHeight: blockHeight,
+      timestamp: timestamp,
       fee: fee,
-      kmdRewardsEligible: kmdRewardsEligible,
+      coin: coin,
+      internalId: internalId,
+      kmdRewards: kmdRewards,
+      memo: memo,
     );
   }
 }

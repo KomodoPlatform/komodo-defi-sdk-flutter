@@ -1,4 +1,5 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class StakingMethodsNamespace extends BaseRpcMethodNamespace {
@@ -72,8 +73,7 @@ class StakingMethodsNamespace extends BaseRpcMethodNamespace {
 }
 
 class DelegateRequest
-    extends BaseRequest<StakingTxResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<StakingTxResponse, GeneralErrorResponse> {
   DelegateRequest({
     required super.rpcPass,
     required this.coin,
@@ -95,8 +95,7 @@ class DelegateRequest
 }
 
 class UndelegateRequest
-    extends BaseRequest<StakingTxResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<StakingTxResponse, GeneralErrorResponse> {
   UndelegateRequest({
     required super.rpcPass,
     required this.coin,
@@ -118,8 +117,7 @@ class UndelegateRequest
 }
 
 class ClaimRewardsRequest
-    extends BaseRequest<StakingTxResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<StakingTxResponse, GeneralErrorResponse> {
   ClaimRewardsRequest({
     required super.rpcPass,
     required this.coin,
@@ -141,8 +139,7 @@ class ClaimRewardsRequest
 }
 
 class QueryDelegationsRequest
-    extends BaseRequest<QueryDelegationsResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<QueryDelegationsResponse, GeneralErrorResponse> {
   QueryDelegationsRequest({
     required super.rpcPass,
     required this.coin,
@@ -167,8 +164,8 @@ class QueryDelegationsRequest
 }
 
 class QueryOngoingUndelegationsRequest
-    extends BaseRequest<QueryOngoingUndelegationsResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends
+        BaseRequest<QueryOngoingUndelegationsResponse, GeneralErrorResponse> {
   QueryOngoingUndelegationsRequest({
     required super.rpcPass,
     required this.coin,
@@ -193,8 +190,7 @@ class QueryOngoingUndelegationsRequest
 }
 
 class QueryValidatorsRequest
-    extends BaseRequest<QueryValidatorsResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<QueryValidatorsResponse, GeneralErrorResponse> {
   QueryValidatorsRequest({
     required super.rpcPass,
     required this.coin,
