@@ -81,6 +81,70 @@ class _InstanceViewState extends State<InstanceView> {
     return widget.instance.sdk.auth.getMnemonicPlainText(password);
   }
 
+  Future<void> _deleteWallet(String walletName) async {
+    if (walletName.isEmpty) {
+      _showError('Wallet name is required');
+      return;
+    }
+    final passwordController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Wallet'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter the wallet password to confirm deletion. This action cannot be undone.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscureText: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await widget.instance.sdk.auth.deleteWallet(
+        walletName: walletName,
+        password: passwordController.text,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Wallet deleted')));
+        context.read<AuthBloc>().add(const AuthKnownUsersFetched());
+      }
+      setState(() => _mnemonic = null);
+    } on AuthException catch (e) {
+      _showError('Delete wallet failed: ${e.message}');
+    } catch (e) {
+      _showError('Delete wallet failed: $e');
+    }
+  }
+
   Future<String?> _showPasswordDialog() async {
     final passwordController = TextEditingController();
     return showDialog<String>(
@@ -585,6 +649,14 @@ class _InstanceViewState extends State<InstanceView> {
                   }
                 },
                 child: const Text('Register'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed:
+                    _walletNameController.text.isEmpty
+                        ? null
+                        : () => _deleteWallet(_walletNameController.text),
+                icon: const Icon(Icons.delete),
+                label: const Text('Delete Wallet'),
               ),
             ],
           ),

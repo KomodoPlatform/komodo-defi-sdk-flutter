@@ -8,12 +8,8 @@ import 'package:komodo_ui/src/defi/asset/asset_icon.dart';
 /// Similar to the legacy CoinLogo, but built on top of the new [Asset]
 /// and [AssetIcon] APIs.
 class AssetLogo extends StatelessWidget {
-  /// Creates a new [AssetLogo] widget.
+  /// Creates a new [AssetLogo] widget from an [Asset] instance.
   ///
-  /// [asset] is the asset for which the logo should be displayed.
-  /// [isDisabled] indicates whether the asset is disabled, in which case
-  /// the icon will be displayed with reduced opacity.
-  /// [size] is the size of the main asset icon, defaulting to 41 pixels.
   /// Example usage:
   /// ```dart
   /// AssetLogo(asset)
@@ -23,10 +19,57 @@ class AssetLogo extends StatelessWidget {
     this.size = 41,
     this.isDisabled = false,
     super.key,
-  });
+  }) : _assetId = null,
+       _legacyTicker = null,
+       isBlank = false;
+
+  /// Creates a logo directly from an [AssetId].
+  const AssetLogo.ofId(
+    AssetId assetId, {
+    this.size = 41,
+    this.isDisabled = false,
+    super.key,
+  }) : asset = null,
+       _assetId = assetId,
+       _legacyTicker = null,
+       isBlank = false;
+
+  /// Legacy constructor that accepts a raw ticker string.
+  ///
+  /// This mirrors [AssetIcon.ofTicker] and should only be used when an
+  /// [Asset] or [AssetId] instance isn't available.
+  const AssetLogo.ofTicker(
+    String ticker, {
+    this.size = 41,
+    this.isDisabled = false,
+    super.key,
+  }) : _legacyTicker = ticker,
+       asset = null,
+       _assetId = null,
+       isBlank = false;
+
+  /// Creates a placeholder [AssetLogo] widget.
+  ///
+  /// This displays the default placeholder icon (monetization_on_outlined)
+  /// and should be used when no asset data is available or as a fallback.
+  ///
+  /// Set [isBlank] to true to display an empty circular container instead
+  /// of the default icon, similar to the legacy placeholder behavior.
+  const AssetLogo.placeholder({
+    this.size = 41,
+    this.isDisabled = false,
+    this.isBlank = false,
+    super.key,
+  }) : asset = null,
+       _assetId = null,
+       _legacyTicker = null;
 
   /// Asset to display the logo for.
-  final Asset asset;
+  final Asset? asset;
+
+  /// AssetId to display the logo for.
+  final AssetId? _assetId;
+  final String? _legacyTicker;
 
   /// Size of the main asset icon.
   final double size;
@@ -35,20 +78,89 @@ class AssetLogo extends StatelessWidget {
   /// with reduced opacity.
   final bool isDisabled;
 
+  /// Whether to display a blank placeholder instead of the default icon.
+  /// Only used with the [AssetLogo.placeholder] constructor.
+  final bool isBlank;
+
   @override
   Widget build(BuildContext context) {
-    // Existing komodo-wallet implementation doesn't show protocol icon
-    // for UTXO assets (like BTC, LTC, etc.) so we follow the same logic here.
-    final protocolTicker = asset.protocol.subClass.iconTicker;
-    final shouldShowProtocolIcon = asset.protocol.subClass != CoinSubClass.utxo;
+    final resolvedId = asset?.id ?? _assetId;
+    final resolvedTicker = _legacyTicker;
+
+    // Handle placeholder case
+    if (resolvedId == null && resolvedTicker == null) {
+      return _AssetLogoPlaceholder(
+        isBlank: isBlank,
+        isDisabled: isDisabled,
+        size: size,
+      );
+    }
+
+    final isChildAsset = resolvedId?.isChildAsset ?? false;
+
+    // Use the parent coin ticker for child assets so that token logos display
+    // the network they belong to (e.g. ETH for ERC20 tokens).
+    final protocolTicker = isChildAsset ? resolvedId?.parentId?.id : null;
+    final shouldShowProtocolIcon = isChildAsset && protocolTicker != null;
+
+    final mainIcon =
+        resolvedId != null
+            ? AssetIcon(resolvedId, size: size, suspended: isDisabled)
+            : (resolvedTicker != null
+                ? AssetIcon.ofTicker(
+                  resolvedTicker,
+                  size: size,
+                  suspended: isDisabled,
+                )
+                : throw ArgumentError(
+                  'resolvedTicker cannot be null when both asset and '
+                  'assetId are absent.',
+                ));
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        AssetIcon(asset.id, size: size, suspended: isDisabled),
+        mainIcon,
         if (shouldShowProtocolIcon)
           AssetProtocolIcon(protocolTicker: protocolTicker, logoSize: size),
       ],
+    );
+  }
+}
+
+class _AssetLogoPlaceholder extends StatelessWidget {
+  const _AssetLogoPlaceholder({
+    required this.isBlank,
+    required this.isDisabled,
+    required this.size,
+  });
+
+  final bool isBlank;
+  final bool isDisabled;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isBlank) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color:
+              isDisabled
+                  ? Theme.of(context).disabledColor
+                  : Theme.of(context).colorScheme.secondaryContainer,
+        ),
+      );
+    }
+    return Icon(
+      Icons.monetization_on_outlined,
+      size: size,
+      color:
+          isDisabled
+              ? Theme.of(context).disabledColor
+              : Theme.of(context).colorScheme.onSecondaryContainer,
     );
   }
 }

@@ -3,8 +3,7 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 
 class GetMnemonicRequest
-    extends BaseRequest<GetMnemonicResponse, GeneralErrorResponse>
-    with RequestHandlingMixin<GetMnemonicResponse, GeneralErrorResponse> {
+    extends BaseRequest<GetMnemonicResponse, GeneralErrorResponse> {
   GetMnemonicRequest({
     required super.rpcPass,
     required this.format,

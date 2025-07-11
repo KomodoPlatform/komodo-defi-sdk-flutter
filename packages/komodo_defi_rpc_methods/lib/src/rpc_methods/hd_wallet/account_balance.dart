@@ -5,8 +5,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // Init Request
 class AccountBalanceInitRequest
-    extends BaseRequest<NewTaskResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<NewTaskResponse, GeneralErrorResponse> {
   AccountBalanceInitRequest({
     required super.rpcPass,
     required this.coin,
@@ -33,8 +32,7 @@ class AccountBalanceInitRequest
 
 // Status Request
 class AccountBalanceStatusRequest
-    extends BaseRequest<AccountBalanceStatusResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<AccountBalanceStatusResponse, GeneralErrorResponse> {
   AccountBalanceStatusRequest({
     required super.rpcPass,
     required this.taskId,
@@ -90,7 +88,11 @@ class AccountBalanceStatusResponse extends BaseResponse {
       mmrpc: json.value<String>('mmrpc'),
       status: status!,
       // details: status == 'Ok' ? AccountBalanceInfo.fromJson(details) : details,
-      details: ResponseDetails<AccountBalanceInfo, GeneralErrorResponse>(
+      details: ResponseDetails<
+        AccountBalanceInfo,
+        GeneralErrorResponse,
+        String
+      >(
         data:
             status == SyncStatusEnum.success
                 ? AccountBalanceInfo.fromJson(result.value<JsonMap>('details'))
@@ -108,7 +110,8 @@ class AccountBalanceStatusResponse extends BaseResponse {
   }
 
   final SyncStatusEnum status;
-  final ResponseDetails<AccountBalanceInfo, GeneralErrorResponse> details;
+  final ResponseDetails<AccountBalanceInfo, GeneralErrorResponse, String>
+  details;
 
   @override
   JsonMap toJson() {
@@ -125,8 +128,7 @@ class AccountBalanceStatusResponse extends BaseResponse {
 
 // Cancel Request
 class AccountBalanceCancelRequest
-    extends BaseRequest<AccountBalanceCancelResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<AccountBalanceCancelResponse, GeneralErrorResponse> {
   AccountBalanceCancelRequest({required super.rpcPass, required this.taskId})
     : super(method: 'task::account_balance::cancel');
 

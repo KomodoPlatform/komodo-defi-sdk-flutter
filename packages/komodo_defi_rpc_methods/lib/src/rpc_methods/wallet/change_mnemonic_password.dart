@@ -9,11 +9,6 @@ class ChangeMnemonicPasswordRequest
         BaseRequest<
           ChangeMnemonicPasswordResponse,
           ChangeMnemonicIncorrectPasswordErrorResponse
-        >
-    with
-        RequestHandlingMixin<
-          ChangeMnemonicPasswordResponse,
-          ChangeMnemonicIncorrectPasswordErrorResponse
         > {
   ChangeMnemonicPasswordRequest({
     required super.rpcPass,

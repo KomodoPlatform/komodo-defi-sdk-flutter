@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 part 'auth_event.dart';
@@ -310,5 +309,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
   /// Helper method to get known users
   List<KdfUser> get knownUsers {
     return state.knownUsers;
+  }
+
+  /// Clean up resources when this bloc is no longer needed
+  @override
+  Future<void> close() async {
+    // Make sure to clean up any subscriptions or resources
+    // Not disposing the SDK here as it should be managed by the app
+    await super.close();
   }
 }

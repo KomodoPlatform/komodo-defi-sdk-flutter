@@ -81,9 +81,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create:
-          (context) =>
-              AuthBloc(instance: widget.instanceState),
+      create: (context) => AuthBloc(sdk: widget.instanceState.sdk),
       child: InstanceView(
         instance: widget.instanceState,
         state: widget.instanceState.instanceData,

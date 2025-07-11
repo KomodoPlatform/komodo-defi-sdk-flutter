@@ -93,6 +93,16 @@ abstract interface class KomodoDefiAuth {
   /// user. The stream will emit `null` if the user is signed out.
   Stream<KdfUser?> get authStateChanges;
 
+  /// Watches the current user state and emits updates when it changes.
+  ///
+  /// Returns a [Stream] of [KdfUser?] that continuously monitors the current
+  /// user state. This is useful for reactive UI updates when the user signs
+  /// in, signs out, or when user data is updated.
+  ///
+  /// The stream will emit `null` if no user is signed in, and a [KdfUser]
+  /// object when a user is authenticated.
+  Stream<KdfUser?> watchCurrentUser();
+
   /// Retrieves the current signed-in user, if available.
   ///
   /// Returns a [KdfUser] if a user is signed in, otherwise returns `null`.
@@ -136,6 +146,12 @@ abstract interface class KomodoDefiAuth {
   Future<void> updatePassword({
     required String currentPassword,
     required String newPassword,
+  });
+
+  /// Deletes the specified wallet.
+  Future<void> deleteWallet({
+    required String walletName,
+    required String password,
   });
 
   /// Sets the value of a single key in the active user's metadata.
@@ -456,6 +472,17 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
   }
 
   @override
+  Stream<KdfUser?> watchCurrentUser() async* {
+    await ensureInitialized();
+
+    // Emit the current user state as the initial value
+    yield await _authService.getActiveUser();
+
+    // Then emit subsequent changes
+    yield* _authService.authStateChanges;
+  }
+
+  @override
   Future<KdfUser?> get currentUser async {
     await ensureInitialized();
     return _authService.getActiveUser();
@@ -555,6 +582,27 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
   }
 
   @override
+  Future<void> deleteWallet({
+    required String walletName,
+    required String password,
+  }) async {
+    await ensureInitialized();
+    try {
+      await _authService.deleteWallet(
+        walletName: walletName,
+        password: password,
+      );
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException(
+        'An unexpected error occurred while deleting the wallet: $e',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+  }
+
+  @override
   Future<void> setOrRemoveActiveUserKeyValue(String key, dynamic value) async {
     final activeUser = await _authService.getActiveUser();
 
@@ -634,6 +682,6 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
 
   @override
   Future<void> dispose() async {
-    _authService.dispose();
+    await _authService.dispose();
   }
 }

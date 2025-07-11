@@ -64,6 +64,12 @@ class Asset extends Equatable {
   final bool isWalletOnly;
   final String? signMessagePrefix;
 
+  /// Whether this asset supports message signing.
+  ///
+  /// Determined by the presence of the `sign_message_prefix` field in the
+  /// coin config.
+  bool get supportsMessageSigning => signMessagePrefix != null;
+
   JsonMap toJson() => {
         'protocol': protocol.toJson(),
         'id': id.toJson(),

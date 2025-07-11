@@ -5,6 +5,8 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 class QtumActivationStrategy extends ProtocolActivationStrategy {
   const QtumActivationStrategy(super.client, this.privKeyPolicy);
 
+  /// The private key management policy to use for this strategy.
+  /// Used for external wallet support.
   final PrivateKeyPolicy privKeyPolicy;
 
   @override

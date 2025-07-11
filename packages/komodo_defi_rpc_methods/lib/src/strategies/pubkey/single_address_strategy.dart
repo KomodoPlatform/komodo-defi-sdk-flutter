@@ -42,6 +42,16 @@ class SingleAddressStrategy extends PubkeyStrategy {
   }
 
   @override
+  Stream<NewAddressState> getNewAddressStream(
+    AssetId assetId,
+    ApiClient client,
+  ) async* {
+    yield NewAddressState.error(
+      'Single address coins do not support generating new addresses',
+    );
+  }
+
+  @override
   Future<void> scanForNewAddresses(AssetId _, ApiClient __) async {
     // No-op for single address coins
   }

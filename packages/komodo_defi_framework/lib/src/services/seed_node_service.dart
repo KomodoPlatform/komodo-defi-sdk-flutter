@@ -1,30 +1,44 @@
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
+import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/config/seed_node_validator.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Service class responsible for fetching and managing seed nodes.
-/// 
-/// This class follows the Single Responsibility Principle by focusing 
+///
+/// This class follows the Single Responsibility Principle by focusing
 /// solely on seed node acquisition and management.
 class SeedNodeService {
   /// Fetches seed nodes from the remote configuration with fallback to defaults.
   ///
-  /// This method attempts to fetch the latest seed nodes from the Komodo Platform 
-  /// repository and converts them to the string format expected by the KDF startup 
+  /// This method attempts to fetch the latest seed nodes from the Komodo Platform
+  /// repository and converts them to the string format expected by the KDF startup
   /// configuration.
   ///
   /// Returns a list of seed node host addresses. If fetching fails, returns
   /// the hardcoded default seed nodes as a fallback.
-  static Future<List<String>> fetchSeedNodes() async {
+  static Future<({List<String> seedNodes, int netId})> fetchSeedNodes({
+    bool filterForWeb = kIsWeb,
+  }) async {
     try {
-      final seedNodes = await SeedNodeUpdater.fetchSeedNodes();
-      return SeedNodeUpdater.seedNodesToStringList(seedNodes);
+      final (
+        seedNodes: nodes,
+        netId: netId,
+      ) = await SeedNodeUpdater.fetchSeedNodes(filterForWeb: filterForWeb);
+
+      return (
+        seedNodes: SeedNodeUpdater.seedNodesToStringList(nodes),
+        netId: netId,
+      );
     } catch (e) {
       if (KdfLoggingConfig.verboseLogging) {
         print('WARN Failed to fetch seed nodes from remote: $e');
         print('WARN Falling back to default seed nodes');
       }
-      return getDefaultSeedNodes();
+      return (
+        seedNodes: getDefaultSeedNodes(),
+        netId: kDefaultNetId,
+      );
     }
   }
 
@@ -63,7 +77,8 @@ class SeedNodeService {
 
     // Fetch remote seed nodes or use defaults
     if (fetchRemote) {
-      return await fetchSeedNodes();
+      final result = await fetchSeedNodes();
+      return result.seedNodes;
     } else {
       return getDefaultSeedNodes();
     }

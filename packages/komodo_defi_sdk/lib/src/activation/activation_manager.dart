@@ -270,11 +270,17 @@ class ActivationManager {
 
     await _protectedOperation(() async {
       _isDisposed = true;
-      for (final completer in _activationCompleters.values) {
+
+      // Complete any pending completers with errors
+      final completers = List<Completer<void>>.from(
+        _activationCompleters.values,
+      );
+      for (final completer in completers) {
         if (!completer.isCompleted) {
           completer.completeError('ActivationManager disposed');
         }
       }
+
       _activationCompleters.clear();
     });
   }

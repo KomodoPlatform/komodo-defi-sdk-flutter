@@ -2,8 +2,7 @@ import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class GetWalletRequest
-    extends BaseRequest<GetWalletResponse, GeneralErrorResponse>
-    with RequestHandlingMixin<GetWalletResponse, GeneralErrorResponse> {
+    extends BaseRequest<GetWalletResponse, GeneralErrorResponse> {
   GetWalletRequest()
     // TODO! Migrate to the confirmed rpc method name when the method is
     // merged into the KDF's `dev` branch.
