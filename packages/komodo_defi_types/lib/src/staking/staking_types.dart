@@ -7,29 +7,36 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 class StakingDetails extends Equatable implements RpcRequestParams {
   const StakingDetails({
     required this.type,
-    required this.validatorAddress,
+    this.validatorAddress,
+    this.address,
     this.amount,
-  });
+  }) : assert(
+          validatorAddress != null || address != null,
+          'Either validatorAddress or address must be provided',
+        );
 
   factory StakingDetails.fromJson(JsonMap json) => StakingDetails(
         type: json.value<String>('type'),
-        validatorAddress: json.value<String>('validator_address'),
+        validatorAddress: json.valueOrNull<String>('validator_address'),
+        address: json.valueOrNull<String>('address'),
         amount: json.valueOrNull<String>('amount'),
       );
 
   final String type;
-  final String validatorAddress;
+  final String? validatorAddress;
+  final String? address;
   final String? amount;
 
   @override
   JsonMap toRpcParams() => {
         'type': type,
-        'validator_address': validatorAddress,
+        if (validatorAddress != null) 'validator_address': validatorAddress,
+        if (address != null) 'address': address,
         if (amount != null) 'amount': amount,
       };
 
   @override
-  List<Object?> get props => [type, validatorAddress, amount];
+  List<Object?> get props => [type, validatorAddress, address, amount];
 }
 
 /// Details for claiming staking rewards
