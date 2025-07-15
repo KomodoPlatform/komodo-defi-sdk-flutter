@@ -13,7 +13,6 @@ class SourceAddressField extends StatelessWidget {
     this.isLoading = false,
     this.showBalanceIndicator = true,
     this.title,
-    this.content,
     super.key,
   });
 
@@ -26,7 +25,6 @@ class SourceAddressField extends StatelessWidget {
   final bool isLoading;
   final bool showBalanceIndicator;
   final Widget? title;
-  final Widget? content;
 
   @override
   Widget build(BuildContext context) {
@@ -78,31 +76,30 @@ class SourceAddressField extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        content ??
-            AddressSelectInput(
-              addresses: pubkeys!.keys,
-              selectedAddress: selectedAddress,
-              onAddressSelected: onChanged,
-              assetName: asset.id.name,
-              hint: 'Choose source address',
-              onCopied: (address) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white, size: 16),
-                        SizedBox(width: 8),
-                        Text('Address copied to clipboard'),
-                      ],
-                    ),
-                    behavior: SnackBarBehavior.floating,
-                    width: 280,
-                    backgroundColor: theme.colorScheme.primary,
-                  ),
-                );
-              },
-              verified: _isAddressVerified,
-            ),
+        AddressSelectInput(
+          addresses: pubkeys!.keys,
+          selectedAddress: selectedAddress,
+          onAddressSelected: onChanged,
+          assetName: asset.id.name,
+          hint: 'Choose source address',
+          onCopied: (address) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white, size: 16),
+                    SizedBox(width: 8),
+                    Text('Address copied to clipboard'),
+                  ],
+                ),
+                behavior: SnackBarBehavior.floating,
+                width: 280,
+                backgroundColor: theme.colorScheme.primary,
+              ),
+            );
+          },
+          verified: _isAddressVerified,
+        ),
         if (selectedAddress != null && showBalanceIndicator) ...[
           const SizedBox(height: 12),
           _BalanceIndicator(
