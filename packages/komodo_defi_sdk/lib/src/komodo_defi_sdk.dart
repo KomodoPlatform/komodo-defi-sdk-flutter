@@ -6,7 +6,7 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/bootstrap.dart';
-import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
+import 'package:komodo_defi_sdk/src/market_data/streaming_market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
@@ -233,13 +233,28 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   WithdrawalManager get withdrawals =>
       _assertSdkInitialized(_container<WithdrawalManager>());
 
-  /// The price manager instance.
+  /// The market data manager instance with streaming support.
   ///
-  /// Provides functionality for fetching asset prices.
+  /// Provides functionality for fetching asset prices and watching real-time updates.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Get current price
+  /// final price = await sdk.marketData.fiatPrice(btcAsset.id);
+  ///
+  /// // Watch price updates
+  /// final stream = sdk.marketData.watchMarketData(btcAsset.id);
+  /// stream.listen((marketData) {
+  ///   print('BTC Price: \$${marketData.price}');
+  ///   if (marketData.priceChange24h != null) {
+  ///     print('24h Change: ${marketData.priceChange24h}%');
+  ///   }
+  /// });
+  /// ```
   ///
   /// Throws [StateError] if accessed before initialization.
-  MarketDataManager get marketData =>
-      _assertSdkInitialized(_container<MarketDataManager>());
+  StreamingMarketDataManager get marketData =>
+      _assertSdkInitialized(_container<StreamingMarketDataManager>());
 
   /// Gets a reference to the balance manager for checking asset balances.
   ///
@@ -333,7 +348,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// cleanup of resources and background operations.
   ///
   /// NB! By default, this will terminate the KDF process.
-  /// 
+  ///
   /// TODO: Consider future refactoring to separate KDF process disposal vs
   /// Dart object disposal.
   ///
@@ -346,7 +361,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _isDisposed = true;
 
     if (!_isInitialized) return;
-    
+
     _isInitialized = false;
     _initializationFuture = null;
 
@@ -357,7 +372,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       _disposeIfRegistered<BalanceManager>((m) => m.dispose()),
       _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
       _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
-      _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
+      _disposeIfRegistered<StreamingMarketDataManager>((m) => m.dispose()),
       _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
     ]);
 

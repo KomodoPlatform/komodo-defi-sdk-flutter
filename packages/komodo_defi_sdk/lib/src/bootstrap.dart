@@ -7,7 +7,7 @@ import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
-import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
+import 'package:komodo_defi_sdk/src/market_data/streaming_market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
@@ -157,10 +157,16 @@ Future<void> bootstrap({
     KomodoPriceRepository(cexPriceProvider: container<KomodoPriceProvider>()),
   );
 
-  container.registerSingletonAsync<MarketDataManager>(() async {
-    final manager = CexMarketDataManager(
+  container.registerSingletonAsync<StreamingMarketDataManager>(() async {
+    final manager = MarketDataManagerFactory.create(
       priceRepository: container<CexRepository>(),
       komodoPriceRepository: container<KomodoPriceRepository>(),
+      config: StreamingConfig(
+        pollingInterval: const Duration(seconds: 30),
+        cacheExpiry: const Duration(minutes: 5),
+        maxRetries: 3,
+        retryDelay: const Duration(seconds: 2),
+      ),
     );
     await manager.init();
     return manager;
