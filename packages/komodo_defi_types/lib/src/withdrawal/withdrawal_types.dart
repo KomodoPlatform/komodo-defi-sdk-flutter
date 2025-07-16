@@ -167,7 +167,7 @@ class WithdrawParameters extends Equatable {
   final WithdrawalSource? from;
   final String? memo;
   final bool? ibcTransfer;
-  final String? ibcSourceChannel;
+  final int? ibcSourceChannel;
   final bool? isMax;
 
   JsonMap toJson() => {
