@@ -70,6 +70,18 @@ class Asset extends Equatable {
   /// coin config.
   bool get supportsMessageSigning => signMessagePrefix != null;
 
+  /// Whether this asset supports staking operations.
+  ///
+  /// The KDF API currently supports staking for Qtum (QRC20) and
+  /// Cosmos/Tendermint based coins.
+  bool get supportsStaking => switch (protocol.subClass) {
+        CoinSubClass.qrc20 ||
+        CoinSubClass.tendermint ||
+        CoinSubClass.tendermintToken =>
+          true,
+        _ => false,
+      };
+
   JsonMap toJson() => {
         'protocol': protocol.toJson(),
         'id': id.toJson(),

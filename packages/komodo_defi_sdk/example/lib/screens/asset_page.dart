@@ -336,6 +336,7 @@ class _AssetHeaderState extends State<AssetHeader> {
     final hasAddresses =
         widget.pubkeys != null && widget.pubkeys!.keys.isNotEmpty;
     final supportsSigning = widget.asset.supportsMessageSigning;
+    final supportsStaking = widget.asset.supportsStaking;
 
     return Wrap(
       alignment: WrapAlignment.spaceEvenly,
@@ -365,18 +366,19 @@ class _AssetHeaderState extends State<AssetHeader> {
           icon: const Icon(Icons.qr_code),
           label: const Text('Receive'),
         ),
-        FilledButton.tonalIcon(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                builder: (context) => StakingScreen(asset: widget.asset),
-              ),
-            );
-          },
-          icon: const Icon(Icons.stacked_line_chart),
-          label: const Text('Stake'),
-        ),
+        if (supportsStaking)
+          FilledButton.tonalIcon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (context) => StakingScreen(asset: widget.asset),
+                ),
+              );
+            },
+            icon: const Icon(Icons.stacked_line_chart),
+            label: const Text('Stake'),
+          ),
 
         Tooltip(
           message:
