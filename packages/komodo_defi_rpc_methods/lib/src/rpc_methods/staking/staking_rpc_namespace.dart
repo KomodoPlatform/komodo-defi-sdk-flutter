@@ -227,23 +227,43 @@ class StakingTxResponse extends BaseResponse {
 }
 
 class QueryDelegationsResponse extends BaseResponse {
-  QueryDelegationsResponse({required super.mmrpc, required this.delegations});
+  QueryDelegationsResponse({
+    required super.mmrpc,
+    this.delegations,
+    this.stakingInfosDetails,
+  });
 
-  factory QueryDelegationsResponse.parse(Map<String, dynamic> json) =>
-      QueryDelegationsResponse(
-        mmrpc: json.value<String>('mmrpc'),
-        delegations:
-            (json.value<JsonMap>('result')['delegations'] as List)
-                .map((e) => DelegationInfo.fromJson(e as JsonMap))
-                .toList(),
-      );
+  factory QueryDelegationsResponse.parse(Map<String, dynamic> json) {
+    final result = json.value<JsonMap>('result');
+    return QueryDelegationsResponse(
+      mmrpc: json.value<String>('mmrpc'),
+      delegations:
+          result.containsKey('delegations')
+              ? (result['delegations'] as List)
+                  .map((e) => DelegationInfo.fromJson(e as JsonMap))
+                  .toList()
+              : null,
+      stakingInfosDetails:
+          result.containsKey('staking_infos_details')
+              ? StakingInfosDetails.fromJson(
+                result.value<JsonMap>('staking_infos_details'),
+              )
+              : null,
+    );
+  }
 
-  final List<DelegationInfo> delegations;
+  final List<DelegationInfo>? delegations;
+  final StakingInfosDetails? stakingInfosDetails;
 
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {'delegations': delegations.map((e) => e.toJson()).toList()},
+    'result': {
+      if (delegations != null)
+        'delegations': delegations!.map((e) => e.toJson()).toList(),
+      if (stakingInfosDetails != null)
+        'staking_infos_details': stakingInfosDetails!.toJson(),
+    },
   };
 }
 

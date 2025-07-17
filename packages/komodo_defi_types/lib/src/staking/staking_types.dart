@@ -197,3 +197,45 @@ class ValidatorInfo extends Equatable {
   @override
   List<Object?> get props => [data];
 }
+
+/// Summary of staking information for QTUM coins
+class StakingInfosDetails extends Equatable {
+  const StakingInfosDetails({
+    required this.type,
+    required this.amount,
+    this.staker,
+    required this.amIStaking,
+    required this.isStakingSupported,
+  });
+
+  factory StakingInfosDetails.fromJson(JsonMap json) => StakingInfosDetails(
+        type: json.value<String>('type'),
+        amount: json.value<String>('amount'),
+        staker: json.valueOrNull<String>('staker'),
+        amIStaking: json.value<bool>('am_i_staking'),
+        isStakingSupported: json.value<bool>('is_staking_supported'),
+      );
+
+  final String type;
+  final String amount;
+  final String? staker;
+  final bool amIStaking;
+  final bool isStakingSupported;
+
+  JsonMap toJson() => {
+        'type': type,
+        'amount': amount,
+        if (staker != null) 'staker': staker,
+        'am_i_staking': amIStaking,
+        'is_staking_supported': isStakingSupported,
+      };
+
+  @override
+  List<Object?> get props => [
+        type,
+        amount,
+        staker,
+        amIStaking,
+        isStakingSupported,
+      ];
+}
