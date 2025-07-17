@@ -53,14 +53,14 @@ class StakingManager {
 
   Future<List<DelegationInfo>> queryDelegations(
     String coin, {
-    StakingInfoDetails? infoDetails,
+    required StakingInfoDetails infoDetails,
   }) async {
     await _ensureActivated(coin);
     final response = await _client.rpc.staking.queryDelegations(
       coin: coin,
       infoDetails: infoDetails,
     );
-    return response.delegations;
+    return response.delegations ?? const [];
   }
 
   Future<List<OngoingUndelegation>> queryOngoingUndelegations(

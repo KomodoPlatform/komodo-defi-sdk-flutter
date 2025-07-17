@@ -27,7 +27,10 @@ class _StakingScreenState extends State<StakingScreen> {
     setState(() => _loading = true);
     final sdk = context.read<KomodoDefiSdk>();
     try {
-      final infos = await sdk.staking.queryDelegations(widget.asset.id.name);
+      final infos = await sdk.staking.queryDelegations(
+        widget.asset.id.name,
+        infoDetails: const StakingInfoDetails(type: 'Cosmos'),
+      );
       setState(() => _delegations = infos);
     } catch (e) {
       setState(() => _error = e.toString());
