@@ -11,7 +11,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:mutex/mutex.dart';
 
 const _kdfAsstsPath = 'kdf';
-const _kdfJsBootstrapperPath = '$_kdfAsstsPath/res/kdflib_bootstrapper.js';
+const _kdfJsBootstrapperPath = '$_kdfAsstsPath/res/kdflib_worker_proxy.js';
 
 IKdfOperations createLocalKdfOperations({
   required void Function(String)? logCallback,
@@ -100,9 +100,6 @@ class KdfOperationsWasm implements IKdfOperations {
         .callMethod(
           'mm2_main'.toJS,
           jsConfig,
-          (int level, String message) {
-            _log('[$level] KDF: $message');
-          }.toJS,
         )
         .dartify() as Future<dynamic>?;
 
@@ -410,6 +407,13 @@ class KdfOperationsWasm implements IKdfOperations {
               .importModule('./$_kdfJsBootstrapperPath'.toJS)
               .toDart)
           .getProperty('kdf'.toJS);
+
+      _kdfModule!.callMethod(
+        'setLogHandler'.toJS,
+        ((int level, String message) {
+          _log('[$level] KDF: $message');
+        }).toJS,
+      );
 
       _log('KDF library loaded successfully');
     } catch (e) {
