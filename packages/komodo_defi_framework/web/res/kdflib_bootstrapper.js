@@ -73,7 +73,12 @@ Object.assign(kdf, kdflib);
 kdf.init_wasm().catch(console.error);
 
 // @ts-ignore
-window.kdf = kdf;
+if (typeof window !== "undefined") {
+    window.kdf = kdf;
+} else if (typeof globalThis !== "undefined") {
+    // Fallback for non-browser environments
+    globalThis.kdf = kdf;
+}
 
 export default kdf;
 export { kdf };
