@@ -478,13 +478,11 @@ class _RecipientAddressFieldState extends State<RecipientAddressField> {
 
   /// Builds a preview widget that displays a validated address in a user-friendly format.
   ///
-  /// For improved readability, long addresses are truncated to show only the first
-  /// and last 8 characters with an ellipsis in between. Short addresses (16 characters
-  /// or less) are shown in full.
+  /// The full address is displayed for clarity.
   ///
   /// The preview includes:
   /// * A checkmark icon indicating the address is valid
-  /// * The truncated address with a "Valid address:" prefix
+  /// * The full address with a "Valid address:" prefix
   /// * A copy button that copies the full address to the clipboard
   ///
   /// When the copy button is pressed, a snackbar appears to confirm the copy action.
@@ -494,12 +492,9 @@ class _RecipientAddressFieldState extends State<RecipientAddressField> {
   Widget _buildAddressPreview() {
     final theme = Theme.of(context);
 
-    // Display only the start and end of the address for clarity
+    // Display the full address for clarity
     final address = _controller.text;
-    final previewAddress =
-        address.length > 16
-            ? '${address.substring(0, 8)}...${address.substring(address.length - 8)}'
-            : address;
+    final previewAddress = address;
 
     return Container(
       width: double.infinity,
