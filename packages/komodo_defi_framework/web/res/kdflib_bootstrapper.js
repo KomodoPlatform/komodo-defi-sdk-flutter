@@ -60,8 +60,13 @@ kdf.init_wasm = async function () {
 
 
 // @ts-ignore
+const _globalScope = typeof window !== 'undefined' ? window : self;
+
+// @ts-ignore
 kdf.reload_page = function () {
-    window.location.reload();
+    if (_globalScope.location && _globalScope.location.reload) {
+        _globalScope.location.reload();
+    }
 }
 
 // @ts-ignore
@@ -73,7 +78,11 @@ Object.assign(kdf, kdflib);
 kdf.init_wasm().catch(console.error);
 
 // @ts-ignore
-window.kdf = kdf;
+if (typeof window !== 'undefined') {
+    window.kdf = kdf;
+} else if (typeof self !== 'undefined') {
+    self.kdf = kdf;
+}
 
 export default kdf;
 export { kdf };
