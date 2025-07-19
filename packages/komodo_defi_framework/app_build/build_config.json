@@ -63,10 +63,10 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "8b8ec47623388e6465c33ccd03c7c7ff13f7bb0b",
-        "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
-        "coins_repo_content_url": "https://komodoplatform.github.io/coins",
-        "coins_repo_branch": "master",
+        "bundled_coins_repo_commit": "fda531408c7bc5e93c0db21168a097cc8bb7b678",
+        "coins_repo_api_url": "https://api.github.com/repos/cipig/coins",
+        "coins_repo_content_url": "https://cipig.github.io/coins",
+        "coins_repo_branch": "nogeo",
         "runtime_updates_enabled": true,
         "mapped_files": {
             "assets/config/coins_config.json": "utils/coins_config_unfiltered.json",
@@ -78,8 +78,7 @@
         },
         "concurrent_downloads_enabled": true,
         "cdn_branch_mirrors": {
-            "master": "https://komodoplatform.github.io/coins",
-            "main": "https://komodoplatform.github.io/coins"
+            "nogeo": "https://cipig.github.io/coins"
         }
     }
 }
