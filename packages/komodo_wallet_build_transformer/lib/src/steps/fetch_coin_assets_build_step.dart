@@ -38,13 +38,8 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     String? githubToken,
   }) {
     final config = buildConfig.coinCIConfig.copyWith(
-      // If the branch is `master`, use the repository mirror URL to avoid
-      // rate limiting issues. Consider refactoring config to allow branch
-      // specific mirror URLs to remove this workaround.
-      coinsRepoContentUrl:
-          buildConfig.coinCIConfig.isMainBranch
-              ? buildConfig.coinCIConfig.coinsRepoContentUrl
-              : buildConfig.coinCIConfig.rawContentUrl,
+      // Use the effective content URL which checks CDN mirrors
+      coinsRepoContentUrl: buildConfig.coinCIConfig.effectiveContentUrl,
     );
 
     final provider = GithubApiProvider.withBaseUrl(
