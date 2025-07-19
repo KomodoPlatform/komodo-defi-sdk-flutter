@@ -1,6 +1,8 @@
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
+import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// The number of seconds in a day.
 const int secondsInDay = 86400;
@@ -8,10 +10,12 @@ const int secondsInDay = 86400;
 /// A repository class for interacting with the CoinGecko API.
 class CoinGeckoRepository implements CexRepository {
   /// Creates a new instance of [CoinGeckoRepository].
-  CoinGeckoRepository({required this.coinGeckoProvider});
+  CoinGeckoRepository({required this.coinGeckoProvider})
+      : _idResolutionStrategy = CoinGeckoIdResolutionStrategy();
 
   /// The CoinGecko provider to use for fetching data.
   final CoinGeckoCexProvider coinGeckoProvider;
+  final CoinGeckoIdResolutionStrategy _idResolutionStrategy;
 
   /// Fetches the CoinGecko market data.
   ///
@@ -61,13 +65,30 @@ class CoinGeckoRepository implements CexRepository {
   }
 
   @override
+  String resolveTradingSymbol(AssetId assetId) {
+    final resolved = _idResolutionStrategy.resolveTradingSymbol(assetId);
+    if (resolved == null) {
+      throw ArgumentError(
+          'Cannot resolve trading symbol for asset ${assetId.id} on ${_idResolutionStrategy.platformName}');
+    }
+    return resolved;
+  }
+
+  @override
+  bool canHandleAsset(AssetId assetId) {
+    return _idResolutionStrategy.resolveTradingSymbol(assetId) != null;
+  }
+
+  @override
   Future<double> getCoinFiatPrice(
-    String coinId, {
+    AssetId assetId, {
     DateTime? priceDate,
     String fiatCoinId = 'usdt',
   }) async {
+    final tradingSymbol = resolveTradingSymbol(assetId);
+
     final coinPrice = await coinGeckoProvider.fetchCoinHistoricalMarketData(
-      id: coinId,
+      id: tradingSymbol,
       date: priceDate ?? DateTime.now(),
     );
     return coinPrice.marketData?.currentPrice?.usd?.toDouble() ?? 0;
@@ -75,11 +96,61 @@ class CoinGeckoRepository implements CexRepository {
 
   @override
   Future<Map<DateTime, double>> getCoinFiatPrices(
-    String coinId,
+    AssetId assetId,
     List<DateTime> dates, {
     String fiatCoinId = 'usdt',
   }) {
     // TODO: implement getCoinFiatPrices
     throw UnimplementedError();
+  }
+
+  /// Legacy method - creates a synthetic AssetId for string-based calls
+  @Deprecated('Use getCoinFiatPrice(AssetId) instead')
+  Future<double> getCoinFiatPriceLegacy(
+    String coinId, {
+    DateTime? priceDate,
+    String fiatCoinId = 'usdt',
+  }) async {
+    // Create minimal AssetId for backward compatibility
+    final assetSymbol = AssetSymbol(assetConfigId: coinId);
+    final syntheticAssetId = AssetId(
+      id: coinId,
+      name: coinId,
+      symbol: assetSymbol,
+      chainId: AssetChainId(chainId: 0), // Default chain ID
+      derivationPath: null,
+      subClass: CoinSubClass.utxo, // Default subclass
+    );
+
+    return getCoinFiatPrice(
+      syntheticAssetId,
+      priceDate: priceDate,
+      fiatCoinId: fiatCoinId,
+    );
+  }
+
+  /// Legacy method - creates a synthetic AssetId for string-based calls
+  @Deprecated('Use getCoinFiatPrices(AssetId) instead')
+  Future<Map<DateTime, double>> getCoinFiatPricesLegacy(
+    String coinId,
+    List<DateTime> dates, {
+    String fiatCoinId = 'usdt',
+  }) async {
+    // Create minimal AssetId for backward compatibility
+    final assetSymbol = AssetSymbol(assetConfigId: coinId);
+    final syntheticAssetId = AssetId(
+      id: coinId,
+      name: coinId,
+      symbol: assetSymbol,
+      chainId: AssetChainId(chainId: 0), // Default chain ID
+      derivationPath: null,
+      subClass: CoinSubClass.utxo, // Default subclass
+    );
+
+    return getCoinFiatPrices(
+      syntheticAssetId,
+      dates,
+      fiatCoinId: fiatCoinId,
+    );
   }
 }

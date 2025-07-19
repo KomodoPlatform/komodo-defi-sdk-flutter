@@ -4,7 +4,9 @@ import 'package:komodo_cex_market_data/src/binance/data/binance_provider.dart';
 import 'package:komodo_cex_market_data/src/binance/data/binance_provider_interface.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
+import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // Declaring constants here to make this easier to copy & move around
 /// The base URL for the Binance API.
@@ -20,9 +22,11 @@ BinanceRepository binanceRepository = BinanceRepository(
 class BinanceRepository implements CexRepository {
   /// Creates a new [BinanceRepository] instance.
   BinanceRepository({required IBinanceProvider binanceProvider})
-      : _binanceProvider = binanceProvider;
+      : _binanceProvider = binanceProvider,
+        _idResolutionStrategy = BinanceIdResolutionStrategy();
 
   final IBinanceProvider _binanceProvider;
+  final BinanceIdResolutionStrategy _idResolutionStrategy;
 
   List<CexCoin>? _cachedCoinsList;
 
@@ -100,16 +104,34 @@ class BinanceRepository implements CexRepository {
   }
 
   @override
+  String resolveTradingSymbol(AssetId assetId) {
+    final resolved = _idResolutionStrategy.resolveTradingSymbol(assetId);
+    if (resolved == null) {
+      throw ArgumentError(
+        'Cannot resolve trading symbol for asset ${assetId.id} on ${_idResolutionStrategy.platformName}',
+      );
+    }
+    return resolved;
+  }
+
+  @override
+  bool canHandleAsset(AssetId assetId) {
+    return _idResolutionStrategy.resolveTradingSymbol(assetId) != null;
+  }
+
+  @override
   Future<double> getCoinFiatPrice(
-    String coinId, {
+    AssetId assetId, {
     DateTime? priceDate,
     String fiatCoinId = 'usdt',
   }) async {
-    if (coinId.toUpperCase() == fiatCoinId.toUpperCase()) {
+    final tradingSymbol = resolveTradingSymbol(assetId);
+
+    if (tradingSymbol.toUpperCase() == fiatCoinId.toUpperCase()) {
       throw ArgumentError('Coin and fiat coin cannot be the same');
     }
 
-    final trimmedCoinId = coinId.replaceAll(RegExp('-segwit'), '');
+    final trimmedCoinId = tradingSymbol.replaceAll(RegExp('-segwit'), '');
 
     final endAt = priceDate ?? DateTime.now();
     final startAt = endAt.subtract(const Duration(days: 1));
@@ -126,16 +148,18 @@ class BinanceRepository implements CexRepository {
 
   @override
   Future<Map<DateTime, double>> getCoinFiatPrices(
-    String coinId,
+    AssetId assetId,
     List<DateTime> dates, {
     String fiatCoinId = 'usdt',
   }) async {
-    if (coinId.toUpperCase() == fiatCoinId.toUpperCase()) {
+    final tradingSymbol = resolveTradingSymbol(assetId);
+
+    if (tradingSymbol.toUpperCase() == fiatCoinId.toUpperCase()) {
       throw ArgumentError('Coin and fiat coin cannot be the same');
     }
 
     dates.sort();
-    final trimmedCoinId = coinId.replaceAll(RegExp('-segwit'), '');
+    final trimmedCoinId = tradingSymbol.replaceAll(RegExp('-segwit'), '');
 
     if (dates.isEmpty) {
       return {};
@@ -172,6 +196,56 @@ class BinanceRepository implements CexRepository {
     }
 
     return result;
+  }
+
+  /// Legacy method - creates a synthetic AssetId for string-based calls
+  @Deprecated('Use getCoinFiatPrice(AssetId) instead')
+  Future<double> getCoinFiatPriceLegacy(
+    String coinId, {
+    DateTime? priceDate,
+    String fiatCoinId = 'usdt',
+  }) async {
+    // Create minimal AssetId for backward compatibility
+    final assetSymbol = AssetSymbol(assetConfigId: coinId);
+    final syntheticAssetId = AssetId(
+      id: coinId,
+      name: coinId,
+      symbol: assetSymbol,
+      chainId: AssetChainId(chainId: 0), // Default chain ID
+      derivationPath: null,
+      subClass: CoinSubClass.utxo, // Default subclass
+    );
+
+    return getCoinFiatPrice(
+      syntheticAssetId,
+      priceDate: priceDate,
+      fiatCoinId: fiatCoinId,
+    );
+  }
+
+  /// Legacy method - creates a synthetic AssetId for string-based calls
+  @Deprecated('Use getCoinFiatPrices(AssetId) instead')
+  Future<Map<DateTime, double>> getCoinFiatPricesLegacy(
+    String coinId,
+    List<DateTime> dates, {
+    String fiatCoinId = 'usdt',
+  }) async {
+    // Create minimal AssetId for backward compatibility
+    final assetSymbol = AssetSymbol(assetConfigId: coinId);
+    final syntheticAssetId = AssetId(
+      id: coinId,
+      name: coinId,
+      symbol: assetSymbol,
+      chainId: AssetChainId(chainId: 0), // Default chain ID
+      derivationPath: null,
+      subClass: CoinSubClass.utxo, // Default subclass
+    );
+
+    return getCoinFiatPrices(
+      syntheticAssetId,
+      dates,
+      fiatCoinId: fiatCoinId,
+    );
   }
 
   List<CexCoin> _convertSymbolsToCoins(

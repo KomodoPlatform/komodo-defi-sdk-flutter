@@ -69,20 +69,30 @@ abstract class MarketDataManager {
 class CexMarketDataManager implements MarketDataManager {
   /// Creates a new instance of [CexMarketDataManager]
   CexMarketDataManager({
-    required CexRepository priceRepository,
+    required List<CexRepository> priceRepositories,
     required KomodoPriceRepository komodoPriceRepository,
-  }) : _priceRepository = priceRepository,
-       _komodoPriceRepository = komodoPriceRepository;
+    RepositorySelectionStrategy? selectionStrategy,
+  }) : _priceRepositories = priceRepositories,
+       _komodoPriceRepository = komodoPriceRepository,
+       _selectionStrategy = selectionStrategy ?? RepositorySelectionStrategy();
 
   static const _cacheClearInterval = Duration(minutes: 5);
   Timer? _cacheTimer;
 
   @override
   Future<void> init() async {
-    // Initialize any resources if needed
-    _knownTickers = UnmodifiableSetView(
-      (await _priceRepository.getCoinList()).map((e) => e.symbol).toSet(),
-    );
+    // Initialize known tickers from all repositories
+    final allTickers = <String>{};
+    for (final repo in _priceRepositories) {
+      try {
+        final coins = await repo.getCoinList();
+        allTickers.addAll(coins.map((e) => e.symbol));
+      } catch (e) {
+        // Log error but continue with other repositories
+        print('Failed to get coin list from repository: $e');
+      }
+    }
+    _knownTickers = UnmodifiableSetView(allTickers);
 
     // Start cache clearing timer
     _cacheTimer = Timer.periodic(_cacheClearInterval, (_) => _clearCaches());
@@ -90,8 +100,9 @@ class CexMarketDataManager implements MarketDataManager {
 
   Set<String>? _knownTickers;
 
-  final CexRepository _priceRepository;
+  final List<CexRepository> _priceRepositories;
   final KomodoPriceRepository _komodoPriceRepository;
+  final RepositorySelectionStrategy _selectionStrategy;
   bool _isDisposed = false;
 
   // Cache to store asset prices
@@ -119,12 +130,6 @@ class CexMarketDataManager implements MarketDataManager {
   // Helper method to generate change cache keys
   String _getChangeCacheKey(AssetId assetId, {String fiatCurrency = 'usdt'}) {
     return '${assetId.symbol.configSymbol}_${fiatCurrency}_change24h';
-  }
-
-  /// Gets the trading symbol to use for price lookups.
-  /// Prefers the binanceId if available, falls back to configSymbol
-  String _getTradingSymbol(AssetId assetId) {
-    return assetId.symbol.configSymbol;
   }
 
   @override
@@ -178,46 +183,58 @@ class CexMarketDataManager implements MarketDataManager {
       return cachedPrice;
     }
 
-    try {
-      // First try to get price from KomodoPriceRepository if no specific date is requested
-      // and the currency is USDT (which is essentially USD for Komodo prices)
-      if (priceDate == null &&
-          (fiatCurrency.toLowerCase() == 'usdt' ||
-              fiatCurrency.toLowerCase() == 'usd')) {
-        try {
-          final komodoPrices = await _komodoPriceRepository.getKomodoPrices();
-          final priceData = komodoPrices[_getTradingSymbol(assetId)];
+    // First try to get price from KomodoPriceRepository if no specific date is requested
+    // and the currency is USDT (which is essentially USD for Komodo prices)
+    if (priceDate == null &&
+        (fiatCurrency.toLowerCase() == 'usdt' ||
+            fiatCurrency.toLowerCase() == 'usd')) {
+      try {
+        final komodoPrices = await _komodoPriceRepository.getKomodoPrices();
+        final priceData = komodoPrices[assetId.symbol.configSymbol];
 
-          if (priceData != null && priceData.price > 0) {
-            final price = Decimal.parse(priceData.price.toString());
+        if (priceData != null && priceData.price > 0) {
+          final price = Decimal.parse(priceData.price.toString());
 
-            // Cache the result
-            _priceCache[cacheKey] = price;
+          // Cache the result
+          _priceCache[cacheKey] = price;
 
-            return price;
-          }
-        } catch (_) {
-          // If KomodoPriceRepository fails, continue to fallback
+          return price;
         }
+      } catch (_) {
+        // If KomodoPriceRepository fails, continue to fallback
       }
-
-      // Fallback to the original repository
-      final priceDouble = await _priceRepository.getCoinFiatPrice(
-        _getTradingSymbol(assetId),
-        priceDate: priceDate,
-        fiatCoinId: fiatCurrency,
-      );
-
-      // Convert double to Decimal via string
-      final price = Decimal.parse(priceDouble.toString());
-
-      // Cache the result
-      _priceCache[cacheKey] = price;
-
-      return price;
-    } catch (e) {
-      throw StateError('Failed to get price for ${assetId.name}: $e');
     }
+
+    // Select appropriate repositories for this asset
+    final repositories = _selectionStrategy.selectPriceRepositories(
+      assetId,
+      _priceRepositories,
+    );
+
+    // Try repositories in priority order
+    for (final repository in repositories) {
+      try {
+        final priceDouble = await repository.getCoinFiatPrice(
+          assetId,
+          priceDate: priceDate,
+          fiatCoinId: fiatCurrency,
+        );
+
+        if (priceDouble > 0) {
+          final price = Decimal.parse(priceDouble.toString());
+          _priceCache[cacheKey] = price;
+          return price;
+        }
+      } catch (e) {
+        // Log and continue to next repository
+        print('Failed to get price from ${repository.runtimeType}: $e');
+        continue;
+      }
+    }
+
+    throw StateError(
+      'Failed to get price for ${assetId.name} from any repository',
+    );
   }
 
   @override
@@ -247,7 +264,7 @@ class CexMarketDataManager implements MarketDataManager {
             fiatCurrency.toLowerCase() == 'usd')) {
       try {
         final komodoPrices = await _komodoPriceRepository.getKomodoPrices();
-        final priceData = komodoPrices[_getTradingSymbol(assetId)];
+        final priceData = komodoPrices[assetId.symbol.configSymbol];
 
         if (priceData != null && priceData.price > 0) {
           final price = Decimal.parse(priceData.price.toString());
@@ -263,7 +280,7 @@ class CexMarketDataManager implements MarketDataManager {
     }
 
     // Fallback to the original CEX repository logic
-    final tradingSymbol = _getTradingSymbol(assetId);
+    final tradingSymbol = assetId.symbol.configSymbol;
     final isKnownTicker = _knownTickers?.contains(tradingSymbol) ?? false;
 
     if (!isKnownTicker) {
@@ -336,34 +353,48 @@ class CexMarketDataManager implements MarketDataManager {
 
     _assertInitialized();
 
-    try {
-      final priceDoubleMap = await _priceRepository.getCoinFiatPrices(
-        assetId.symbol.configSymbol,
-        dates,
-        fiatCoinId: fiatCurrency,
-      );
+    // Select appropriate repositories for this asset
+    final repositories = _selectionStrategy.selectPriceRepositories(
+      assetId,
+      _priceRepositories,
+    );
 
-      // Convert double values to Decimal via string
-      final priceMap = priceDoubleMap.map(
-        (key, value) => MapEntry(key, Decimal.parse(value.toString())),
-      );
-
-      // Cache the historical prices
-      for (final entry in priceMap.entries) {
-        final cacheKey = _getCacheKey(
+    // Try repositories in priority order
+    for (final repository in repositories) {
+      try {
+        final priceDoubleMap = await repository.getCoinFiatPrices(
           assetId,
-          priceDate: entry.key,
-          fiatCurrency: fiatCurrency,
+          dates,
+          fiatCoinId: fiatCurrency,
         );
-        _priceCache[cacheKey] = entry.value;
-      }
 
-      return priceMap;
-    } catch (e) {
-      throw StateError(
-        'Failed to get historical prices for ${assetId.name}: $e',
-      );
+        // Convert double values to Decimal via string
+        final priceMap = priceDoubleMap.map(
+          (DateTime key, double value) =>
+              MapEntry(key, Decimal.parse(value.toString())),
+        );
+
+        // Cache the historical prices
+        for (final entry in priceMap.entries) {
+          final cacheKey = _getCacheKey(
+            assetId,
+            priceDate: entry.key,
+            fiatCurrency: fiatCurrency,
+          );
+          _priceCache[cacheKey] = entry.value;
+        }
+
+        return priceMap;
+      } catch (e) {
+        // Log and continue to next repository
+        print('Failed to get price history from ${repository.runtimeType}: $e');
+        continue;
+      }
     }
+
+    throw StateError(
+      'Failed to get price history for ${assetId.name} from any repository',
+    );
   }
 
   void _assertInitialized() {

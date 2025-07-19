@@ -1,4 +1,5 @@
 import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// An abstract class that defines the methods for fetching data from a
 /// cryptocurrency exchange. The exchange-specific repository classes should
@@ -50,12 +51,11 @@ abstract class CexRepository {
     int? limit,
   });
 
-  /// Fetches the value of the given coin in terms of the specified fiat
+  /// Fetches the value of the given asset in terms of the specified fiat
   /// currency at the specified timestamp.
   ///
-  /// [coinId]: The coin symbol for which to fetch the price.
-  /// [priceData]: The date and time for which to fetch the price. Defaults to
-  /// [DateTime.now()].
+  /// [assetId]: The asset for which to fetch the price.
+  /// [priceDate]: The date and time for which to fetch the price.
   /// [fiatCoinId]: The fiat currency symbol in which to fetch the price.
   ///
   /// Throws an [Exception] if the request fails.
@@ -67,21 +67,21 @@ abstract class CexRepository {
   /// final CexRepository repo =
   ///   BinanceRepository(binanceProvider: BinanceProvider());
   /// final double price = await repo.getCoinFiatPrice(
-  ///   'BTC',
+  ///   assetId,
   ///   priceDate: DateTime.now(),
   ///   fiatCoinId: 'usdt'
   /// );
   /// ```
   Future<double> getCoinFiatPrice(
-    String coinId, {
+    AssetId assetId, {
     DateTime? priceDate,
     String fiatCoinId = 'usdt',
   });
 
-  /// Fetches the value of the given coin in terms of the specified fiat currency
+  /// Fetches the value of the given asset in terms of the specified fiat currency
   /// at the specified timestamps.
   ///
-  /// [coinId]: The coin symbol for which to fetch the price.
+  /// [assetId]: The asset for which to fetch the price.
   /// [dates]: The list of dates and times for which to fetch the price.
   /// [fiatCoinId]: The fiat currency symbol in which to fetch the price.
   ///
@@ -95,14 +95,22 @@ abstract class CexRepository {
   ///   binanceProvider: BinanceProvider(),
   /// );
   /// final Map<String, double> prices = await repo.getCoinFiatPrices(
-  ///  'BTC',
+  ///  assetId,
   /// [DateTime.now(), DateTime.now().subtract(Duration(days: 1))],
   /// fiatCoinId: 'usdt',
   /// );
   /// ```
   Future<Map<DateTime, double>> getCoinFiatPrices(
-    String coinId,
+    AssetId assetId,
     List<DateTime> dates, {
     String fiatCoinId = 'usdt',
   });
+
+  /// Resolves the platform-specific trading symbol for this repository.
+  /// Each implementation should override this to use their preferred ID.
+  String resolveTradingSymbol(AssetId assetId);
+
+  /// Checks if this repository can handle the given asset.
+  /// Returns false if no suitable ID can be resolved.
+  bool canHandleAsset(AssetId assetId);
 }

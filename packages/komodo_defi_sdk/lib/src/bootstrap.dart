@@ -142,8 +142,12 @@ Future<void> bootstrap({
 
   // TODO: Consider if more appropropriate for initialization of these
   // dependencies to be done internally in the `cex_market_data` package.
-  container.registerSingleton<CexRepository>(
+  container.registerSingleton<BinanceRepository>(
     BinanceRepository(binanceProvider: const BinanceProvider()),
+  );
+
+  container.registerSingleton<CoinGeckoRepository>(
+    CoinGeckoRepository(coinGeckoProvider: CoinGeckoCexProvider()),
   );
 
   container.registerSingleton<KomodoPriceProvider>(KomodoPriceProvider());
@@ -159,7 +163,10 @@ Future<void> bootstrap({
 
   container.registerSingletonAsync<MarketDataManager>(() async {
     final manager = CexMarketDataManager(
-      priceRepository: container<CexRepository>(),
+      priceRepositories: [
+        container<BinanceRepository>(),
+        container<CoinGeckoRepository>(),
+      ],
       komodoPriceRepository: container<KomodoPriceRepository>(),
     );
     await manager.init();
