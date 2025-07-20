@@ -18,8 +18,7 @@ class SeedNodeUpdater {
   static Future<({List<SeedNode> seedNodes, int netId})> fetchSeedNodes({
     bool filterForWeb = kIsWeb,
   }) async {
-    const seedNodesUrl =
-        'https://komodoplatform.github.io/coins/seed-nodes.json';
+    const seedNodesUrl = 'https://cipig.github.io/coins/seed-nodes.json';
 
     try {
       final response = await http.get(Uri.parse(seedNodesUrl));
