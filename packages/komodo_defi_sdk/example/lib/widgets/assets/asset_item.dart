@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_ui/komodo_ui.dart';
+import 'asset_market_info.dart';
 
 class AssetItemWidget extends StatelessWidget {
   const AssetItemWidget({
@@ -96,6 +97,8 @@ class _AssetItemTrailing extends StatelessWidget {
             activateIfNeeded: false,
           ),
         ),
+        const SizedBox(width: 8),
+        AssetMarketInfo(asset: asset),
         const SizedBox(width: 8),
         const Icon(Icons.arrow_forward_ios),
       ],
