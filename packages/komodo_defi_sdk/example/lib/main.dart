@@ -8,6 +8,7 @@ import 'package:kdf_sdk_example/screens/asset_page.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_view.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_drawer.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
+import 'package:komodo_cex_market_data/komodo_cex_market_data.dart' show sparklineRepository;
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -24,6 +25,8 @@ void main() async {
   // Create default SDK instance with config
   final defaultSdk = KomodoDefiSdk(config: _config);
   await defaultSdk.initialize();
+
+  unawaited(sparklineRepository.init());
 
   // Register default instance
   await instanceManager.registerInstance('Local Instance', _config, defaultSdk);

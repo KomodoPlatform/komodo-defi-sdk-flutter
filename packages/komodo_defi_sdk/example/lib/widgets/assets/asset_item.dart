@@ -1,8 +1,10 @@
+import 'package:dragon_charts_flutter/dragon_charts_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:kdf_sdk_example/widgets/assets/asset_market_info.dart';
+import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_ui/komodo_ui.dart';
-import 'asset_market_info.dart';
 
 class AssetItemWidget extends StatelessWidget {
   const AssetItemWidget({
@@ -70,6 +72,10 @@ class _AssetItemTrailing extends StatelessWidget {
           const Icon(Icons.lock, color: Colors.grey),
           const SizedBox(width: 8),
         ],
+        CoinSparkline(coinId: asset.id.symbol.configSymbol),
+        const SizedBox(width: 8),
+        AssetMarketInfo(asset: asset),
+        const SizedBox(width: 8),
         if (asset.supportsMultipleAddresses && isEnabled) ...[
           const Tooltip(
             message: 'Supports multiple addresses',
@@ -81,6 +87,7 @@ class _AssetItemTrailing extends StatelessWidget {
           const Tooltip(message: 'Requires HD wallet', child: Icon(Icons.key)),
           const SizedBox(width: 8),
         ],
+        const SizedBox(width: 8),
         CircleAvatar(
           radius: 12,
           foregroundImage: NetworkImage(
@@ -88,7 +95,6 @@ class _AssetItemTrailing extends StatelessWidget {
           ),
           backgroundColor: Colors.white70,
         ),
-        const SizedBox(width: 8),
         SizedBox(
           width: 80,
           child: AssetBalanceText(
@@ -97,11 +103,45 @@ class _AssetItemTrailing extends StatelessWidget {
             activateIfNeeded: false,
           ),
         ),
-        const SizedBox(width: 8),
-        AssetMarketInfo(asset: asset),
-        const SizedBox(width: 8),
         const Icon(Icons.arrow_forward_ios),
       ],
+    );
+  }
+}
+
+class CoinSparkline extends StatelessWidget {
+  final String coinId;
+  final SparklineRepository repository = sparklineRepository;
+
+  CoinSparkline({required this.coinId, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<double>?>(
+      future: repository.fetchSparkline(coinId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        } else if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        } else if (!snapshot.hasData || (snapshot.data?.isEmpty ?? true)) {
+          return const SizedBox.shrink();
+        } else {
+          return LimitedBox(
+            maxWidth: 130,
+            child: SizedBox(
+              height: 35,
+              child: SparklineChart(
+                data: snapshot.data!,
+                positiveLineColor: Colors.green,
+                negativeLineColor: Colors.red,
+                lineThickness: 1.0,
+                isCurved: true,
+              ),
+            ),
+          );
+        }
+      },
     );
   }
 }

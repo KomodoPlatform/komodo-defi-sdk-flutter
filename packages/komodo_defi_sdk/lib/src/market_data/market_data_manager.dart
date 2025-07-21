@@ -220,7 +220,6 @@ class CexMarketDataManager implements MarketDataManager {
       );
     }
 
-    // 2. Use retry<T> with exponential backoff and max 3 attempts
     final priceDouble = await retry(
       () => repo.getCoinFiatPrice(
         assetId,
@@ -251,7 +250,6 @@ class CexMarketDataManager implements MarketDataManager {
       fiatCurrency: fiatCurrency,
     );
 
-    // Check cache first
     final cachedPrice = _priceCache[cacheKey];
     if (cachedPrice != null) {
       _logger.finer('Cache hit for $cacheKey');
@@ -362,7 +360,6 @@ class CexMarketDataManager implements MarketDataManager {
     }
     _assertInitialized();
 
-    // 1. Check cache for all requested dates
     final cached = <DateTime, Decimal>{};
     final missingDates = <DateTime>[];
     for (final date in dates) {
@@ -382,7 +379,6 @@ class CexMarketDataManager implements MarketDataManager {
       return cached;
     }
 
-    // 2. Use the new strategy to select the best repository
     final fiatAssetId = AssetId(
       id: fiatCurrency,
       name: fiatCurrency,
