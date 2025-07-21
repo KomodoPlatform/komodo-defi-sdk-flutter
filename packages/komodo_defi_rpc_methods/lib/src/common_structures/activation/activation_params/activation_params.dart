@@ -377,13 +377,7 @@ enum ScanPolicy {
 /// Contains information about electrum & lightwallet_d servers for coins being used
 /// in 'Electrum' or 'Light' mode
 class ActivationRpcData {
-  ActivationRpcData({
-    this.lightWalletDServers,
-    this.electrum,
-    this.syncParams,
-    this.minConnected,
-    this.maxConnected = 1,
-  });
+  ActivationRpcData({this.lightWalletDServers, this.electrum, this.syncParams});
 
   /// Creates [ActivationRpcData] from JSON configuration
   factory ActivationRpcData.fromJson(JsonMap json) {
@@ -398,8 +392,6 @@ class ActivationRpcData {
               ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
               .toList(),
       syncParams: json.valueOrNull<dynamic>('sync_params'),
-      minConnected: json.valueOrNull<int>('min_connected'),
-      maxConnected: json.valueOrNull<int>('max_connected'),
     );
   }
 
@@ -417,12 +409,6 @@ class ActivationRpcData {
   /// - date (a unix timestamp)
   final dynamic syncParams;
 
-  /// Optional. Minimum required electrum connections.
-  final int? minConnected;
-
-  /// Optional. Maximum electrum connections to establish.
-  final int? maxConnected;
-
   bool get isEmpty => [lightWalletDServers, electrum, syncParams].every(
     (element) =>
         element == null &&
@@ -437,8 +423,6 @@ class ActivationRpcData {
       'servers': electrum!.map((e) => e.toJsonRequest()).toList(),
     },
     if (syncParams != null) 'sync_params': syncParams,
-    if (minConnected != null) 'min_connected': minConnected,
-    if (maxConnected != null) 'max_connected': maxConnected,
   };
 }
 
