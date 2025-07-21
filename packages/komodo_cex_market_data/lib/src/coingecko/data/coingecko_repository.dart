@@ -109,9 +109,50 @@ class CoinGeckoRepository implements CexRepository {
     AssetId assetId,
     List<DateTime> dates, {
     String fiatCoinId = 'usdt',
-  }) {
-    // TODO: implement getCoinFiatPrices
-    throw UnimplementedError();
+  }) async {
+    if (coinId.toUpperCase() == fiatCoinId.toUpperCase()) {
+      throw ArgumentError('Coin and fiat coin cannot be the same');
+    }
+
+    dates.sort();
+    final trimmedCoinId = coinId.replaceAll(RegExp('-segwit'), '');
+
+    if (dates.isEmpty) {
+      return {};
+    }
+
+    final startDate = dates.first.add(const Duration(days: -2));
+    final endDate = dates.last.add(const Duration(days: 2));
+    final daysDiff = endDate.difference(startDate).inDays;
+
+    final result = <DateTime, double>{};
+
+    // Process in batches to avoid overwhelming the API
+    for (var i = 0; i <= daysDiff; i += 365) {
+      final batchStartDate = startDate.add(Duration(days: i));
+      final batchEndDate = i + 365 > daysDiff 
+          ? endDate 
+          : startDate.add(Duration(days: i + 365));
+
+      final ohlcData = await getCoinOhlc(
+        CexCoinPair(baseCoinTicker: trimmedCoinId, relCoinTicker: fiatCoinId),
+        GraphInterval.oneDay,
+        startAt: batchStartDate,
+        endAt: batchEndDate,
+      );
+
+      final batchResult = ohlcData.ohlc.fold<Map<DateTime, double>>({}, (map, ohlc) {
+        final date = DateTime.fromMillisecondsSinceEpoch(
+          ohlc.closeTime,
+        );
+        map[DateTime(date.year, date.month, date.day)] = ohlc.close;
+        return map;
+      });
+
+      result.addAll(batchResult);
+    }
+
+    return result;
   }
 
   @override
