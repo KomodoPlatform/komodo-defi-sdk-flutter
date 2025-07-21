@@ -382,7 +382,7 @@ class ActivationRpcData {
     this.electrum,
     this.syncParams,
     this.minConnected,
-    this.maxConnected,
+    this.maxConnected = 1,
   });
 
   /// Creates [ActivationRpcData] from JSON configuration
