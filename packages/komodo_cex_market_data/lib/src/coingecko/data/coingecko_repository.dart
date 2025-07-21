@@ -2,6 +2,7 @@ import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
 import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// The number of seconds in a day.
@@ -16,6 +17,9 @@ class CoinGeckoRepository implements CexRepository {
   /// The CoinGecko provider to use for fetching data.
   final CoinGeckoCexProvider coinGeckoProvider;
   final CoinGeckoIdResolutionStrategy _idResolutionStrategy;
+
+  List<CexCoin>? _cachedCoinsList;
+  Set<String>? _cachedFiatCurrencies;
 
   /// Fetches the CoinGecko market data.
   ///
@@ -34,13 +38,18 @@ class CoinGeckoRepository implements CexRepository {
 
   @override
   Future<List<CexCoin>> getCoinList() async {
+    if (_cachedCoinsList != null) {
+      return _cachedCoinsList!;
+    }
     final coins = await coinGeckoProvider.fetchCoinList();
     final supportedCurrencies =
         await coinGeckoProvider.fetchSupportedVsCurrencies();
-
-    return coins
+    _cachedCoinsList = coins
         .map((CexCoin e) => e.copyWith(currencies: supportedCurrencies.toSet()))
         .toList();
+    _cachedFiatCurrencies =
+        supportedCurrencies.map((s) => s.toUpperCase()).toSet();
+    return _cachedCoinsList!;
   }
 
   @override
@@ -69,7 +78,8 @@ class CoinGeckoRepository implements CexRepository {
     final resolved = _idResolutionStrategy.resolveTradingSymbol(assetId);
     if (resolved == null) {
       throw ArgumentError(
-          'Cannot resolve trading symbol for asset ${assetId.id} on ${_idResolutionStrategy.platformName}');
+        'Cannot resolve trading symbol for asset ${assetId.id} on ${_idResolutionStrategy.platformName}',
+      );
     }
     return resolved;
   }
@@ -104,53 +114,19 @@ class CoinGeckoRepository implements CexRepository {
     throw UnimplementedError();
   }
 
-  /// Legacy method - creates a synthetic AssetId for string-based calls
-  @Deprecated('Use getCoinFiatPrice(AssetId) instead')
-  Future<double> getCoinFiatPriceLegacy(
-    String coinId, {
-    DateTime? priceDate,
-    String fiatCoinId = 'usdt',
-  }) async {
-    // Create minimal AssetId for backward compatibility
-    final assetSymbol = AssetSymbol(assetConfigId: coinId);
-    final syntheticAssetId = AssetId(
-      id: coinId,
-      name: coinId,
-      symbol: assetSymbol,
-      chainId: AssetChainId(chainId: 0), // Default chain ID
-      derivationPath: null,
-      subClass: CoinSubClass.utxo, // Default subclass
+  @override
+  Future<bool> supports(
+    AssetId assetId,
+    AssetId fiatAssetId,
+    PriceRequestType requestType,
+  ) async {
+    final coins = await getCoinList();
+    final fiat = fiatAssetId.symbol.configSymbol.toUpperCase();
+    final supportsAsset = coins.any(
+      (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
     );
-
-    return getCoinFiatPrice(
-      syntheticAssetId,
-      priceDate: priceDate,
-      fiatCoinId: fiatCoinId,
-    );
-  }
-
-  /// Legacy method - creates a synthetic AssetId for string-based calls
-  @Deprecated('Use getCoinFiatPrices(AssetId) instead')
-  Future<Map<DateTime, double>> getCoinFiatPricesLegacy(
-    String coinId,
-    List<DateTime> dates, {
-    String fiatCoinId = 'usdt',
-  }) async {
-    // Create minimal AssetId for backward compatibility
-    final assetSymbol = AssetSymbol(assetConfigId: coinId);
-    final syntheticAssetId = AssetId(
-      id: coinId,
-      name: coinId,
-      symbol: assetSymbol,
-      chainId: AssetChainId(chainId: 0), // Default chain ID
-      derivationPath: null,
-      subClass: CoinSubClass.utxo, // Default subclass
-    );
-
-    return getCoinFiatPrices(
-      syntheticAssetId,
-      dates,
-      fiatCoinId: fiatCoinId,
-    );
+    final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
+    // For now, assume all request types are supported if asset/fiat are supported
+    return supportsAsset && supportsFiat;
   }
 }

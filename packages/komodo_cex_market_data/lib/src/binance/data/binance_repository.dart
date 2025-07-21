@@ -6,6 +6,7 @@ import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // Declaring constants here to make this easier to copy & move around
@@ -29,24 +30,26 @@ class BinanceRepository implements CexRepository {
   final BinanceIdResolutionStrategy _idResolutionStrategy;
 
   List<CexCoin>? _cachedCoinsList;
+  Set<String>? _cachedFiatCurrencies;
 
   @override
   Future<List<CexCoin>> getCoinList() async {
     if (_cachedCoinsList != null) {
       return _cachedCoinsList!;
     }
-
     try {
-      return await _executeWithRetry((String baseUrl) async {
+      _cachedCoinsList = await _executeWithRetry((String baseUrl) async {
         final exchangeInfo =
             await _binanceProvider.fetchExchangeInfoReduced(baseUrl: baseUrl);
-        _cachedCoinsList = _convertSymbolsToCoins(exchangeInfo);
-        return _cachedCoinsList!;
+        return _convertSymbolsToCoins(exchangeInfo);
       });
+      _cachedFiatCurrencies = _cachedCoinsList!
+          .expand((c) => c.currencies.map((s) => s.toUpperCase()))
+          .toSet();
     } catch (e) {
       _cachedCoinsList = List.empty();
+      _cachedFiatCurrencies = <String>{};
     }
-
     return _cachedCoinsList!;
   }
 
@@ -272,5 +275,21 @@ class BinanceRepository implements CexRepository {
       }
     }
     return coins.values.toList();
+  }
+
+  @override
+  Future<bool> supports(
+    AssetId assetId,
+    AssetId fiatAssetId,
+    PriceRequestType requestType,
+  ) async {
+    final coins = await getCoinList();
+    final fiat = fiatAssetId.symbol.configSymbol.toUpperCase();
+    final supportsAsset = coins.any(
+      (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
+    );
+    final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
+    // For now, assume all request types are supported if asset/fiat are supported
+    return supportsAsset && supportsFiat;
   }
 }

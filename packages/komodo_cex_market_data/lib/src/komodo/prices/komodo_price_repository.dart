@@ -1,5 +1,7 @@
 import 'package:komodo_cex_market_data/src/komodo/prices/komodo_price_provider.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A repository for fetching the prices of coins from the Komodo Defi API.
 class KomodoPriceRepository {
@@ -10,6 +12,9 @@ class KomodoPriceRepository {
 
   /// The price provider to fetch the prices from.
   final KomodoPriceProvider _cexPriceProvider;
+
+  List<CexCoin>? _cachedCoinsList;
+  Set<String>? _cachedFiatCurrencies;
 
   /// Fetches the prices of the provided coin IDs at the given timestamps.
   ///
@@ -40,5 +45,40 @@ class KomodoPriceRepository {
   /// Returns a map of coin IDs to their prices.
   Future<Map<String, CexPrice>> getKomodoPrices() async {
     return _cexPriceProvider.getKomodoPrices();
+  }
+
+  Future<List<CexCoin>> getCoinList() async {
+    if (_cachedCoinsList != null) {
+      return _cachedCoinsList!;
+    }
+    final prices = await getKomodoPrices();
+    _cachedCoinsList = prices.values
+        .map(
+          (e) => CexCoin(
+            id: e.ticker,
+            symbol: e.ticker,
+            name: e.ticker,
+            currencies: <String>{'USD', 'USDT'},
+            source: 'komodo',
+          ),
+        )
+        .toList();
+    _cachedFiatCurrencies = {'USD', 'USDT'};
+    return _cachedCoinsList!;
+  }
+
+  Future<bool> supports(
+    AssetId assetId,
+    AssetId fiatAssetId,
+    PriceRequestType requestType,
+  ) async {
+    final coins = await getCoinList();
+    final fiat = fiatAssetId.symbol.configSymbol.toUpperCase();
+    final supportsAsset = coins.any(
+      (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
+    );
+    final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
+    // For now, assume all request types are supported if asset/fiat are supported
+    return supportsAsset && supportsFiat;
   }
 }

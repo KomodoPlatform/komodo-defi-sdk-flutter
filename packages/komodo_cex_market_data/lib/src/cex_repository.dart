@@ -1,4 +1,5 @@
 import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// An abstract class that defines the methods for fetching data from a
@@ -113,4 +114,11 @@ abstract class CexRepository {
   /// Checks if this repository can handle the given asset.
   /// Returns false if no suitable ID can be resolved.
   bool canHandleAsset(AssetId assetId);
+
+  /// Checks if this repository supports the given asset, fiat, and request type.
+  Future<bool> supports(
+    AssetId assetId,
+    AssetId fiatAssetId,
+    PriceRequestType requestType,
+  );
 }
