@@ -7,6 +7,8 @@ import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart'
+    show retry, BackoffStrategy, ExponentialBackoff;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // Declaring constants here to make this easier to copy & move around
@@ -22,49 +24,57 @@ BinanceRepository binanceRepository = BinanceRepository(
 /// This class provides methods to fetch legacy tickers and OHLC candle data.
 class BinanceRepository implements CexRepository {
   /// Creates a new [BinanceRepository] instance.
-  BinanceRepository({required IBinanceProvider binanceProvider})
-      : _binanceProvider = binanceProvider,
+  BinanceRepository({
+    required IBinanceProvider binanceProvider,
+    BackoffStrategy? defaultBackoffStrategy,
+  })  : _binanceProvider = binanceProvider,
+        _defaultBackoffStrategy = defaultBackoffStrategy ??
+            ExponentialBackoff(
+              maxDelay: const Duration(seconds: 5),
+            ),
         _idResolutionStrategy = BinanceIdResolutionStrategy();
 
   final IBinanceProvider _binanceProvider;
-  final BinanceIdResolutionStrategy _idResolutionStrategy;
+  final BackoffStrategy _defaultBackoffStrategy;
+  final IdResolutionStrategy _idResolutionStrategy;
 
   List<CexCoin>? _cachedCoinsList;
   Set<String>? _cachedFiatCurrencies;
 
   @override
-  Future<List<CexCoin>> getCoinList() async {
+  Future<List<CexCoin>> getCoinList({
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
+  }) async {
     if (_cachedCoinsList != null) {
       return _cachedCoinsList!;
     }
+
     try {
-      _cachedCoinsList = await _executeWithRetry((String baseUrl) async {
-        final exchangeInfo =
-            await _binanceProvider.fetchExchangeInfoReduced(baseUrl: baseUrl);
-        return _convertSymbolsToCoins(exchangeInfo);
-      });
-      _cachedFiatCurrencies = _cachedCoinsList!
-          .expand((c) => c.currencies.map((s) => s.toUpperCase()))
-          .toSet();
+      return await retry(
+        () async {
+          // Try primary endpoint first, fallback to secondary on failure
+          Exception? lastException;
+          for (final baseUrl in binanceApiEndpoint) {
+            try {
+              final exchangeInfo = await _binanceProvider
+                  .fetchExchangeInfoReduced(baseUrl: baseUrl);
+              _cachedCoinsList = _convertSymbolsToCoins(exchangeInfo);
+              return _cachedCoinsList!;
+            } catch (e) {
+              lastException = e is Exception ? e : Exception(e.toString());
+            }
+          }
+          throw lastException ?? Exception('All endpoints failed');
+        },
+        maxAttempts: maxAttempts,
+        backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+      );
     } catch (e) {
       _cachedCoinsList = List.empty();
       _cachedFiatCurrencies = <String>{};
     }
     return _cachedCoinsList!;
-  }
-
-  Future<T> _executeWithRetry<T>(Future<T> Function(String) callback) async {
-    for (int i = 0; i < binanceApiEndpoint.length; i++) {
-      try {
-        return await callback(binanceApiEndpoint.elementAt(i));
-      } catch (e) {
-        if (i >= (binanceApiEndpoint.length - 1)) {
-          rethrow;
-        }
-      }
-    }
-
-    throw Exception('Invalid state');
   }
 
   CexCoin _binanceCoin(String baseCoinAbbr, String quoteCoinAbbr) {
@@ -84,6 +94,8 @@ class BinanceRepository implements CexRepository {
     DateTime? startAt,
     DateTime? endAt,
     int? limit,
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
   }) async {
     if (symbol.baseCoinTicker.toUpperCase() ==
         symbol.relCoinTicker.toUpperCase()) {
@@ -94,16 +106,29 @@ class BinanceRepository implements CexRepository {
     final endUnixTimestamp = endAt?.millisecondsSinceEpoch;
     final intervalAbbreviation = interval.toAbbreviation();
 
-    return await _executeWithRetry((String baseUrl) async {
-      return await _binanceProvider.fetchKlines(
-        symbol.toString(),
-        intervalAbbreviation,
-        startUnixTimestampMilliseconds: startUnixTimestamp,
-        endUnixTimestampMilliseconds: endUnixTimestamp,
-        limit: limit,
-        baseUrl: baseUrl,
-      );
-    });
+    return await retry(
+      () async {
+        // Try primary endpoint first, fallback to secondary on failure
+        Exception? lastException;
+        for (final baseUrl in binanceApiEndpoint) {
+          try {
+            return await _binanceProvider.fetchKlines(
+              symbol.toString(),
+              intervalAbbreviation,
+              startUnixTimestampMilliseconds: startUnixTimestamp,
+              endUnixTimestampMilliseconds: endUnixTimestamp,
+              limit: limit,
+              baseUrl: baseUrl,
+            );
+          } catch (e) {
+            lastException = e is Exception ? e : Exception(e.toString());
+          }
+        }
+        throw lastException ?? Exception('All endpoints failed');
+      },
+      maxAttempts: maxAttempts,
+      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+    );
   }
 
   @override
@@ -127,6 +152,8 @@ class BinanceRepository implements CexRepository {
     AssetId assetId, {
     DateTime? priceDate,
     String fiatCoinId = 'usdt',
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
 
@@ -145,6 +172,8 @@ class BinanceRepository implements CexRepository {
       startAt: startAt,
       endAt: endAt,
       limit: 1,
+      maxAttempts: maxAttempts,
+      backoffStrategy: backoffStrategy,
     );
     return ohlcData.ohlc.first.close;
   }
@@ -154,6 +183,8 @@ class BinanceRepository implements CexRepository {
     AssetId assetId,
     List<DateTime> dates, {
     String fiatCoinId = 'usdt',
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
 
@@ -184,6 +215,8 @@ class BinanceRepository implements CexRepository {
         GraphInterval.oneDay,
         startAt: batchStartDate,
         endAt: batchEndDate,
+        maxAttempts: maxAttempts,
+        backoffStrategy: backoffStrategy,
       );
 
       final batchResult =
@@ -199,56 +232,6 @@ class BinanceRepository implements CexRepository {
     }
 
     return result;
-  }
-
-  /// Legacy method - creates a synthetic AssetId for string-based calls
-  @Deprecated('Use getCoinFiatPrice(AssetId) instead')
-  Future<double> getCoinFiatPriceLegacy(
-    String coinId, {
-    DateTime? priceDate,
-    String fiatCoinId = 'usdt',
-  }) async {
-    // Create minimal AssetId for backward compatibility
-    final assetSymbol = AssetSymbol(assetConfigId: coinId);
-    final syntheticAssetId = AssetId(
-      id: coinId,
-      name: coinId,
-      symbol: assetSymbol,
-      chainId: AssetChainId(chainId: 0), // Default chain ID
-      derivationPath: null,
-      subClass: CoinSubClass.utxo, // Default subclass
-    );
-
-    return getCoinFiatPrice(
-      syntheticAssetId,
-      priceDate: priceDate,
-      fiatCoinId: fiatCoinId,
-    );
-  }
-
-  /// Legacy method - creates a synthetic AssetId for string-based calls
-  @Deprecated('Use getCoinFiatPrices(AssetId) instead')
-  Future<Map<DateTime, double>> getCoinFiatPricesLegacy(
-    String coinId,
-    List<DateTime> dates, {
-    String fiatCoinId = 'usdt',
-  }) async {
-    // Create minimal AssetId for backward compatibility
-    final assetSymbol = AssetSymbol(assetConfigId: coinId);
-    final syntheticAssetId = AssetId(
-      id: coinId,
-      name: coinId,
-      symbol: assetSymbol,
-      chainId: AssetChainId(chainId: 0), // Default chain ID
-      derivationPath: null,
-      subClass: CoinSubClass.utxo, // Default subclass
-    );
-
-    return getCoinFiatPrices(
-      syntheticAssetId,
-      dates,
-      fiatCoinId: fiatCoinId,
-    );
   }
 
   List<CexCoin> _convertSymbolsToCoins(

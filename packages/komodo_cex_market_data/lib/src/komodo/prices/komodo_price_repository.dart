@@ -78,7 +78,9 @@ class KomodoPriceRepository {
       (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
     );
     final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
-    // For now, assume all request types are supported if asset/fiat are supported
-    return supportsAsset && supportsFiat;
+    // Only support currentPrice and priceChange requests
+    final supportsRequestType = requestType == PriceRequestType.currentPrice ||
+        requestType == PriceRequestType.priceChange;
+    return supportsAsset && supportsFiat && supportsRequestType;
   }
 }

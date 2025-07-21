@@ -3,7 +3,10 @@ import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
 import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart'
+    show BackoffStrategy, ExponentialBackoff;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/src/utils/retry_utils.dart';
 
 /// The number of seconds in a day.
 const int secondsInDay = 86400;
@@ -11,12 +14,19 @@ const int secondsInDay = 86400;
 /// A repository class for interacting with the CoinGecko API.
 class CoinGeckoRepository implements CexRepository {
   /// Creates a new instance of [CoinGeckoRepository].
-  CoinGeckoRepository({required this.coinGeckoProvider})
-      : _idResolutionStrategy = CoinGeckoIdResolutionStrategy();
+  CoinGeckoRepository({
+    required this.coinGeckoProvider,
+    BackoffStrategy? defaultBackoffStrategy,
+  })  : _defaultBackoffStrategy = defaultBackoffStrategy ??
+            ExponentialBackoff(
+              maxDelay: const Duration(seconds: 5),
+            ),
+        _idResolutionStrategy = CoinGeckoIdResolutionStrategy();
 
   /// The CoinGecko provider to use for fetching data.
   final CoinGeckoCexProvider coinGeckoProvider;
-  final CoinGeckoIdResolutionStrategy _idResolutionStrategy;
+  final BackoffStrategy _defaultBackoffStrategy;
+  final IdResolutionStrategy _idResolutionStrategy;
 
   List<CexCoin>? _cachedCoinsList;
   Set<String>? _cachedFiatCurrencies;
@@ -31,24 +41,45 @@ class CoinGeckoRepository implements CexRepository {
   /// ```dart
   /// final List<CoinMarketData> marketData = await getCoinGeckoMarketData();
   /// ```
-  Future<List<CoinMarketData>> getCoinGeckoMarketData() async {
-    final coinGeckoMarketData = await coinGeckoProvider.fetchCoinMarketData();
-    return coinGeckoMarketData;
+  Future<List<CoinMarketData>> getCoinGeckoMarketData({
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
+  }) async {
+    return await retry(
+      () => coinGeckoProvider.fetchCoinMarketData(),
+      maxAttempts: maxAttempts,
+      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+    );
   }
 
   @override
-  Future<List<CexCoin>> getCoinList() async {
+  Future<List<CexCoin>> getCoinList({
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
+  }) async {
     if (_cachedCoinsList != null) {
       return _cachedCoinsList!;
     }
-    final coins = await coinGeckoProvider.fetchCoinList();
-    final supportedCurrencies =
-        await coinGeckoProvider.fetchSupportedVsCurrencies();
+
+    final effectiveBackoffStrategy = backoffStrategy ?? _defaultBackoffStrategy;
+
+    final coins = await retry(
+      () => coinGeckoProvider.fetchCoinList(),
+      maxAttempts: maxAttempts,
+      backoffStrategy: effectiveBackoffStrategy,
+    );
+    final supportedCurrencies = await retry(
+      () => coinGeckoProvider.fetchSupportedVsCurrencies(),
+      maxAttempts: maxAttempts,
+      backoffStrategy: effectiveBackoffStrategy,
+    );
+
     _cachedCoinsList = coins
         .map((CexCoin e) => e.copyWith(currencies: supportedCurrencies.toSet()))
         .toList();
     _cachedFiatCurrencies =
         supportedCurrencies.map((s) => s.toUpperCase()).toSet();
+
     return _cachedCoinsList!;
   }
 
@@ -59,6 +90,8 @@ class CoinGeckoRepository implements CexRepository {
     DateTime? startAt,
     DateTime? endAt,
     int? limit,
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
   }) {
     var days = 1;
     if (startAt != null && endAt != null) {
@@ -66,10 +99,14 @@ class CoinGeckoRepository implements CexRepository {
       days = (timeDelta.inSeconds.toDouble() / secondsInDay).ceil();
     }
 
-    return coinGeckoProvider.fetchCoinOhlc(
-      symbol.baseCoinTicker,
-      symbol.relCoinTicker,
-      days,
+    return retry(
+      () => coinGeckoProvider.fetchCoinOhlc(
+        symbol.baseCoinTicker,
+        symbol.relCoinTicker,
+        days,
+      ),
+      maxAttempts: maxAttempts,
+      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
     );
   }
 
@@ -94,12 +131,18 @@ class CoinGeckoRepository implements CexRepository {
     AssetId assetId, {
     DateTime? priceDate,
     String fiatCoinId = 'usdt',
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
 
-    final coinPrice = await coinGeckoProvider.fetchCoinHistoricalMarketData(
-      id: tradingSymbol,
-      date: priceDate ?? DateTime.now(),
+    final coinPrice = await retry(
+      () => coinGeckoProvider.fetchCoinHistoricalMarketData(
+        id: tradingSymbol,
+        date: priceDate ?? DateTime.now(),
+      ),
+      maxAttempts: maxAttempts,
+      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
     );
     return coinPrice.marketData?.currentPrice?.usd?.toDouble() ?? 0;
   }
@@ -109,13 +152,17 @@ class CoinGeckoRepository implements CexRepository {
     AssetId assetId,
     List<DateTime> dates, {
     String fiatCoinId = 'usdt',
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
   }) async {
-    if (coinId.toUpperCase() == fiatCoinId.toUpperCase()) {
+    final tradingSymbol = resolveTradingSymbol(assetId);
+
+    if (tradingSymbol.toUpperCase() == fiatCoinId.toUpperCase()) {
       throw ArgumentError('Coin and fiat coin cannot be the same');
     }
 
     dates.sort();
-    final trimmedCoinId = coinId.replaceAll(RegExp('-segwit'), '');
+    final trimmedCoinId = tradingSymbol.replaceAll(RegExp('-segwit'), '');
 
     if (dates.isEmpty) {
       return {};
@@ -130,9 +177,8 @@ class CoinGeckoRepository implements CexRepository {
     // Process in batches to avoid overwhelming the API
     for (var i = 0; i <= daysDiff; i += 365) {
       final batchStartDate = startDate.add(Duration(days: i));
-      final batchEndDate = i + 365 > daysDiff 
-          ? endDate 
-          : startDate.add(Duration(days: i + 365));
+      final batchEndDate =
+          i + 365 > daysDiff ? endDate : startDate.add(Duration(days: i + 365));
 
       final ohlcData = await getCoinOhlc(
         CexCoinPair(baseCoinTicker: trimmedCoinId, relCoinTicker: fiatCoinId),
@@ -141,7 +187,8 @@ class CoinGeckoRepository implements CexRepository {
         endAt: batchEndDate,
       );
 
-      final batchResult = ohlcData.ohlc.fold<Map<DateTime, double>>({}, (map, ohlc) {
+      final batchResult =
+          ohlcData.ohlc.fold<Map<DateTime, double>>({}, (map, ohlc) {
         final date = DateTime.fromMillisecondsSinceEpoch(
           ohlc.closeTime,
         );
