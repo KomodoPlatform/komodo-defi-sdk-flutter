@@ -8,11 +8,17 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manages asset withdrawals using task-based API
 class WithdrawalManager {
-  WithdrawalManager(this._client, this._assetProvider, this._activationManager);
+  WithdrawalManager(
+    this._client,
+    this._assetProvider,
+    this._activationManager,
+    this._feeManager,
+  );
 
   final ApiClient _client;
   final IAssetProvider _assetProvider;
   final ActivationManager _activationManager;
+  final FeeManager _feeManager;
   final _activeWithdrawals = <int, StreamController<WithdrawalProgress>>{};
 
   /// Cancel an active withdrawal task
@@ -54,9 +60,11 @@ class WithdrawalManager {
         return await legacyManager.previewWithdrawal(parameters);
       }
 
+      final paramsWithFee = await _ensureFee(parameters, asset);
+
       // Use task-based approach for non-Tendermint assets
       final stream = (await _client.rpc.withdraw.init(
-        parameters,
+        paramsWithFee,
       )).watch<WithdrawStatusResponse>(
         getTaskStatus:
             (int taskId) =>
@@ -119,8 +127,10 @@ class WithdrawalManager {
         );
       }
 
+      final paramsWithFee = await _ensureFee(parameters, asset);
+
       // Initialize withdrawal task
-      final initResponse = await _client.rpc.withdraw.init(parameters);
+      final initResponse = await _client.rpc.withdraw.init(paramsWithFee);
       taskId = initResponse.taskId;
       WithdrawStatusResponse? lastProgress;
 
@@ -213,6 +223,37 @@ class WithdrawalManager {
     }
 
     return WithdrawalErrorCode.unknownError;
+  }
+
+  Future<WithdrawParameters> _ensureFee(
+    WithdrawParameters params,
+    Asset asset,
+  ) async {
+    if (params.fee != null) return params;
+
+    try {
+      final estimation = await _feeManager.getEthEstimatedFeePerGas(
+        asset.id.id,
+      );
+      final fee = FeeInfo.ethGas(
+        coin: asset.id.id,
+        gasPrice: estimation.medium.maxFeePerGas,
+        gas: 21000,
+      );
+      return WithdrawParameters(
+        asset: params.asset,
+        toAddress: params.toAddress,
+        amount: params.amount,
+        fee: fee,
+        from: params.from,
+        memo: params.memo,
+        ibcTransfer: params.ibcTransfer,
+        ibcSourceChannel: params.ibcSourceChannel,
+        isMax: params.isMax,
+      );
+    } catch (_) {
+      return params;
+    }
   }
 
   /// Map API status response to domain progress model

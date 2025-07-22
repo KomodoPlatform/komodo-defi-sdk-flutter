@@ -49,6 +49,8 @@ class KomodoDefiRpcMethods {
   MessageSigningMethodsNamespace get messageSigning =>
       MessageSigningMethodsNamespace(_client);
   UtilityMethods get utility => UtilityMethods(_client);
+  FeeManagementMethodsNamespace get feeManagement =>
+      FeeManagementMethodsNamespace(_client);
 }
 
 class TaskMethods extends BaseRpcMethodNamespace {
