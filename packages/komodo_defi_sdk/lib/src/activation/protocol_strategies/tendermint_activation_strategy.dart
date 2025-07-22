@@ -1,5 +1,7 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
+import 'package:komodo_defi_sdk/src/transaction_history/strategies/etherscan_transaction_history_strategy.dart'
+    show EtherscanProtocolHelper;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class TendermintActivationStrategy extends ProtocolActivationStrategy {
@@ -73,7 +75,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
                     .toList() ??
                 [],
             getBalances: true,
-            txHistory: true,
+            txHistory: _shouldEnableTxHistory(asset),
             privKeyPolicy: privKeyPolicy,
           ),
         );
@@ -121,3 +123,6 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
     }
   }
 }
+
+bool _shouldEnableTxHistory(Asset asset) =>
+    !const EtherscanProtocolHelper().supportsProtocol(asset);
