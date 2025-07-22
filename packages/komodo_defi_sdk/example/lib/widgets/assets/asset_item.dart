@@ -74,7 +74,7 @@ class _AssetItemTrailing extends StatelessWidget {
         ],
         CoinSparkline(coinId: asset.id.symbol.configSymbol),
         const SizedBox(width: 8),
-        AssetMarketInfo(asset: asset),
+        AssetMarketInfo(asset),
         const SizedBox(width: 8),
         if (asset.supportsMultipleAddresses && isEnabled) ...[
           const Tooltip(

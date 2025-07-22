@@ -1,4 +1,4 @@
-part of 'asset_market_info_cubit.dart';
+part of 'asset_market_info_bloc.dart';
 
 class AssetMarketInfoState extends Equatable {
   const AssetMarketInfoState({this.usdBalance, this.price, this.change24h});

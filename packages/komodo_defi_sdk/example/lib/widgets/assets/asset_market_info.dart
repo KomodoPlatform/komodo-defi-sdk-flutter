@@ -2,35 +2,31 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:kdf_sdk_example/blocs/blocs.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-import '../../blocs/asset_market_info/asset_market_info_cubit.dart';
-
-class AssetMarketInfo extends StatelessWidget {
-  const AssetMarketInfo({super.key, required this.asset});
+class AssetMarketInfo extends StatefulWidget {
+  const AssetMarketInfo(this.asset);
 
   final Asset asset;
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create:
-          (_) => AssetMarketInfoCubit(
-            sdk: context.read<KomodoDefiSdk>(),
-            asset: asset,
-          ),
-      child: const _AssetMarketInfoView(),
-    );
-  }
+  State<AssetMarketInfo> createState() => _AssetMarketInfoState();
 }
 
-class _AssetMarketInfoView extends StatelessWidget {
-  const _AssetMarketInfoView();
+class _AssetMarketInfoState extends State<AssetMarketInfo> {
+  @override
+  void initState() {
+    context.read<AssetMarketInfoBloc>().add(
+      AssetMarketInfoRequested(widget.asset),
+    );
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AssetMarketInfoCubit, AssetMarketInfoState>(
+    return BlocBuilder<AssetMarketInfoBloc, AssetMarketInfoState>(
       builder: (context, state) {
         final balanceStr = _formatCurrency(state.usdBalance);
         final priceStr = _formatCurrency(state.price);

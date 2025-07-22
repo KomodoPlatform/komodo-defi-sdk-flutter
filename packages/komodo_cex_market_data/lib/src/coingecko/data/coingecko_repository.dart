@@ -4,9 +4,8 @@ import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart'
-    show BackoffStrategy, ExponentialBackoff;
+    show BackoffStrategy, ExponentialBackoff, retry;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_types/src/utils/retry_utils.dart';
 
 /// The number of seconds in a day.
 const int secondsInDay = 86400;
