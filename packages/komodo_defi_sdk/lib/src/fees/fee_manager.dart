@@ -31,4 +31,13 @@ class FeeManager {
         .setSwapTransactionFeePolicy(coin: coin, swapTxFeePolicy: policy);
     return response.result;
   }
+
+  /// Disposes of resources used by the FeeManager.
+  ///
+  /// This method is intentionally left empty as the FeeManager does not
+  /// currently manage any resources that require explicit cleanup.
+  Future<void> dispose() {
+    // No resources to dispose. Return a future that completes immediately.
+    return Future.value();
+  }
 }
