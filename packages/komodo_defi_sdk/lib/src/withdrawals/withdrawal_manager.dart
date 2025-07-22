@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' show log;
 
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
@@ -14,7 +15,8 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// - Managing and canceling active withdrawal operations
 ///
 /// It supports both task-based API operations for most chains and falls back to
-/// legacy implementation for protocols that don't yet support tasks (e.g., Tendermint).
+/// legacy implementation for protocols that don't yet support tasks
+/// (e.g., Tendermint).
 ///
 /// The manager ensures proper fee estimation when not provided explicitly
 /// and handles the full lifecycle of a withdrawal transaction:
@@ -69,8 +71,9 @@ class WithdrawalManager {
 
   /// Default gas limit for basic ETH transactions.
   ///
-  /// This is used when no specific gas limit is provided in the withdrawal parameters.
-  /// For standard ETH transfers, 21000 gas is the standard amount required.
+  /// This is used when no specific gas limit is provided in the withdrawal
+  /// parameters. For standard ETH transfers, 21000 gas is the standard amount
+  /// required.
   static const int _defaultEthGasLimit = 21000;
 
   final ApiClient _client;
@@ -81,8 +84,9 @@ class WithdrawalManager {
 
   /// Cancels an active withdrawal task.
   ///
-  /// This method attempts to cancel a withdrawal task that is currently in progress.
-  /// It's useful when a user wants to abort an ongoing withdrawal operation.
+  /// This method attempts to cancel a withdrawal task that is currently in
+  /// progress. It's useful when a user wants to abort an ongoing withdrawal
+  /// operation.
   ///
   /// Parameters:
   /// - [taskId] - The ID of the task to cancel
@@ -109,8 +113,8 @@ class WithdrawalManager {
       return response.result == 'success';
     } catch (e, stackTrace) {
       // Log the error and stack trace for debugging purposes
-      print('Error while canceling withdrawal: $e');
-      print('Stack trace: $stackTrace');
+      log('Error while canceling withdrawal: $e');
+      log('Stack trace: $stackTrace');
       return false;
     } finally {
       await _activeWithdrawals[taskId]?.close();
@@ -121,8 +125,9 @@ class WithdrawalManager {
   /// Cleans up all active withdrawals and releases resources.
   ///
   /// This method should be called when the manager is no longer needed,
-  /// typically when the application is shutting down or the user is logging out.
-  /// It attempts to cancel all active withdrawal tasks and releases associated resources.
+  /// typically when the application is shutting down or the user is
+  /// logging out. It attempts to cancel all active withdrawal tasks and
+  /// releases associated resources.
   ///
   /// Example:
   /// ```dart
@@ -141,19 +146,22 @@ class WithdrawalManager {
 
   /// Creates a preview of a withdrawal operation without executing it.
   ///
-  /// This method allows users to see what would happen if they executed the withdrawal,
-  /// including fees, balance changes, and other transaction details, before committing to it.
+  /// This method allows users to see what would happen if they executed the
+  /// withdrawal, including fees, balance changes, and other transaction
+  /// details, before committing to it.
   ///
   /// Parameters:
-  /// - [parameters] - The withdrawal parameters defining the asset, amount, and destination
+  /// - [parameters] - The withdrawal parameters defining the asset, amount,
+  ///   and destination
   ///
-  /// Returns a [Future<WithdrawalPreview>] containing the estimated transaction details.
+  /// Returns a [Future<WithdrawalPreview>] containing the estimated transaction
+  /// details.
   ///
   /// Throws:
   /// - [WithdrawalException] if the preview fails, with appropriate error code
   ///
-  /// Note: For Tendermint-based assets, this method falls back to the legacy implementation
-  /// since task-based API is not yet supported for these assets.
+  /// Note: For Tendermint-based assets, this method falls back to the legacy
+  /// implementation since task-based API is not yet supported for these assets.
   ///
   /// Example:
   /// ```dart
@@ -165,7 +173,7 @@ class WithdrawalManager {
   ///       amount: Decimal.parse('0.1'),
   ///     ),
   ///   );
-  ///   
+  ///
   ///   print('Estimated fee: ${preview.fee.totalFee}');
   ///   print('Balance change: ${preview.balanceChanges.netChange}');
   /// } catch (e) {
@@ -202,7 +210,7 @@ class WithdrawalManager {
 
       final lastStatus = await stream.last;
 
-      if (lastStatus.status.toLowerCase() == 'Error') {
+      if (lastStatus.status.toLowerCase() == 'error') {
         throw WithdrawalException(
           lastStatus.details as String,
           _mapErrorToCode(lastStatus.details as String),
@@ -237,14 +245,17 @@ class WithdrawalManager {
   /// 4. Tracks and reports progress
   ///
   /// Parameters:
-  /// - [parameters] - The withdrawal parameters defining the asset, amount, and destination
+  /// - [parameters] - The withdrawal parameters defining the asset, amount,
+  ///   and destination
   ///
-  /// Returns a [Stream<WithdrawalProgress>] that emits progress updates throughout the operation.
-  /// The final event will either contain the completed withdrawal result or an error.
+  /// Returns a [Stream<WithdrawalProgress>] that emits progress updates
+  /// throughout the operation. The final event will either contain the
+  /// completed withdrawal result or an error.
   ///
   /// Error handling:
   /// - Errors are emitted through the stream's error channel
-  /// - All errors are wrapped in [WithdrawalException] with appropriate error codes
+  /// - All errors are wrapped in [WithdrawalException] with appropriate
+  ///   error codes
   ///
   /// Protocol handling:
   /// - For Tendermint-based assets, this method uses a legacy implementation
@@ -356,8 +367,8 @@ class WithdrawalManager {
           );
         } catch (e, stackTrace) {
           // Log the error and stack trace for debugging purposes
-          print('Error while broadcasting transaction: $e');
-          print('Stack trace: $stackTrace');
+          log('Error while broadcasting transaction: $e');
+          log('Stack trace: $stackTrace');
           yield* Stream.error(
             WithdrawalException(
               'Failed to broadcast transaction: $e',
@@ -368,8 +379,8 @@ class WithdrawalManager {
       }
     } catch (e, stackTrace) {
       // Log the error and stack trace for debugging purposes
-      print('Error during withdrawal: $e');
-      print('Stack trace: $stackTrace');
+      log('Error during withdrawal: $e');
+      log('Stack trace: $stackTrace');
       yield* Stream.error(
         WithdrawalException(
           'Withdrawal failed: $e',
@@ -385,7 +396,8 @@ class WithdrawalManager {
   /// Maps error messages to withdrawal error codes.
   ///
   /// This helper method analyzes error messages from the API and maps them
-  /// to appropriate [WithdrawalErrorCode] values for consistent error handling.
+  /// to appropriate [WithdrawalErrorCode] values for consistent error
+  /// handling.
   ///
   /// Parameters:
   /// - [error] - The error message to analyze
@@ -413,7 +425,8 @@ class WithdrawalManager {
   /// Ensures fee parameters are set for the withdrawal.
   ///
   /// If fee parameters are already provided, returns the original parameters.
-  /// Otherwise, estimates appropriate fees for the asset and adds them to the parameters.
+  /// Otherwise, estimates appropriate fees for the asset and adds them to the
+  /// parameters.
   ///
   /// Parameters:
   /// - [params] - The original withdrawal parameters
@@ -448,8 +461,8 @@ class WithdrawalManager {
       );
     } catch (e, stackTrace) {
       // Log the error and stack trace for debugging purposes
-      print('Error while estimating fee: $e');
-      print('Stack trace: $stackTrace');
+      log('Error while estimating fee: $e');
+      log('Stack trace: $stackTrace');
       return params;
     }
   }
