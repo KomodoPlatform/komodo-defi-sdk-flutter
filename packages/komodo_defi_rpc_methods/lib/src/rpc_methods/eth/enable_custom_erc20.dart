@@ -9,7 +9,7 @@ class EnableCustomErc20TokenRequest
     required this.activationParams,
     required this.platform,
     required this.contractAddress,
-  }) : super(method: 'enable_erc20', rpcPass: rpcPass, mmrpc: '2.0');
+  }) : super(method: 'enable_erc20', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   final String ticker;
   final Erc20ActivationParams activationParams;

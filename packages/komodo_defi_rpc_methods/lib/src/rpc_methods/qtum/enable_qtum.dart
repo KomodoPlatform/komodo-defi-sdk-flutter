@@ -7,7 +7,7 @@ class TaskEnableQtumInit
     required this.ticker,
     required this.params,
     super.rpcPass,
-  }) : super(method: 'task::enable_qtum::init', mmrpc: '2.0');
+  }) : super(method: 'task::enable_qtum::init', mmrpc: RpcVersion.v2_0);
 
   final String ticker;
 
@@ -36,7 +36,7 @@ class TaskEnableQtumStatus
     required this.taskId,
     this.forgetIfFinished = true,
     super.rpcPass,
-  }) : super(method: 'task::enable_qtum::status', mmrpc: '2.0');
+  }) : super(method: 'task::enable_qtum::status', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final bool forgetIfFinished;
@@ -63,7 +63,7 @@ class TaskEnableQtumUserAction
     required this.actionType,
     required this.pin,
     super.rpcPass,
-  }) : super(method: 'task::enable_qtum::user_action', mmrpc: '2.0');
+  }) : super(method: 'task::enable_qtum::user_action', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final String actionType;

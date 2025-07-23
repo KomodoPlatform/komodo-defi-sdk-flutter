@@ -40,10 +40,10 @@ class CoinKeyInfo {
 
   factory CoinKeyInfo.fromJson(Map<String, dynamic> json) {
     return CoinKeyInfo(
-      coin: json['coin'] as String,
-      pubkey: json['pubkey'] as String,
-      address: json['address'] as String,
-      privKey: json['priv_key'] as String,
+      coin: json.value<String>('coin'),
+      pubkey: json.value<String>('pubkey'),
+      address: json.value<String>('address'),
+      privKey: json.value<String>('priv_key'),
     );
   }
 
@@ -73,10 +73,10 @@ class HdAddressInfo {
 
   factory HdAddressInfo.fromJson(Map<String, dynamic> json) {
     return HdAddressInfo(
-      derivationPath: json['derivation_path'] as String,
-      pubkey: json['pubkey'] as String,
-      address: json['address'] as String,
-      privKey: json['priv_key'] as String,
+      derivationPath: json.value<String>('derivation_path'),
+      pubkey: json.value<String>('pubkey'),
+      address: json.value<String>('address'),
+      privKey: json.value<String>('priv_key'),
     );
   }
 
@@ -100,13 +100,16 @@ class HdCoinKeyInfo {
   const HdCoinKeyInfo({required this.coin, required this.addresses});
 
   factory HdCoinKeyInfo.fromJson(Map<String, dynamic> json) {
-    final addressesJson = json['addresses'] as List<dynamic>;
+    final addressesJson = json.value<List<dynamic>>('addresses');
     final addresses =
         addressesJson
             .map((addr) => HdAddressInfo.fromJson(addr as Map<String, dynamic>))
             .toList();
 
-    return HdCoinKeyInfo(coin: json['coin'] as String, addresses: addresses);
+    return HdCoinKeyInfo(
+      coin: json.value<String>('coin'),
+      addresses: addresses,
+    );
   }
 
   final String coin;
@@ -130,7 +133,7 @@ class GetPrivateKeysRequest
     this.startIndex,
     this.endIndex,
     this.accountIndex,
-  }) : super(method: 'get_private_keys', mmrpc: '2.0');
+  }) : super(method: 'get_private_keys', mmrpc: RpcVersion.v2_0);
 
   final List<String> coins;
   final KeyExportMode? mode;
@@ -140,22 +143,15 @@ class GetPrivateKeysRequest
 
   @override
   Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{'coins': coins};
-
-    if (mode != null) {
-      params['mode'] = mode!.value;
-    }
-    if (startIndex != null) {
-      params['start_index'] = startIndex;
-    }
-    if (endIndex != null) {
-      params['end_index'] = endIndex;
-    }
-    if (accountIndex != null) {
-      params['account_index'] = accountIndex;
-    }
-
-    return {...super.toJson(), 'params': params};
+    return super.toJson().deepMerge({
+      'params': {
+        'coins': coins,
+        if (mode != null) 'mode': mode!.value,
+        if (startIndex != null) 'start_index': startIndex,
+        if (endIndex != null) 'end_index': endIndex,
+        if (accountIndex != null) 'account_index': accountIndex,
+      },
+    });
   }
 
   @override

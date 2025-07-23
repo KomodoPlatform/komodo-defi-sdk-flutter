@@ -8,7 +8,7 @@ class EnableTendermintWithAssetsRequest
     required super.rpcPass,
     required this.ticker,
     required this.params,
-  }) : super(method: 'enable_tendermint_with_assets', mmrpc: '2.0');
+  }) : super(method: 'enable_tendermint_with_assets', mmrpc: RpcVersion.v2_0);
 
   final String ticker;
   @override

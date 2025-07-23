@@ -4,7 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 class TaskEnableEthInit
     extends BaseRequest<NewTaskResponse, GeneralErrorResponse> {
   TaskEnableEthInit({required this.ticker, required this.params, super.rpcPass})
-    : super(method: 'task::enable_eth::init', mmrpc: '2.0');
+    : super(method: 'task::enable_eth::init', mmrpc: RpcVersion.v2_0);
 
   final String ticker;
 
