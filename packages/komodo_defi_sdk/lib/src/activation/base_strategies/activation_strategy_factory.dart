@@ -2,14 +2,25 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-/// Factory for creating the complete activation strategy stack
-class ActivationStrategyFactory {
+/// Interface for creating activation strategies
+abstract class IActivationStrategyFactory {
   /// Creates a complete activation strategy stack with all protocols
   /// and returns a [SmartAssetActivator] instance.
   /// [client] The [ApiClient] to use for RPC calls.
   /// [privKeyPolicy] The [PrivateKeyPolicy] to use for private key management.
   /// This is used for external wallet support. E.g. trezor, wallet connect, etc
-  static SmartAssetActivator createStrategy(
+  SmartAssetActivator createStrategy(
+    ApiClient client,
+    PrivateKeyPolicy privKeyPolicy,
+  );
+}
+
+/// Default implementation of the activation strategy factory
+class DefaultActivationStrategyFactory implements IActivationStrategyFactory {
+  const DefaultActivationStrategyFactory();
+
+  @override
+  SmartAssetActivator createStrategy(
     ApiClient client,
     PrivateKeyPolicy privKeyPolicy,
   ) {

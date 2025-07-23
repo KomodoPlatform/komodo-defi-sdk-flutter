@@ -123,3 +123,49 @@ Future<T> retry<T>(
     }
   }
 }
+
+/// Retry utility for stream-producing functions with configurable attempts and per-attempt timeout.
+///
+/// This function executes [streamFactory] and retries on failure using the provided options.
+///
+/// - [streamFactory]: Function that returns a Stream<T> to retry.
+/// - [maxAttempts]: Maximum number of retry attempts (default: 3).
+/// - [perAttemptTimeout]: Optional timeout for each attempt.
+/// - [shouldRetry]: Optional function to determine if a specific error should trigger a retry.
+/// - [onRetry]: Optional callback executed before each retry attempt with the current attempt count and error.
+///
+/// Example:
+/// ```dart
+/// await for (final value in retryStream(() => someStream(), maxAttempts: 3)) {
+///   // ...
+/// }
+/// ```
+Stream<T> retryStream<T>(
+  Stream<T> Function() streamFactory, {
+  int maxAttempts = 3,
+  Duration? perAttemptTimeout,
+  bool Function(Object error)? shouldRetry,
+  void Function(int attempt, Object error)? onRetry,
+}) async* {
+  int attempt = 0;
+  while (true) {
+    attempt++;
+    final buffer = <T>[];
+    try {
+      final stream = perAttemptTimeout != null
+          ? streamFactory().timeout(perAttemptTimeout)
+          : streamFactory();
+      await for (final event in stream) {
+        buffer.add(event);
+      }
+      // Success: yield all buffered events
+      for (final event in buffer) yield event;
+      return;
+    } catch (e) {
+      if (shouldRetry != null && !shouldRetry(e)) rethrow;
+      if (attempt >= maxAttempts) rethrow;
+      onRetry?.call(attempt, e);
+      // Optionally: add delay/backoff here
+    }
+  }
+}
