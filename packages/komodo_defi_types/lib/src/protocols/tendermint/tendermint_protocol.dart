@@ -45,7 +45,7 @@ class TendermintProtocol extends ProtocolClass {
       config.valueOrNull<String>('protocol', 'protocol_data', 'chain_id');
 
   @override
-  bool get supportsMultipleAddresses => false;
+  bool get supportsMultipleAddresses => true;
 
   @override
   bool get requiresHdWallet => false;
