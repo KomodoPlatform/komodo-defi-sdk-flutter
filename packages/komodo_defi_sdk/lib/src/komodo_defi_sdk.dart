@@ -9,6 +9,7 @@ import 'package:komodo_defi_sdk/src/bootstrap.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
+import 'package:komodo_defi_sdk/src/security/security_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -233,6 +234,15 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   WithdrawalManager get withdrawals =>
       _assertSdkInitialized(_container<WithdrawalManager>());
 
+  /// Manages security-sensitive wallet operations like private key export.
+  ///
+  /// Provides authenticated access to sensitive wallet data with proper
+  /// security warnings and user authentication checks.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  SecurityManager get security =>
+      _assertSdkInitialized(_container<SecurityManager>());
+
   /// The price manager instance.
   ///
   /// Provides functionality for fetching asset prices.
@@ -359,6 +369,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
       _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
       _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
+      _disposeIfRegistered<SecurityManager>((m) => m.dispose()),
     ]);
 
     // Reset scoped container

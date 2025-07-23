@@ -46,6 +46,7 @@ export 'wallet/change_mnemonic_password.dart';
 export 'wallet/delete_wallet.dart';
 export 'wallet/get_mnemonic_request.dart';
 export 'wallet/get_mnemonic_response.dart';
+export 'wallet/get_private_keys.dart';
 export 'wallet/get_public_key_hash.dart';
 export 'wallet/get_wallet.dart';
 export 'wallet/get_wallet_names_request.dart';
