@@ -39,6 +39,22 @@ void main() async {
 
   await dragon.DragonLogs.init();
 
+  // Setup root logger
+  Logger.root.level = kDebugMode ? Level.FINEST : Level.INFO;
+  Logger.root.onRecord.listen((record) {
+    final message =
+        '[ [36m [1m [0m${record.level.name} [0m] '
+        '[${record.loggerName}] ${record.time}: ${record.message}';
+    if (record.error != null || record.stackTrace != null) {
+      debugPrint(message);
+      if (record.error != null) debugPrint('Error:  [31m${record.error} [0m');
+      if (record.stackTrace != null)
+        debugPrintStack(stackTrace: record.stackTrace);
+    } else {
+      debugPrint(message);
+    }
+  });
+
   // Create instance manager
   final instanceManager = KdfInstanceManager();
 

@@ -2,11 +2,13 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 /// Activation strategy for custom ERC20 tokens. This strategy is used to
 /// activate tokens that are not part of the live coins configuration.
 class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
   const CustomErc20ActivationStrategy(super.client);
+  static final _logger = Logger('CustomErc20ActivationStrategy');
 
   @override
   Set<CoinSubClass> get supportedProtocols => {
@@ -38,6 +40,9 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
     Asset asset, [
     List<Asset>? children,
   ]) async* {
+    _logger.fine(
+      'Starting activation for asset: ${asset.id.name}, protocol: ${asset.protocol.subClass.formatted}',
+    );
     yield ActivationProgress(
       status: 'Activating ${asset.id.name}...',
       progressDetails: ActivationProgressDetails(
@@ -68,6 +73,9 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
         contractAddress: protocolData.value<String>('contract_address'),
       );
 
+      _logger.fine(
+        'Activation completed successfully for asset: ${asset.id.name}',
+      );
       yield ActivationProgress.success(
         details: ActivationProgressDetails(
           currentStep: 'complete',
@@ -80,6 +88,11 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
     } catch (e, stack) {
+      _logger.severe(
+        'Exception during activation for asset: ${asset.id.name}',
+        e,
+        stack,
+      );
       yield ActivationProgress(
         status: 'Activation failed',
         errorMessage: e.toString(),

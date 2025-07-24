@@ -1,9 +1,11 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 class UtxoActivationStrategy extends ProtocolActivationStrategy {
   const UtxoActivationStrategy(super.client, this.privKeyPolicy);
+  static final _logger = Logger('UtxoActivationStrategy');
 
   /// The private key management policy to use for this strategy.
   /// Used for external wallet support.
@@ -30,6 +32,9 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
 
     final protocol = asset.protocol as UtxoProtocol;
 
+    _logger.fine(
+      'Starting activation for asset: ${asset.id.name}, protocol: ${protocol.subClass.formatted}, privKeyPolicy: $privKeyPolicy',
+    );
     yield ActivationProgress(
       status: 'Starting ${asset.id.name} activation...',
       progressDetails: ActivationProgressDetails(
@@ -84,6 +89,9 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
 
         if (status.isCompleted) {
           if (status.status == 'Ok') {
+            _logger.fine(
+              'Activation completed successfully for asset: ${asset.id.name}',
+            );
             yield ActivationProgress.success(
               details: ActivationProgressDetails(
                 currentStep: 'complete',
@@ -97,6 +105,9 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
               ),
             );
           } else {
+            _logger.warning(
+              'Activation failed for asset: ${asset.id.name}, status: ${status.status}, details: ${status.details}',
+            );
             yield ActivationProgress(
               status: 'Activation failed: ${status.details}',
               errorMessage: status.details,
@@ -111,6 +122,12 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
           }
           isComplete = true;
         } else {
+          // Only log unexpected/unknown status for debugging
+          if (!_knownUtxoStatuses.contains(status.status)) {
+            _logger.fine(
+              'Unknown activation status for asset: ${asset.id.name}, status: ${status.status}',
+            );
+          }
           final progress = _parseUtxoStatus(status.status);
           yield ActivationProgress(
             status: progress.status,
@@ -125,6 +142,11 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         }
       }
     } catch (e, stack) {
+      _logger.severe(
+        'Exception during activation for asset: ${asset.id.name}',
+        e,
+        stack,
+      );
       yield ActivationProgress(
         status: 'Activation failed',
         errorMessage: e.toString(),
@@ -139,6 +161,12 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
       );
     }
   }
+
+  static const Set<String> _knownUtxoStatuses = {
+    'ConnectingElectrum',
+    'LoadingBlockchain',
+    'ScanningTransactions',
+  };
 
   ({String status, double percentage, String step, Map<String, dynamic> info})
   _parseUtxoStatus(String status) {

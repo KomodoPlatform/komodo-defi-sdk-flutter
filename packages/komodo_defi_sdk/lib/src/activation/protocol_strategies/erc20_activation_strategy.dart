@@ -1,9 +1,11 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 class Erc20ActivationStrategy extends ProtocolActivationStrategy {
   const Erc20ActivationStrategy(super.client, this.privKeyPolicy);
+  static final _logger = Logger('Erc20ActivationStrategy');
 
   /// The private key management policy to use for this strategy.
   /// Used for external wallet support.
@@ -49,6 +51,9 @@ class Erc20ActivationStrategy extends ProtocolActivationStrategy {
       throw StateError('Token assets cannot perform batch activation');
     }
 
+    _logger.fine(
+      'Starting activation for asset: ${asset.id.name}, protocol: ${asset.protocol.subClass.formatted}, privKeyPolicy: $privKeyPolicy',
+    );
     yield ActivationProgress(
       status: 'Activating ${asset.id.name} token...',
       progressDetails: ActivationProgressDetails(
@@ -69,6 +74,9 @@ class Erc20ActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
+      _logger.fine(
+        'Activation completed successfully for asset: ${asset.id.name}',
+      );
       yield ActivationProgress.success(
         details: ActivationProgressDetails(
           currentStep: 'complete',
@@ -81,6 +89,11 @@ class Erc20ActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
     } catch (e, stack) {
+      _logger.severe(
+        'Exception during activation for asset: ${asset.id.name}',
+        e,
+        stack,
+      );
       yield ActivationProgress(
         status: 'Activation failed',
         errorMessage: e.toString(),
