@@ -23,7 +23,6 @@ class ZhtlcProtocol extends ProtocolClass {
 
   static void _validateZhtlcConfig(JsonMap json) {
     final requiredFields = {
-      // 'zcash_params_path': 'Zcash parameters path',
       'electrum': 'Electrum servers',
     };
 
@@ -37,8 +36,6 @@ class ZhtlcProtocol extends ProtocolClass {
     }
   }
 
-  String get zcashParamsPath =>
-
-      //TODO! config.value<String>('zcash_params_path');
-      'PLACEHOLDER_STRING_FOR_ZCASH_PARAMS_PATH';
+  String? get zcashParamsPath =>
+      config.valueOrNull<String>('zcash_params_path');
 }
