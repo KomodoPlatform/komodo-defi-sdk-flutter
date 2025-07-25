@@ -241,6 +241,9 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   MarketDataManager get marketData =>
       _assertSdkInitialized(_container<MarketDataManager>());
 
+  /// Provides access to fee management utilities.
+  FeeManager get fees => _assertSdkInitialized(_container<FeeManager>());
+
   /// Gets a reference to the balance manager for checking asset balances.
   ///
   /// Provides functionality for checking and monitoring asset balances.
@@ -333,7 +336,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// cleanup of resources and background operations.
   ///
   /// NB! By default, this will terminate the KDF process.
-  /// 
+  ///
   /// TODO: Consider future refactoring to separate KDF process disposal vs
   /// Dart object disposal.
   ///
@@ -346,7 +349,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _isDisposed = true;
 
     if (!_isInitialized) return;
-    
+
     _isInitialized = false;
     _initializationFuture = null;
 
@@ -358,6 +361,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
       _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
       _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
+      _disposeIfRegistered<FeeManager>((m) => m.dispose()),
       _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
     ]);
 

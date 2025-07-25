@@ -166,6 +166,11 @@ Future<void> bootstrap({
     return manager;
   });
 
+  container.registerSingletonAsync<FeeManager>(() async {
+    final client = await container.getAsync<ApiClient>();
+    return FeeManager(client);
+  }, dependsOn: [ApiClient]);
+
   container.registerSingletonAsync<TransactionHistoryManager>(
     () async {
       final client = await container.getAsync<ApiClient>();
@@ -194,8 +199,14 @@ Future<void> bootstrap({
     final client = await container.getAsync<ApiClient>();
     final assetProvider = await container.getAsync<AssetManager>();
     final activationManager = await container.getAsync<ActivationManager>();
-    return WithdrawalManager(client, assetProvider, activationManager);
-  }, dependsOn: [ApiClient, AssetManager, ActivationManager]);
+    final feeManager = await container.getAsync<FeeManager>();
+    return WithdrawalManager(
+      client,
+      assetProvider,
+      activationManager,
+      feeManager,
+    );
+  }, dependsOn: [ApiClient, AssetManager, ActivationManager, FeeManager]);
 
   // Wait for all async singletons to initialize
   await container.allReady();
