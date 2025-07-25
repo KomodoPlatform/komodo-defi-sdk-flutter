@@ -97,7 +97,8 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
           erc20Tokens:
               children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
               [],
-          txHistory: _shouldEnableTxHistory(asset),
+          txHistory: const EtherscanProtocolHelper()
+              .shouldEnableTransactionHistory(asset),
           privKeyPolicy: privKeyPolicy,
         ),
       );
@@ -139,6 +140,3 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
     }
   }
 }
-
-bool _shouldEnableTxHistory(Asset asset) =>
-    !const EtherscanProtocolHelper().supportsProtocol(asset);

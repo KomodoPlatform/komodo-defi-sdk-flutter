@@ -75,7 +75,8 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
                     .toList() ??
                 [],
             getBalances: true,
-            txHistory: _shouldEnableTxHistory(asset),
+            txHistory: const EtherscanProtocolHelper()
+                .shouldEnableTransactionHistory(asset),
             privKeyPolicy: privKeyPolicy,
           ),
         );
@@ -123,6 +124,3 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
     }
   }
 }
-
-bool _shouldEnableTxHistory(Asset asset) =>
-    !const EtherscanProtocolHelper().supportsProtocol(asset);
