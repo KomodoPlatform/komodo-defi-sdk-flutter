@@ -115,8 +115,11 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       final environment = Map<String, String>.of(Platform.environment)
         ..['MM_COINS_PATH'] = coinsConfigFile.path;
 
+      // Wrap the path in quotes when launching via shell to handle spaces
+      // or special characters like parentheses in the executable path.
+      final sanitizedPath = '"$executablePath"';
       final newProcess = await Process.start(
-        executablePath,
+        sanitizedPath,
         [sensitiveArgs.toJsonString()],
         environment: environment,
         runInShell: true,
