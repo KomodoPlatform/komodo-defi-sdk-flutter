@@ -209,7 +209,7 @@ class _KomodoAppState extends State<KomodoApp> {
                                 AutovalidateMode.onUserInteraction,
                             child: InstanceView(
                               instance: instance,
-                              state: _getOrCreateInstanceState(instance.name),
+                              state: 'active',
                               statusMessage:
                                   _statusMessages[instance.name] ??
                                   'Not initialized',

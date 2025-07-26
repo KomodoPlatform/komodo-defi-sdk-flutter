@@ -4,9 +4,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class SeedDialog extends StatefulWidget {
-  const SeedDialog({
-    super.key,
-  });
+  const SeedDialog({super.key});
 
   @override
   State<SeedDialog> createState() => _SeedDialogState();

@@ -108,7 +108,7 @@ class SecurityManager {
 
     // Validate parameters
     if (targetAssets.isEmpty) {
-      throw ArgumentError('At least one asset must be available or specified');
+      return {};
     }
 
     // Convert AssetId objects to coin ticker strings for the RPC call
@@ -121,21 +121,23 @@ class SecurityManager {
 
     // If HD mode parameters are provided, ensure they're valid
     if (mode == KeyExportMode.hd) {
-      final start = startIndex ?? 0;
-      final end = endIndex ?? (start + 10);
+      final start = startIndex;
+      final end = endIndex;
 
-      if (start < 0) {
+      if (start != null && start < 0) {
         throw ArgumentError('startIndex must be non-negative');
       }
 
-      if (end < start) {
-        throw ArgumentError(
-          'endIndex must be greater than or equal to startIndex',
-        );
-      }
+      if (end != null && start != null) {
+        if (end < start) {
+          throw ArgumentError(
+            'endIndex must be greater than or equal to startIndex',
+          );
+        }
 
-      if (end - start > 100) {
-        throw ArgumentError('Index range cannot exceed 100 addresses');
+        if (end - start > 100) {
+          throw ArgumentError('Index range cannot exceed 100 addresses');
+        }
       }
 
       if (accountIndex != null && accountIndex < 0) {

@@ -38,7 +38,7 @@ class CoinKeyInfo {
     required this.privKey,
   });
 
-  factory CoinKeyInfo.fromJson(Map<String, dynamic> json) {
+  factory CoinKeyInfo.fromJson(JsonMap json) {
     return CoinKeyInfo(
       coin: json.value<String>('coin'),
       pubkey: json.value<String>('pubkey'),
@@ -52,7 +52,7 @@ class CoinKeyInfo {
   final String address;
   final String privKey;
 
-  Map<String, dynamic> toJson() {
+  JsonMap toJson() {
     return {
       'coin': coin,
       'pubkey': pubkey,
@@ -71,7 +71,7 @@ class HdAddressInfo {
     required this.privKey,
   });
 
-  factory HdAddressInfo.fromJson(Map<String, dynamic> json) {
+  factory HdAddressInfo.fromJson(JsonMap json) {
     return HdAddressInfo(
       derivationPath: json.value<String>('derivation_path'),
       pubkey: json.value<String>('pubkey'),
@@ -85,7 +85,7 @@ class HdAddressInfo {
   final String address;
   final String privKey;
 
-  Map<String, dynamic> toJson() {
+  JsonMap toJson() {
     return {
       'derivation_path': derivationPath,
       'pubkey': pubkey,
@@ -99,11 +99,11 @@ class HdAddressInfo {
 class HdCoinKeyInfo {
   const HdCoinKeyInfo({required this.coin, required this.addresses});
 
-  factory HdCoinKeyInfo.fromJson(Map<String, dynamic> json) {
+  factory HdCoinKeyInfo.fromJson(JsonMap json) {
     final addressesJson = json.value<List<dynamic>>('addresses');
     final addresses =
         addressesJson
-            .map((addr) => HdAddressInfo.fromJson(addr as Map<String, dynamic>))
+            .map((addr) => HdAddressInfo.fromJson(addr as JsonMap))
             .toList();
 
     return HdCoinKeyInfo(
@@ -115,7 +115,7 @@ class HdCoinKeyInfo {
   final String coin;
   final List<HdAddressInfo> addresses;
 
-  Map<String, dynamic> toJson() {
+  JsonMap toJson() {
     return {
       'coin': coin,
       'addresses': addresses.map((addr) => addr.toJson()).toList(),
@@ -142,7 +142,7 @@ class GetPrivateKeysRequest
   final int? accountIndex;
 
   @override
-  Map<String, dynamic> toJson() {
+  JsonMap toJson() {
     return super.toJson().deepMerge({
       'params': {
         'coins': coins,
@@ -155,7 +155,7 @@ class GetPrivateKeysRequest
   }
 
   @override
-  GetPrivateKeysResponse parse(Map<String, dynamic> json) =>
+  GetPrivateKeysResponse parse(JsonMap json) =>
       GetPrivateKeysResponse.parse(json);
 }
 
@@ -185,33 +185,22 @@ class GetPrivateKeysResponse extends BaseResponse {
     required List<HdCoinKeyInfo> keys,
   }) : this._(mmrpc: mmrpc, hdKeys: keys);
 
-  factory GetPrivateKeysResponse.parse(Map<String, dynamic> json) {
+  factory GetPrivateKeysResponse.parse(JsonMap json) {
     final mmrpc = json.valueOrNull<String>('mmrpc');
-    final result = json.value<List<dynamic>>('result');
+    final result = json.value<List<JsonMap>>('result', 'result');
 
     if (result.isEmpty) {
       // Default to standard response for empty result
       return GetPrivateKeysResponse.standard(mmrpc: mmrpc, keys: []);
     }
 
-    // Check the structure of the first item to determine response type
-    final firstItem = result.first as Map<String, dynamic>;
-
-    if (firstItem.containsKey('addresses')) {
+    if (result.first.containsKey('addresses')) {
       // This is an HD response - items have 'addresses' field
-      final hdKeys =
-          result
-              .map(
-                (item) => HdCoinKeyInfo.fromJson(item as Map<String, dynamic>),
-              )
-              .toList();
+      final hdKeys = result.map(HdCoinKeyInfo.fromJson).toList();
       return GetPrivateKeysResponse.hd(mmrpc: mmrpc, keys: hdKeys);
     } else {
       // This is a standard response - items have direct key fields
-      final standardKeys =
-          result
-              .map((item) => CoinKeyInfo.fromJson(item as Map<String, dynamic>))
-              .toList();
+      final standardKeys = result.map(CoinKeyInfo.fromJson).toList();
       return GetPrivateKeysResponse.standard(mmrpc: mmrpc, keys: standardKeys);
     }
   }
@@ -226,7 +215,7 @@ class GetPrivateKeysResponse extends BaseResponse {
   bool get isStandardResponse => standardKeys != null;
 
   @override
-  Map<String, dynamic> toJson() {
+  JsonMap toJson() {
     final result =
         isHdResponse
             ? hdKeys!.map((key) => key.toJson()).toList()
