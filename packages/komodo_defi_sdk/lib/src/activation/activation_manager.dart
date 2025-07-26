@@ -13,7 +13,7 @@ import 'package:mutex/mutex.dart';
 
 /// Manager responsible for handling asset activation lifecycle
 class ActivationManager {
-/// Manager responsible for handling asset activation lifecycle
+  /// Manager responsible for handling asset activation lifecycle
   ActivationManager(
     this._client,
     this._auth,

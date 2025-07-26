@@ -48,10 +48,6 @@ class SharedActivationCoordinator {
     // Check if asset is already active
     final isActive = await _activationManager.isAssetActive(asset.id);
     if (isActive) {
-      log(
-        'Asset ${asset.id.id} is already active',
-        name: 'SharedActivationCoordinator',
-      );
       return ActivationResult.success(asset.id);
     }
 
