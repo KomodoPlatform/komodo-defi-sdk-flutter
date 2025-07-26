@@ -2,16 +2,12 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-/// Activation strategy for Tendermint platform coins with batch token support.
-/// Handles platform chains (ATOM, IRIS, OSMO) and can activate multiple tokens together.
-class TendermintWithTokensActivationStrategy
-    extends ProtocolActivationStrategy {
-  /// Creates a new [TendermintWithTokensActivationStrategy] with the given client and
+/// Task-based activation strategy for Tendermint with Trezor hardware wallets.
+/// Uses task::enable_tendermint::init for both platform and token assets when using Trezor.
+class TendermintTaskActivationStrategy extends ProtocolActivationStrategy {
+  /// Creates a new [TendermintTaskActivationStrategy] with the given client and
   /// private key policy.
-  const TendermintWithTokensActivationStrategy(
-    super.client,
-    this.privKeyPolicy,
-  );
+  const TendermintTaskActivationStrategy(super.client, this.privKeyPolicy);
 
   /// The private key policy to use for activation.
   final PrivateKeyPolicy privKeyPolicy;
@@ -27,10 +23,8 @@ class TendermintWithTokensActivationStrategy
 
   @override
   bool canHandle(Asset asset) {
-    // Use tendermint-with-tokens for platform assets (not trezor)
-    final isPlatformAsset = asset.id.parentId == null;
-    return isPlatformAsset &&
-        privKeyPolicy != const PrivateKeyPolicy.trezor() &&
+    // Use task-based activation for Trezor private key policy
+    return privKeyPolicy == const PrivateKeyPolicy.trezor() &&
         super.canHandle(asset);
   }
 
@@ -41,80 +35,57 @@ class TendermintWithTokensActivationStrategy
   ]) async* {
     final protocol = asset.protocol as TendermintProtocol;
 
-    if (children?.isNotEmpty == true) {
-      yield ActivationProgress(
-        status:
-            'Activating ${asset.id.name} with ${children!.length} tokens...',
-        progressDetails: ActivationProgressDetails(
-          currentStep: 'initialization',
-          stepCount: 5,
-          additionalInfo: {
-            'assetType': 'platform',
-            'protocol': asset.protocol.subClass.formatted,
-            'tokenCount': children.length,
-            'chainId': protocol.chainId,
-            'accountPrefix': protocol.accountPrefix,
-          },
-        ),
-      );
-    } else {
-      yield ActivationProgress(
-        status: 'Activating ${asset.id.name}...',
-        progressDetails: ActivationProgressDetails(
-          currentStep: 'initialization',
-          stepCount: 5,
-          additionalInfo: {
-            'assetType': 'platform',
-            'protocol': asset.protocol.subClass.formatted,
-            'chainId': protocol.chainId,
-            'accountPrefix': protocol.accountPrefix,
-          },
-        ),
-      );
-    }
+    yield ActivationProgress(
+      status: 'Starting ${asset.id.name} activation...',
+      progressDetails: ActivationProgressDetails(
+        currentStep: 'initialization',
+        stepCount: 5,
+        additionalInfo: {
+          'chainType': protocol.subClass.formatted,
+          'chainId': protocol.chainId,
+          'accountPrefix': protocol.accountPrefix,
+          'tokenCount': children?.length ?? 0,
+        },
+      ),
+    );
 
     try {
-      yield ActivationProgress(
-        status: 'Validating RPC endpoints...',
+      yield const ActivationProgress(
+        status: 'Validating protocol configuration...',
         progressPercentage: 20,
         progressDetails: ActivationProgressDetails(
           currentStep: 'validation',
           stepCount: 5,
-          additionalInfo: {
-            'rpcEndpoints': protocol.rpcUrlsMap.length,
-            if (protocol.chainId != null) 'chainId': protocol.chainId,
-          },
         ),
       );
 
-      yield const ActivationProgress(
-        status: 'Initializing task-based activation...',
-        progressPercentage: 40,
-        progressDetails: ActivationProgressDetails(
-          currentStep: 'task_initialization',
-          stepCount: 5,
-        ),
-      );
-
-      final taskResponse = await client.rpc.tendermint.taskEnableTendermintInit(
-        ticker: asset.id.id,
-        tokensParams:
-            children
-                ?.map((child) => TendermintTokenParams(ticker: child.id.id))
-                .toList() ??
-            [],
-        nodes: protocol.rpcUrlsMap.map(TendermintNode.fromJson).toList(),
-      );
+      final taskResponse = await client.rpc.tendermint
+          .taskEnableTendermintInit(
+            ticker: asset.id.id,
+            tokensParams:
+                children
+                    ?.map(
+                      (child) => TendermintTokenParams(ticker: child.id.id),
+                    )
+                    .toList() ??
+                [],
+            nodes:
+                protocol.rpcUrlsMap
+                    .map(TendermintNode.fromJson)
+                    .toList(),
+          );
 
       yield ActivationProgress(
-        status: 'Monitoring activation progress...',
-        progressPercentage: 60,
+        status: 'Establishing network connections...',
+        progressPercentage: 40,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'progress_monitoring',
+          currentStep: 'connection',
           stepCount: 5,
           additionalInfo: {
+            'nodes': protocol.rpcUrlsMap.length,
+            'protocolType': protocol.subClass.formatted,
+            'tokenCount': children?.length ?? 0,
             'taskId': taskResponse.taskId,
-            'method': 'task::enable_tendermint::init',
           },
         ),
       );
@@ -178,7 +149,7 @@ class TendermintWithTokensActivationStrategy
         progressDetails: ActivationProgressDetails(
           currentStep: 'error',
           stepCount: 5,
-          errorCode: 'TENDERMINT_WITH_TOKENS_ACTIVATION_ERROR',
+          errorCode: 'TENDERMINT_TASK_ACTIVATION_ERROR',
           errorDetails: e.toString(),
           stackTrace: stack.toString(),
         ),
@@ -213,4 +184,4 @@ class TendermintWithTokensActivationStrategy
         );
     }
   }
-}
+} 

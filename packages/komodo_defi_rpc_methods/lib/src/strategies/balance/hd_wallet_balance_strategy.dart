@@ -274,7 +274,9 @@ class HDWalletBalanceStrategy extends BalanceStrategy {
 
   @override
   bool protocolSupported(ProtocolClass protocol) {
-    // Most protocols support HD wallets, but implementation may vary
+    // HD wallet balance strategy supports protocols that can handle multiple addresses
+    // This includes UTXO-based protocols and EVM protocols
+    // Tendermint protocols use single addresses only
     return protocol.supportsMultipleAddresses;
   }
 }

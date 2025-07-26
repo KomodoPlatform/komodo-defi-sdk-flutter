@@ -32,6 +32,8 @@ export 'qtum/enable_qtum.dart';
 export 'qtum/qtum_rpc_namespace.dart';
 export 'tendermint/enable_tendermint_token.dart';
 export 'tendermint/enable_tendermint_with_assets.dart';
+export 'tendermint/task_enable_tendermint_init.dart';
+export 'tendermint/task_enable_tendermint_status.dart';
 export 'tendermint/tendermind_rpc_namespace.dart';
 export 'transaction_history/my_tx_history.dart';
 export 'transaction_history/transaction_history_namespace.dart';

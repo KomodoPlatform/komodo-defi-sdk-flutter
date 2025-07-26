@@ -1,6 +1,7 @@
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
+import 'package:komodo_defi_sdk/src/security/private_key_conversion_extension.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A manager for security-sensitive wallet operations.
@@ -42,8 +43,14 @@ class SecurityManager {
   /// - [endIndex]: Ending address index for HD mode (default: startIndex + 10)
   /// - [accountIndex]: Account index for HD mode (default: 0)
   ///
-  /// Returns a [GetPrivateKeysResponse] containing either standard keys or
-  /// HD keys based on the export mode.
+  /// Returns a map where:
+  /// - Keys are [AssetId] objects
+  /// - Values are lists of [PrivateKey] objects containing the private key data
+  ///
+  /// For HD wallets, each address becomes a separate [PrivateKey] with
+  /// [PrivateKeyHdInfo] containing the derivation path.
+  ///
+  /// For standard wallets, there's typically one [PrivateKey] per asset.
   ///
   /// Throws:
   /// - [StateError] if user is not authenticated
@@ -55,43 +62,29 @@ class SecurityManager {
   /// // Check if authenticated first
   /// if (await securityManager.isAuthenticated) {
   ///   // Get private keys for all activated assets
-  ///   final response = await securityManager.getPrivateKeys();
+  ///   final privateKeyMap = await securityManager.getPrivateKeys();
   ///
   ///   // Get private keys for specific assets
   ///   final btcAsset = assetManager.findAssetsByTicker('BTC').first;
-  ///   final response = await securityManager.getPrivateKeys(
+  ///   final privateKeyMap = await securityManager.getPrivateKeys(
   ///     assets: [btcAsset.id],
   ///     mode: KeyExportMode.iguana,
   ///   );
   ///
-  ///   if (response.isStandardResponse) {
-  ///     for (final keyInfo in response.standardKeys!) {
-  ///       print('${keyInfo.coin}: ${keyInfo.address}');
-  ///       // Handle private key securely: keyInfo.privKey
-  ///     }
-  ///   }
+  ///   for (final entry in privateKeyMap.entries) {
+  ///     final assetId = entry.key;
+  ///     final privateKeys = entry.value;
   ///
-  ///   // Get HD keys with custom range
-  ///   final ethAsset = assetManager.findAssetsByTicker('ETH').first;
-  ///   final hdResponse = await securityManager.getPrivateKeys(
-  ///     assets: [ethAsset.id],
-  ///     mode: KeyExportMode.hd,
-  ///     startIndex: 0,
-  ///     endIndex: 5,
-  ///     accountIndex: 0,
-  ///   );
-  ///
-  ///   if (hdResponse.isHdResponse) {
-  ///     for (final coinInfo in hdResponse.hdKeys!) {
-  ///       for (final addressInfo in coinInfo.addresses) {
-  ///         print('${addressInfo.derivationPath}: ${addressInfo.address}');
-  ///         // Handle private key securely: addressInfo.privKey
-  ///       }
+  ///     for (final privateKey in privateKeys) {
+  ///       print('Asset: ${assetId.id}');
+  ///       print('Public Key: ${privateKey.publicKey}');
+  ///       print('Derivation Path: ${privateKey.hdInfo?.derivationPath ?? 'N/A'}');
+  ///       // Handle private key securely: privateKey.privateKey
   ///     }
   ///   }
   /// }
   /// ```
-  Future<GetPrivateKeysResponse> getPrivateKeys({
+  Future<Map<AssetId, List<PrivateKey>>> getPrivateKeys({
     List<AssetId>? assets,
     KeyExportMode? mode,
     int? startIndex,
@@ -120,6 +113,11 @@ class SecurityManager {
 
     // Convert AssetId objects to coin ticker strings for the RPC call
     final coinTickers = targetAssets.map((assetId) => assetId.id).toList();
+
+    // Create a map from coin ticker to AssetId for conversion
+    final assetMap = <String, AssetId>{
+      for (final assetId in targetAssets) assetId.id: assetId,
+    };
 
     // If HD mode parameters are provided, ensure they're valid
     if (mode == KeyExportMode.hd) {
@@ -152,13 +150,15 @@ class SecurityManager {
       }
     }
 
-    return _client.rpc.wallet.getPrivateKeys(
+    final response = await _client.rpc.wallet.getPrivateKeys(
       coins: coinTickers,
       mode: mode,
       startIndex: startIndex,
       endIndex: endIndex,
       accountIndex: accountIndex,
     );
+
+    return response.toPrivateKeyInfoMap(assetMap);
   }
 
   /// Convenience method to get private keys for a single asset.
@@ -177,8 +177,8 @@ class SecurityManager {
   /// - [endIndex]: Ending address index for HD mode (default: startIndex + 10)
   /// - [accountIndex]: Account index for HD mode (default: 0)
   ///
-  /// Returns a [GetPrivateKeysResponse] containing the private key information.
-  Future<GetPrivateKeysResponse> getPrivateKey(
+  /// Returns a map containing the private key information for the single asset.
+  Future<Map<AssetId, List<PrivateKey>>> getPrivateKey(
     AssetId asset, {
     KeyExportMode? mode,
     int? startIndex,

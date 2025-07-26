@@ -117,7 +117,7 @@ class WssWebsocketTransform implements CoinConfigTransform {
   @override
   bool needsTransform(JsonMap config) {
     final electrum = config.valueOrNull<JsonList>('electrum');
-    return electrum != null && kIsWeb;
+    return electrum != null;
   }
 
   @override

@@ -14,9 +14,10 @@ mixin HDWalletMixin on PubkeyStrategy {
 
   @override
   bool protocolSupported(ProtocolClass protocol) {
-    //TODO! (ETH?) return protocol is UtxoProtocol || protocol is SlpProtocol;
-    // return protocol is UtxoProtocol || protocol is SlpProtocol;
-    return true;
+    // HD wallet strategies support protocols that can handle multiple addresses
+    // This includes UTXO protocols and EVM protocols
+    // Tendermint protocols use single addresses only
+    return protocol.supportsMultipleAddresses;
   }
 
   @override
