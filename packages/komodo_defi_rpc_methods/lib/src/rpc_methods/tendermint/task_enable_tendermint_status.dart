@@ -37,7 +37,7 @@ class TendermintTaskStatusResponse extends BaseResponse {
     final result = json.value<JsonMap>('result');
     final statusString = result.value<String>('status');
     final status = SyncStatusEnum.tryParse(statusString);
-    
+
     if (status == null) {
       throw FormatException(
         'Unrecognized task status: "$statusString". '
@@ -48,8 +48,9 @@ class TendermintTaskStatusResponse extends BaseResponse {
     // Handle details field based on status - can be string or object
     final detailsField = result['details'];
     TendermintTaskDetails details;
-    
-    if (status == SyncStatusEnum.success && detailsField is Map<String, dynamic>) {
+
+    if (status == SyncStatusEnum.success &&
+        detailsField is Map<String, dynamic>) {
       // Success case: details is a JSON object with activation data
       details = TendermintTaskDetails.fromJson(detailsField);
     } else if (status == SyncStatusEnum.error && detailsField is String) {

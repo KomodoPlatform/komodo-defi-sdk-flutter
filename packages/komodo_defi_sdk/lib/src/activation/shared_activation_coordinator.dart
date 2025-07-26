@@ -18,13 +18,13 @@ class SharedActivationCoordinator {
   SharedActivationCoordinator(this._activationManager);
 
   final ActivationManager _activationManager;
-  
+
   /// Track pending activations to prevent duplicates
   final Map<AssetId, Completer<ActivationResult>> _pendingActivations = {};
-  
+
   /// Track active activation streams for joining
   final Map<AssetId, StreamController<ActivationProgress>> _activeStreams = {};
-  
+
   bool _isDisposed = false;
 
   /// Activate an asset with coordination across all managers.
@@ -39,7 +39,7 @@ class SharedActivationCoordinator {
     final existingActivation = _pendingActivations[asset.id];
     if (existingActivation != null) {
       log(
-        'Joining existing activation for ${asset.id.name}',
+        'Joining existing activation for ${asset.id.id}',
         name: 'SharedActivationCoordinator',
       );
       return existingActivation.future;
@@ -51,12 +51,6 @@ class SharedActivationCoordinator {
       return ActivationResult.success(asset.id);
     }
 
-    // Start new activation
-    log(
-      'Starting new coordinated activation for ${asset.id.name}',
-      name: 'SharedActivationCoordinator',
-    );
-    
     final completer = Completer<ActivationResult>();
     _pendingActivations[asset.id] = completer;
 
@@ -96,7 +90,7 @@ class SharedActivationCoordinator {
     } catch (e, stackTrace) {
       if (!completer.isCompleted) {
         log(
-          'Activation failed for ${asset.id.name}: $e',
+          'Activation failed for ${asset.id.id}: $e',
           name: 'SharedActivationCoordinator',
           error: e,
           stackTrace: stackTrace,
@@ -121,7 +115,7 @@ class SharedActivationCoordinator {
     var controller = _activeStreams[asset.id];
     if (controller != null && !controller.isClosed) {
       log(
-        'Joining existing activation stream for ${asset.id.name}',
+        'Joining existing activation stream for ${asset.id.id}',
         name: 'SharedActivationCoordinator',
       );
       return controller.stream;
@@ -139,54 +133,51 @@ class SharedActivationCoordinator {
     );
     _activeStreams[asset.id] = controller;
 
-    log(
-      'Starting new activation stream for ${asset.id.name}',
-      name: 'SharedActivationCoordinator',
-    );
-
     // Start activation and forward progress to subscribers
-    _activationManager.activateAsset(asset).listen(
-      (progress) {
-        final currentController = _activeStreams[asset.id];
-        if (currentController != null && !currentController.isClosed) {
-          currentController.add(progress);
-        }
-        
-        // Clean up when activation completes
-        if (progress.isComplete) {
-          // For stream-based activation, we don't wait for coin availability
-          // as subscribers may want to handle this themselves
-          Timer.run(() {
+    _activationManager
+        .activateAsset(asset)
+        .listen(
+          (progress) {
+            final currentController = _activeStreams[asset.id];
+            if (currentController != null && !currentController.isClosed) {
+              currentController.add(progress);
+            }
+
+            // Clean up when activation completes
+            if (progress.isComplete) {
+              // For stream-based activation, we don't wait for coin availability
+              // as subscribers may want to handle this themselves
+              Timer.run(() {
+                final controllerToClose = _activeStreams.remove(asset.id);
+                if (controllerToClose != null && !controllerToClose.isClosed) {
+                  controllerToClose.close();
+                }
+              });
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            final currentController = _activeStreams[asset.id];
+            if (currentController != null && !currentController.isClosed) {
+              currentController.addError(error, stackTrace);
+              _activeStreams.remove(asset.id);
+              currentController.close();
+            }
+          },
+          onDone: () {
             final controllerToClose = _activeStreams.remove(asset.id);
             if (controllerToClose != null && !controllerToClose.isClosed) {
               controllerToClose.close();
             }
-          });
-        }
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        final currentController = _activeStreams[asset.id];
-        if (currentController != null && !currentController.isClosed) {
-          currentController.addError(error, stackTrace);
-          _activeStreams.remove(asset.id);
-          currentController.close();
-        }
-      },
-      onDone: () {
-        final controllerToClose = _activeStreams.remove(asset.id);
-        if (controllerToClose != null && !controllerToClose.isClosed) {
-          controllerToClose.close();
-        }
-      },
-    );
+          },
+        );
 
     return controller.stream;
   }
 
   /// Check if an asset is currently being activated
   bool isActivationInProgress(AssetId assetId) {
-    return _pendingActivations.containsKey(assetId) || 
-           _activeStreams.containsKey(assetId);
+    return _pendingActivations.containsKey(assetId) ||
+        _activeStreams.containsKey(assetId);
   }
 
   /// Check if an asset is active (delegated to ActivationManager)
@@ -226,15 +217,17 @@ class SharedActivationCoordinator {
 
       if (attempt < maxRetries - 1) {
         // Exponential backoff with max cap
-        final delayMs = (baseDelay.inMilliseconds * (1 << attempt))
-            .clamp(baseDelay.inMilliseconds, maxDelay.inMilliseconds);
+        final delayMs = (baseDelay.inMilliseconds * (1 << attempt)).clamp(
+          baseDelay.inMilliseconds,
+          maxDelay.inMilliseconds,
+        );
         await Future.delayed(Duration(milliseconds: delayMs));
       }
     }
 
     throw StateError(
       'Coin ${assetId.id} did not become available after activation '
-      '(waited ${maxRetries} attempts)',
+      '(waited $maxRetries attempts)',
     );
   }
 
@@ -288,8 +281,8 @@ class ActivationResult {
 
   @override
   String toString() {
-    return isSuccess 
+    return isSuccess
         ? 'ActivationResult.success(${assetId.id})'
         : 'ActivationResult.failure(${assetId.id}, $errorMessage)';
   }
-} 
+}

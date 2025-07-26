@@ -1,6 +1,5 @@
 // seed_dialog.dart
 import 'package:flutter/material.dart';
-import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -147,7 +146,7 @@ class _SeedDialogState extends State<SeedDialog> {
         ),
         FilledButton(
           key: const Key('dialog_register_button'),
-          onPressed: canSubmit ? () => _onSubmit() : null,
+          onPressed: canSubmit ? _onSubmit : null,
           child: const Text('Register'),
         ),
       ],

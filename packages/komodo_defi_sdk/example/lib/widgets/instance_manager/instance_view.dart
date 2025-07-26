@@ -666,7 +666,7 @@ class _InstanceViewState extends State<InstanceView> {
             Card(
               color: Theme.of(context).colorScheme.primaryContainer,
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
                     const SizedBox(

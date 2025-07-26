@@ -9,7 +9,11 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manages asset withdrawals using task-based API
 class WithdrawalManager {
-  WithdrawalManager(this._client, this._assetProvider, this._activationCoordinator);
+  WithdrawalManager(
+    this._client,
+    this._assetProvider,
+    this._activationCoordinator,
+  );
 
   final ApiClient _client;
   final IAssetProvider _assetProvider;
@@ -110,8 +114,9 @@ class WithdrawalManager {
         return;
       }
 
-      final activationResult =
-          await _activationCoordinator.activateAsset(asset);
+      final activationResult = await _activationCoordinator.activateAsset(
+        asset,
+      );
 
       if (activationResult.isFailure) {
         throw WithdrawalException(

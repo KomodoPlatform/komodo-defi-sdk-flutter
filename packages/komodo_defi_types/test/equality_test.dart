@@ -10,21 +10,21 @@ void main() {
       
       final addressInfo1 = NewAddressInfo(
         address: 'test_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
         balance: balance,
       );
 
       final addressInfo2 = NewAddressInfo(
         address: 'test_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
         balance: balance,
       );
 
       final addressInfo3 = NewAddressInfo(
         address: 'different_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
         balance: balance,
       );
@@ -39,7 +39,7 @@ void main() {
       
       final pubkeyInfo1 = PubkeyInfo(
         address: 'test_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
         balance: balance,
         name: 'Test Name',
@@ -47,7 +47,7 @@ void main() {
 
       final pubkeyInfo2 = PubkeyInfo(
         address: 'test_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
         balance: balance,
         name: 'Test Name',
@@ -55,7 +55,7 @@ void main() {
 
       final pubkeyInfo3 = PubkeyInfo(
         address: 'test_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
         balance: balance,
         name: 'Different Name',

@@ -90,7 +90,8 @@ class BalanceManager implements IBalanceManager {
   bool _isDisposed = false;
 
   /// Getter for activationCoordinator to make it accessible
-  SharedActivationCoordinator? get activationCoordinator => _activationCoordinator;
+  SharedActivationCoordinator? get activationCoordinator =>
+      _activationCoordinator;
 
   /// Getter for pubkeyManager to make it accessible
   PubkeyManager? get pubkeyManager => _pubkeyManager;
@@ -211,7 +212,9 @@ class BalanceManager implements IBalanceManager {
   Future<bool> _ensureAssetActivated(Asset asset, bool activateIfNeeded) async {
     // Check if activationCoordinator is initialized
     if (_activationCoordinator == null) {
-      debugPrint('SharedActivationCoordinator not initialized, cannot activate asset');
+      debugPrint(
+        'SharedActivationCoordinator not initialized, cannot activate asset',
+      );
       return false;
     }
 
@@ -425,7 +428,8 @@ class BalanceManager implements IBalanceManager {
       } catch (e) {
         final isLastAttempt = attempt == maxRetries - 1;
         final errorStr = e.toString().toLowerCase();
-        final isCoinNotFound = errorStr.contains('no such coin') ||
+        final isCoinNotFound =
+            errorStr.contains('no such coin') ||
             errorStr.contains('coin not found') ||
             errorStr.contains('not activated') ||
             errorStr.contains('invalid coin');

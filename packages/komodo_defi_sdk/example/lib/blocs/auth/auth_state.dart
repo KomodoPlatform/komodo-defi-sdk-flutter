@@ -81,95 +81,6 @@ class AuthState extends Equatable {
     this.trezorDeviceInfo,
   });
 
-  /// Current authentication status
-  final AuthStatus status;
-
-  /// List of known users from previous sessions
-  final List<KdfUser> knownUsers;
-
-  /// Currently selected user for authentication
-  final KdfUser? selectedUser;
-
-  /// Authenticated user (only available when status is authenticated)
-  final KdfUser? user;
-
-  /// Wallet name for new wallet creation
-  final String walletName;
-
-  /// Whether HD mode is enabled
-  final bool isHdMode;
-
-  /// Error message when status is error
-  final String? errorMessage;
-
-  /// Current Trezor-specific status
-  final AuthTrezorStatus trezorStatus;
-
-  /// Trezor-specific message
-  final String? trezorMessage;
-
-  /// Task ID for Trezor operations
-  final int? trezorTaskId;
-
-  /// Trezor device information
-  final TrezorDeviceInfo? trezorDeviceInfo;
-
-  @override
-  List<Object?> get props => [
-    status,
-    knownUsers,
-    selectedUser,
-    user,
-    walletName,
-    isHdMode,
-    errorMessage,
-    trezorStatus,
-    trezorMessage,
-    trezorTaskId,
-    trezorDeviceInfo,
-  ];
-
-  /// Creates a copy of this state with the given fields replaced
-  AuthState copyWith({
-    AuthStatus? status,
-    List<KdfUser>? knownUsers,
-    KdfUser? selectedUser,
-    KdfUser? user,
-    String? walletName,
-    bool? isHdMode,
-    String? errorMessage,
-    AuthTrezorStatus? trezorStatus,
-    String? trezorMessage,
-    int? trezorTaskId,
-    TrezorDeviceInfo? trezorDeviceInfo,
-    bool clearError = false,
-    bool clearSelectedUser = false,
-    bool clearUser = false,
-    bool clearTrezorMessage = false,
-    bool clearTrezorTaskId = false,
-    bool clearTrezorDeviceInfo = false,
-  }) {
-    return AuthState(
-      status: status ?? this.status,
-      knownUsers: knownUsers ?? this.knownUsers,
-      selectedUser:
-          clearSelectedUser ? null : (selectedUser ?? this.selectedUser),
-      user: clearUser ? null : (user ?? this.user),
-      walletName: walletName ?? this.walletName,
-      isHdMode: isHdMode ?? this.isHdMode,
-      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      trezorStatus: trezorStatus ?? this.trezorStatus,
-      trezorMessage:
-          clearTrezorMessage ? null : (trezorMessage ?? this.trezorMessage),
-      trezorTaskId:
-          clearTrezorTaskId ? null : (trezorTaskId ?? this.trezorTaskId),
-      trezorDeviceInfo:
-          clearTrezorDeviceInfo
-              ? null
-              : (trezorDeviceInfo ?? this.trezorDeviceInfo),
-    );
-  }
-
   /// Factory constructors for common state configurations
 
   /// Initial state
@@ -317,6 +228,95 @@ class AuthState extends Equatable {
     walletName: walletName,
     isHdMode: isHdMode,
   );
+
+  /// Current authentication status
+  final AuthStatus status;
+
+  /// List of known users from previous sessions
+  final List<KdfUser> knownUsers;
+
+  /// Currently selected user for authentication
+  final KdfUser? selectedUser;
+
+  /// Authenticated user (only available when status is authenticated)
+  final KdfUser? user;
+
+  /// Wallet name for new wallet creation
+  final String walletName;
+
+  /// Whether HD mode is enabled
+  final bool isHdMode;
+
+  /// Error message when status is error
+  final String? errorMessage;
+
+  /// Current Trezor-specific status
+  final AuthTrezorStatus trezorStatus;
+
+  /// Trezor-specific message
+  final String? trezorMessage;
+
+  /// Task ID for Trezor operations
+  final int? trezorTaskId;
+
+  /// Trezor device information
+  final TrezorDeviceInfo? trezorDeviceInfo;
+
+  @override
+  List<Object?> get props => [
+    status,
+    knownUsers,
+    selectedUser,
+    user,
+    walletName,
+    isHdMode,
+    errorMessage,
+    trezorStatus,
+    trezorMessage,
+    trezorTaskId,
+    trezorDeviceInfo,
+  ];
+
+  /// Creates a copy of this state with the given fields replaced
+  AuthState copyWith({
+    AuthStatus? status,
+    List<KdfUser>? knownUsers,
+    KdfUser? selectedUser,
+    KdfUser? user,
+    String? walletName,
+    bool? isHdMode,
+    String? errorMessage,
+    AuthTrezorStatus? trezorStatus,
+    String? trezorMessage,
+    int? trezorTaskId,
+    TrezorDeviceInfo? trezorDeviceInfo,
+    bool clearError = false,
+    bool clearSelectedUser = false,
+    bool clearUser = false,
+    bool clearTrezorMessage = false,
+    bool clearTrezorTaskId = false,
+    bool clearTrezorDeviceInfo = false,
+  }) {
+    return AuthState(
+      status: status ?? this.status,
+      knownUsers: knownUsers ?? this.knownUsers,
+      selectedUser:
+          clearSelectedUser ? null : (selectedUser ?? this.selectedUser),
+      user: clearUser ? null : (user ?? this.user),
+      walletName: walletName ?? this.walletName,
+      isHdMode: isHdMode ?? this.isHdMode,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      trezorStatus: trezorStatus ?? this.trezorStatus,
+      trezorMessage:
+          clearTrezorMessage ? null : (trezorMessage ?? this.trezorMessage),
+      trezorTaskId:
+          clearTrezorTaskId ? null : (trezorTaskId ?? this.trezorTaskId),
+      trezorDeviceInfo:
+          clearTrezorDeviceInfo
+              ? null
+              : (trezorDeviceInfo ?? this.trezorDeviceInfo),
+    );
+  }
 
   /// Convenience getters for checking status
   bool get isInitial => status == AuthStatus.initial;

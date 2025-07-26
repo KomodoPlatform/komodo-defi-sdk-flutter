@@ -1,3 +1,5 @@
+import 'dart:ui_web' show AssetManager;
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_coins/src/asset_filter.dart';

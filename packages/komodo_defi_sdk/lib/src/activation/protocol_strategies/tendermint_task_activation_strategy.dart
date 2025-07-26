@@ -59,21 +59,15 @@ class TendermintTaskActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
-      final taskResponse = await client.rpc.tendermint
-          .taskEnableTendermintInit(
-            ticker: asset.id.id,
-            tokensParams:
-                children
-                    ?.map(
-                      (child) => TendermintTokenParams(ticker: child.id.id),
-                    )
-                    .toList() ??
-                [],
-            nodes:
-                protocol.rpcUrlsMap
-                    .map(TendermintNode.fromJson)
-                    .toList(),
-          );
+      final taskResponse = await client.rpc.tendermint.taskEnableTendermintInit(
+        ticker: asset.id.id,
+        tokensParams:
+            children
+                ?.map((child) => TendermintTokenParams(ticker: child.id.id))
+                .toList() ??
+            [],
+        nodes: protocol.rpcUrlsMap.map(TendermintNode.fromJson).toList(),
+      );
 
       yield ActivationProgress(
         status: 'Establishing network connections...',
@@ -184,4 +178,4 @@ class TendermintTaskActivationStrategy extends ProtocolActivationStrategy {
         );
     }
   }
-} 
+}

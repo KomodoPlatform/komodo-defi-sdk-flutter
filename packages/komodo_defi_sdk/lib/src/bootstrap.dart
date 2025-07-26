@@ -11,7 +11,6 @@ import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dar
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
-import 'package:komodo_defi_sdk/src/security/security_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -84,7 +83,8 @@ Future<void> bootstrap({
 
     // Create BalanceManager without its dependencies on SharedActivationCoordinator and PubkeyManager initially
     return BalanceManager(
-      activationCoordinator: null, // Will be set after SharedActivationCoordinator is created
+      activationCoordinator:
+          null, // Will be set after SharedActivationCoordinator is created
       assetLookup: assets,
       pubkeyManager: null, // Will be set after PubkeyManager is created
       auth: auth,
@@ -114,9 +114,9 @@ Future<void> bootstrap({
   container.registerSingletonAsync<SharedActivationCoordinator>(() async {
     final activationManager = await container.getAsync<ActivationManager>();
     final balanceManager = await container.getAsync<BalanceManager>();
-    
+
     final coordinator = SharedActivationCoordinator(activationManager);
-    
+
     // Now that we have the SharedActivationCoordinator, set it in BalanceManager
     if (balanceManager.activationCoordinator == null) {
       balanceManager.setActivationCoordinator(coordinator);
@@ -129,7 +129,8 @@ Future<void> bootstrap({
   container.registerSingletonAsync<PubkeyManager>(() async {
     final client = await container.getAsync<ApiClient>();
     final auth = await container.getAsync<KomodoDefiLocalAuth>();
-    final activationCoordinator = await container.getAsync<SharedActivationCoordinator>();
+    final activationCoordinator =
+        await container.getAsync<SharedActivationCoordinator>();
     final pubkeyManager = PubkeyManager(client, auth, activationCoordinator);
 
     // Set the PubkeyManager on BalanceManager now that it's available
@@ -183,7 +184,8 @@ Future<void> bootstrap({
       final auth = await container.getAsync<KomodoDefiLocalAuth>();
       final assetProvider = await container.getAsync<AssetManager>();
       final pubkeys = await container.getAsync<PubkeyManager>();
-      final activationCoordinator = await container.getAsync<SharedActivationCoordinator>();
+      final activationCoordinator =
+          await container.getAsync<SharedActivationCoordinator>();
       return TransactionHistoryManager(
         client,
         auth,
@@ -204,7 +206,8 @@ Future<void> bootstrap({
   container.registerSingletonAsync<WithdrawalManager>(() async {
     final client = await container.getAsync<ApiClient>();
     final assetProvider = await container.getAsync<AssetManager>();
-    final activationCoordinator = await container.getAsync<SharedActivationCoordinator>();
+    final activationCoordinator =
+        await container.getAsync<SharedActivationCoordinator>();
     return WithdrawalManager(client, assetProvider, activationCoordinator);
   }, dependsOn: [ApiClient, AssetManager, SharedActivationCoordinator]);
 

@@ -11,8 +11,8 @@ void main() {
         'wss': true,
         'netid': 8762,
         'contact': [
-          {'email': 'admin@example.com'}
-        ]
+          {'email': 'admin@example.com'},
+        ],
       };
 
       final seedNode = SeedNode.fromJson(json);
@@ -24,7 +24,7 @@ void main() {
     });
 
     test('should convert SeedNode to JSON', () {
-      final seedNode = SeedNode(
+      const seedNode = SeedNode(
         name: 'seed-node-2',
         host: 'seed02.kmdefi.net',
         type: 'domain',
@@ -42,7 +42,7 @@ void main() {
       expect(json['contact'], isA<List<dynamic>>());
       expect((json['contact'] as List).length, equals(1));
       expect(
-          (json['contact'] as List).first['email'], equals('test@example.com'));
+          (json['contact'] as List).first['email'], equals('test@example.com'),);
     });
 
     test('should create list of SeedNodes from JSON list', () {
@@ -54,8 +54,8 @@ void main() {
           'wss': true,
           'netid': 8762,
           'contact': [
-            {'email': ''}
-          ]
+            {'email': ''},
+          ],
         },
         {
           'name': 'seed-node-2',
@@ -64,8 +64,8 @@ void main() {
           'wss': true,
           'netid': 8762,
           'contact': [
-            {'email': ''}
-          ]
+            {'email': ''},
+          ],
         }
       ];
 
@@ -79,7 +79,7 @@ void main() {
     });
 
     test('should handle equality correctly', () {
-      final seedNode1 = SeedNode(
+      const seedNode1 = SeedNode(
         name: 'test',
         host: 'example.com',
         type: 'domain',
@@ -88,7 +88,7 @@ void main() {
         contact: [SeedNodeContact(email: 'test@example.com')],
       );
 
-      final seedNode2 = SeedNode(
+      const seedNode2 = SeedNode(
         name: 'test',
         host: 'example.com',
         type: 'domain',
@@ -97,7 +97,7 @@ void main() {
         contact: [SeedNodeContact(email: 'test@example.com')],
       );
 
-      final seedNode3 = SeedNode(
+      const seedNode3 = SeedNode(
         name: 'different',
         host: 'example.com',
         type: 'domain',
@@ -120,7 +120,7 @@ void main() {
     });
 
     test('should convert SeedNodeContact to JSON', () {
-      final contact = SeedNodeContact(email: 'test@example.com');
+      const contact = SeedNodeContact(email: 'test@example.com');
       final json = contact.toJson();
 
       expect(json['email'], equals('test@example.com'));

@@ -74,7 +74,7 @@ class TendermintTokenActivationStrategy extends ProtocolActivationStrategy {
         ).copyWith(privKeyPolicy: privKeyPolicy),
       );
 
-      yield ActivationProgress(
+      yield const ActivationProgress(
         status: 'Finalizing activation...',
         progressPercentage: 66,
         progressDetails: ActivationProgressDetails(
@@ -110,4 +110,4 @@ class TendermintTokenActivationStrategy extends ProtocolActivationStrategy {
       );
     }
   }
-} 
+}

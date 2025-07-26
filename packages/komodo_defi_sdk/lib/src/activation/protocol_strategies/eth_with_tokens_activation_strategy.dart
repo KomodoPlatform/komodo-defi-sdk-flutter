@@ -100,7 +100,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
-      yield ActivationProgress(
+      yield const ActivationProgress(
         status: 'Finalizing activation...',
         progressPercentage: 66,
         progressDetails: ActivationProgressDetails(

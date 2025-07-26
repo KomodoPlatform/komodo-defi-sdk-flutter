@@ -99,7 +99,7 @@ class _AssetPageState extends State<AssetPage> {
                       pubkeys:
                           _pubkeys == null
                               ? AssetPubkeys(
-                                keys: [],
+                                keys: const [],
                                 assetId: widget.asset.id,
                                 availableAddressesCount: 0,
                                 syncStatus: SyncStatusEnum.inProgress,
@@ -686,7 +686,7 @@ class _NewAddressDialogState extends State<_NewAddressDialog> {
       if (state.status == NewAddressStatus.completed) {
         Navigator.of(context).pop(state.address);
       } else if (state.status == NewAddressStatus.cancelled) {
-        Navigator.of(context).pop(null);
+        Navigator.of(context).pop();
       }
     });
   }
@@ -731,19 +731,14 @@ class _NewAddressDialogState extends State<_NewAddressDialog> {
         case NewAddressStatus.pinRequired:
         case NewAddressStatus.passphraseRequired:
           message = state.message ?? 'Processing...';
-          break;
         case NewAddressStatus.confirmAddress:
           message = 'Confirm the address on your device';
-          break;
         case NewAddressStatus.completed:
           message = 'Completed';
-          break;
         case NewAddressStatus.error:
           message = state.error ?? 'Error';
-          break;
         case NewAddressStatus.cancelled:
           message = 'Cancelled';
-          break;
       }
     }
 

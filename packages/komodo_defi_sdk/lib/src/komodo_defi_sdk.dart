@@ -9,7 +9,6 @@ import 'package:komodo_defi_sdk/src/bootstrap.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
-import 'package:komodo_defi_sdk/src/security/security_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -343,7 +342,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// cleanup of resources and background operations.
   ///
   /// NB! By default, this will terminate the KDF process.
-  /// 
+  ///
   /// TODO: Consider future refactoring to separate KDF process disposal vs
   /// Dart object disposal.
   ///
@@ -356,7 +355,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _isDisposed = true;
 
     if (!_isInitialized) return;
-    
+
     _isInitialized = false;
     _initializationFuture = null;
 
