@@ -3,16 +3,17 @@ import 'dart:async';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/legacy_withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manages asset withdrawals using task-based API
 class WithdrawalManager {
-  WithdrawalManager(this._client, this._assetProvider, this._activationManager);
+  WithdrawalManager(this._client, this._assetProvider, this._activationCoordinator);
 
   final ApiClient _client;
   final IAssetProvider _assetProvider;
-  final ActivationManager _activationManager;
+  final SharedActivationCoordinator _activationCoordinator;
   final _activeWithdrawals = <int, StreamController<WithdrawalProgress>>{};
 
   /// Cancel an active withdrawal task
@@ -109,10 +110,10 @@ class WithdrawalManager {
         return;
       }
 
-      final activationStatus =
-          await _activationManager.activateAsset(asset).last;
+      final activationResult =
+          await _activationCoordinator.activateAsset(asset);
 
-      if (activationStatus.isComplete && !activationStatus.isSuccess) {
+      if (activationResult.isFailure) {
         throw WithdrawalException(
           'Failed to activate asset ${parameters.asset}',
           WithdrawalErrorCode.unknownError,

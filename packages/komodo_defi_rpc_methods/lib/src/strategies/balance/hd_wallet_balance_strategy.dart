@@ -195,12 +195,19 @@ class HDWalletBalanceStrategy extends BalanceStrategy {
   /// Determine if an error is likely transient and worth retrying
   bool _isTransientError(Object error) {
     final errorString = error.toString().toLowerCase();
-    return errorString.contains('connection') ||
-        errorString.contains('timeout') ||
-        errorString.contains('temporary') ||
-        errorString.contains('socket') ||
-        errorString.contains('network') ||
-        errorString.contains('unavailable');
+    return [
+      'connection',
+      'timeout',
+      'temporary',
+      'socket',
+      'network',
+      'unavailable',
+      // Common transient error keywords
+      'no such coin',
+      'coin not found',
+      'not activated',
+      'invalid coin',
+    ].any(errorString.contains);
   }
 
   @override

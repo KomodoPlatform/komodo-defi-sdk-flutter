@@ -13,6 +13,7 @@ import 'package:mutex/mutex.dart';
 
 /// Manager responsible for handling asset activation lifecycle
 class ActivationManager {
+/// Manager responsible for handling asset activation lifecycle
   ActivationManager(
     this._client,
     this._auth,
@@ -75,7 +76,7 @@ class ActivationManager {
       final activationStatus = await _checkActivationStatus(group);
       if (activationStatus.isComplete) {
         _logger.fine(
-          'Group ${group.primary.id.name} is already active, skipping',
+          'Group ${group.primary.id.id} is already active, skipping',
         );
         yield activationStatus;
         continue;

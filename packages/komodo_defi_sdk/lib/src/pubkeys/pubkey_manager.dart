@@ -1,26 +1,27 @@
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manager responsible for handling pubkey operations across different assets
 class PubkeyManager {
-  PubkeyManager(this._client, this._auth, this._activationManager);
+  PubkeyManager(this._client, this._auth, this._activationCoordinator);
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
-  final ActivationManager _activationManager;
+  final SharedActivationCoordinator _activationCoordinator;
 
   /// Get pubkeys for a given asset, handling HD/non-HD differences internally
   Future<AssetPubkeys> getPubkeys(Asset asset) async {
-    await retry(() => _activationManager.activateAsset(asset).last);
+    await retry(() => _activationCoordinator.activateAsset(asset));
     final strategy = await _resolvePubkeyStrategy(asset);
     return strategy.getPubkeys(asset.id, _client);
   }
 
   /// Create a new pubkey for an asset if supported
   Future<PubkeyInfo> createNewPubkey(Asset asset) async {
-    await retry(() => _activationManager.activateAsset(asset).last);
+    await retry(() => _activationCoordinator.activateAsset(asset));
     final strategy = await _resolvePubkeyStrategy(asset);
     if (!strategy.supportsMultipleAddresses) {
       throw UnsupportedError(
@@ -32,7 +33,7 @@ class PubkeyManager {
 
   /// Streamed version of [createNewPubkey]
   Stream<NewAddressState> createNewPubkeyStream(Asset asset) async* {
-    await retry(() => _activationManager.activateAsset(asset).last);
+    await retry(() => _activationCoordinator.activateAsset(asset));
     final strategy = await _resolvePubkeyStrategy(asset);
     if (!strategy.supportsMultipleAddresses) {
       yield NewAddressState.error(
