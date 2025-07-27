@@ -250,6 +250,9 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   MarketDataManager get marketData =>
       _assertSdkInitialized(_container<MarketDataManager>());
 
+  /// Provides access to fee management utilities.
+  FeeManager get fees => _assertSdkInitialized(_container<FeeManager>());
+
   /// Gets a reference to the balance manager for checking asset balances.
   ///
   /// Provides functionality for checking and monitoring asset balances.
@@ -367,6 +370,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
       _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
       _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
+      _disposeIfRegistered<FeeManager>((m) => m.dispose()),
       _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
       _disposeIfRegistered<SecurityManager>((m) => m.dispose()),
     ]);

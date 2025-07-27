@@ -178,6 +178,11 @@ Future<void> bootstrap({
     return manager;
   });
 
+  container.registerSingletonAsync<FeeManager>(() async {
+    final client = await container.getAsync<ApiClient>();
+    return FeeManager(client);
+  }, dependsOn: [ApiClient]);
+
   container.registerSingletonAsync<TransactionHistoryManager>(
     () async {
       final client = await container.getAsync<ApiClient>();
@@ -203,13 +208,28 @@ Future<void> bootstrap({
     ],
   );
 
-  container.registerSingletonAsync<WithdrawalManager>(() async {
-    final client = await container.getAsync<ApiClient>();
-    final assetProvider = await container.getAsync<AssetManager>();
-    final activationCoordinator =
-        await container.getAsync<SharedActivationCoordinator>();
-    return WithdrawalManager(client, assetProvider, activationCoordinator);
-  }, dependsOn: [ApiClient, AssetManager, SharedActivationCoordinator]);
+  container.registerSingletonAsync<WithdrawalManager>(
+    () async {
+      final client = await container.getAsync<ApiClient>();
+      final assetProvider = await container.getAsync<AssetManager>();
+      final feeManager = await container.getAsync<FeeManager>();
+
+      final activationCoordinator =
+          await container.getAsync<SharedActivationCoordinator>();
+      return WithdrawalManager(
+        client,
+        assetProvider,
+        feeManager,
+        activationCoordinator,
+      );
+    },
+    dependsOn: [
+      ApiClient,
+      AssetManager,
+      SharedActivationCoordinator,
+      FeeManager,
+    ],
+  );
 
   container.registerSingletonAsync<SecurityManager>(() async {
     final client = await container.getAsync<ApiClient>();

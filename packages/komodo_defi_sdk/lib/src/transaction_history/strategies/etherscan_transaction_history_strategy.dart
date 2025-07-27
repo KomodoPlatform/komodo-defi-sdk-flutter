@@ -216,6 +216,12 @@ class EtherscanProtocolHelper {
     return asset.protocol is Erc20Protocol && getApiUrlForAsset(asset) != null;
   }
 
+  /// Whether transaction history should also be fetched via mm2.
+  ///
+  /// When Etherscan does not support the provided [asset], transaction history
+  /// must fall back to mm2 RPC calls.
+  bool shouldEnableTransactionHistory(Asset asset) => !supportsProtocol(asset);
+
   /// Constructs the appropriate API URL for a given asset
   Uri? getApiUrlForAsset(Asset asset) {
     if (asset.protocol is! Erc20Protocol) return null;
