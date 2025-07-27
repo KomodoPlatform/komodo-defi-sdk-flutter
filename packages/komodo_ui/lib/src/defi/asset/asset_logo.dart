@@ -100,6 +100,7 @@ class AssetLogo extends StatelessWidget {
         isBlank: isBlank,
         isDisabled: isDisabled,
         size: size,
+        heroTag: heroTag,
       );
     }
 
@@ -146,35 +147,43 @@ class _AssetLogoPlaceholder extends StatelessWidget {
     required this.isBlank,
     required this.isDisabled,
     required this.size,
+    this.heroTag,
   });
 
   final bool isBlank;
   final bool isDisabled;
   final double size;
+  final Object? heroTag;
 
   @override
   Widget build(BuildContext context) {
-    if (isBlank) {
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color:
-              isDisabled
-                  ? Theme.of(context).disabledColor
-                  : Theme.of(context).colorScheme.secondaryContainer,
-        ),
-      );
+    final child =
+        isBlank
+            ? Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color:
+                    isDisabled
+                        ? Theme.of(context).disabledColor
+                        : Theme.of(context).colorScheme.secondaryContainer,
+              ),
+            )
+            : Icon(
+              Icons.monetization_on_outlined,
+              size: size,
+              color:
+                  isDisabled
+                      ? Theme.of(context).disabledColor
+                      : Theme.of(context).colorScheme.onSecondaryContainer,
+            );
+
+    if (heroTag != null) {
+      return Hero(tag: heroTag!, child: child);
     }
-    return Icon(
-      Icons.monetization_on_outlined,
-      size: size,
-      color:
-          isDisabled
-              ? Theme.of(context).disabledColor
-              : Theme.of(context).colorScheme.onSecondaryContainer,
-    );
+
+    return child;
   }
 }
 
