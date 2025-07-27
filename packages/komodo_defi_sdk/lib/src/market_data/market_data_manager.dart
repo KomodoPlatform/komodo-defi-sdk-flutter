@@ -37,6 +37,12 @@ abstract class MarketDataManager {
     String fiatCurrency = 'usdt',
   });
 
+  /// Gets the 24-hour price change for an asset if it's cached, returns null otherwise
+  Decimal? change24hIfKnown(
+    AssetId assetId, {
+    String fiatCurrency = 'usdt',
+  });
+
   /// Gets historical fiat prices for an asset at specified dates
   ///
   /// Returns a map of dates to prices
@@ -144,6 +150,20 @@ class CexMarketDataManager implements MarketDataManager {
     );
 
     return _priceCache[cacheKey];
+  }
+
+  @override
+  Decimal? change24hIfKnown(
+    AssetId assetId, {
+    String fiatCurrency = 'usdt',
+  }) {
+    if (_isDisposed) {
+      throw StateError('PriceManager has been disposed');
+    }
+
+    final cacheKey = _getChangeCacheKey(assetId, fiatCurrency: fiatCurrency);
+
+    return _priceChangeCache[cacheKey];
   }
 
   @override
