@@ -13,6 +13,7 @@ class AssetIcon extends StatelessWidget {
     this.assetId, {
     this.size = 20,
     this.suspended = false,
+    this.heroTag,
     super.key,
   }) : _legacyTicker = null;
 
@@ -27,6 +28,7 @@ class AssetIcon extends StatelessWidget {
     String ticker, {
     this.size = 20,
     this.suspended = false,
+    this.heroTag,
     super.key,
   }) : _legacyTicker = ticker.toLowerCase(),
        assetId = null;
@@ -35,23 +37,25 @@ class AssetIcon extends StatelessWidget {
   final String? _legacyTicker;
   final double size;
   final bool suspended;
+  final Object? heroTag;
 
   String get _effectiveId => assetId?.id ?? _legacyTicker!;
 
   @override
   Widget build(BuildContext context) {
     final disabledTheme = Theme.of(context).disabledColor;
-    return Opacity(
-      opacity: suspended ? disabledTheme.a : 1.0,
-      child: SizedBox.square(
-        dimension: size,
-        child: _AssetIconResolver(
-          key: ValueKey(_effectiveId),
-          assetId: _effectiveId,
-          size: size,
-        ),
+    Widget icon = SizedBox.square(
+      dimension: size,
+      child: _AssetIconResolver(
+        key: ValueKey(_effectiveId),
+        assetId: _effectiveId,
+        size: size,
       ),
     );
+    if (heroTag != null) {
+      icon = Hero(tag: heroTag!, child: icon);
+    }
+    return Opacity(opacity: suspended ? disabledTheme.a : 1.0, child: icon);
   }
 
   /// Clears all caches used by [AssetIcon]
