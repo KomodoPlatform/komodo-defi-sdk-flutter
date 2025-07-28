@@ -13,7 +13,14 @@ enum UnbanType {
   };
 
   static UnbanType fromString(String value) {
-    return value.toLowerCase() == 'all' ? UnbanType.all : UnbanType.few;
+    final lowerValue = value.toLowerCase();
+    if (lowerValue == 'all') {
+      return UnbanType.all;
+    } else if (lowerValue == 'few') {
+      return UnbanType.few;
+    } else {
+      throw ArgumentError('Invalid UnbanType value: $value. Expected "all" or "few".');
+    }
   }
 }
 
