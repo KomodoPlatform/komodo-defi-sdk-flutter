@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_ui/src/utils/formatters/fee_info_formatters.dart';
@@ -51,6 +52,41 @@ class FeeInfoDisplay extends StatelessWidget {
                 ),
               Text(
                 'Estimated Time: ${fee.estimatedTime}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+
+            final FeeInfoEthGasEip1559 fee => [
+              Text('Gas:', style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                '${fee.gas} units',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              Text(
+                'Max Fee Per Gas:',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              Text(
+                '${_formatGwei(fee.maxFeePerGas)} Gwei',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              Text(
+                'Max Priority Fee:',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              Text(
+                '${_formatGwei(fee.maxPriorityFeePerGas)} Gwei',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              if (_isEip1559HighFee(fee))
+                Text(
+                  'Warning: High gas price',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              Text(
+                'Estimated Time: ${_getEip1559EstimatedTime(fee)}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -133,5 +169,28 @@ class FeeInfoDisplay extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  /// Helper method to format ETH amount in Gwei
+  String _formatGwei(Decimal ethAmount) {
+    const gweiInEth = 1000000000; // 10^9
+    final gwei = ethAmount * Decimal.fromInt(gweiInEth);
+    return gwei.toStringAsFixed(2);
+  }
+
+  /// Helper method to get estimated time for EIP1559 fees
+  String _getEip1559EstimatedTime(FeeInfoEthGasEip1559 fee) {
+    const gweiInEth = 1000000000; // 10^9
+    final gwei = fee.maxFeePerGas * Decimal.fromInt(gweiInEth);
+    if (gwei > Decimal.fromInt(100)) return '< 15 seconds';
+    if (gwei > Decimal.fromInt(50)) return '< 30 seconds';
+    if (gwei > Decimal.fromInt(20)) return '< 2 minutes';
+    return '> 5 minutes';
+  }
+
+  /// Helper method to check if EIP1559 fee is high
+  bool _isEip1559HighFee(FeeInfoEthGasEip1559 fee) {
+    const gweiInEth = 1000000000; // 10^9
+    return fee.maxFeePerGas * Decimal.fromInt(gweiInEth) > Decimal.fromInt(100);
   }
 }

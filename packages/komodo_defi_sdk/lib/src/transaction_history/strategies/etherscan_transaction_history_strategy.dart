@@ -156,7 +156,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
                 tx.valueOrNull<JsonMap>('fee_details') != null
                     ? FeeInfo.fromJson(
                       tx.value<JsonMap>('fee_details')
-                        ..setIfAbsentOrEmpty('type', 'Eth'),
+                        ..setIfAbsentOrEmpty('type', 'EthGas'),
                     )
                     : null,
             coin: coinId,

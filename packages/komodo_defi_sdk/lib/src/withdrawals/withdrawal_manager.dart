@@ -196,27 +196,30 @@ class WithdrawalManager {
             coin: assetId,
             low: WithdrawalFeeOption(
               priority: WithdrawalFeeLevel.low,
-              feeInfo: FeeInfo.ethGas(
+              feeInfo: FeeInfo.ethGasEip1559(
                 coin: assetId,
-                gasPrice: estimation.low.maxFeePerGas,
+                maxFeePerGas: estimation.low.maxFeePerGas,
+                maxPriorityFeePerGas: estimation.low.maxPriorityFeePerGas,
                 gas: _defaultEthGasLimit,
               ),
               estimatedTime: _getEthEstimatedTime(WithdrawalFeeLevel.low),
             ),
             medium: WithdrawalFeeOption(
               priority: WithdrawalFeeLevel.medium,
-              feeInfo: FeeInfo.ethGas(
+              feeInfo: FeeInfo.ethGasEip1559(
                 coin: assetId,
-                gasPrice: estimation.medium.maxFeePerGas,
+                maxFeePerGas: estimation.medium.maxFeePerGas,
+                maxPriorityFeePerGas: estimation.medium.maxPriorityFeePerGas,
                 gas: _defaultEthGasLimit,
               ),
               estimatedTime: _getEthEstimatedTime(WithdrawalFeeLevel.medium),
             ),
             high: WithdrawalFeeOption(
               priority: WithdrawalFeeLevel.high,
-              feeInfo: FeeInfo.ethGas(
+              feeInfo: FeeInfo.ethGasEip1559(
                 coin: assetId,
-                gasPrice: estimation.high.maxFeePerGas,
+                maxFeePerGas: estimation.high.maxFeePerGas,
+                maxPriorityFeePerGas: estimation.high.maxPriorityFeePerGas,
                 gas: _defaultEthGasLimit,
               ),
               estimatedTime: _getEthEstimatedTime(WithdrawalFeeLevel.high),
@@ -834,9 +837,10 @@ class WithdrawalManager {
             asset.id.id,
           );
           final selectedLevel = _getEthFeeLevel(estimation, priority);
-          fee = FeeInfo.ethGas(
+          fee = FeeInfo.ethGasEip1559(
             coin: asset.id.id,
-            gasPrice: selectedLevel.maxFeePerGas,
+            maxFeePerGas: selectedLevel.maxFeePerGas,
+            maxPriorityFeePerGas: selectedLevel.maxPriorityFeePerGas,
             gas: _defaultEthGasLimit,
           );
 
@@ -903,9 +907,10 @@ class WithdrawalManager {
               asset.id.id,
             );
             final selectedLevel = _getEthFeeLevel(estimation, priority);
-            fee = FeeInfo.ethGas(
+            fee = FeeInfo.ethGasEip1559(
               coin: asset.id.id,
-              gasPrice: selectedLevel.maxFeePerGas,
+              maxFeePerGas: selectedLevel.maxFeePerGas,
+              maxPriorityFeePerGas: selectedLevel.maxPriorityFeePerGas,
               gas: _defaultEthGasLimit,
             );
           } catch (e) {

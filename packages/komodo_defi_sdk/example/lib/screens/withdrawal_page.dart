@@ -36,6 +36,8 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   WithdrawalPreview? _preview;
   String? _error;
   bool _isIbcTransfer = false;
+  WithdrawalFeeOptions? _feeOptions;
+  WithdrawalFeeLevel? _selectedPriority;
 
   AddressValidation? _addressValidation;
   final _validationDebouncer = Debouncer();
@@ -46,6 +48,27 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     _toAddressController.addListener(_onAddressChanged);
     if (widget.asset.supportsMultipleAddresses) {
       _selectedFromAddress = widget.pubkeys.keys.first;
+    }
+    _loadFeeOptions();
+  }
+
+  Future<void> _loadFeeOptions() async {
+    try {
+      final feeOptions = await _sdk.withdrawals.getFeeOptions(widget.asset.id.id);
+      if (mounted) {
+        setState(() {
+          _feeOptions = feeOptions;
+          // Default to medium priority
+          if (feeOptions != null && _selectedPriority == null) {
+            _selectedPriority = WithdrawalFeeLevel.medium;
+            _selectedFee = feeOptions.medium.feeInfo;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Failed to load fee options: $e');
+      }
     }
   }
 
@@ -60,6 +83,23 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     _validationDebouncer.run(() {
       _validateAddress(address);
     });
+  }
+
+  Future<void> _validateAddress(String address) async {
+    try {
+      final validation = await _sdk.addresses.validateAddress(
+        asset: widget.asset,
+        address: address,
+      );
+
+      if (mounted) {
+        setState(() => _addressValidation = validation);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Address validation failed: $e');
+      }
+    }
   }
 
   String? _addressValidator(String? value) {
@@ -103,6 +143,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         toAddress: _toAddressController.text,
         amount: _isMaxAmount ? null : Decimal.parse(_amountController.text),
         fee: _selectedFee,
+        feePriority: _selectedPriority,
         from:
             _selectedFromAddress?.derivationPath != null
                 ? WithdrawalSource.hdDerivationPath(
@@ -132,132 +173,91 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _validationDebouncer.dispose();
-    _toAddressController
-      ..removeListener(_onAddressChanged)
-      ..dispose();
-    _amountController.dispose();
-    _memoController.dispose();
-    _ibcChannelController.dispose();
-    super.dispose();
-  }
-
   Future<void> _showPreviewDialog(WithdrawParameters params) async {
-    if (_preview == null) return;
-
-    final confirmed = await showDialog<bool>(
+    return showDialog<void>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Confirm Withdrawal'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Amount: ${_preview!.balanceChanges.netChange} '
-                    '${widget.asset.id.id}',
-                  ),
-                  Text('To: ${_preview!.to.join(', ')}'),
-                  _buildFeeDetails(_preview!.fee),
-                  if (_preview!.kmdRewards != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'KMD Rewards Available: ${_preview!.kmdRewards!.amount}',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                  if (_isIbcTransfer) ...[
-                    const SizedBox(height: 8),
-                    Text('IBC Channel: ${_ibcChannelController.text}'),
-                    const Text(
-                      'Note: IBC transfers may take longer to complete',
-                      style: TextStyle(fontStyle: FontStyle.italic),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Confirm'),
+      builder: (context) => AlertDialog(
+        title: const Text('Withdrawal Preview'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Asset: ${params.asset}'),
+            Text('To: ${params.toAddress}'),
+            if (params.amount != null)
+              Text('Amount: ${params.amount} ${params.asset}'),
+            if (_selectedFee != null) ...[
+              const SizedBox(height: 8),
+              FeeInfoDisplay(
+                feeInfo: _selectedFee!,
+                showDetailedBreakdown: true,
               ),
             ],
+            if (_preview != null) ...[
+              const SizedBox(height: 8),
+              Text('Estimated fee: ${_preview!.fee.formatTotal()}'),
+              Text('Balance change: ${_preview!.balanceChanges.netChange}'),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
           ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _executeWithdrawal(params);
+            },
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
     );
-
-    if (confirmed == true) {
-      await _executeWithdrawal(params);
-    }
-  }
-
-  Widget _buildFeeDetails(FeeInfo details) {
-    return FeeInfoDisplay(feeInfo: details);
   }
 
   Future<void> _executeWithdrawal(WithdrawParameters params) async {
     try {
-      await for (final progress in _sdk.withdrawals.withdraw(params)) {
-        if (progress.status == WithdrawalStatus.complete) {
-          if (mounted) {
+      final progressStream = _sdk.withdrawals.withdraw(params);
+      
+      await for (final progress in progressStream) {
+        if (!mounted) return;
+        
+        switch (progress.status) {
+          case WithdrawalStatus.complete:
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  'Withdrawal completed: ${progress.withdrawalResult!.txHash}',
-                ),
-                action: SnackBarAction(
-                  label: 'Copy Hash',
-                  onPressed:
-                      () => Clipboard.setData(
-                        ClipboardData(text: progress.withdrawalResult!.txHash),
-                      ),
-                ),
+                content: Text('Withdrawal complete! TX: ${progress.withdrawalResult?.txHash}'),
+                backgroundColor: Theme.of(context).colorScheme.primary,
               ),
             );
-            Navigator.pop(context);
-          }
-          return;
-        }
-
-        if (progress.status == WithdrawalStatus.error) {
-          throw Exception(progress.errorMessage);
+            Navigator.of(context).pop();
+            return;
+          case WithdrawalStatus.error:
+            setState(() => _error = progress.errorMessage ?? 'Withdrawal failed');
+            return;
+          default:
+            // Show progress
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(progress.message)),
+            );
         }
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     }
   }
 
-  bool get _isTendermintProtocol => widget.asset.protocol is TendermintProtocol;
+  void _onCopyAddress(PubkeyInfo? address) {
+    if (address == null) return;
 
-  Future<void> _validateAddress(String address) async {
-    try {
-      final validation = await _sdk.addresses.validateAddress(
-        asset: widget.asset,
-        address: address,
-      );
-
-      if (mounted) {
-        setState(() => _addressValidation = validation);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _error = 'Address validation failed: $e');
-      }
-    }
+    Clipboard.setData(ClipboardData(text: address.address));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Address copied to clipboard')),
+    );
   }
-
-  bool isCustomFee = false;
 
   @override
   Widget build(BuildContext context) {
@@ -300,50 +300,24 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 const SizedBox(height: 16),
               ],
 
+              // Recipient address field
               TextFormField(
                 controller: _toAddressController,
                 decoration: InputDecoration(
-                  labelText: 'To Address',
+                  labelText: 'Recipient Address',
                   hintText: 'Enter recipient address',
-                  // Show validation status
                   suffixIcon: _buildValidationStatus(),
                 ),
                 validator: _addressValidator,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
               ),
               const SizedBox(height: 16),
-              if (_isTendermintProtocol) ...[
-                SwitchListTile(
-                  title: const Text('IBC Transfer'),
-                  subtitle: const Text('Send to another Cosmos chain'),
-                  value: _isIbcTransfer,
-                  onChanged: (value) => setState(() => _isIbcTransfer = value),
-                ),
-                if (_isIbcTransfer) ...[
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _ibcChannelController,
-                    decoration: const InputDecoration(
-                      labelText: 'IBC Channel',
-                      hintText: 'Enter IBC channel ID (e.g. 141)',
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator:
-                        (value) =>
-                            value?.isEmpty == true
-                                ? 'Please enter IBC channel number'
-                                : null,
-                  ),
-                ],
-              ],
-              const SizedBox(height: 16),
+
+              // Amount field
               TextFormField(
                 controller: _amountController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Amount',
-                  hintText: '0.00',
-                  suffix: Text(widget.asset.id.id),
+                  hintText: 'Enter amount to send',
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
@@ -381,23 +355,43 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 title: const Text('Send maximum amount'),
               ),
               const SizedBox(height: 16),
-              Text('Fees', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                title: const Text('Custom fee'),
-                value: isCustomFee,
-                onChanged: (value) => setState(() => isCustomFee = value),
+              
+              // Fee priority selector
+              WithdrawalPrioritySelector(
+                feeOptions: _feeOptions,
+                selectedPriority: _selectedPriority,
+                onPriorityChanged: (priority) {
+                  setState(() {
+                    _selectedPriority = priority;
+                    if (_feeOptions != null) {
+                      _selectedFee = _feeOptions!.getByPriority(priority).feeInfo;
+                    }
+                  });
+                },
+                showCustomFeeOption: true,
+                onCustomFeeSelected: () {
+                  setState(() {
+                    _selectedPriority = null;
+                    _selectedFee = null;
+                  });
+                },
               ),
-              if (isCustomFee) ...[
+              
+              // Custom fee input (only show if no priority is selected)
+              if (_selectedPriority == null) ...[
+                const SizedBox(height: 16),
+                Text('Custom Fee', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
                 FeeInfoInput(
                   asset: widget.asset,
                   selectedFee: _selectedFee,
-                  isCustomFee: isCustomFee,
+                  isCustomFee: true,
                   onFeeSelected: (fee) {
                     setState(() => _selectedFee = fee);
                   },
                 ),
               ],
+              
               const SizedBox(height: 16),
               TextFormField(
                 controller: _memoController,
@@ -456,15 +450,6 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
           _addressValidation!.isValid
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).colorScheme.error,
-    );
-  }
-
-  void _onCopyAddress(PubkeyInfo? address) {
-    if (address == null) return;
-
-    Clipboard.setData(ClipboardData(text: address.address));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Address copied to clipboard')),
     );
   }
 
@@ -542,62 +527,5 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     final fee = _selectedFee;
     if (fee == null) return 'Calculating...';
     return fee.formatTotal();
-  }
-}
-
-// Helper widget for fee selection
-class FeeOption extends StatelessWidget {
-  const FeeOption({
-    required this.title,
-    required this.subtitle,
-    required this.fee,
-    required this.isSelected,
-    required this.onSelect,
-    super.key,
-  });
-
-  final String title;
-  final String subtitle;
-  final WithdrawalFeeType fee;
-  final bool isSelected;
-  final VoidCallback onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
-      child: InkWell(
-        onTap: onSelect,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Radio<bool>(
-                value: true,
-                groupValue: isSelected,
-                onChanged: (_) => onSelect(),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
