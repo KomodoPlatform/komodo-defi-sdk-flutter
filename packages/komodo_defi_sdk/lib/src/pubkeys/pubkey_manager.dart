@@ -1,5 +1,6 @@
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -41,6 +42,12 @@ class PubkeyManager {
       return;
     }
     yield* strategy.getNewAddressStream(asset.id, _client);
+  }
+
+  /// Unban pubkeys according to [unbanBy] criteria
+  Future<UnbanPubkeysResult> unbanPubkeys(UnbanBy unbanBy) async {
+    final response = await _client.rpc.wallet.unbanPubkeys(unbanBy: unbanBy);
+    return response.result;
   }
 
   Future<PubkeyStrategy> _resolvePubkeyStrategy(Asset asset) async {

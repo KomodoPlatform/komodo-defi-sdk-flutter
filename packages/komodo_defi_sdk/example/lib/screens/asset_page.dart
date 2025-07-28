@@ -176,6 +176,7 @@ class _AssetHeaderState extends State<AssetHeader> {
 
   String? _signedMessage;
   bool _isSigningMessage = false;
+  bool _isUnbanning = false;
   KdfUser? _currentUser;
 
   Future<void> _loadCurrentUser() async {
@@ -218,6 +219,24 @@ class _AssetHeaderState extends State<AssetHeader> {
         ],
       ],
     );
+  }
+
+  Future<void> _unbanPubkeys() async {
+    setState(() => _isUnbanning = true);
+    try {
+      final result = await context.read<KomodoDefiSdk>().pubkeys.unbanPubkeys(
+        const UnbanBy.all(),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unbanned ${result.unbanned.length} pubkeys')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => _isUnbanning = false);
+    }
   }
 
   Widget _buildBalanceOverview(BuildContext context) {
@@ -363,6 +382,12 @@ class _AssetHeaderState extends State<AssetHeader> {
           onPressed: () {},
           icon: const Icon(Icons.qr_code),
           label: const Text('Receive'),
+        ),
+        FilledButton.tonalIcon(
+          onPressed: _isUnbanning ? null : _unbanPubkeys,
+          icon: const Icon(Icons.lock_open),
+          label:
+              _isUnbanning ? const Text('Unbanning...') : const Text('Unban'),
         ),
 
         Tooltip(
