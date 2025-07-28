@@ -83,9 +83,7 @@ const bool _isTestCoinsOnly = false;
 class CoinFilter {
   const CoinFilter();
 
-  static const _filteredCoins = {
-    // Add coins to be filtered out here
-  };
+  static const _filteredCoins = <String, String>{};
 
   static const _filteredProtocolSubTypes = {
     'SLP': 'Simple Ledger Protocol',
@@ -93,7 +91,7 @@ class CoinFilter {
 
   // NFT was previosly filtered out, but it is now required with the NFT v2
   // migration. NFT_<COIN> coins are used to represent NFTs on the chain.
-  static const _filteredProtocolTypes = {};
+  static const _filteredProtocolTypes = <String, String>{};
 
   /// Returns true if the given coin should be filtered out.
   bool shouldFilter(JsonMap config) {

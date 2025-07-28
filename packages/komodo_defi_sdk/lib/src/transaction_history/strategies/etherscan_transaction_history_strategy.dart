@@ -232,6 +232,10 @@ class EtherscanProtocolHelper {
     return Uri.parse(endpoint);
   }
 
+  /// Returns the URL for fetching transaction history by hash.
+  Uri transactionsByHashUrl(String txHash) =>
+      Uri.parse('$_txByHashUrl/$txHash');
+
   String? _getEndpointForAsset(Asset asset) {
     final baseEndpoint = _getBaseEndpoint(asset.id);
     if (baseEndpoint == null) return null;

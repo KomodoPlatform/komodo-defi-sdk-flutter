@@ -129,6 +129,18 @@ class WalletMethods extends BaseRpcMethodNamespace {
       accountIndex: accountIndex,
     ),
   );
+
+  /// Unbans all banned public keys
+  ///
+  /// Parameters:
+  /// - [unbanBy]: The type of public key to unban (e.g. all, few)
+  /// - [rpcPass]: RPC password for authentication
+  ///
+  /// Returns: Response containing the result of the unban operation
+  Future<UnbanPubkeysResponse> unbanPubkeys({
+    required UnbanBy unbanBy,
+    String? rpcPass,
+  }) => execute(UnbanPubkeysRequest(rpcPass: rpcPass ?? '', unbanBy: unbanBy));
 }
 
 /// KDF v2 Utility Methods not specific to any larger feature
