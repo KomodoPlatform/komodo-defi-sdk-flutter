@@ -187,7 +187,7 @@ class GetPrivateKeysResponse extends BaseResponse {
 
   factory GetPrivateKeysResponse.parse(JsonMap json) {
     final mmrpc = json.valueOrNull<String>('mmrpc');
-    final result = json.value<List<JsonMap>>('result', 'result');
+    final result = json.value<List<JsonMap>>('result');
 
     if (result.isEmpty) {
       // Default to standard response for empty result

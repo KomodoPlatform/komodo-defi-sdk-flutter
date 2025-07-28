@@ -51,36 +51,21 @@ class LegacyWithdrawalManager implements WithdrawalManager {
         ),
       );
 
-      try {
-        // Broadcast the transaction
-        final broadcastResponse = await _client.rpc.withdraw.sendRawTransaction(
-          coin: parameters.asset,
-          txHex: result.txHex,
-        );
-
-        // Final success update
-        yield WithdrawalProgress(
-          status: WithdrawalStatus.complete,
-          message: 'Withdrawal complete',
-          withdrawalResult: WithdrawalResult(
-            txHash: broadcastResponse.txHash,
-            balanceChanges: result.balanceChanges,
-            coin: parameters.asset,
-            toAddress: parameters.toAddress,
-            fee: result.fee,
-            kmdRewardsEligible:
-                result.kmdRewards != null &&
-                Decimal.parse(result.kmdRewards!.amount) > Decimal.zero,
-          ),
-        );
-      } catch (e) {
-        yield* Stream.error(
-          WithdrawalException(
-            'Failed to broadcast transaction: $e',
-            WithdrawalErrorCode.networkError,
-          ),
-        );
-      }
+      // Final success update
+      yield WithdrawalProgress(
+        status: WithdrawalStatus.complete,
+        message: 'Withdrawal completed successfully',
+        withdrawalResult: WithdrawalResult(
+          txHash: result.txHash,
+          balanceChanges: result.balanceChanges,
+          coin: result.coin,
+          toAddress: result.to.first,
+          fee: result.fee,
+          kmdRewardsEligible:
+              result.kmdRewards != null &&
+              Decimal.parse(result.kmdRewards!.amount) > Decimal.zero,
+        ),
+      );
     } catch (e) {
       yield* Stream.error(
         WithdrawalException(
@@ -133,5 +118,12 @@ class LegacyWithdrawalManager implements WithdrawalManager {
   @override
   Future<void> dispose() async {
     // Do any cleanup here
+  }
+
+  /// Legacy implementation doesn't support priority-based fee options
+  @override
+  Future<WithdrawalFeeOptions?> getFeeOptions(String assetId) async {
+    // Legacy implementation doesn't support priority-based fees
+    return null;
   }
 }

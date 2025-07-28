@@ -4,6 +4,8 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 ///
 /// The [FeeManager] provides functionality for:
 /// - Retrieving estimated gas fees for Ethereum-based transactions
+/// - Retrieving estimated fees for UTXO-based transactions (Bitcoin, Litecoin, etc.)
+/// - Retrieving estimated fees for Tendermint/Cosmos-based transactions
 /// - Getting and setting fee policies for swap transactions
 /// - Managing fee-related configuration for blockchain operations
 ///
@@ -21,15 +23,17 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// print('Medium fee: ${gasEstimates.medium.maxFeePerGas} gwei');
 /// print('Fast fee: ${gasEstimates.fast.maxFeePerGas} gwei');
 ///
-/// // Get current swap fee policy for a coin
-/// final policy = await feeManager.getSwapTransactionFeePolicy('KMD');
-/// print('Current fee policy: ${policy.type}');
+/// // Get UTXO fee estimates
+/// final utxoEstimates = await feeManager.getUtxoEstimatedFee('BTC');
+/// print('Low fee: ${utxoEstimates.low.feePerKbyte} sat/KB');
+/// print('Medium fee: ${utxoEstimates.medium.feePerKbyte} sat/KB');
+/// print('High fee: ${utxoEstimates.high.feePerKbyte} sat/KB');
 ///
-/// // Update fee policy if needed
-/// if (policy.type != 'standard') {
-///   final newPolicy = FeePolicy(type: 'standard', ...);
-///   await feeManager.setSwapTransactionFeePolicy('KMD', newPolicy);
-/// }
+/// // Get Tendermint fee estimates
+/// final tendermintEstimates = await feeManager.getTendermintEstimatedFee('ATOM');
+/// print('Low fee: ${tendermintEstimates.low.totalFee} ATOM');
+/// print('Medium fee: ${tendermintEstimates.medium.totalFee} ATOM');
+/// print('High fee: ${tendermintEstimates.high.totalFee} ATOM');
 /// ```
 class FeeManager {
   /// Creates a new [FeeManager] instance.
@@ -39,6 +43,30 @@ class FeeManager {
   FeeManager(this._client);
 
   final ApiClient _client;
+
+  /// Enable fee estimator for a specific coin.
+  ///
+  /// This method enables the fee estimator service for the specified coin,
+  /// which is required before requesting fee estimates.
+  ///
+  /// Parameters:
+  /// - [coin] - The ticker symbol of the coin (e.g., 'BTC', 'ETH', 'ATOM')
+  /// - [estimatorType] - The type of estimator to enable (e.g., 'simple', 'electrum')
+  ///
+  /// Returns a [Future<String>] containing the status result.
+  ///
+  /// Example:
+  /// ```dart
+  /// final result = await feeManager.enableFeeEstimator('BTC', 'electrum');
+  /// print('Fee estimator enabled: $result');
+  /// ```
+  Future<String> enableFeeEstimator(String coin, String estimatorType) async {
+    final response = await _client.rpc.feeManagement.feeEstimatorEnable(
+      coin: coin,
+      estimatorType: estimatorType,
+    );
+    return response.result;
+  }
 
   /// Retrieves estimated fee per gas for Ethereum-based transactions.
   ///
@@ -80,6 +108,90 @@ class FeeManager {
     return response.result;
   }
 
+  /// Retrieves estimated fees for UTXO-based transactions (Bitcoin, Litecoin, etc.).
+  ///
+  /// This method provides up-to-date fee estimates for UTXO-based chains
+  /// with different priority levels (low, medium, high).
+  ///
+  /// Parameters:
+  /// - [coin] - The ticker symbol of the coin (e.g., 'BTC', 'LTC', 'DOGE')
+  /// - [estimatorType] - The type of estimator to use (default: simple)
+  ///
+  /// Returns a [Future<UtxoEstimatedFee>] containing fee estimates at
+  /// different priority levels:
+  /// - `low` - Lower fee rate for non-urgent transactions
+  /// - `medium` - Balanced fee rate for normal transactions
+  /// - `high` - Higher fee rate for urgent transactions
+  ///
+  /// Each estimate includes:
+  /// - `feePerKbyte` - Fee rate in satoshis per kilobyte
+  /// - `estimatedTime` - Estimated confirmation time
+  ///
+  /// Example:
+  /// ```dart
+  /// final estimates = await feeManager.getUtxoEstimatedFee('BTC');
+  ///
+  /// // Choose a fee based on desired confirmation speed
+  /// final selectedFee = estimates.medium;
+  ///
+  /// print('Fee rate: ${selectedFee.feePerKbyte} sat/KB');
+  /// print('Estimated time: ${selectedFee.estimatedTime}');
+  /// ```
+  Future<UtxoEstimatedFee> getUtxoEstimatedFee(
+    String coin, {
+    FeeEstimatorType estimatorType = FeeEstimatorType.simple,
+  }) async {
+    final response = await _client.rpc.feeManagement.getUtxoEstimatedFee(
+      coin: coin,
+      estimatorType: estimatorType,
+    );
+    return response.result;
+  }
+
+  /// Retrieves estimated fees for Tendermint/Cosmos-based transactions.
+  ///
+  /// This method provides up-to-date fee estimates for Tendermint/Cosmos chains
+  /// with different priority levels (low, medium, high).
+  ///
+  /// Parameters:
+  /// - [coin] - The ticker symbol of the coin (e.g., 'ATOM', 'IRIS', 'OSMO')
+  /// - [estimatorType] - The type of estimator to use (default: simple)
+  ///
+  /// Returns a [Future<TendermintEstimatedFee>] containing fee estimates at
+  /// different priority levels:
+  /// - `low` - Lower gas price for non-urgent transactions
+  /// - `medium` - Balanced gas price for normal transactions
+  /// - `high` - Higher gas price for urgent transactions
+  ///
+  /// Each estimate includes:
+  /// - `gasPrice` - Gas price in the native coin units
+  /// - `gasLimit` - Gas limit for the transaction
+  /// - `totalFee` - Calculated total fee (gasPrice * gasLimit)
+  /// - `estimatedTime` - Estimated confirmation time
+  ///
+  /// Example:
+  /// ```dart
+  /// final estimates = await feeManager.getTendermintEstimatedFee('ATOM');
+  ///
+  /// // Choose a fee based on desired confirmation speed
+  /// final selectedFee = estimates.medium;
+  ///
+  /// print('Gas price: ${selectedFee.gasPrice} ATOM');
+  /// print('Gas limit: ${selectedFee.gasLimit}');
+  /// print('Total fee: ${selectedFee.totalFee} ATOM');
+  /// print('Estimated time: ${selectedFee.estimatedTime}');
+  /// ```
+  Future<TendermintEstimatedFee> getTendermintEstimatedFee(
+    String coin, {
+    FeeEstimatorType estimatorType = FeeEstimatorType.simple,
+  }) async {
+    final response = await _client.rpc.feeManagement.getTendermintEstimatedFee(
+      coin: coin,
+      estimatorType: estimatorType,
+    );
+    return response.result;
+  }
+
   /// Retrieves the current fee policy for swap transactions of a specific coin.
   ///
   /// Fee policies determine how transaction fees are calculated and applied
@@ -94,9 +206,9 @@ class FeeManager {
   /// Example:
   /// ```dart
   /// final policy = await feeManager.getSwapTransactionFeePolicy('KMD');
-  /// 
-  /// if (policy.type == 'utxo_per_kbyte') {
-  ///   print('Fee rate: ${policy.feePerKbyte} sat/KB');
+  ///
+  /// if (policy == FeePolicy.medium) {
+  ///   print('Using medium fee policy');
   /// }
   /// ```
   Future<FeePolicy> getSwapTransactionFeePolicy(String coin) async {
@@ -119,18 +231,12 @@ class FeeManager {
   ///
   /// Example:
   /// ```dart
-  /// // Create a new UTXO fee policy with a specific rate
-  /// final newPolicy = FeePolicy(
-  ///   type: 'utxo_per_kbyte',
-  ///   feePerKbyte: 1000, // 1000 satoshis per kilobyte
-  /// );
-  ///
   /// final updatedPolicy = await feeManager.setSwapTransactionFeePolicy(
   ///   'BTC',
-  ///   newPolicy,
+  ///   FeePolicy.high,
   /// );
   ///
-  /// print('Updated fee policy: ${updatedPolicy.type}');
+  /// print('Updated fee policy: $updatedPolicy');
   /// ```
   Future<FeePolicy> setSwapTransactionFeePolicy(
     String coin,

@@ -21,3 +21,4 @@ export 'protocol_strategies/tendermint_task_activation_strategy.dart';
 export 'protocol_strategies/tendermint_token_activation_strategy.dart';
 export 'protocol_strategies/utxo_activation_strategy.dart';
 export 'protocol_strategies/zhtlc_activation_strategy.dart';
+export 'shared_activation_coordinator.dart';

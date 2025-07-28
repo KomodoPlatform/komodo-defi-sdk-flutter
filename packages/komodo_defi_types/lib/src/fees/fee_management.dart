@@ -148,3 +148,131 @@ class EthEstimatedFeePerGas extends Equatable {
         priorityFeeTrend,
       ];
 }
+
+/// Response object for [get_utxo_estimated_fee].
+class UtxoEstimatedFee extends Equatable {
+  const UtxoEstimatedFee({
+    required this.low,
+    required this.medium,
+    required this.high,
+  });
+
+  factory UtxoEstimatedFee.fromJson(Map<String, dynamic> json) {
+    return UtxoEstimatedFee(
+      low: UtxoFeeLevel.fromJson(json['low'] as Map<String, dynamic>),
+      medium: UtxoFeeLevel.fromJson(json['medium'] as Map<String, dynamic>),
+      high: UtxoFeeLevel.fromJson(json['high'] as Map<String, dynamic>),
+    );
+  }
+
+  final UtxoFeeLevel low;
+  final UtxoFeeLevel medium;
+  final UtxoFeeLevel high;
+
+  Map<String, dynamic> toJson() => {
+        'low': low.toJson(),
+        'medium': medium.toJson(),
+        'high': high.toJson(),
+      };
+
+  @override
+  List<Object?> get props => [low, medium, high];
+}
+
+/// UTXO fee level with per-kbyte fee rate
+class UtxoFeeLevel extends Equatable {
+  const UtxoFeeLevel({
+    required this.feePerKbyte,
+    this.estimatedTime,
+  });
+
+  factory UtxoFeeLevel.fromJson(Map<String, dynamic> json) {
+    return UtxoFeeLevel(
+      feePerKbyte: Decimal.parse(json['fee_per_kbyte'].toString()),
+      estimatedTime: json['estimated_time'] as String?,
+    );
+  }
+
+  /// Fee rate in satoshis per kilobyte
+  final Decimal feePerKbyte;
+
+  /// Estimated confirmation time (e.g., "10 min", "1 hour")
+  final String? estimatedTime;
+
+  Map<String, dynamic> toJson() => {
+        'fee_per_kbyte': feePerKbyte.toString(),
+        if (estimatedTime != null) 'estimated_time': estimatedTime,
+      };
+
+  @override
+  List<Object?> get props => [feePerKbyte, estimatedTime];
+}
+
+/// Response object for [get_tendermint_estimated_fee].
+class TendermintEstimatedFee extends Equatable {
+  const TendermintEstimatedFee({
+    required this.low,
+    required this.medium,
+    required this.high,
+  });
+
+  factory TendermintEstimatedFee.fromJson(Map<String, dynamic> json) {
+    return TendermintEstimatedFee(
+      low: TendermintFeeLevel.fromJson(json['low'] as Map<String, dynamic>),
+      medium:
+          TendermintFeeLevel.fromJson(json['medium'] as Map<String, dynamic>),
+      high: TendermintFeeLevel.fromJson(json['high'] as Map<String, dynamic>),
+    );
+  }
+
+  final TendermintFeeLevel low;
+  final TendermintFeeLevel medium;
+  final TendermintFeeLevel high;
+
+  Map<String, dynamic> toJson() => {
+        'low': low.toJson(),
+        'medium': medium.toJson(),
+        'high': high.toJson(),
+      };
+
+  @override
+  List<Object?> get props => [low, medium, high];
+}
+
+/// Tendermint fee level with gas price and gas limit
+class TendermintFeeLevel extends Equatable {
+  const TendermintFeeLevel({
+    required this.gasPrice,
+    required this.gasLimit,
+    this.estimatedTime,
+  });
+
+  factory TendermintFeeLevel.fromJson(Map<String, dynamic> json) {
+    return TendermintFeeLevel(
+      gasPrice: Decimal.parse(json['gas_price'].toString()),
+      gasLimit: json['gas_limit'] as int,
+      estimatedTime: json['estimated_time'] as String?,
+    );
+  }
+
+  /// Gas price in the native coin units
+  final Decimal gasPrice;
+
+  /// Gas limit for the transaction
+  final int gasLimit;
+
+  /// Estimated confirmation time (e.g., "5 sec", "30 sec")
+  final String? estimatedTime;
+
+  /// Calculate total fee as gasPrice * gasLimit
+  Decimal get totalFee => gasPrice * Decimal.fromInt(gasLimit);
+
+  Map<String, dynamic> toJson() => {
+        'gas_price': gasPrice.toString(),
+        'gas_limit': gasLimit,
+        if (estimatedTime != null) 'estimated_time': estimatedTime,
+      };
+
+  @override
+  List<Object?> get props => [gasPrice, gasLimit, estimatedTime];
+}
