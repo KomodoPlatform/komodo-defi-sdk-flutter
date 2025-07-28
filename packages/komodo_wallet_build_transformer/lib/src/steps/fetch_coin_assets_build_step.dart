@@ -120,9 +120,22 @@ class FetchCoinAssetsBuildStep extends BuildStep {
         configWithUpdatedCommit.bundledCoinsRepoCommit;
 
     if (wasCommitHashUpdated || !alreadyHadCoinAssets) {
-      const errorMessage =
-          'Coin assets have been updated. '
-          'Please re-run the build process for the changes to take effect.';
+      final errorMessage = '''
+        \n\n
+        ${'=-' * 20}
+        What: Coin assets have been updated.
+        
+        How to fix: Re-run the build process for the changes to take effect.
+
+        Why: This is due to a limitation in Flutter's build system. We're
+        working on a fix to Flutter, but it will depend on Flutter team
+        considering the PR.
+
+        For more details, follow the KomodoPlatform Flutter fork:
+        https://github.com/KomodPlatform/flutter
+        ${'=-' * 20}
+        \n\n
+      ''';
 
       // If it's not a debug build and the commit hash was updated, throw an
       // exception to indicate that the build process should be re-run. We can
