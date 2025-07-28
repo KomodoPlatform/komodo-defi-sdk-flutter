@@ -71,6 +71,8 @@ class AssetId extends Equatable {
     );
   }
 
+  static const _isMultipleTypesPerAssetAllowed = false;
+
   /// Method that parses a config object and returns a set of [AssetId] objects.
   ///
   /// For most coins, this will return a single [AssetId] object. However, for
@@ -81,8 +83,10 @@ class AssetId extends Equatable {
     required Set<AssetId>? knownIds,
   }) {
     final assetIds = {AssetId.parse(json, knownIds: knownIds)};
-
-    return assetIds;
+    
+    if(!_isMultipleTypesPerAssetAllowed) {
+      return assetIds;
+    }
 
     // Remove below if it is confirmed that we will never encounter a coin with
     // multiple types which need to be treated as separate assets. This was

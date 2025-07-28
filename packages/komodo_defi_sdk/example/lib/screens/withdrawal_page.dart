@@ -469,7 +469,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   Widget _buildTransactionSummary() {
-    final protocol = widget.asset.protocol;
+    // final protocol = widget.asset.protocol;
     final balance = _selectedFromAddress?.balance ?? widget.pubkeys.balance;
 
     return Column(

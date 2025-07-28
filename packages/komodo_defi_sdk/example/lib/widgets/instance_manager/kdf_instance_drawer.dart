@@ -182,7 +182,7 @@ class _KdfInstanceDrawerState extends State<KdfInstanceDrawer> {
                     trailing: PopupMenuButton(
                       itemBuilder:
                           (context) => [
-                            PopupMenuItem(
+                            PopupMenuItem<void>(
                               child: const Text('Remove'),
                               onTap:
                                   () => manager.removeInstance(instance.name),
