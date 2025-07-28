@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
@@ -12,20 +13,22 @@ enum UnbanType {
     UnbanType.few => 'Few',
   };
 
-  static UnbanType fromString(String value) {
+  static UnbanType parse(String value) {
     final lowerValue = value.toLowerCase();
     if (lowerValue == 'all') {
       return UnbanType.all;
     } else if (lowerValue == 'few') {
       return UnbanType.few;
     } else {
-      throw ArgumentError('Invalid UnbanType value: $value. Expected "all" or "few".');
+      throw ArgumentError(
+        'Invalid UnbanType value: $value. Expected "all" or "few".',
+      );
     }
   }
 }
 
 /// Parameter for [UnbanPubkeysRequest]
-class UnbanBy {
+class UnbanBy extends Equatable {
   const UnbanBy.all() : type = UnbanType.all, data = null;
   const UnbanBy.few(this.data) : type = UnbanType.few;
 
@@ -33,6 +36,9 @@ class UnbanBy {
   final List<String>? data;
 
   JsonMap toJson() => {'type': type.toString(), if (data != null) 'data': data};
+
+  @override
+  List<Object?> get props => [type, data];
 }
 
 class UnbanPubkeysRequest
@@ -63,8 +69,8 @@ class UnbanPubkeysResponse extends BaseResponse {
   JsonMap toJson() => {'mmrpc': mmrpc, 'result': result.toJson()};
 }
 
-class UnbanPubkeysResult {
-  UnbanPubkeysResult({
+class UnbanPubkeysResult extends Equatable {
+  const UnbanPubkeysResult({
     required this.stillBanned,
     required this.unbanned,
     required this.wereNotBanned,
@@ -95,9 +101,12 @@ class UnbanPubkeysResult {
     'unbanned': unbanned.map((k, v) => MapEntry(k, v.toJson())),
     'were_not_banned': wereNotBanned,
   };
+
+  @override
+  List<Object?> get props => [stillBanned, unbanned, wereNotBanned];
 }
 
-class BannedPubkeyInfo {
+class BannedPubkeyInfo extends Equatable {
   const BannedPubkeyInfo({required this.type, required this.reason});
 
   factory BannedPubkeyInfo.fromJson(JsonMap json) => BannedPubkeyInfo(
@@ -109,4 +118,7 @@ class BannedPubkeyInfo {
   final String reason;
 
   JsonMap toJson() => {'type': type, 'reason': reason};
+
+  @override
+  List<Object?> get props => [type, reason];
 }
