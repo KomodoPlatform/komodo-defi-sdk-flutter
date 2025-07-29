@@ -51,21 +51,36 @@ class LegacyWithdrawalManager implements WithdrawalManager {
         ),
       );
 
-      // Final success update
-      yield WithdrawalProgress(
-        status: WithdrawalStatus.complete,
-        message: 'Withdrawal completed successfully',
-        withdrawalResult: WithdrawalResult(
-          txHash: result.txHash,
-          balanceChanges: result.balanceChanges,
-          coin: result.coin,
-          toAddress: result.to.first,
-          fee: result.fee,
-          kmdRewardsEligible:
-              result.kmdRewards != null &&
-              Decimal.parse(result.kmdRewards!.amount) > Decimal.zero,
-        ),
-      );
+      // Broadcast the transaction to the blockchain
+      try {
+        final broadcastResponse = await _client.rpc.withdraw.sendRawTransaction(
+          coin: parameters.asset,
+          txHex: result.txHex,
+        );
+
+        // Final success update with actual broadcast transaction hash
+        yield WithdrawalProgress(
+          status: WithdrawalStatus.complete,
+          message: 'Withdrawal completed successfully',
+          withdrawalResult: WithdrawalResult(
+            txHash: broadcastResponse.txHash,
+            balanceChanges: result.balanceChanges,
+            coin: result.coin,
+            toAddress: result.to.first,
+            fee: result.fee,
+            kmdRewardsEligible:
+                result.kmdRewards != null &&
+                Decimal.parse(result.kmdRewards!.amount) > Decimal.zero,
+          ),
+        );
+      } catch (e) {
+        yield* Stream.error(
+          WithdrawalException(
+            'Failed to broadcast transaction: $e',
+            WithdrawalErrorCode.networkError,
+          ),
+        );
+      }
     } catch (e) {
       yield* Stream.error(
         WithdrawalException(
