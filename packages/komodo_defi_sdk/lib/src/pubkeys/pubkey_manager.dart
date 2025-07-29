@@ -50,6 +50,12 @@ class PubkeyManager {
     return response.result;
   }
 
+  /// Retrieve a map of currently banned pubkeys
+  Future<Map<String, BannedPubkeyDetails>> listBannedPubkeys() async {
+    final response = await _client.rpc.wallet.listBannedPubkeys();
+    return response.result;
+  }
+
   Future<PubkeyStrategy> _resolvePubkeyStrategy(Asset asset) async {
     final currentUser = await _auth.currentUser;
     if (currentUser == null) {

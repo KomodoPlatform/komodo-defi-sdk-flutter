@@ -103,6 +103,9 @@ class WalletMethods extends BaseRpcMethodNamespace {
     required UnbanBy unbanBy,
     String? rpcPass,
   }) => execute(UnbanPubkeysRequest(rpcPass: rpcPass ?? '', unbanBy: unbanBy));
+
+  Future<ListBannedPubkeysResponse> listBannedPubkeys([String? rpcPass]) =>
+      execute(ListBannedPubkeysRequest(rpcPass: rpcPass ?? ''));
 }
 
 /// KDF v2 Utility Methods not specific to any larger feature

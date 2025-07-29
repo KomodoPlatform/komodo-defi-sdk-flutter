@@ -1,2 +1,8 @@
 export 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
-    show AddressFormat, BalanceInfo, UnbanBy, UnbanPubkeysResult, BannedPubkeyInfo;
+    show
+        AddressFormat,
+        BalanceInfo,
+        UnbanBy,
+        UnbanPubkeysResult,
+        BannedPubkeyInfo,
+        BannedPubkeyDetails;
