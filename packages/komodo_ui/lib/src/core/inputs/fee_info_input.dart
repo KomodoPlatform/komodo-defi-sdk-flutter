@@ -8,6 +8,11 @@ typedef FeeInfoChanged = void Function(FeeInfo? fee);
 /// Constants for fee calculations
 const _gweiInEth = 1000000000; // 10^9
 
+/// A widget for inputting custom fee information.
+///
+/// **Note:** Fee estimation features are currently disabled as the API endpoints
+/// are not yet available. This widget provides manual fee input capabilities
+/// for when automatic fee estimation is not available.
 class FeeInfoInput extends StatelessWidget {
   const FeeInfoInput({
     required this.asset,
@@ -37,24 +42,67 @@ class FeeInfoInput extends StatelessWidget {
       return _buildCosmosGasInputs(context);
     } else {
       // No custom fee input for other protocols
-      return const SizedBox.shrink();
+      return _buildUnsupportedProtocolMessage(context);
     }
+  }
+
+  /// Builds a message for unsupported protocols
+  Widget _buildUnsupportedProtocolMessage(BuildContext context) {
+    return Card(
+      color: Theme.of(context).colorScheme.surfaceVariant,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Custom fee not supported',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Custom fee input is not available for this asset type. '
+              'Fee estimation features are currently disabled as the API endpoints are not yet available.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Builds the gas price/limit fields for Erc20-based assets (e.g. ETH).
   Widget _buildErc20GasInputs(BuildContext context) {
     // Check if we have an EIP1559 fee or legacy fee
-    final isEip1559 = selectedFee?.maybeMap(
-      ethGasEip1559: (_) => true,
-      orElse: () => false,
-    ) ?? false;
+    final isEip1559 =
+        selectedFee?.maybeMap(
+          ethGasEip1559: (_) => true,
+          orElse: () => false,
+        ) ??
+        false;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Gas Settings', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        
+
         // EIP1559 vs Legacy toggle
         Row(
           children: [
@@ -89,7 +137,8 @@ class FeeInfoInput extends StatelessWidget {
                           FeeInfo.ethGasEip1559(
                             coin: asset.id.id,
                             maxFeePerGas: legacyFee.gasPrice,
-                            maxPriorityFeePerGas: legacyFee.gasPrice * Decimal.parse('0.1'),
+                            maxPriorityFeePerGas:
+                                legacyFee.gasPrice * Decimal.parse('0.1'),
                             gas: legacyFee.gas,
                           ),
                         );
@@ -116,9 +165,9 @@ class FeeInfoInput extends StatelessWidget {
             ),
           ],
         ),
-        
+
         const SizedBox(height: 8),
-        
+
         if (isEip1559) ...[
           // EIP1559 inputs
           _buildEip1559Inputs(context),
@@ -145,9 +194,12 @@ class FeeInfoInput extends StatelessWidget {
             Expanded(
               child: TextFormField(
                 enabled: isCustomFee,
-                initialValue: currentFee?.maxFeePerGas != null
-                    ? (currentFee!.maxFeePerGas * Decimal.fromInt(_gweiInEth)).toString()
-                    : null,
+                initialValue:
+                    currentFee?.maxFeePerGas != null
+                        ? (currentFee!.maxFeePerGas *
+                                Decimal.fromInt(_gweiInEth))
+                            .toString()
+                        : null,
                 decoration: const InputDecoration(
                   labelText: 'Max Fee Per Gas (Gwei)',
                 ),
@@ -173,7 +225,9 @@ class FeeInfoInput extends StatelessWidget {
                       FeeInfo.ethGasEip1559(
                         coin: asset.id.id,
                         maxFeePerGas: ethPriceDecimal,
-                        maxPriorityFeePerGas: oldPriorityFee ?? (ethPriceDecimal * Decimal.parse('0.1')),
+                        maxPriorityFeePerGas:
+                            oldPriorityFee ??
+                            (ethPriceDecimal * Decimal.parse('0.1')),
                         gas: oldGasLimit ?? 21000,
                       ),
                     );
@@ -182,14 +236,17 @@ class FeeInfoInput extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            
+
             // Max Priority Fee Per Gas (in Gwei)
             Expanded(
               child: TextFormField(
                 enabled: isCustomFee,
-                initialValue: currentFee?.maxPriorityFeePerGas != null
-                    ? (currentFee!.maxPriorityFeePerGas * Decimal.fromInt(_gweiInEth)).toString()
-                    : null,
+                initialValue:
+                    currentFee?.maxPriorityFeePerGas != null
+                        ? (currentFee!.maxPriorityFeePerGas *
+                                Decimal.fromInt(_gweiInEth))
+                            .toString()
+                        : null,
                 decoration: const InputDecoration(
                   labelText: 'Max Priority Fee (Gwei)',
                 ),
@@ -225,9 +282,9 @@ class FeeInfoInput extends StatelessWidget {
             ),
           ],
         ),
-        
+
         const SizedBox(height: 8),
-        
+
         // Gas Limit
         TextFormField(
           enabled: isCustomFee,
@@ -251,7 +308,8 @@ class FeeInfoInput extends StatelessWidget {
                 FeeInfo.ethGasEip1559(
                   coin: asset.id.id,
                   maxFeePerGas: oldMaxFee ?? Decimal.parse('0.000000003'),
-                  maxPriorityFeePerGas: oldPriorityFee ?? Decimal.parse('0.000000001'),
+                  maxPriorityFeePerGas:
+                      oldPriorityFee ?? Decimal.parse('0.000000001'),
                   gas: gasLimit,
                 ),
               );
@@ -385,7 +443,8 @@ class FeeInfoInput extends StatelessWidget {
 
   /// Helper method to check if EIP1559 fee is high
   bool _isEip1559HighFee(FeeInfoEthGasEip1559 fee) {
-    return fee.maxFeePerGas * Decimal.fromInt(_gweiInEth) > Decimal.fromInt(100);
+    return fee.maxFeePerGas * Decimal.fromInt(_gweiInEth) >
+        Decimal.fromInt(100);
   }
 
   /// Builds the gas limit/price inputs for QRC20-based assets

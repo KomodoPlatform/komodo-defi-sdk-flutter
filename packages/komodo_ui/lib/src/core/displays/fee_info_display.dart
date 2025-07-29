@@ -7,6 +7,10 @@ import 'package:komodo_ui/src/utils/formatters/fee_info_formatters.dart';
 ///
 /// This widget handles all fee types (ETH gas, QRC20 gas, Cosmos gas, UTXO)
 /// and displays their relevant details in a clear, formatted way.
+///
+/// **Note:** Fee estimation features are currently disabled as the API endpoints
+/// are not yet available. This widget will display fee information when provided
+/// manually or when fee estimation becomes available.
 class FeeInfoDisplay extends StatelessWidget {
   const FeeInfoDisplay({
     required this.feeInfo,

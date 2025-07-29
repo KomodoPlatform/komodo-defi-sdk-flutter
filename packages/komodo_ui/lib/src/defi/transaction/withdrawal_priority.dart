@@ -8,6 +8,10 @@ import 'package:komodo_ui/src/utils/formatters/fee_info_formatters.dart';
 /// This widget displays fee options for different priority levels (low, medium, high)
 /// and allows users to select their preferred option. It supports all fee types
 /// including the new EIP1559 fee structure for Ethereum-based transactions.
+///
+/// **Note:** Fee estimation features are currently disabled as the API endpoints
+/// are not yet available. When disabled, this widget will show a disabled state
+/// with appropriate messaging.
 class WithdrawalPrioritySelector extends StatelessWidget {
   const WithdrawalPrioritySelector({
     required this.feeOptions,
@@ -36,7 +40,7 @@ class WithdrawalPrioritySelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (feeOptions == null) {
-      return _buildLoadingState(context);
+      return _buildDisabledState(context);
     }
 
     return Column(
@@ -52,6 +56,70 @@ class WithdrawalPrioritySelector extends StatelessWidget {
           const SizedBox(height: 8),
           _buildCustomFeeOption(context),
         ],
+      ],
+    );
+  }
+
+  Widget _buildDisabledState(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Transaction Priority',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          color: Theme.of(context).colorScheme.surfaceVariant,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Fee estimation temporarily unavailable',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Fee estimation features are currently disabled as the API endpoints are not yet available. '
+                  'You can still proceed with withdrawals using custom fee settings.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (showCustomFeeOption) ...[
+                  ElevatedButton.icon(
+                    onPressed: onCustomFeeSelected,
+                    icon: const Icon(Icons.settings),
+                    label: const Text('Set Custom Fee'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
+                      foregroundColor:
+                          Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -117,9 +185,10 @@ class WithdrawalPrioritySelector extends StatelessWidget {
 
   Widget _buildCustomFeeOption(BuildContext context) {
     return Card(
-      color: selectedPriority == null
-          ? Theme.of(context).colorScheme.primaryContainer
-          : null,
+      color:
+          selectedPriority == null
+              ? Theme.of(context).colorScheme.primaryContainer
+              : null,
       child: InkWell(
         onTap: onCustomFeeSelected,
         borderRadius: BorderRadius.circular(12),
@@ -241,6 +310,10 @@ class _PriorityOption extends StatelessWidget {
 }
 
 /// A widget for displaying fee information with priority selection
+///
+/// **Note:** Fee estimation features are currently disabled as the API endpoints
+/// are not yet available. When disabled, this widget will show appropriate messaging
+/// and guide users to use custom fee settings.
 class FeeInfoWithPriority extends StatelessWidget {
   const FeeInfoWithPriority({
     required this.feeOptions,
@@ -260,13 +333,15 @@ class FeeInfoWithPriority extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (showPrioritySelector && feeOptions != null) ...[
+        if (showPrioritySelector) ...[
           WithdrawalPrioritySelector(
             feeOptions: feeOptions,
             selectedPriority: _getSelectedPriority(),
             onPriorityChanged: (priority) {
-              final feeOption = feeOptions!.getByPriority(priority);
-              onFeeChanged(feeOption.feeInfo);
+              if (feeOptions != null) {
+                final feeOption = feeOptions!.getByPriority(priority);
+                onFeeChanged(feeOption.feeInfo);
+              }
             },
             showCustomFeeOption: true,
             onCustomFeeSelected: () {
@@ -277,15 +352,9 @@ class FeeInfoWithPriority extends StatelessWidget {
           const SizedBox(height: 16),
         ],
         if (selectedFee != null) ...[
-          Text(
-            'Selected Fee',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('Selected Fee', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
-          FeeInfoDisplay(
-            feeInfo: selectedFee!,
-            showDetailedBreakdown: true,
-          ),
+          FeeInfoDisplay(feeInfo: selectedFee!, showDetailedBreakdown: true),
         ],
       ],
     );
