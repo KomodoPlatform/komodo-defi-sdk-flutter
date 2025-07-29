@@ -51,6 +51,9 @@ class TendermintProtocol extends ProtocolClass {
   @override
   bool get requiresHdWallet => false;
 
+  @override
+  bool get isMemoSupported => false;
+
   /// Create default activation params for Tendermint protocol.
   /// Tendermint is single-address only, so no HD wallet parameters are used.
   @override

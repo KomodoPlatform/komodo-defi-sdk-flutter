@@ -35,7 +35,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   FeeInfo? _selectedFee;
   WithdrawalPreview? _preview;
   String? _error;
-  bool _isIbcTransfer = false;
+  final bool _isIbcTransfer = false;
   WithdrawalFeeOptions? _feeOptions;
   WithdrawalFeeLevel? _selectedPriority;
 
@@ -54,7 +54,9 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   Future<void> _loadFeeOptions() async {
     try {
-      final feeOptions = await _sdk.withdrawals.getFeeOptions(widget.asset.id.id);
+      final feeOptions = await _sdk.withdrawals.getFeeOptions(
+        widget.asset.id.id,
+      );
       if (mounted) {
         setState(() {
           _feeOptions = feeOptions;
@@ -176,72 +178,74 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   Future<void> _showPreviewDialog(WithdrawParameters params) async {
     return showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Withdrawal Preview'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Asset: ${params.asset}'),
-            Text('To: ${params.toAddress}'),
-            if (params.amount != null)
-              Text('Amount: ${params.amount} ${params.asset}'),
-            if (_selectedFee != null) ...[
-              const SizedBox(height: 8),
-              FeeInfoDisplay(
-                feeInfo: _selectedFee!,
-                showDetailedBreakdown: true,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Withdrawal Preview'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Asset: ${params.asset}'),
+                Text('To: ${params.toAddress}'),
+                if (params.amount != null)
+                  Text('Amount: ${params.amount} ${params.asset}'),
+                if (_selectedFee != null) ...[
+                  const SizedBox(height: 8),
+                  FeeInfoDisplay(feeInfo: _selectedFee!),
+                ],
+                if (_preview != null) ...[
+                  const SizedBox(height: 8),
+                  Text('Estimated fee: ${_preview!.fee.formatTotal()}'),
+                  Text('Balance change: ${_preview!.balanceChanges.netChange}'),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _executeWithdrawal(params);
+                },
+                child: const Text('Confirm'),
               ),
             ],
-            if (_preview != null) ...[
-              const SizedBox(height: 8),
-              Text('Estimated fee: ${_preview!.fee.formatTotal()}'),
-              Text('Balance change: ${_preview!.balanceChanges.netChange}'),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _executeWithdrawal(params);
-            },
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
     );
   }
 
   Future<void> _executeWithdrawal(WithdrawParameters params) async {
     try {
       final progressStream = _sdk.withdrawals.withdraw(params);
-      
+
       await for (final progress in progressStream) {
         if (!mounted) return;
-        
+
         switch (progress.status) {
           case WithdrawalStatus.complete:
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Withdrawal complete! TX: ${progress.withdrawalResult?.txHash}'),
+                content: Text(
+                  'Withdrawal complete! TX: ${progress.withdrawalResult?.txHash}',
+                ),
                 backgroundColor: Theme.of(context).colorScheme.primary,
               ),
             );
             Navigator.of(context).pop();
             return;
           case WithdrawalStatus.error:
-            setState(() => _error = progress.errorMessage ?? 'Withdrawal failed');
+            setState(
+              () => _error = progress.errorMessage ?? 'Withdrawal failed',
+            );
             return;
           default:
             // Show progress
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(progress.message)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(progress.message)));
         }
       }
     } catch (e) {
@@ -355,7 +359,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 title: const Text('Send maximum amount'),
               ),
               const SizedBox(height: 16),
-              
+
               // Fee priority selector
               WithdrawalPrioritySelector(
                 feeOptions: _feeOptions,
@@ -364,11 +368,11 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                   setState(() {
                     _selectedPriority = priority;
                     if (_feeOptions != null) {
-                      _selectedFee = _feeOptions!.getByPriority(priority).feeInfo;
+                      _selectedFee =
+                          _feeOptions!.getByPriority(priority).feeInfo;
                     }
                   });
                 },
-                showCustomFeeOption: true,
                 onCustomFeeSelected: () {
                   setState(() {
                     _selectedPriority = null;
@@ -376,11 +380,14 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                   });
                 },
               ),
-              
+
               // Custom fee input (only show if no priority is selected)
               if (_selectedPriority == null) ...[
                 const SizedBox(height: 16),
-                Text('Custom Fee', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Custom Fee',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
                 FeeInfoInput(
                   asset: widget.asset,
@@ -391,17 +398,18 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                   },
                 ),
               ],
-              
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _memoController,
-                decoration: const InputDecoration(
-                  labelText: 'Memo (Optional)',
-                  hintText: 'Enter optional transaction memo',
-                  helperText: 'Required for some exchanges',
+              if (widget.asset.protocol.isMemoSupported) ...[
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _memoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Memo (Optional)',
+                    hintText: 'Enter optional transaction memo',
+                    helperText: 'Required for some exchanges',
+                  ),
+                  maxLines: 2,
                 ),
-                maxLines: 2,
-              ),
+              ],
               const SizedBox(height: 24),
               Card(
                 child: Padding(
