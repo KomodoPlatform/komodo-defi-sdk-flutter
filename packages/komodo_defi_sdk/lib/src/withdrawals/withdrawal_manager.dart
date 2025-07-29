@@ -26,6 +26,10 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// 3. Broadcasting to the network
 /// 4. Status tracking
 ///
+/// **Note:** Fee estimation features are currently disabled as the API endpoints
+/// are not yet available. Set `_feeEstimationEnabled` to `true` when the API
+/// endpoints become available.
+///
 /// Usage example:
 /// ```dart
 /// final manager = WithdrawalManager(...);
@@ -77,6 +81,12 @@ class WithdrawalManager {
     this._feeManager,
     this._activationCoordinator,
   );
+
+  /// Flag to enable/disable fee estimation features.
+  ///
+  /// TODO: Set to true when the fee estimation API endpoints become available.
+  /// Currently disabled as the endpoints are not yet implemented in the API.
+  static const bool _feeEstimationEnabled = false;
 
   /// Default gas limit for basic ETH transactions.
   ///
@@ -159,12 +169,16 @@ class WithdrawalManager {
   /// the UI to present users with options ranging from low-cost/slow confirmation
   /// to high-cost/fast confirmation.
   ///
+  /// **Note:** This feature is currently disabled as the API endpoints are not yet available.
+  /// TODO: Enable when the fee estimation API endpoints become available.
+  ///
   /// Parameters:
   /// - [assetId] - The asset identifier (e.g., 'BTC', 'ETH', 'ATOM')
   ///
   /// Returns a [Future<WithdrawalFeeOptions?>] containing fee estimates for
   /// different priority levels. Returns `null` if fee estimation is not
-  /// supported for the asset or if the asset is not found.
+  /// supported for the asset, if the asset is not found, or if fee estimation
+  /// is disabled.
   ///
   /// The returned options include:
   /// - Low priority: Lowest cost, slowest confirmation
@@ -181,6 +195,10 @@ class WithdrawalManager {
   /// }
   /// ```
   Future<WithdrawalFeeOptions?> getFeeOptions(String assetId) async {
+    // Return null if fee estimation is disabled
+    if (!_feeEstimationEnabled) {
+      return null;
+    }
     try {
       final asset = _assetProvider.findAssetsByConfigId(assetId).single;
       final protocol = asset.protocol;
@@ -411,6 +429,10 @@ class WithdrawalManager {
   /// withdrawal, including fees, balance changes, and other transaction
   /// details, before committing to it.
   ///
+  /// **Note:** Fee estimation is currently disabled as the API endpoints are not yet available.
+  /// When fee estimation is disabled, withdrawals will proceed without automatic fee estimation.
+  /// TODO: Enable when the fee estimation API endpoints become available.
+  ///
   /// Parameters:
   /// - [parameters] - The withdrawal parameters defining the asset, amount,
   ///   destination, and optional fee priority
@@ -420,7 +442,7 @@ class WithdrawalManager {
   ///
   /// Fee Priority:
   /// - If no fee is specified, the method will estimate fees based on the
-  ///   feePriority parameter (defaults to medium)
+  ///   feePriority parameter (defaults to medium) when fee estimation is enabled
   /// - Low: Lowest cost, slowest confirmation
   /// - Medium: Balanced cost and confirmation time
   /// - High: Highest cost, fastest confirmation
@@ -523,6 +545,10 @@ class WithdrawalManager {
   /// 3. Broadcasts it to the network
   /// 4. Tracks and reports progress
   ///
+  /// **Note:** Fee estimation is currently disabled as the API endpoints are not yet available.
+  /// When fee estimation is disabled, withdrawals will proceed without automatic fee estimation.
+  /// TODO: Enable when the fee estimation API endpoints become available.
+  ///
   /// Parameters:
   /// - [parameters] - The withdrawal parameters defining the asset, amount,
   ///   destination, and optional fee priority
@@ -533,7 +559,7 @@ class WithdrawalManager {
   ///
   /// Fee Priority:
   /// - If no fee is specified, the method will estimate fees based on the
-  ///   feePriority parameter (defaults to medium)
+  ///   feePriority parameter (defaults to medium) when fee estimation is enabled
   /// - Low: Lowest cost, slowest confirmation
   /// - Medium: Balanced cost and confirmation time
   /// - High: Highest cost, fastest confirmation
@@ -814,6 +840,9 @@ class WithdrawalManager {
   /// Otherwise, the method attempts to estimate an appropriate fee based on the
   /// asset's protocol type, current network conditions, and the specified priority level.
   ///
+  /// **Note:** Fee estimation is currently disabled as the API endpoints are not yet available.
+  /// TODO: Enable when the fee estimation API endpoints become available.
+  ///
   /// Parameters:
   /// - [params] - The withdrawal parameters
   /// - [asset] - The asset being withdrawn
@@ -824,6 +853,11 @@ class WithdrawalManager {
     Asset asset,
   ) async {
     if (params.fee != null) return params;
+
+    // If fee estimation is disabled, return parameters without fee
+    if (!_feeEstimationEnabled) {
+      return params;
+    }
 
     try {
       final protocol = asset.protocol;

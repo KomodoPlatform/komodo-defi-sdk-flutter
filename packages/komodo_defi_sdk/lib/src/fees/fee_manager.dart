@@ -13,6 +13,10 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// providing a simple interface for applications to work with transaction fees
 /// across different blockchain protocols.
 ///
+/// **Note:** Fee estimation features are currently disabled as the API endpoints
+/// are not yet available. Set `_feeEstimationEnabled` to `true` when the API
+/// endpoints become available.
+///
 /// Usage example:
 /// ```dart
 /// final feeManager = FeeManager(apiClient);
@@ -41,6 +45,12 @@ class FeeManager {
   /// Requires:
   /// - [_client] - API client for making RPC calls to fee management endpoints
   FeeManager(this._client);
+
+  /// Flag to enable/disable fee estimation features.
+  ///
+  /// TODO: Set to true when the fee estimation API endpoints become available.
+  /// Currently disabled as the endpoints are not yet implemented in the API.
+  static const bool _feeEstimationEnabled = false;
 
   final ApiClient _client;
 
@@ -73,6 +83,9 @@ class FeeManager {
   /// This method provides up-to-date gas fee estimates for Ethereum-compatible
   /// chains with different speed options (slow, medium, fast).
   ///
+  /// **Note:** This feature is currently disabled as the API endpoints are not yet available.
+  /// TODO: Enable when the fee estimation API endpoints become available.
+  ///
   /// Parameters:
   /// - [coin] - The ticker symbol of the coin (e.g., 'ETH', 'MATIC')
   /// - [estimatorType] - The type of estimator to use (default: simple)
@@ -86,6 +99,9 @@ class FeeManager {
   /// Each estimate includes:
   /// - `maxFeePerGas` - Maximum fee per gas unit
   /// - `maxPriorityFeePerGas` - Maximum priority fee per gas unit
+  ///
+  /// Throws:
+  /// - [UnsupportedError] when fee estimation is disabled
   ///
   /// Example:
   /// ```dart
@@ -101,6 +117,13 @@ class FeeManager {
     String coin, {
     FeeEstimatorType estimatorType = FeeEstimatorType.simple,
   }) async {
+    if (!_feeEstimationEnabled) {
+      throw UnsupportedError(
+        'Fee estimation is currently disabled. The API endpoints are not yet available. '
+        'Set `_feeEstimationEnabled` to `true` when the endpoints become available.',
+      );
+    }
+
     final response = await _client.rpc.feeManagement.getEthEstimatedFeePerGas(
       coin: coin,
       estimatorType: estimatorType,
@@ -112,6 +135,9 @@ class FeeManager {
   ///
   /// This method provides up-to-date fee estimates for UTXO-based chains
   /// with different priority levels (low, medium, high).
+  ///
+  /// **Note:** This feature is currently disabled as the API endpoints are not yet available.
+  /// TODO: Enable when the fee estimation API endpoints become available.
   ///
   /// Parameters:
   /// - [coin] - The ticker symbol of the coin (e.g., 'BTC', 'LTC', 'DOGE')
@@ -127,6 +153,9 @@ class FeeManager {
   /// - `feePerKbyte` - Fee rate in satoshis per kilobyte
   /// - `estimatedTime` - Estimated confirmation time
   ///
+  /// Throws:
+  /// - [UnsupportedError] when fee estimation is disabled
+  ///
   /// Example:
   /// ```dart
   /// final estimates = await feeManager.getUtxoEstimatedFee('BTC');
@@ -141,6 +170,13 @@ class FeeManager {
     String coin, {
     FeeEstimatorType estimatorType = FeeEstimatorType.simple,
   }) async {
+    if (!_feeEstimationEnabled) {
+      throw UnsupportedError(
+        'Fee estimation is currently disabled. The API endpoints are not yet available. '
+        'Set `_feeEstimationEnabled` to `true` when the endpoints become available.',
+      );
+    }
+
     final response = await _client.rpc.feeManagement.getUtxoEstimatedFee(
       coin: coin,
       estimatorType: estimatorType,
@@ -152,6 +188,9 @@ class FeeManager {
   ///
   /// This method provides up-to-date fee estimates for Tendermint/Cosmos chains
   /// with different priority levels (low, medium, high).
+  ///
+  /// **Note:** This feature is currently disabled as the API endpoints are not yet available.
+  /// TODO: Enable when the fee estimation API endpoints become available.
   ///
   /// Parameters:
   /// - [coin] - The ticker symbol of the coin (e.g., 'ATOM', 'IRIS', 'OSMO')
@@ -169,6 +208,9 @@ class FeeManager {
   /// - `totalFee` - Calculated total fee (gasPrice * gasLimit)
   /// - `estimatedTime` - Estimated confirmation time
   ///
+  /// Throws:
+  /// - [UnsupportedError] when fee estimation is disabled
+  ///
   /// Example:
   /// ```dart
   /// final estimates = await feeManager.getTendermintEstimatedFee('ATOM');
@@ -185,6 +227,13 @@ class FeeManager {
     String coin, {
     FeeEstimatorType estimatorType = FeeEstimatorType.simple,
   }) async {
+    if (!_feeEstimationEnabled) {
+      throw UnsupportedError(
+        'Fee estimation is currently disabled. The API endpoints are not yet available. '
+        'Set `_feeEstimationEnabled` to `true` when the endpoints become available.',
+      );
+    }
+
     final response = await _client.rpc.feeManagement.getTendermintEstimatedFee(
       coin: coin,
       estimatorType: estimatorType,
