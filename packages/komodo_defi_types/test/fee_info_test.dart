@@ -1,6 +1,6 @@
 import 'package:decimal/decimal.dart';
-import 'package:test/test.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('FeeInfo EthGas serialization', () {

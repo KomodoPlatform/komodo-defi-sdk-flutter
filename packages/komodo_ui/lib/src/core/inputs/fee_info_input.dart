@@ -49,7 +49,7 @@ class FeeInfoInput extends StatelessWidget {
   /// Builds a message for unsupported protocols
   Widget _buildUnsupportedProtocolMessage(BuildContext context) {
     return Card(
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -321,10 +321,10 @@ class FeeInfoInput extends StatelessWidget {
         if (currentFee != null) ...[
           const SizedBox(height: 8),
           Text(
-            'Estimated Time: ${_getEip1559EstimatedTime(currentFee!)}',
+            'Estimated Time: ${_getEip1559EstimatedTime(currentFee)}',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          if (_isEip1559HighFee(currentFee!))
+          if (_isEip1559HighFee(currentFee))
             Text(
               'Warning: High gas price',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(

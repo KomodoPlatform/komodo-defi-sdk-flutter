@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_ui/src/core/inputs/fee_info_input.dart';
 import 'package:komodo_ui/src/defi/transaction/withdrawal_priority.dart';
 import 'package:komodo_ui/src/defi/withdraw/fee_estimation_disabled.dart';
-import 'package:komodo_ui/src/core/inputs/fee_info_input.dart';
 
 /// Example component demonstrating how to handle disabled fee estimation
 /// in a withdrawal form.

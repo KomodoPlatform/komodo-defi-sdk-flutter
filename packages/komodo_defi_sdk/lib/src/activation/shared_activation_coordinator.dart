@@ -221,7 +221,7 @@ class SharedActivationCoordinator {
           baseDelay.inMilliseconds,
           maxDelay.inMilliseconds,
         );
-        await Future.delayed(Duration(milliseconds: delayMs));
+        await Future<void>.delayed(Duration(milliseconds: delayMs));
       }
     }
 

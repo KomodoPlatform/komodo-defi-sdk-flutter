@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
-import 'package:komodo_defi_types/src/withdrawal/withdrawal_enums.dart';
-import 'package:komodo_defi_types/src/transactions/fee_info.dart';
 import 'package:komodo_defi_types/src/fees/fee_management.dart';
+import 'package:komodo_defi_types/src/transactions/fee_info.dart';
+import 'package:komodo_defi_types/src/withdrawal/withdrawal_enums.dart';
 
 /// Represents fee options with different priority levels for withdrawals.
 class WithdrawalFeeOptions extends Equatable {

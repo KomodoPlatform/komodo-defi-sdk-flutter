@@ -70,7 +70,7 @@ class WithdrawalPrioritySelector extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Card(
-          color: Theme.of(context).colorScheme.surfaceVariant,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -206,9 +206,9 @@ class WithdrawalPrioritySelector extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Custom Fee',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
                       'Set your own fee parameters',
@@ -343,7 +343,6 @@ class FeeInfoWithPriority extends StatelessWidget {
                 onFeeChanged(feeOption.feeInfo);
               }
             },
-            showCustomFeeOption: true,
             onCustomFeeSelected: () {
               // Clear the selected fee to indicate custom fee mode
               onFeeChanged(null);
@@ -354,7 +353,7 @@ class FeeInfoWithPriority extends StatelessWidget {
         if (selectedFee != null) ...[
           Text('Selected Fee', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
-          FeeInfoDisplay(feeInfo: selectedFee!, showDetailedBreakdown: true),
+          FeeInfoDisplay(feeInfo: selectedFee!),
         ],
       ],
     );

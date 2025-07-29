@@ -216,7 +216,7 @@ void main() {
 
       test('throws ArgumentError for empty JSON object', () {
         expect(
-          () => PrivateKeyPolicy.fromLegacyJson({}),
+          () => PrivateKeyPolicy.fromLegacyJson(JsonMap()),
           throwsA(
             isA<ArgumentError>().having(
               (e) => e.message,
