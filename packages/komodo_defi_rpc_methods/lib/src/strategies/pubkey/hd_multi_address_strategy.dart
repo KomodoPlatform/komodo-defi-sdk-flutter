@@ -65,6 +65,7 @@ mixin HDWalletMixin on PubkeyStrategy {
                 derivationPath: addr.derivationPath,
                 chain: addr.chain,
                 balance: addr.balance.balanceOf(assetId.id),
+                coinTicker: assetId.id,
               ),
             )
             .toList();
@@ -104,11 +105,16 @@ class ContextPrivKeyHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
           gapLimit: _gapLimit,
         )).newAddress;
 
+    // Get the balance for the specific coin, or use the first balance if not found
+    final coinBalance =
+        newAddress.getBalanceForCoin(assetId.id) ?? newAddress.balance;
+
     return PubkeyInfo(
       address: newAddress.address,
       derivationPath: newAddress.derivationPath,
       chain: newAddress.chain,
-      balance: newAddress.balance,
+      balance: coinBalance,
+      coinTicker: assetId.id,
     );
   }
 
@@ -143,6 +149,7 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
       derivationPath: newAddress.derivationPath,
       chain: newAddress.chain,
       balance: newAddress.balance,
+      coinTicker: assetId.id,
     );
   }
 
@@ -167,7 +174,7 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
           forgetIfFinished: false,
         );
 
-        final state = status.toNewAddressState(initResponse.taskId);
+        final state = status.toNewAddressState(initResponse.taskId, assetId.id);
         yield state;
 
         if (state.status == NewAddressStatus.completed ||
