@@ -19,8 +19,8 @@ class PrivateKey extends Equatable {
 
   JsonMap toJson() {
     return {
-      'asset_id': assetId,
-      'public_key': publicKeySecp256k1,
+      'asset_id': assetId.toJson(),
+      'public_key_secp256k1': publicKeySecp256k1,
       'public_key_address': publicKeyAddress,
       'private_key': privateKey,
       if (hdInfo != null) 'hd_info': hdInfo!.toJson(),
