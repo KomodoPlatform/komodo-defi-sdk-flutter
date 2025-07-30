@@ -32,7 +32,16 @@ class NewAddressInfo extends Equatable {
   BalanceInfo? getBalanceForCoin(String coinTicker) => balances[coinTicker];
 
   /// Get the first balance entry (for backwards compatibility)
-  BalanceInfo get balance => balances.values.first;
+  BalanceInfo get balance {
+    assert(
+      balances.length == 1,
+      'Expected 1 balance entry, got ${balances.length}',
+    );
+    return balances.values.fold(
+      BalanceInfo.zero(),
+      (total, balance) => total + balance,
+    );
+  }
 
   // HD Wallet properties (Null if not HD Wallet)
   final String? derivationPath;

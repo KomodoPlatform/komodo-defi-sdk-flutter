@@ -96,6 +96,11 @@ class ContextPrivKeyHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
   final KdfUser kdfUser;
 
   @override
+  /// Get the new address for the given asset ID and client.
+  ///
+  /// Filters out balances that are not for the given asset ID.
+  // TODO: Refactor to create a domain model with onlt a single balance entry.
+  // Currently we are bound to the RPC response data structure.
   Future<PubkeyInfo> getNewAddress(AssetId assetId, ApiClient client) async {
     final newAddress =
         (await client.rpc.hdWallet.getNewAddress(
@@ -105,9 +110,10 @@ class ContextPrivKeyHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
           gapLimit: _gapLimit,
         )).newAddress;
 
-    // Get the balance for the specific coin, or use the first balance if not found
+    // Get the balance for the specific coin, or use the first balance if not
+    // found
     final coinBalance =
-        newAddress.getBalanceForCoin(assetId.id) ?? newAddress.balance;
+        newAddress.getBalanceForCoin(assetId.id) ?? BalanceInfo.zero();
 
     return PubkeyInfo(
       address: newAddress.address,
