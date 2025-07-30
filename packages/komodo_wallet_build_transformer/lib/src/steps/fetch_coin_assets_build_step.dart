@@ -121,9 +121,11 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
     if (wasCommitHashUpdated || !alreadyHadCoinAssets) {
       final errorMessage = '''
-        \n\n
+        \n
         ${'=-' * 20}
-        What: Coin assets have been updated.
+        BUILD FAILED
+
+        What: Coin assets were updated.
         
         How to fix: Re-run the build process for the changes to take effect.
 
@@ -131,10 +133,14 @@ class FetchCoinAssetsBuildStep extends BuildStep {
         working on a fix to Flutter, but it will depend on Flutter team
         considering the PR.
 
+        How to avoid: If you absolutely need to avoid this double build, you
+        can manually run `flutter clean && flutter build bundle` but this is
+        not recommended since the double build will be fixed in the future.
+
         For more details, follow the KomodoPlatform Flutter fork:
         https://github.com/KomodPlatform/flutter
         ${'=-' * 20}
-        \n\n
+        \n
       ''';
 
       // If it's not a debug build and the commit hash was updated, throw an
