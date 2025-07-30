@@ -25,7 +25,7 @@ class GetWalletRequest
 }
 
 class GetWalletResponse extends BaseResponse {
-  GetWalletResponse({required this.walletName}) : super(mmrpc: '2.0');
+  GetWalletResponse({required this.walletName}) : super(mmrpc: RpcVersion.v2_0);
 
   // ignore: avoid_unused_constructor_parameters
   @override

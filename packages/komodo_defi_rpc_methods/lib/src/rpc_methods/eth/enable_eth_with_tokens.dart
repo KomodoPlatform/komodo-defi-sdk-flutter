@@ -13,7 +13,7 @@ class EnableEthWithTokensRequest
   }) : super(
          method: 'enable_eth_with_tokens',
          rpcPass: rpcPass,
-         mmrpc: '2.0',
+         mmrpc: RpcVersion.v2_0,
          params: activationParams,
        );
 

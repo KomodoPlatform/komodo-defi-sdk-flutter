@@ -86,15 +86,16 @@ class UnbanPubkeysResult extends Equatable {
       unbanned: unbanned.map(
         (k, v) => MapEntry(k, BannedPubkeyInfo.fromJson(v as JsonMap)),
       ),
-      wereNotBanned:
-          (json.valueOrNull<List<dynamic>>('were_not_banned') ?? [])
-              .cast<String>(),
+      wereNotBanned: json.valueOrNull<List<String>>('were_not_banned') ?? [],
     );
   }
 
   final Map<String, BannedPubkeyInfo> stillBanned;
   final Map<String, BannedPubkeyInfo> unbanned;
   final List<String> wereNotBanned;
+
+  bool get isEmpty =>
+      stillBanned.isEmpty && unbanned.isEmpty && wereNotBanned.isEmpty;
 
   JsonMap toJson() => {
     'still_banned': stillBanned.map((k, v) => MapEntry(k, v.toJson())),
@@ -107,17 +108,17 @@ class UnbanPubkeysResult extends Equatable {
 }
 
 class BannedPubkeyInfo extends Equatable {
-  const BannedPubkeyInfo({required this.type, required this.reason});
+  const BannedPubkeyInfo({required this.type, this.reason});
 
   factory BannedPubkeyInfo.fromJson(JsonMap json) => BannedPubkeyInfo(
     type: json.value<String>('type'),
-    reason: json.value<String>('reason'),
+    reason: json.valueOrNull<String>('reason'),
   );
 
   final String type;
-  final String reason;
+  final String? reason;
 
-  JsonMap toJson() => {'type': type, 'reason': reason};
+  JsonMap toJson() => {'type': type, if (reason != null) 'reason': reason};
 
   @override
   List<Object?> get props => [type, reason];

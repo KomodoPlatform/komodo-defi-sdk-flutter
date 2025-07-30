@@ -24,6 +24,9 @@ extension FeeInfoFormatting on FeeInfo {
       ethGas:
           (fee) =>
               'Gas: ${fee.gas} @ ${_formatNumber(fee.gasPrice * Decimal.fromInt(_gweiInEth), precision: 2)} Gwei',
+      ethGasEip1559:
+          (fee) =>
+              'Gas: ${fee.gas} @ ${_formatNumber(fee.maxFeePerGas * Decimal.fromInt(_gweiInEth), precision: 2)} Gwei (EIP1559)',
       orElse: formatTotal,
     );
   }
@@ -34,6 +37,9 @@ extension FeeInfoFormatting on FeeInfo {
       ethGas:
           (fee) =>
               fee.gasPrice * Decimal.fromInt(_gweiInEth) > Decimal.fromInt(100),
+      ethGasEip1559:
+          (fee) =>
+              fee.maxFeePerGas * Decimal.fromInt(_gweiInEth) > Decimal.fromInt(100),
       utxoFixed: (fee) => fee.amount > Decimal.fromInt(50000),
       utxoPerKbyte: (fee) => fee.amount > Decimal.fromInt(50000),
       orElse: () => false,
@@ -64,6 +70,42 @@ extension EthGasFormatting on FeeInfoEthGas {
   String get detailedBreakdown {
     return 'Gas Limit: $gas units\n'
         'Gas Price: ${formatGasPrice()} Gwei\n'
+        'Total: ${formatTotal()}';
+  }
+}
+
+/// Dedicated formatting extension for *only* the ethGasEip1559 variant
+extension EthGasEip1559Formatting on FeeInfoEthGasEip1559 {
+  /// Get the max fee per gas in Gwei units
+  Decimal get maxFeePerGasInGwei => maxFeePerGas * Decimal.fromInt(_gweiInEth);
+
+  /// Get the max priority fee per gas in Gwei units
+  Decimal get maxPriorityFeePerGasInGwei => maxPriorityFeePerGas * Decimal.fromInt(_gweiInEth);
+
+  /// Format max fee per gas in Gwei with appropriate precision
+  String formatMaxFeePerGas({int precision = 2}) {
+    return FeeInfoFormatting._formatNumber(maxFeePerGasInGwei, precision: precision);
+  }
+
+  /// Format max priority fee per gas in Gwei with appropriate precision
+  String formatMaxPriorityFeePerGas({int precision = 2}) {
+    return FeeInfoFormatting._formatNumber(maxPriorityFeePerGasInGwei, precision: precision);
+  }
+
+  /// Estimate transaction time based on max fee per gas
+  String get estimatedTime {
+    final gwei = maxFeePerGasInGwei;
+    if (gwei > Decimal.fromInt(100)) return '< 15 seconds';
+    if (gwei > Decimal.fromInt(50)) return '< 30 seconds';
+    if (gwei > Decimal.fromInt(20)) return '< 2 minutes';
+    return '> 5 minutes';
+  }
+
+  /// Detailed fee breakdown
+  String get detailedBreakdown {
+    return 'Gas Limit: $gas units\n'
+        'Max Fee Per Gas: ${formatMaxFeePerGas()} Gwei\n'
+        'Max Priority Fee: ${formatMaxPriorityFeePerGas()} Gwei\n'
         'Total: ${formatTotal()}';
   }
 }

@@ -7,7 +7,7 @@ class EnableTendermintTokenRequest
     required super.rpcPass,
     required this.ticker,
     required this.params,
-  }) : super(method: 'enable_tendermint_token', mmrpc: '2.0');
+  }) : super(method: 'enable_tendermint_token', mmrpc: RpcVersion.v2_0);
 
   final String ticker;
   @override

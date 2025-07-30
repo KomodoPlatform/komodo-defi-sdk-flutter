@@ -4,6 +4,7 @@ import 'dart:developer' show log;
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/legacy_withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -25,9 +26,21 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// 3. Broadcasting to the network
 /// 4. Status tracking
 ///
+/// **Note:** Fee estimation features are currently disabled as the API endpoints
+/// are not yet available. Set `_feeEstimationEnabled` to `true` when the API
+/// endpoints become available.
+///
 /// Usage example:
 /// ```dart
 /// final manager = WithdrawalManager(...);
+///
+/// // Get fee options for UI selection
+/// final feeOptions = await manager.getFeeOptions('BTC');
+/// if (feeOptions != null) {
+///   print('Low: ${feeOptions.low.estimatedFeeAmount} BTC');
+///   print('Medium: ${feeOptions.medium.estimatedFeeAmount} BTC');
+///   print('High: ${feeOptions.high.estimatedFeeAmount} BTC');
+/// }
 ///
 /// // Preview a withdrawal
 /// final preview = await manager.previewWithdrawal(
@@ -38,12 +51,13 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 ///   ),
 /// );
 ///
-/// // Execute a withdrawal with progress tracking
+/// // Execute a withdrawal with priority selection
 /// final progressStream = manager.withdraw(
 ///   WithdrawParameters(
 ///     asset: 'BTC',
 ///     toAddress: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
 ///     amount: Decimal.parse('0.001'),
+///     feePriority: WithdrawalFeeLevel.high, // Fast confirmation
 ///   ),
 /// );
 ///
@@ -60,14 +74,19 @@ class WithdrawalManager {
   /// Requires:
   /// - [_client] - API client for making RPC calls
   /// - [_assetProvider] - Provider for looking up asset information
-  /// - [_activationManager] - Manager for activating assets before withdrawal
   /// - [_feeManager] - Manager for fee estimation and management
   WithdrawalManager(
     this._client,
     this._assetProvider,
-    this._activationManager,
     this._feeManager,
+    this._activationCoordinator,
   );
+
+  /// Flag to enable/disable fee estimation features.
+  ///
+  /// TODO: Set to true when the fee estimation API endpoints become available.
+  /// Currently disabled as the endpoints are not yet implemented in the API.
+  static const bool _feeEstimationEnabled = false;
 
   /// Default gas limit for basic ETH transactions.
   ///
@@ -78,7 +97,7 @@ class WithdrawalManager {
 
   final ApiClient _client;
   final IAssetProvider _assetProvider;
-  final ActivationManager _activationManager;
+  final SharedActivationCoordinator _activationCoordinator;
   final FeeManager _feeManager;
   final _activeWithdrawals = <int, StreamController<WithdrawalProgress>>{};
 
@@ -144,18 +163,289 @@ class WithdrawalManager {
     }
   }
 
+  /// Retrieves fee options with different priority levels for the specified asset.
+  ///
+  /// This method provides fee estimates at multiple priority levels, allowing
+  /// the UI to present users with options ranging from low-cost/slow confirmation
+  /// to high-cost/fast confirmation.
+  ///
+  /// **Note:** This feature is currently disabled as the API endpoints are not yet available.
+  /// TODO: Enable when the fee estimation API endpoints become available.
+  ///
+  /// Parameters:
+  /// - [assetId] - The asset identifier (e.g., 'BTC', 'ETH', 'ATOM')
+  ///
+  /// Returns a [Future<WithdrawalFeeOptions?>] containing fee estimates for
+  /// different priority levels. Returns `null` if fee estimation is not
+  /// supported for the asset, if the asset is not found, or if fee estimation
+  /// is disabled.
+  ///
+  /// The returned options include:
+  /// - Low priority: Lowest cost, slowest confirmation
+  /// - Medium priority: Balanced cost and confirmation time
+  /// - High priority: Highest cost, fastest confirmation
+  ///
+  /// Example:
+  /// ```dart
+  /// final feeOptions = await withdrawalManager.getFeeOptions('BTC');
+  /// if (feeOptions != null) {
+  ///   print('Low priority: ${feeOptions.low.estimatedFeeAmount} BTC');
+  ///   print('Medium priority: ${feeOptions.medium.estimatedFeeAmount} BTC');
+  ///   print('High priority: ${feeOptions.high.estimatedFeeAmount} BTC');
+  /// }
+  /// ```
+  Future<WithdrawalFeeOptions?> getFeeOptions(String assetId) async {
+    // Return null if fee estimation is disabled
+    if (!_feeEstimationEnabled) {
+      return null;
+    }
+    try {
+      final asset = _assetProvider.findAssetsByConfigId(assetId).single;
+      final protocol = asset.protocol;
+
+      // Handle different protocol types
+      switch (protocol.runtimeType) {
+        case Erc20Protocol:
+          // Ethereum-based protocols use gas estimation
+          final estimation = await _feeManager.getEthEstimatedFeePerGas(
+            assetId,
+          );
+          return WithdrawalFeeOptions(
+            coin: assetId,
+            low: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.low,
+              feeInfo: FeeInfo.ethGasEip1559(
+                coin: assetId,
+                maxFeePerGas: estimation.low.maxFeePerGas,
+                maxPriorityFeePerGas: estimation.low.maxPriorityFeePerGas,
+                gas: _defaultEthGasLimit,
+              ),
+              estimatedTime: _getEthEstimatedTime(WithdrawalFeeLevel.low),
+            ),
+            medium: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.medium,
+              feeInfo: FeeInfo.ethGasEip1559(
+                coin: assetId,
+                maxFeePerGas: estimation.medium.maxFeePerGas,
+                maxPriorityFeePerGas: estimation.medium.maxPriorityFeePerGas,
+                gas: _defaultEthGasLimit,
+              ),
+              estimatedTime: _getEthEstimatedTime(WithdrawalFeeLevel.medium),
+            ),
+            high: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.high,
+              feeInfo: FeeInfo.ethGasEip1559(
+                coin: assetId,
+                maxFeePerGas: estimation.high.maxFeePerGas,
+                maxPriorityFeePerGas: estimation.high.maxPriorityFeePerGas,
+                gas: _defaultEthGasLimit,
+              ),
+              estimatedTime: _getEthEstimatedTime(WithdrawalFeeLevel.high),
+            ),
+          );
+
+        case UtxoProtocol:
+          // UTXO-based protocols use per-kbyte fee estimation
+          final estimation = await _feeManager.getUtxoEstimatedFee(assetId);
+          return WithdrawalFeeOptions(
+            coin: assetId,
+            low: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.low,
+              feeInfo: FeeInfo.utxoPerKbyte(
+                coin: assetId,
+                amount: estimation.low.feePerKbyte,
+              ),
+              estimatedTime: estimation.low.estimatedTime,
+            ),
+            medium: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.medium,
+              feeInfo: FeeInfo.utxoPerKbyte(
+                coin: assetId,
+                amount: estimation.medium.feePerKbyte,
+              ),
+              estimatedTime: estimation.medium.estimatedTime,
+            ),
+            high: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.high,
+              feeInfo: FeeInfo.utxoPerKbyte(
+                coin: assetId,
+                amount: estimation.high.feePerKbyte,
+              ),
+              estimatedTime: estimation.high.estimatedTime,
+            ),
+          );
+
+        case TendermintProtocol:
+          // Tendermint/Cosmos protocols use gas price and gas limit
+          final estimation = await _feeManager.getTendermintEstimatedFee(
+            assetId,
+          );
+          return WithdrawalFeeOptions(
+            coin: assetId,
+            low: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.low,
+              feeInfo: FeeInfo.tendermint(
+                coin: assetId,
+                amount: estimation.low.totalFee,
+                gasLimit: estimation.low.gasLimit,
+              ),
+              estimatedTime: estimation.low.estimatedTime,
+            ),
+            medium: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.medium,
+              feeInfo: FeeInfo.tendermint(
+                coin: assetId,
+                amount: estimation.medium.totalFee,
+                gasLimit: estimation.medium.gasLimit,
+              ),
+              estimatedTime: estimation.medium.estimatedTime,
+            ),
+            high: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.high,
+              feeInfo: FeeInfo.tendermint(
+                coin: assetId,
+                amount: estimation.high.totalFee,
+                gasLimit: estimation.high.gasLimit,
+              ),
+              estimatedTime: estimation.high.estimatedTime,
+            ),
+          );
+
+        case QtumProtocol:
+          // QTUM uses similar gas model to Ethereum but with different fee structure
+          try {
+            final estimation = await _feeManager.getEthEstimatedFeePerGas(
+              assetId,
+            );
+            return WithdrawalFeeOptions(
+              coin: assetId,
+              low: WithdrawalFeeOption(
+                priority: WithdrawalFeeLevel.low,
+                feeInfo: FeeInfo.qrc20Gas(
+                  coin: assetId,
+                  gasPrice: estimation.low.maxFeePerGas,
+                  gasLimit: _defaultEthGasLimit,
+                ),
+                estimatedTime: _getEthEstimatedTime(WithdrawalFeeLevel.low),
+              ),
+              medium: WithdrawalFeeOption(
+                priority: WithdrawalFeeLevel.medium,
+                feeInfo: FeeInfo.qrc20Gas(
+                  coin: assetId,
+                  gasPrice: estimation.medium.maxFeePerGas,
+                  gasLimit: _defaultEthGasLimit,
+                ),
+                estimatedTime: _getEthEstimatedTime(WithdrawalFeeLevel.medium),
+              ),
+              high: WithdrawalFeeOption(
+                priority: WithdrawalFeeLevel.high,
+                feeInfo: FeeInfo.qrc20Gas(
+                  coin: assetId,
+                  gasPrice: estimation.high.maxFeePerGas,
+                  gasLimit: _defaultEthGasLimit,
+                ),
+                estimatedTime: _getEthEstimatedTime(WithdrawalFeeLevel.high),
+              ),
+            );
+          } catch (e) {
+            // Fallback to UTXO-style estimation if ETH estimation fails
+            final estimation = await _feeManager.getUtxoEstimatedFee(assetId);
+            return WithdrawalFeeOptions(
+              coin: assetId,
+              low: WithdrawalFeeOption(
+                priority: WithdrawalFeeLevel.low,
+                feeInfo: FeeInfo.utxoPerKbyte(
+                  coin: assetId,
+                  amount: estimation.low.feePerKbyte,
+                ),
+                estimatedTime: estimation.low.estimatedTime,
+              ),
+              medium: WithdrawalFeeOption(
+                priority: WithdrawalFeeLevel.medium,
+                feeInfo: FeeInfo.utxoPerKbyte(
+                  coin: assetId,
+                  amount: estimation.medium.feePerKbyte,
+                ),
+                estimatedTime: estimation.medium.estimatedTime,
+              ),
+              high: WithdrawalFeeOption(
+                priority: WithdrawalFeeLevel.high,
+                feeInfo: FeeInfo.utxoPerKbyte(
+                  coin: assetId,
+                  amount: estimation.high.feePerKbyte,
+                ),
+                estimatedTime: estimation.high.estimatedTime,
+              ),
+            );
+          }
+
+        case ZhtlcProtocol:
+          // ZHTLC (Zcash) uses UTXO-style fees
+          final estimation = await _feeManager.getUtxoEstimatedFee(assetId);
+          return WithdrawalFeeOptions(
+            coin: assetId,
+            low: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.low,
+              feeInfo: FeeInfo.utxoFixed(
+                coin: assetId,
+                amount: estimation.low.feePerKbyte * Decimal.fromInt(250),
+              ),
+              estimatedTime: estimation.low.estimatedTime,
+            ),
+            medium: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.medium,
+              feeInfo: FeeInfo.utxoFixed(
+                coin: assetId,
+                amount: estimation.medium.feePerKbyte * Decimal.fromInt(250),
+              ),
+              estimatedTime: estimation.medium.estimatedTime,
+            ),
+            high: WithdrawalFeeOption(
+              priority: WithdrawalFeeLevel.high,
+              feeInfo: FeeInfo.utxoFixed(
+                coin: assetId,
+                amount: estimation.high.feePerKbyte * Decimal.fromInt(250),
+              ),
+              estimatedTime: estimation.high.estimatedTime,
+            ),
+          );
+
+        default:
+          // For unknown protocols, return null to indicate unsupported
+          log('Fee options not supported for protocol ${protocol.runtimeType}');
+          return null;
+      }
+    } catch (e, stackTrace) {
+      // Log the error and stack trace for debugging purposes
+      log('Error while getting fee options for $assetId: $e');
+      log('Stack trace: $stackTrace');
+      return null;
+    }
+  }
+
   /// Creates a preview of a withdrawal operation without executing it.
   ///
   /// This method allows users to see what would happen if they executed the
   /// withdrawal, including fees, balance changes, and other transaction
   /// details, before committing to it.
   ///
+  /// **Note:** Fee estimation is currently disabled as the API endpoints are not yet available.
+  /// When fee estimation is disabled, withdrawals will proceed without automatic fee estimation.
+  /// TODO: Enable when the fee estimation API endpoints become available.
+  ///
   /// Parameters:
   /// - [parameters] - The withdrawal parameters defining the asset, amount,
-  ///   and destination
+  ///   destination, and optional fee priority
   ///
   /// Returns a [Future<WithdrawalPreview>] containing the estimated transaction
   /// details.
+  ///
+  /// Fee Priority:
+  /// - If no fee is specified, the method will estimate fees based on the
+  ///   feePriority parameter (defaults to medium) when fee estimation is enabled
+  /// - Low: Lowest cost, slowest confirmation
+  /// - Medium: Balanced cost and confirmation time
+  /// - High: Highest cost, fastest confirmation
   ///
   /// Throws:
   /// - [WithdrawalException] if the preview fails, with appropriate error code
@@ -166,6 +456,7 @@ class WithdrawalManager {
   /// Example:
   /// ```dart
   /// try {
+  ///   // Preview with default (medium) priority
   ///   final preview = await withdrawalManager.previewWithdrawal(
   ///     WithdrawParameters(
   ///       asset: 'ETH',
@@ -174,7 +465,17 @@ class WithdrawalManager {
   ///     ),
   ///   );
   ///
-  ///   print('Estimated fee: ${preview.fee.totalFee}');
+  ///   // Preview with low priority for cost estimation
+  ///   final lowFeePreview = await withdrawalManager.previewWithdrawal(
+  ///     WithdrawParameters(
+  ///       asset: 'ETH',
+  ///       toAddress: '0x1234...',
+  ///       amount: Decimal.parse('0.1'),
+  ///       feePriority: WithdrawalFeeLevel.low,
+  ///     ),
+  ///   );
+  ///
+  ///   print('Estimated fee: ${preview.fee}');
   ///   print('Balance change: ${preview.balanceChanges.netChange}');
   /// } catch (e) {
   ///   print('Preview failed: $e');
@@ -244,13 +545,24 @@ class WithdrawalManager {
   /// 3. Broadcasts it to the network
   /// 4. Tracks and reports progress
   ///
+  /// **Note:** Fee estimation is currently disabled as the API endpoints are not yet available.
+  /// When fee estimation is disabled, withdrawals will proceed without automatic fee estimation.
+  /// TODO: Enable when the fee estimation API endpoints become available.
+  ///
   /// Parameters:
   /// - [parameters] - The withdrawal parameters defining the asset, amount,
-  ///   and destination
+  ///   destination, and optional fee priority
   ///
   /// Returns a [Stream<WithdrawalProgress>] that emits progress updates
   /// throughout the operation. The final event will either contain the
   /// completed withdrawal result or an error.
+  ///
+  /// Fee Priority:
+  /// - If no fee is specified, the method will estimate fees based on the
+  ///   feePriority parameter (defaults to medium) when fee estimation is enabled
+  /// - Low: Lowest cost, slowest confirmation
+  /// - Medium: Balanced cost and confirmation time
+  /// - High: Highest cost, fastest confirmation
   ///
   /// Error handling:
   /// - Errors are emitted through the stream's error channel
@@ -263,11 +575,22 @@ class WithdrawalManager {
   ///
   /// Example:
   /// ```dart
+  /// // Basic withdrawal with default (medium) priority
   /// final progressStream = withdrawalManager.withdraw(
   ///   WithdrawParameters(
   ///     asset: 'BTC',
   ///     toAddress: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
   ///     amount: Decimal.parse('0.001'),
+  ///   ),
+  /// );
+  ///
+  /// // Withdrawal with high priority for faster confirmation
+  /// final fastProgressStream = withdrawalManager.withdraw(
+  ///   WithdrawParameters(
+  ///     asset: 'BTC',
+  ///     toAddress: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
+  ///     amount: Decimal.parse('0.001'),
+  ///     feePriority: WithdrawalFeeLevel.high,
   ///   ),
   /// );
   ///
@@ -299,10 +622,11 @@ class WithdrawalManager {
         return;
       }
 
-      final activationStatus =
-          await _activationManager.activateAsset(asset).last;
+      final activationResult = await _activationCoordinator.activateAsset(
+        asset,
+      );
 
-      if (activationStatus.isComplete && !activationStatus.isSuccess) {
+      if (activationResult.isFailure) {
         throw WithdrawalException(
           'Failed to activate asset ${parameters.asset}',
           WithdrawalErrorCode.unknownError,
@@ -422,14 +746,105 @@ class WithdrawalManager {
     return WithdrawalErrorCode.unknownError;
   }
 
-  /// Ensures fee parameters are set for the withdrawal.
+  /// Provides estimated confirmation times for Ethereum-based transactions.
   ///
-  /// If fee parameters are already provided, returns the original parameters.
-  /// Otherwise, estimates appropriate fees for the asset and adds them to the
-  /// parameters.
+  /// Returns user-friendly estimated confirmation times based on the fee priority level.
   ///
   /// Parameters:
-  /// - [params] - The original withdrawal parameters
+  /// - [priority] - The fee priority level
+  ///
+  /// Returns a string representing the estimated confirmation time.
+  String _getEthEstimatedTime(WithdrawalFeeLevel priority) {
+    switch (priority) {
+      case WithdrawalFeeLevel.low:
+        return '~10-15 min';
+      case WithdrawalFeeLevel.medium:
+        return '~2-5 min';
+      case WithdrawalFeeLevel.high:
+        return '~30 sec';
+    }
+  }
+
+  /// Selects the appropriate Ethereum fee level based on priority.
+  ///
+  /// Maps withdrawal priority levels to corresponding Ethereum fee estimation levels.
+  ///
+  /// Parameters:
+  /// - [estimation] - The fee estimation response
+  /// - [priority] - The desired priority level
+  ///
+  /// Returns the selected [EthFeeLevel].
+  EthFeeLevel _getEthFeeLevel(
+    EthEstimatedFeePerGas estimation,
+    WithdrawalFeeLevel priority,
+  ) {
+    switch (priority) {
+      case WithdrawalFeeLevel.low:
+        return estimation.low;
+      case WithdrawalFeeLevel.medium:
+        return estimation.medium;
+      case WithdrawalFeeLevel.high:
+        return estimation.high;
+    }
+  }
+
+  /// Selects the appropriate UTXO fee level based on priority.
+  ///
+  /// Maps withdrawal priority levels to corresponding UTXO fee estimation levels.
+  ///
+  /// Parameters:
+  /// - [estimation] - The fee estimation response
+  /// - [priority] - The desired priority level
+  ///
+  /// Returns the selected [UtxoFeeLevel].
+  UtxoFeeLevel _getUtxoFeeLevel(
+    UtxoEstimatedFee estimation,
+    WithdrawalFeeLevel priority,
+  ) {
+    switch (priority) {
+      case WithdrawalFeeLevel.low:
+        return estimation.low;
+      case WithdrawalFeeLevel.medium:
+        return estimation.medium;
+      case WithdrawalFeeLevel.high:
+        return estimation.high;
+    }
+  }
+
+  /// Selects the appropriate Tendermint fee level based on priority.
+  ///
+  /// Maps withdrawal priority levels to corresponding Tendermint fee estimation levels.
+  ///
+  /// Parameters:
+  /// - [estimation] - The fee estimation response
+  /// - [priority] - The desired priority level
+  ///
+  /// Returns the selected [TendermintFeeLevel].
+  TendermintFeeLevel _getTendermintFeeLevel(
+    TendermintEstimatedFee estimation,
+    WithdrawalFeeLevel priority,
+  ) {
+    switch (priority) {
+      case WithdrawalFeeLevel.low:
+        return estimation.low;
+      case WithdrawalFeeLevel.medium:
+        return estimation.medium;
+      case WithdrawalFeeLevel.high:
+        return estimation.high;
+    }
+  }
+
+  /// Ensures that withdrawal parameters have appropriate fee information.
+  ///
+  /// If the parameters already include fee information, they are returned unchanged.
+  /// Otherwise, the method attempts to estimate an appropriate fee based on the
+  /// asset's protocol type, current network conditions, and the specified priority level.
+  ///
+  /// **Note:** Fee estimation is currently disabled as the API endpoints are not yet available.
+  /// TODO: Enable when the fee estimation API endpoints become available.
+  ///
+  /// Parameters:
+  /// - [params] - The withdrawal parameters
   /// - [asset] - The asset being withdrawn
   ///
   /// Returns updated [WithdrawParameters] with fee information.
@@ -439,20 +854,114 @@ class WithdrawalManager {
   ) async {
     if (params.fee != null) return params;
 
+    // If fee estimation is disabled, return parameters without fee
+    if (!_feeEstimationEnabled) {
+      return params;
+    }
+
     try {
-      final estimation = await _feeManager.getEthEstimatedFeePerGas(
-        asset.id.id,
-      );
-      final fee = FeeInfo.ethGas(
-        coin: asset.id.id,
-        gasPrice: estimation.medium.maxFeePerGas,
-        gas: _defaultEthGasLimit,
-      );
+      final protocol = asset.protocol;
+      final priority = params.feePriority ?? WithdrawalFeeLevel.medium;
+      FeeInfo? fee;
+
+      switch (protocol.runtimeType) {
+        case Erc20Protocol:
+          // Ethereum-based protocols (ETH, ERC20 tokens) use gas estimation
+          final estimation = await _feeManager.getEthEstimatedFeePerGas(
+            asset.id.id,
+          );
+          final selectedLevel = _getEthFeeLevel(estimation, priority);
+          fee = FeeInfo.ethGasEip1559(
+            coin: asset.id.id,
+            maxFeePerGas: selectedLevel.maxFeePerGas,
+            maxPriorityFeePerGas: selectedLevel.maxPriorityFeePerGas,
+            gas: _defaultEthGasLimit,
+          );
+
+        case UtxoProtocol:
+          // UTXO-based protocols use per-kbyte fee estimation
+          final estimation = await _feeManager.getUtxoEstimatedFee(asset.id.id);
+          final selectedLevel = _getUtxoFeeLevel(estimation, priority);
+          fee = FeeInfo.utxoPerKbyte(
+            coin: asset.id.id,
+            amount: selectedLevel.feePerKbyte,
+          );
+
+        case TendermintProtocol:
+          // Tendermint/Cosmos protocols use gas price and gas limit
+          final estimation = await _feeManager.getTendermintEstimatedFee(
+            asset.id.id,
+          );
+          final selectedLevel = _getTendermintFeeLevel(estimation, priority);
+          fee = FeeInfo.tendermint(
+            coin: asset.id.id,
+            amount: selectedLevel.totalFee,
+            gasLimit: selectedLevel.gasLimit,
+          );
+
+        case QtumProtocol:
+          // QTUM uses similar gas model to Ethereum but different fee structure
+          try {
+            final estimation = await _feeManager.getEthEstimatedFeePerGas(
+              asset.id.id,
+            );
+            final selectedLevel = _getEthFeeLevel(estimation, priority);
+            fee = FeeInfo.qrc20Gas(
+              coin: asset.id.id,
+              gasPrice: selectedLevel.maxFeePerGas,
+              gasLimit: _defaultEthGasLimit,
+            );
+          } catch (e) {
+            // Fallback to UTXO-style estimation if ETH estimation fails
+            final estimation = await _feeManager.getUtxoEstimatedFee(
+              asset.id.id,
+            );
+            final selectedLevel = _getUtxoFeeLevel(estimation, priority);
+            fee = FeeInfo.utxoPerKbyte(
+              coin: asset.id.id,
+              amount: selectedLevel.feePerKbyte,
+            );
+          }
+
+        case ZhtlcProtocol:
+          // ZHTLC (Zcash) uses UTXO-style fees
+          final estimation = await _feeManager.getUtxoEstimatedFee(asset.id.id);
+          final selectedLevel = _getUtxoFeeLevel(estimation, priority);
+          fee = FeeInfo.utxoFixed(
+            coin: asset.id.id,
+            amount:
+                selectedLevel.feePerKbyte *
+                Decimal.fromInt(250), // Assume ~250 bytes
+          );
+
+        default:
+          // For unknown protocols, attempt ETH estimation as fallback
+          try {
+            final estimation = await _feeManager.getEthEstimatedFeePerGas(
+              asset.id.id,
+            );
+            final selectedLevel = _getEthFeeLevel(estimation, priority);
+            fee = FeeInfo.ethGasEip1559(
+              coin: asset.id.id,
+              maxFeePerGas: selectedLevel.maxFeePerGas,
+              maxPriorityFeePerGas: selectedLevel.maxPriorityFeePerGas,
+              gas: _defaultEthGasLimit,
+            );
+          } catch (e) {
+            log(
+              'No fee estimation available for protocol ${protocol.runtimeType}',
+            );
+            // Return original parameters without fee
+            return params;
+          }
+      }
+
       return WithdrawParameters(
         asset: params.asset,
         toAddress: params.toAddress,
         amount: params.amount,
         fee: fee,
+        feePriority: params.feePriority,
         from: params.from,
         memo: params.memo,
         ibcTransfer: params.ibcTransfer,
@@ -461,7 +970,7 @@ class WithdrawalManager {
       );
     } catch (e, stackTrace) {
       // Log the error and stack trace for debugging purposes
-      log('Error while estimating fee: $e');
+      log('Error while estimating fee for ${asset.id.id}: $e');
       log('Stack trace: $stackTrace');
       return params;
     }

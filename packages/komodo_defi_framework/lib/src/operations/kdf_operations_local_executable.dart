@@ -119,7 +119,6 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         executablePath,
         [sensitiveArgs.toJsonString()],
         environment: environment,
-        runInShell: true,
       );
 
       _logCallback('Launched executable: $executablePath');

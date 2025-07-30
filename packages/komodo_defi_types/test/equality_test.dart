@@ -7,26 +7,26 @@ void main() {
   group('Equality operators test', () {
     test('NewAddressInfo equality', () {
       final balance = BalanceInfo.zero();
-      
+
       final addressInfo1 = NewAddressInfo(
         address: 'test_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
-        balance: balance,
+        balances: {'TEST': balance},
       );
 
       final addressInfo2 = NewAddressInfo(
         address: 'test_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
-        balance: balance,
+        balances: {'TEST': balance},
       );
 
       final addressInfo3 = NewAddressInfo(
         address: 'different_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
-        balance: balance,
+        balances: {'TEST': balance},
       );
 
       expect(addressInfo1, equals(addressInfo2));
@@ -36,28 +36,31 @@ void main() {
 
     test('PubkeyInfo equality', () {
       final balance = BalanceInfo.zero();
-      
+
       final pubkeyInfo1 = PubkeyInfo(
         address: 'test_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
         balance: balance,
+        coinTicker: 'TEST',
         name: 'Test Name',
       );
 
       final pubkeyInfo2 = PubkeyInfo(
         address: 'test_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
         balance: balance,
+        coinTicker: 'TEST',
         name: 'Test Name',
       );
 
       final pubkeyInfo3 = PubkeyInfo(
         address: 'test_address',
-        derivationPath: 'm/44\'/0\'/0\'/0/0',
+        derivationPath: "m/44'/0'/0'/0/0",
         chain: 'test_chain',
         balance: balance,
+        coinTicker: 'TEST',
         name: 'Different Name',
       );
 
