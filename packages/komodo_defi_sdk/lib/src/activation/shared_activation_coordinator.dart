@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer' show log;
 
+import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -15,9 +16,14 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// fail with "No such coin" errors. The coordinator waits for coin availability
 /// verification before declaring activation successful.
 class SharedActivationCoordinator {
-  SharedActivationCoordinator(this._activationManager);
+  SharedActivationCoordinator(this._activationManager, this._auth) {
+    // Listen for auth state changes
+    _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
+  }
 
   final ActivationManager _activationManager;
+  final KomodoDefiLocalAuth _auth;
+  StreamSubscription<KdfUser?>? _authSubscription;
 
   /// Track pending activations to prevent duplicates
   final Map<AssetId, Completer<ActivationResult>> _pendingActivations = {};
@@ -25,7 +31,65 @@ class SharedActivationCoordinator {
   /// Track active activation streams for joining
   final Map<AssetId, StreamController<ActivationProgress>> _activeStreams = {};
 
+  /// Track failed activations
+  final Set<AssetId> _failedActivations = <AssetId>{};
+
+  /// Stream controller for broadcasting failed activations changes
+  final StreamController<Set<AssetId>> _failedActivationsController =
+      StreamController<Set<AssetId>>.broadcast();
+
+  /// Stream controller for broadcasting pending activations changes
+  final StreamController<Set<AssetId>> _pendingActivationsController =
+      StreamController<Set<AssetId>>.broadcast();
+
+  /// Current wallet ID being tracked
+  WalletId? _currentWalletId;
+
   bool _isDisposed = false;
+
+  /// Handle authentication state changes
+  Future<void> _handleAuthStateChanged(KdfUser? user) async {
+    if (_isDisposed) return;
+    final newWalletId = user?.walletId;
+    // If the wallet ID has changed, reset all state
+    if (_currentWalletId != newWalletId) {
+      await _resetState();
+      _currentWalletId = newWalletId;
+    }
+  }
+
+  /// Reset all internal state when wallet changes
+  Future<void> _resetState() async {
+    log(
+      'Resetting SharedActivationCoordinator state due to wallet change',
+      name: 'SharedActivationCoordinator',
+    );
+
+    // Cancel all pending activations
+    for (final completer in _pendingActivations.values) {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          StateError('Wallet changed, activation cancelled'),
+        );
+      }
+    }
+    _pendingActivations.clear();
+
+    // Close all active streams
+    for (final controller in _activeStreams.values) {
+      if (!controller.isClosed) {
+        controller.close();
+      }
+    }
+    _activeStreams.clear();
+
+    // Clear failed activations
+    _failedActivations.clear();
+
+    // Notify stream watchers of state changes
+    _broadcastPendingActivations();
+    _broadcastFailedActivations();
+  }
 
   /// Activate an asset with coordination across all managers.
   /// Returns a Future that completes when activation is finished.
@@ -54,6 +118,14 @@ class SharedActivationCoordinator {
     final completer = Completer<ActivationResult>();
     _pendingActivations[asset.id] = completer;
 
+    // Clear any previous failed status for this asset
+    if (_failedActivations.remove(asset.id)) {
+      _broadcastFailedActivations();
+    }
+
+    // Broadcast that this asset is now pending
+    _broadcastPendingActivations();
+
     try {
       // Subscribe to activation stream and wait for completion
       await for (final progress in _activationManager.activateAsset(asset)) {
@@ -67,6 +139,8 @@ class SharedActivationCoordinator {
                 completer.complete(result);
               }
             } catch (e) {
+              _failedActivations.add(asset.id);
+              _broadcastFailedActivations();
               final result = ActivationResult.failure(
                 asset.id,
                 'Activation completed but coin did not become available: $e',
@@ -76,6 +150,8 @@ class SharedActivationCoordinator {
               }
             }
           } else {
+            _failedActivations.add(asset.id);
+            _broadcastFailedActivations();
             final result = ActivationResult.failure(
               asset.id,
               progress.errorMessage ?? 'Unknown activation error',
@@ -89,6 +165,8 @@ class SharedActivationCoordinator {
       }
     } catch (e, stackTrace) {
       if (!completer.isCompleted) {
+        _failedActivations.add(asset.id);
+        _broadcastFailedActivations();
         log(
           'Activation failed for ${asset.id.id}: $e',
           name: 'SharedActivationCoordinator',
@@ -99,6 +177,7 @@ class SharedActivationCoordinator {
       }
     } finally {
       _pendingActivations.remove(asset.id);
+      _broadcastPendingActivations();
     }
 
     return completer.future;
@@ -185,6 +264,47 @@ class SharedActivationCoordinator {
     return _activationManager.isAssetActive(assetId);
   }
 
+  /// Watch failed activations.
+  /// Returns a stream that emits the current set of failed asset IDs
+  /// whenever it changes.
+  Stream<Set<AssetId>> watchFailedActivations() {
+    if (_isDisposed) {
+      throw StateError('SharedActivationCoordinator has been disposed');
+    }
+    return _failedActivationsController.stream;
+  }
+
+  /// Watch pending activations.
+  /// Returns a stream that emits the current set of pending asset IDs
+  /// whenever it changes.
+  Stream<Set<AssetId>> watchPendingActivations() {
+    if (_isDisposed) {
+      throw StateError('SharedActivationCoordinator has been disposed');
+    }
+    return _pendingActivationsController.stream;
+  }
+
+  /// Get current set of failed activations
+  Set<AssetId> get failedActivations => Set<AssetId>.from(_failedActivations);
+
+  /// Get current set of pending activations
+  Set<AssetId> get pendingActivations => _pendingActivations.keys.toSet();
+
+  /// Clear failed activation status for an asset
+  void clearFailedActivation(AssetId assetId) {
+    if (_failedActivations.remove(assetId)) {
+      _broadcastFailedActivations();
+    }
+  }
+
+  /// Clear all failed activations
+  void clearAllFailedActivations() {
+    if (_failedActivations.isNotEmpty) {
+      _failedActivations.clear();
+      _broadcastFailedActivations();
+    }
+  }
+
   /// Wait for a coin to become available after activation completes.
   /// This addresses the timing issue where activation RPC completes successfully
   /// but the coin needs a few milliseconds to appear in the enabled coins list.
@@ -231,6 +351,20 @@ class SharedActivationCoordinator {
     );
   }
 
+  /// Broadcast current failed activations to stream listeners
+  void _broadcastFailedActivations() {
+    if (!_failedActivationsController.isClosed) {
+      _failedActivationsController.add(Set<AssetId>.from(_failedActivations));
+    }
+  }
+
+  /// Broadcast current pending activations to stream listeners
+  void _broadcastPendingActivations() {
+    if (!_pendingActivationsController.isClosed) {
+      _pendingActivationsController.add(_pendingActivations.keys.toSet());
+    }
+  }
+
   /// Dispose of the coordinator and clean up resources
   Future<void> dispose() async {
     if (_isDisposed) return;
@@ -240,6 +374,10 @@ class SharedActivationCoordinator {
       'Disposing SharedActivationCoordinator',
       name: 'SharedActivationCoordinator',
     );
+
+    // Cancel auth subscription
+    await _authSubscription?.cancel();
+    _authSubscription = null;
 
     // Cancel all pending activations
     for (final completer in _pendingActivations.values) {
@@ -258,6 +396,17 @@ class SharedActivationCoordinator {
       }
     }
     _activeStreams.clear();
+
+    // Close state tracking streams
+    if (!_failedActivationsController.isClosed) {
+      _failedActivationsController.close();
+    }
+    if (!_pendingActivationsController.isClosed) {
+      _pendingActivationsController.close();
+    }
+
+    // Clear state tracking sets
+    _failedActivations.clear();
   }
 }
 

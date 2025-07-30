@@ -1,5 +1,6 @@
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
 import 'package:komodo_defi_sdk/src/security/private_key_conversion_extension.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -15,11 +16,17 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// handle returned private keys securely.
 class SecurityManager {
   /// Creates a new [SecurityManager] instance.
-  SecurityManager(this._client, this._auth, this._assetProvider);
+  SecurityManager(
+    this._client,
+    this._auth,
+    this._assetProvider,
+    this._activationCoordinator,
+  );
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final IAssetProvider _assetProvider;
+  final SharedActivationCoordinator _activationCoordinator;
 
   /// Gets private keys for the specified assets.
   ///
@@ -36,7 +43,8 @@ class SecurityManager {
   ///
   /// Parameters:
   /// - [assets]: List of asset IDs to export keys for. If null, will use all
-  ///   currently activated assets
+  ///   assets that have been successfully activated, are pending activation,
+  ///   or have failed activation
   /// - [mode]: Export mode (HD or Iguana). If null, defaults based on wallet
   ///   type
   /// - [startIndex]: Starting address index for HD mode (default: 0)
@@ -61,7 +69,7 @@ class SecurityManager {
   /// ```dart
   /// // Check if authenticated first
   /// if (await securityManager.isAuthenticated) {
-  ///   // Get private keys for all activated assets
+  ///   // Get private keys for all assets (activated, pending, or failed)
   ///   final privateKeyMap = await securityManager.getPrivateKeys();
   ///
   ///   // Get private keys for specific assets
@@ -77,7 +85,8 @@ class SecurityManager {
   ///
   ///     for (final privateKey in privateKeys) {
   ///       print('Asset: ${assetId.id}');
-  ///       print('Public Key: ${privateKey.publicKey}');
+  ///       print('Public Key (secp256k1): ${privateKey.publicKeySecp256k1}');
+  ///       print('Public Key Address: ${privateKey.publicKeyAddress}');
   ///       print('Derivation Path: ${privateKey.hdInfo?.derivationPath ?? 'N/A'}');
   ///       // Handle private key securely: privateKey.privateKey
   ///     }
@@ -97,14 +106,16 @@ class SecurityManager {
       throw AuthException.notSignedIn();
     }
 
-    // If no assets specified, use all activated assets
-    List<AssetId> targetAssets;
-    if (assets == null) {
-      final activatedAssets = await _assetProvider.getActivatedAssets();
-      targetAssets = activatedAssets.map((Asset asset) => asset.id).toList();
-    } else {
-      targetAssets = assets;
-    }
+    // If no assets specified, use all assets for which their activation is
+    // successful, pending, or failed.
+    final targetAssets =
+        assets != null
+            ? assets.toSet()
+            : {
+              ...(await _assetProvider.getActivatedAssets()).map((a) => a.id),
+              ..._activationCoordinator.pendingActivations,
+              ..._activationCoordinator.failedActivations,
+            };
 
     // Validate parameters
     if (targetAssets.isEmpty) {

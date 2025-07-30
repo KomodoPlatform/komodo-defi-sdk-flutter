@@ -46,7 +46,8 @@ extension PrivateKeyConversionExtension on GetPrivateKeysResponse {
 
         final privateKey = PrivateKey(
           assetId: assetId,
-          publicKey: coinKeyInfo.pubkey,
+          publicKeySecp256k1: coinKeyInfo.publicKeySecp256k1,
+          publicKeyAddress: coinKeyInfo.publicKeyAddress,
           privateKey: coinKeyInfo.privKey,
           // No HD info for standard keys
         );
@@ -68,7 +69,8 @@ extension PrivateKeyConversionExtension on GetPrivateKeysResponse {
         for (final addressInfo in hdCoinInfo.addresses) {
           final privateKey = PrivateKey(
             assetId: assetId,
-            publicKey: addressInfo.pubkey,
+            publicKeySecp256k1: addressInfo.publicKeySecp256k1,
+            publicKeyAddress: addressInfo.publicKeyAddress,
             privateKey: addressInfo.privKey,
             hdInfo: PrivateKeyHdInfo(
               derivationPath: addressInfo.derivationPath,

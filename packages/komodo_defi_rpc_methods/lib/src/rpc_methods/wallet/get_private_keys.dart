@@ -33,30 +33,30 @@ enum KeyExportMode {
 class CoinKeyInfo {
   const CoinKeyInfo({
     required this.coin,
-    required this.pubkey,
-    required this.address,
+    required this.publicKeySecp256k1,
+    required this.publicKeyAddress,
     required this.privKey,
   });
 
   factory CoinKeyInfo.fromJson(JsonMap json) {
     return CoinKeyInfo(
       coin: json.value<String>('coin'),
-      pubkey: json.value<String>('pubkey'),
-      address: json.value<String>('address'),
+      publicKeySecp256k1: json.value<String>('pubkey'),
+      publicKeyAddress: json.value<String>('address'),
       privKey: json.value<String>('priv_key'),
     );
   }
 
   final String coin;
-  final String pubkey;
-  final String address;
+  final String publicKeySecp256k1;
+  final String publicKeyAddress;
   final String privKey;
 
   JsonMap toJson() {
     return {
       'coin': coin,
-      'pubkey': pubkey,
-      'address': address,
+      'pubkey': publicKeySecp256k1,
+      'address': publicKeyAddress,
       'priv_key': privKey,
     };
   }
@@ -66,30 +66,30 @@ class CoinKeyInfo {
 class HdAddressInfo {
   const HdAddressInfo({
     required this.derivationPath,
-    required this.pubkey,
-    required this.address,
+    required this.publicKeySecp256k1,
+    required this.publicKeyAddress,
     required this.privKey,
   });
 
   factory HdAddressInfo.fromJson(JsonMap json) {
     return HdAddressInfo(
       derivationPath: json.value<String>('derivation_path'),
-      pubkey: json.value<String>('pubkey'),
-      address: json.value<String>('address'),
+      publicKeySecp256k1: json.value<String>('pubkey'),
+      publicKeyAddress: json.value<String>('address'),
       privKey: json.value<String>('priv_key'),
     );
   }
 
   final String derivationPath;
-  final String pubkey;
-  final String address;
+  final String publicKeySecp256k1;
+  final String publicKeyAddress;
   final String privKey;
 
   JsonMap toJson() {
     return {
       'derivation_path': derivationPath,
-      'pubkey': pubkey,
-      'address': address,
+      'pubkey': publicKeySecp256k1,
+      'address': publicKeyAddress,
       'priv_key': privKey,
     };
   }

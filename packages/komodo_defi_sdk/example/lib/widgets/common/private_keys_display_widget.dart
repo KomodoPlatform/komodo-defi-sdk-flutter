@@ -132,8 +132,9 @@ class _PrivateKeyItem extends StatelessWidget {
     final derivationPath = privateKey.hdInfo?.derivationPath;
     final displayText =
         'Private Key: ${privateKey.privateKey}\n'
-        'Public Key: ${privateKey.publicKey}'
-        '${derivationPath != null ? '\nPath: $derivationPath' : ''}';
+        'Public Key (secp256k1): ${privateKey.publicKeySecp256k1}\n'
+        'Public Key Address: ${privateKey.publicKeyAddress}'
+        '${derivationPath != null ? '\nDerivation Path: $derivationPath' : ''}';
 
     return ListTile(
       contentPadding: padding,
@@ -150,7 +151,7 @@ class _PrivateKeyItem extends StatelessWidget {
         ),
       ),
       subtitle: Text(
-        'Public: ${privateKey.publicKey}',
+        'Address: ${privateKey.publicKeyAddress}',
         style: TextStyle(fontSize: padding.horizontal > 20 ? 10 : 12),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -169,7 +170,7 @@ class _PrivateKeyItem extends StatelessWidget {
         },
       ),
       onTap: () {
-        showDialog(
+        showDialog<void>(
           context: context,
           builder:
               (context) => AlertDialog(

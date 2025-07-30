@@ -115,15 +115,17 @@ Future<void> bootstrap({
     final activationManager = await container.getAsync<ActivationManager>();
     final balanceManager = await container.getAsync<BalanceManager>();
 
-    final coordinator = SharedActivationCoordinator(activationManager);
+    final coordinator = SharedActivationCoordinator(
+      activationManager,
+      await container.getAsync<KomodoDefiLocalAuth>(),
+    );
 
-    // Now that we have the SharedActivationCoordinator, set it in BalanceManager
     if (balanceManager.activationCoordinator == null) {
       balanceManager.setActivationCoordinator(coordinator);
     }
 
     return coordinator;
-  }, dependsOn: [ActivationManager, BalanceManager]);
+  }, dependsOn: [ActivationManager, BalanceManager, KomodoDefiLocalAuth]);
 
   // Register remaining managers
   container.registerSingletonAsync<PubkeyManager>(() async {
@@ -231,12 +233,27 @@ Future<void> bootstrap({
     ],
   );
 
-  container.registerSingletonAsync<SecurityManager>(() async {
-    final client = await container.getAsync<ApiClient>();
-    final auth = await container.getAsync<KomodoDefiLocalAuth>();
-    final assetProvider = await container.getAsync<AssetManager>();
-    return SecurityManager(client, auth, assetProvider);
-  }, dependsOn: [ApiClient, KomodoDefiLocalAuth, AssetManager]);
+  container.registerSingletonAsync<SecurityManager>(
+    () async {
+      final client = await container.getAsync<ApiClient>();
+      final auth = await container.getAsync<KomodoDefiLocalAuth>();
+      final assetProvider = await container.getAsync<AssetManager>();
+      final activationCoordinator =
+          await container.getAsync<SharedActivationCoordinator>();
+      return SecurityManager(
+        client,
+        auth,
+        assetProvider,
+        activationCoordinator,
+      );
+    },
+    dependsOn: [
+      ApiClient,
+      KomodoDefiLocalAuth,
+      AssetManager,
+      SharedActivationCoordinator,
+    ],
+  );
 
   // Wait for all async singletons to initialize
   await container.allReady();
