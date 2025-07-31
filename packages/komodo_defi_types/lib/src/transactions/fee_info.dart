@@ -5,10 +5,11 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 part 'fee_info.freezed.dart';
 // We are doing manual fromJson/toJson, so no need for part 'fee_info.g.dart';
 
-/// A union representing six possible fee types:
+/// A union representing seven possible fee types:
 /// - UtxoFixed
 /// - UtxoPerKbyte
-/// - EthGas
+/// - EthGas (legacy)
+/// - EthGasEip1559 (EIP1559)
 /// - Qrc20Gas
 /// - CosmosGas
 /// - Tendermint
@@ -46,6 +47,18 @@ sealed class FeeInfo with _$FeeInfo {
           gas: json['gas'] as int,
           totalGasFee: totalGasFee,
         );
+      case 'EthGasEip1559':
+        final totalGasFee = json['total_fee'] != null
+            ? Decimal.parse(json['total_fee'].toString())
+            : null;
+        return FeeInfo.ethGasEip1559(
+          coin: json['coin'] as String? ?? '',
+          maxFeePerGas: Decimal.parse(json['max_fee_per_gas'].toString()),
+          maxPriorityFeePerGas:
+              Decimal.parse(json['max_priority_fee_per_gas'].toString()),
+          gas: json['gas'] as int,
+          totalGasFee: totalGasFee,
+        );
       case 'Qrc20Gas':
         final totalGasFee = json['total_gas_fee'] != null
             ? Decimal.parse(json['total_gas_fee'].toString())
@@ -74,7 +87,7 @@ sealed class FeeInfo with _$FeeInfo {
         throw ArgumentError('Unknown fee type: $type');
     }
   }
-  // A private constructor so that we can add custom getters/methods.
+
   const FeeInfo._();
 
   /// 1) A *fixed* fee in coin units (e.g. "0.0001 BTC").
@@ -92,7 +105,7 @@ sealed class FeeInfo with _$FeeInfo {
     required Decimal amount,
   }) = FeeInfoUtxoPerKbyte;
 
-  /// 3) ETH-like gas: you specify *gasPrice* (in ETH) and *gas* (units).
+  /// 3) ETH-like gas (legacy): you specify *gasPrice* (in ETH) and *gas* (units).
   ///
   /// Example JSON:
   /// ```json
@@ -120,7 +133,39 @@ sealed class FeeInfo with _$FeeInfo {
     Decimal? totalGasFee,
   }) = FeeInfoEthGas;
 
-  /// 4) Qtum/QRC20-like gas, specifying `gasPrice` (in coin units) and `gasLimit`.
+  /// 4) ETH-like gas (EIP1559): you specify *maxFeePerGas* and *maxPriorityFeePerGas*.
+  ///
+  /// Example JSON:
+  /// ```json
+  /// {
+  ///   "type": "EthGasEip1559",
+  ///   "coin": "ETH",
+  ///   "max_fee_per_gas": "0.000000003",
+  ///   "max_priority_fee_per_gas": "0.000000001",
+  ///   "gas": 21000,
+  ///   "total_fee": "0.000021"
+  /// }
+  /// ```
+  /// EIP1559 transactions use maxFeePerGas and maxPriorityFeePerGas instead of gasPrice.
+  /// If `totalGasFee` is provided, it will be used directly instead of calculating.
+  const factory FeeInfo.ethGasEip1559({
+    required String coin,
+
+    /// Maximum fee per gas in ETH. e.g. "0.000000003" => 3 Gwei
+    required Decimal maxFeePerGas,
+
+    /// Maximum priority fee per gas in ETH. e.g. "0.000000001" => 1 Gwei
+    required Decimal maxPriorityFeePerGas,
+
+    /// Gas limit (number of gas units)
+    required int gas,
+
+    /// Optional total fee override. If provided, this value will be used directly
+    /// instead of calculating from maxFeePerGas * gas.
+    Decimal? totalGasFee,
+  }) = FeeInfoEthGasEip1559;
+
+  /// 5) Qtum/QRC20-like gas, specifying `gasPrice` (in coin units) and `gasLimit`.
   const factory FeeInfo.qrc20Gas({
     required String coin,
 
@@ -135,7 +180,7 @@ sealed class FeeInfo with _$FeeInfo {
     Decimal? totalGasFee,
   }) = FeeInfoQrc20Gas;
 
-  /// 5) Cosmos-like gas, specifying `gasPrice` (in coin units) and `gasLimit`.
+  /// 6) Cosmos-like gas, specifying `gasPrice` (in coin units) and `gasLimit`.
   ///
   /// Example JSON:
   /// ```json
@@ -156,7 +201,7 @@ sealed class FeeInfo with _$FeeInfo {
     required int gasLimit,
   }) = FeeInfoCosmosGas;
 
-  /// 6) Tendermint fee, with fixed `amount` and `gasLimit`.
+  /// 7) Tendermint fee, with fixed `amount` and `gasLimit`.
   ///
   /// Example JSON:
   /// ```json
@@ -184,6 +229,12 @@ sealed class FeeInfo with _$FeeInfo {
         FeeInfoUtxoPerKbyte(:final amount) => amount,
         FeeInfoEthGas(:final gasPrice, :final gas, :final totalGasFee) =>
           totalGasFee ?? (gasPrice * Decimal.fromInt(gas)),
+        FeeInfoEthGasEip1559(
+          :final maxFeePerGas,
+          :final gas,
+          :final totalGasFee
+        ) =>
+          totalGasFee ?? (maxFeePerGas * Decimal.fromInt(gas)),
         FeeInfoQrc20Gas(:final gasPrice, :final gasLimit, :final totalGasFee) =>
           totalGasFee ?? (gasPrice * Decimal.fromInt(gasLimit)),
         FeeInfoCosmosGas(:final gasPrice, :final gasLimit) =>
@@ -210,9 +261,24 @@ sealed class FeeInfo with _$FeeInfo {
           :final totalGasFee
         ) =>
           {
-            'type': 'Eth',
+            'type': 'EthGas',
             'coin': coin,
             'gas_price': gasPrice.toString(),
+            'gas': gas,
+            if (totalGasFee != null) 'total_fee': totalGasFee.toString(),
+          },
+        FeeInfoEthGasEip1559(
+          :final coin,
+          :final maxFeePerGas,
+          :final maxPriorityFeePerGas,
+          :final gas,
+          :final totalGasFee
+        ) =>
+          {
+            'type': 'EthGasEip1559',
+            'coin': coin,
+            'max_fee_per_gas': maxFeePerGas.toString(),
+            'max_priority_fee_per_gas': maxPriorityFeePerGas.toString(),
             'gas': gas,
             if (totalGasFee != null) 'total_fee': totalGasFee.toString(),
           },
@@ -239,7 +305,7 @@ sealed class FeeInfo with _$FeeInfo {
         FeeInfoTendermint(:final coin, :final amount, :final gasLimit) => {
             'type': 'CosmosGas',
             'coin': coin,
-            'gas_price': gasLimit > 0 
+            'gas_price': gasLimit > 0
                 ? (amount / Decimal.fromInt(gasLimit)).toDouble()
                 : 0.0,
             'gas_limit': gasLimit,
@@ -256,6 +322,7 @@ extension FeeInfoMaybeMap on FeeInfo {
     TResult Function(FeeInfoUtxoFixed value)? utxoFixed,
     TResult Function(FeeInfoUtxoPerKbyte value)? utxoPerKbyte,
     TResult Function(FeeInfoEthGas value)? ethGas,
+    TResult Function(FeeInfoEthGasEip1559 value)? ethGasEip1559,
     TResult Function(FeeInfoQrc20Gas value)? qrc20Gas,
     TResult Function(FeeInfoCosmosGas value)? cosmosGas,
     TResult Function(FeeInfoTendermint value)? tendermint,
@@ -265,6 +332,8 @@ extension FeeInfoMaybeMap on FeeInfo {
         final FeeInfoUtxoPerKbyte fee when utxoPerKbyte != null =>
           utxoPerKbyte(fee),
         final FeeInfoEthGas fee when ethGas != null => ethGas(fee),
+        final FeeInfoEthGasEip1559 fee when ethGasEip1559 != null =>
+          ethGasEip1559(fee),
         final FeeInfoQrc20Gas fee when qrc20Gas != null => qrc20Gas(fee),
         final FeeInfoCosmosGas fee when cosmosGas != null => cosmosGas(fee),
         final FeeInfoTendermint fee when tendermint != null => tendermint(fee),

@@ -50,6 +50,9 @@ class SiaProtocol extends ProtocolClass {
   bool get requiresHdWallet => false;
 
   @override
+  bool get isMemoSupported => false;
+
+  @override
   Uri? explorerTxUrl(String txHash) {
     // SIA uses address-based event URLs instead of transaction hashes
     return null;

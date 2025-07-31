@@ -112,7 +112,7 @@ class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
 class TaskInitTrezorInit
     extends BaseRequest<NewTaskResponse, GeneralErrorResponse> {
   TaskInitTrezorInit({this.devicePubkey, super.rpcPass})
-    : super(method: 'task::init_trezor::init', mmrpc: '2.0');
+    : super(method: 'task::init_trezor::init', mmrpc: RpcVersion.v2_0);
 
   final String? devicePubkey;
 
@@ -134,7 +134,7 @@ class TaskInitTrezorStatus
     required this.taskId,
     this.forgetIfFinished = true,
     super.rpcPass,
-  }) : super(method: 'task::init_trezor::status', mmrpc: '2.0');
+  }) : super(method: 'task::init_trezor::status', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final bool forgetIfFinished;
@@ -154,7 +154,7 @@ class TaskInitTrezorStatus
 class TaskInitTrezorCancel
     extends BaseRequest<TrezorCancelResponse, GeneralErrorResponse> {
   TaskInitTrezorCancel({required this.taskId, super.rpcPass})
-    : super(method: 'task::init_trezor::cancel', mmrpc: '2.0');
+    : super(method: 'task::init_trezor::cancel', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
 
@@ -176,7 +176,7 @@ class TaskInitTrezorUserAction
     required this.taskId,
     required this.userAction,
     super.rpcPass,
-  }) : super(method: 'task::init_trezor::user_action', mmrpc: '2.0');
+  }) : super(method: 'task::init_trezor::user_action', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final TrezorUserActionData userAction;

@@ -44,13 +44,13 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin
 
 SPEC CHECKSUMS:
-  flutter_secure_storage_darwin: 12d2375c690785d97a4e586f15f11be5ae35d5b0
+  flutter_secure_storage_darwin: ce237a8775b39723566dc72571190a3769d70468
   FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
-  komodo_defi_framework: 263b99ca54a5e732a6593938d0a88e31c30a7f81
-  local_auth_darwin: 66e40372f1c29f383a314c738c7446e2f7fdadc3
-  mobile_scanner: 77265f3dc8d580810e91849d4a0811a90467ed5e
-  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
-  shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
+  komodo_defi_framework: 725599127b357521f4567b16192bf07d7ad1d4b0
+  local_auth_darwin: 553ce4f9b16d3fdfeafce9cf042e7c9f77c1c391
+  mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
+  path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
+  shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
 
 PODFILE CHECKSUM: 236401fc2c932af29a9fcf0e97baeeb2d750d367
 

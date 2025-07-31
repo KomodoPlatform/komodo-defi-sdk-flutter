@@ -6,7 +6,7 @@ class TaskEnableUtxoInit
     required this.ticker,
     required this.params,
     super.rpcPass,
-  }) : super(method: 'task::enable_utxo::init', mmrpc: '2.0');
+  }) : super(method: 'task::enable_utxo::init', mmrpc: RpcVersion.v2_0);
 
   final String ticker;
 

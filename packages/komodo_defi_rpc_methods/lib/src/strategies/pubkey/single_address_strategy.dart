@@ -18,6 +18,7 @@ class SingleAddressStrategy extends PubkeyStrategy {
           balance: balanceInfo.balance,
           derivationPath: null,
           chain: null,
+          coinTicker: assetId.id,
         ),
       ],
       availableAddressesCount: 0,

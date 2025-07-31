@@ -138,17 +138,20 @@ class GetNewAddressTaskStatusResponse extends BaseResponse {
   }
 
   /// Convert this RPC response into a [NewAddressState].
-  NewAddressState toNewAddressState(int taskId) {
+  NewAddressState toNewAddressState(int taskId, String coinTicker) {
     switch (status) {
       case SyncStatusEnum.success:
         final addr = details.data!;
+        // Get the balance for the specific coin, or use the first balance if not found
+        final coinBalance = addr.getBalanceForCoin(coinTicker) ?? addr.balance;
         return NewAddressState(
           status: NewAddressStatus.completed,
           address: PubkeyInfo(
             address: addr.address,
             derivationPath: addr.derivationPath,
             chain: addr.chain,
-            balance: addr.balance,
+            balance: coinBalance,
+            coinTicker: coinTicker,
           ),
           taskId: taskId,
         );

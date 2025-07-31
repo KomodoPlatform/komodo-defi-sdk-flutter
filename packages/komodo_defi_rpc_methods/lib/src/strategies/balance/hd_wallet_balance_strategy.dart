@@ -195,12 +195,19 @@ class HDWalletBalanceStrategy extends BalanceStrategy {
   /// Determine if an error is likely transient and worth retrying
   bool _isTransientError(Object error) {
     final errorString = error.toString().toLowerCase();
-    return errorString.contains('connection') ||
-        errorString.contains('timeout') ||
-        errorString.contains('temporary') ||
-        errorString.contains('socket') ||
-        errorString.contains('network') ||
-        errorString.contains('unavailable');
+    return [
+      'connection',
+      'timeout',
+      'temporary',
+      'socket',
+      'network',
+      'unavailable',
+      // Common transient error keywords
+      'no such coin',
+      'coin not found',
+      'not activated',
+      'invalid coin',
+    ].any(errorString.contains);
   }
 
   @override
@@ -274,7 +281,9 @@ class HDWalletBalanceStrategy extends BalanceStrategy {
 
   @override
   bool protocolSupported(ProtocolClass protocol) {
-    // Most protocols support HD wallets, but implementation may vary
+    // HD wallet balance strategy supports protocols that can handle multiple addresses
+    // This includes UTXO-based protocols and EVM protocols
+    // Tendermint protocols use single addresses only
     return protocol.supportsMultipleAddresses;
   }
 }

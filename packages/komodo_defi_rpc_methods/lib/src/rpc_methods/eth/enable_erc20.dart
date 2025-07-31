@@ -7,7 +7,7 @@ class EnableErc20Request
     required String rpcPass,
     required this.ticker,
     required this.activationParams,
-  }) : super(method: 'enable_erc20', rpcPass: rpcPass, mmrpc: '2.0');
+  }) : super(method: 'enable_erc20', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   final String ticker;
   final Erc20ActivationParams activationParams;
