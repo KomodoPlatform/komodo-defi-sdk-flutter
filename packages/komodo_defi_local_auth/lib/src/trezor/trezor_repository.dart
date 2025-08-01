@@ -209,12 +209,15 @@ class TrezorRepository {
   ///
   /// The stream immediately yields the current status, then continues to poll
   /// using [pollInterval]. If the status changes, a new value is emitted. The
-  /// stream closes once a `Disconnected` status is observed.
+  /// stream closes once a `Disconnected` status is observed or [maxDuration] is reached.
   Stream<TrezorConnectionStatus> watchConnectionStatus({
     String? devicePubkey,
     Duration pollInterval = const Duration(seconds: 1),
+    Duration maxDuration = const Duration(minutes: 30),
   }) async* {
     TrezorConnectionStatus? last;
+    final stopwatch = Stopwatch()..start();
+    
     try {
       last = await getConnectionStatus(devicePubkey: devicePubkey);
       yield last;
@@ -226,7 +229,7 @@ class TrezorRepository {
       );
     }
 
-    while (last!.shouldContinueMonitoring) {
+    while (last!.shouldContinueMonitoring && stopwatch.elapsed < maxDuration) {
       await Future<void>.delayed(pollInterval);
       try {
         final current = await getConnectionStatus(devicePubkey: devicePubkey);
@@ -238,6 +241,10 @@ class TrezorRepository {
         yield TrezorConnectionStatus.disconnected;
         return;
       }
+    }
+    
+    if (stopwatch.elapsed >= maxDuration) {
+      yield TrezorConnectionStatus.unreachable;
     }
   }
 

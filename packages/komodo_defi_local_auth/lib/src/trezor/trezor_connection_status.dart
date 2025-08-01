@@ -53,7 +53,8 @@ enum TrezorConnectionStatus {
   /// Check if the status indicates the device is not available
   bool get isUnavailable =>
       this == TrezorConnectionStatus.disconnected ||
-      this == TrezorConnectionStatus.unreachable;
+      this == TrezorConnectionStatus.unreachable ||
+      this == TrezorConnectionStatus.busy;
 
   /// Check if the device should continue being monitored
   bool get shouldContinueMonitoring =>
