@@ -38,7 +38,7 @@ class TaskEnableZhtlcInit
     required this.ticker,
     required this.params,
     super.rpcPass,
-  }) : super(method: 'task::enable_z_coin::init', mmrpc: '2.0');
+  }) : super(method: 'task::enable_z_coin::init', mmrpc: RpcVersion.v2_0);
 
   final String ticker;
   @override
@@ -65,7 +65,7 @@ class TaskEnableZhtlcStatus
     required this.taskId,
     this.forgetIfFinished = true,
     super.rpcPass,
-  }) : super(method: 'task::enable_z_coin::status', mmrpc: '2.0');
+  }) : super(method: 'task::enable_z_coin::status', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final bool forgetIfFinished;

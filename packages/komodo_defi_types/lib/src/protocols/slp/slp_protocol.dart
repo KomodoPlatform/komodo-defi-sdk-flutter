@@ -26,6 +26,9 @@ class SlpProtocol extends ProtocolClass {
   @override
   bool get requiresHdWallet => false;
 
+  @override
+  bool get isMemoSupported => false;
+
   static void _validateSlpConfig(JsonMap json) {
     // Only required for parent assets
     if (json.valueOrNull<String>('parent_coin') != null) {

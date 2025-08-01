@@ -118,7 +118,7 @@ class _InheritedLiveData<T> extends InheritedWidget {
         if (context.mounted) {
           context
               .findAncestorStateOfType<_LiveDataBuilderState<dynamic>>()
-              ?.setState(() {});
+              ?.build(context);
         }
       });
     }

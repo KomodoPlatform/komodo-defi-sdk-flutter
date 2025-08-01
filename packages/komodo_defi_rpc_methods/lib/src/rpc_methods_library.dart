@@ -51,6 +51,8 @@ class KomodoDefiRpcMethods {
   MessageSigningMethodsNamespace get messageSigning =>
       MessageSigningMethodsNamespace(_client);
   UtilityMethods get utility => UtilityMethods(_client);
+  FeeManagementMethodsNamespace get feeManagement =>
+      FeeManagementMethodsNamespace(_client);
 }
 
 class TaskMethods extends BaseRpcMethodNamespace {
@@ -98,6 +100,49 @@ class WalletMethods extends BaseRpcMethodNamespace {
 
   Future<GetPublicKeyHashResponse> getPublicKeyHash([String? rpcPass]) =>
       execute(GetPublicKeyHashRequest(rpcPass: rpcPass));
+
+  /// Gets private keys for the specified coins
+  ///
+  /// Supports both HD and Iguana (standard) export modes.
+  ///
+  /// Parameters:
+  /// - [coins]: List of coin tickers to export keys for
+  /// - [mode]: Export mode (HD or Iguana). If null, defaults based on wallet type
+  /// - [startIndex]: Starting address index for HD mode (default: 0)
+  /// - [endIndex]: Ending address index for HD mode (default: startIndex + 10)
+  /// - [accountIndex]: Account index for HD mode (default: 0)
+  /// - [rpcPass]: RPC password for authentication
+  ///
+  /// Note: startIndex, endIndex, and accountIndex are only valid for HD mode
+  Future<GetPrivateKeysResponse> getPrivateKeys({
+    required List<String> coins,
+    KeyExportMode? mode,
+    int? startIndex,
+    int? endIndex,
+    int? accountIndex,
+    String? rpcPass,
+  }) => execute(
+    GetPrivateKeysRequest(
+      rpcPass: rpcPass ?? '',
+      coins: coins,
+      mode: mode,
+      startIndex: startIndex,
+      endIndex: endIndex,
+      accountIndex: accountIndex,
+    ),
+  );
+
+  /// Unbans all banned public keys
+  ///
+  /// Parameters:
+  /// - [unbanBy]: The type of public key to unban (e.g. all, few)
+  /// - [rpcPass]: RPC password for authentication
+  ///
+  /// Returns: Response containing the result of the unban operation
+  Future<UnbanPubkeysResponse> unbanPubkeys({
+    required UnbanBy unbanBy,
+    String? rpcPass,
+  }) => execute(UnbanPubkeysRequest(rpcPass: rpcPass ?? '', unbanBy: unbanBy));
 }
 
 /// KDF v2 Utility Methods not specific to any larger feature

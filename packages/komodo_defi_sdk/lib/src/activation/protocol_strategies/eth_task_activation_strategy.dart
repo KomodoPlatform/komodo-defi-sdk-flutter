@@ -1,5 +1,7 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
+import 'package:komodo_defi_sdk/src/transaction_history/strategies/etherscan_transaction_history_strategy.dart'
+    show EtherscanProtocolHelper;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class EthTaskActivationStrategy extends ProtocolActivationStrategy {
@@ -76,7 +78,8 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
           erc20Tokens:
               children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
               [],
-          txHistory: true,
+          txHistory: const EtherscanProtocolHelper()
+              .shouldEnableTransactionHistory(asset),
           privKeyPolicy: privKeyPolicy,
         ),
       );

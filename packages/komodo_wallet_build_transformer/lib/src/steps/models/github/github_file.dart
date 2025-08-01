@@ -18,33 +18,34 @@ class GitHubFile {
 
   /// Creates a new instance of [GitHubFile] from a JSON map.
   factory GitHubFile.fromJson(Map<String, dynamic> data) => GitHubFile(
-        name: data['name'] as String,
-        path: data['path'] as String,
-        sha: data['sha'] as String,
-        size: data['size'] as int,
-        url: data['url'] as String?,
-        htmlUrl: data['html_url'] as String?,
-        gitUrl: data['git_url'] as String?,
-        downloadUrl: data['download_url'] as String,
-        type: data['type'] as String,
-        links: data['_links'] == null
+    name: data['name'] as String,
+    path: data['path'] as String,
+    sha: data['sha'] as String,
+    size: data['size'] as int,
+    url: data['url'] as String?,
+    htmlUrl: data['html_url'] as String?,
+    gitUrl: data['git_url'] as String?,
+    downloadUrl: data['download_url'] as String,
+    type: data['type'] as String,
+    links:
+        data['_links'] == null
             ? null
             : Links.fromJson(data['_links'] as Map<String, dynamic>),
-      );
+  );
 
   /// Converts the [GitHubFile] instance to a JSON map.
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'name': name,
-        'path': path,
-        'sha': sha,
-        'size': size,
-        'url': url,
-        'html_url': htmlUrl,
-        'git_url': gitUrl,
-        'download_url': downloadUrl,
-        'type': type,
-        '_links': links?.toJson(),
-      };
+    'name': name,
+    'path': path,
+    'sha': sha,
+    'size': size,
+    'url': url,
+    'html_url': htmlUrl,
+    'git_url': gitUrl,
+    'download_url': downloadUrl,
+    'type': type,
+    '_links': links?.toJson(),
+  };
 
   /// The name of the file.
   final String name;
@@ -103,15 +104,15 @@ class GitHubFile {
     );
   }
 
-  GitHubFile withStaticHostingUrl(String branch) {
-    final staticHostingUrls = {
-      'master': 'https://komodoplatform.github.io/coins',
-    };
+  GitHubFile withStaticHostingUrl(
+    String branch,
+    Map<String, String> cdnMirrors,
+  ) {
+    // Check if a CDN mirror is configured for this branch
+    final cdnUrl = cdnMirrors[branch];
 
     return copyWith(
-      downloadUrl: staticHostingUrls.containsKey(branch)
-          ? '${staticHostingUrls[branch]}/$path'
-          : downloadUrl,
+      downloadUrl: cdnUrl != null ? '$cdnUrl/$path' : downloadUrl,
     );
   }
 }

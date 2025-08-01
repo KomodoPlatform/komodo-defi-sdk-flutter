@@ -25,6 +25,9 @@ class Erc20Protocol extends ProtocolClass {
   bool get requiresHdWallet => false;
 
   @override
+  bool get isMemoSupported => false;
+
+  @override
   ActivationParams defaultActivationParams({PrivateKeyPolicy? privKeyPolicy}) {
     // For ERC20, we typically don't need child tokens in the default case
     // If you need to support child tokens, you can add an overloaded method

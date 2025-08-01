@@ -13,8 +13,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
     required this.pubkeyManager,
     http.Client? httpClient,
     String? baseUrl,
-  })  : _client = httpClient ?? http.Client(),
-        _protocolHelper = EtherscanProtocolHelper(baseUrl: baseUrl);
+  }) : _client = httpClient ?? http.Client(),
+       _protocolHelper = EtherscanProtocolHelper(baseUrl: baseUrl);
 
   final http.Client _client;
   final EtherscanProtocolHelper _protocolHelper;
@@ -23,9 +23,9 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   Set<Type> get supportedPaginationModes => {
-        PagePagination,
-        TransactionBasedPagination,
-      };
+    PagePagination,
+    TransactionBasedPagination,
+  };
 
   @override
   bool supportsAsset(Asset asset) => _protocolHelper.supportsProtocol(asset);
@@ -49,7 +49,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
     validatePagination(pagination);
 
-    final url = _protocolHelper.getApiUrlForAsset(asset) ??
+    final url =
+        _protocolHelper.getApiUrlForAsset(asset) ??
         (throw UnsupportedError(
           'No API URL found for asset ${asset.id.toJson()}',
         ));
@@ -78,16 +79,17 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
       // Apply pagination based on type
       final paginatedResults = switch (pagination) {
         final PagePagination p => _applyPagePagination(
-            allTransactions,
-            p.pageNumber,
-            p.itemsPerPage,
-          ),
+          allTransactions,
+          p.pageNumber,
+          p.itemsPerPage,
+        ),
         final TransactionBasedPagination t => _applyTransactionPagination(
-            allTransactions,
-            t.fromId,
-            t.itemCount,
-          ),
-        _ => throw UnsupportedError(
+          allTransactions,
+          t.fromId,
+          t.itemCount,
+        ),
+        _ =>
+          throw UnsupportedError(
             'Unsupported pagination type: ${pagination.runtimeType}',
           ),
       };
@@ -96,7 +98,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
           allTransactions.isNotEmpty ? allTransactions.first.blockHeight : 0;
 
       return MyTxHistoryResponse(
-        mmrpc: '2.0',
+        mmrpc: RpcVersion.v2_0,
         currentBlock: currentBlock,
         fromId: paginatedResults.transactions.lastOrNull?.txHash,
         limit: paginatedResults.pageSize,
@@ -110,9 +112,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
         transactions: paginatedResults.transactions,
       );
     } catch (e) {
-      throw HttpException(
-        'Error fetching transaction history: $e',
-      );
+      throw HttpException('Error fetching transaction history: $e');
     }
   }
 
@@ -152,12 +152,13 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
             blockHeight: tx.value<int>('block_height'),
             confirmations: tx.value<int>('confirmations'),
             timestamp: tx.value<int>('timestamp'),
-            feeDetails: tx.valueOrNull<JsonMap>('fee_details') != null
-                ? FeeInfo.fromJson(
-                    tx.value<JsonMap>('fee_details')
-                      ..setIfAbsentOrEmpty('type', 'Eth'),
-                  )
-                : null,
+            feeDetails:
+                tx.valueOrNull<JsonMap>('fee_details') != null
+                    ? FeeInfo.fromJson(
+                      tx.value<JsonMap>('fee_details')
+                        ..setIfAbsentOrEmpty('type', 'EthGas'),
+                    )
+                    : null,
             coin: coinId,
             internalId: tx.value<String>('internal_id'),
             memo: tx.valueOrNull<String>('memo'),
@@ -166,11 +167,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
         .toList();
   }
 
-  ({
-    List<TransactionInfo> transactions,
-    int skipped,
-    int pageSize,
-  }) _applyPagePagination(
+  ({List<TransactionInfo> transactions, int skipped, int pageSize})
+  _applyPagePagination(
     List<TransactionInfo> transactions,
     int pageNumber,
     int itemsPerPage,
@@ -183,11 +181,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
     );
   }
 
-  ({
-    List<TransactionInfo> transactions,
-    int skipped,
-    int pageSize,
-  }) _applyTransactionPagination(
+  ({List<TransactionInfo> transactions, int skipped, int pageSize})
+  _applyTransactionPagination(
     List<TransactionInfo> transactions,
     String fromId,
     int itemCount,
@@ -211,9 +206,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
 /// Helper class for managing Etherscan protocol endpoints and URL construction
 class EtherscanProtocolHelper {
-  const EtherscanProtocolHelper({
-    String? baseUrl,
-  }) : _baseUrl = baseUrl ?? 'https://etherscan-proxy-v2.komodo.earth/api';
+  const EtherscanProtocolHelper({String? baseUrl})
+    : _baseUrl = baseUrl ?? 'https://etherscan-proxy-v2.komodo.earth/api';
 
   final String _baseUrl;
 
@@ -221,6 +215,12 @@ class EtherscanProtocolHelper {
   bool supportsProtocol(Asset asset) {
     return asset.protocol is Erc20Protocol && getApiUrlForAsset(asset) != null;
   }
+
+  /// Whether transaction history should also be fetched via mm2.
+  ///
+  /// When Etherscan does not support the provided [asset], transaction history
+  /// must fall back to mm2 RPC calls.
+  bool shouldEnableTransactionHistory(Asset asset) => !supportsProtocol(asset);
 
   /// Constructs the appropriate API URL for a given asset
   Uri? getApiUrlForAsset(Asset asset) {
@@ -231,6 +231,10 @@ class EtherscanProtocolHelper {
 
     return Uri.parse(endpoint);
   }
+
+  /// Returns the URL for fetching transaction history by hash.
+  Uri transactionsByHashUrl(String txHash) =>
+      Uri.parse('$_txByHashUrl/$txHash');
 
   String? _getEndpointForAsset(Asset asset) {
     final baseEndpoint = _getBaseEndpoint(asset.id);

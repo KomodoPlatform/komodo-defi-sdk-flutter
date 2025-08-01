@@ -12,6 +12,7 @@ class SourceAddressField extends StatelessWidget {
     this.onRetry,
     this.isLoading = false,
     this.showBalanceIndicator = true,
+    this.title,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class SourceAddressField extends StatelessWidget {
   final VoidCallback? onRetry;
   final bool isLoading;
   final bool showBalanceIndicator;
+  final Widget? title;
 
   @override
   Widget build(BuildContext context) {
@@ -48,12 +50,13 @@ class SourceAddressField extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Source Address',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            title ??
+                Text(
+                  'Source Address',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
             if (pubkeys!.keys.length > 1)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

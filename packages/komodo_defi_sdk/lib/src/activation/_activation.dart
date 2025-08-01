@@ -13,10 +13,12 @@ export 'protocol_strategies/custom_erc20_activation_strategy.dart';
 export 'protocol_strategies/erc20_activation_strategy.dart';
 export 'protocol_strategies/eth_task_activation_strategy.dart';
 export 'protocol_strategies/eth_with_tokens_activation_strategy.dart';
-
 export 'protocol_strategies/protocol_error_handler.dart';
 export 'protocol_strategies/qtum_activation_strategy.dart';
 export 'protocol_strategies/slp_activation_strategy.dart';
 export 'protocol_strategies/tendermint_activation_strategy.dart';
+export 'protocol_strategies/tendermint_task_activation_strategy.dart';
+export 'protocol_strategies/tendermint_token_activation_strategy.dart';
 export 'protocol_strategies/utxo_activation_strategy.dart';
 export 'protocol_strategies/zhtlc_activation_strategy.dart';
+export 'shared_activation_coordinator.dart';

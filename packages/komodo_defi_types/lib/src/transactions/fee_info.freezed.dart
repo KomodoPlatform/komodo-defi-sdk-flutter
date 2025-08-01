@@ -334,6 +334,127 @@ class _$FeeInfoEthGasCopyWithImpl<$Res>
 
 /// @nodoc
 
+class FeeInfoEthGasEip1559 extends FeeInfo {
+  const FeeInfoEthGasEip1559(
+      {required this.coin,
+      required this.maxFeePerGas,
+      required this.maxPriorityFeePerGas,
+      required this.gas,
+      this.totalGasFee})
+      : super._();
+
+  @override
+  final String coin;
+
+  /// Maximum fee per gas in ETH. e.g. "0.000000003" => 3 Gwei
+  final Decimal maxFeePerGas;
+
+  /// Maximum priority fee per gas in ETH. e.g. "0.000000001" => 1 Gwei
+  final Decimal maxPriorityFeePerGas;
+
+  /// Gas limit (number of gas units)
+  final int gas;
+
+  /// Optional total fee override. If provided, this value will be used directly
+  /// instead of calculating from maxFeePerGas * gas.
+  final Decimal? totalGasFee;
+
+  /// Create a copy of FeeInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $FeeInfoEthGasEip1559CopyWith<FeeInfoEthGasEip1559> get copyWith =>
+      _$FeeInfoEthGasEip1559CopyWithImpl<FeeInfoEthGasEip1559>(
+          this, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is FeeInfoEthGasEip1559 &&
+            (identical(other.coin, coin) || other.coin == coin) &&
+            (identical(other.maxFeePerGas, maxFeePerGas) ||
+                other.maxFeePerGas == maxFeePerGas) &&
+            (identical(other.maxPriorityFeePerGas, maxPriorityFeePerGas) ||
+                other.maxPriorityFeePerGas == maxPriorityFeePerGas) &&
+            (identical(other.gas, gas) || other.gas == gas) &&
+            (identical(other.totalGasFee, totalGasFee) ||
+                other.totalGasFee == totalGasFee));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      runtimeType, coin, maxFeePerGas, maxPriorityFeePerGas, gas, totalGasFee);
+
+  @override
+  String toString() {
+    return 'FeeInfo.ethGasEip1559(coin: $coin, maxFeePerGas: $maxFeePerGas, maxPriorityFeePerGas: $maxPriorityFeePerGas, gas: $gas, totalGasFee: $totalGasFee)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $FeeInfoEthGasEip1559CopyWith<$Res>
+    implements $FeeInfoCopyWith<$Res> {
+  factory $FeeInfoEthGasEip1559CopyWith(FeeInfoEthGasEip1559 value,
+          $Res Function(FeeInfoEthGasEip1559) _then) =
+      _$FeeInfoEthGasEip1559CopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {String coin,
+      Decimal maxFeePerGas,
+      Decimal maxPriorityFeePerGas,
+      int gas,
+      Decimal? totalGasFee});
+}
+
+/// @nodoc
+class _$FeeInfoEthGasEip1559CopyWithImpl<$Res>
+    implements $FeeInfoEthGasEip1559CopyWith<$Res> {
+  _$FeeInfoEthGasEip1559CopyWithImpl(this._self, this._then);
+
+  final FeeInfoEthGasEip1559 _self;
+  final $Res Function(FeeInfoEthGasEip1559) _then;
+
+  /// Create a copy of FeeInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? coin = null,
+    Object? maxFeePerGas = null,
+    Object? maxPriorityFeePerGas = null,
+    Object? gas = null,
+    Object? totalGasFee = freezed,
+  }) {
+    return _then(FeeInfoEthGasEip1559(
+      coin: null == coin
+          ? _self.coin
+          : coin // ignore: cast_nullable_to_non_nullable
+              as String,
+      maxFeePerGas: null == maxFeePerGas
+          ? _self.maxFeePerGas
+          : maxFeePerGas // ignore: cast_nullable_to_non_nullable
+              as Decimal,
+      maxPriorityFeePerGas: null == maxPriorityFeePerGas
+          ? _self.maxPriorityFeePerGas
+          : maxPriorityFeePerGas // ignore: cast_nullable_to_non_nullable
+              as Decimal,
+      gas: null == gas
+          ? _self.gas
+          : gas // ignore: cast_nullable_to_non_nullable
+              as int,
+      totalGasFee: freezed == totalGasFee
+          ? _self.totalGasFee
+          : totalGasFee // ignore: cast_nullable_to_non_nullable
+              as Decimal?,
+    ));
+  }
+}
+
+/// @nodoc
+
 class FeeInfoQrc20Gas extends FeeInfo {
   const FeeInfoQrc20Gas(
       {required this.coin,

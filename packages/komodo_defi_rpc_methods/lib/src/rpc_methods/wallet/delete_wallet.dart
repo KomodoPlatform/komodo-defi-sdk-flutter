@@ -7,7 +7,7 @@ class DeleteWalletRequest
     required this.walletName,
     required this.password,
     super.rpcPass,
-  }) : super(method: 'delete_wallet', mmrpc: '2.0');
+  }) : super(method: 'delete_wallet', mmrpc: RpcVersion.v2_0);
 
   final String walletName;
   final String password;

@@ -150,6 +150,7 @@ class WithdrawParameters extends Equatable {
     required this.toAddress,
     required this.amount,
     this.fee,
+    this.feePriority,
     this.from,
     this.memo,
     this.ibcTransfer,
@@ -164,10 +165,11 @@ class WithdrawParameters extends Equatable {
   final String toAddress;
   final Decimal? amount;
   final FeeInfo? fee;
+  final WithdrawalFeeLevel? feePriority;
   final WithdrawalSource? from;
   final String? memo;
   final bool? ibcTransfer;
-  final String? ibcSourceChannel;
+  final int? ibcSourceChannel;
   final bool? isMax;
 
   JsonMap toJson() => {
@@ -188,6 +190,7 @@ class WithdrawParameters extends Equatable {
         toAddress,
         amount,
         fee,
+        feePriority,
         from,
         memo,
         ibcTransfer,
