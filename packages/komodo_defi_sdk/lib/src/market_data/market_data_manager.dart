@@ -127,6 +127,65 @@ class CexMarketDataManager implements MarketDataManager {
     return assetId.symbol.configSymbol;
   }
 
+  /// Determines if the request can be handled by Komodo price repository
+  /// NOTE: currently only supports USDT and USD fiat currencies
+  /// and does not support specific price dates (always uses current price)
+  bool _canUseKomodoRepository({
+    DateTime? priceDate,
+    String fiatCurrency = 'usdt',
+  }) {
+    return priceDate == null &&
+        (fiatCurrency.toLowerCase() == 'usdt' ||
+            fiatCurrency.toLowerCase() == 'usd');
+  }
+
+  /// Attempts to get price from Komodo repository
+  Future<Decimal?> _tryKomodoPrice(String symbol) async {
+    try {
+      final komodoPrices = await _komodoPriceRepository.getKomodoPrices();
+      final priceData = komodoPrices[symbol];
+
+      if (priceData != null && priceData.price > 0) {
+        return Decimal.parse(priceData.price.toString());
+      }
+    } catch (_) {
+      // Ignore errors and fall back
+    }
+    return null;
+  }
+
+  /// Gets price with automatic fallback logic
+  Future<Decimal?> _getPriceWithFallback(
+    AssetId assetId, {
+    DateTime? priceDate,
+    String fiatCurrency = 'usdt',
+  }) async {
+    final symbol = _getTradingSymbol(assetId);
+
+    // Try Komodo repository first if applicable
+    if (_canUseKomodoRepository(
+      priceDate: priceDate,
+      fiatCurrency: fiatCurrency,
+    )) {
+      final komodoPrice = await _tryKomodoPrice(symbol);
+      if (komodoPrice != null) {
+        return komodoPrice;
+      }
+    }
+
+    // Fallback to CEX repository
+    try {
+      final priceDouble = await _priceRepository.getCoinFiatPrice(
+        symbol,
+        priceDate: priceDate,
+        fiatCoinId: fiatCurrency,
+      );
+      return Decimal.parse(priceDouble.toString());
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Decimal? priceIfKnown(
     AssetId assetId, {
@@ -178,46 +237,20 @@ class CexMarketDataManager implements MarketDataManager {
       return cachedPrice;
     }
 
-    try {
-      // First try to get price from KomodoPriceRepository if no specific date is requested
-      // and the currency is USDT (which is essentially USD for Komodo prices)
-      if (priceDate == null &&
-          (fiatCurrency.toLowerCase() == 'usdt' ||
-              fiatCurrency.toLowerCase() == 'usd')) {
-        try {
-          final komodoPrices = await _komodoPriceRepository.getKomodoPrices();
-          final priceData = komodoPrices[_getTradingSymbol(assetId)];
+    final price = await _getPriceWithFallback(
+      assetId,
+      priceDate: priceDate,
+      fiatCurrency: fiatCurrency,
+    );
 
-          if (priceData != null && priceData.price > 0) {
-            final price = Decimal.parse(priceData.price.toString());
-
-            // Cache the result
-            _priceCache[cacheKey] = price;
-
-            return price;
-          }
-        } catch (_) {
-          // If KomodoPriceRepository fails, continue to fallback
-        }
-      }
-
-      // Fallback to the original repository
-      final priceDouble = await _priceRepository.getCoinFiatPrice(
-        _getTradingSymbol(assetId),
-        priceDate: priceDate,
-        fiatCoinId: fiatCurrency,
-      );
-
-      // Convert double to Decimal via string
-      final price = Decimal.parse(priceDouble.toString());
-
-      // Cache the result
-      _priceCache[cacheKey] = price;
-
-      return price;
-    } catch (e) {
-      throw StateError('Failed to get price for ${assetId.name}: $e');
+    if (price == null) {
+      throw StateError('Failed to get price for ${assetId.name}');
     }
+
+    // Cache the result
+    _priceCache[cacheKey] = price;
+
+    return price;
   }
 
   @override
@@ -240,46 +273,31 @@ class CexMarketDataManager implements MarketDataManager {
       return cachedPrice;
     }
 
-    // First try to get price from KomodoPriceRepository if no specific date is requested
-    // and the currency is USDT (which is essentially USD for Komodo prices)
-    if (priceDate == null &&
-        (fiatCurrency.toLowerCase() == 'usdt' ||
-            fiatCurrency.toLowerCase() == 'usd')) {
-      try {
-        final komodoPrices = await _komodoPriceRepository.getKomodoPrices();
-        final priceData = komodoPrices[_getTradingSymbol(assetId)];
-
-        if (priceData != null && priceData.price > 0) {
-          final price = Decimal.parse(priceData.price.toString());
-
-          // Cache the result
-          _priceCache[cacheKey] = price;
-
-          return price;
-        }
-      } catch (_) {
-        // If KomodoPriceRepository fails, continue to fallback
-      }
-    }
-
-    // Fallback to the original CEX repository logic
+    // Check if ticker is known in CEX repository for fallback scenarios
     final tradingSymbol = _getTradingSymbol(assetId);
     final isKnownTicker = _knownTickers?.contains(tradingSymbol) ?? false;
 
-    if (!isKnownTicker) {
+    // If not using Komodo repository and ticker is not known in CEX, return null
+    if (!_canUseKomodoRepository(
+          priceDate: priceDate,
+          fiatCurrency: fiatCurrency,
+        ) &&
+        !isKnownTicker) {
       return null;
     }
 
-    try {
-      final price = await fiatPrice(
-        assetId,
-        priceDate: priceDate,
-        fiatCurrency: fiatCurrency,
-      );
-      return price;
-    } catch (_) {
-      return null;
+    final price = await _getPriceWithFallback(
+      assetId,
+      priceDate: priceDate,
+      fiatCurrency: fiatCurrency,
+    );
+
+    if (price != null) {
+      // Cache the result
+      _priceCache[cacheKey] = price;
     }
+
+    return price;
   }
 
   @override
