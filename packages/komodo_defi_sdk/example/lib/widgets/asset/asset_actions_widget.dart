@@ -13,6 +13,7 @@ class AssetActionsWidget extends StatelessWidget {
     required this.onReceive,
     required this.onSignMessage,
     required this.onExportPrivateKey,
+    this.onStaking,
     super.key,
   });
 
@@ -25,6 +26,7 @@ class AssetActionsWidget extends StatelessWidget {
   final VoidCallback onReceive;
   final VoidCallback onSignMessage;
   final VoidCallback onExportPrivateKey;
+  final VoidCallback? onStaking;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +34,7 @@ class AssetActionsWidget extends StatelessWidget {
         currentUser?.authOptions.derivationMethod == DerivationMethod.hdWallet;
     final hasAddresses = pubkeys != null && pubkeys!.keys.isNotEmpty;
     final supportsSigning = asset.supportsMessageSigning;
+    final supportsStaking = asset.supportsStaking;
 
     return Wrap(
       alignment: WrapAlignment.spaceEvenly,
@@ -47,6 +50,12 @@ class AssetActionsWidget extends StatelessWidget {
           icon: const Icon(Icons.qr_code),
           label: const Text('Receive'),
         ),
+        if (supportsStaking)
+          FilledButton.tonalIcon(
+            onPressed: onStaking,
+            icon: const Icon(Icons.stacked_line_chart),
+            label: const Text('Stake'),
+          ),
         Tooltip(
           message:
               supportsSigning

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/screens/withdrawal_page.dart';
+import 'package:kdf_sdk_example/screens/staking_page.dart';
 import 'package:kdf_sdk_example/widgets/asset/asset_actions_widget.dart';
 import 'package:kdf_sdk_example/widgets/asset/balance_overview_widget.dart';
 import 'package:kdf_sdk_example/widgets/common/private_keys_display_widget.dart';
@@ -258,6 +259,18 @@ class _AssetHeaderWidgetState extends State<AssetHeaderWidget> {
           onReceive: () {},
           onSignMessage: _showSignMessageDialog,
           onExportPrivateKey: _exportPrivateKey,
+          onStaking:
+              widget.asset.supportsStaking
+                  ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder:
+                            (context) => StakingScreen(asset: widget.asset),
+                      ),
+                    );
+                  }
+                  : null,
         ),
         if (_signedMessage != null) ...[
           const SizedBox(height: 16),
