@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:developer';
 
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
@@ -145,10 +146,14 @@ class CexMarketDataManager implements MarketDataManager {
       final komodoPrices = await _komodoPriceRepository.getKomodoPrices();
       final priceData = komodoPrices[symbol];
 
-      if (priceData != null && priceData.price > 0) {
+      if (priceData != null) {
         return Decimal.parse(priceData.price.toString());
       }
-    } catch (_) {
+    } catch (e) {
+      log(
+        'Failed to get price from Komodo repository for symbol: $symbol',
+        error: e,
+      );
       // Ignore errors and fall back
     }
     return null;
@@ -181,7 +186,11 @@ class CexMarketDataManager implements MarketDataManager {
         fiatCoinId: fiatCurrency,
       );
       return Decimal.parse(priceDouble.toString());
-    } catch (_) {
+    } catch (e) {
+      log(
+        'Failed to get price from Cex Repository for symbol $symbol',
+        error: e,
+      );
       return null;
     }
   }
@@ -203,15 +212,7 @@ class CexMarketDataManager implements MarketDataManager {
     );
 
     // Check cache first
-    final cachedPrice = _priceCache[cacheKey];
-    if (cachedPrice != null) {
-      return cachedPrice;
-    }
-
-    // For synchronous method, we can only check if we have cached data
-    // from KomodoPriceRepository (which would have been populated by previous calls)
-    // The actual fetching from KomodoPriceRepository happens asynchronously in other methods
-    return null;
+    return _priceCache[cacheKey];
   }
 
   @override
