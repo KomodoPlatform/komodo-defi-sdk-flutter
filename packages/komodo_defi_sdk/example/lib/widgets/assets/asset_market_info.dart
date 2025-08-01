@@ -6,23 +6,25 @@ import 'package:kdf_sdk_example/blocs/blocs.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class AssetMarketInfo extends StatefulWidget {
-  const AssetMarketInfo(this.asset);
+class AssetMarketInfo extends StatelessWidget {
+  const AssetMarketInfo(this.asset, {super.key});
 
   final Asset asset;
 
   @override
-  State<AssetMarketInfo> createState() => _AssetMarketInfoState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create:
+          (_) =>
+              AssetMarketInfoBloc(sdk: context.read<KomodoDefiSdk>())
+                ..add(AssetMarketInfoRequested(asset)),
+      child: const _AssetMarketInfoContent(),
+    );
+  }
 }
 
-class _AssetMarketInfoState extends State<AssetMarketInfo> {
-  @override
-  void initState() {
-    context.read<AssetMarketInfoBloc>().add(
-      AssetMarketInfoRequested(widget.asset),
-    );
-    super.initState();
-  }
+class _AssetMarketInfoContent extends StatelessWidget {
+  const _AssetMarketInfoContent();
 
   @override
   Widget build(BuildContext context) {
@@ -59,14 +61,12 @@ class _AssetMarketInfoState extends State<AssetMarketInfo> {
 
 String _formatCurrency(Decimal? value) {
   if (value == null) return '--';
-  final number = double.parse(value.toString());
   final format = NumberFormat.currency(symbol: r'$');
-  return format.format(number);
+  return format.format(value.toDouble());
 }
 
 String _formatChange(Decimal? value) {
   if (value == null) return '--';
-  final percent = double.parse((value * Decimal.fromInt(100)).toString());
   final format = NumberFormat('+#,##0.00%;-#,##0.00%');
-  return format.format(percent / 100);
+  return format.format(value.toDouble() / 100);
 }
