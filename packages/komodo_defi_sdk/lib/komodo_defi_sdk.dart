@@ -19,6 +19,21 @@ export 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 export 'package:komodo_defi_sdk/src/security/security_manager.dart'
     show SecurityManager;
 
+// Export staking types from the types library
+export 'package:komodo_defi_types/komodo_defi_types.dart'
+    show
+        StakingState,
+        StakingPosition,
+        UnbondingPosition,
+        EnhancedValidatorInfo,
+        StakingInfo,
+        StakingSuggestions,
+        ValidatorRecommendation,
+        CachedData,
+        StakingHealth,
+        StakingRisk,
+        RewardUpdate;
+
 export 'src/assets/_assets_index.dart' show AssetHdWalletAddressesExtension;
 export 'src/assets/asset_extensions.dart'
     show

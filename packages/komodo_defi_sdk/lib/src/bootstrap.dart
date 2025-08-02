@@ -256,12 +256,27 @@ Future<void> bootstrap({
     ],
   );
 
-  container.registerSingletonAsync<StakingManager>(() async {
-    final client = await container.getAsync<ApiClient>();
-    final assetProvider = await container.getAsync<AssetManager>();
-    final activationManager = await container.getAsync<ActivationManager>();
-    return StakingManager(client, assetProvider, activationManager);
-  }, dependsOn: [ApiClient, AssetManager, ActivationManager]);
+  container.registerSingletonAsync<StakingManager>(
+    () async {
+      final client = await container.getAsync<ApiClient>();
+      final assetProvider = await container.getAsync<AssetManager>();
+      final activationCoordinator =
+          await container.getAsync<SharedActivationCoordinator>();
+      final balanceManager = await container.getAsync<BalanceManager>();
+      return StakingManager(
+        client,
+        assetProvider,
+        activationCoordinator,
+        balanceManager,
+      );
+    },
+    dependsOn: [
+      ApiClient,
+      AssetManager,
+      SharedActivationCoordinator,
+      BalanceManager,
+    ],
+  );
 
   // Wait for all async singletons to initialize
   await container.allReady();

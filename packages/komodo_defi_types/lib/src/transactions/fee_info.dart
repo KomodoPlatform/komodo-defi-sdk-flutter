@@ -24,64 +24,73 @@ sealed class FeeInfo with _$FeeInfo {
 
   /// Parse a JSON object into one of the [FeeInfo] variants, based on `type`.
   factory FeeInfo.fromJson(JsonMap json) {
-    final type = json['type'] as String? ?? '';
+    final type = json.valueOrNull<String>('type') ?? '';
     switch (type) {
       case 'UtxoFixed' || 'Utxo':
         return FeeInfo.utxoFixed(
-          coin: json['coin'] as String? ?? '',
-          amount: Decimal.parse(json['amount'] as String),
+          coin: json.valueOrNull<String>('coin') ?? '',
+          amount: Decimal.parse(json.value<String>('amount')),
         );
       case 'UtxoPerKbyte':
         return FeeInfo.utxoPerKbyte(
-          coin: json['coin'] as String? ?? '',
-          amount: Decimal.parse(json['amount'] as String),
+          coin: json.valueOrNull<String>('coin') ?? '',
+          amount: Decimal.parse(json.value<String>('amount')),
         );
       case 'EthGas' || 'Eth':
-        final totalGasFee = json['total_fee'] != null
-            ? Decimal.parse(json['total_fee'].toString())
-            : null;
+        final totalFeeValue = json.valueOrNull<dynamic>('total_fee');
+        final totalGasFee =
+            totalFeeValue != null
+                ? Decimal.parse(totalFeeValue.toString())
+                : null;
         return FeeInfo.ethGas(
-          coin: json['coin'] as String? ?? '',
+          coin: json.valueOrNull<String>('coin') ?? '',
           // If JSON provides e.g. "0.000000003", parse to Decimal => 3e-9
-          gasPrice: Decimal.parse(json['gas_price'].toString()),
-          gas: json['gas'] as int,
+          gasPrice: Decimal.parse(json.value<dynamic>('gas_price').toString()),
+          gas: json.value<int>('gas'),
           totalGasFee: totalGasFee,
         );
       case 'EthGasEip1559':
-        final totalGasFee = json['total_fee'] != null
-            ? Decimal.parse(json['total_fee'].toString())
-            : null;
+        final totalFeeValue = json.valueOrNull<dynamic>('total_fee');
+        final totalGasFee =
+            totalFeeValue != null
+                ? Decimal.parse(totalFeeValue.toString())
+                : null;
         return FeeInfo.ethGasEip1559(
-          coin: json['coin'] as String? ?? '',
-          maxFeePerGas: Decimal.parse(json['max_fee_per_gas'].toString()),
-          maxPriorityFeePerGas:
-              Decimal.parse(json['max_priority_fee_per_gas'].toString()),
-          gas: json['gas'] as int,
+          coin: json.valueOrNull<String>('coin') ?? '',
+          maxFeePerGas: Decimal.parse(
+            json.value<dynamic>('max_fee_per_gas').toString(),
+          ),
+          maxPriorityFeePerGas: Decimal.parse(
+            json.value<dynamic>('max_priority_fee_per_gas').toString(),
+          ),
+          gas: json.value<int>('gas'),
           totalGasFee: totalGasFee,
         );
       case 'Qrc20Gas':
-        final totalGasFee = json['total_gas_fee'] != null
-            ? Decimal.parse(json['total_gas_fee'].toString())
-            : null;
+        final totalGasFeeValue = json.valueOrNull<dynamic>('total_gas_fee');
+        final totalGasFee =
+            totalGasFeeValue != null
+                ? Decimal.parse(totalGasFeeValue.toString())
+                : null;
         return FeeInfo.qrc20Gas(
-          coin: json['coin'] as String? ?? '',
-          gasPrice: Decimal.parse(json['gas_price'].toString()),
-          gasLimit: json['gas_limit'] as int,
+          coin: json.valueOrNull<String>('coin') ?? '',
+          gasPrice: Decimal.parse(json.value<dynamic>('gas_price').toString()),
+          gasLimit: json.value<int>('gas_limit'),
           totalGasFee: totalGasFee,
         );
       case 'Tendermint':
         return FeeInfo.tendermint(
-          coin: json['coin'] as String? ?? '',
-          amount: Decimal.parse(json['amount'].toString()),
-          gasLimit: json['gas_limit'] as int,
+          coin: json.valueOrNull<String>('coin') ?? '',
+          amount: Decimal.parse(json.value<dynamic>('amount').toString()),
+          gasLimit: json.value<int>('gas_limit'),
         );
-      case 'CosmosGas':
+      case 'CosmosGas' || 'Cosmos':
         return FeeInfo.cosmosGas(
-          coin: json['coin'] as String? ?? '',
+          coin: json.valueOrNull<String>('coin') ?? '',
           // The doc sometimes shows 0.05 as a number (double),
           // so we convert it to string, then parse:
-          gasPrice: Decimal.parse(json['gas_price'].toString()),
-          gasLimit: json['gas_limit'] as int,
+          gasPrice: Decimal.parse(json.value<dynamic>('gas_price').toString()),
+          gasLimit: json.value<int>('gas_limit'),
         );
       default:
         throw ArgumentError('Unknown fee type: $type');
@@ -225,92 +234,87 @@ sealed class FeeInfo with _$FeeInfo {
 
   /// A convenience getter returning the *total fee* in the coin's main units.
   Decimal get totalFee => switch (this) {
-        FeeInfoUtxoFixed(:final amount) => amount,
-        FeeInfoUtxoPerKbyte(:final amount) => amount,
-        FeeInfoEthGas(:final gasPrice, :final gas, :final totalGasFee) =>
-          totalGasFee ?? (gasPrice * Decimal.fromInt(gas)),
-        FeeInfoEthGasEip1559(
-          :final maxFeePerGas,
-          :final gas,
-          :final totalGasFee
-        ) =>
-          totalGasFee ?? (maxFeePerGas * Decimal.fromInt(gas)),
-        FeeInfoQrc20Gas(:final gasPrice, :final gasLimit, :final totalGasFee) =>
-          totalGasFee ?? (gasPrice * Decimal.fromInt(gasLimit)),
-        FeeInfoCosmosGas(:final gasPrice, :final gasLimit) =>
-          gasPrice * Decimal.fromInt(gasLimit),
-        FeeInfoTendermint(:final amount) => amount,
-      };
+    FeeInfoUtxoFixed(:final amount) => amount,
+    FeeInfoUtxoPerKbyte(:final amount) => amount,
+    FeeInfoEthGas(:final gasPrice, :final gas, :final totalGasFee) =>
+      totalGasFee ?? (gasPrice * Decimal.fromInt(gas)),
+    FeeInfoEthGasEip1559(:final maxFeePerGas, :final gas, :final totalGasFee) =>
+      totalGasFee ?? (maxFeePerGas * Decimal.fromInt(gas)),
+    FeeInfoQrc20Gas(:final gasPrice, :final gasLimit, :final totalGasFee) =>
+      totalGasFee ?? (gasPrice * Decimal.fromInt(gasLimit)),
+    FeeInfoCosmosGas(:final gasPrice, :final gasLimit) =>
+      gasPrice * Decimal.fromInt(gasLimit),
+    FeeInfoTendermint(:final amount) => amount,
+  };
 
   /// Convert this [FeeInfo] to a JSON object matching the mmRPC 2.0 docs.
   JsonMap toJson() => switch (this) {
-        FeeInfoUtxoFixed(:final coin, :final amount) => {
-            'type': 'UtxoFixed',
-            'coin': coin,
-            'amount': amount.toString(),
-          },
-        FeeInfoUtxoPerKbyte(:final coin, :final amount) => {
-            'type': 'UtxoPerKbyte',
-            'coin': coin,
-            'amount': amount.toString(),
-          },
-        FeeInfoEthGas(
-          :final coin,
-          :final gasPrice,
-          :final gas,
-          :final totalGasFee
-        ) =>
-          {
-            'type': 'EthGas',
-            'coin': coin,
-            'gas_price': gasPrice.toString(),
-            'gas': gas,
-            if (totalGasFee != null) 'total_fee': totalGasFee.toString(),
-          },
-        FeeInfoEthGasEip1559(
-          :final coin,
-          :final maxFeePerGas,
-          :final maxPriorityFeePerGas,
-          :final gas,
-          :final totalGasFee
-        ) =>
-          {
-            'type': 'EthGasEip1559',
-            'coin': coin,
-            'max_fee_per_gas': maxFeePerGas.toString(),
-            'max_priority_fee_per_gas': maxPriorityFeePerGas.toString(),
-            'gas': gas,
-            if (totalGasFee != null) 'total_fee': totalGasFee.toString(),
-          },
-        FeeInfoQrc20Gas(
-          :final coin,
-          :final gasPrice,
-          :final gasLimit,
-          :final totalGasFee
-        ) =>
-          {
-            'type': 'Qrc20Gas',
-            'coin': coin,
-            'gas_price': gasPrice.toDouble(),
-            'gas_limit': gasLimit,
-            if (totalGasFee != null) 'total_gas_fee': totalGasFee.toString(),
-          },
-        FeeInfoCosmosGas(:final coin, :final gasPrice, :final gasLimit) => {
-            'type': 'CosmosGas',
-            'coin': coin,
-            'gas_price': gasPrice.toDouble(),
-            'gas_limit': gasLimit,
-          },
-        // TODO: update to Tendermint for KDF v2.5.0-beta
-        FeeInfoTendermint(:final coin, :final amount, :final gasLimit) => {
-            'type': 'CosmosGas',
-            'coin': coin,
-            'gas_price': gasLimit > 0
-                ? (amount / Decimal.fromInt(gasLimit)).toDouble()
-                : 0.0,
-            'gas_limit': gasLimit,
-          },
-      };
+    FeeInfoUtxoFixed(:final coin, :final amount) => {
+      'type': 'UtxoFixed',
+      'coin': coin,
+      'amount': amount.toString(),
+    },
+    FeeInfoUtxoPerKbyte(:final coin, :final amount) => {
+      'type': 'UtxoPerKbyte',
+      'coin': coin,
+      'amount': amount.toString(),
+    },
+    FeeInfoEthGas(
+      :final coin,
+      :final gasPrice,
+      :final gas,
+      :final totalGasFee,
+    ) =>
+      {
+        'type': 'EthGas',
+        'coin': coin,
+        'gas_price': gasPrice.toString(),
+        'gas': gas,
+        if (totalGasFee != null) 'total_fee': totalGasFee.toString(),
+      },
+    FeeInfoEthGasEip1559(
+      :final coin,
+      :final maxFeePerGas,
+      :final maxPriorityFeePerGas,
+      :final gas,
+      :final totalGasFee,
+    ) =>
+      {
+        'type': 'EthGasEip1559',
+        'coin': coin,
+        'max_fee_per_gas': maxFeePerGas.toString(),
+        'max_priority_fee_per_gas': maxPriorityFeePerGas.toString(),
+        'gas': gas,
+        if (totalGasFee != null) 'total_fee': totalGasFee.toString(),
+      },
+    FeeInfoQrc20Gas(
+      :final coin,
+      :final gasPrice,
+      :final gasLimit,
+      :final totalGasFee,
+    ) =>
+      {
+        'type': 'Qrc20Gas',
+        'coin': coin,
+        'gas_price': gasPrice.toDouble(),
+        'gas_limit': gasLimit,
+        if (totalGasFee != null) 'total_gas_fee': totalGasFee.toString(),
+      },
+    FeeInfoCosmosGas(:final coin, :final gasPrice, :final gasLimit) => {
+      'type': 'Cosmos',
+      'coin': coin,
+      'gas_price': gasPrice.toDouble(),
+      'gas_limit': gasLimit,
+    },
+    // Tendermint fee info is now serialized as Cosmos type for API compatibility
+    FeeInfoTendermint(:final coin, :final amount, :final gasLimit) => {
+      'type': 'Cosmos',
+      'coin': coin,
+      'gas_price':
+          gasLimit > 0 ? (amount / Decimal.fromInt(gasLimit)).toDouble() : 0.0,
+      'gas_limit': gasLimit,
+    },
+  };
 }
 
 /// Extension methods providing Freezed-like functionality
@@ -326,17 +330,18 @@ extension FeeInfoMaybeMap on FeeInfo {
     TResult Function(FeeInfoQrc20Gas value)? qrc20Gas,
     TResult Function(FeeInfoCosmosGas value)? cosmosGas,
     TResult Function(FeeInfoTendermint value)? tendermint,
-  }) =>
-      switch (this) {
-        final FeeInfoUtxoFixed fee when utxoFixed != null => utxoFixed(fee),
-        final FeeInfoUtxoPerKbyte fee when utxoPerKbyte != null =>
-          utxoPerKbyte(fee),
-        final FeeInfoEthGas fee when ethGas != null => ethGas(fee),
-        final FeeInfoEthGasEip1559 fee when ethGasEip1559 != null =>
-          ethGasEip1559(fee),
-        final FeeInfoQrc20Gas fee when qrc20Gas != null => qrc20Gas(fee),
-        final FeeInfoCosmosGas fee when cosmosGas != null => cosmosGas(fee),
-        final FeeInfoTendermint fee when tendermint != null => tendermint(fee),
-        _ => orElse(),
-      };
+  }) => switch (this) {
+    final FeeInfoUtxoFixed fee when utxoFixed != null => utxoFixed(fee),
+    final FeeInfoUtxoPerKbyte fee when utxoPerKbyte != null => utxoPerKbyte(
+      fee,
+    ),
+    final FeeInfoEthGas fee when ethGas != null => ethGas(fee),
+    final FeeInfoEthGasEip1559 fee when ethGasEip1559 != null => ethGasEip1559(
+      fee,
+    ),
+    final FeeInfoQrc20Gas fee when qrc20Gas != null => qrc20Gas(fee),
+    final FeeInfoCosmosGas fee when cosmosGas != null => cosmosGas(fee),
+    final FeeInfoTendermint fee when tendermint != null => tendermint(fee),
+    _ => orElse(),
+  };
 }

@@ -284,27 +284,27 @@ class WithdrawalManager {
             coin: assetId,
             low: WithdrawalFeeOption(
               priority: WithdrawalFeeLevel.low,
-              feeInfo: FeeInfo.tendermint(
+              feeInfo: FeeInfo.cosmosGas(
                 coin: assetId,
-                amount: estimation.low.totalFee,
+                gasPrice: estimation.low.gasPrice,
                 gasLimit: estimation.low.gasLimit,
               ),
               estimatedTime: estimation.low.estimatedTime,
             ),
             medium: WithdrawalFeeOption(
               priority: WithdrawalFeeLevel.medium,
-              feeInfo: FeeInfo.tendermint(
+              feeInfo: FeeInfo.cosmosGas(
                 coin: assetId,
-                amount: estimation.medium.totalFee,
+                gasPrice: estimation.medium.gasPrice,
                 gasLimit: estimation.medium.gasLimit,
               ),
               estimatedTime: estimation.medium.estimatedTime,
             ),
             high: WithdrawalFeeOption(
               priority: WithdrawalFeeLevel.high,
-              feeInfo: FeeInfo.tendermint(
+              feeInfo: FeeInfo.cosmosGas(
                 coin: assetId,
-                amount: estimation.high.totalFee,
+                gasPrice: estimation.high.gasPrice,
                 gasLimit: estimation.high.gasLimit,
               ),
               estimatedTime: estimation.high.estimatedTime,
@@ -893,9 +893,9 @@ class WithdrawalManager {
             asset.id.id,
           );
           final selectedLevel = _getTendermintFeeLevel(estimation, priority);
-          fee = FeeInfo.tendermint(
+          fee = FeeInfo.cosmosGas(
             coin: asset.id.id,
-            amount: selectedLevel.totalFee,
+            gasPrice: selectedLevel.gasPrice,
             gasLimit: selectedLevel.gasLimit,
           );
 
