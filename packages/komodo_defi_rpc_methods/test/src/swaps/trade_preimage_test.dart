@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:decimal/decimal.dart';
+import 'package:rational/rational.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:test/test.dart';
 
@@ -85,7 +86,8 @@ void main() {
 
   group('TradePreimageResponse', () {
     test('parses fixture and round trips', () {
-      final fixture = File('test/fixtures/swaps/trade_preimage.json').readAsStringSync();
+      final fixture =
+          File('test/fixtures/swaps/trade_preimage.json').readAsStringSync();
       final json = jsonDecode(fixture) as Map<String, dynamic>;
 
       final response = TradePreimageResponse.fromJson(json);
@@ -99,13 +101,27 @@ void main() {
       expect(
         deepEqualsWithRationalTolerance(response.toJson(), expected),
         isTrue,
-        reason: 'Serialized response does not match expected fixture (with rational/decimal tolerance)',
+        reason:
+            'Serialized response does not match expected fixture (with rational/decimal tolerance)',
       );
     });
   });
 }
 
 /// Recursively compares two objects, treating rational/decimal representations as equal if numerically equivalent.
+///
+/// Rational representations are expected to be lists of the form:
+///   `[numerator, [denominator1, denominator2, ...]]`
+/// This format represents chained division, i.e.:
+///   `numerator / denominator1 / denominator2 / ...`
+///
+/// Examples of rational lists:
+///   `[1, [2]]`        // represents 1/2
+///   `[3, [4, 5]]`     // represents 3/4/5 = 3/20
+///   `[7, [1]]`        // represents 7/1 = 7
+///
+/// Both compared objects are considered equal if their rational/decimal values are
+/// numerically equivalent.
 bool deepEqualsWithRationalTolerance(dynamic a, dynamic b) {
   if (a is Map && b is Map) {
     if (a.length != b.length) return false;
@@ -115,18 +131,18 @@ bool deepEqualsWithRationalTolerance(dynamic a, dynamic b) {
     }
     return true;
   }
+  // Handle rational/decimal representations before generic list comparison
+  if (_isRationalList(a) && _isRationalList(b)) {
+    final ra = _rationalListToRational(a as List<dynamic>);
+    final rb = _rationalListToRational(b as List<dynamic>);
+    return ra == rb;
+  }
   if (a is List && b is List) {
     if (a.length != b.length) return false;
     for (int i = 0; i < a.length; i++) {
       if (!deepEqualsWithRationalTolerance(a[i], b[i])) return false;
     }
     return true;
-  }
-  // Handle rational/decimal representations: [int, [int]] lists as numerically equal
-  if (_isRationalList(a) && _isRationalList(b)) {
-    final da = _rationalListToDecimal(a as List<dynamic>);
-    final db = _rationalListToDecimal(b as List<dynamic>);
-    return da == db;
   }
   return a == b;
 }
@@ -139,12 +155,18 @@ bool _isRationalList(dynamic x) {
       (x[1] as List).every((e) => e is int);
 }
 
-Decimal _rationalListToDecimal(List<dynamic> rat) {
+Rational _rationalListToRational(List<dynamic> rat) {
   final int numerator = rat[0] as int;
   final List<int> denominators = List<int>.from(rat[1] as List);
-  Decimal value = Decimal.fromInt(numerator);
+  if (denominators.any((d) => d == 0)) {
+    if (numerator == 0 || numerator == 1) {
+      return Rational.zero;
+    }
+    throw ArgumentError('Denominator cannot be zero in rational list: $rat');
+  }
+  Rational value = Rational.fromInt(numerator);
   for (final d in denominators) {
-    value = value / Decimal.fromInt(d);
+    value = value / Rational.fromInt(d);
   }
   return value;
 }
