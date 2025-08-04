@@ -23,9 +23,11 @@ class TrezorConnectionMonitor {
   /// [onConnectionRestored] will be called when the device becomes connected
   /// after being disconnected/unreachable.
   /// [onStatusChanged] will be called for any status change.
+  /// [maxDuration] sets the maximum time to monitor before timing out.
   void startMonitoring({
     String? devicePubkey,
     Duration pollInterval = const Duration(seconds: 1),
+    Duration maxDuration = const Duration(minutes: 30),
     VoidCallback? onConnectionLost,
     VoidCallback? onConnectionRestored,
     void Function(TrezorConnectionStatus)? onStatusChanged,
@@ -38,6 +40,7 @@ class TrezorConnectionMonitor {
         .watchConnectionStatus(
           devicePubkey: devicePubkey,
           pollInterval: pollInterval,
+          maxDuration: maxDuration,
         )
         .listen(
           (status) {
@@ -60,9 +63,12 @@ class TrezorConnectionMonitor {
               onConnectionRestored?.call();
             }
           },
-          onError: (Object error) {
-            _log.severe('Error monitoring Trezor connection: $error');
-            onConnectionLost?.call();
+          onError: (Object error, StackTrace stackTrace) {
+            _log.severe('Error monitoring Trezor connection: $error', error, stackTrace);
+            // Only call onConnectionLost if this is a real connection error, not a disposal
+            if (_connectionSubscription != null) {
+              onConnectionLost?.call();
+            }
           },
           onDone: () {
             _log.info('Trezor connection monitoring stopped');
