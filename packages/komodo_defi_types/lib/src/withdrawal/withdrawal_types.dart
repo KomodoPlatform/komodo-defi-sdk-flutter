@@ -197,7 +197,41 @@ class WithdrawParameters extends Equatable {
 }
 
 /// Preview of a withdrawal operation, using same structure as API response
-typedef WithdrawalPreview = WithdrawResult;
+class WithdrawalPreview extends WithdrawResult {
+  WithdrawalPreview({
+    required super.txHex,
+    required super.txHash,
+    required super.from,
+    required super.to,
+    required super.balanceChanges,
+    required super.blockHeight,
+    required super.timestamp,
+    required super.fee,
+    required super.coin,
+    super.internalId,
+    super.kmdRewards,
+    super.memo,
+  });
+
+  factory WithdrawalPreview.fromWithdrawResult(WithdrawResult result) =>
+      WithdrawalPreview(
+        txHex: result.txHex,
+        txHash: result.txHash,
+        from: result.from,
+        to: result.to,
+        balanceChanges: result.balanceChanges,
+        blockHeight: result.blockHeight,
+        timestamp: result.timestamp,
+        fee: result.fee,
+        coin: result.coin,
+        internalId: result.internalId,
+        kmdRewards: result.kmdRewards,
+        memo: result.memo,
+      );
+
+  factory WithdrawalPreview.fromJson(JsonMap json) =>
+      WithdrawalPreview.fromWithdrawResult(WithdrawResult.fromJson(json));
+}
 
 enum Bip44Chain {
   external._('External', 'External', 0),
