@@ -276,7 +276,7 @@ extension MigrationPreviewPatterns on MigrationPreview {
 
 /// @nodoc
 
-@JsonSerializable(fieldRename: FieldRename.snake)
+@JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
 class _MigrationPreview implements MigrationPreview {
   const _MigrationPreview(
       {required this.fromWalletId,

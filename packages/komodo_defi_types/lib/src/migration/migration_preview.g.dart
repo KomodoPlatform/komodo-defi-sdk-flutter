@@ -20,8 +20,8 @@ _MigrationPreview _$MigrationPreviewFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$MigrationPreviewToJson(_MigrationPreview instance) =>
     <String, dynamic>{
-      'from_wallet_id': instance.fromWalletId,
-      'to_wallet_id': instance.toWalletId,
+      'from_wallet_id': instance.fromWalletId.toJson(),
+      'to_wallet_id': instance.toWalletId.toJson(),
       'pubkey_hash': instance.pubkeyHash,
-      'withdrawals': instance.withdrawals,
+      'withdrawals': instance.withdrawals.map((e) => e.toJson()).toList(),
     };
