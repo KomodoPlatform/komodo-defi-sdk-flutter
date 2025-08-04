@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:developer';
 
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
@@ -294,6 +295,8 @@ class CexMarketDataManager implements MarketDataManager {
         ..finest('Stack trace: $s');
       return null;
     }
+
+    return price;
   }
 
   @override
