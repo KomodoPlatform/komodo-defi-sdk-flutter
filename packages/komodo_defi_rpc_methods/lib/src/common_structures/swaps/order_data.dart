@@ -10,6 +10,7 @@ part 'order_data.g.dart';
 /// with legacy API methods.
 @freezed
 sealed class OrderData with _$OrderData {
+  @JsonSerializable(explicitToJson: true)
   const factory OrderData({
     required String coin,
     required AddressData address,
@@ -17,10 +18,8 @@ sealed class OrderData with _$OrderData {
     required String pubkey,
     required String uuid,
     @JsonKey(name: 'is_mine') required bool isMine,
-    @JsonKey(name: 'base_max_volume')
-    required NumericFormatsValue baseMaxVolume,
-    @JsonKey(name: 'base_min_volume')
-    required NumericFormatsValue baseMinVolume,
+    @JsonKey(name: 'base_max_volume') required NumericFormatsValue baseMaxVolume,
+    @JsonKey(name: 'base_min_volume') required NumericFormatsValue baseMinVolume,
     @JsonKey(name: 'rel_max_volume') required NumericFormatsValue relMaxVolume,
     @JsonKey(name: 'rel_min_volume') required NumericFormatsValue relMinVolume,
     @JsonKey(name: 'conf_settings') OrderConfigurationSettings? confSettings,
@@ -33,9 +32,7 @@ sealed class OrderData with _$OrderData {
 /// Address data for an order
 @freezed
 sealed class AddressData with _$AddressData {
-  const factory AddressData({
-    @JsonKey(name: 'address_data') required String addressData,
-  }) = _AddressData;
+  const factory AddressData({@JsonKey(name: 'address_data') required String addressData}) = _AddressData;
   const AddressData._();
 
   factory AddressData.fromJson(JsonMap json) => _$AddressDataFromJson(json);
@@ -52,6 +49,5 @@ sealed class OrderConfigurationSettings with _$OrderConfigurationSettings {
   }) = _OrderConfigurationSettings;
   const OrderConfigurationSettings._();
 
-  factory OrderConfigurationSettings.fromJson(JsonMap json) =>
-      _$OrderConfigurationSettingsFromJson(json);
+  factory OrderConfigurationSettings.fromJson(JsonMap json) => _$OrderConfigurationSettingsFromJson(json);
 }

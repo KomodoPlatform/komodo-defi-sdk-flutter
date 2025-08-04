@@ -36,16 +36,16 @@ _OrderData _$OrderDataFromJson(Map<String, dynamic> json) => _OrderData(
 Map<String, dynamic> _$OrderDataToJson(_OrderData instance) =>
     <String, dynamic>{
       'coin': instance.coin,
-      'address': instance.address,
-      'price': instance.price,
+      'address': instance.address.toJson(),
+      'price': instance.price.toJson(),
       'pubkey': instance.pubkey,
       'uuid': instance.uuid,
       'is_mine': instance.isMine,
-      'base_max_volume': instance.baseMaxVolume,
-      'base_min_volume': instance.baseMinVolume,
-      'rel_max_volume': instance.relMaxVolume,
-      'rel_min_volume': instance.relMinVolume,
-      'conf_settings': instance.confSettings,
+      'base_max_volume': instance.baseMaxVolume.toJson(),
+      'base_min_volume': instance.baseMinVolume.toJson(),
+      'rel_max_volume': instance.relMaxVolume.toJson(),
+      'rel_min_volume': instance.relMinVolume.toJson(),
+      'conf_settings': instance.confSettings?.toJson(),
     };
 
 _AddressData _$AddressDataFromJson(Map<String, dynamic> json) =>
