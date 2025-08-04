@@ -8,7 +8,7 @@ class ZCoinTxHistoryRequest
     this.limit = 10,
     this.pagingOptions,
     super.rpcPass,
-  }) : super(method: 'z_coin_tx_history', mmrpc: '2.0');
+  }) : super(method: 'z_coin_tx_history', mmrpc: RpcVersion.v2_0);
 
   final String coin;
   final int limit;

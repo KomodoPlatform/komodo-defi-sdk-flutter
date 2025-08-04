@@ -22,6 +22,9 @@ class QtumProtocol extends ProtocolClass {
   @override
   bool get requiresHdWallet => false;
 
+  @override
+  bool get isMemoSupported => false;
+
   static void _validateQtumConfig(JsonMap json) {
     final requiredFields = {
       'pubtype': 'Public key type',

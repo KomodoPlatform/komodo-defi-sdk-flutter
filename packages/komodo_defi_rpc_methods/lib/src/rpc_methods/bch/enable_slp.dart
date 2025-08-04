@@ -7,7 +7,7 @@ class EnableSlpRequest
     required this.ticker,
     required this.activationParams,
     super.rpcPass,
-  }) : super(method: 'enable_slp', mmrpc: '2.0');
+  }) : super(method: 'enable_slp', mmrpc: RpcVersion.v2_0);
 
   final String ticker;
   final SlpActivationParams activationParams;

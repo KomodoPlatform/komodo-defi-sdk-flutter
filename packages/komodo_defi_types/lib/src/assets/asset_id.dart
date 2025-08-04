@@ -18,13 +18,14 @@ class AssetId extends Equatable {
     final subClass = CoinSubClass.parse(json.value('type'));
 
     final parentCoinTicker = json.valueOrNull<String>('parent_coin');
-    final maybeParent = parentCoinTicker == null
-        ? null
-        : knownIds?.singleWhere(
-            (parent) =>
-                parent.id == parentCoinTicker &&
-                parent.subClass.canBeParentOf(subClass),
-          );
+    final maybeParent =
+        parentCoinTicker == null
+            ? null
+            : knownIds?.singleWhere(
+              (parent) =>
+                  parent.id == parentCoinTicker &&
+                  parent.subClass.canBeParentOf(subClass),
+            );
 
     return AssetId(
       id: json.value<String>('coin'),
@@ -71,6 +72,8 @@ class AssetId extends Equatable {
     );
   }
 
+  static const _isMultipleTypesPerAssetAllowed = false;
+
   /// Method that parses a config object and returns a set of [AssetId] objects.
   ///
   /// For most coins, this will return a single [AssetId] object. However, for
@@ -82,7 +85,9 @@ class AssetId extends Equatable {
   }) {
     final assetIds = {AssetId.parse(json, knownIds: knownIds)};
 
-    return assetIds;
+    if (!_isMultipleTypesPerAssetAllowed) {
+      return assetIds;
+    }
 
     // Remove below if it is confirmed that we will never encounter a coin with
     // multiple types which need to be treated as separate assets. This was
@@ -92,9 +97,10 @@ class AssetId extends Equatable {
 
     for (final otherType in otherTypes) {
       final jsonCopy = JsonMap.from(json);
-      final otherTypesCopy = List<String>.from(otherTypes)
-        ..remove(otherType)
-        ..add(json.value('type'));
+      final otherTypesCopy =
+          List<String>.from(otherTypes)
+            ..remove(otherType)
+            ..add(json.value('type'));
 
       // TODO: Perhaps restructure so we can copy the protocol data from
       // another coin with the same type
@@ -112,20 +118,15 @@ class AssetId extends Equatable {
     return assetIds;
   }
 
-  // // Used for string representation in maps/logs
-  // String get uniqueId => isChildAsset
-  //     ? '${parentId!.id}/${id}_${subClass.formatted}'
-  //     : '${id}_${subClass.formatted}';
-
   JsonMap toJson() => {
-        'coin': id,
-        'fname': name,
-        'symbol': symbol.toJson(),
-        'chain_id': chainId.formattedChainId,
-        'derivation_path': derivationPath,
-        'type': subClass.formatted,
-        if (parentId != null) 'parent_coin': parentId!.id,
-      };
+    'coin': id,
+    'fname': name,
+    'symbol': symbol.toJson(),
+    'chain_id': chainId.formattedChainId,
+    'derivation_path': derivationPath,
+    'type': subClass.formatted,
+    if (parentId != null) 'parent_coin': parentId!.id,
+  };
 
   @override
   List<Object?> get props => [id, subClass.formatted, chainId.formattedChainId];
@@ -210,7 +211,8 @@ class TendermintChainId extends ChainId {
       accountPrefix: protocolData.value<String>('account_prefix'),
       chainId: protocolData.value<String>('chain_id'),
       chainRegistryName: protocolData.value<String>('chain_registry_name'),
-      decimalsValue: protocolData.valueOrNull<int>('decimals') ??
+      decimalsValue:
+          protocolData.valueOrNull<int>('decimals') ??
           json.valueOrNull<int>('decimals'),
     );
   }
@@ -228,16 +230,16 @@ class TendermintChainId extends ChainId {
 
   @override
   List<Object?> get props => [
-        accountPrefix,
-        chainId,
-        chainRegistryName,
-        decimalsValue,
-      ];
+    accountPrefix,
+    chainId,
+    chainRegistryName,
+    decimalsValue,
+  ];
 }
 
 class ProtocolChainId extends ChainId {
   ProtocolChainId({required ProtocolClass protocol, this.decimalsValue})
-      : _protocol = protocol;
+    : _protocol = protocol;
 
   @override
   factory ProtocolChainId.fromConfig(JsonMap json) {

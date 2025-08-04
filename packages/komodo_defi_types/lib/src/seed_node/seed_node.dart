@@ -11,6 +11,22 @@ class SeedNode {
     required this.contact,
   });
 
+  /// Creates a [SeedNode] from a JSON map.
+  factory SeedNode.fromJson(JsonMap json) {
+    return SeedNode(
+      name: json.value<String>('name'),
+      host: json.value<String>('host'),
+      type: json.value<String>('type'),
+      wss: json.value<bool>('wss'),
+      netId: json.value<int>('netid'),
+      contact: json
+          .value<List<dynamic>>('contact')
+          .cast<JsonMap>()
+          .map(SeedNodeContact.fromJson)
+          .toList(),
+    );
+  }
+
   /// The name identifier for the seed node
   final String name;
 
@@ -28,22 +44,6 @@ class SeedNode {
 
   /// The network identifier for the seed node
   final int netId;
-
-  /// Creates a [SeedNode] from a JSON map.
-  factory SeedNode.fromJson(JsonMap json) {
-    return SeedNode(
-      name: json.value<String>('name'),
-      host: json.value<String>('host'),
-      type: json.value<String>('type'),
-      wss: json.value<bool>('wss'),
-      netId: json.value<int>('netid'),
-      contact: json
-          .value<List<dynamic>>('contact')
-          .cast<JsonMap>()
-          .map(SeedNodeContact.fromJson)
-          .toList(),
-    );
-  }
 
   /// Converts this [SeedNode] to a JSON map.
   JsonMap toJson() {
@@ -98,15 +98,15 @@ class SeedNodeContact {
     required this.email,
   });
 
-  /// The email contact for the seed node
-  final String email;
-
   /// Creates a [SeedNodeContact] from a JSON map.
   factory SeedNodeContact.fromJson(JsonMap json) {
     return SeedNodeContact(
       email: json.value<String>('email'),
     );
   }
+
+  /// The email contact for the seed node
+  final String email;
 
   /// Converts this [SeedNodeContact] to a JSON map.
   JsonMap toJson() {

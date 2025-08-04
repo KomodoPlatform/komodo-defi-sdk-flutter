@@ -7,35 +7,60 @@ class NewAddressInfo extends Equatable {
     required this.address,
     required this.derivationPath,
     required this.chain,
-    required this.balance,
+    required this.balances,
   });
 
   factory NewAddressInfo.fromJson(Map<String, dynamic> json) {
+    final balanceMap = json.value<JsonMap>('balance');
+    final balances = <String, BalanceInfo>{};
+
+    for (final entry in balanceMap.entries) {
+      balances[entry.key] = BalanceInfo.fromJson(entry.value as JsonMap);
+    }
+
     return NewAddressInfo(
       address: json.value<String>('address'),
       derivationPath: json.valueOrNull<String>('derivation_path'),
       chain: json.valueOrNull<String>('chain'),
-      balance: BalanceInfo.fromJson(
-        json.value<JsonMap>('balance').entries.single.value as JsonMap,
-      ),
+      balances: balances,
     );
   }
   final String address;
-  final BalanceInfo balance;
+  final Map<String, BalanceInfo> balances;
+
+  /// Get balance for a specific coin ticker
+  BalanceInfo? getBalanceForCoin(String coinTicker) => balances[coinTicker];
+
+  /// Get the first balance entry (for backwards compatibility)
+  BalanceInfo get balance {
+    assert(
+      balances.length == 1,
+      'Expected 1 balance entry, got ${balances.length}',
+    );
+    return balances.values.fold(
+      BalanceInfo.zero(),
+      (total, balance) => total + balance,
+    );
+  }
 
   // HD Wallet properties (Null if not HD Wallet)
   final String? derivationPath;
   final String? chain;
 
   Map<String, dynamic> toJson() {
+    final balanceMap = <String, dynamic>{};
+    for (final entry in balances.entries) {
+      balanceMap[entry.key] = entry.value.toJson();
+    }
+
     return {
       'address': address,
       'derivation_path': derivationPath,
       'chain': chain,
-      'balance': balance.toJson(),
+      'balance': balanceMap,
     };
   }
 
   @override
-  List<Object?> get props => [address, derivationPath, chain, balance];
+  List<Object?> get props => [address, derivationPath, chain, balances];
 }

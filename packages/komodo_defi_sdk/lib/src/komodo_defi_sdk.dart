@@ -6,6 +6,7 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/bootstrap.dart';
+import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
@@ -278,6 +279,15 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   WithdrawalManager get withdrawals =>
       _assertSdkInitialized(_container<WithdrawalManager>());
 
+  /// Manages security-sensitive wallet operations like private key export.
+  ///
+  /// Provides authenticated access to sensitive wallet data with proper
+  /// security warnings and user authentication checks.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  SecurityManager get security =>
+      _assertSdkInitialized(_container<SecurityManager>());
+
   /// The price manager instance.
   ///
   /// Provides functionality for fetching asset prices.
@@ -285,6 +295,9 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Throws [StateError] if accessed before initialization.
   MarketDataManager get marketData =>
       _assertSdkInitialized(_container<MarketDataManager>());
+
+  /// Provides access to fee management utilities.
+  FeeManager get fees => _assertSdkInitialized(_container<FeeManager>());
 
   /// Gets a reference to the balance manager for checking asset balances.
   ///
@@ -401,7 +414,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// cleanup of resources and background operations.
   ///
   /// NB! By default, this will terminate the KDF process.
-  /// 
+  ///
   /// TODO: Consider future refactoring to separate KDF process disposal vs
   /// Dart object disposal.
   ///
@@ -414,7 +427,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _isDisposed = true;
 
     if (!_isInitialized) return;
-    
+
     _isInitialized = false;
     _initializationFuture = null;
 
@@ -426,7 +439,9 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
       _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
       _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
+      _disposeIfRegistered<FeeManager>((m) => m.dispose()),
       _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
+      _disposeIfRegistered<SecurityManager>((m) => m.dispose()),
     ]);
 
     // Reset scoped container

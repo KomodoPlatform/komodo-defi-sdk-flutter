@@ -83,7 +83,7 @@ class LiveData<T> extends ChangeNotifier implements ValueListenable<T> {
   DateTime? _lastRefreshed;
   final Future<T> Function()? _refreshFunction;
   final bool Function(T a, T b)? _equalityComparer;
-  StreamSubscription? _sourceStreamSubscription;
+  StreamSubscription<T>? _sourceStreamSubscription;
   Timer? _periodicTimer;
 
   /// Get the current value synchronously.

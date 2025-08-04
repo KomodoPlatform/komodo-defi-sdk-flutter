@@ -1,9 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
+import 'package:kdf_sdk_example/widgets/instance_manager/auth_form_widget.dart';
 import 'package:kdf_sdk_example/main.dart';
 import 'package:kdf_sdk_example/screens/bridge_page.dart';
 import 'package:kdf_sdk_example/screens/orderbook_page.dart';
@@ -13,7 +11,7 @@ import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/auth/seed_dialog.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_status.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:kdf_sdk_example/widgets/instance_manager/logged_in_view_widget.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class InstanceView extends StatefulWidget {
@@ -28,7 +26,7 @@ class InstanceView extends StatefulWidget {
   });
 
   final KdfInstanceState instance;
-  final InstanceState state;
+  final String state;
   final String statusMessage;
   final TextEditingController searchController;
   final List<Asset> filteredAssets;
@@ -47,6 +45,69 @@ class _InstanceViewState extends State<InstanceView> {
     super.initState();
     context.read<AuthBloc>().add(const AuthKnownUsersFetched());
     context.read<AuthBloc>().add(const AuthInitialStateChecked());
+  }
+
+  Future<void> _deleteWallet(String walletName) async {
+    if (walletName.isEmpty) {
+      _showError('Wallet name is required');
+      return;
+    }
+    final passwordController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Wallet'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter the wallet password to confirm deletion. This action cannot be undone.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscureText: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await widget.instance.sdk.auth.deleteWallet(
+        walletName: walletName,
+        password: passwordController.text,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Wallet deleted')));
+        context.read<AuthBloc>().add(const AuthKnownUsersFetched());
+      }
+    } on AuthException catch (e) {
+      _showError('Delete wallet failed: ${e.message}');
+    } catch (e) {
+      _showError('Delete wallet failed: $e');
+    }
   }
 
   @override
