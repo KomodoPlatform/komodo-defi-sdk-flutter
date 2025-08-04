@@ -14,7 +14,7 @@ _MigrationPreview _$MigrationPreviewFromJson(Map<String, dynamic> json) =>
           WalletId.fromJson(json['to_wallet_id'] as Map<String, dynamic>),
       pubkeyHash: json['pubkey_hash'] as String,
       withdrawals: (json['withdrawals'] as List<dynamic>)
-          .map((e) => WithdrawResult.fromJson(e as Map<String, dynamic>))
+          .map((e) => WithdrawalPreview.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
 

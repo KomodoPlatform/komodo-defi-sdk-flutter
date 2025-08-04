@@ -1,7 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart'
-    show WithdrawResult, WalletId, WithdrawalPreview;
+    show WalletId, WithdrawalPreview;
 
 part 'migration_preview.freezed.dart';
 part 'migration_preview.g.dart';
