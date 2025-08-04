@@ -1,0 +1,112 @@
+{
+  "mmrpc": "2.0",
+  "result": {
+    "base": "BTC",
+    "rel": "KMD",
+    "num_asks": 1,
+    "num_bids": 1,
+    "net_id": 8762,
+    "asks": [
+      {
+        "coin": "BTC",
+        "address": {"address_data": "btcaddress"},
+        "price": {
+          "decimal": "0.1",
+          "rational": [[1,[1]], [1,[10]]],
+          "fraction": {"numer": "1", "denom": "10"}
+        },
+        "pubkey": "pubkey1",
+        "uuid": "uuid-ask",
+        "is_mine": false,
+        "base_max_volume": {
+          "decimal": "5",
+          "rational": [[1,[5]], [1,[1]]],
+          "fraction": {"numer": "5", "denom": "1"}
+        },
+        "base_min_volume": {
+          "decimal": "0.01",
+          "rational": [[1,[1]], [1,[100]]],
+          "fraction": {"numer": "1", "denom": "100"}
+        },
+        "rel_max_volume": {
+          "decimal": "5",
+          "rational": [[1,[5]], [1,[1]]],
+          "fraction": {"numer": "5", "denom": "1"}
+        },
+        "rel_min_volume": {
+          "decimal": "0.01",
+          "rational": [[1,[1]], [1,[100]]],
+          "fraction": {"numer": "1", "denom": "100"}
+        },
+        "conf_settings": {
+          "base_confs": 1,
+          "base_nota": false,
+          "rel_confs": 1,
+          "rel_nota": false
+        }
+      }
+    ],
+    "bids": [
+      {
+        "coin": "KMD",
+        "address": {"address_data": "kmdaddress"},
+        "price": {
+          "decimal": "0.1",
+          "rational": [[1,[1]], [1,[10]]],
+          "fraction": {"numer": "1", "denom": "10"}
+        },
+        "pubkey": "pubkey2",
+        "uuid": "uuid-bid",
+        "is_mine": false,
+        "base_max_volume": {
+          "decimal": "5",
+          "rational": [[1,[5]], [1,[1]]],
+          "fraction": {"numer": "5", "denom": "1"}
+        },
+        "base_min_volume": {
+          "decimal": "0.01",
+          "rational": [[1,[1]], [1,[100]]],
+          "fraction": {"numer": "1", "denom": "100"}
+        },
+        "rel_max_volume": {
+          "decimal": "5",
+          "rational": [[1,[5]], [1,[1]]],
+          "fraction": {"numer": "5", "denom": "1"}
+        },
+        "rel_min_volume": {
+          "decimal": "0.01",
+          "rational": [[1,[1]], [1,[100]]],
+          "fraction": {"numer": "1", "denom": "100"}
+        },
+        "conf_settings": {
+          "base_confs": 1,
+          "base_nota": false,
+          "rel_confs": 1,
+          "rel_nota": false
+        }
+      }
+    ],
+    "timestamp": 1234567890,
+    "total_asks_base_vol": {
+      "decimal": "5",
+      "rational": [[1,[5]], [1,[1]]],
+      "fraction": {"numer": "5", "denom": "1"}
+    },
+    "total_asks_rel_vol": {
+      "decimal": "5",
+      "rational": [[1,[5]], [1,[1]]],
+      "fraction": {"numer": "5", "denom": "1"}
+    },
+    "total_bids_base_vol": {
+      "decimal": "5",
+      "rational": [[1,[5]], [1,[1]]],
+      "fraction": {"numer": "5", "denom": "1"}
+    },
+    "total_bids_rel_vol": {
+      "decimal": "5",
+      "rational": [[1,[5]], [1,[1]]],
+      "fraction": {"numer": "5", "denom": "1"}
+    }
+  },
+  "id": null
+}

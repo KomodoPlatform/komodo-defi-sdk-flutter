@@ -1,0 +1,134 @@
+{
+    "mmrpc": "2.0",
+    "result": {
+        "base_coin_fee": {
+            "coin": "MARTY",
+            "amount": "0.00001",
+            "amount_fraction": {
+                "numer": "1",
+                "denom": "100000"
+            },
+            "amount_rat": [
+                [
+                    1,
+                    [
+                        1
+                    ]
+                ],
+                [
+                    1,
+                    [
+                        100000
+                    ]
+                ]
+            ],
+            "paid_from_trading_vol": false
+        },
+        "rel_coin_fee": {
+            "coin": "DOC",
+            "amount": "0.00001",
+            "amount_fraction": {
+                "numer": "1",
+                "denom": "100000"
+            },
+            "amount_rat": [
+                [
+                    1,
+                    [
+                        1
+                    ]
+                ],
+                [
+                    1,
+                    [
+                        100000
+                    ]
+                ]
+            ],
+            "paid_from_trading_vol": true
+        },
+        "total_fees": [
+            {
+                "coin": "MARTY",
+                "amount": "0.00001",
+                "amount_fraction": {
+                    "numer": "1",
+                    "denom": "100000"
+                },
+                "amount_rat": [
+                    [
+                        1,
+                        [
+                            1
+                        ]
+                    ],
+                    [
+                        1,
+                        [
+                            100000
+                        ]
+                    ]
+                ],
+                "required_balance": "0.00001",
+                "required_balance_fraction": {
+                    "numer": "1",
+                    "denom": "100000"
+                },
+                "required_balance_rat": [
+                    [
+                        1,
+                        [
+                            1
+                        ]
+                    ],
+                    [
+                        1,
+                        [
+                            100000
+                        ]
+                    ]
+                ]
+            },
+            {
+                "coin": "DOC",
+                "amount": "0.00001",
+                "amount_fraction": {
+                    "numer": "1",
+                    "denom": "100000"
+                },
+                "amount_rat": [
+                    [
+                        1,
+                        [
+                            1
+                        ]
+                    ],
+                    [
+                        1,
+                        [
+                            100000
+                        ]
+                    ]
+                ],
+                "required_balance": "0",
+                "required_balance_fraction": {
+                    "numer": "0",
+                    "denom": "1"
+                },
+                "required_balance_rat": [
+                    [
+                        0,
+                        []
+                    ],
+                    [
+                        1,
+                        [
+                            1
+                        ]
+                    ]
+                ]
+            }
+        ]
+    },
+    "id": 0
+}
