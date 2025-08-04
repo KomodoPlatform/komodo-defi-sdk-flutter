@@ -8,7 +8,7 @@ part 'migration_preview.g.dart';
 
 @freezed
 abstract class MigrationPreview with _$MigrationPreview {
-  @JsonSerializable(fieldRename: FieldRename.snake)
+  @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
   const factory MigrationPreview({
     required WalletId fromWalletId,
     required WalletId toWalletId,
