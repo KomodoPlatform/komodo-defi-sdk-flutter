@@ -1,17 +1,22 @@
+import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/komodo/prices/komodo_price_provider.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+/// Interface for Komodo price repository.
+abstract class IKomodoPriceRepository implements CexRepository {
+  Future<Map<String, CexPrice>> getKomodoPrices();
+}
+
 /// A repository for fetching the prices of coins from the Komodo Defi API.
-class KomodoPriceRepository {
+class KomodoPriceRepository implements IKomodoPriceRepository {
   /// Creates a new instance of [KomodoPriceRepository].
-  KomodoPriceRepository({
-    required KomodoPriceProvider cexPriceProvider,
-  }) : _cexPriceProvider = cexPriceProvider;
+  KomodoPriceRepository({required IKomodoPriceProvider cexPriceProvider})
+    : _cexPriceProvider = cexPriceProvider;
 
   /// The price provider to fetch the prices from.
-  final KomodoPriceProvider _cexPriceProvider;
+  final IKomodoPriceProvider _cexPriceProvider;
 
   List<CexCoin>? _cachedCoinsList;
   Set<String>? _cachedFiatCurrencies;
@@ -28,9 +33,9 @@ class KomodoPriceRepository {
     List<String> timestamps, {
     String vsCurrency = 'usd',
   }) async {
-    return (await _cexPriceProvider.getKomodoPrices())
-        .values
-        .firstWhere((CexPrice element) {
+    return (await _cexPriceProvider.getKomodoPrices()).values.firstWhere((
+      CexPrice element,
+    ) {
       if (element.ticker != coinId) {
         return false;
       }
@@ -43,30 +48,34 @@ class KomodoPriceRepository {
   /// Fetches the prices of the provided coin IDs.
   ///
   /// Returns a map of coin IDs to their prices.
+  @override
   Future<Map<String, CexPrice>> getKomodoPrices() async {
     return _cexPriceProvider.getKomodoPrices();
   }
 
+  @override
   Future<List<CexCoin>> getCoinList() async {
     if (_cachedCoinsList != null) {
       return _cachedCoinsList!;
     }
     final prices = await getKomodoPrices();
-    _cachedCoinsList = prices.values
-        .map(
-          (e) => CexCoin(
-            id: e.ticker,
-            symbol: e.ticker,
-            name: e.ticker,
-            currencies: <String>{'USD', 'USDT'},
-            source: 'komodo',
-          ),
-        )
-        .toList();
+    _cachedCoinsList =
+        prices.values
+            .map(
+              (e) => CexCoin(
+                id: e.ticker,
+                symbol: e.ticker,
+                name: e.ticker,
+                currencies: <String>{'USD', 'USDT'},
+                source: 'komodo',
+              ),
+            )
+            .toList();
     _cachedFiatCurrencies = {'USD', 'USDT'};
     return _cachedCoinsList!;
   }
 
+  @override
   Future<bool> supports(
     AssetId assetId,
     AssetId fiatAssetId,
@@ -79,8 +88,56 @@ class KomodoPriceRepository {
     );
     final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
     // Only support currentPrice and priceChange requests
-    final supportsRequestType = requestType == PriceRequestType.currentPrice ||
+    final supportsRequestType =
+        requestType == PriceRequestType.currentPrice ||
         requestType == PriceRequestType.priceChange;
     return supportsAsset && supportsFiat && supportsRequestType;
+  }
+
+  @override
+  Future<CoinOhlc> getCoinOhlc(
+    CexCoinPair symbol,
+    GraphInterval interval, {
+    DateTime? startAt,
+    DateTime? endAt,
+    int? limit,
+  }) {
+    throw UnimplementedError('KomodoPriceRepository does not support OHLC');
+  }
+
+  @override
+  String resolveTradingSymbol(AssetId assetId) {
+    return assetId.symbol.configSymbol;
+  }
+
+  @override
+  bool canHandleAsset(AssetId assetId) {
+    final symbol = assetId.symbol.configSymbol.toUpperCase();
+    return _cachedCoinsList?.any((c) => c.id.toUpperCase() == symbol) ?? false;
+  }
+
+  @override
+  Future<double> getCoinFiatPrice(
+    AssetId assetId, {
+    DateTime? priceDate,
+    String fiatCoinId = 'usdt',
+  }) async {
+    final prices = await getKomodoPrices();
+    final symbol = assetId.symbol.configSymbol;
+    final price = prices[symbol]?.price;
+    if (price == null) {
+      throw StateError('Price not found for ${assetId.symbol.configSymbol}');
+    }
+    return price;
+  }
+
+  @override
+  Future<Map<DateTime, double>> getCoinFiatPrices(
+    AssetId assetId,
+    List<DateTime> dates, {
+    String fiatCoinId = 'usdt',
+  }) async {
+    final price = await getCoinFiatPrice(assetId, fiatCoinId: fiatCoinId);
+    return {for (final date in dates) date: price};
   }
 }

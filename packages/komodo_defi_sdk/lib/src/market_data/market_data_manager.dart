@@ -72,14 +72,21 @@ class CexMarketDataManager implements MarketDataManager {
   /// Creates a new instance of [CexMarketDataManager]
   CexMarketDataManager({
     required List<CexRepository> priceRepositories,
-    required KomodoPriceRepository komodoPriceRepository,
+    required IKomodoPriceRepository komodoPriceRepository,
     RepositorySelectionStrategy? selectionStrategy,
-  }) : _priceRepositories = priceRepositories,
-       _komodoPriceRepository = komodoPriceRepository,
-       _selectionStrategy = selectionStrategy ?? RepositorySelectionStrategy();
+    Duration cacheClearInterval = const Duration(minutes: 5),
+    Timer Function(Duration, void Function())? timerFactory,
+  }) : _komodoPriceRepository = komodoPriceRepository,
+       _selectionStrategy =
+           selectionStrategy ?? DefaultRepositorySelectionStrategy(),
+       _cacheClearInterval = cacheClearInterval,
+       _timerFactory =
+           timerFactory ?? ((d, cb) => Timer.periodic(d, (_) => cb())),
+       _priceRepositories = [komodoPriceRepository, ...priceRepositories];
   static final _logger = Logger('CexMarketDataManager');
 
-  static const _cacheClearInterval = Duration(minutes: 5);
+  final Duration _cacheClearInterval;
+  final Timer Function(Duration, void Function()) _timerFactory;
   Timer? _cacheTimer;
 
   @override
@@ -102,7 +109,7 @@ class CexMarketDataManager implements MarketDataManager {
     _knownTickers = UnmodifiableSetView(allTickers);
     _logger.fine('Initialized known tickers: ${_knownTickers?.length ?? 0}');
     // Start cache clearing timer
-    _cacheTimer = Timer.periodic(_cacheClearInterval, (_) => _clearCaches());
+    _cacheTimer = _timerFactory(_cacheClearInterval, _clearCaches);
     _logger.finer(
       'Started cache clearing timer with interval $_cacheClearInterval',
     );
@@ -111,7 +118,7 @@ class CexMarketDataManager implements MarketDataManager {
   Set<String>? _knownTickers;
 
   final List<CexRepository> _priceRepositories;
-  final KomodoPriceRepository _komodoPriceRepository;
+  final IKomodoPriceRepository _komodoPriceRepository;
   final RepositorySelectionStrategy _selectionStrategy;
   bool _isDisposed = false;
 

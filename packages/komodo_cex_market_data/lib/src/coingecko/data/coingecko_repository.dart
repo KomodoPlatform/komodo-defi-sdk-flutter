@@ -23,7 +23,7 @@ class CoinGeckoRepository implements CexRepository {
         _idResolutionStrategy = CoinGeckoIdResolutionStrategy();
 
   /// The CoinGecko provider to use for fetching data.
-  final CoinGeckoCexProvider coinGeckoProvider;
+  final ICoinGeckoProvider coinGeckoProvider;
   final BackoffStrategy _defaultBackoffStrategy;
   final IdResolutionStrategy _idResolutionStrategy;
 

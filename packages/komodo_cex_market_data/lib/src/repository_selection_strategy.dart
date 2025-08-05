@@ -6,16 +6,26 @@ import 'package:komodo_cex_market_data/src/models/cex_coin.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Enum for the type of price request
-enum PriceRequestType {
-  currentPrice,
-  priceChange,
-  priceHistory,
+enum PriceRequestType { currentPrice, priceChange, priceHistory }
+
+/// Strategy interface for selecting repositories
+abstract class RepositorySelectionStrategy {
+  Future<void> ensureCacheInitialized(List<CexRepository> repositories);
+
+  Future<CexRepository?> selectRepository({
+    required AssetId assetId,
+    required AssetId fiatAssetId,
+    required PriceRequestType requestType,
+    required List<CexRepository> availableRepositories,
+  });
 }
 
-/// Strategy for selecting the best repository for a given asset and operation
-class RepositorySelectionStrategy {
+/// Default strategy for selecting the best repository for a given asset
+class DefaultRepositorySelectionStrategy
+    implements RepositorySelectionStrategy {
   final Map<CexRepository, _RepositorySupportCache> _supportCache = {};
 
+  @override
   Future<void> ensureCacheInitialized(List<CexRepository> repositories) async {
     for (final repo in repositories) {
       if (!_supportCache.containsKey(repo)) {
@@ -30,6 +40,7 @@ class RepositorySelectionStrategy {
   }
 
   /// Selects the best repository for a given asset, fiat, and request type
+  @override
   Future<CexRepository?> selectRepository({
     required AssetId assetId,
     required AssetId fiatAssetId,
@@ -38,15 +49,17 @@ class RepositorySelectionStrategy {
   }) async {
     await ensureCacheInitialized(availableRepositories);
     final fiatSymbol = fiatAssetId.symbol.configSymbol.toUpperCase();
-    final candidates = availableRepositories.where((repo) {
-      final cache = _supportCache[repo];
-      if (cache == null) return false;
-      final supportsAsset = cache.coins.any(
-        (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
-      );
-      final supportsFiat = cache.fiatCurrencies.contains(fiatSymbol);
-      return supportsAsset && supportsFiat;
-    }).toList();
+    final candidates =
+        availableRepositories.where((repo) {
+          final cache = _supportCache[repo];
+          if (cache == null) return false;
+          final supportsAsset = cache.coins.any(
+            (c) =>
+                c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
+          );
+          final supportsFiat = cache.fiatCurrencies.contains(fiatSymbol);
+          return supportsAsset && supportsFiat;
+        }).toList();
     candidates.sort(
       (a, b) => _getRepositoryPriority(a).compareTo(_getRepositoryPriority(b)),
     );

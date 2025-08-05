@@ -8,10 +8,11 @@ import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 SparklineRepository sparklineRepository = SparklineRepository();
 
 class SparklineRepository {
-  SparklineRepository() {
-    _binanceRepository = binanceRepository;
-  }
-  late BinanceRepository _binanceRepository;
+  SparklineRepository({BinanceRepository? binanceRepository})
+    : _binanceRepository =
+          binanceRepository ??
+          BinanceRepository(binanceProvider: const BinanceProvider());
+  final BinanceRepository _binanceRepository;
   bool isInitialized = false;
   final Duration cacheExpiry = const Duration(hours: 1);
 
