@@ -28,18 +28,19 @@ class WebLogStorageWasm
     final root = await storageManager.getDirectory().toDart;
 
     // Create or get the dragon_logs directory
-    _logDirectory = await root
-        .getDirectoryHandle(
-          "dragon_logs",
-          FileSystemGetDirectoryOptions(create: true),
-        )
-        .toDart;
+    _logDirectory =
+        await root
+            .getDirectoryHandle(
+              "dragon_logs",
+              FileSystemGetDirectoryOptions(create: true),
+            )
+            .toDart;
 
     initQueueFlusher();
   }
 
   @override
-  Future<void> writeToTextFile(String logs, {bool batchWrite = true}) async {
+  Future<void> writeToTextFile(String logs) async {
     if (_currentLogStream == null) {
       await initWriteDate(DateTime.now());
     }
@@ -58,21 +59,23 @@ class WebLogStorageWasm
 
     _currentLogFileName = logFileNameOfDate(date);
 
-    _currentLogFile = await _logDirectory!
-        .getFileHandle(
-          _currentLogFileName,
-          FileSystemGetFileOptions(create: true),
-        )
-        .toDart;
+    _currentLogFile =
+        await _logDirectory!
+            .getFileHandle(
+              _currentLogFileName,
+              FileSystemGetFileOptions(create: true),
+            )
+            .toDart;
 
     final file = await _currentLogFile!.getFile().toDart;
     final sizeBytes = file.size.toInt();
 
-    _currentLogStream = await _currentLogFile!
-        .createWritable(
-          FileSystemCreateWritableOptions(keepExistingData: true),
-        )
-        .toDart;
+    _currentLogStream =
+        await _currentLogFile!
+            .createWritable(
+              FileSystemCreateWritableOptions(keepExistingData: true),
+            )
+            .toDart;
 
     await _currentLogStream!.seek(sizeBytes).toDart;
   }
@@ -85,27 +88,32 @@ class WebLogStorageWasm
       while (await getLogFolderSize() > size) {
         final files = await _getLogFiles();
 
-        final sortedFiles = files
-            .where(
-              (handle) => CommonLogStorageOperations.isLogFileNameValid(
-                handle.name,
-              ),
-            )
-            .toList()
-          ..sort((a, b) {
-            final aDate = CommonLogStorageOperations.tryParseLogFileDate(
-              a.name,
-            );
-            final bDate = CommonLogStorageOperations.tryParseLogFileDate(
-              b.name,
-            );
+        final sortedFiles =
+            files
+                .where(
+                  (handle) => CommonLogStorageOperations.isLogFileNameValid(
+                    handle.name,
+                  ),
+                )
+                .toList()
+              ..sort((a, b) {
+                final aDate = CommonLogStorageOperations.tryParseLogFileDate(
+                  a.name,
+                );
+                final bDate = CommonLogStorageOperations.tryParseLogFileDate(
+                  b.name,
+                );
 
-            if (aDate == null || bDate == null) {
-              return 0;
-            }
+                if (aDate == null || bDate == null) {
+                  return 0;
+                }
 
-            return aDate.compareTo(bDate);
-          });
+                return aDate.compareTo(bDate);
+              });
+
+        if (sortedFiles.isEmpty) {
+          break;
+        }
 
         await _logDirectory!
             .removeEntry(
@@ -206,10 +214,11 @@ class WebLogStorageWasm
     final blob = Blob([Uint8List.fromList(bytes).toJS].toJS);
     final url = URL.createObjectURL(blob);
 
-    final anchor = HTMLAnchorElement()
-      ..href = url
-      ..download = filename
-      ..style.display = 'none';
+    final anchor =
+        HTMLAnchorElement()
+          ..href = url
+          ..download = filename
+          ..style.display = 'none';
 
     document.body!.appendChild(anchor);
     anchor.click();
