@@ -5,9 +5,12 @@ version: 0.1.0
 
 environment:
   sdk: ^3.7.0
+  flutter: ">=3.29.0 <3.33.0"
 
 dependencies:
   decimal: ^3.2.1
+  dragon_logs:
+    path: ../../dragon_logs
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.1

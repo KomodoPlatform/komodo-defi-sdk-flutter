@@ -17,22 +17,22 @@ class LogEntry {
 
   /// The severity level of this log entry
   final LogLevel level;
-  
+
   /// The log message
   final String message;
-  
+
   /// When this log entry was created
   final DateTime timestamp;
-  
+
   /// Name of the logger that created this entry
   final String loggerName;
-  
+
   /// Optional error object associated with this log entry
   final Object? error;
-  
+
   /// Optional stack trace associated with this log entry
   final StackTrace? stackTrace;
-  
+
   /// Optional extra data associated with this log entry
   final Map<String, dynamic>? extra;
 
@@ -60,21 +60,21 @@ class LogEntry {
   @override
   String toString() {
     return 'LogEntry(level: $level, message: $message, timestamp: $timestamp, '
-           'loggerName: $loggerName, error: $error, stackTrace: $stackTrace, '
-           'extra: $extra)';
+        'loggerName: $loggerName, error: $error, stackTrace: $stackTrace, '
+        'extra: $extra)';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is LogEntry &&
-           other.level == level &&
-           other.message == message &&
-           other.timestamp == timestamp &&
-           other.loggerName == loggerName &&
-           other.error == error &&
-           other.stackTrace == stackTrace &&
-           _mapEquals(other.extra, extra);
+        other.level == level &&
+        other.message == message &&
+        other.timestamp == timestamp &&
+        other.loggerName == loggerName &&
+        other.error == error &&
+        other.stackTrace == stackTrace &&
+        _mapEquals(other.extra, extra);
   }
 
   @override
@@ -87,6 +87,35 @@ class LogEntry {
       error,
       stackTrace,
       extra,
+    );
+  }
+
+  /// Convert this log entry to a JSON map
+  Map<String, dynamic> toJson() {
+    return {
+      'level': level.name,
+      'message': message,
+      'timestamp': timestamp.millisecondsSinceEpoch,
+      'loggerName': loggerName,
+      'error': error?.toString(),
+      'stackTrace': stackTrace?.toString(),
+      'extra': extra,
+    };
+  }
+
+  /// Create a log entry from a JSON map
+  factory LogEntry.fromJson(Map<String, dynamic> json) {
+    return LogEntry(
+      level: LogLevel.fromString(json['level'] as String),
+      message: json['message'] as String,
+      timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int),
+      loggerName: json['loggerName'] as String,
+      error: json['error'] as String?,
+      stackTrace:
+          json['stackTrace'] != null
+              ? StackTrace.fromString(json['stackTrace'] as String)
+              : null,
+      extra: json['extra'] as Map<String, dynamic>?,
     );
   }
 

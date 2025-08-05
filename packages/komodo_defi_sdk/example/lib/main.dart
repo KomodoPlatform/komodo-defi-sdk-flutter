@@ -1,6 +1,8 @@
 // lib/main.dart
 import 'dart:async';
 
+import 'package:dragon_logs/dragon_logs.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/screens/asset_page.dart';
@@ -14,18 +16,38 @@ final GlobalKey<ScaffoldMessengerState> _scaffoldKey =
     GlobalKey<ScaffoldMessengerState>();
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
+// Application loggers
+final Logger _appLogger = Logger.getLogger('KdfApp');
+final Logger _sdkLogger = Logger.getLogger('KdfSDK');
+final Logger _authLogger = Logger.getLogger('KdfAuth');
+final Logger _assetLogger = Logger.getLogger('KdfAssets');
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Dragon Logs with appropriate configuration
+  await DragonLogsConfig.initialize(
+    globalLevel: kDebugMode ? LogLevel.debug : LogLevel.info,
+    enableConsoleLogging: true,
+    enablePersistentLogging: true,
+  );
+
+  _appLogger.info('KDF SDK Example application starting...');
+  _appLogger.debug('Platform info', null, null, DragonLogsConfig.platformInfo);
+
   // Create instance manager
   final instanceManager = KdfInstanceManager();
+  _appLogger.debug('Instance manager created');
 
   // Create default SDK instance with config
+  _sdkLogger.info('Initializing SDK with default configuration');
   final defaultSdk = KomodoDefiSdk(config: _config);
   await defaultSdk.initialize();
+  _sdkLogger.info('SDK initialization completed');
 
   // Register default instance
   await instanceManager.registerInstance('Local Instance', _config, defaultSdk);
+  _appLogger.info('Default SDK instance registered');
 
   runApp(
     MultiRepositoryProvider(
@@ -97,23 +119,32 @@ class _KomodoAppState extends State<KomodoApp> {
   }
 
   Future<void> _initializeInstance(KdfInstanceState instance) async {
+    _sdkLogger.debug('Initializing instance: ${instance.name}');
     _getOrCreateInstanceState(instance.name);
 
     // Initialize assets
     _allAssets = instance.sdk.assets.available;
+    _assetLogger.info('Loaded ${_allAssets?.length ?? 0} available assets');
     _filterAssets();
 
     // Initialize auth state
     final user = await instance.sdk.auth.currentUser;
+    _authLogger.debug(
+      'Current user for ${instance.name}: ${user?.walletId.name ?? 'none'}',
+    );
     _updateInstanceUser(instance.name, user);
 
     // Setup auth state listener
     instance.sdk.auth.authStateChanges.listen((user) {
+      _authLogger.info(
+        'Auth state changed for ${instance.name}: ${user?.walletId.name ?? 'signed out'}',
+      );
       _updateInstanceUser(instance.name, user);
     });
 
     // Load known users
     await _fetchKnownUsers(instance);
+    _sdkLogger.info('Instance ${instance.name} initialized successfully');
   }
 
   void _updateInstanceUser(String instanceName, KdfUser? user) {
@@ -134,8 +165,7 @@ class _KomodoAppState extends State<KomodoApp> {
       state.knownUsers = users;
       setState(() {});
     } catch (e, s) {
-      print('Error fetching known users: $e');
-      debugPrintStack(stackTrace: s);
+      _authLogger.error('Error fetching known users', e, s);
     }
   }
 
@@ -153,6 +183,12 @@ class _KomodoAppState extends State<KomodoApp> {
                 id.toLowerCase().contains(query);
           }).toList();
     });
+
+    if (query.isNotEmpty) {
+      _assetLogger.debug(
+        'Filtered assets with query "$query": ${_filteredAssets.length} results',
+      );
+    }
   }
 
   InstanceState _getOrCreateInstanceState(String instanceName) {
@@ -242,6 +278,7 @@ class _KomodoAppState extends State<KomodoApp> {
   }
 
   void _onNavigateToAsset(KdfInstanceState instance, Asset asset) {
+    _assetLogger.info('Navigating to asset: ${asset.id.name} (${asset.id.id})');
     _navigatorKey.currentState?.push(
       MaterialPageRoute<void>(builder: (context) => AssetPage(asset)),
     );
