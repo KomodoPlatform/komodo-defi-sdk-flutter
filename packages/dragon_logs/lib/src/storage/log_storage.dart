@@ -1,5 +1,6 @@
 import 'package:dragon_logs/src/storage/platform_instance/log_storage_web_platform.dart'
-    if (dart.library.io) 'package:dragon_logs/src/storage/platform_instance/log_storage_native_platform.dart';
+    if (dart.library.io) 'package:dragon_logs/src/storage/platform_instance/log_storage_native_platform.dart'
+    if (dart.tool.dart2wasm) 'package:dragon_logs/src/storage/platform_instance/log_storage_wasm_platform.dart';
 
 abstract class LogStorage {
   Future<void> init();
