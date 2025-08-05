@@ -1,0 +1,42 @@
+name: dragon_logs
+description: A Flutter-compatible logging package with support for Web Wasm. Provides flexible logging capabilities across all Flutter platforms.
+version: 1.0.0
+
+homepage: https://github.com/komodoplatform/komodo_defi_framework
+repository: https://github.com/komodoplatform/komodo_defi_framework
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  meta: ^1.11.0
+  path_provider: ^2.1.0
+  web: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mockito: ^5.4.0
+  build_runner: ^2.4.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.komodoplatform.dragon_logs
+        pluginClass: DragonLogsPlugin
+      ios:
+        pluginClass: DragonLogsPlugin
+      web:
+        pluginClass: DragonLogsWebPlugin
+        fileName: dragon_logs_web.dart
+      windows:
+        pluginClass: DragonLogsPluginWindows
+      macos:
+        pluginClass: DragonLogsPlugin
+      linux:
+        pluginClass: DragonLogsPlugin
