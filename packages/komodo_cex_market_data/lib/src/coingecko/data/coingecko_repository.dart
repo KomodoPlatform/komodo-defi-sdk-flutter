@@ -111,18 +111,12 @@ class CoinGeckoRepository implements CexRepository {
 
   @override
   String resolveTradingSymbol(AssetId assetId) {
-    final resolved = _idResolutionStrategy.resolveTradingSymbol(assetId);
-    if (resolved == null) {
-      throw ArgumentError(
-        'Cannot resolve trading symbol for asset ${assetId.id} on ${_idResolutionStrategy.platformName}',
-      );
-    }
-    return resolved;
+    return _idResolutionStrategy.resolveTradingSymbol(assetId);
   }
 
   @override
   bool canHandleAsset(AssetId assetId) {
-    return _idResolutionStrategy.resolveTradingSymbol(assetId) != null;
+    return _idResolutionStrategy.canResolve(assetId);
   }
 
   @override
