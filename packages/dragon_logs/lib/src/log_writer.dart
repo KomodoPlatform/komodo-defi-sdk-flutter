@@ -2,7 +2,7 @@ import 'dart:async';
 import 'log_entry.dart';
 
 /// Abstract interface for writing log entries to different destinations.
-/// 
+///
 /// Implementations can write to files, network endpoints, console, or any
 /// other destination. This interface is designed to be Wasm-compatible.
 abstract class LogWriter {
@@ -28,26 +28,39 @@ class ConsoleLogWriter implements LogWriter {
   @override
   Future<void> write(LogEntry entry) async {
     // Use print for simplicity and Wasm compatibility
-    print('${entry.timestamp.toIso8601String()} [${entry.level.name}] ${entry.loggerName}: ${entry.message}');
-    
+    print(
+        '${entry.timestamp.toIso8601String()} [${entry.level.name}] ${entry.loggerName}: ${entry.message}');
+
     if (entry.error != null) {
       print('Error: ${entry.error}');
     }
-    
+
     if (entry.stackTrace != null) {
       print('Stack trace:\n${entry.stackTrace}');
     }
-    
+
     if (entry.extra != null && entry.extra!.isNotEmpty) {
       print('Extra data: ${entry.extra}');
     }
+  }
+
+  @override
+  Future<void> flush() async {
+    // Console output doesn't require flushing
+  }
+
+  @override
+  Future<void> close() async {
+    // Console output doesn't require closing
   }
 }
 
 /// A buffered log writer that batches log entries for efficiency
 class BufferedLogWriter implements LogWriter {
   /// Creates a new buffered log writer
-  BufferedLogWriter(this._delegate, {this.bufferSize = 100, this.flushInterval = const Duration(seconds: 5)}) {
+  BufferedLogWriter(this._delegate,
+      {this.bufferSize = 100,
+      this.flushInterval = const Duration(seconds: 5)}) {
     _timer = Timer.periodic(flushInterval, (_) => flush());
   }
 
@@ -60,7 +73,7 @@ class BufferedLogWriter implements LogWriter {
   @override
   Future<void> write(LogEntry entry) async {
     _buffer.add(entry);
-    
+
     if (_buffer.length >= bufferSize) {
       await flush();
     }
@@ -69,10 +82,10 @@ class BufferedLogWriter implements LogWriter {
   @override
   Future<void> flush() async {
     if (_buffer.isEmpty) return;
-    
+
     final entries = List<LogEntry>.from(_buffer);
     _buffer.clear();
-    
+
     for (final entry in entries) {
       await _delegate.write(entry);
     }

@@ -97,7 +97,7 @@ void main() {
       test('should respect log level filtering', () {
         final logger = Logger('test', level: LogLevel.warn);
         final entries = <LogEntry>[];
-        
+
         logger.addWriter(TestLogWriter(entries));
 
         logger.debug('Debug message');
@@ -237,11 +237,21 @@ void main() {
 /// Test implementation of LogWriter for testing purposes
 class TestLogWriter implements LogWriter {
   TestLogWriter(this.entries);
-  
+
   final List<LogEntry> entries;
 
   @override
   Future<void> write(LogEntry entry) async {
     entries.add(entry);
+  }
+
+  @override
+  Future<void> flush() async {
+    // Test writer doesn't require flushing
+  }
+
+  @override
+  Future<void> close() async {
+    // Test writer doesn't require closing
   }
 }

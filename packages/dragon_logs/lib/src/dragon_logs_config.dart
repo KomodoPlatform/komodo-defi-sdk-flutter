@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'log_entry.dart';
 import 'log_level.dart';
 import 'logger.dart';
 import 'log_writer.dart';
@@ -11,7 +12,7 @@ import 'formatters/log_formatter.dart';
 import 'formatters/simple_log_formatter.dart';
 
 /// Configuration class for the Dragon Logs package.
-/// 
+///
 /// This class provides a centralized way to configure logging behavior
 /// across all platforms with Wasm compatibility.
 class DragonLogsConfig {
@@ -19,7 +20,7 @@ class DragonLogsConfig {
   DragonLogsConfig._();
 
   static DragonLogsConfig? _instance;
-  
+
   /// Get the singleton instance
   static DragonLogsConfig get instance {
     return _instance ??= DragonLogsConfig._();
@@ -36,10 +37,10 @@ class DragonLogsConfig {
     String? storageKey,
   }) async {
     final config = instance;
-    
+
     // Set global log level
     Logger.setGlobalLevel(globalLevel);
-    
+
     // Determine the best storage option for the current platform
     LogStorage storage;
     if (customStorage != null) {
@@ -65,7 +66,7 @@ class DragonLogsConfig {
     if (enableConsoleLogging) {
       config._setupConsoleLogging();
     }
-    
+
     if (enablePersistentLogging) {
       config._setupPersistentLogging();
     }
@@ -85,7 +86,7 @@ class DragonLogsConfig {
   void _setupConsoleLogging() {
     const consoleWriter = ConsoleLogWriter();
     _globalWriters.add(consoleWriter);
-    
+
     // Add console writer to all existing loggers
     for (final logger in Logger.allLoggers) {
       logger.addWriter(consoleWriter);
@@ -95,9 +96,9 @@ class DragonLogsConfig {
   /// Set up persistent logging for all loggers
   void _setupPersistentLogging() {
     if (_defaultStorage != null) {
-      final storageWriter = StorageLogWriter(_defaultStorage!, _defaultFormatter);
+      final storageWriter = StorageLogWriter(_defaultStorage!);
       _globalWriters.add(storageWriter);
-      
+
       // Add storage writer to all existing loggers
       for (final logger in Logger.allLoggers) {
         logger.addWriter(storageWriter);
@@ -108,7 +109,7 @@ class DragonLogsConfig {
   /// Add a global writer that will be added to all new loggers
   void addGlobalWriter(LogWriter writer) {
     _globalWriters.add(writer);
-    
+
     // Add to all existing loggers
     for (final logger in Logger.allLoggers) {
       logger.addWriter(writer);
@@ -118,7 +119,7 @@ class DragonLogsConfig {
   /// Remove a global writer
   void removeGlobalWriter(LogWriter writer) {
     _globalWriters.remove(writer);
-    
+
     // Remove from all existing loggers
     for (final logger in Logger.allLoggers) {
       logger.removeWriter(writer);
@@ -131,19 +132,20 @@ class DragonLogsConfig {
   /// Create a new logger and set it up with global writers
   Logger createLogger(String name, {LogLevel? level}) {
     final logger = Logger(name, level: level);
-    
+
     // Add all global writers to the new logger
     for (final writer in _globalWriters) {
       logger.addWriter(writer);
     }
-    
+
     return logger;
   }
 
   /// Check if we're running with Wasm
   static bool get isWasm {
     // This constant is set during Wasm compilation
-    return const bool.fromEnvironment('dart.tool.dart2wasm', defaultValue: false);
+    return const bool.fromEnvironment('dart.tool.dart2wasm',
+        defaultValue: false);
   }
 
   /// Check if we're running on the web
@@ -161,13 +163,12 @@ class DragonLogsConfig {
   }
 }
 
-/// A log writer that uses a LogStorage backend with formatting
+/// A log writer that uses a LogStorage backend
 class StorageLogWriter implements LogWriter {
   /// Creates a new storage log writer
-  StorageLogWriter(this._storage, this._formatter);
+  StorageLogWriter(this._storage);
 
   final LogStorage _storage;
-  final LogFormatter? _formatter;
 
   @override
   Future<void> write(LogEntry entry) async {

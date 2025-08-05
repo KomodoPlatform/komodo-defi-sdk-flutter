@@ -10,7 +10,7 @@ import '../log_level.dart';
 import 'package:web/web.dart' as web;
 
 /// Web-compatible log storage using browser localStorage.
-/// 
+///
 /// This implementation uses package:web instead of dart:html to ensure
 /// compatibility with Flutter Web Wasm compilation.
 class WebLogStorage implements LogStorage {
@@ -22,7 +22,7 @@ class WebLogStorage implements LogStorage {
 
   /// Key used for localStorage
   final String storageKey;
-  
+
   /// Maximum number of entries to keep
   final int maxEntries;
 
@@ -30,7 +30,8 @@ class WebLogStorage implements LogStorage {
   static bool get isSupported {
     try {
       // Check if we're running in a web environment with localStorage
-      return web.window.localStorage != null;
+      web.window.localStorage.getItem('_test');
+      return true;
     } catch (e) {
       return false;
     }
@@ -67,7 +68,7 @@ class WebLogStorage implements LogStorage {
 
     try {
       final entries = await _loadEntries();
-      
+
       var filtered = entries.where((entry) {
         if (startTime != null && entry.timestamp.isBefore(startTime)) {
           return false;
@@ -117,6 +118,18 @@ class WebLogStorage implements LogStorage {
     }
   }
 
+  @override
+  Future<void> storeAll(List<LogEntry> entries) async {
+    for (final entry in entries) {
+      await store(entry);
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    // Web storage doesn't require closing
+  }
+
   /// Load entries from localStorage
   Future<List<LogEntry>> _loadEntries() async {
     try {
@@ -124,7 +137,9 @@ class WebLogStorage implements LogStorage {
       if (data == null) return [];
 
       final jsonList = jsonDecode(data) as List<dynamic>;
-      return jsonList.map((json) => _logEntryFromJson(json as Map<String, dynamic>)).toList();
+      return jsonList
+          .map((json) => _logEntryFromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       return [];
     }
@@ -162,7 +177,9 @@ class WebLogStorage implements LogStorage {
       timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int),
       loggerName: json['loggerName'] as String,
       error: json['error'] as String?,
-      stackTrace: json['stackTrace'] != null ? StackTrace.fromString(json['stackTrace'] as String) : null,
+      stackTrace: json['stackTrace'] != null
+          ? StackTrace.fromString(json['stackTrace'] as String)
+          : null,
       extra: json['extra'] as Map<String, dynamic>?,
     );
   }

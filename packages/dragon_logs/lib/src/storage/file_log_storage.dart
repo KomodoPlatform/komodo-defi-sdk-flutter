@@ -9,7 +9,7 @@ import '../log_entry.dart';
 import '../log_level.dart';
 
 /// File-based log storage for mobile and desktop platforms.
-/// 
+///
 /// This implementation stores logs in local files and is not available
 /// on web platforms (use WebLogStorage instead).
 class FileLogStorage implements LogStorage {
@@ -22,10 +22,10 @@ class FileLogStorage implements LogStorage {
 
   /// Name of the log file
   final String fileName;
-  
+
   /// Maximum number of entries to keep
   final int maxEntries;
-  
+
   /// Maximum file size in bytes
   final int maxFileSize;
 
@@ -82,7 +82,7 @@ class FileLogStorage implements LogStorage {
 
     try {
       final entries = await _loadEntries();
-      
+
       var filtered = entries.where((entry) {
         if (startTime != null && entry.timestamp.isBefore(startTime)) {
           return false;
@@ -135,6 +135,18 @@ class FileLogStorage implements LogStorage {
     }
   }
 
+  @override
+  Future<void> storeAll(List<LogEntry> entries) async {
+    for (final entry in entries) {
+      await store(entry);
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    // File storage doesn't require explicit closing
+  }
+
   /// Load entries from the log file
   Future<List<LogEntry>> _loadEntries() async {
     try {
@@ -145,7 +157,9 @@ class FileLogStorage implements LogStorage {
       if (contents.trim().isEmpty) return [];
 
       final jsonList = jsonDecode(contents) as List<dynamic>;
-      return jsonList.map((json) => _logEntryFromJson(json as Map<String, dynamic>)).toList();
+      return jsonList
+          .map((json) => _logEntryFromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       return [];
     }
@@ -199,7 +213,9 @@ class FileLogStorage implements LogStorage {
       timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int),
       loggerName: json['loggerName'] as String,
       error: json['error'] as String?,
-      stackTrace: json['stackTrace'] != null ? StackTrace.fromString(json['stackTrace'] as String) : null,
+      stackTrace: json['stackTrace'] != null
+          ? StackTrace.fromString(json['stackTrace'] as String)
+          : null,
       extra: json['extra'] as Map<String, dynamic>?,
     );
   }

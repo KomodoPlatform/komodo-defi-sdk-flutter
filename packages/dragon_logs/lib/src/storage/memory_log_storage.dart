@@ -3,7 +3,7 @@ import '../log_entry.dart';
 import 'log_storage.dart';
 
 /// In-memory log storage that keeps log entries in RAM.
-/// 
+///
 /// This is useful for temporary storage and is fully Wasm-compatible.
 /// Note that logs will be lost when the application is closed.
 class MemoryLogStorage implements LogStorage {
@@ -12,13 +12,13 @@ class MemoryLogStorage implements LogStorage {
 
   /// Maximum number of entries to keep in memory
   final int maxEntries;
-  
+
   final List<LogEntry> _entries = [];
 
   @override
   Future<void> store(LogEntry entry) async {
     _entries.add(entry);
-    
+
     // Remove old entries if we exceed the limit
     while (_entries.length > maxEntries) {
       _entries.removeAt(0);
@@ -63,6 +63,18 @@ class MemoryLogStorage implements LogStorage {
   @override
   Future<int> count() async {
     return _entries.length;
+  }
+
+  @override
+  Future<void> storeAll(List<LogEntry> entries) async {
+    for (final entry in entries) {
+      await store(entry);
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    // Memory storage doesn't require closing
   }
 
   /// Get all entries (for testing purposes)

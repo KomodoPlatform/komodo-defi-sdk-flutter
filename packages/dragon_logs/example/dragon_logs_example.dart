@@ -2,7 +2,7 @@ import 'package:dragon_logs/dragon_logs.dart';
 import 'package:flutter/foundation.dart';
 
 /// Example demonstrating the use of Dragon Logs package.
-/// 
+///
 /// This example shows Wasm-compatible logging across different platforms.
 void main() async {
   // Initialize Dragon Logs with platform-appropriate storage
@@ -20,7 +20,7 @@ void main() async {
   // Basic logging
   appLogger.info('Application started');
   appLogger.debug('Debug information', null, null, {'userId': '12345'});
-  
+
   // Network logging with error handling
   try {
     await simulateNetworkCall();
@@ -49,20 +49,18 @@ void main() async {
 
   // Custom formatter example
   final jsonLogger = Logger.getLogger('JSON');
-  final jsonFormatter = JsonLogFormatter(prettyPrint: true);
   final storageWriter = StorageLogWriter(
     DragonLogsConfig.instance.defaultStorage!,
-    jsonFormatter,
   );
   jsonLogger.addWriter(storageWriter);
-  jsonLogger.info('This will be formatted as JSON');
+  jsonLogger.info('This will be stored persistently');
 
   // Demonstrate storage retrieval (if supported)
   final storage = DragonLogsConfig.instance.defaultStorage;
   if (storage != null) {
     final recentLogs = await storage.retrieve(limit: 5);
     print('Retrieved ${recentLogs.length} recent log entries');
-    
+
     for (final entry in recentLogs) {
       print('- ${entry.level.name}: ${entry.message}');
     }
@@ -73,7 +71,7 @@ void main() async {
 
 /// Simulate a network call that might fail
 Future<void> simulateNetworkCall() async {
-  await Future.delayed(Duration(milliseconds: 100));
+  await Future<void>.delayed(Duration(milliseconds: 100));
   throw Exception('Network timeout');
 }
 
@@ -81,17 +79,17 @@ Future<void> simulateNetworkCall() async {
 void integrateWithExistingApp() {
   // Get or create a logger for your specific module
   final authLogger = Logger.getLogger('Authentication');
-  
+
   // Set module-specific log level
   authLogger.level = LogLevel.debug;
-  
+
   // Add custom writer for this logger only
   authLogger.addWriter(BufferedLogWriter(
     const ConsoleLogWriter(),
     bufferSize: 50,
     flushInterval: Duration(seconds: 10),
   ));
-  
+
   // Use throughout your authentication module
   authLogger.info('User authentication started');
   authLogger.debug('Checking credentials');
@@ -101,7 +99,7 @@ void integrateWithExistingApp() {
 /// Example of conditional compilation for different platforms
 void platformSpecificLogging() {
   final logger = Logger.getLogger('Platform');
-  
+
   if (kIsWeb) {
     if (DragonLogsConfig.isWasm) {
       logger.info('Running with WebAssembly for optimal performance!');

@@ -1,14 +1,12 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import 'package:meta/meta.dart';
-
 import 'log_level.dart';
 import 'log_entry.dart';
 import 'log_writer.dart';
 
 /// A logger instance that can log messages at different levels.
-/// 
+///
 /// This logger is designed to be Wasm-compatible and avoids dependencies
 /// on deprecated web APIs like dart:html or file_system_access_api.
 class Logger {
@@ -45,37 +43,44 @@ class Logger {
   }
 
   /// Log a message at trace level
-  void trace(String message, [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
+  void trace(String message,
+      [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
     log(LogLevel.trace, message, error, stackTrace, extra);
   }
 
   /// Log a message at debug level
-  void debug(String message, [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
+  void debug(String message,
+      [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
     log(LogLevel.debug, message, error, stackTrace, extra);
   }
 
   /// Log a message at info level
-  void info(String message, [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
+  void info(String message,
+      [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
     log(LogLevel.info, message, error, stackTrace, extra);
   }
 
   /// Log a message at warning level
-  void warn(String message, [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
+  void warn(String message,
+      [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
     log(LogLevel.warn, message, error, stackTrace, extra);
   }
 
   /// Log a message at error level
-  void error(String message, [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
+  void error(String message,
+      [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
     log(LogLevel.error, message, error, stackTrace, extra);
   }
 
   /// Log a message at fatal level
-  void fatal(String message, [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
+  void fatal(String message,
+      [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
     log(LogLevel.fatal, message, error, stackTrace, extra);
   }
 
   /// Log a message at the specified level
-  void log(LogLevel level, String message, [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
+  void log(LogLevel level, String message,
+      [Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra]) {
     if (!level.isEnabledFor(_level)) {
       return;
     }
