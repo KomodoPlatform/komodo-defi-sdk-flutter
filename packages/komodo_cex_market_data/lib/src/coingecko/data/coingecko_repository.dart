@@ -27,7 +27,7 @@ class CoinGeckoRepository implements CexRepository {
   final BackoffStrategy _defaultBackoffStrategy;
   final IdResolutionStrategy _idResolutionStrategy;
 
-  List<CexCoin>? _cachedCoinsList;
+  Set<CexCoin>? _cachedCoinsList;
   Set<String>? _cachedFiatCurrencies;
 
   /// Fetches the CoinGecko market data.
@@ -57,7 +57,7 @@ class CoinGeckoRepository implements CexRepository {
     BackoffStrategy? backoffStrategy,
   }) async {
     if (_cachedCoinsList != null) {
-      return _cachedCoinsList!;
+      return _cachedCoinsList!.toList();
     }
 
     final effectiveBackoffStrategy = backoffStrategy ?? _defaultBackoffStrategy;
@@ -75,11 +75,12 @@ class CoinGeckoRepository implements CexRepository {
 
     _cachedCoinsList = coins
         .map((CexCoin e) => e.copyWith(currencies: supportedCurrencies.toSet()))
-        .toList();
+        .toSet();
+
     _cachedFiatCurrencies =
         supportedCurrencies.map((s) => s.toUpperCase()).toSet();
 
-    return _cachedCoinsList!;
+    return _cachedCoinsList!.toList();
   }
 
   @override
@@ -207,7 +208,6 @@ class CoinGeckoRepository implements CexRepository {
       (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
     );
     final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
-    // For now, assume all request types are supported if asset/fiat are supported
     return supportsAsset && supportsFiat;
   }
 }

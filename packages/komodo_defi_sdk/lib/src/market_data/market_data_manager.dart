@@ -74,19 +74,12 @@ class CexMarketDataManager implements MarketDataManager {
     required List<CexRepository> priceRepositories,
     required IKomodoPriceRepository komodoPriceRepository,
     RepositorySelectionStrategy? selectionStrategy,
-    Duration cacheClearInterval = const Duration(minutes: 5),
-    Timer Function(Duration, void Function())? timerFactory,
-  }) : _komodoPriceRepository = komodoPriceRepository,
-       _selectionStrategy =
-           selectionStrategy ?? DefaultRepositorySelectionStrategy(),
-       _cacheClearInterval = cacheClearInterval,
-       _timerFactory =
-           timerFactory ?? ((d, cb) => Timer.periodic(d, (_) => cb())),
-       _priceRepositories = [komodoPriceRepository, ...priceRepositories];
-  static final _logger = Logger('CexMarketDataManager');
+  }) : _priceRepositories = priceRepositories,
+       _komodoPriceRepository = komodoPriceRepository,
+       _selectionStrategy = selectionStrategy ?? RepositorySelectionStrategy();
 
-  final Duration _cacheClearInterval;
-  final Timer Function(Duration, void Function()) _timerFactory;
+  static final _logger = Logger('CexMarketDataManager');
+  static const _cacheClearInterval = Duration(minutes: 5);
   Timer? _cacheTimer;
 
   @override
@@ -102,8 +95,9 @@ class CexMarketDataManager implements MarketDataManager {
         );
       } catch (e, s) {
         // Log error but continue with other repositories
-        _logger.info('Failed to get coin list from repository: $e');
-        _logger.finest('Stack trace: $s');
+        _logger
+          ..info('Failed to get coin list from repository: $e')
+          ..finest('Stack trace: $s');
       }
     }
     _knownTickers = UnmodifiableSetView(allTickers);
@@ -142,7 +136,8 @@ class CexMarketDataManager implements MarketDataManager {
     DateTime? priceDate,
     String fiatCurrency = 'usdt',
   }) {
-    return '${assetId.symbol.configSymbol}_${fiatCurrency}_${priceDate?.millisecondsSinceEpoch ?? 'current'}';
+    return '${assetId.symbol.configSymbol}_${fiatCurrency}_'
+        '${priceDate?.millisecondsSinceEpoch ?? 'current'}';
   }
 
   // Helper method to generate change cache keys
@@ -201,28 +196,10 @@ class CexMarketDataManager implements MarketDataManager {
     final price = Decimal.parse(priceDouble.toString());
     _priceCache[cacheKey] = price;
     _logger.finer(
-      'Fetched price from ${repo.runtimeType} for ${assetId.symbol.configSymbol}: $price',
+      'Fetched price from ${repo.runtimeType} for '
+      '${assetId.symbol.configSymbol}: $price',
     );
     return price;
-  }
-
-  /// Generic method for cache-first execution pattern
-  Future<T> _executeWithCache<T>(
-    String cacheKey,
-    Future<T> Function() fetcher,
-    Map<String, T> cache,
-  ) async {
-    // Check cache first
-    final cached = cache[cacheKey];
-    if (cached != null) {
-      _logger.finer('Cache hit for $cacheKey');
-      return cached;
-    }
-
-    // Fetch and cache
-    final result = await fetcher();
-    cache[cacheKey] = result;
-    return result;
   }
 
   @override
@@ -345,38 +322,36 @@ class CexMarketDataManager implements MarketDataManager {
     _assertInitialized();
 
     final cacheKey = _getChangeCacheKey(assetId, fiatCurrency: fiatCurrency);
+    final cached = _priceChangeCache[cacheKey];
+    if (cached != null) {
+      _logger.finer('Cache hit for $cacheKey');
+      return cached;
+    }
 
-    return _executeWithCache(cacheKey, () async {
-      try {
-        // Get Komodo prices data which contains 24h change info
-        final prices = await _komodoPriceRepository.getKomodoPrices();
+    try {
+      final prices = await _komodoPriceRepository.getKomodoPrices();
+      final priceData = prices[assetId.symbol.configSymbol];
 
-        // Find the price for the requested asset
-        final priceData = prices[assetId.symbol.configSymbol];
-
-        if (priceData == null || priceData.change24h == null) {
-          _logger.finer(
-            'No 24h change data for ${assetId.symbol.configSymbol}',
-          );
-          return null;
-        }
-
-        // Convert to Decimal
-        final change = Decimal.parse(priceData.change24h.toString());
-        _logger.finer(
-          'Fetched 24h change for ${assetId.symbol.configSymbol}: $change',
-        );
-        return change;
-      } catch (e, s) {
-        // If there's an error, return null instead of throwing
-        _logger
-          ..fine(
-            'Failed to get 24h change for ${assetId.symbol.configSymbol}: $e',
-          )
-          ..finest('Stack trace: $s');
+      if (priceData == null || priceData.change24h == null) {
+        _logger.finer('No 24h change data for ${assetId.symbol.configSymbol}');
         return null;
       }
-    }, _priceChangeCache);
+
+      _priceCache[cacheKey] = Decimal.parse(priceData.change24h.toString());
+      _logger.finer(
+        'Fetched 24h change for ${assetId.symbol.configSymbol}: '
+        '${_priceCache[cacheKey]}',
+      );
+      return _priceCache[cacheKey];
+    } catch (e, s) {
+      // If there's an error, return null instead of throwing
+      _logger
+        ..fine(
+          'Failed to get 24h change for ${assetId.symbol.configSymbol}: $e',
+        )
+        ..finest('Stack trace: $s');
+      return null;
+    }
   }
 
   @override

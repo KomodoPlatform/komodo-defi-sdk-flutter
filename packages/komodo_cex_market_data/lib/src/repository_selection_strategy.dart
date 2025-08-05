@@ -1,7 +1,6 @@
-import 'package:komodo_cex_market_data/src/binance/binance.dart';
+import 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
+    show RepositoryPriorityManager;
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
-import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
-import 'package:komodo_cex_market_data/src/komodo/komodo.dart';
 import 'package:komodo_cex_market_data/src/models/cex_coin.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -61,16 +60,10 @@ class DefaultRepositorySelectionStrategy
           return supportsAsset && supportsFiat;
         }).toList();
     candidates.sort(
-      (a, b) => _getRepositoryPriority(a).compareTo(_getRepositoryPriority(b)),
+      (a, b) => RepositoryPriorityManager.getPriority(a)
+          .compareTo(RepositoryPriorityManager.getPriority(b)),
     );
     return candidates.isNotEmpty ? candidates.first : null;
-  }
-
-  int _getRepositoryPriority(CexRepository repo) {
-    if (repo is KomodoPriceRepository) return 1;
-    if (repo is BinanceRepository) return 2;
-    if (repo is CoinGeckoRepository) return 3;
-    return 999; // Unknown repositories get lowest priority
   }
 }
 

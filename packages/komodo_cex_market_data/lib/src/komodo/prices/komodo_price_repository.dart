@@ -10,7 +10,7 @@ abstract class IKomodoPriceRepository implements CexRepository {
 }
 
 /// A repository for fetching the prices of coins from the Komodo Defi API.
-class KomodoPriceRepository implements IKomodoPriceRepository {
+class KomodoPriceRepository extends CexRepository {
   /// Creates a new instance of [KomodoPriceRepository].
   KomodoPriceRepository({required IKomodoPriceProvider cexPriceProvider})
     : _cexPriceProvider = cexPriceProvider;
@@ -18,8 +18,68 @@ class KomodoPriceRepository implements IKomodoPriceRepository {
   /// The price provider to fetch the prices from.
   final IKomodoPriceProvider _cexPriceProvider;
 
+  // Supported coins and vs currencies are not expected to change regularly,
+  // so this in-memory cache is acceptable for now until a more complete and
+  // robust caching strategy with cache invalidation is implemented.
   List<CexCoin>? _cachedCoinsList;
   Set<String>? _cachedFiatCurrencies;
+
+  @override
+  Future<CoinOhlc> getCoinOhlc(
+    CexCoinPair symbol,
+    GraphInterval interval, {
+    DateTime? startAt,
+    DateTime? endAt,
+    int? limit,
+  }) async {
+    throw UnsupportedError(
+      'KomodoPriceRepository does not support OHLC data fetching',
+    );
+  }
+
+  @override
+  Future<double> getCoinFiatPrice(
+    AssetId assetId, {
+    DateTime? priceDate,
+    String fiatCoinId = 'usdt',
+  }) async {
+    final prices = await _cexPriceProvider.getKomodoPrices();
+    final ticker = assetId.symbol.configSymbol.toUpperCase();
+
+    final priceData = prices.values.firstWhere(
+      (CexPrice element) => element.ticker.toUpperCase() == ticker,
+      orElse: () => throw Exception('Price not found for $ticker'),
+    );
+
+    return priceData.price;
+  }
+
+  @override
+  Future<Map<DateTime, double>> getCoinFiatPrices(
+    AssetId assetId,
+    List<DateTime> dates, {
+    String fiatCoinId = 'usdt',
+  }) async {
+    // Komodo API typically returns current prices, not historical
+    // For simplicity, return the same current price for all requested dates
+    final currentPrice =
+        await getCoinFiatPrice(assetId, fiatCoinId: fiatCoinId);
+    return Map.fromEntries(
+      dates.map((date) => MapEntry(date, currentPrice)),
+    );
+  }
+
+  @override
+  String resolveTradingSymbol(AssetId assetId) {
+    return assetId.symbol.configSymbol.toUpperCase();
+  }
+
+  @override
+  bool canHandleAsset(AssetId assetId) {
+    // We'll need to check if the asset is supported by fetching the coin list
+    // For now, return true and let the actual method calls handle unsupported assets
+    return true;
+  }
 
   /// Fetches the prices of the provided coin IDs at the given timestamps.
   ///
@@ -87,9 +147,7 @@ class KomodoPriceRepository implements IKomodoPriceRepository {
       (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
     );
     final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
-    // Only support currentPrice and priceChange requests
-    final supportsRequestType =
-        requestType == PriceRequestType.currentPrice ||
+    final supportsRequestType = requestType == PriceRequestType.currentPrice ||
         requestType == PriceRequestType.priceChange;
     return supportsAsset && supportsFiat && supportsRequestType;
   }

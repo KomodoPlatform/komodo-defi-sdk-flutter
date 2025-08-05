@@ -4,4 +4,5 @@ export 'coingecko/coingecko.dart';
 export 'id_resolution_strategy.dart';
 export 'komodo/komodo.dart';
 export 'models/models.dart';
+export 'repository_priority_manager.dart';
 export 'repository_selection_strategy.dart';
