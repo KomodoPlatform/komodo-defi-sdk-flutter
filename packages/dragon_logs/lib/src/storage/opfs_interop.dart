@@ -64,10 +64,10 @@ extension FileSystemDirectoryHandleValuesIterable on FileSystemDirectoryHandle {
   Stream<(String, FileSystemHandle)> entriesStream() {
     return entries().asStream().map((jsValue) {
       // The entries() iterator returns [name, handle] arrays
-      // We need to use js_interop_unsafe to access array elements
+      // Use js_interop_unsafe to access array elements by numeric index
       final jsObject = jsValue as JSObject;
-      final name = (jsObject['$nameIndex']! as JSString).toDart;
-      final handle = jsObject['$handleIndex']! as FileSystemHandle;
+      final name = jsObject.getProperty<JSString>(nameIndex.toJS).toDart;
+      final handle = jsObject.getProperty<FileSystemHandle>(handleIndex.toJS);
       return (name, handle);
     });
   }
