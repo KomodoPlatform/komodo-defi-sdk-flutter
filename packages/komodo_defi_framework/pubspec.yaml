@@ -76,10 +76,10 @@ flutter:
             # steps. They are executed in the order listed in `_build_steps`
             # in `packages/komodo_wallet_build_transformer/bin/komodo_wallet_build_transformer.dart`
               # Configure fetch_defi_api in `config/build_config.yaml`
-              #! --fetch_defi_api,
+              --fetch_defi_api,
               # Configure `fetch_coin_assets` in `config/build_config.yaml`
-              #! --fetch_coin_assets,
-              #! --copy_platform_assets,
+              --fetch_coin_assets,
+              --copy_platform_assets,
               # Uncomment the following option to enable concurrent build step
               # execution. This is useful for reducing build time in development,
               # but is not recommended for production builds.
