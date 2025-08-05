@@ -1,0 +1,329 @@
+// Fixed repository priority manager test to properly implement CexRepository interface
+import 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
+    show PriceRequestType;
+import 'package:komodo_cex_market_data/src/binance/binance.dart';
+import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
+import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
+import 'package:komodo_cex_market_data/src/komodo/komodo.dart';
+import 'package:komodo_cex_market_data/src/repository_priority_manager.dart';
+import 'package:komodo_cex_market_data/src/cex_repository.dart';
+import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:test/test.dart';
+
+// Test provider implementations
+class TestKomodoPriceProvider extends KomodoPriceProvider {
+  @override
+  Future<Map<String, CexPrice>> getKomodoPrices() async {
+    return {
+      'BTC': CexPrice(ticker: 'BTC', price: 50000.0),
+      'ETH': CexPrice(ticker: 'ETH', price: 3000.0),
+    };
+  }
+}
+
+class TestBinanceProvider implements IBinanceProvider {
+  @override
+  Future<BinanceExchangeInfoResponse> fetchExchangeInfo(
+      {String? baseUrl}) async {
+    return BinanceExchangeInfoResponse(
+      symbols: [],
+      rateLimits: [],
+      serverTime: 0,
+      timezone: '',
+    );
+  }
+
+  @override
+  Future<BinanceExchangeInfoResponseReduced> fetchExchangeInfoReduced({
+    String? baseUrl,
+  }) async {
+    return BinanceExchangeInfoResponseReduced(
+      symbols: [],
+      serverTime: 0,
+      timezone: '',
+    );
+  }
+
+  @override
+  Future<CoinOhlc> fetchKlines(
+    String symbol,
+    String interval, {
+    int? startUnixTimestampMilliseconds,
+    int? endUnixTimestampMilliseconds,
+    int? limit,
+    String? baseUrl,
+  }) async {
+    return CoinOhlc(ohlc: []);
+  }
+}
+
+class TestUnknownRepository implements CexRepository {
+  @override
+  Future<List<CexCoin>> getCoinList() async {
+    return [];
+  }
+
+  @override
+  Future<CoinOhlc> getCoinOhlc(
+    CexCoinPair symbol,
+    GraphInterval interval, {
+    DateTime? startAt,
+    DateTime? endAt,
+    int? limit,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<double> getCoinFiatPrice(
+    AssetId assetId, {
+    DateTime? priceDate,
+    String fiatCoinId = 'usdt',
+  }) async {
+    return 0.0;
+  }
+
+  @override
+  Future<Map<DateTime, double>> getCoinFiatPrices(
+    AssetId assetId,
+    List<DateTime> dates, {
+    String fiatCoinId = 'usdt',
+  }) async {
+    return {};
+  }
+
+  @override
+  String resolveTradingSymbol(AssetId assetId) {
+    return '';
+  }
+
+  @override
+  bool canHandleAsset(AssetId assetId) {
+    return false;
+  }
+
+  @override
+  Future<bool> supports(
+    AssetId assetId,
+    AssetId fiatAssetId,
+    PriceRequestType requestType,
+  ) async {
+    return false;
+  }
+}
+
+void main() {
+  group('RepositoryPriorityManager', () {
+    late CexRepository komodoRepo;
+    late CexRepository binanceRepo;
+    late CexRepository coinGeckoRepo;
+    late CexRepository unknownRepo;
+
+    setUp(() {
+      komodoRepo = KomodoPriceRepository(
+        cexPriceProvider: TestKomodoPriceProvider(),
+      );
+      binanceRepo = BinanceRepository(
+        binanceProvider: TestBinanceProvider(),
+      );
+      coinGeckoRepo = CoinGeckoRepository(
+        coinGeckoProvider: CoinGeckoCexProvider(),
+      );
+      unknownRepo = TestUnknownRepository();
+    });
+
+    group('getPriority', () {
+      test('returns correct priority for KomodoPriceRepository', () {
+        expect(RepositoryPriorityManager.getPriority(komodoRepo), equals(1));
+      });
+
+      test('returns correct priority for BinanceRepository', () {
+        expect(RepositoryPriorityManager.getPriority(binanceRepo), equals(2));
+      });
+
+      test('returns correct priority for CoinGeckoRepository', () {
+        expect(RepositoryPriorityManager.getPriority(coinGeckoRepo), equals(3));
+      });
+
+      test('returns 999 for unknown repository types', () {
+        expect(RepositoryPriorityManager.getPriority(unknownRepo), equals(999));
+      });
+    });
+
+    group('getSparklinePriority', () {
+      test('returns correct priority for BinanceRepository', () {
+        expect(
+          RepositoryPriorityManager.getSparklinePriority(binanceRepo),
+          equals(1),
+        );
+      });
+
+      test('returns correct priority for CoinGeckoRepository', () {
+        expect(
+          RepositoryPriorityManager.getSparklinePriority(coinGeckoRepo),
+          equals(2),
+        );
+      });
+
+      test(
+          'returns 999 for KomodoPriceRepository (not in sparkline priorities)',
+          () {
+        expect(
+          RepositoryPriorityManager.getSparklinePriority(komodoRepo),
+          equals(999),
+        );
+      });
+
+      test('returns 999 for unknown repository types', () {
+        expect(
+          RepositoryPriorityManager.getSparklinePriority(unknownRepo),
+          equals(999),
+        );
+      });
+    });
+
+    group('getPriorityWithCustomMap', () {
+      test('uses custom priority map', () {
+        final customPriorities = <Type, int>{
+          BinanceRepository: 10,
+          CoinGeckoRepository: 20,
+        };
+
+        expect(
+          RepositoryPriorityManager.getPriorityWithCustomMap(
+            binanceRepo,
+            customPriorities,
+          ),
+          equals(10),
+        );
+        expect(
+          RepositoryPriorityManager.getPriorityWithCustomMap(
+            coinGeckoRepo,
+            customPriorities,
+          ),
+          equals(20),
+        );
+        expect(
+          RepositoryPriorityManager.getPriorityWithCustomMap(
+            komodoRepo,
+            customPriorities,
+          ),
+          equals(999),
+        );
+      });
+    });
+
+    group('sortByPriority', () {
+      test('sorts repositories by default priority', () {
+        final repositories = [
+          coinGeckoRepo,
+          komodoRepo,
+          binanceRepo,
+          unknownRepo,
+        ];
+        final sorted = RepositoryPriorityManager.sortByPriority(repositories);
+
+        expect(sorted, hasLength(4));
+        expect(sorted[0], isA<KomodoPriceRepository>());
+        expect(sorted[1], isA<BinanceRepository>());
+        expect(sorted[2], isA<CoinGeckoRepository>());
+        expect(sorted[3], isA<TestUnknownRepository>());
+      });
+
+      test('returns new list without modifying original', () {
+        final repositories = [coinGeckoRepo, binanceRepo, komodoRepo];
+        final originalOrder = List.from(repositories);
+        final sorted = RepositoryPriorityManager.sortByPriority(repositories);
+
+        expect(repositories, equals(originalOrder));
+        expect(sorted, isNot(same(repositories)));
+      });
+    });
+
+    group('sortBySparklinePriority', () {
+      test('sorts repositories by sparkline priority', () {
+        final repositories = [
+          coinGeckoRepo,
+          komodoRepo,
+          binanceRepo,
+          unknownRepo,
+        ];
+        final sorted =
+            RepositoryPriorityManager.sortBySparklinePriority(repositories);
+
+        expect(sorted, hasLength(4));
+        expect(sorted[0], isA<BinanceRepository>());
+        expect(sorted[1], isA<CoinGeckoRepository>());
+        // KomodoPriceRepository and unknown should have priority 999, order may vary
+        expect(
+          sorted[2],
+          anyOf(isA<KomodoPriceRepository>(), isA<TestUnknownRepository>()),
+        );
+        expect(
+          sorted[3],
+          anyOf(isA<KomodoPriceRepository>(), isA<TestUnknownRepository>()),
+        );
+      });
+    });
+
+    group('sortByCustomPriority', () {
+      test('sorts repositories by custom priority map', () {
+        final customPriorities = <Type, int>{
+          CoinGeckoRepository: 1,
+          BinanceRepository: 2,
+          KomodoPriceRepository: 3,
+        };
+
+        final repositories = [
+          komodoRepo,
+          binanceRepo,
+          coinGeckoRepo,
+          unknownRepo,
+        ];
+        final sorted = RepositoryPriorityManager.sortByCustomPriority(
+          repositories,
+          customPriorities,
+        );
+
+        expect(sorted, hasLength(4));
+        expect(sorted[0], isA<CoinGeckoRepository>());
+        expect(sorted[1], isA<BinanceRepository>());
+        expect(sorted[2], isA<KomodoPriceRepository>());
+        expect(sorted[3], isA<TestUnknownRepository>());
+      });
+    });
+
+    group('priority constants', () {
+      test('defaultPriorities contains expected values', () {
+        expect(
+          RepositoryPriorityManager.defaultPriorities[KomodoPriceRepository],
+          equals(1),
+        );
+        expect(
+          RepositoryPriorityManager.defaultPriorities[BinanceRepository],
+          equals(2),
+        );
+        expect(
+          RepositoryPriorityManager.defaultPriorities[CoinGeckoRepository],
+          equals(3),
+        );
+      });
+
+      test('sparklinePriorities contains expected values', () {
+        expect(
+          RepositoryPriorityManager.sparklinePriorities[BinanceRepository],
+          equals(1),
+        );
+        expect(
+          RepositoryPriorityManager.sparklinePriorities[CoinGeckoRepository],
+          equals(2),
+        );
+        expect(
+          RepositoryPriorityManager.sparklinePriorities[KomodoPriceRepository],
+          isNull,
+        );
+      });
+    });
+  });
+}
