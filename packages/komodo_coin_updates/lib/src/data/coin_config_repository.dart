@@ -21,12 +21,17 @@ class CoinConfigRepository implements CoinConfigStorage {
   /// Creates a coin config storage provider with default databases.
   /// The default databases are HiveLazyBoxProvider.
   /// The default databases are named 'coins' and 'coins_settings'.
-  CoinConfigRepository.withDefaults(RuntimeUpdateConfig config)
-    : coinConfigProvider = CoinConfigProvider.fromConfig(config),
-      coinsDatabase = HiveLazyBoxProvider<String, CoinInfo>(name: 'coins'),
-      coinSettingsDatabase = HiveBoxProvider<String, PersistedString>(
-        name: 'coins_settings',
-      );
+  CoinConfigRepository.withDefaults(
+    RuntimeUpdateConfig config, {
+    String? githubToken,
+  }) : coinConfigProvider = CoinConfigProvider.fromConfig(
+         config,
+         githubToken: githubToken,
+       ),
+       coinsDatabase = HiveLazyBoxProvider<String, CoinInfo>(name: 'coins'),
+       coinSettingsDatabase = HiveBoxProvider<String, PersistedString>(
+         name: 'coins_settings',
+       );
 
   /// The provider that fetches the coins and coin configs.
   final CoinConfigProvider coinConfigProvider;
