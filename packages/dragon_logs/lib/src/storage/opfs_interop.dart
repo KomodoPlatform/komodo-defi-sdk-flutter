@@ -59,13 +59,15 @@ extension FileSystemDirectoryHandleValuesIterable on FileSystemDirectoryHandle {
   }
 
   /// Returns a Stream of [name, handle] pairs for async iteration over directory contents
+  static const int nameIndex = 0;
+  static const int handleIndex = 1;
   Stream<(String, FileSystemHandle)> entriesStream() {
     return entries().asStream().map((jsValue) {
       // The entries() iterator returns [name, handle] arrays
       // We need to use js_interop_unsafe to access array elements
       final jsObject = jsValue as JSObject;
-      final name = (jsObject['0']! as JSString).toDart;
-      final handle = jsObject['1']! as FileSystemHandle;
+      final name = (jsObject['$nameIndex']! as JSString).toDart;
+      final handle = jsObject['$handleIndex']! as FileSystemHandle;
       return (name, handle);
     });
   }
