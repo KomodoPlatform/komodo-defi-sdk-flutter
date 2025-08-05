@@ -4,8 +4,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:komodo_cex_market_data/src/models/models.dart';
 
+/// Interface for fetching prices from Komodo API.
+abstract class IKomodoPriceProvider {
+  Future<Map<String, CexPrice>> getKomodoPrices();
+}
+
 /// A class for fetching prices from Komodo API.
-class KomodoPriceProvider {
+class KomodoPriceProvider implements IKomodoPriceProvider {
   /// Creates a new instance of [KomodoPriceProvider].
   KomodoPriceProvider({
     this.mainTickersUrl =
@@ -42,8 +47,10 @@ class KomodoPriceProvider {
 
     final prices = <String, CexPrice>{};
     json.forEach((String priceTicker, dynamic pricesData) {
-      prices[priceTicker] =
-          CexPrice.fromJson(priceTicker, pricesData as Map<String, dynamic>);
+      prices[priceTicker] = CexPrice.fromJson(
+        priceTicker,
+        pricesData as Map<String, dynamic>,
+      );
     });
     return prices;
   }

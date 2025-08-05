@@ -160,19 +160,25 @@ Future<void> bootstrap({
     BinanceRepository(binanceProvider: const BinanceProvider()),
   );
 
+  container.registerSingleton<ICoinGeckoProvider>(CoinGeckoCexProvider());
+
   container.registerSingleton<CoinGeckoRepository>(
-    CoinGeckoRepository(coinGeckoProvider: CoinGeckoCexProvider()),
+    CoinGeckoRepository(coinGeckoProvider: container<ICoinGeckoProvider>()),
   );
 
-  container.registerSingleton<KomodoPriceProvider>(KomodoPriceProvider());
+  container.registerSingleton<IKomodoPriceProvider>(KomodoPriceProvider());
+
+  container.registerSingleton<IKomodoPriceRepository>(
+    KomodoPriceRepository(cexPriceProvider: container<IKomodoPriceProvider>()),
+  );
+
+  container.registerSingleton<RepositorySelectionStrategy>(
+    DefaultRepositorySelectionStrategy(),
+  );
 
   container.registerSingletonAsync<MessageSigningManager>(
     () async => MessageSigningManager(await container.getAsync<ApiClient>()),
     dependsOn: [ApiClient],
-  );
-
-  container.registerSingleton<KomodoPriceRepository>(
-    KomodoPriceRepository(cexPriceProvider: container<KomodoPriceProvider>()),
   );
 
   container.registerSingletonAsync<MarketDataManager>(() async {
@@ -181,11 +187,12 @@ Future<void> bootstrap({
         container<BinanceRepository>(),
         container<CoinGeckoRepository>(),
       ],
-      komodoPriceRepository: container<KomodoPriceRepository>(),
+      komodoPriceRepository: container<IKomodoPriceRepository>(),
+      selectionStrategy: container<RepositorySelectionStrategy>(),
     );
     await manager.init();
     return manager;
-  });
+  }, dependsOn: [RepositorySelectionStrategy]);
 
   container.registerSingletonAsync<FeeManager>(() async {
     final client = await container.getAsync<ApiClient>();

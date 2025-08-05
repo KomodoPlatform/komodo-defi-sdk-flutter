@@ -4,15 +4,19 @@ import 'package:komodo_cex_market_data/src/models/models.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+/// Interface for Komodo price repository.
+abstract class IKomodoPriceRepository implements CexRepository {
+  Future<Map<String, CexPrice>> getKomodoPrices();
+}
+
 /// A repository for fetching the prices of coins from the Komodo Defi API.
 class KomodoPriceRepository extends CexRepository {
   /// Creates a new instance of [KomodoPriceRepository].
-  KomodoPriceRepository({
-    required KomodoPriceProvider cexPriceProvider,
-  }) : _cexPriceProvider = cexPriceProvider;
+  KomodoPriceRepository({required IKomodoPriceProvider cexPriceProvider})
+    : _cexPriceProvider = cexPriceProvider;
 
   /// The price provider to fetch the prices from.
-  final KomodoPriceProvider _cexPriceProvider;
+  final IKomodoPriceProvider _cexPriceProvider;
 
   // Supported coins and vs currencies are not expected to change regularly,
   // so this in-memory cache is acceptable for now until a more complete and
@@ -89,9 +93,9 @@ class KomodoPriceRepository extends CexRepository {
     List<String> timestamps, {
     String vsCurrency = 'usd',
   }) async {
-    return (await _cexPriceProvider.getKomodoPrices())
-        .values
-        .firstWhere((CexPrice element) {
+    return (await _cexPriceProvider.getKomodoPrices()).values.firstWhere((
+      CexPrice element,
+    ) {
       if (element.ticker != coinId) {
         return false;
       }
@@ -104,6 +108,7 @@ class KomodoPriceRepository extends CexRepository {
   /// Fetches the prices of the provided coin IDs.
   ///
   /// Returns a map of coin IDs to their prices.
+  @override
   Future<Map<String, CexPrice>> getKomodoPrices() async {
     return _cexPriceProvider.getKomodoPrices();
   }
@@ -114,17 +119,18 @@ class KomodoPriceRepository extends CexRepository {
       return _cachedCoinsList!;
     }
     final prices = await getKomodoPrices();
-    _cachedCoinsList = prices.values
-        .map(
-          (e) => CexCoin(
-            id: e.ticker,
-            symbol: e.ticker,
-            name: e.ticker,
-            currencies: <String>{'USD', 'USDT'},
-            source: 'komodo',
-          ),
-        )
-        .toList();
+    _cachedCoinsList =
+        prices.values
+            .map(
+              (e) => CexCoin(
+                id: e.ticker,
+                symbol: e.ticker,
+                name: e.ticker,
+                currencies: <String>{'USD', 'USDT'},
+                source: 'komodo',
+              ),
+            )
+            .toList();
     _cachedFiatCurrencies = {'USD', 'USDT'};
     return _cachedCoinsList!;
   }
@@ -144,5 +150,52 @@ class KomodoPriceRepository extends CexRepository {
     final supportsRequestType = requestType == PriceRequestType.currentPrice ||
         requestType == PriceRequestType.priceChange;
     return supportsAsset && supportsFiat && supportsRequestType;
+  }
+
+  @override
+  Future<CoinOhlc> getCoinOhlc(
+    CexCoinPair symbol,
+    GraphInterval interval, {
+    DateTime? startAt,
+    DateTime? endAt,
+    int? limit,
+  }) {
+    throw UnimplementedError('KomodoPriceRepository does not support OHLC');
+  }
+
+  @override
+  String resolveTradingSymbol(AssetId assetId) {
+    return assetId.symbol.configSymbol;
+  }
+
+  @override
+  bool canHandleAsset(AssetId assetId) {
+    final symbol = assetId.symbol.configSymbol.toUpperCase();
+    return _cachedCoinsList?.any((c) => c.id.toUpperCase() == symbol) ?? false;
+  }
+
+  @override
+  Future<double> getCoinFiatPrice(
+    AssetId assetId, {
+    DateTime? priceDate,
+    String fiatCoinId = 'usdt',
+  }) async {
+    final prices = await getKomodoPrices();
+    final symbol = assetId.symbol.configSymbol;
+    final price = prices[symbol]?.price;
+    if (price == null) {
+      throw StateError('Price not found for ${assetId.symbol.configSymbol}');
+    }
+    return price;
+  }
+
+  @override
+  Future<Map<DateTime, double>> getCoinFiatPrices(
+    AssetId assetId,
+    List<DateTime> dates, {
+    String fiatCoinId = 'usdt',
+  }) async {
+    final price = await getCoinFiatPrice(assetId, fiatCoinId: fiatCoinId);
+    return {for (final date in dates) date: price};
   }
 }

@@ -4,8 +4,55 @@ import 'package:http/http.dart' as http;
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_cex_market_data/src/coingecko/models/coin_historical_data/coin_historical_data.dart';
 
+/// Interface for fetching data from CoinGecko API.
+abstract class ICoinGeckoProvider {
+  Future<List<CexCoin>> fetchCoinList({bool includePlatforms = false});
+
+  Future<List<String>> fetchSupportedVsCurrencies();
+
+  Future<List<CoinMarketData>> fetchCoinMarketData({
+    String vsCurrency = 'usd',
+    List<String>? ids,
+    String? category,
+    String order = 'market_cap_asc',
+    int perPage = 100,
+    int page = 1,
+    bool sparkline = false,
+    String? priceChangePercentage,
+    String locale = 'en',
+    String? precision,
+  });
+
+  Future<CoinMarketChart> fetchCoinMarketChart({
+    required String id,
+    required String vsCurrency,
+    required int fromUnixTimestamp,
+    required int toUnixTimestamp,
+    String? precision,
+  });
+
+  Future<CoinOhlc> fetchCoinOhlc(
+    String id,
+    String vsCurrency,
+    int days, {
+    int? precision,
+  });
+
+  Future<CoinHistoricalData> fetchCoinHistoricalMarketData({
+    required String id,
+    required DateTime date,
+    String vsCurrency = 'usd',
+    bool localization = false,
+  });
+
+  Future<Map<String, CexPrice>> fetchCoinPrices(
+    List<String> coinGeckoIds, {
+    List<String> vsCurrencies = const <String>['usd'],
+  });
+}
+
 /// A class for fetching data from CoinGecko API.
-class CoinGeckoCexProvider {
+class CoinGeckoCexProvider implements ICoinGeckoProvider {
   /// Creates a new instance of [CoinGeckoCexProvider].
   CoinGeckoCexProvider({
     this.baseUrl = 'api.coingecko.com',
@@ -45,8 +92,10 @@ class CoinGeckoCexProvider {
 
   /// Fetches the list of supported vs currencies.
   Future<List<String>> fetchSupportedVsCurrencies() async {
-    final uri =
-        Uri.https(baseUrl, '$apiVersion/simple/supported_vs_currencies');
+    final uri = Uri.https(
+      baseUrl,
+      '$apiVersion/simple/supported_vs_currencies',
+    );
 
     final response = await http.get(uri);
     if (response.statusCode == 200) {
@@ -96,8 +145,11 @@ class CoinGeckoCexProvider {
       'locale': locale,
       if (precision != null) 'price_change_percentage': precision,
     };
-    final uri =
-        Uri.https(baseUrl, '$apiVersion/coins/markets', queryParameters);
+    final uri = Uri.https(
+      baseUrl,
+      '$apiVersion/coins/markets',
+      queryParameters,
+    );
 
     return http.get(uri).then((http.Response response) {
       if (response.statusCode == 200) {

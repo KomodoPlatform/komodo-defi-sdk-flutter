@@ -72,7 +72,7 @@ class CexMarketDataManager implements MarketDataManager {
   /// Creates a new instance of [CexMarketDataManager]
   CexMarketDataManager({
     required List<CexRepository> priceRepositories,
-    required KomodoPriceRepository komodoPriceRepository,
+    required IKomodoPriceRepository komodoPriceRepository,
     RepositorySelectionStrategy? selectionStrategy,
   }) : _priceRepositories = priceRepositories,
        _komodoPriceRepository = komodoPriceRepository,
@@ -103,7 +103,7 @@ class CexMarketDataManager implements MarketDataManager {
     _knownTickers = UnmodifiableSetView(allTickers);
     _logger.fine('Initialized known tickers: ${_knownTickers?.length ?? 0}');
     // Start cache clearing timer
-    _cacheTimer = Timer.periodic(_cacheClearInterval, (_) => _clearCaches());
+    _cacheTimer = _timerFactory(_cacheClearInterval, _clearCaches);
     _logger.finer(
       'Started cache clearing timer with interval $_cacheClearInterval',
     );
@@ -112,7 +112,7 @@ class CexMarketDataManager implements MarketDataManager {
   Set<String>? _knownTickers;
 
   final List<CexRepository> _priceRepositories;
-  final KomodoPriceRepository _komodoPriceRepository;
+  final IKomodoPriceRepository _komodoPriceRepository;
   final RepositorySelectionStrategy _selectionStrategy;
   bool _isDisposed = false;
 

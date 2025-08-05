@@ -13,12 +13,10 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // Declaring constants here to make this easier to copy & move around
 /// The base URL for the Binance API.
-List<String> get binanceApiEndpoint =>
-    ['https://api.binance.com/api/v3', 'https://api.binance.us/api/v3'];
-
-BinanceRepository binanceRepository = BinanceRepository(
-  binanceProvider: const BinanceProvider(),
-);
+List<String> get binanceApiEndpoint => [
+  'https://api.binance.com/api/v3',
+  'https://api.binance.us/api/v3',
+];
 
 /// A repository class for interacting with the Binance API.
 /// This class provides methods to fetch legacy tickers and OHLC candle data.
@@ -27,12 +25,11 @@ class BinanceRepository implements CexRepository {
   BinanceRepository({
     required IBinanceProvider binanceProvider,
     BackoffStrategy? defaultBackoffStrategy,
-  })  : _binanceProvider = binanceProvider,
-        _defaultBackoffStrategy = defaultBackoffStrategy ??
-            ExponentialBackoff(
-              maxDelay: const Duration(seconds: 5),
-            ),
-        _idResolutionStrategy = BinanceIdResolutionStrategy();
+  }) : _binanceProvider = binanceProvider,
+       _defaultBackoffStrategy =
+           defaultBackoffStrategy ??
+           ExponentialBackoff(maxDelay: const Duration(seconds: 5)),
+       _idResolutionStrategy = BinanceIdResolutionStrategy();
 
   final IBinanceProvider _binanceProvider;
   final BackoffStrategy _defaultBackoffStrategy;
@@ -213,11 +210,11 @@ class BinanceRepository implements CexRepository {
         backoffStrategy: backoffStrategy,
       );
 
-      final batchResult =
-          ohlcData.ohlc.fold<Map<DateTime, double>>({}, (map, ohlc) {
-        final date = DateTime.fromMillisecondsSinceEpoch(
-          ohlc.closeTime,
-        );
+      final batchResult = ohlcData.ohlc.fold<Map<DateTime, double>>({}, (
+        map,
+        ohlc,
+      ) {
+        final date = DateTime.fromMillisecondsSinceEpoch(ohlc.closeTime);
         map[DateTime(date.year, date.month, date.day)] = ohlc.close;
         return map;
       });
