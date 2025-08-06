@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'dart:async';
 
+import 'package:dragon_logs/dragon_logs.dart' as dragon;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
@@ -18,6 +19,7 @@ final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dragon.DragonLogs.init();
 
   // Create instance manager
   final instanceManager = KdfInstanceManager();
@@ -25,11 +27,13 @@ void main() async {
   // Create default SDK instance with config
   final defaultSdk = KomodoDefiSdk(config: _config);
   await defaultSdk.initialize();
+  dragon.log('Default SDK instance initialized');
 
   unawaited(sparklineRepository.init());
 
   // Register default instance
   await instanceManager.registerInstance('Local Instance', _config, defaultSdk);
+  dragon.log('Registered default instance');
 
   runApp(
     MultiRepositoryProvider(
@@ -118,6 +122,7 @@ class _KomodoAppState extends State<KomodoApp> {
 
     // Load known users
     await _fetchKnownUsers(instance);
+    dragon.log('Initialized instance ${instance.name}');
   }
 
   void _updateInstanceUser(String instanceName, KdfUser? user) {
@@ -128,6 +133,15 @@ class _KomodoAppState extends State<KomodoApp> {
               ? 'Current wallet: ${user.walletId.name}'
               : 'Not signed in';
     });
+    dragon.DragonLogs.setSessionMetadata({
+      'instance': instanceName,
+      if (user != null) 'user': user.walletId.compoundId,
+    });
+    dragon.log(
+      user != null
+          ? 'User ${user.walletId.compoundId} authenticated in $instanceName'
+          : 'User signed out of $instanceName',
+    );
   }
 
   Future<void> _fetchKnownUsers(KdfInstanceState instance) async {
@@ -138,7 +152,7 @@ class _KomodoAppState extends State<KomodoApp> {
       state.knownUsers = users;
       setState(() {});
     } catch (e, s) {
-      print('Error fetching known users: $e');
+      dragon.log('Error fetching known users: $e', 'ERROR');
       debugPrintStack(stackTrace: s);
     }
   }
@@ -184,6 +198,16 @@ class _KomodoAppState extends State<KomodoApp> {
                       ? Colors.green
                       : Colors.red,
               child: const Icon(Icons.cloud),
+            ),
+            IconButton(
+              icon: const Icon(Icons.download),
+              tooltip: 'Export Logs',
+              onPressed: () async {
+                await dragon.DragonLogs.exportLogsToDownload();
+                _scaffoldKey.currentState?.showSnackBar(
+                  const SnackBar(content: Text('Logs exported')),
+                );
+              },
             ),
             const SizedBox(width: 16),
           ],

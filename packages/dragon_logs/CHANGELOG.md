@@ -1,3 +1,14 @@
+## 1.2.0
+
+- **BREAKING**: Add WASM web support with OPFS-only storage
+- **BREAKING**: Remove `file_system_access_api` and `js` dependencies
+- **BREAKING**: Require Dart SDK `>=3.3.0` for extension types support
+- Add `package:web` for modern web APIs compatibility
+- Migrate from `dart:html` and `dart:js` to `dart:js_interop` and `package:web`
+- Add WASM-specific platform detection using `dart.tool.dart2wasm`
+- Implement Origin Private File System (OPFS) using modern JS interop
+- Maintain full API compatibility while supporting both regular web and WASM compilation
+
 ## 1.1.0
 
 - Bump packages to latest versions.
@@ -24,20 +35,15 @@ Refactor to share more code between web and native platforms (focused mainly on 
 - Stable release
 - Tweak: Localisation initialisation no longer needs to be inialised before logs.
 
-
 ## 0.1.1-preview.1
 
 - Memory improvement for log flushing.
 - Bug fixes.
 
-
 ## 0.1.0-preview.1
 
 - Bug fixes.
 
-
 ## 0.0.1-preview.1
 
 - Initial preview version.
-
-
