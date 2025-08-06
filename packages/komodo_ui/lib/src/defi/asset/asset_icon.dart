@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -6,6 +10,15 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// The icon is first looked up in the local assets, then falls back to a CDN,
 /// and finally displays a generic icon if neither source has the icon.
 class AssetIcon extends StatelessWidget {
+  /// Static flag to track if all icons have been pre-cached
+  static bool _hasPreCachedAllIcons = false;
+
+  /// Completer to track current precache operation
+  static Completer<void>? _currentPrecacheOperation;
+
+  /// Callback for automatically initializing icon precaching
+  static void Function(BuildContext)? _initCallback;
+
   /// Creates an [AssetIcon] widget that displays an icon for the given [AssetId].
   /// This is the preferred constructor as it provides type safety and additional
   /// metadata about the asset.
@@ -16,6 +29,29 @@ class AssetIcon extends StatelessWidget {
     this.heroTag,
     super.key,
   }) : _legacyTicker = null;
+
+  /// Sets up auto-initialization of asset icon precaching.
+  ///
+  /// This method should be called early in your app's lifecycle, typically
+  /// during app initialization. When the first AssetIcon widget is built,
+  /// the provided callback will be invoked to precache all icons.
+  ///
+  /// Example usage:
+  /// ```dart
+  /// void main() {
+  ///   AssetIcon.setupAutoInit((context) {
+  ///     final sdk = context.read<KomodoDefiSdk>();
+  ///     AssetIcon.precacheAllAssetIcons(
+  ///       context,
+  ///       availableAssetIds: sdk.assets.available.keys,
+  ///     );
+  ///   });
+  ///   runApp(MyApp());
+  /// }
+  /// ```
+  static void setupAutoInit(void Function(BuildContext) callback) {
+    _initCallback = callback;
+  }
 
   /// Legacy constructor that accepts a ticker/abbreviation string.
   /// Provided for backwards compatibility with [CoinIcon].
@@ -43,6 +79,16 @@ class AssetIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Run auto-initialization the first time any AssetIcon is built
+    if (!_hasPreCachedAllIcons && _initCallback != null) {
+      // Use a post-frame callback to avoid blocking the UI
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initCallback!(context);
+      });
+      // Prevent multiple initializations
+      _hasPreCachedAllIcons = true;
+    }
+
     final disabledTheme = Theme.of(context).disabledColor;
     Widget icon = SizedBox.square(
       dimension: size,
@@ -52,15 +98,15 @@ class AssetIcon extends StatelessWidget {
         size: size,
       ),
     );
-    
+
     // Apply opacity first for disabled state
     icon = Opacity(opacity: suspended ? disabledTheme.a : 1.0, child: icon);
-    
+
     // Then wrap with Hero widget if provided (Hero should be outermost)
     if (heroTag != null) {
       icon = Hero(tag: heroTag!, child: icon);
     }
-    
+
     return icon;
   }
 
@@ -126,6 +172,83 @@ class AssetIcon extends StatelessWidget {
   /// Returns true if the icon is known to exist (per cache), false otherwise.
   static bool assetIconExists(String assetIconId) {
     return _AssetIconResolver.assetIconExists(assetIconId);
+  }
+
+  /// Determines if the current platform is a mobile device.
+  ///
+  /// Returns true for Android and iOS platforms, false otherwise.
+  static bool get _isMobilePlatform {
+    if (kIsWeb) return false;
+    return Platform.isAndroid || Platform.isIOS;
+  }
+
+  /// Pre-caches all available asset icons.
+  ///
+  /// This method will load icons for all available assets provided by the SDK.
+  /// Icons will be loaded sequentially on mobile devices (Android/iOS) to avoid
+  /// overwhelming the device. On other platforms, all icons are loaded simultaneously.
+  ///
+  /// If [excludedAssetList] is provided, those assets will be skipped during precaching.
+  ///
+  /// Returns a Future that completes when all icons have been cached or when an error occurs.
+  static Future<void> precacheAllAssetIcons(
+    BuildContext context, {
+    required Iterable<AssetId> availableAssetIds,
+    List<String> excludedAssetList = const [],
+    void Function(int count, int durationMs)? onCompleted,
+  }) async {
+    if (_currentPrecacheOperation != null &&
+        !_currentPrecacheOperation!.isCompleted) {
+      debugPrint('New request to precache icons started.');
+      _currentPrecacheOperation!.complete();
+    }
+
+    _currentPrecacheOperation = Completer<void>();
+
+    try {
+      final stopwatch = Stopwatch()..start();
+      final filteredAssetIds = availableAssetIds.where(
+        (assetId) => !excludedAssetList.contains(assetId.symbol.configSymbol),
+      );
+
+      final isMobile = _isMobilePlatform;
+
+      if (!isMobile) {
+        // Load all icons simultaneously if not on mobile device
+        await Future.wait(
+          filteredAssetIds.map(
+            (assetId) => precacheAssetIcon(context, assetId).onError(
+              (_, __) => debugPrint('Error precaching asset icon $assetId'),
+            ),
+          ),
+        );
+      } else {
+        // Load icons sequentially on mobile devices
+        for (final assetId in filteredAssetIds) {
+          if (!context.mounted) break;
+
+          await precacheAssetIcon(context, assetId).onError(
+            (_, __) => debugPrint('Error precaching asset icon $assetId'),
+          );
+        }
+      }
+
+      _hasPreCachedAllIcons = true;
+      _currentPrecacheOperation!.complete();
+
+      final duration = stopwatch.elapsedMilliseconds;
+      debugPrint('Precached ${filteredAssetIds.length} icons in ${duration}ms');
+
+      if (onCompleted != null) {
+        onCompleted(filteredAssetIds.length, duration);
+      }
+
+      return _currentPrecacheOperation!.future;
+    } catch (e) {
+      debugPrint('Error precaching asset icons: $e');
+      _currentPrecacheOperation!.completeError(e);
+      rethrow;
+    }
   }
 }
 

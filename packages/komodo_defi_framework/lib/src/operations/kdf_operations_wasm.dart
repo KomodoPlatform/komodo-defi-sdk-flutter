@@ -1,6 +1,5 @@
 import 'dart:async';
-import 'dart:js_interop' as js_interop;
-import 'dart:js_interop_unsafe';
+import 'dart:js_interop';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
@@ -12,6 +11,41 @@ import 'package:mutex/mutex.dart';
 
 const _kdfAsstsPath = 'kdf';
 const _kdfJsBootstrapperPath = '$_kdfAsstsPath/res/kdflib_bootstrapper.js';
+
+// Type-safe JS interop interfaces
+@JS('window.kdf')
+external KdfModule get kdf;
+
+typedef LogCallback = void Function(int level, String message);
+
+@JS()
+extension type KdfModule(JSObject _) implements JSObject {
+  external bool get isInitialized;
+
+  @JS('init_wasm')
+  external JSPromise<JSNumber?> initWasm();
+
+  @JS('mm2_main')
+  external JSPromise<JSNumber> mm2Main(
+    KdfMainParams params,
+    JSFunction logCallback,
+  );
+
+  @JS('mm2_main_status')
+  external int mm2MainStatus();
+
+  @JS('mm2_rpc')
+  external JSPromise mm2Rpc(JSObject payload);
+
+  @JS('mm2_stop')
+  external JSPromise mm2Stop();
+
+  @JS('mm2_version')
+  external JSObject mm2Version();
+}
+
+@JS()
+extension type KdfMainParams(JSObject _) implements JSObject {}
 
 IKdfOperations createLocalKdfOperations({
   required void Function(String)? logCallback,
@@ -37,7 +71,7 @@ class KdfOperationsWasm implements IKdfOperations {
 
   final LocalConfig _config;
   bool _libraryLoaded = false;
-  js_interop.JSObject? _kdfModule;
+  KdfModule? _kdfModule;
   void Function(String)? _logger;
 
   void _log(String message) => (_logger ?? print).call(message);
@@ -53,10 +87,7 @@ class KdfOperationsWasm implements IKdfOperations {
   }
 
   bool get _isWasmInitialized {
-    return _kdfModule
-            ?.getProperty<js_interop.JSBoolean>('isInitialized'.toJS)
-            .toDart ??
-        false;
+    return _kdfModule?.isInitialized ?? false;
   }
 
   @override
@@ -71,16 +102,20 @@ class KdfOperationsWasm implements IKdfOperations {
     return _startupLock.protect(() async {
       await _ensureLoaded();
 
-      final jsConfig = {
+      // Create the config object
+      final jsConfigObj = {
         'conf': config,
         'log_level': logLevel ?? 3,
-      }.jsify() as js_interop.JSObject?;
+      }.jsify()! as JSObject;
+
+      // Cast to KdfMainParams
+      final jsConfig = jsConfigObj as KdfMainParams;
 
       try {
         return await _executeKdfMain(jsConfig);
       } on int catch (errorCode) {
         return KdfStartupResult.fromDefaultInt(errorCode);
-      } on js_interop.JSAny catch (jsError) {
+      } on JSAny catch (jsError) {
         return _handleStartupJsError(jsError);
       } catch (e) {
         _log('Unknown error starting KDF: [${e.runtimeType}] $e');
@@ -93,69 +128,54 @@ class KdfOperationsWasm implements IKdfOperations {
     });
   }
 
-  Future<KdfStartupResult> _executeKdfMain(
-    js_interop.JSObject? jsConfig,
-  ) async {
-    final future = _kdfModule!
-        .callMethod(
-          'mm2_main'.toJS,
-          jsConfig,
-          (int level, String message) {
-            _log('[$level] KDF: $message');
-          }.toJS,
-        )
-        .dartify() as Future<dynamic>?;
-
-    final result = await future;
-    _log('mm2_main called: $result');
-
-    if (result is int) {
-      return KdfStartupResult.fromDefaultInt(result);
-    }
-
-    throw Exception(
-      'KDF main returned unexpected type: ${result.runtimeType}',
+  Future<KdfStartupResult> _executeKdfMain(KdfMainParams jsConfig) async {
+    final jsPromise = _kdfModule!.mm2Main(
+      jsConfig,
+      ((int level, String message) {
+        _log('[$level] KDF: $message');
+      }).toJS,
     );
+
+    final result = await jsPromise.toDart;
+    final resultInt = result.toDartInt;
+    _log('mm2_main called: $resultInt');
+    return KdfStartupResult.fromDefaultInt(resultInt);
   }
 
-  KdfStartupResult _handleStartupJsError(js_interop.JSAny jsError) {
+  KdfStartupResult _handleStartupJsError(JSAny jsError) {
     try {
       _log('Handling JSAny error: [${jsError.runtimeType}] $jsError');
 
       // Try to extract error code from JSNumber
-      if (isInstance<js_interop.JSNumber>(jsError, 'JSNumber')) {
-        final errorCode = (jsError as js_interop.JSNumber).toDartInt;
+      if (jsError is JSNumber) {
+        final errorCode = jsError.toDartInt;
         _log('KdfOperationsWasm: Resolved as JSNumber error code: $errorCode');
         return KdfStartupResult.fromDefaultInt(errorCode);
       }
 
       // Try to extract error code from JSObject
-      if (isInstance<js_interop.JSObject>(jsError, 'JSObject')) {
-        final jsObj = jsError as js_interop.JSObject;
+      if (jsError is JSObject) {
+        final jsObj = jsError;
 
-        // Check for code property
-        if (jsObj.hasProperty('code'.toJS).toDart) {
-          final code = jsObj.getProperty<js_interop.JSNumber?>('code'.toJS);
-          // Check if the property is a JSNumber
-          if (code != null &&
-              isInstance<js_interop.JSNumber>(code, 'JSNumber')) {
-            final errorCode = code.toDartInt;
-            _log(
-              'KdfOperationsWasm: Resolved as JSObject->JSNumber error code: $errorCode',
-            );
-            return KdfStartupResult.fromDefaultInt(errorCode);
+        // Try dartify as first approach for JSObject
+        final dynamic error = jsObj.dartify();
+        _log(
+          'Dartified JSObject error type: ${error.runtimeType}, value: $error',
+        );
+
+        if (error is int) {
+          return KdfStartupResult.fromDefaultInt(error);
+        } else if (error is num) {
+          return KdfStartupResult.fromDefaultInt(error.toInt());
+        } else if (error is String && int.tryParse(error) != null) {
+          return KdfStartupResult.fromDefaultInt(int.parse(error));
+        } else if (error is Map && error.containsKey('code')) {
+          final code = error['code'];
+          if (code is int) {
+            return KdfStartupResult.fromDefaultInt(code);
+          } else if (code is num) {
+            return KdfStartupResult.fromDefaultInt(code.toInt());
           }
-        }
-
-        // Try toNumber method
-        final asNumber =
-            jsObj.callMethod<js_interop.JSNumber?>('toNumber'.toJS);
-        if (asNumber?.isDefinedAndNotNull ?? false) {
-          final errorCode = asNumber!.toDartInt;
-          _log(
-            'KdfOperationsWasm: Resolved as JSNumber error code: $errorCode',
-          );
-          return KdfStartupResult.fromDefaultInt(errorCode);
         }
       }
 
@@ -179,21 +199,11 @@ class KdfOperationsWasm implements IKdfOperations {
     return KdfStartupResult.unknownError;
   }
 
-  bool isInstance<T extends js_interop.JSAny?>(
-    js_interop.JSAny? obj, [
-    String? typeString,
-  ]) {
-    return obj is T ||
-        obj.instanceOfString(typeString ?? T.runtimeType.toString());
-  }
-
   @override
   Future<MainStatus> kdfMainStatus() async {
     await _ensureLoaded();
-    final status = _kdfModule!
-        .callMethod<js_interop.JSNumber?>('mm2_main_status'.toJS)
-        ?.toDartInt;
-    return MainStatus.fromDefaultInt(status!);
+    final status = _kdfModule!.mm2MainStatus();
+    return MainStatus.fromDefaultInt(status);
   }
 
   @override
@@ -201,15 +211,10 @@ class KdfOperationsWasm implements IKdfOperations {
     await _ensureLoaded();
 
     try {
-      final errorOrNull = await (_kdfModule!
-          .callMethod('mm2_stop'.toJS)
-          .dartify()! as Future<Object?>);
+      final jsPromise = _kdfModule!.mm2Stop();
+      await jsPromise.toDart;
 
-      if (errorOrNull is int) {
-        return StopStatus.fromDefaultInt(errorOrNull);
-      }
-
-      _log('KDF stop result: $errorOrNull');
+      _log('KDF stop result: stopped');
 
       await Future.doWhile(() async {
         final isStopped = (await kdfMainStatus()) == MainStatus.notRunning;
@@ -222,8 +227,6 @@ class KdfOperationsWasm implements IKdfOperations {
         const Duration(seconds: 10),
         onTimeout: () => throw TimeoutException('KDF stop timed out'),
       );
-    } on int catch (e) {
-      return StopStatus.fromDefaultInt(e);
     } catch (e) {
       _log('Error stopping KDF: $e');
       return StopStatus.errorStopping;
@@ -244,26 +247,35 @@ class KdfOperationsWasm implements IKdfOperations {
   }
 
   /// Makes the JavaScript RPC call and returns the raw JS response
-  Future<js_interop.JSObject> _makeJsCall(JsonMap request) async {
+  Future<dynamic> _makeJsCall(JsonMap request) async {
     if (KdfLoggingConfig.debugLogging) {
       _log('mm2Rpc request: ${request.censored()}');
     }
     request['userpass'] = _config.rpcPassword;
 
-    final jsRequest = request.jsify() as js_interop.JSObject?;
-    final jsPromise = _kdfModule!.callMethod('mm2_rpc'.toJS, jsRequest)
-        as js_interop.JSPromise?;
+    final jsRequest = request.jsify()! as JSObject;
 
-    if (jsPromise == null || jsPromise.isUndefinedOrNull) {
-      throw Exception(
-        'mm2_rpc call returned null for method: ${request['method']}'
-        '\nRequest: $request',
-      );
-    }
+    try {
+      final jsPromise = _kdfModule!.mm2Rpc(jsRequest);
+      final jsResponse = await jsPromise.toDart;
 
-    final jsResponse = await jsPromise.toDart
-        .then((value) => value)
-        .catchError((Object error) {
+      if (jsResponse == null) {
+        throw Exception(
+          'mm2_rpc response was null for method: ${request['method']}'
+          '\nRequest: $request',
+        );
+      }
+
+      if (KdfLoggingConfig.debugLogging) {
+        try {
+          final stringified = jsResponse.toString();
+          _log('Raw JS response: $stringified');
+        } catch (e) {
+          _log('Raw JS response: $jsResponse (stringify failed: $e)');
+        }
+      }
+      return jsResponse;
+    } catch (error) {
       if (error.toString().contains('RethrownDartError')) {
         final errorMessage = error.toString().split('\n')[0];
         throw Exception(
@@ -275,33 +287,13 @@ class KdfOperationsWasm implements IKdfOperations {
         'Unknown error for method ${request['method']}: $error'
         '\nRequest: $request',
       );
-    });
-
-    if (jsResponse == null || jsResponse.isUndefinedOrNull) {
-      throw Exception(
-        'mm2_rpc response was null for method: ${request['method']}'
-        '\nRequest: $request',
-      );
     }
-
-    if (KdfLoggingConfig.debugLogging) {
-      try {
-        final stringified = jsResponse.dartify().toString();
-        _log('Raw JS response: $stringified');
-      } catch (e) {
-        _log('Raw JS response: $jsResponse (stringify failed: $e)');
-      }
-    }
-    return jsResponse as js_interop.JSObject;
   }
 
   /// Converts JS response to Dart Map
-  JsonMap _parseDartResponse(
-    js_interop.JSObject jsResponse,
-    JsonMap request,
-  ) {
+  JsonMap _parseDartResponse(dynamic jsResponse, JsonMap request) {
     try {
-      final dynamic converted = jsResponse.dartify();
+      final dynamic converted = (jsResponse as JSAny).dartify();
       if (converted is! JsonMap) {
         return _deepConvertMap(converted as Map);
       }
@@ -317,7 +309,7 @@ class KdfOperationsWasm implements IKdfOperations {
   void _validateResponse(
     JsonMap dartResponse,
     JsonMap request,
-    js_interop.JSObject jsResponse,
+    dynamic jsResponse,
   ) {
     // Legacy RPCs have no standard response format to validate
     if (request.valueOrNull<String>('mmrpc') != '2.0') return;
@@ -379,7 +371,7 @@ class KdfOperationsWasm implements IKdfOperations {
   }
 
   bool _areFunctionsLoaded() {
-    return _kdfModule?.hasProperty('mm2_main'.toJS).toDart ?? false;
+    return _kdfModule != null;
   }
 
   Future<void> _ensureLoaded() async {
@@ -401,48 +393,23 @@ class KdfOperationsWasm implements IKdfOperations {
   }
 
   Future<void> _initWasm() async {
-    final initWasmPromise =
-        _kdfModule?.callMethod('init_wasm'.toJS) as js_interop.JSPromise?;
-    if (initWasmPromise != null) {
-      await initWasmPromise.toDart;
-    }
+    final jsPromise = _kdfModule!.initWasm();
+    await jsPromise.toDart;
   }
 
   Future<void> _injectLibrary() async {
     try {
-      _kdfModule = (await js_interop
-              .importModule('./$_kdfJsBootstrapperPath'.toJS)
-              .toDart)
-          .getProperty('kdf'.toJS);
+      final modulePromise = importModule('./$_kdfJsBootstrapperPath'.toJS);
+      await modulePromise.toDart;
+
+      // After importing the module, the kdf object should be available globally
+      _kdfModule = kdf;
 
       _log('KDF library loaded successfully');
     } catch (e) {
       final message =
           'Failed to load and import script $_kdfJsBootstrapperPath\n$e';
       _log(message);
-
-      final debugProperties = Map<String, String>.fromIterable(
-        <String>[
-          'isInitialized',
-          'kdf',
-          'initSync',
-          'initWasm',
-          'init',
-          'mm2_main',
-          'mm2_main_status',
-          'mm2_stop',
-          'mm2_init',
-          'init_wasm',
-          '__wbg_init',
-        ],
-        value: (key) {
-          final jsKey = (key as String).toJS;
-          return 'Has property: ${_kdfModule!.hasProperty(jsKey).toDart} with type: '
-              '${_kdfModule!.getProperty<js_interop.JSAny?>(jsKey).runtimeType}';
-        },
-      );
-
-      _log('KDF Has properties: $debugProperties');
 
       throw Exception(message);
     }

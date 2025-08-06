@@ -2,6 +2,39 @@ import 'dart:convert';
 
 import 'package:decimal/decimal.dart';
 
+/// Utility functions for converting between numeric types
+class _NumericConverter {
+  /// Tries to convert any value to an int
+  static int? toIntOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is Decimal) return value.toBigInt().toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  /// Tries to convert any value to a double
+  static double? toDoubleOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is Decimal) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  /// Tries to convert any value to a Decimal
+  static Decimal? toDecimalOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is Decimal) return value;
+    if (value is int) return Decimal.fromInt(value);
+    if (value is double) return Decimal.parse(value.toString());
+    if (value is String) return Decimal.tryParse(value);
+    return null;
+  }
+}
+
 typedef JsonMap = Map<String, dynamic>;
 typedef JsonList = List<JsonMap>;
 
@@ -101,15 +134,35 @@ T? _traverseJson<T>(
         }
       }
 
-      // Handle number to string conversion
+      // Handle numeric type conversions
+      if (T == int) {
+        final intValue = _NumericConverter.toIntOrNull(value);
+        if (intValue != null) return intValue as T;
+      }
+
+      if (T == double) {
+        final doubleValue = _NumericConverter.toDoubleOrNull(value);
+        if (doubleValue != null) return doubleValue as T;
+      }
+
+      if (T == Decimal) {
+        final decimalValue = _NumericConverter.toDecimalOrNull(value);
+        if (decimalValue != null) return decimalValue as T;
+      }
+
       if (T == num && value is String) {
         final parsed = num.tryParse(value);
         if (parsed != null) return parsed as T;
       }
 
-      // Handle lossy casts if allowed
-      if (lossyCast && T == String && value is num) {
-        return value.toString() as T;
+      // Handle string conversions
+      if (T == String) {
+        if (value is num) {
+          return value.toString() as T;
+        }
+        if (value is Decimal) {
+          return value.toString() as T;
+        }
       }
 
       // Handle Map conversions
@@ -120,8 +173,9 @@ T? _traverseJson<T>(
           return jsonFromString(value) as T;
         } catch (e) {
           throw ArgumentError(
-              'Expected a JSON string to parse, but got an invalid type: '
-              '${value.runtimeType}');
+            'Expected a JSON string to parse, but got an invalid type: '
+            '${value.runtimeType}',
+          );
         }
       }
 
@@ -129,7 +183,7 @@ T? _traverseJson<T>(
         return jsonToString(value) as T;
       }
 
-// In the list handling section:
+      // In the list handling section:
       if (T == JsonList && value is String) {
         try {
           return jsonListFromString(value) as T;
@@ -214,9 +268,7 @@ T _convertMap<T>(Map<dynamic, dynamic> sourceMap) {
   try {
     return sanitizedMap as T;
   } catch (e) {
-    throw ArgumentError(
-      'Failed to convert map to expected type $T: $e',
-    );
+    throw ArgumentError('Failed to convert map to expected type $T: $e');
   }
 }
 
@@ -234,7 +286,26 @@ extension JsonMapExtension<T extends JsonMap> on T {
   TVal? valueVArgs<TVal>(List<String> keys, {TVal? defaultValue}) =>
       _traverseJson<TVal?>(this, keys, defaultValue: defaultValue);
 
-  // TODO! Documentation
+  /// Get a value from the JsonMap with automatic type conversion
+  ///
+  /// This method will traverse the JsonMap using the provided keys and attempt to
+  /// convert the value to the requested type if necessary. Supports automatic
+  /// conversions between numeric types (int, double, Decimal, num) and strings.
+  ///
+  /// Examples:
+  /// ```dart
+  /// // Convert a string to int
+  /// final intValue = json.value<int>('numberAsString');
+  ///
+  /// // Convert an int to double
+  /// final doubleValue = json.value<double>('integerValue');
+  ///
+  /// // Convert a number to Decimal
+  /// final decimalValue = json.value<Decimal>('numericValue');
+  ///
+  /// // Convert a number to string
+  /// final stringValue = json.value<String>('numberValue');
+  /// ```
   V value<V>(
     String key1, [
     String? key2,
@@ -246,7 +317,27 @@ extension JsonMapExtension<T extends JsonMap> on T {
     return _traverseJson<V>(this, keys) as V;
   }
 
-  // TODO! Documentation
+  /// Get a value from the JsonMap with automatic type conversion or null if not found
+  ///
+  /// This method will traverse the JsonMap using the provided keys and attempt to
+  /// convert the value to the requested type if necessary. Returns null if the key
+  /// doesn't exist or the value can't be converted to the requested type.
+  ///
+  /// Supports automatic conversions between numeric types (int, double, Decimal, num)
+  /// and strings, just like the `value<V>()` method, but returns null instead of
+  /// throwing exceptions when keys don't exist or values can't be converted.
+  ///
+  /// Examples:
+  /// ```dart
+  /// // Safely attempt to get and convert a string to int
+  /// final intValue = json.valueOrNull<int>('numberAsString');
+  ///
+  /// // Safely attempt to get and convert an int to double
+  /// final doubleValue = json.valueOrNull<double>('integerValue');
+  ///
+  /// // Safely attempt to get and convert a number to Decimal
+  /// final decimalValue = json.valueOrNull<Decimal>('numericValue');
+  /// ```
   V? valueOrNull<V>(
     String key1, [
     String? key2,
@@ -257,6 +348,8 @@ extension JsonMapExtension<T extends JsonMap> on T {
     final keys = [key1, key2, key3, key4, key5].whereType<String>().toList();
     return _traverseJson<V>(this, keys, nullIfAbsent: true);
   }
+
+  // All numeric type conversions are handled automatically by the value<T>() and valueOrNull<T>() methods
 
   bool hasNestedKey(
     String key1, [
@@ -373,9 +466,7 @@ extension MapCensoring<K, V> on Map<K, V> {
     }
 
     final censoredMap = <K, V>{};
-    final stack = <_CensorTask<K, V>>[
-      _CensorTask(targetMap, censoredMap),
-    ];
+    final stack = <_CensorTask<K, V>>[_CensorTask(targetMap, censoredMap)];
 
     while (stack.isNotEmpty) {
       final currentTask = stack.removeLast();
