@@ -26,11 +26,11 @@ class AssetMarketInfoBloc
     final asset = event.asset;
     final price = await _sdk.marketData.maybeFiatPrice(
       asset.id,
-      fiatCurrency: 'usd',
+      quoteCurrency: FiatCurrency.usd,
     );
     final change = await _sdk.marketData.priceChange24h(
       asset.id,
-      fiatCurrency: 'usd',
+      quoteCurrency: FiatCurrency.usd,
     );
 
     emit(state.copyWith(price: price, change24h: change));

@@ -37,7 +37,7 @@ class KomodoPriceRepository extends CexRepository {
   Future<Decimal> getCoinFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
     final prices = await _cexPriceProvider.getKomodoPrices();
     final ticker = assetId.symbol.configSymbol.toUpperCase();
@@ -55,13 +55,13 @@ class KomodoPriceRepository extends CexRepository {
   Future<Map<DateTime, Decimal>> getCoinFiatPrices(
     AssetId assetId,
     List<DateTime> dates, {
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
     // Komodo API typically returns current prices, not historical
     // For simplicity, return the same current price for all requested dates
     final currentPrice = await getCoinFiatPrice(
       assetId,
-      fiatCoinId: fiatCoinId,
+      fiatCurrency: fiatCurrency,
     );
     return Map.fromEntries(dates.map((date) => MapEntry(date, currentPrice)));
   }
@@ -69,7 +69,7 @@ class KomodoPriceRepository extends CexRepository {
   @override
   Future<Decimal> getCoin24hrPriceChange(
     AssetId assetId, {
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
     final prices = await _cexPriceProvider.getKomodoPrices();
     final ticker = assetId.symbol.configSymbol.toUpperCase();
@@ -141,11 +141,11 @@ class KomodoPriceRepository extends CexRepository {
   @override
   Future<bool> supports(
     AssetId assetId,
-    AssetId fiatAssetId,
+    QuoteCurrency fiatCurrency,
     PriceRequestType requestType,
   ) async {
     final coins = await getCoinList();
-    final fiat = fiatAssetId.symbol.configSymbol.toUpperCase();
+    final fiat = fiatCurrency.symbol.toUpperCase();
     final supportsAsset = coins.any(
       (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
     );

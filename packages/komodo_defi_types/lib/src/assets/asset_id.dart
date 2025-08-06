@@ -37,26 +37,6 @@ class AssetId extends Equatable {
     );
   }
 
-  /// Creates an AssetId for a fiat currency ticker.
-  ///
-  /// This is a convenience factory constructor for creating AssetId instances
-  /// that represent fiat currencies in price operations.
-  ///
-  /// Example:
-  /// ```dart
-  /// final usdtAssetId = AssetId.fromFiatTicker('usdt');
-  /// final eurAssetId = AssetId.fromFiatTicker('eur');
-  /// ```
-  AssetId.fromFiatTicker(String fiatCurrency)
-      : this(
-          id: fiatCurrency,
-          name: fiatCurrency,
-          symbol: AssetSymbol(assetConfigId: fiatCurrency),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
-        );
-
   final String id;
   final String name;
   final AssetSymbol symbol;

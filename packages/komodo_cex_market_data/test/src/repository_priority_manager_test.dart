@@ -96,7 +96,7 @@ class TestUnknownRepository implements CexRepository {
   Future<Decimal> getCoinFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
     return Decimal.zero;
   }
@@ -105,7 +105,7 @@ class TestUnknownRepository implements CexRepository {
   Future<Map<DateTime, Decimal>> getCoinFiatPrices(
     AssetId assetId,
     List<DateTime> dates, {
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
     return {};
   }
@@ -113,7 +113,7 @@ class TestUnknownRepository implements CexRepository {
   @override
   Future<Decimal> getCoin24hrPriceChange(
     AssetId assetId, {
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
     return Decimal.zero;
   }
@@ -131,7 +131,7 @@ class TestUnknownRepository implements CexRepository {
   @override
   Future<bool> supports(
     AssetId assetId,
-    AssetId fiatAssetId,
+    QuoteCurrency fiatCurrency,
     PriceRequestType requestType,
   ) async {
     return false;

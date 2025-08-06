@@ -75,8 +75,10 @@ class RepositoryPriorityManager {
   ) {
     final sorted = repositories.toList();
     sorted.sort(
-      (a, b) => getPriorityWithCustomMap(a, customPriorities)
-          .compareTo(getPriorityWithCustomMap(b, customPriorities)),
+      (a, b) => getPriorityWithCustomMap(
+        a,
+        customPriorities,
+      ).compareTo(getPriorityWithCustomMap(b, customPriorities)),
     );
     return sorted;
   }

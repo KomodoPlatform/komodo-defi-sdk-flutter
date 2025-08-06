@@ -1,6 +1,8 @@
+import 'package:async/async.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
+import 'package:komodo_cex_market_data/src/coingecko/models/coin_historical_data/coin_historical_data.dart';
 import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
@@ -17,17 +19,20 @@ class CoinGeckoRepository implements CexRepository {
   CoinGeckoRepository({
     required this.coinGeckoProvider,
     BackoffStrategy? defaultBackoffStrategy,
+    bool enableMemoization = true,
   }) : _defaultBackoffStrategy =
            defaultBackoffStrategy ??
            ExponentialBackoff(maxDelay: const Duration(seconds: 5)),
-       _idResolutionStrategy = CoinGeckoIdResolutionStrategy();
+       _idResolutionStrategy = CoinGeckoIdResolutionStrategy(),
+       _enableMemoization = enableMemoization;
 
   /// The CoinGecko provider to use for fetching data.
   final ICoinGeckoProvider coinGeckoProvider;
   final BackoffStrategy _defaultBackoffStrategy;
   final IdResolutionStrategy _idResolutionStrategy;
+  final bool _enableMemoization;
 
-  Set<CexCoin>? _cachedCoinsList;
+  final AsyncMemoizer<List<CexCoin>> _coinListMemoizer = AsyncMemoizer();
   Set<String>? _cachedFiatCurrencies;
 
   /// Fetches the CoinGecko market data.
@@ -44,8 +49,8 @@ class CoinGeckoRepository implements CexRepository {
     int maxAttempts = 5,
     BackoffStrategy? backoffStrategy,
   }) async {
-    return await retry(
-      () => coinGeckoProvider.fetchCoinMarketData(),
+    return retry(
+      coinGeckoProvider.fetchCoinMarketData,
       maxAttempts: maxAttempts,
       backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
     );
@@ -56,24 +61,36 @@ class CoinGeckoRepository implements CexRepository {
     int maxAttempts = 5,
     BackoffStrategy? backoffStrategy,
   }) async {
-    if (_cachedCoinsList != null) {
-      return _cachedCoinsList!.toList();
+    if (_enableMemoization) {
+      return _coinListMemoizer.runOnce(
+        () => _fetchCoinListInternal(maxAttempts, backoffStrategy),
+      );
+    } else {
+      // Warning: Direct API calls without memoization can lead to API rate limiting
+      // and unnecessary network requests. Use this mode sparingly.
+      return _fetchCoinListInternal(maxAttempts, backoffStrategy);
     }
+  }
 
+  /// Internal method to fetch coin list data from the API.
+  Future<List<CexCoin>> _fetchCoinListInternal(
+    int maxAttempts,
+    BackoffStrategy? backoffStrategy,
+  ) async {
     final effectiveBackoffStrategy = backoffStrategy ?? _defaultBackoffStrategy;
 
     final coins = await retry(
-      () => coinGeckoProvider.fetchCoinList(),
+      coinGeckoProvider.fetchCoinList,
       maxAttempts: maxAttempts,
       backoffStrategy: effectiveBackoffStrategy,
     );
     final supportedCurrencies = await retry(
-      () => coinGeckoProvider.fetchSupportedVsCurrencies(),
+      coinGeckoProvider.fetchSupportedVsCurrencies,
       maxAttempts: maxAttempts,
       backoffStrategy: effectiveBackoffStrategy,
     );
 
-    _cachedCoinsList =
+    final result =
         coins
             .map(
               (CexCoin e) =>
@@ -84,7 +101,7 @@ class CoinGeckoRepository implements CexRepository {
     _cachedFiatCurrencies =
         supportedCurrencies.map((s) => s.toUpperCase()).toSet();
 
-    return _cachedCoinsList!.toList();
+    return result.toList();
   }
 
   @override
@@ -124,15 +141,37 @@ class CoinGeckoRepository implements CexRepository {
     return _idResolutionStrategy.canResolve(assetId);
   }
 
+  /// Maps any currency to the appropriate CoinGecko vs_currency
+  /// Handles stablecoin -> fiat conversion and validates against supported currencies
+  String _mapFiatCurrencyToCoingecko(QuoteCurrency fiatCurrency) {
+    // Use the QuoteCurrency's coinGeckoId which handles all mappings
+    final mappedCurrency = fiatCurrency.coinGeckoId;
+
+    // Verify the mapped currency is actually supported by CoinGecko
+    if (_cachedFiatCurrencies?.contains(mappedCurrency.toUpperCase()) == true) {
+      return mappedCurrency;
+    }
+
+    // Fallback: Check if the original currency is directly supported
+    final original = fiatCurrency.symbol.toLowerCase();
+    if (_cachedFiatCurrencies?.contains(original.toUpperCase()) == true) {
+      return original;
+    }
+
+    // Final fallback: Default to USD
+    return 'usd';
+  }
+
   @override
   Future<Decimal> getCoinFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
     int maxAttempts = 5,
     BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
+    final mappedFiatId = _mapFiatCurrencyToCoingecko(fiatCurrency);
 
     final coinPrice = await retry(
       () => coinGeckoProvider.fetchCoinHistoricalMarketData(
@@ -142,7 +181,20 @@ class CoinGeckoRepository implements CexRepository {
       maxAttempts: maxAttempts,
       backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
     );
-    final price = coinPrice.marketData?.currentPrice?.usd?.toDouble() ?? 0;
+
+    return _extractPriceFromResponse(coinPrice, mappedFiatId);
+  }
+
+  Decimal _extractPriceFromResponse(
+    CoinHistoricalData coinPrice,
+    String mappedFiatId,
+  ) {
+    final price = coinPrice.marketData?.currentPrice?.usd;
+    if (price == null) {
+      throw Exception(
+        'Price data for $mappedFiatId not found in response: $coinPrice',
+      );
+    }
     return Decimal.parse(price.toString());
   }
 
@@ -150,13 +202,14 @@ class CoinGeckoRepository implements CexRepository {
   Future<Map<DateTime, Decimal>> getCoinFiatPrices(
     AssetId assetId,
     List<DateTime> dates, {
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
     int maxAttempts = 5,
     BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
+    final mappedFiatId = _mapFiatCurrencyToCoingecko(fiatCurrency);
 
-    if (tradingSymbol.toUpperCase() == fiatCoinId.toUpperCase()) {
+    if (tradingSymbol.toUpperCase() == mappedFiatId.toUpperCase()) {
       throw ArgumentError('Coin and fiat coin cannot be the same');
     }
 
@@ -180,7 +233,7 @@ class CoinGeckoRepository implements CexRepository {
           i + 365 > daysDiff ? endDate : startDate.add(Duration(days: i + 365));
 
       final ohlcData = await getCoinOhlc(
-        CexCoinPair(baseCoinTicker: trimmedCoinId, relCoinTicker: fiatCoinId),
+        CexCoinPair(baseCoinTicker: trimmedCoinId, relCoinTicker: mappedFiatId),
         GraphInterval.oneDay,
         startAt: batchStartDate,
         endAt: batchEndDate,
@@ -206,21 +259,22 @@ class CoinGeckoRepository implements CexRepository {
   @override
   Future<Decimal> getCoin24hrPriceChange(
     AssetId assetId, {
-    String fiatCoinId = 'usd',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
     int maxAttempts = 5,
     BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
+    final mappedFiatId = _mapFiatCurrencyToCoingecko(fiatCurrency);
 
-    if (tradingSymbol.toUpperCase() == fiatCoinId.toUpperCase()) {
+    if (tradingSymbol.toUpperCase() == mappedFiatId.toUpperCase()) {
       throw ArgumentError('Coin and fiat coin cannot be the same');
     }
 
-    return await retry(
+    return retry(
       () async {
         final priceData = await coinGeckoProvider.fetchCoinMarketData(
           ids: [tradingSymbol],
-          vsCurrency: fiatCoinId,
+          vsCurrency: mappedFiatId, // Use mapped fiat currency
         );
         if (priceData.length != 1) {
           throw Exception('Invalid market data for $tradingSymbol');
@@ -240,15 +294,21 @@ class CoinGeckoRepository implements CexRepository {
   @override
   Future<bool> supports(
     AssetId assetId,
-    AssetId fiatAssetId,
+    QuoteCurrency fiatCurrency,
     PriceRequestType requestType,
   ) async {
     final coins = await getCoinList();
-    final fiat = fiatAssetId.symbol.configSymbol.toUpperCase();
+    final mappedFiat = _mapFiatCurrencyToCoingecko(fiatCurrency);
+
+    // Use the same logic as resolveTradingSymbol to find the coin
+    final tradingSymbol = resolveTradingSymbol(assetId);
     final supportsAsset = coins.any(
-      (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
+      (c) =>
+          c.id.toLowerCase() == tradingSymbol.toLowerCase() ||
+          c.symbol.toLowerCase() == tradingSymbol.toLowerCase(),
     );
-    final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
+    final supportsFiat =
+        _cachedFiatCurrencies?.contains(mappedFiat.toUpperCase()) ?? false;
     return supportsAsset && supportsFiat;
   }
 }

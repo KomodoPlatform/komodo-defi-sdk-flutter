@@ -58,7 +58,7 @@ abstract class CexRepository {
   ///
   /// [assetId]: The asset for which to fetch the price.
   /// [priceDate]: The date and time for which to fetch the price.
-  /// [fiatCoinId]: The fiat currency symbol in which to fetch the price.
+  /// [fiatCurrency]: The fiat currency in which to fetch the price.
   ///
   /// Throws an [Exception] if the request fails.
   ///
@@ -71,13 +71,13 @@ abstract class CexRepository {
   /// final Decimal price = await repo.getCoinFiatPrice(
   ///   assetId,
   ///   priceDate: DateTime.now(),
-  ///   fiatCoinId: 'usdt'
+  ///   fiatCurrency: Stablecoin.usdt
   /// );
   /// ```
   Future<Decimal> getCoinFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   });
 
   /// Fetches the value of the given asset in terms of the specified fiat currency
@@ -85,7 +85,7 @@ abstract class CexRepository {
   ///
   /// [assetId]: The asset for which to fetch the price.
   /// [dates]: The list of dates and times for which to fetch the price.
-  /// [fiatCoinId]: The fiat currency symbol in which to fetch the price.
+  /// [fiatCurrency]: The fiat currency in which to fetch the price.
   ///
   /// Throws an [Exception] if the request fails.
   ///
@@ -99,19 +99,19 @@ abstract class CexRepository {
   /// final Map<String, Decimal> prices = await repo.getCoinFiatPrices(
   ///  assetId,
   /// [DateTime.now(), DateTime.now().subtract(Duration(days: 1))],
-  /// fiatCoinId: 'usdt',
+  /// fiatCurrency: Stablecoin.usdt,
   /// );
   /// ```
   Future<Map<DateTime, Decimal>> getCoinFiatPrices(
     AssetId assetId,
     List<DateTime> dates, {
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   });
 
   /// Fetches the 24-hour price change percentage for a given asset.
   ///
   /// [assetId]: The asset for which to fetch the 24-hour price change.
-  /// [fiatCoinId]: The fiat currency symbol in which to calculate the change.
+  /// [fiatCurrency]: The fiat currency in which to calculate the change.
   ///
   /// Returns the percentage change as a [Decimal] (e.g., 5.25 for +5.25%).
   ///
@@ -127,12 +127,12 @@ abstract class CexRepository {
   /// );
   /// final Decimal changePercent = await repo.getCoin24hrPriceChange(
   ///   assetId,
-  ///   fiatCoinId: 'usdt',
+  ///   fiatCurrency: Stablecoin.usdt,
   /// );
   /// ```
   Future<Decimal> getCoin24hrPriceChange(
     AssetId assetId, {
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   });
 
   /// Resolves the platform-specific trading symbol for this repository.
@@ -146,7 +146,7 @@ abstract class CexRepository {
   /// Checks if this repository supports the given asset, fiat, and request type.
   Future<bool> supports(
     AssetId assetId,
-    AssetId fiatAssetId,
+    QuoteCurrency fiatCurrency,
     PriceRequestType requestType,
   );
 }

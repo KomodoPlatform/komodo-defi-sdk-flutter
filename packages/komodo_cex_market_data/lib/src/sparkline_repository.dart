@@ -1,5 +1,3 @@
-// ignore_for_file: strict_raw_type
-
 import 'dart:async';
 
 import 'package:hive/hive.dart';
@@ -7,6 +5,8 @@ import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
+// TODO: create higher-level abstraction and move to SDK to avoid duplicating
+// repositories and creating global variables like these
 // Global CoinGecko repository instance for backward compatibility
 final CoinGeckoRepository _coinGeckoRepository = CoinGeckoRepository(
   coinGeckoProvider: CoinGeckoCexProvider(),
@@ -18,7 +18,7 @@ final BinanceRepository _binanceRepository = BinanceRepository(
 SparklineRepository sparklineRepository = SparklineRepository();
 
 class SparklineRepository {
-  /// Creates a new SparklineRepository with optional repositories.
+  /// Creates a new SparklineRepository with the given repositories.
   ///
   /// If repositories are not provided, defaults to Binance and CoinGecko.
   SparklineRepository({List<CexRepository>? repositories})
@@ -155,10 +155,11 @@ class SparklineRepository {
         derivationPath: null,
         subClass: CoinSubClass.utxo,
       );
-      final fiatAssetId = AssetId.fromFiatTicker('USDT');
+
+      final fiatCurrency = Stablecoin.usdt;
       return await repo.supports(
         assetId,
-        fiatAssetId,
+        fiatCurrency,
         PriceRequestType.priceHistory,
       );
     } catch (e) {

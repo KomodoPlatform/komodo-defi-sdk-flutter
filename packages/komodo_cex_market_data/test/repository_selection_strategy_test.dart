@@ -28,7 +28,7 @@ void main() {
         derivationPath: null,
         subClass: CoinSubClass.utxo,
       );
-      final fiat = AssetId.fromFiatTicker('usd');
+      final fiat = FiatCurrency.usd;
 
       when(() => binance.getCoinList()).thenAnswer(
         (_) async => [
@@ -55,7 +55,7 @@ void main() {
 
       final repo = await strategy.selectRepository(
         assetId: asset,
-        fiatAssetId: fiat,
+        fiatCurrency: fiat,
         requestType: PriceRequestType.currentPrice,
         availableRepositories: [gecko, binance],
       );

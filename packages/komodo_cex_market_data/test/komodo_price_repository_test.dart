@@ -31,10 +31,11 @@ void main() {
           'KMD': AssetMarketInformation(ticker: 'KMD', lastPrice: Decimal.one),
         },
       );
+      const fiatCurrency = Stablecoin.usdt;
 
       final result = await repository.supports(
         asset('KMD'),
-        AssetId.fromFiatTicker('usd'),
+        fiatCurrency,
         PriceRequestType.currentPrice,
       );
 
@@ -48,9 +49,11 @@ void main() {
         },
       );
 
+      const fiatCurrency = Stablecoin.usdt;
+
       final result = await repository.supports(
         asset('KMD'),
-        AssetId.fromFiatTicker('usd'),
+        fiatCurrency,
         PriceRequestType.currentPrice,
       );
 

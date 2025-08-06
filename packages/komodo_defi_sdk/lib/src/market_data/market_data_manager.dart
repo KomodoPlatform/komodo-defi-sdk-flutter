@@ -1,9 +1,8 @@
 import 'dart:async';
-import 'dart:collection';
 
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart' show retry;
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -22,21 +21,21 @@ abstract class MarketDataManager {
   Future<Decimal> fiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   });
 
   /// Gets the current fiat price for an asset if the CEX data is available
   Future<Decimal?> maybeFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   });
 
   /// Gets the price for an asset if it's cached, returns null otherwise
   Decimal? priceIfKnown(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   });
 
   /// Gets historical fiat prices for an asset at specified dates
@@ -45,7 +44,7 @@ abstract class MarketDataManager {
   Future<Map<DateTime, Decimal>> fiatPriceHistory(
     AssetId assetId,
     List<DateTime> dates, {
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   });
 
   /// Gets the 24-hour price change percentage for an asset
@@ -60,7 +59,7 @@ abstract class MarketDataManager {
   /// May throw [TimeoutException] if price fetch times out
   Future<Decimal?> priceChange24h(
     AssetId assetId, {
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   });
 
   /// Disposes of all resources
@@ -83,12 +82,9 @@ class CexMarketDataManager implements MarketDataManager {
 
   @override
   Future<void> init() async {
-    // Initialize known tickers from all repositories
-    final allTickers = <String>{};
     for (final repo in _priceRepositories) {
       try {
         final coins = await repo.getCoinList();
-        allTickers.addAll(coins.map((e) => e.symbol));
         _logger.finer(
           'Loaded ${coins.length} coins from repository: ${repo.runtimeType}',
         );
@@ -99,21 +95,20 @@ class CexMarketDataManager implements MarketDataManager {
           ..finest('Stack trace: $s');
       }
     }
-    _knownTickers = UnmodifiableSetView(allTickers);
-    _logger.fine('Initialized known tickers: ${_knownTickers?.length ?? 0}');
 
     // Start cache clearing timer
     _cacheTimer = Timer.periodic(_cacheClearInterval, (_) => _clearCaches);
     _logger.finer(
       'Started cache clearing timer with interval $_cacheClearInterval',
     );
-  }
 
-  Set<String>? _knownTickers;
+    _isInitialized = true;
+  }
 
   final List<CexRepository> _priceRepositories;
   final RepositorySelectionStrategy _selectionStrategy;
   bool _isDisposed = false;
+  bool _isInitialized = false;
 
   // Cache to store asset prices
   final Map<String, Decimal> _priceCache = {};
@@ -133,15 +128,18 @@ class CexMarketDataManager implements MarketDataManager {
   String _getCacheKey(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
-    return '${assetId.symbol.configSymbol}_${fiatCurrency}_'
+    return '${assetId.symbol.configSymbol}_${quoteCurrency}_'
         '${priceDate?.millisecondsSinceEpoch ?? 'current'}';
   }
 
   // Helper method to generate change cache keys
-  String _getChangeCacheKey(AssetId assetId, {String fiatCurrency = 'usdt'}) {
-    return '${assetId.symbol.configSymbol}_${fiatCurrency}_change24h';
+  String _getChangeCacheKey(
+    AssetId assetId, {
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
+  }) {
+    return '${assetId.symbol.configSymbol}_${quoteCurrency}_change24h';
   }
 
   /// Validates that the manager hasn't been disposed
@@ -149,6 +147,14 @@ class CexMarketDataManager implements MarketDataManager {
     if (_isDisposed) {
       _logger.warning('Attempted to use manager after dispose');
       throw StateError('PriceManager has been disposed');
+    }
+  }
+
+  /// Validates that the manager has been initialized
+  void _assertInitialized() {
+    if (!_isInitialized) {
+      _logger.warning('Attempted to use manager before initialization');
+      throw StateError('MarketDataManager must be initialized before use');
     }
   }
 
@@ -161,34 +167,19 @@ class CexMarketDataManager implements MarketDataManager {
     return cachedPrice;
   }
 
-  /// Selects appropriate repository for price requests
-  Future<CexRepository?> _selectRepositoryForRequest(
-    AssetId assetId,
-    String fiatCurrency,
-    PriceRequestType requestType,
-  ) async {
-    final fiatAssetId = AssetId.fromFiatTicker(fiatCurrency);
-    return _selectionStrategy.selectRepository(
-      assetId: assetId,
-      fiatAssetId: fiatAssetId,
-      requestType: requestType,
-      availableRepositories: _priceRepositories,
-    );
-  }
-
   /// Fetches price from repository and caches the result
   Future<Decimal> _fetchAndCachePrice(
     CexRepository repo,
     AssetId assetId,
     String cacheKey, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) async {
     final priceDouble = await retry(
       () => repo.getCoinFiatPrice(
         assetId,
         priceDate: priceDate,
-        fiatCoinId: fiatCurrency,
+        fiatCurrency: quoteCurrency,
       ),
       maxAttempts: 3,
     );
@@ -205,14 +196,14 @@ class CexMarketDataManager implements MarketDataManager {
   Decimal? priceIfKnown(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
     _checkNotDisposed();
 
     final cacheKey = _getCacheKey(
       assetId,
       priceDate: priceDate,
-      fiatCurrency: fiatCurrency,
+      quoteCurrency: quoteCurrency,
     );
 
     return _getCachedPrice(cacheKey);
@@ -222,7 +213,7 @@ class CexMarketDataManager implements MarketDataManager {
   Future<Decimal> fiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) async {
     _checkNotDisposed();
     _assertInitialized();
@@ -230,7 +221,7 @@ class CexMarketDataManager implements MarketDataManager {
     final cacheKey = _getCacheKey(
       assetId,
       priceDate: priceDate,
-      fiatCurrency: fiatCurrency,
+      quoteCurrency: quoteCurrency,
     );
 
     // Check cache first
@@ -240,17 +231,18 @@ class CexMarketDataManager implements MarketDataManager {
     }
 
     // Select repository
-    final repo = await _selectRepositoryForRequest(
-      assetId,
-      fiatCurrency,
-      PriceRequestType.currentPrice,
+    final repo = await _selectionStrategy.selectRepository(
+      assetId: assetId,
+      fiatCurrency: quoteCurrency,
+      requestType: PriceRequestType.currentPrice,
+      availableRepositories: _priceRepositories,
     );
     if (repo == null) {
       _logger.shout(
-        'No repository supports ${assetId.symbol.configSymbol}/$fiatCurrency for current price',
+        'No repository supports ${assetId.symbol.configSymbol}/$quoteCurrency for current price',
       );
       throw StateError(
-        'No repository supports ${assetId.symbol.configSymbol}/$fiatCurrency for current price',
+        'No repository supports ${assetId.symbol.configSymbol}/$quoteCurrency for current price',
       );
     }
 
@@ -259,7 +251,7 @@ class CexMarketDataManager implements MarketDataManager {
       assetId,
       cacheKey,
       priceDate: priceDate,
-      fiatCurrency: fiatCurrency,
+      quoteCurrency: quoteCurrency,
     );
   }
 
@@ -267,14 +259,14 @@ class CexMarketDataManager implements MarketDataManager {
   Future<Decimal?> maybeFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) async {
     _assertInitialized();
 
     final cacheKey = _getCacheKey(
       assetId,
       priceDate: priceDate,
-      fiatCurrency: fiatCurrency,
+      quoteCurrency: quoteCurrency,
     );
 
     // Check cache first
@@ -284,14 +276,15 @@ class CexMarketDataManager implements MarketDataManager {
     }
 
     // Select repository
-    final repo = await _selectRepositoryForRequest(
-      assetId,
-      fiatCurrency,
-      PriceRequestType.currentPrice,
+    final repo = await _selectionStrategy.selectRepository(
+      assetId: assetId,
+      fiatCurrency: quoteCurrency,
+      requestType: PriceRequestType.currentPrice,
+      availableRepositories: _priceRepositories,
     );
     if (repo == null) {
       _logger.finer(
-        'No repository supports ${assetId.symbol.configSymbol}/$fiatCurrency for maybeFiatPrice',
+        'No repository supports ${assetId.symbol.configSymbol}/$quoteCurrency for maybeFiatPrice',
       );
       return null;
     }
@@ -302,7 +295,7 @@ class CexMarketDataManager implements MarketDataManager {
         assetId,
         cacheKey,
         priceDate: priceDate,
-        fiatCurrency: fiatCurrency,
+        quoteCurrency: quoteCurrency,
       );
     } catch (e, s) {
       _logger
@@ -315,12 +308,12 @@ class CexMarketDataManager implements MarketDataManager {
   @override
   Future<Decimal?> priceChange24h(
     AssetId assetId, {
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) async {
     _checkNotDisposed();
     _assertInitialized();
 
-    final cacheKey = _getChangeCacheKey(assetId, fiatCurrency: fiatCurrency);
+    final cacheKey = _getChangeCacheKey(assetId, quoteCurrency: quoteCurrency);
     final cached = _priceChangeCache[cacheKey];
     if (cached != null) {
       _logger.finer('Cache hit for $cacheKey');
@@ -328,21 +321,22 @@ class CexMarketDataManager implements MarketDataManager {
     }
 
     // Select repository
-    final repo = await _selectRepositoryForRequest(
-      assetId,
-      fiatCurrency,
-      PriceRequestType.priceChange,
+    final repo = await _selectionStrategy.selectRepository(
+      assetId: assetId,
+      fiatCurrency: quoteCurrency,
+      requestType: PriceRequestType.priceChange,
+      availableRepositories: _priceRepositories,
     );
     if (repo == null) {
       _logger.finer(
-        'No repository supports ${assetId.symbol.configSymbol}/$fiatCurrency for maybeFiatPrice',
+        'No repository supports ${assetId.symbol.configSymbol}/$quoteCurrency for maybeFiatPrice',
       );
       return null;
     }
 
     try {
       final priceChange = await retry(
-        () => repo.getCoin24hrPriceChange(assetId, fiatCoinId: fiatCurrency),
+        () => repo.getCoin24hrPriceChange(assetId, fiatCurrency: quoteCurrency),
         maxAttempts: 3,
       );
 
@@ -364,7 +358,7 @@ class CexMarketDataManager implements MarketDataManager {
   Future<Map<DateTime, Decimal>> fiatPriceHistory(
     AssetId assetId,
     List<DateTime> dates, {
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) async {
     _checkNotDisposed();
     _assertInitialized();
@@ -377,7 +371,7 @@ class CexMarketDataManager implements MarketDataManager {
       final cacheKey = _getCacheKey(
         assetId,
         priceDate: date,
-        fiatCurrency: fiatCurrency,
+        quoteCurrency: quoteCurrency,
       );
       final cachedPrice = _getCachedPrice(cacheKey);
       if (cachedPrice != null) {
@@ -392,17 +386,18 @@ class CexMarketDataManager implements MarketDataManager {
     }
 
     // Select repository for missing dates
-    final repo = await _selectRepositoryForRequest(
-      assetId,
-      fiatCurrency,
-      PriceRequestType.priceHistory,
+    final repo = await _selectionStrategy.selectRepository(
+      assetId: assetId,
+      fiatCurrency: quoteCurrency,
+      requestType: PriceRequestType.priceHistory,
+      availableRepositories: _priceRepositories,
     );
     if (repo == null) {
       _logger.shout(
-        'No repository supports ${assetId.symbol.configSymbol}/$fiatCurrency for price history',
+        'No repository supports ${assetId.symbol.configSymbol}/$quoteCurrency for price history',
       );
       throw StateError(
-        'No repository supports ${assetId.symbol.configSymbol}/$fiatCurrency for price history',
+        'No repository supports ${assetId.symbol.configSymbol}/$quoteCurrency for price history',
       );
     }
 
@@ -411,7 +406,7 @@ class CexMarketDataManager implements MarketDataManager {
       () => repo.getCoinFiatPrices(
         assetId,
         missingDates,
-        fiatCoinId: fiatCurrency,
+        fiatCurrency: quoteCurrency,
       ),
       maxAttempts: 3,
     );
@@ -422,7 +417,7 @@ class CexMarketDataManager implements MarketDataManager {
       final cacheKey = _getCacheKey(
         assetId,
         priceDate: date,
-        fiatCurrency: fiatCurrency,
+        quoteCurrency: quoteCurrency,
       );
       _priceCache[cacheKey] = dec;
       return MapEntry(date, dec);
@@ -431,16 +426,10 @@ class CexMarketDataManager implements MarketDataManager {
     return {...cached, ...priceMap};
   }
 
-  void _assertInitialized() {
-    if (_knownTickers == null) {
-      _logger.shout('CexMarketDataManager used before initialization');
-      throw StateError('PriceManager has not been initialized');
-    }
-  }
-
   @override
   Future<void> dispose() async {
     _isDisposed = true;
+    _isInitialized = false;
     _cacheTimer?.cancel();
     _cacheTimer = null;
     _priceCache.clear();
