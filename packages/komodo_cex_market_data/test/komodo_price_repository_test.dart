@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
@@ -25,9 +26,11 @@ void main() {
     );
 
     test('supports returns true for supported asset and fiat', () async {
-      when(
-        () => provider.getKomodoPrices(),
-      ).thenAnswer((_) async => {'KMD': CexPrice(ticker: 'KMD', price: 1.0)});
+      when(() => provider.getKomodoPrices()).thenAnswer(
+        (_) async => {
+          'KMD': AssetMarketInformation(ticker: 'KMD', lastPrice: Decimal.one),
+        },
+      );
 
       final result = await repository.supports(
         asset('KMD'),
@@ -39,9 +42,11 @@ void main() {
     });
 
     test('supports returns false for unsupported asset', () async {
-      when(
-        () => provider.getKomodoPrices(),
-      ).thenAnswer((_) async => {'BTC': CexPrice(ticker: 'BTC', price: 1.0)});
+      when(() => provider.getKomodoPrices()).thenAnswer(
+        (_) async => {
+          'BTC': AssetMarketInformation(ticker: 'BTC', lastPrice: Decimal.one),
+        },
+      );
 
       final result = await repository.supports(
         asset('KMD'),

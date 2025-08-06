@@ -1,13 +1,9 @@
+import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/komodo/prices/komodo_price_provider.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-
-/// Interface for Komodo price repository.
-abstract class IKomodoPriceRepository implements CexRepository {
-  Future<Map<String, CexPrice>> getKomodoPrices();
-}
 
 /// A repository for fetching the prices of coins from the Komodo Defi API.
 class KomodoPriceRepository extends CexRepository {
@@ -38,7 +34,7 @@ class KomodoPriceRepository extends CexRepository {
   }
 
   @override
-  Future<double> getCoinFiatPrice(
+  Future<Decimal> getCoinFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
     String fiatCoinId = 'usdt',
@@ -47,38 +43,53 @@ class KomodoPriceRepository extends CexRepository {
     final ticker = assetId.symbol.configSymbol.toUpperCase();
 
     final priceData = prices.values.firstWhere(
-      (CexPrice element) => element.ticker.toUpperCase() == ticker,
+      (AssetMarketInformation element) =>
+          element.ticker.toUpperCase() == ticker,
       orElse: () => throw Exception('Price not found for $ticker'),
     );
 
-    return priceData.price;
+    return priceData.lastPrice;
   }
 
   @override
-  Future<Map<DateTime, double>> getCoinFiatPrices(
+  Future<Map<DateTime, Decimal>> getCoinFiatPrices(
     AssetId assetId,
     List<DateTime> dates, {
     String fiatCoinId = 'usdt',
   }) async {
     // Komodo API typically returns current prices, not historical
     // For simplicity, return the same current price for all requested dates
-    final currentPrice =
-        await getCoinFiatPrice(assetId, fiatCoinId: fiatCoinId);
-    return Map.fromEntries(
-      dates.map((date) => MapEntry(date, currentPrice)),
+    final currentPrice = await getCoinFiatPrice(
+      assetId,
+      fiatCoinId: fiatCoinId,
     );
+    return Map.fromEntries(dates.map((date) => MapEntry(date, currentPrice)));
+  }
+
+  @override
+  Future<Decimal> getCoin24hrPriceChange(
+    AssetId assetId, {
+    String fiatCoinId = 'usdt',
+  }) async {
+    final prices = await _cexPriceProvider.getKomodoPrices();
+    final ticker = assetId.symbol.configSymbol.toUpperCase();
+
+    final priceData = prices.values.firstWhere(
+      (AssetMarketInformation element) =>
+          element.ticker.toUpperCase() == ticker,
+      orElse: () => throw Exception('Price change not found for $ticker'),
+    );
+
+    if (priceData.change24h == null) {
+      throw Exception('24h price change not available for $ticker');
+    }
+
+    return priceData.change24h!;
   }
 
   @override
   String resolveTradingSymbol(AssetId assetId) {
     return assetId.symbol.configSymbol.toUpperCase();
-  }
-
-  @override
-  bool canHandleAsset(AssetId assetId) {
-    // We'll need to check if the asset is supported by fetching the coin list
-    // For now, return true and let the actual method calls handle unsupported assets
-    return true;
   }
 
   /// Fetches the prices of the provided coin IDs at the given timestamps.
@@ -88,13 +99,13 @@ class KomodoPriceRepository extends CexRepository {
   /// The [vsCurrency] is the currency to compare the prices to.
   ///
   /// Returns a map of timestamps to the prices of the coins.
-  Future<double> getCexFiatPrices(
+  Future<Decimal> getCexFiatPrices(
     String coinId,
     List<String> timestamps, {
     String vsCurrency = 'usd',
   }) async {
     return (await _cexPriceProvider.getKomodoPrices()).values.firstWhere((
-      CexPrice element,
+      AssetMarketInformation element,
     ) {
       if (element.ticker != coinId) {
         return false;
@@ -102,15 +113,7 @@ class KomodoPriceRepository extends CexRepository {
 
       // return timestamps.contains(element.timestamp);
       return true;
-    }).price;
-  }
-
-  /// Fetches the prices of the provided coin IDs.
-  ///
-  /// Returns a map of coin IDs to their prices.
-  @override
-  Future<Map<String, CexPrice>> getKomodoPrices() async {
-    return _cexPriceProvider.getKomodoPrices();
+    }).lastPrice;
   }
 
   @override
@@ -118,7 +121,7 @@ class KomodoPriceRepository extends CexRepository {
     if (_cachedCoinsList != null) {
       return _cachedCoinsList!;
     }
-    final prices = await getKomodoPrices();
+    final prices = await _cexPriceProvider.getKomodoPrices();
     _cachedCoinsList =
         prices.values
             .map(
@@ -147,55 +150,15 @@ class KomodoPriceRepository extends CexRepository {
       (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
     );
     final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
-    final supportsRequestType = requestType == PriceRequestType.currentPrice ||
+    final supportsRequestType =
+        requestType == PriceRequestType.currentPrice ||
         requestType == PriceRequestType.priceChange;
     return supportsAsset && supportsFiat && supportsRequestType;
-  }
-
-  @override
-  Future<CoinOhlc> getCoinOhlc(
-    CexCoinPair symbol,
-    GraphInterval interval, {
-    DateTime? startAt,
-    DateTime? endAt,
-    int? limit,
-  }) {
-    throw UnimplementedError('KomodoPriceRepository does not support OHLC');
-  }
-
-  @override
-  String resolveTradingSymbol(AssetId assetId) {
-    return assetId.symbol.configSymbol;
   }
 
   @override
   bool canHandleAsset(AssetId assetId) {
     final symbol = assetId.symbol.configSymbol.toUpperCase();
     return _cachedCoinsList?.any((c) => c.id.toUpperCase() == symbol) ?? false;
-  }
-
-  @override
-  Future<double> getCoinFiatPrice(
-    AssetId assetId, {
-    DateTime? priceDate,
-    String fiatCoinId = 'usdt',
-  }) async {
-    final prices = await getKomodoPrices();
-    final symbol = assetId.symbol.configSymbol;
-    final price = prices[symbol]?.price;
-    if (price == null) {
-      throw StateError('Price not found for ${assetId.symbol.configSymbol}');
-    }
-    return price;
-  }
-
-  @override
-  Future<Map<DateTime, double>> getCoinFiatPrices(
-    AssetId assetId,
-    List<DateTime> dates, {
-    String fiatCoinId = 'usdt',
-  }) async {
-    final price = await getCoinFiatPrice(assetId, fiatCoinId: fiatCoinId);
-    return {for (final date in dates) date: price};
   }
 }

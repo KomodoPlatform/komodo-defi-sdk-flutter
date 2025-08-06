@@ -72,11 +72,10 @@ class CexMarketDataManager implements MarketDataManager {
   /// Creates a new instance of [CexMarketDataManager]
   CexMarketDataManager({
     required List<CexRepository> priceRepositories,
-    required IKomodoPriceRepository komodoPriceRepository,
     RepositorySelectionStrategy? selectionStrategy,
   }) : _priceRepositories = priceRepositories,
-       _komodoPriceRepository = komodoPriceRepository,
-       _selectionStrategy = selectionStrategy ?? RepositorySelectionStrategy();
+       _selectionStrategy =
+           selectionStrategy ?? DefaultRepositorySelectionStrategy();
 
   static final _logger = Logger('CexMarketDataManager');
   static const _cacheClearInterval = Duration(minutes: 5);
@@ -102,8 +101,9 @@ class CexMarketDataManager implements MarketDataManager {
     }
     _knownTickers = UnmodifiableSetView(allTickers);
     _logger.fine('Initialized known tickers: ${_knownTickers?.length ?? 0}');
+
     // Start cache clearing timer
-    _cacheTimer = _timerFactory(_cacheClearInterval, _clearCaches);
+    _cacheTimer = Timer.periodic(_cacheClearInterval, (_) => _clearCaches);
     _logger.finer(
       'Started cache clearing timer with interval $_cacheClearInterval',
     );
@@ -112,7 +112,6 @@ class CexMarketDataManager implements MarketDataManager {
   Set<String>? _knownTickers;
 
   final List<CexRepository> _priceRepositories;
-  final IKomodoPriceRepository _komodoPriceRepository;
   final RepositorySelectionStrategy _selectionStrategy;
   bool _isDisposed = false;
 
@@ -328,27 +327,34 @@ class CexMarketDataManager implements MarketDataManager {
       return cached;
     }
 
-    try {
-      final prices = await _komodoPriceRepository.getKomodoPrices();
-      final priceData = prices[assetId.symbol.configSymbol];
-
-      if (priceData == null || priceData.change24h == null) {
-        _logger.finer('No 24h change data for ${assetId.symbol.configSymbol}');
-        return null;
-      }
-
-      _priceCache[cacheKey] = Decimal.parse(priceData.change24h.toString());
+    // Select repository
+    final repo = await _selectRepositoryForRequest(
+      assetId,
+      fiatCurrency,
+      PriceRequestType.priceChange,
+    );
+    if (repo == null) {
       _logger.finer(
-        'Fetched 24h change for ${assetId.symbol.configSymbol}: '
-        '${_priceCache[cacheKey]}',
+        'No repository supports ${assetId.symbol.configSymbol}/$fiatCurrency for maybeFiatPrice',
       );
-      return _priceCache[cacheKey];
+      return null;
+    }
+
+    try {
+      final priceChange = await retry(
+        () => repo.getCoin24hrPriceChange(assetId, fiatCoinId: fiatCurrency),
+        maxAttempts: 3,
+      );
+
+      _priceChangeCache[cacheKey] = priceChange;
+      _logger.finer(
+        'Fetched 24h price change from ${repo.runtimeType} for '
+        '${assetId.symbol.configSymbol}: $priceChange',
+      );
+      return priceChange;
     } catch (e, s) {
-      // If there's an error, return null instead of throwing
       _logger
-        ..fine(
-          'Failed to get 24h change for ${assetId.symbol.configSymbol}: $e',
-        )
+        ..fine('maybeFiatPrice failed for ${assetId.symbol.configSymbol}: $e')
         ..finest('Stack trace: $s');
       return null;
     }

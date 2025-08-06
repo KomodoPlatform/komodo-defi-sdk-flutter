@@ -11,6 +11,9 @@ import 'package:logging/logging.dart';
 final CoinGeckoRepository _coinGeckoRepository = CoinGeckoRepository(
   coinGeckoProvider: CoinGeckoCexProvider(),
 );
+final BinanceRepository _binanceRepository = BinanceRepository(
+  binanceProvider: BinanceProvider(),
+);
 
 SparklineRepository sparklineRepository = SparklineRepository();
 
@@ -19,7 +22,8 @@ class SparklineRepository {
   ///
   /// If repositories are not provided, defaults to Binance and CoinGecko.
   SparklineRepository({List<CexRepository>? repositories})
-    : _repositories = repositories ?? [binanceRepository, _coinGeckoRepository];
+    : _repositories =
+          repositories ?? [_binanceRepository, _coinGeckoRepository];
 
   final Logger _log = Logger('SparklineRepository');
   final List<CexRepository> _repositories;
@@ -79,6 +83,7 @@ class SparklineRepository {
       try {
         // Check if repository supports this asset
         if (!await _supportsAsset(repo, symbol)) {
+          _log.finer('Repository ${repo.runtimeType} does not support $symbol');
           continue;
         }
 

@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -67,13 +68,13 @@ abstract class CexRepository {
   ///
   /// final CexRepository repo =
   ///   BinanceRepository(binanceProvider: BinanceProvider());
-  /// final double price = await repo.getCoinFiatPrice(
+  /// final Decimal price = await repo.getCoinFiatPrice(
   ///   assetId,
   ///   priceDate: DateTime.now(),
   ///   fiatCoinId: 'usdt'
   /// );
   /// ```
-  Future<double> getCoinFiatPrice(
+  Future<Decimal> getCoinFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
     String fiatCoinId = 'usdt',
@@ -95,15 +96,42 @@ abstract class CexRepository {
   /// final CexRepository repo = BinanceRepository(
   ///   binanceProvider: BinanceProvider(),
   /// );
-  /// final Map<String, double> prices = await repo.getCoinFiatPrices(
+  /// final Map<String, Decimal> prices = await repo.getCoinFiatPrices(
   ///  assetId,
   /// [DateTime.now(), DateTime.now().subtract(Duration(days: 1))],
   /// fiatCoinId: 'usdt',
   /// );
   /// ```
-  Future<Map<DateTime, double>> getCoinFiatPrices(
+  Future<Map<DateTime, Decimal>> getCoinFiatPrices(
     AssetId assetId,
     List<DateTime> dates, {
+    String fiatCoinId = 'usdt',
+  });
+
+  /// Fetches the 24-hour price change percentage for a given asset.
+  ///
+  /// [assetId]: The asset for which to fetch the 24-hour price change.
+  /// [fiatCoinId]: The fiat currency symbol in which to calculate the change.
+  ///
+  /// Returns the percentage change as a [Decimal] (e.g., 5.25 for +5.25%).
+  ///
+  /// Throws an [UnimplementedError] by default. Subclasses should override
+  /// this method to provide the actual implementation.
+  ///
+  /// # Example usage:
+  /// ```dart
+  /// import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
+  ///
+  /// final CexRepository repo = BinanceRepository(
+  ///   binanceProvider: BinanceProvider(),
+  /// );
+  /// final Decimal changePercent = await repo.getCoin24hrPriceChange(
+  ///   assetId,
+  ///   fiatCoinId: 'usdt',
+  /// );
+  /// ```
+  Future<Decimal> getCoin24hrPriceChange(
+    AssetId assetId, {
     String fiatCoinId = 'usdt',
   });
 

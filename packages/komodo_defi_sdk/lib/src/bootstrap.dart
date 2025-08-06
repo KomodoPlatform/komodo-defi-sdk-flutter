@@ -156,24 +156,27 @@ Future<void> bootstrap({
 
   // TODO: Consider if more appropropriate for initialization of these
   // dependencies to be done internally in the `cex_market_data` package.
-  container.registerSingleton<BinanceRepository>(
-    BinanceRepository(binanceProvider: const BinanceProvider()),
+  container.registerSingletonAsync<BinanceRepository>(
+    () async => BinanceRepository(binanceProvider: const BinanceProvider()),
   );
 
   container.registerSingleton<ICoinGeckoProvider>(CoinGeckoCexProvider());
 
-  container.registerSingleton<CoinGeckoRepository>(
-    CoinGeckoRepository(coinGeckoProvider: container<ICoinGeckoProvider>()),
+  container.registerSingletonAsync<CoinGeckoRepository>(
+    () async =>
+        CoinGeckoRepository(coinGeckoProvider: container<ICoinGeckoProvider>()),
   );
 
   container.registerSingleton<IKomodoPriceProvider>(KomodoPriceProvider());
 
-  container.registerSingleton<IKomodoPriceRepository>(
-    KomodoPriceRepository(cexPriceProvider: container<IKomodoPriceProvider>()),
+  container.registerSingletonAsync<KomodoPriceRepository>(
+    () async => KomodoPriceRepository(
+      cexPriceProvider: container<IKomodoPriceProvider>(),
+    ),
   );
 
-  container.registerSingleton<RepositorySelectionStrategy>(
-    DefaultRepositorySelectionStrategy(),
+  container.registerSingletonAsync<RepositorySelectionStrategy>(
+    () async => DefaultRepositorySelectionStrategy(),
   );
 
   container.registerSingletonAsync<MessageSigningManager>(
@@ -181,18 +184,26 @@ Future<void> bootstrap({
     dependsOn: [ApiClient],
   );
 
-  container.registerSingletonAsync<MarketDataManager>(() async {
-    final manager = CexMarketDataManager(
-      priceRepositories: [
-        container<BinanceRepository>(),
-        container<CoinGeckoRepository>(),
-      ],
-      komodoPriceRepository: container<IKomodoPriceRepository>(),
-      selectionStrategy: container<RepositorySelectionStrategy>(),
-    );
-    await manager.init();
-    return manager;
-  }, dependsOn: [RepositorySelectionStrategy]);
+  container.registerSingletonAsync<MarketDataManager>(
+    () async {
+      final manager = CexMarketDataManager(
+        priceRepositories: [
+          container<KomodoPriceRepository>(),
+          container<BinanceRepository>(),
+          container<CoinGeckoRepository>(),
+        ],
+        selectionStrategy: container<RepositorySelectionStrategy>(),
+      );
+      await manager.init();
+      return manager;
+    },
+    dependsOn: [
+      RepositorySelectionStrategy,
+      BinanceRepository,
+      CoinGeckoRepository,
+      KomodoPriceRepository,
+    ],
+  );
 
   container.registerSingletonAsync<FeeManager>(() async {
     final client = await container.getAsync<ApiClient>();

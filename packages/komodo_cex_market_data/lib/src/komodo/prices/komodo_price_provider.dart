@@ -6,7 +6,7 @@ import 'package:komodo_cex_market_data/src/models/models.dart';
 
 /// Interface for fetching prices from Komodo API.
 abstract class IKomodoPriceProvider {
-  Future<Map<String, CexPrice>> getKomodoPrices();
+  Future<Map<String, AssetMarketInformation>> getKomodoPrices();
 }
 
 /// A class for fetching prices from Komodo API.
@@ -31,7 +31,8 @@ class KomodoPriceProvider implements IKomodoPriceProvider {
   /// final Map<String, CexPrice>? prices =
   ///   await cexPriceProvider.getLegacyKomodoPrices();
   /// ```
-  Future<Map<String, CexPrice>> getKomodoPrices() async {
+  @override
+  Future<Map<String, AssetMarketInformation>> getKomodoPrices() async {
     final mainUri = Uri.parse(mainTickersUrl);
 
     http.Response res;
@@ -45,12 +46,11 @@ class KomodoPriceProvider implements IKomodoPriceProvider {
       throw Exception('Invalid response from Komodo API: empty JSON');
     }
 
-    final prices = <String, CexPrice>{};
+    final prices = <String, AssetMarketInformation>{};
     json.forEach((String priceTicker, dynamic pricesData) {
-      prices[priceTicker] = CexPrice.fromJson(
-        priceTicker,
+      prices[priceTicker] = AssetMarketInformation.fromJson(
         pricesData as Map<String, dynamic>,
-      );
+      ).copyWith(ticker: priceTicker);
     });
     return prices;
   }

@@ -1,7 +1,9 @@
 // Fixed repository priority manager test to properly implement CexRepository interface
+import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
     show PriceRequestType;
 import 'package:komodo_cex_market_data/src/binance/binance.dart';
+import 'package:komodo_cex_market_data/src/binance/models/binance_24hr_ticker.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
 import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
 import 'package:komodo_cex_market_data/src/komodo/komodo.dart';
@@ -14,18 +16,33 @@ import 'package:test/test.dart';
 // Test provider implementations
 class TestKomodoPriceProvider extends KomodoPriceProvider {
   @override
-  Future<Map<String, CexPrice>> getKomodoPrices() async {
+  Future<Map<String, AssetMarketInformation>> getKomodoPrices() async {
     return {
-      'BTC': CexPrice(ticker: 'BTC', price: 50000.0),
-      'ETH': CexPrice(ticker: 'ETH', price: 3000.0),
+      'BTC': AssetMarketInformation(
+        ticker: 'BTC',
+        lastPrice: Decimal.fromInt(50000),
+      ),
+      'ETH': AssetMarketInformation(
+        ticker: 'ETH',
+        lastPrice: Decimal.fromInt(3000),
+      ),
     };
   }
 }
 
 class TestBinanceProvider implements IBinanceProvider {
   @override
-  Future<BinanceExchangeInfoResponse> fetchExchangeInfo(
-      {String? baseUrl}) async {
+  Future<Binance24hrTicker> fetch24hrTicker(
+    String symbol, {
+    String? baseUrl,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<BinanceExchangeInfoResponse> fetchExchangeInfo({
+    String? baseUrl,
+  }) async {
     return BinanceExchangeInfoResponse(
       symbols: [],
       rateLimits: [],
@@ -76,21 +93,29 @@ class TestUnknownRepository implements CexRepository {
   }
 
   @override
-  Future<double> getCoinFiatPrice(
+  Future<Decimal> getCoinFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
     String fiatCoinId = 'usdt',
   }) async {
-    return 0.0;
+    return Decimal.zero;
   }
 
   @override
-  Future<Map<DateTime, double>> getCoinFiatPrices(
+  Future<Map<DateTime, Decimal>> getCoinFiatPrices(
     AssetId assetId,
     List<DateTime> dates, {
     String fiatCoinId = 'usdt',
   }) async {
     return {};
+  }
+
+  @override
+  Future<Decimal> getCoin24hrPriceChange(
+    AssetId assetId, {
+    String fiatCoinId = 'usdt',
+  }) async {
+    return Decimal.zero;
   }
 
   @override
@@ -124,9 +149,7 @@ void main() {
       komodoRepo = KomodoPriceRepository(
         cexPriceProvider: TestKomodoPriceProvider(),
       );
-      binanceRepo = BinanceRepository(
-        binanceProvider: TestBinanceProvider(),
-      );
+      binanceRepo = BinanceRepository(binanceProvider: TestBinanceProvider());
       coinGeckoRepo = CoinGeckoRepository(
         coinGeckoProvider: CoinGeckoCexProvider(),
       );
@@ -167,13 +190,14 @@ void main() {
       });
 
       test(
-          'returns 999 for KomodoPriceRepository (not in sparkline priorities)',
-          () {
-        expect(
-          RepositoryPriorityManager.getSparklinePriority(komodoRepo),
-          equals(999),
-        );
-      });
+        'returns 999 for KomodoPriceRepository (not in sparkline priorities)',
+        () {
+          expect(
+            RepositoryPriorityManager.getSparklinePriority(komodoRepo),
+            equals(999),
+          );
+        },
+      );
 
       test('returns 999 for unknown repository types', () {
         expect(
@@ -249,8 +273,9 @@ void main() {
           binanceRepo,
           unknownRepo,
         ];
-        final sorted =
-            RepositoryPriorityManager.sortBySparklinePriority(repositories);
+        final sorted = RepositoryPriorityManager.sortBySparklinePriority(
+          repositories,
+        );
 
         expect(sorted, hasLength(4));
         expect(sorted[0], isA<BinanceRepository>());

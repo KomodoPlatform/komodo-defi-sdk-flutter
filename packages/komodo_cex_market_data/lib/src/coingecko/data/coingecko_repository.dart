@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
 import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
@@ -16,11 +17,10 @@ class CoinGeckoRepository implements CexRepository {
   CoinGeckoRepository({
     required this.coinGeckoProvider,
     BackoffStrategy? defaultBackoffStrategy,
-  })  : _defaultBackoffStrategy = defaultBackoffStrategy ??
-            ExponentialBackoff(
-              maxDelay: const Duration(seconds: 5),
-            ),
-        _idResolutionStrategy = CoinGeckoIdResolutionStrategy();
+  }) : _defaultBackoffStrategy =
+           defaultBackoffStrategy ??
+           ExponentialBackoff(maxDelay: const Duration(seconds: 5)),
+       _idResolutionStrategy = CoinGeckoIdResolutionStrategy();
 
   /// The CoinGecko provider to use for fetching data.
   final ICoinGeckoProvider coinGeckoProvider;
@@ -73,9 +73,13 @@ class CoinGeckoRepository implements CexRepository {
       backoffStrategy: effectiveBackoffStrategy,
     );
 
-    _cachedCoinsList = coins
-        .map((CexCoin e) => e.copyWith(currencies: supportedCurrencies.toSet()))
-        .toSet();
+    _cachedCoinsList =
+        coins
+            .map(
+              (CexCoin e) =>
+                  e.copyWith(currencies: supportedCurrencies.toSet()),
+            )
+            .toSet();
 
     _cachedFiatCurrencies =
         supportedCurrencies.map((s) => s.toUpperCase()).toSet();
@@ -121,7 +125,7 @@ class CoinGeckoRepository implements CexRepository {
   }
 
   @override
-  Future<double> getCoinFiatPrice(
+  Future<Decimal> getCoinFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
     String fiatCoinId = 'usdt',
@@ -138,11 +142,12 @@ class CoinGeckoRepository implements CexRepository {
       maxAttempts: maxAttempts,
       backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
     );
-    return coinPrice.marketData?.currentPrice?.usd?.toDouble() ?? 0;
+    final price = coinPrice.marketData?.currentPrice?.usd?.toDouble() ?? 0;
+    return Decimal.parse(price.toString());
   }
 
   @override
-  Future<Map<DateTime, double>> getCoinFiatPrices(
+  Future<Map<DateTime, Decimal>> getCoinFiatPrices(
     AssetId assetId,
     List<DateTime> dates, {
     String fiatCoinId = 'usdt',
@@ -166,7 +171,7 @@ class CoinGeckoRepository implements CexRepository {
     final endDate = dates.last.add(const Duration(days: 2));
     final daysDiff = endDate.difference(startDate).inDays;
 
-    final result = <DateTime, double>{};
+    final result = <DateTime, Decimal>{};
 
     // Process in batches to avoid overwhelming the API
     for (var i = 0; i <= daysDiff; i += 365) {
@@ -181,12 +186,14 @@ class CoinGeckoRepository implements CexRepository {
         endAt: batchEndDate,
       );
 
-      final batchResult =
-          ohlcData.ohlc.fold<Map<DateTime, double>>({}, (map, ohlc) {
-        final date = DateTime.fromMillisecondsSinceEpoch(
-          ohlc.closeTime,
+      final batchResult = ohlcData.ohlc.fold<Map<DateTime, Decimal>>({}, (
+        map,
+        ohlc,
+      ) {
+        final date = DateTime.fromMillisecondsSinceEpoch(ohlc.closeTime);
+        map[DateTime(date.year, date.month, date.day)] = Decimal.parse(
+          ohlc.close.toString(),
         );
-        map[DateTime(date.year, date.month, date.day)] = ohlc.close;
         return map;
       });
 
@@ -194,6 +201,40 @@ class CoinGeckoRepository implements CexRepository {
     }
 
     return result;
+  }
+
+  @override
+  Future<Decimal> getCoin24hrPriceChange(
+    AssetId assetId, {
+    String fiatCoinId = 'usd',
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
+  }) async {
+    final tradingSymbol = resolveTradingSymbol(assetId);
+
+    if (tradingSymbol.toUpperCase() == fiatCoinId.toUpperCase()) {
+      throw ArgumentError('Coin and fiat coin cannot be the same');
+    }
+
+    return await retry(
+      () async {
+        final priceData = await coinGeckoProvider.fetchCoinMarketData(
+          ids: [tradingSymbol],
+          vsCurrency: fiatCoinId,
+        );
+        if (priceData.length != 1) {
+          throw Exception('Invalid market data for $tradingSymbol');
+        }
+
+        final priceChange = priceData.first.priceChange24h;
+        if (priceChange == null) {
+          throw Exception('Price change data not available for $tradingSymbol');
+        }
+        return priceChange;
+      },
+      maxAttempts: maxAttempts,
+      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+    );
   }
 
   @override

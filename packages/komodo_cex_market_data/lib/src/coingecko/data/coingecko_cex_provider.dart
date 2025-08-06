@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:decimal/decimal.dart' show Decimal;
 import 'package:http/http.dart' as http;
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_cex_market_data/src/coingecko/models/coin_historical_data/coin_historical_data.dart';
@@ -45,7 +46,7 @@ abstract class ICoinGeckoProvider {
     bool localization = false,
   });
 
-  Future<Map<String, CexPrice>> fetchCoinPrices(
+  Future<Map<String, AssetMarketInformation>> fetchCoinPrices(
     List<String> coinGeckoIds, {
     List<String> vsCurrencies = const <String>['usd'],
   });
@@ -68,6 +69,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
   /// Fetches the list of coins supported by CoinGecko.
   ///
   /// [includePlatforms] Include platform contract addresses.
+  @override
   Future<List<CexCoin>> fetchCoinList({bool includePlatforms = false}) async {
     final queryParameters = <String, String>{
       'include_platform': includePlatforms.toString(),
@@ -91,6 +93,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
   }
 
   /// Fetches the list of supported vs currencies.
+  @override
   Future<List<String>> fetchSupportedVsCurrencies() async {
     final uri = Uri.https(
       baseUrl,
@@ -120,6 +123,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
   /// [priceChangePercentage] Comma-sepa
   /// [locale] The localization of the market data.
   /// [precision] The price's precision.
+  @override
   Future<List<CoinMarketData>> fetchCoinMarketData({
     String vsCurrency = 'usd',
     List<String>? ids,
@@ -175,6 +179,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
   /// [fromUnixTimestamp] From date in UNIX Timestamp.
   /// [toUnixTimestamp] To date in UNIX Timestamp.
   /// [precision] The price's precision.
+  @override
   Future<CoinMarketChart> fetchCoinMarketChart({
     required String id,
     required String vsCurrency,
@@ -212,6 +217,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
   /// [vsCurrency] The target currency of market data (usd, eur, jpy, etc.).
   /// [date] The date of the market data to fetch.
   /// [localization] Include all the localized languages in response. Defaults to false.
+  @override
   Future<CoinHistoricalData> fetchCoinHistoricalMarketData({
     required String id,
     required DateTime date,
@@ -254,7 +260,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
   /// The [coinGeckoIds] are the CoinGecko IDs of the coins to fetch prices for.
   /// The [vsCurrencies] is a comma-separated list of currencies to compare to.
   ///
-  /// Returns a map of coingecko IDs to their [CexPrice]s.
+  /// Returns a map of coingecko IDs to their [AssetMarketInformation]s.
   ///
   /// Throws an error if the request fails.
   ///
@@ -263,7 +269,8 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
   /// final prices = await cexPriceProvider.getCoinGeckoPrices(
   ///  ['bitcoin', 'ethereum'],
   /// );
-  Future<Map<String, CexPrice>> fetchCoinPrices(
+  @override
+  Future<Map<String, AssetMarketInformation>> fetchCoinPrices(
     List<String> coinGeckoIds, {
     List<String> vsCurrencies = const <String>['usd'],
   }) async {
@@ -283,7 +290,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
       throw Exception('Invalid response from CoinGecko API: empty JSON');
     }
 
-    final prices = <String, CexPrice>{};
+    final prices = <String, AssetMarketInformation>{};
     json.forEach((String coingeckoId, dynamic pricesData) {
       if (coingeckoId == 'test-coin') {
         return;
@@ -292,9 +299,9 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
       // TODO(Francois): map to multiple currencies, or only allow 1 vs currency
       final price = (pricesData as Map<String, dynamic>)['usd'] as num?;
 
-      prices[coingeckoId] = CexPrice(
+      prices[coingeckoId] = AssetMarketInformation(
         ticker: coingeckoId,
-        price: price?.toDouble() ?? 0,
+        lastPrice: Decimal.tryParse(price?.toString() ?? '') ?? Decimal.zero,
       );
     });
 
@@ -307,6 +314,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
   /// [vsCurrency] The target currency of market data (usd, eur, jpy, etc.).
   /// [days] Data up to number of days ago.
   /// [precision] The price's precision.
+  @override
   Future<CoinOhlc> fetchCoinOhlc(
     String id,
     String vsCurrency,

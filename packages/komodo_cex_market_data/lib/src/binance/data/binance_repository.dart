@@ -1,6 +1,8 @@
 // Using relative imports in this "package" to make it easier to track external
 // dependencies when moving or copying this "package" to another project.
-import 'package:komodo_cex_market_data/src/binance/data/binance_provider.dart';
+import 'dart:developer';
+
+import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/binance/data/binance_provider_interface.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
@@ -57,6 +59,10 @@ class BinanceRepository implements CexRepository {
               final exchangeInfo = await _binanceProvider
                   .fetchExchangeInfoReduced(baseUrl: baseUrl);
               _cachedCoinsList = _convertSymbolsToCoins(exchangeInfo);
+              _cachedFiatCurrencies =
+                  exchangeInfo.symbols
+                      .map((s) => s.quoteAsset.toUpperCase())
+                      .toSet();
               return _cachedCoinsList!;
             } catch (e) {
               lastException = e is Exception ? e : Exception(e.toString());
@@ -139,7 +145,7 @@ class BinanceRepository implements CexRepository {
   }
 
   @override
-  Future<double> getCoinFiatPrice(
+  Future<Decimal> getCoinFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
     String fiatCoinId = 'usdt',
@@ -166,11 +172,11 @@ class BinanceRepository implements CexRepository {
       maxAttempts: maxAttempts,
       backoffStrategy: backoffStrategy,
     );
-    return ohlcData.ohlc.first.close;
+    return Decimal.parse(ohlcData.ohlc.first.close.toString());
   }
 
   @override
-  Future<Map<DateTime, double>> getCoinFiatPrices(
+  Future<Map<DateTime, Decimal>> getCoinFiatPrices(
     AssetId assetId,
     List<DateTime> dates, {
     String fiatCoinId = 'usdt',
@@ -194,7 +200,7 @@ class BinanceRepository implements CexRepository {
     final endDate = dates.last.add(const Duration(days: 2));
     final daysDiff = endDate.difference(startDate).inDays;
 
-    final result = <DateTime, double>{};
+    final result = <DateTime, Decimal>{};
 
     for (var i = 0; i <= daysDiff; i += 500) {
       final batchStartDate = startDate.add(Duration(days: i));
@@ -210,12 +216,14 @@ class BinanceRepository implements CexRepository {
         backoffStrategy: backoffStrategy,
       );
 
-      final batchResult = ohlcData.ohlc.fold<Map<DateTime, double>>({}, (
+      final batchResult = ohlcData.ohlc.fold<Map<DateTime, Decimal>>({}, (
         map,
         ohlc,
       ) {
         final date = DateTime.fromMillisecondsSinceEpoch(ohlc.closeTime);
-        map[DateTime(date.year, date.month, date.day)] = ohlc.close;
+        map[DateTime(date.year, date.month, date.day)] = Decimal.parse(
+          ohlc.close.toString(),
+        );
         return map;
       });
 
@@ -223,6 +231,44 @@ class BinanceRepository implements CexRepository {
     }
 
     return result;
+  }
+
+  @override
+  Future<Decimal> getCoin24hrPriceChange(
+    AssetId assetId, {
+    String fiatCoinId = 'usdt',
+    int maxAttempts = 5,
+    BackoffStrategy? backoffStrategy,
+  }) async {
+    final tradingSymbol = resolveTradingSymbol(assetId);
+
+    if (tradingSymbol.toUpperCase() == fiatCoinId.toUpperCase()) {
+      throw ArgumentError('Coin and fiat coin cannot be the same');
+    }
+
+    final trimmedCoinId = tradingSymbol.replaceAll(RegExp('-segwit'), '');
+    final symbol = '${trimmedCoinId.toUpperCase()}${fiatCoinId.toUpperCase()}';
+
+    return await retry(
+      () async {
+        // Try primary endpoint first, fallback to secondary on failure
+        Exception? lastException;
+        for (final baseUrl in binanceApiEndpoint) {
+          try {
+            final tickerData = await _binanceProvider.fetch24hrTicker(
+              symbol,
+              baseUrl: baseUrl,
+            );
+            return tickerData.priceChangePercent;
+          } catch (e) {
+            lastException = e is Exception ? e : Exception(e.toString());
+          }
+        }
+        throw lastException ?? Exception('All endpoints failed');
+      },
+      maxAttempts: maxAttempts,
+      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+    );
   }
 
   List<CexCoin> _convertSymbolsToCoins(
@@ -263,7 +309,11 @@ class BinanceRepository implements CexRepository {
       (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
     );
     final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
-    // For now, assume all request types are supported if asset/fiat are supported
+    debugger(
+      when: !supportsAsset || !supportsFiat,
+      message:
+          'BinanceRepository does not support asset $assetId or fiat $fiat',
+    );
     return supportsAsset && supportsFiat;
   }
 }
