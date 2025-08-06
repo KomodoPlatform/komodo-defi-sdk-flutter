@@ -20,6 +20,13 @@ class KomodoPriceRepository extends CexRepository {
   List<CexCoin>? _cachedCoinsList;
   Set<String>? _cachedFiatCurrencies;
 
+  /// Cache for storing prices with timestamps
+  Map<String, AssetMarketInformation>? _cachedPrices;
+  DateTime? _cacheTimestamp;
+
+  /// Cache lifetime in minutes
+  static const int _cacheLifetimeMinutes = 5;
+
   @override
   Future<CoinOhlc> getCoinOhlc(
     CexCoinPair symbol,
@@ -39,7 +46,7 @@ class KomodoPriceRepository extends CexRepository {
     DateTime? priceDate,
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
-    final prices = await _cexPriceProvider.getKomodoPrices();
+    final prices = await _getCachedKomodoPrices();
     final ticker = assetId.symbol.configSymbol.toUpperCase();
 
     final priceData = prices.values.firstWhere(
@@ -49,6 +56,27 @@ class KomodoPriceRepository extends CexRepository {
     );
 
     return priceData.lastPrice;
+  }
+
+  /// Gets cached Komodo prices or fetches fresh data if cache is expired.
+  Future<Map<String, AssetMarketInformation>> _getCachedKomodoPrices() async {
+    // Check if cache is valid
+    if (_cachedPrices != null && _cacheTimestamp != null) {
+      final now = DateTime.now();
+      final cacheAge = now.difference(_cacheTimestamp!);
+      if (cacheAge.inMinutes < _cacheLifetimeMinutes) {
+        return _cachedPrices!;
+      }
+    }
+
+    // Fetch fresh data
+    final prices = await _cexPriceProvider.getKomodoPrices();
+
+    // Update cache
+    _cachedPrices = prices;
+    _cacheTimestamp = DateTime.now();
+
+    return prices;
   }
 
   @override
@@ -71,7 +99,7 @@ class KomodoPriceRepository extends CexRepository {
     AssetId assetId, {
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
-    final prices = await _cexPriceProvider.getKomodoPrices();
+    final prices = await _getCachedKomodoPrices();
     final ticker = assetId.symbol.configSymbol.toUpperCase();
 
     final priceData = prices.values.firstWhere(
@@ -104,7 +132,7 @@ class KomodoPriceRepository extends CexRepository {
     List<String> timestamps, {
     String vsCurrency = 'usd',
   }) async {
-    return (await _cexPriceProvider.getKomodoPrices()).values.firstWhere((
+    return (await _getCachedKomodoPrices()).values.firstWhere((
       AssetMarketInformation element,
     ) {
       if (element.ticker != coinId) {
@@ -121,7 +149,7 @@ class KomodoPriceRepository extends CexRepository {
     if (_cachedCoinsList != null) {
       return _cachedCoinsList!;
     }
-    final prices = await _cexPriceProvider.getKomodoPrices();
+    final prices = await _getCachedKomodoPrices();
     _cachedCoinsList =
         prices.values
             .map(
@@ -129,7 +157,7 @@ class KomodoPriceRepository extends CexRepository {
                 id: e.ticker,
                 symbol: e.ticker,
                 name: e.ticker,
-                currencies: <String>{'USD', 'USDT'},
+                currencies: const <String>{'USD', 'USDT'},
                 source: 'komodo',
               ),
             )
@@ -160,5 +188,16 @@ class KomodoPriceRepository extends CexRepository {
   bool canHandleAsset(AssetId assetId) {
     final symbol = assetId.symbol.configSymbol.toUpperCase();
     return _cachedCoinsList?.any((c) => c.id.toUpperCase() == symbol) ?? false;
+  }
+
+  /// Clears all cached data in the repository.
+  ///
+  /// This can be useful for testing or when you want to force a fresh fetch
+  /// of data on the next call to any price-related methods.
+  void clearCache() {
+    _cachedPrices = null;
+    _cacheTimestamp = null;
+    _cachedCoinsList = null;
+    _cachedFiatCurrencies = null;
   }
 }

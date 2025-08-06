@@ -120,7 +120,7 @@ class BinanceRepository implements CexRepository {
     final endUnixTimestamp = endAt?.millisecondsSinceEpoch;
     final intervalAbbreviation = interval.toAbbreviation();
 
-    return await retry(
+    return retry(
       () async {
         // Try primary endpoint first, fallback to secondary on failure
         Exception? lastException;
@@ -267,7 +267,7 @@ class BinanceRepository implements CexRepository {
     final symbol =
         '${trimmedCoinId.toUpperCase()}${fiatCurrencyId.toUpperCase()}';
 
-    return await retry(
+    return retry(
       () async {
         // Try primary endpoint first, fallback to secondary on failure
         Exception? lastException;

@@ -18,8 +18,10 @@ abstract class AssetMarketInformation with _$AssetMarketInformation {
     @DecimalConverter() required Decimal lastPrice,
     @TimestampConverter() DateTime? lastUpdatedTimestamp,
     @CexDataProviderConverter() CexDataProvider? priceProvider,
-    @DecimalConverter() Decimal? change24h,
-    @CexDataProviderConverter() CexDataProvider? change24hProvider,
+    @JsonKey(name: 'change_24h') @DecimalConverter() Decimal? change24h,
+    @JsonKey(name: 'change_24h_provider')
+    @CexDataProviderConverter()
+    CexDataProvider? change24hProvider,
     @DecimalConverter() Decimal? volume24h,
     @CexDataProviderConverter() CexDataProvider? volumeProvider,
   }) = _AssetMarketInformation;

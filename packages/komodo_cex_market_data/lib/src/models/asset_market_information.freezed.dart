@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AssetMarketInformation {
 
- String get ticker;@DecimalConverter() Decimal get lastPrice;@TimestampConverter() DateTime? get lastUpdatedTimestamp;@CexDataProviderConverter() CexDataProvider? get priceProvider;@DecimalConverter() Decimal? get change24h;@CexDataProviderConverter() CexDataProvider? get change24hProvider;@DecimalConverter() Decimal? get volume24h;@CexDataProviderConverter() CexDataProvider? get volumeProvider;
+ String get ticker;@DecimalConverter() Decimal get lastPrice;@TimestampConverter() DateTime? get lastUpdatedTimestamp;@CexDataProviderConverter() CexDataProvider? get priceProvider;@JsonKey(name: 'change_24h')@DecimalConverter() Decimal? get change24h;@JsonKey(name: 'change_24h_provider')@CexDataProviderConverter() CexDataProvider? get change24hProvider;@DecimalConverter() Decimal? get volume24h;@CexDataProviderConverter() CexDataProvider? get volumeProvider;
 /// Create a copy of AssetMarketInformation
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $AssetMarketInformationCopyWith<$Res>  {
   factory $AssetMarketInformationCopyWith(AssetMarketInformation value, $Res Function(AssetMarketInformation) _then) = _$AssetMarketInformationCopyWithImpl;
 @useResult
 $Res call({
- String ticker,@DecimalConverter() Decimal lastPrice,@TimestampConverter() DateTime? lastUpdatedTimestamp,@CexDataProviderConverter() CexDataProvider? priceProvider,@DecimalConverter() Decimal? change24h,@CexDataProviderConverter() CexDataProvider? change24hProvider,@DecimalConverter() Decimal? volume24h,@CexDataProviderConverter() CexDataProvider? volumeProvider
+ String ticker,@DecimalConverter() Decimal lastPrice,@TimestampConverter() DateTime? lastUpdatedTimestamp,@CexDataProviderConverter() CexDataProvider? priceProvider,@JsonKey(name: 'change_24h')@DecimalConverter() Decimal? change24h,@JsonKey(name: 'change_24h_provider')@CexDataProviderConverter() CexDataProvider? change24hProvider,@DecimalConverter() Decimal? volume24h,@CexDataProviderConverter() CexDataProvider? volumeProvider
 });
 
 
@@ -160,7 +160,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String ticker, @DecimalConverter()  Decimal lastPrice, @TimestampConverter()  DateTime? lastUpdatedTimestamp, @CexDataProviderConverter()  CexDataProvider? priceProvider, @DecimalConverter()  Decimal? change24h, @CexDataProviderConverter()  CexDataProvider? change24hProvider, @DecimalConverter()  Decimal? volume24h, @CexDataProviderConverter()  CexDataProvider? volumeProvider)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String ticker, @DecimalConverter()  Decimal lastPrice, @TimestampConverter()  DateTime? lastUpdatedTimestamp, @CexDataProviderConverter()  CexDataProvider? priceProvider, @JsonKey(name: 'change_24h')@DecimalConverter()  Decimal? change24h, @JsonKey(name: 'change_24h_provider')@CexDataProviderConverter()  CexDataProvider? change24hProvider, @DecimalConverter()  Decimal? volume24h, @CexDataProviderConverter()  CexDataProvider? volumeProvider)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AssetMarketInformation() when $default != null:
 return $default(_that.ticker,_that.lastPrice,_that.lastUpdatedTimestamp,_that.priceProvider,_that.change24h,_that.change24hProvider,_that.volume24h,_that.volumeProvider);case _:
@@ -181,7 +181,7 @@ return $default(_that.ticker,_that.lastPrice,_that.lastUpdatedTimestamp,_that.pr
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String ticker, @DecimalConverter()  Decimal lastPrice, @TimestampConverter()  DateTime? lastUpdatedTimestamp, @CexDataProviderConverter()  CexDataProvider? priceProvider, @DecimalConverter()  Decimal? change24h, @CexDataProviderConverter()  CexDataProvider? change24hProvider, @DecimalConverter()  Decimal? volume24h, @CexDataProviderConverter()  CexDataProvider? volumeProvider)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String ticker, @DecimalConverter()  Decimal lastPrice, @TimestampConverter()  DateTime? lastUpdatedTimestamp, @CexDataProviderConverter()  CexDataProvider? priceProvider, @JsonKey(name: 'change_24h')@DecimalConverter()  Decimal? change24h, @JsonKey(name: 'change_24h_provider')@CexDataProviderConverter()  CexDataProvider? change24hProvider, @DecimalConverter()  Decimal? volume24h, @CexDataProviderConverter()  CexDataProvider? volumeProvider)  $default,) {final _that = this;
 switch (_that) {
 case _AssetMarketInformation():
 return $default(_that.ticker,_that.lastPrice,_that.lastUpdatedTimestamp,_that.priceProvider,_that.change24h,_that.change24hProvider,_that.volume24h,_that.volumeProvider);case _:
@@ -201,7 +201,7 @@ return $default(_that.ticker,_that.lastPrice,_that.lastUpdatedTimestamp,_that.pr
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String ticker, @DecimalConverter()  Decimal lastPrice, @TimestampConverter()  DateTime? lastUpdatedTimestamp, @CexDataProviderConverter()  CexDataProvider? priceProvider, @DecimalConverter()  Decimal? change24h, @CexDataProviderConverter()  CexDataProvider? change24hProvider, @DecimalConverter()  Decimal? volume24h, @CexDataProviderConverter()  CexDataProvider? volumeProvider)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String ticker, @DecimalConverter()  Decimal lastPrice, @TimestampConverter()  DateTime? lastUpdatedTimestamp, @CexDataProviderConverter()  CexDataProvider? priceProvider, @JsonKey(name: 'change_24h')@DecimalConverter()  Decimal? change24h, @JsonKey(name: 'change_24h_provider')@CexDataProviderConverter()  CexDataProvider? change24hProvider, @DecimalConverter()  Decimal? volume24h, @CexDataProviderConverter()  CexDataProvider? volumeProvider)?  $default,) {final _that = this;
 switch (_that) {
 case _AssetMarketInformation() when $default != null:
 return $default(_that.ticker,_that.lastPrice,_that.lastUpdatedTimestamp,_that.priceProvider,_that.change24h,_that.change24hProvider,_that.volume24h,_that.volumeProvider);case _:
@@ -216,15 +216,15 @@ return $default(_that.ticker,_that.lastPrice,_that.lastUpdatedTimestamp,_that.pr
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class _AssetMarketInformation implements AssetMarketInformation {
-  const _AssetMarketInformation({required this.ticker, @DecimalConverter() required this.lastPrice, @TimestampConverter() this.lastUpdatedTimestamp, @CexDataProviderConverter() this.priceProvider, @DecimalConverter() this.change24h, @CexDataProviderConverter() this.change24hProvider, @DecimalConverter() this.volume24h, @CexDataProviderConverter() this.volumeProvider});
+  const _AssetMarketInformation({required this.ticker, @DecimalConverter() required this.lastPrice, @TimestampConverter() this.lastUpdatedTimestamp, @CexDataProviderConverter() this.priceProvider, @JsonKey(name: 'change_24h')@DecimalConverter() this.change24h, @JsonKey(name: 'change_24h_provider')@CexDataProviderConverter() this.change24hProvider, @DecimalConverter() this.volume24h, @CexDataProviderConverter() this.volumeProvider});
   factory _AssetMarketInformation.fromJson(Map<String, dynamic> json) => _$AssetMarketInformationFromJson(json);
 
 @override final  String ticker;
 @override@DecimalConverter() final  Decimal lastPrice;
 @override@TimestampConverter() final  DateTime? lastUpdatedTimestamp;
 @override@CexDataProviderConverter() final  CexDataProvider? priceProvider;
-@override@DecimalConverter() final  Decimal? change24h;
-@override@CexDataProviderConverter() final  CexDataProvider? change24hProvider;
+@override@JsonKey(name: 'change_24h')@DecimalConverter() final  Decimal? change24h;
+@override@JsonKey(name: 'change_24h_provider')@CexDataProviderConverter() final  CexDataProvider? change24hProvider;
 @override@DecimalConverter() final  Decimal? volume24h;
 @override@CexDataProviderConverter() final  CexDataProvider? volumeProvider;
 
@@ -261,7 +261,7 @@ abstract mixin class _$AssetMarketInformationCopyWith<$Res> implements $AssetMar
   factory _$AssetMarketInformationCopyWith(_AssetMarketInformation value, $Res Function(_AssetMarketInformation) _then) = __$AssetMarketInformationCopyWithImpl;
 @override @useResult
 $Res call({
- String ticker,@DecimalConverter() Decimal lastPrice,@TimestampConverter() DateTime? lastUpdatedTimestamp,@CexDataProviderConverter() CexDataProvider? priceProvider,@DecimalConverter() Decimal? change24h,@CexDataProviderConverter() CexDataProvider? change24hProvider,@DecimalConverter() Decimal? volume24h,@CexDataProviderConverter() CexDataProvider? volumeProvider
+ String ticker,@DecimalConverter() Decimal lastPrice,@TimestampConverter() DateTime? lastUpdatedTimestamp,@CexDataProviderConverter() CexDataProvider? priceProvider,@JsonKey(name: 'change_24h')@DecimalConverter() Decimal? change24h,@JsonKey(name: 'change_24h_provider')@CexDataProviderConverter() CexDataProvider? change24hProvider,@DecimalConverter() Decimal? volume24h,@CexDataProviderConverter() CexDataProvider? volumeProvider
 });
 
 

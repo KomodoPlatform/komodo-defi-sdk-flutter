@@ -17,9 +17,9 @@ _AssetMarketInformation _$AssetMarketInformationFromJson(
   priceProvider: const CexDataProviderConverter().fromJson(
     json['price_provider'] as String?,
   ),
-  change24h: const DecimalConverter().fromJson(json['change24h'] as String?),
+  change24h: const DecimalConverter().fromJson(json['change_24h'] as String?),
   change24hProvider: const CexDataProviderConverter().fromJson(
-    json['change24h_provider'] as String?,
+    json['change_24h_provider'] as String?,
   ),
   volume24h: const DecimalConverter().fromJson(json['volume24h'] as String?),
   volumeProvider: const CexDataProviderConverter().fromJson(
@@ -38,8 +38,8 @@ Map<String, dynamic> _$AssetMarketInformationToJson(
   'price_provider': const CexDataProviderConverter().toJson(
     instance.priceProvider,
   ),
-  'change24h': const DecimalConverter().toJson(instance.change24h),
-  'change24h_provider': const CexDataProviderConverter().toJson(
+  'change_24h': const DecimalConverter().toJson(instance.change24h),
+  'change_24h_provider': const CexDataProviderConverter().toJson(
     instance.change24hProvider,
   ),
   'volume24h': const DecimalConverter().toJson(instance.volume24h),

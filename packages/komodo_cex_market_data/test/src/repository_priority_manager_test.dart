@@ -1,15 +1,14 @@
-// Fixed repository priority manager test to properly implement CexRepository interface
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
     show PriceRequestType;
 import 'package:komodo_cex_market_data/src/binance/binance.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_24hr_ticker.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
+import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
 import 'package:komodo_cex_market_data/src/komodo/komodo.dart';
-import 'package:komodo_cex_market_data/src/repository_priority_manager.dart';
-import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/repository_priority_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
 
@@ -257,7 +256,7 @@ void main() {
 
       test('returns new list without modifying original', () {
         final repositories = [coinGeckoRepo, binanceRepo, komodoRepo];
-        final originalOrder = List.from(repositories);
+        final originalOrder = List.of(repositories);
         final sorted = RepositoryPriorityManager.sortByPriority(repositories);
 
         expect(repositories, equals(originalOrder));
