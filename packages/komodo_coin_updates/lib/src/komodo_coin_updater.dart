@@ -1,4 +1,4 @@
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:komodo_coin_updates/src/models/coin_info.dart';
 import 'package:komodo_coin_updates/src/models/models.dart';
 import 'package:komodo_coin_updates/src/persistence/persisted_types.dart';

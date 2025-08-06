@@ -1,4 +1,4 @@
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 
 import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
 

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:komodo_coin_updates/src/models/contact.dart';
 
 part 'adapters/electrum_adapter.dart';
