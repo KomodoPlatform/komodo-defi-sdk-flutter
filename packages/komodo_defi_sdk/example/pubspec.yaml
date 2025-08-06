@@ -14,6 +14,8 @@ dependencies:
   flutter_bloc: ^9.1.1
   flutter_secure_storage: ^10.0.0-beta.4
 
+  dragon_logs:
+    path: ../../dragon_logs
   komodo_defi_sdk:
     path: ../
 

@@ -78,8 +78,8 @@ class FileLogStorage
   Future<void> deleteOldLogs(int size) async {
     while (await getLogFolderSize() > size) {
       final files = await getLogFiles();
-      final sortedFiles = files.entries.toList()
-        ..sort((a, b) => a.key.compareTo(b.key));
+      final sortedFiles =
+          files.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
       await sortedFiles.first.value.delete();
     }
   }
@@ -101,8 +101,8 @@ class FileLogStorage
   Stream<String> exportLogsStream() async* {
     final files = await getLogFiles();
 
-    final sortedFiles = files.values.toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
+    final sortedFiles =
+        files.values.toList()..sort((a, b) => a.path.compareTo(b.path));
     for (final file in sortedFiles) {
       final stats = file.statSync();
       final sizeKb = stats.size / 1024;
@@ -127,9 +127,10 @@ class FileLogStorage
 
   @override
   Future<void> deleteExportedFiles() async {
-    final archives = _exportFilesDirectory
-        .listSync(followLinks: false, recursive: true)
-        .whereType<File>();
+    final archives =
+        _exportFilesDirectory
+            .listSync(followLinks: false, recursive: true)
+            .whereType<File>();
 
     final deleteArchivesFutures = archives.map((archive) => archive.delete());
 
@@ -216,10 +217,9 @@ class FileLogStorage
     await raf.close();
 
     // Use share_plus to share the log file
-    await Share.shareXFiles(
-      [XFile(file.path, mimeType: 'text/plain')],
-      text: 'App log file export',
-    );
+    await Share.shareXFiles([
+      XFile(file.path, mimeType: 'text/plain'),
+    ], text: 'App log file export');
   }
 
   static Future<String> getLogFolderPath() async {

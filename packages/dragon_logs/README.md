@@ -1,16 +1,4 @@
-# 🚚 Repository Moved
-
-> **⚠️ This repository has been migrated to the Komodo DeFi SDK Flutter monorepo.**
->
-> 📍 **New location:** [packages/dragon_logs_flutter](https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/tree/main/packages/dragon_logs_flutter)
->
-> 🔄 **Active development** continues in the monorepo. Please update your forks, bookmarks, and links.
->
-> 💡 **For issues, PRs, and contributions**, please use the [main monorepo](https://github.com/KomodoPlatform/komodo-defi-sdk-flutter).
-
----
-
-# Dragon Logs (Archived)
+# Dragon Logs
 
 <p align="center">
 <a href="https://pub.dev/packages/dragon_logs"><img src="https://img.shields.io/pub/v/dragon_logs.svg" alt="Pub"></a>
@@ -28,7 +16,7 @@ Dragon Logs aims to simplify the logging and log storage process in your Flutter
 
 - ✅ Cross-platform log storage
 - ✅ Cross-platform logs download
-- ⬜ Flutter web wasm support
+- ✅ Flutter web wasm support
 - ⬜ Web multi-threading support
 - ⬜ Log levels (e.g. debug, info, warning, error)
 - ⬜ Performance metrics (in progress)

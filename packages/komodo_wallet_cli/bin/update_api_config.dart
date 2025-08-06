@@ -110,7 +110,9 @@ void main(List<String> arguments) async {
   final repo = args['repo'] as String;
   final configPath = args['config'] as String;
   final outputDir = args['output-dir'] as String;
-  final token = args['token'] as String?;
+  final token =
+      args['token'] as String? ??
+      Platform.environment['GITHUB_API_PUBLIC_READONLY_TOKEN'];
   final platform = args['platform'] as String;
   final source = args['source'] as String;
   final mirrorUrl = args['mirror-url'] as String;

@@ -94,6 +94,12 @@ class KomodoCoins {
             assets[assetId] = asset;
             // }
           }
+        }
+        // Log exceptions related to missing config fields
+        on MissingProtocolFieldException catch (e) {
+          debugPrint(
+            'Skipping asset ${entry.key} due to missing protocol field: $e',
+          );
         } catch (e) {
           debugPrint(
             'Error parsing asset ${entry.key}: $e , '

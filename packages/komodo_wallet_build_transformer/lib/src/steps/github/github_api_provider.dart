@@ -17,8 +17,8 @@ class GithubApiProvider {
     required String repo,
     required String branch,
     String? token,
-  })  : _branch = branch,
-        _baseUrl = 'https://api.github.com/repos/$owner/$repo' {
+  }) : _branch = branch,
+       _baseUrl = 'https://api.github.com/repos/$owner/$repo' {
     if (token != null) {
       _log.finer('Using authentication token for GitHub API requests.');
       _headers['Authorization'] = 'Bearer $token';
@@ -32,10 +32,11 @@ class GithubApiProvider {
     required String baseUrl,
     required String branch,
     String? token,
-  })  : _branch = branch,
-        _baseUrl = baseUrl {
-    final repoMatch = RegExp(r'^https://api\.github\.com/repos/([^/]+)/([^/]+)')
-        .firstMatch(baseUrl);
+  }) : _branch = branch,
+       _baseUrl = baseUrl {
+    final repoMatch = RegExp(
+      r'^https://api\.github\.com/repos/([^/]+)/([^/]+)',
+    ).firstMatch(baseUrl);
     assert(repoMatch != null, 'Invalid GitHub repository URL: $baseUrl');
 
     if (token != null) {
@@ -59,8 +60,10 @@ class GithubApiProvider {
     final fileMetadataUrl = '$_baseUrl/contents/$filePath?ref=$_branch';
     _log.finest('Fetching file metadata from $fileMetadataUrl');
 
-    final fileContentResponse =
-        await http.get(Uri.parse(fileMetadataUrl), headers: _headers);
+    final fileContentResponse = await http.get(
+      Uri.parse(fileMetadataUrl),
+      headers: _headers,
+    );
     if (fileContentResponse.statusCode != 200) {
       throw Exception(
         'Failed to fetch remote file metadata at $fileMetadataUrl: '
@@ -84,14 +87,21 @@ class GithubApiProvider {
   ///
   /// Returns a [Future] that completes with a [String] representing the latest
   ///  commit hash.
-  Future<String> getLatestCommitHash({
-    String branch = 'master',
-  }) async {
+  Future<String> getLatestCommitHash({String branch = 'master'}) async {
     final apiUrl = '$_baseUrl/commits/$branch';
-    _log.finest('Fetching latest commit hash from $apiUrl');
+    _log
+      ..finest('Fetching latest commit hash from $apiUrl')
+      ..finest('Using authentication: ${hasToken ? 'yes' : 'no'}');
 
     final response = await http.get(Uri.parse(apiUrl), headers: _headers);
     if (response.statusCode != 200) {
+      _log
+        ..severe(
+          'GitHub API request failed: '
+          '${response.statusCode} ${response.reasonPhrase}',
+        )
+        ..severe('Response body: ${response.body}')
+        ..severe('Request headers: $_headers');
       throw Exception(
         'Failed to retrieve latest commit hash: $branch'
         '[${response.statusCode}]: ${response.reasonPhrase}',
@@ -126,14 +136,17 @@ class GithubApiProvider {
 
     final respString = response.body;
     final data = jsonDecode(respString) as List<dynamic>;
-    final files = data
-        .where(
-          (dynamic item) => (item as Map<String, dynamic>)['type'] == 'file',
-        )
-        .map(
-          (dynamic file) => GitHubFile.fromJson(file as Map<String, dynamic>),
-        )
-        .toList();
+    final files =
+        data
+            .where(
+              (dynamic item) =>
+                  (item as Map<String, dynamic>)['type'] == 'file',
+            )
+            .map(
+              (dynamic file) =>
+                  GitHubFile.fromJson(file as Map<String, dynamic>),
+            )
+            .toList();
 
     _log
       ..fine('Directory $repoPath contains ${data.length} items')
