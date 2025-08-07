@@ -123,6 +123,6 @@ class KdfUser extends Equatable {
   JsonMap toJson() => {
     'wallet_id': walletId.toJson(),
     'is_bip39_seed': isBip39Seed,
-    if (metadata.isNotEmpty) 'metadata': metadata,
+    'metadata': metadata,
   };
 }
