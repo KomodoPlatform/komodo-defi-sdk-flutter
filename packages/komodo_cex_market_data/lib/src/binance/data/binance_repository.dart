@@ -93,14 +93,17 @@ class BinanceRepository implements CexRepository {
 
   @override
   Future<CoinOhlc> getCoinOhlc(
-    CexCoinPair symbol,
+    AssetId assetId,
+    QuoteCurrency quoteCurrency,
     GraphInterval interval, {
     DateTime? startAt,
     DateTime? endAt,
     int? limit,
   }) async {
-    if (symbol.baseCoinTicker.toUpperCase() ==
-        symbol.relCoinTicker.toUpperCase()) {
+    final baseTicker = resolveTradingSymbol(assetId);
+    final relTicker = quoteCurrency.binanceId;
+
+    if (baseTicker.toUpperCase() == relTicker.toUpperCase()) {
       throw ArgumentError('Base and rel coin tickers cannot be the same');
     }
 
@@ -112,8 +115,10 @@ class BinanceRepository implements CexRepository {
     Exception? lastException;
     for (final baseUrl in binanceApiEndpoint) {
       try {
+        final symbolString =
+            '${baseTicker.toUpperCase()}${relTicker.toUpperCase()}';
         return await _binanceProvider.fetchKlines(
-          symbol.toString(),
+          symbolString,
           intervalAbbreviation,
           startUnixTimestampMilliseconds: startUnixTimestamp,
           endUnixTimestampMilliseconds: endUnixTimestamp,
@@ -156,7 +161,8 @@ class BinanceRepository implements CexRepository {
     final startAt = endAt.subtract(const Duration(days: 1));
 
     final ohlcData = await getCoinOhlc(
-      CexCoinPair(baseCoinTicker: trimmedCoinId, relCoinTicker: fiatCurrencyId),
+      assetId,
+      fiatCurrency,
       GraphInterval.oneDay,
       startAt: startAt,
       endAt: endAt,
@@ -197,10 +203,8 @@ class BinanceRepository implements CexRepository {
           i + 500 > daysDiff ? endDate : startDate.add(Duration(days: i + 500));
 
       final ohlcData = await getCoinOhlc(
-        CexCoinPair(
-          baseCoinTicker: trimmedCoinId,
-          relCoinTicker: fiatCurrencyId,
-        ),
+        assetId,
+        fiatCurrency,
         GraphInterval.oneDay,
         startAt: batchStartDate,
         endAt: batchEndDate,

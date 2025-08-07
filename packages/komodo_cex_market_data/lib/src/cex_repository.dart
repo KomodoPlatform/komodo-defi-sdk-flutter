@@ -46,7 +46,8 @@ abstract class CexRepository {
   ///   await repo.getCoinOhlc('BTCUSDT', '1d', limit: 100);
   /// ```
   Future<CoinOhlc> getCoinOhlc(
-    CexCoinPair symbol,
+    AssetId assetId,
+    QuoteCurrency quoteCurrency,
     GraphInterval interval, {
     DateTime? startAt,
     DateTime? endAt,

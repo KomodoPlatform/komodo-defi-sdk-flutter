@@ -65,11 +65,15 @@ class MarketDataBootstrap {
     MarketDataConfig config,
   ) async {
     if (config.enableCoinGecko) {
-      container.registerSingleton<ICoinGeckoProvider>(CoinGeckoCexProvider());
+      container.registerSingletonAsync<ICoinGeckoProvider>(
+        () async => CoinGeckoCexProvider(),
+      );
     }
 
     if (config.enableKomodoPrice) {
-      container.registerSingleton<IKomodoPriceProvider>(KomodoPriceProvider());
+      container.registerSingletonAsync<IKomodoPriceProvider>(
+        () async => KomodoPriceProvider(),
+      );
     }
   }
 
@@ -87,7 +91,7 @@ class MarketDataBootstrap {
     if (config.enableCoinGecko) {
       container.registerSingletonAsync<CoinGeckoRepository>(
         () async => CoinGeckoRepository(
-          coinGeckoProvider: container<ICoinGeckoProvider>(),
+          coinGeckoProvider: await container.getAsync<ICoinGeckoProvider>(),
         ),
         dependsOn: [ICoinGeckoProvider],
       );
@@ -96,7 +100,7 @@ class MarketDataBootstrap {
     if (config.enableKomodoPrice) {
       container.registerSingletonAsync<KomodoPriceRepository>(
         () async => KomodoPriceRepository(
-          cexPriceProvider: container<IKomodoPriceProvider>(),
+          cexPriceProvider: await container.getAsync<IKomodoPriceProvider>(),
         ),
         dependsOn: [IKomodoPriceProvider],
       );
@@ -123,15 +127,15 @@ class MarketDataBootstrap {
 
     // Add repositories in priority order
     if (config.enableKomodoPrice) {
-      repositories.add(container<KomodoPriceRepository>());
+      repositories.add(await container.getAsync<KomodoPriceRepository>());
     }
 
     if (config.enableBinance) {
-      repositories.add(container<BinanceRepository>());
+      repositories.add(await container.getAsync<BinanceRepository>());
     }
 
     if (config.enableCoinGecko) {
-      repositories.add(container<CoinGeckoRepository>());
+      repositories.add(await container.getAsync<CoinGeckoRepository>());
     }
 
     // Add any custom repositories

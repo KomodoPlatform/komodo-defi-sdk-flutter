@@ -132,8 +132,20 @@ class SparklineRepository {
         intervalSeconds: interval,
       );
     } else {
+      final assetId = AssetId(
+        id: symbol,
+        name: symbol,
+        symbol: AssetSymbol(assetConfigId: symbol),
+        chainId: AssetChainId(chainId: 0),
+        derivationPath: null,
+        subClass: CoinSubClass.utxo,
+      );
+
+      const quoteCurrency = Stablecoin.usdt;
+
       ohlcData = await repo.getCoinOhlc(
-        CexCoinPair(baseCoinTicker: symbol, relCoinTicker: 'USDT'),
+        assetId,
+        quoteCurrency,
         GraphInterval.oneDay,
         startAt: startAt,
         endAt: endAt,

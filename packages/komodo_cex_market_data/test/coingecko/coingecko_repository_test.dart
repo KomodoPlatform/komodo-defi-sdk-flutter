@@ -42,8 +42,18 @@ void main() {
           () => mockProvider.fetchCoinOhlc(any(), any(), any()),
         ).thenAnswer((_) async => mockOhlc);
 
+        final assetId = AssetId(
+          id: 'bitcoin',
+          name: 'Bitcoin',
+          symbol: AssetSymbol(assetConfigId: 'bitcoin', coinGeckoId: 'bitcoin'),
+          chainId: AssetChainId(chainId: 0),
+          derivationPath: null,
+          subClass: CoinSubClass.utxo,
+        );
+
         final result = await repository.getCoinOhlc(
-          const CexCoinPair(baseCoinTicker: 'bitcoin', relCoinTicker: 'usd'),
+          assetId,
+          FiatCurrency.usd,
           GraphInterval.oneDay,
           startAt: startAt,
           endAt: endAt,
@@ -76,8 +86,18 @@ void main() {
           () => mockProvider.fetchCoinOhlc(any(), any(), any()),
         ).thenAnswer((_) async => mockOhlc);
 
+        final assetId = AssetId(
+          id: 'bitcoin',
+          name: 'Bitcoin',
+          symbol: AssetSymbol(assetConfigId: 'bitcoin', coinGeckoId: 'bitcoin'),
+          chainId: AssetChainId(chainId: 0),
+          derivationPath: null,
+          subClass: CoinSubClass.utxo,
+        );
+
         final result = await repository.getCoinOhlc(
-          const CexCoinPair(baseCoinTicker: 'bitcoin', relCoinTicker: 'usd'),
+          assetId,
+          FiatCurrency.usd,
           GraphInterval.oneDay,
           startAt: startAt,
           endAt: endAt,
@@ -112,8 +132,18 @@ void main() {
           () => mockProvider.fetchCoinOhlc(any(), any(), any()),
         ).thenAnswer((_) async => mockOhlc);
 
+        final assetId = AssetId(
+          id: 'bitcoin',
+          name: 'Bitcoin',
+          symbol: AssetSymbol(assetConfigId: 'bitcoin', coinGeckoId: 'bitcoin'),
+          chainId: AssetChainId(chainId: 0),
+          derivationPath: null,
+          subClass: CoinSubClass.utxo,
+        );
+
         final result = await repository.getCoinOhlc(
-          const CexCoinPair(baseCoinTicker: 'bitcoin', relCoinTicker: 'usd'),
+          assetId,
+          FiatCurrency.usd,
           GraphInterval.oneDay,
           startAt: startAt,
           endAt: endAt,

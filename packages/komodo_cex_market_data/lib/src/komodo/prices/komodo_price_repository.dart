@@ -32,7 +32,8 @@ class KomodoPriceRepository extends CexRepository {
 
   @override
   Future<CoinOhlc> getCoinOhlc(
-    CexCoinPair symbol,
+    AssetId assetId,
+    QuoteCurrency quoteCurrency,
     GraphInterval interval, {
     DateTime? startAt,
     DateTime? endAt,

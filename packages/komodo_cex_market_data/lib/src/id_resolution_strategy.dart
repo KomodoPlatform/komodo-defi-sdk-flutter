@@ -1,4 +1,5 @@
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 /// Strategy for resolving platform-specific asset identifiers
 abstract class IdResolutionStrategy {
@@ -18,14 +19,26 @@ abstract class IdResolutionStrategy {
 
 /// Binance-specific ID resolution strategy
 class BinanceIdResolutionStrategy implements IdResolutionStrategy {
+  static final Logger _logger = Logger('BinanceIdResolutionStrategy');
+
   @override
   String get platformName => 'Binance';
 
   @override
   List<String> getIdPriority(AssetId assetId) {
+    final binanceId = assetId.symbol.binanceId;
+    final configSymbol = assetId.symbol.configSymbol;
+
+    if (binanceId == null || binanceId.isEmpty) {
+      _logger.warning(
+        'Missing binanceId for asset ${assetId.symbol.configSymbol}, '
+        'falling back to configSymbol. This may cause API issues.',
+      );
+    }
+
     return [
-      assetId.symbol.binanceId,
-      assetId.symbol.configSymbol,
+      binanceId,
+      configSymbol,
     ].where((id) => id != null && id.isNotEmpty).cast<String>().toList();
   }
 
@@ -42,20 +55,39 @@ class BinanceIdResolutionStrategy implements IdResolutionStrategy {
         'Cannot resolve trading symbol for asset ${assetId.id} on $platformName',
       );
     }
-    return ids.first;
+
+    final resolvedSymbol = ids.first;
+    _logger.finest(
+      'Resolved trading symbol for ${assetId.symbol.configSymbol}: $resolvedSymbol '
+      '(priority: ${ids.join(', ')})',
+    );
+
+    return resolvedSymbol;
   }
 }
 
 /// CoinGecko-specific ID resolution strategy
 class CoinGeckoIdResolutionStrategy implements IdResolutionStrategy {
+  static final Logger _logger = Logger('CoinGeckoIdResolutionStrategy');
+
   @override
   String get platformName => 'CoinGecko';
 
   @override
   List<String> getIdPriority(AssetId assetId) {
+    final coinGeckoId = assetId.symbol.coinGeckoId;
+    final configSymbol = assetId.symbol.configSymbol;
+
+    if (coinGeckoId == null || coinGeckoId.isEmpty) {
+      _logger.warning(
+        'Missing coinGeckoId for asset ${assetId.symbol.configSymbol}, '
+        'falling back to configSymbol. This may cause API issues.',
+      );
+    }
+
     return [
-      assetId.symbol.coinGeckoId,
-      assetId.symbol.configSymbol,
+      coinGeckoId,
+      configSymbol,
     ].where((id) => id != null && id.isNotEmpty).cast<String>().toList();
   }
 
@@ -72,7 +104,14 @@ class CoinGeckoIdResolutionStrategy implements IdResolutionStrategy {
         'Cannot resolve trading symbol for asset ${assetId.id} on $platformName',
       );
     }
-    return ids.first;
+
+    final resolvedSymbol = ids.first;
+    _logger.finest(
+      'Resolved trading symbol for ${assetId.symbol.configSymbol}: $resolvedSymbol '
+      '(priority: ${ids.join(', ')})',
+    );
+
+    return resolvedSymbol;
   }
 }
 
