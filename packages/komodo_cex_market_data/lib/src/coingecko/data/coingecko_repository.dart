@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:async/async.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
@@ -12,6 +14,9 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// The number of seconds in a day.
 const int secondsInDay = 86400;
+
+/// The maximum number of days that CoinGecko API supports for historical data.
+const int maxCoinGeckoDays = 365;
 
 /// A repository class for interacting with the CoinGecko API.
 class CoinGeckoRepository implements CexRepository {
@@ -113,22 +118,59 @@ class CoinGeckoRepository implements CexRepository {
     int? limit,
     int maxAttempts = 5,
     BackoffStrategy? backoffStrategy,
-  }) {
+  }) async {
     var days = 1;
     if (startAt != null && endAt != null) {
       final timeDelta = endAt.difference(startAt);
       days = (timeDelta.inSeconds.toDouble() / secondsInDay).ceil();
     }
 
-    return retry(
-      () => coinGeckoProvider.fetchCoinOhlc(
-        symbol.baseCoinTicker,
-        symbol.relCoinTicker,
-        days,
-      ),
-      maxAttempts: maxAttempts,
-      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
-    );
+    // If the request is within the CoinGecko limit, make a single request
+    if (days <= maxCoinGeckoDays) {
+      return retry(
+        () => coinGeckoProvider.fetchCoinOhlc(
+          symbol.baseCoinTicker,
+          symbol.relCoinTicker,
+          days,
+        ),
+        maxAttempts: maxAttempts,
+        backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+      );
+    }
+
+    // If the request exceeds the limit, we need startAt and endAt to split requests
+    if (startAt == null || endAt == null) {
+      throw ArgumentError(
+        'startAt and endAt must be provided for requests exceeding $maxCoinGeckoDays days',
+      );
+    }
+
+    // Split the request into multiple sequential requests
+    final allOhlcData = <Ohlc>[];
+    var currentStart = startAt;
+
+    while (currentStart.isBefore(endAt)) {
+      final currentEnd = currentStart.add(Duration(days: maxCoinGeckoDays));
+      final batchEndDate = currentEnd.isAfter(endAt) ? endAt : currentEnd;
+
+      final batchDays = batchEndDate.difference(currentStart).inDays;
+      if (batchDays <= 0) break;
+
+      final batchOhlc = await retry(
+        () => coinGeckoProvider.fetchCoinOhlc(
+          symbol.baseCoinTicker,
+          symbol.relCoinTicker,
+          batchDays,
+        ),
+        maxAttempts: maxAttempts,
+        backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+      );
+
+      allOhlcData.addAll(batchOhlc.ohlc);
+      currentStart = batchEndDate;
+    }
+
+    return CoinOhlc(ohlc: allOhlcData);
   }
 
   @override
@@ -227,10 +269,12 @@ class CoinGeckoRepository implements CexRepository {
     final result = <DateTime, Decimal>{};
 
     // Process in batches to avoid overwhelming the API
-    for (var i = 0; i <= daysDiff; i += 365) {
+    for (var i = 0; i <= daysDiff; i += maxCoinGeckoDays) {
       final batchStartDate = startDate.add(Duration(days: i));
       final batchEndDate =
-          i + 365 > daysDiff ? endDate : startDate.add(Duration(days: i + 365));
+          i + maxCoinGeckoDays > daysDiff
+              ? endDate
+              : startDate.add(Duration(days: i + maxCoinGeckoDays));
 
       final ohlcData = await getCoinOhlc(
         CexCoinPair(baseCoinTicker: trimmedCoinId, relCoinTicker: mappedFiatId),

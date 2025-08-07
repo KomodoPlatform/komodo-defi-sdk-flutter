@@ -7,10 +7,12 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
-class MockKomodoPriceRepository extends Mock
-    implements IKomodoPriceRepository {}
+class MockPrimaryRepository extends Mock implements CexRepository {}
 
-class MockCexRepository extends Mock implements CexRepository {}
+class MockFallbackRepository extends Mock implements CexRepository {}
+
+class MockRepositorySelectionStrategy extends Mock
+    implements RepositorySelectionStrategy {}
 
 void main() {
   group('CexMarketDataManager', () {
@@ -23,34 +25,21 @@ void main() {
       subClass: CoinSubClass.utxo,
     );
 
-    test('prefers KomodoPriceRepository when supported', () async {
-      final komodo = MockKomodoPriceRepository();
-      final fallback = MockCexRepository();
+    setUp(() {
+      // Register fallbacks for mocktail
+      registerFallbackValue(asset('BTC'));
+      registerFallbackValue(Stablecoin.usdt);
+      registerFallbackValue(PriceRequestType.currentPrice);
+      registerFallbackValue(<CexRepository>[]);
+    });
+
+    test('uses CexRepository when available', () async {
+      final fallback = MockPrimaryRepository();
       final manager = CexMarketDataManager(
         priceRepositories: [fallback],
-        komodoPriceRepository: komodo,
         selectionStrategy: DefaultRepositorySelectionStrategy(),
-        timerFactory: (d, cb) => Timer(d, cb),
       );
 
-      when(() => komodo.getCoinList()).thenAnswer(
-        (_) async => [
-          CexCoin(
-            id: 'BTC',
-            symbol: 'BTC',
-            name: 'BTC',
-            currencies: {'USDT'},
-            source: 'komodo',
-          ),
-        ],
-      );
-      when(
-        () => komodo.getCoinFiatPrice(
-          asset('BTC'),
-          priceDate: null,
-          fiatCoinId: 'usdt',
-        ),
-      ).thenAnswer((_) async => 2.0);
       when(() => fallback.getCoinList()).thenAnswer(
         (_) async => [
           CexCoin(
@@ -65,79 +54,306 @@ void main() {
       when(
         () => fallback.getCoinFiatPrice(
           asset('BTC'),
-          priceDate: null,
-          fiatCoinId: 'usdt',
+          fiatCurrency: Stablecoin.usdt,
         ),
-      ).thenAnswer((_) async => 3.0);
+      ).thenAnswer((_) async => Decimal.parse('3.0'));
 
       await manager.init();
       final price = await manager.fiatPrice(asset('BTC'));
-      expect(price, Decimal.parse('2.0'));
+      expect(price, Decimal.parse('3.0'));
       verify(
-        () => komodo.getCoinFiatPrice(
-          asset('BTC'),
-          priceDate: null,
-          fiatCoinId: 'usdt',
-        ),
-      ).called(1);
-      verifyNever(
         () => fallback.getCoinFiatPrice(
           asset('BTC'),
-          priceDate: null,
-          fiatCoinId: 'usdt',
+          fiatCurrency: Stablecoin.usdt,
         ),
-      );
+      ).called(1);
     });
 
-    test(
-      'falls back when Komodo repository unsupported and caches results',
-      () async {
-        final komodo = MockKomodoPriceRepository();
-        final fallback = MockCexRepository();
-        final manager = CexMarketDataManager(
-          priceRepositories: [fallback],
-          komodoPriceRepository: komodo,
-          selectionStrategy: DefaultRepositorySelectionStrategy(),
-          timerFactory: (d, cb) => Timer(d, cb),
-        );
+    test('fiatPrice uses fallback when primary repository fails', () async {
+      final primaryRepo = MockPrimaryRepository();
+      final fallbackRepo = MockFallbackRepository();
+      final mockStrategy = MockRepositorySelectionStrategy();
 
-        when(() => komodo.getCoinList()).thenAnswer((_) async => []);
-        when(() => fallback.getCoinList()).thenAnswer(
-          (_) async => [
-            CexCoin(
-              id: 'BTC',
-              symbol: 'BTC',
-              name: 'BTC',
-              currencies: {'USDT'},
-              source: 'fallback',
-            ),
-          ],
-        );
-        when(
-          () => fallback.getCoinFiatPrice(
-            asset('BTC'),
-            priceDate: null,
-            fiatCoinId: 'usdt',
-          ),
-        ).thenAnswer((_) async => 3.0);
+      final manager = CexMarketDataManager(
+        priceRepositories: [primaryRepo, fallbackRepo],
+        selectionStrategy: mockStrategy,
+      );
 
-        await manager.init();
-        final first = await manager.fiatPrice(asset('BTC'));
-        final second = await manager.fiatPrice(asset('BTC'));
+      // Setup repository coin lists
+      when(() => primaryRepo.getCoinList()).thenAnswer((_) async => []);
+      when(() => fallbackRepo.getCoinList()).thenAnswer((_) async => []);
 
-        expect(first, Decimal.parse('3.0'));
-        expect(second, Decimal.parse('3.0'));
-        verify(
-          () => fallback.getCoinFiatPrice(
-            asset('BTC'),
-            priceDate: null,
-            fiatCoinId: 'usdt',
-          ),
-        ).called(1);
+      // Setup strategy to return primary repo first
+      when(
+        () => mockStrategy.selectRepository(
+          assetId: any(named: 'assetId'),
+          fiatCurrency: any(named: 'fiatCurrency'),
+          requestType: any(named: 'requestType'),
+          availableRepositories: any(named: 'availableRepositories'),
+        ),
+      ).thenAnswer((_) async => primaryRepo);
 
-        await manager.dispose();
-        expect(() => manager.priceIfKnown(asset('BTC')), throwsStateError);
-      },
-    );
+      // Primary repo fails, fallback succeeds
+      when(
+        () => primaryRepo.getCoinFiatPrice(
+          any(),
+          fiatCurrency: any(named: 'fiatCurrency'),
+        ),
+      ).thenThrow(Exception('Primary repo down'));
+
+      when(
+        () => fallbackRepo.getCoinFiatPrice(
+          any(),
+          fiatCurrency: any(named: 'fiatCurrency'),
+        ),
+      ).thenAnswer((_) async => Decimal.parse('50000.0'));
+
+      await manager.init();
+
+      // Test
+      final price = await manager.fiatPrice(asset('BTC'));
+
+      // Verify
+      expect(price, equals(Decimal.parse('50000')));
+      verify(
+        () => primaryRepo.getCoinFiatPrice(
+          asset('BTC'),
+          fiatCurrency: Stablecoin.usdt,
+        ),
+      ).called(2); // Called twice due to retry mechanism
+      verify(
+        () => fallbackRepo.getCoinFiatPrice(
+          asset('BTC'),
+          fiatCurrency: Stablecoin.usdt,
+        ),
+      ).called(1);
+
+      await manager.dispose();
+    });
+
+    test('maybeFiatPrice returns null when all repositories fail', () async {
+      final primaryRepo = MockPrimaryRepository();
+      final fallbackRepo = MockFallbackRepository();
+      final mockStrategy = MockRepositorySelectionStrategy();
+
+      final manager = CexMarketDataManager(
+        priceRepositories: [primaryRepo, fallbackRepo],
+        selectionStrategy: mockStrategy,
+      );
+
+      // Setup repository coin lists
+      when(() => primaryRepo.getCoinList()).thenAnswer((_) async => []);
+      when(() => fallbackRepo.getCoinList()).thenAnswer((_) async => []);
+
+      // Setup strategy to return primary repo first
+      when(
+        () => mockStrategy.selectRepository(
+          assetId: any(named: 'assetId'),
+          fiatCurrency: any(named: 'fiatCurrency'),
+          requestType: any(named: 'requestType'),
+          availableRepositories: any(named: 'availableRepositories'),
+        ),
+      ).thenAnswer((_) async => primaryRepo);
+
+      // All repos fail
+      when(
+        () => primaryRepo.getCoinFiatPrice(
+          any(),
+          fiatCurrency: any(named: 'fiatCurrency'),
+        ),
+      ).thenThrow(Exception('Primary failed'));
+
+      when(
+        () => fallbackRepo.getCoinFiatPrice(
+          any(),
+          fiatCurrency: any(named: 'fiatCurrency'),
+        ),
+      ).thenThrow(Exception('Fallback failed'));
+
+      await manager.init();
+
+      // Test
+      final price = await manager.maybeFiatPrice(asset('BTC'));
+
+      // Verify
+      expect(price, isNull);
+
+      await manager.dispose();
+    });
+
+    test('repository health tracking works across multiple calls', () async {
+      final primaryRepo = MockPrimaryRepository();
+      final fallbackRepo = MockFallbackRepository();
+      final mockStrategy = MockRepositorySelectionStrategy();
+
+      final manager = CexMarketDataManager(
+        priceRepositories: [primaryRepo, fallbackRepo],
+        selectionStrategy: mockStrategy,
+      );
+
+      // Setup repository coin lists
+      when(() => primaryRepo.getCoinList()).thenAnswer((_) async => []);
+      when(() => fallbackRepo.getCoinList()).thenAnswer((_) async => []);
+
+      // Setup strategy to return primary repo first
+      when(
+        () => mockStrategy.selectRepository(
+          assetId: any(named: 'assetId'),
+          fiatCurrency: any(named: 'fiatCurrency'),
+          requestType: any(named: 'requestType'),
+          availableRepositories: any(named: 'availableRepositories'),
+        ),
+      ).thenAnswer((_) async => primaryRepo);
+
+      // Primary repo always fails
+      when(
+        () => primaryRepo.getCoinFiatPrice(
+          any(),
+          fiatCurrency: any(named: 'fiatCurrency'),
+        ),
+      ).thenThrow(Exception('Always fails'));
+
+      when(
+        () => fallbackRepo.getCoinFiatPrice(
+          any(),
+          fiatCurrency: any(named: 'fiatCurrency'),
+        ),
+      ).thenAnswer((_) async => Decimal.parse('50000.0'));
+
+      await manager.init();
+
+      // Make multiple calls to trigger health tracking
+      for (int i = 0; i < 4; i++) {
+        final price = await manager.maybeFiatPrice(asset('BTC'));
+        expect(price, equals(Decimal.parse('50000')));
+      }
+
+      await manager.dispose();
+    });
+
+    test('priceChange24h uses fallback functionality', () async {
+      final primaryRepo = MockPrimaryRepository();
+      final fallbackRepo = MockFallbackRepository();
+      final mockStrategy = MockRepositorySelectionStrategy();
+
+      final manager = CexMarketDataManager(
+        priceRepositories: [primaryRepo, fallbackRepo],
+        selectionStrategy: mockStrategy,
+      );
+
+      // Setup repository coin lists
+      when(() => primaryRepo.getCoinList()).thenAnswer((_) async => []);
+      when(() => fallbackRepo.getCoinList()).thenAnswer((_) async => []);
+
+      // Setup strategy to return primary repo first
+      when(
+        () => mockStrategy.selectRepository(
+          assetId: any(named: 'assetId'),
+          fiatCurrency: any(named: 'fiatCurrency'),
+          requestType: PriceRequestType.priceChange,
+          availableRepositories: any(named: 'availableRepositories'),
+        ),
+      ).thenAnswer((_) async => primaryRepo);
+
+      // Primary repo fails, fallback succeeds
+      when(
+        () => primaryRepo.getCoin24hrPriceChange(
+          any(),
+          fiatCurrency: any(named: 'fiatCurrency'),
+        ),
+      ).thenThrow(Exception('Primary repo down'));
+
+      when(
+        () => fallbackRepo.getCoin24hrPriceChange(
+          any(),
+          fiatCurrency: any(named: 'fiatCurrency'),
+        ),
+      ).thenAnswer((_) async => Decimal.parse('0.05'));
+
+      await manager.init();
+
+      // Test
+      final change = await manager.priceChange24h(asset('BTC'));
+
+      // Verify
+      expect(change, equals(Decimal.parse('0.05')));
+      verify(
+        () => fallbackRepo.getCoin24hrPriceChange(
+          asset('BTC'),
+          fiatCurrency: Stablecoin.usdt,
+        ),
+      ).called(1);
+
+      await manager.dispose();
+    });
+
+    test('fiatPriceHistory uses fallback functionality', () async {
+      final primaryRepo = MockPrimaryRepository();
+      final fallbackRepo = MockFallbackRepository();
+      final mockStrategy = MockRepositorySelectionStrategy();
+
+      final manager = CexMarketDataManager(
+        priceRepositories: [primaryRepo, fallbackRepo],
+        selectionStrategy: mockStrategy,
+      );
+
+      // Setup repository coin lists
+      when(() => primaryRepo.getCoinList()).thenAnswer((_) async => []);
+      when(() => fallbackRepo.getCoinList()).thenAnswer((_) async => []);
+
+      final testDates = [DateTime(2023, 1, 1), DateTime(2023, 1, 2)];
+
+      // Setup strategy to return primary repo first
+      when(
+        () => mockStrategy.selectRepository(
+          assetId: any(named: 'assetId'),
+          fiatCurrency: any(named: 'fiatCurrency'),
+          requestType: PriceRequestType.priceHistory,
+          availableRepositories: any(named: 'availableRepositories'),
+        ),
+      ).thenAnswer((_) async => primaryRepo);
+
+      // Primary repo fails, fallback succeeds
+      when(
+        () => primaryRepo.getCoinFiatPrices(
+          any(),
+          any(),
+          fiatCurrency: any(named: 'fiatCurrency'),
+        ),
+      ).thenThrow(Exception('Primary repo down'));
+
+      when(
+        () => fallbackRepo.getCoinFiatPrices(
+          any(),
+          any(),
+          fiatCurrency: any(named: 'fiatCurrency'),
+        ),
+      ).thenAnswer(
+        (_) async => {
+          testDates[0]: Decimal.parse('45000.0'),
+          testDates[1]: Decimal.parse('46000.0'),
+        },
+      );
+
+      await manager.init();
+
+      // Test
+      final history = await manager.fiatPriceHistory(asset('BTC'), testDates);
+
+      // Verify
+      expect(history.length, equals(2));
+      expect(history[testDates[0]], equals(Decimal.parse('45000')));
+      expect(history[testDates[1]], equals(Decimal.parse('46000')));
+
+      verify(
+        () => fallbackRepo.getCoinFiatPrices(
+          asset('BTC'),
+          testDates,
+          fiatCurrency: Stablecoin.usdt,
+        ),
+      ).called(1);
+
+      await manager.dispose();
+    });
   });
 }

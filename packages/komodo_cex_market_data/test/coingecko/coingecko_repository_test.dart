@@ -1,5 +1,4 @@
 import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
-import 'package:komodo_cex_market_data/src/coingecko/data/coingecko_repository.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -19,6 +18,112 @@ void main() {
         coinGeckoProvider: mockProvider,
         enableMemoization: false, // Disable for testing
       );
+    });
+
+    group('getCoinOhlc 365-day limit handling', () {
+      test('should make single request when within 365-day limit', () async {
+        final startAt = DateTime(2023);
+        final endAt = DateTime(2023, 12, 31); // 364 days
+        final mockOhlc = CoinOhlc(
+          ohlc: [
+            Ohlc(
+              open: 100,
+              high: 110,
+              low: 90,
+              close: 105,
+              openTime: startAt.millisecondsSinceEpoch,
+              closeTime: endAt.millisecondsSinceEpoch,
+            ),
+          ],
+        );
+
+        when(
+          () => mockProvider.fetchCoinOhlc(any(), any(), any()),
+        ).thenAnswer((_) async => mockOhlc);
+
+        final result = await repository.getCoinOhlc(
+          const CexCoinPair(baseCoinTicker: 'bitcoin', relCoinTicker: 'usd'),
+          GraphInterval.oneDay,
+          startAt: startAt,
+          endAt: endAt,
+        );
+
+        expect(result.ohlc.length, equals(1));
+        // Verify only one call was made
+        verify(
+          () => mockProvider.fetchCoinOhlc('bitcoin', 'usd', any()),
+        ).called(1);
+      });
+
+      test('should split requests when exceeding 365-day limit', () async {
+        final startAt = DateTime(2022);
+        final endAt = DateTime(2024); // More than 365 days
+        final mockOhlc = CoinOhlc(
+          ohlc: [
+            Ohlc(
+              open: 100,
+              high: 110,
+              low: 90,
+              close: 105,
+              openTime: startAt.millisecondsSinceEpoch,
+              closeTime: endAt.millisecondsSinceEpoch,
+            ),
+          ],
+        );
+
+        when(
+          () => mockProvider.fetchCoinOhlc(any(), any(), any()),
+        ).thenAnswer((_) async => mockOhlc);
+
+        final result = await repository.getCoinOhlc(
+          const CexCoinPair(baseCoinTicker: 'bitcoin', relCoinTicker: 'usd'),
+          GraphInterval.oneDay,
+          startAt: startAt,
+          endAt: endAt,
+        );
+
+        // Should have made multiple calls and combined the results
+        expect(result.ohlc.length, greaterThan(1));
+
+        // Verify multiple calls were made (should be at least 2 for 2+ years)
+        verify(
+          () => mockProvider.fetchCoinOhlc('bitcoin', 'usd', any()),
+        ).called(greaterThan(1));
+      });
+
+      test('should handle requests exactly at 365-day limit', () async {
+        final startAt = DateTime(2023);
+        final endAt = DateTime(2024); // Exactly 365 days
+        final mockOhlc = CoinOhlc(
+          ohlc: [
+            Ohlc(
+              open: 100,
+              high: 110,
+              low: 90,
+              close: 105,
+              openTime: startAt.millisecondsSinceEpoch,
+              closeTime: endAt.millisecondsSinceEpoch,
+            ),
+          ],
+        );
+
+        when(
+          () => mockProvider.fetchCoinOhlc(any(), any(), any()),
+        ).thenAnswer((_) async => mockOhlc);
+
+        final result = await repository.getCoinOhlc(
+          const CexCoinPair(baseCoinTicker: 'bitcoin', relCoinTicker: 'usd'),
+          GraphInterval.oneDay,
+          startAt: startAt,
+          endAt: endAt,
+        );
+
+        expect(result.ohlc.length, equals(1));
+        // Should make only one call at the limit
+        verify(
+          () => mockProvider.fetchCoinOhlc('bitcoin', 'usd', 365),
+        ).called(1);
+      });
     });
 
     group('USD equivalent currency support', () {
