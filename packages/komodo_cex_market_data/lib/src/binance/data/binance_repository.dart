@@ -1,6 +1,8 @@
 // Using relative imports in this "package" to make it easier to track external
 // dependencies when moving or copying this "package" to another project.
-import 'dart:developer';
+
+// TODO: look into custom exception types or justifying the current approach.
+// ignore_for_file: avoid_catches_without_on_clauses
 
 import 'package:async/async.dart';
 import 'package:decimal/decimal.dart';
@@ -28,7 +30,11 @@ class BinanceRepository implements CexRepository {
   }) : _binanceProvider = binanceProvider,
        _defaultBackoffStrategy =
            defaultBackoffStrategy ??
-           ExponentialBackoff(maxDelay: const Duration(seconds: 5)),
+           ExponentialBackoff(
+             initialDelay: const Duration(milliseconds: 300),
+             maxDelay: const Duration(seconds: 5),
+             withJitter: true,
+           ),
        _idResolutionStrategy = BinanceIdResolutionStrategy(),
        _enableMemoization = enableMemoization;
 
@@ -41,50 +47,37 @@ class BinanceRepository implements CexRepository {
   Set<String>? _cachedFiatCurrencies;
 
   @override
-  Future<List<CexCoin>> getCoinList({
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
-  }) async {
+  Future<List<CexCoin>> getCoinList() async {
     if (_enableMemoization) {
-      return _coinListMemoizer.runOnce(
-        () => _fetchCoinListInternal(maxAttempts, backoffStrategy),
-      );
+      return _coinListMemoizer.runOnce(() => _fetchCoinListInternal());
     } else {
       // Warning: Direct API calls without memoization can lead to API rate limiting
       // and unnecessary network requests. Use this mode sparingly.
-      return _fetchCoinListInternal(maxAttempts, backoffStrategy);
+      return _fetchCoinListInternal();
     }
   }
 
   /// Internal method to fetch coin list data from the API.
-  Future<List<CexCoin>> _fetchCoinListInternal(
-    int maxAttempts,
-    BackoffStrategy? backoffStrategy,
-  ) async {
+  Future<List<CexCoin>> _fetchCoinListInternal() async {
     try {
-      return await retry(
-        () async {
-          // Try primary endpoint first, fallback to secondary on failure
-          Exception? lastException;
-          for (final baseUrl in binanceApiEndpoint) {
-            try {
-              final exchangeInfo = await _binanceProvider
-                  .fetchExchangeInfoReduced(baseUrl: baseUrl);
-              final coinsList = _convertSymbolsToCoins(exchangeInfo);
-              _cachedFiatCurrencies =
-                  exchangeInfo.symbols
-                      .map((s) => s.quoteAsset.toUpperCase())
-                      .toSet();
-              return coinsList;
-            } catch (e) {
-              lastException = e is Exception ? e : Exception(e.toString());
-            }
-          }
-          throw lastException ?? Exception('All endpoints failed');
-        },
-        maxAttempts: maxAttempts,
-        backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
-      );
+      // Try primary endpoint first, fallback to secondary on failure
+      Exception? lastException;
+      for (final baseUrl in binanceApiEndpoint) {
+        try {
+          final exchangeInfo = await _binanceProvider.fetchExchangeInfoReduced(
+            baseUrl: baseUrl,
+          );
+          final coinsList = _convertSymbolsToCoins(exchangeInfo);
+          _cachedFiatCurrencies =
+              exchangeInfo.symbols
+                  .map((s) => s.quoteAsset.toUpperCase())
+                  .toSet();
+          return coinsList;
+        } catch (e) {
+          lastException = e is Exception ? e : Exception(e.toString());
+        }
+      }
+      throw lastException ?? Exception('All endpoints failed');
     } catch (e) {
       _cachedFiatCurrencies = <String>{};
       return List.empty();
@@ -108,8 +101,6 @@ class BinanceRepository implements CexRepository {
     DateTime? startAt,
     DateTime? endAt,
     int? limit,
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
   }) async {
     if (symbol.baseCoinTicker.toUpperCase() ==
         symbol.relCoinTicker.toUpperCase()) {
@@ -120,29 +111,23 @@ class BinanceRepository implements CexRepository {
     final endUnixTimestamp = endAt?.millisecondsSinceEpoch;
     final intervalAbbreviation = interval.toAbbreviation();
 
-    return retry(
-      () async {
-        // Try primary endpoint first, fallback to secondary on failure
-        Exception? lastException;
-        for (final baseUrl in binanceApiEndpoint) {
-          try {
-            return await _binanceProvider.fetchKlines(
-              symbol.toString(),
-              intervalAbbreviation,
-              startUnixTimestampMilliseconds: startUnixTimestamp,
-              endUnixTimestampMilliseconds: endUnixTimestamp,
-              limit: limit,
-              baseUrl: baseUrl,
-            );
-          } catch (e) {
-            lastException = e is Exception ? e : Exception(e.toString());
-          }
-        }
-        throw lastException ?? Exception('All endpoints failed');
-      },
-      maxAttempts: maxAttempts,
-      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
-    );
+    // Try primary endpoint first, fallback to secondary on failure
+    Exception? lastException;
+    for (final baseUrl in binanceApiEndpoint) {
+      try {
+        return await _binanceProvider.fetchKlines(
+          symbol.toString(),
+          intervalAbbreviation,
+          startUnixTimestampMilliseconds: startUnixTimestamp,
+          endUnixTimestampMilliseconds: endUnixTimestamp,
+          limit: limit,
+          baseUrl: baseUrl,
+        );
+      } catch (e) {
+        lastException = e is Exception ? e : Exception(e.toString());
+      }
+    }
+    throw lastException ?? Exception('All endpoints failed');
   }
 
   @override
@@ -160,8 +145,6 @@ class BinanceRepository implements CexRepository {
     AssetId assetId, {
     DateTime? priceDate,
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
     final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
@@ -181,8 +164,6 @@ class BinanceRepository implements CexRepository {
       startAt: startAt,
       endAt: endAt,
       limit: 1,
-      maxAttempts: maxAttempts,
-      backoffStrategy: backoffStrategy,
     );
     return Decimal.parse(ohlcData.ohlc.first.close.toString());
   }
@@ -192,8 +173,6 @@ class BinanceRepository implements CexRepository {
     AssetId assetId,
     List<DateTime> dates, {
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
     final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
@@ -228,8 +207,6 @@ class BinanceRepository implements CexRepository {
         GraphInterval.oneDay,
         startAt: batchStartDate,
         endAt: batchEndDate,
-        maxAttempts: maxAttempts,
-        backoffStrategy: backoffStrategy,
       );
 
       final batchResult = ohlcData.ohlc.fold<Map<DateTime, Decimal>>({}, (
@@ -253,8 +230,6 @@ class BinanceRepository implements CexRepository {
   Future<Decimal> getCoin24hrPriceChange(
     AssetId assetId, {
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
     final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
@@ -267,26 +242,20 @@ class BinanceRepository implements CexRepository {
     final symbol =
         '${trimmedCoinId.toUpperCase()}${fiatCurrencyId.toUpperCase()}';
 
-    return retry(
-      () async {
-        // Try primary endpoint first, fallback to secondary on failure
-        Exception? lastException;
-        for (final baseUrl in binanceApiEndpoint) {
-          try {
-            final tickerData = await _binanceProvider.fetch24hrTicker(
-              symbol,
-              baseUrl: baseUrl,
-            );
-            return tickerData.priceChangePercent;
-          } catch (e) {
-            lastException = e is Exception ? e : Exception(e.toString());
-          }
-        }
-        throw lastException ?? Exception('All endpoints failed');
-      },
-      maxAttempts: maxAttempts,
-      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
-    );
+    // Try primary endpoint first, fallback to secondary on failure
+    Exception? lastException;
+    for (final baseUrl in binanceApiEndpoint) {
+      try {
+        final tickerData = await _binanceProvider.fetch24hrTicker(
+          symbol,
+          baseUrl: baseUrl,
+        );
+        return tickerData.priceChangePercent;
+      } catch (e) {
+        lastException = e is Exception ? e : Exception(e.toString());
+      }
+    }
+    throw lastException ?? Exception('All endpoints failed');
   }
 
   List<CexCoin> _convertSymbolsToCoins(
@@ -322,16 +291,12 @@ class BinanceRepository implements CexRepository {
     PriceRequestType requestType,
   ) async {
     final coins = await getCoinList();
-    final fiat = fiatCurrency.symbol.toUpperCase();
+    final fiat = fiatCurrency.binanceId;
     final supportsAsset = coins.any(
       (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
     );
-    final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
-    debugger(
-      when: !supportsAsset || !supportsFiat,
-      message:
-          'BinanceRepository does not support asset $assetId or fiat $fiat',
-    );
+    final supportsFiat =
+        _cachedFiatCurrencies?.contains(fiat.toUpperCase()) ?? false;
     return supportsAsset && supportsFiat;
   }
 }

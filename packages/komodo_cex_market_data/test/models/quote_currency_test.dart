@@ -115,9 +115,19 @@ void main() {
       expect(FiatCurrency.eur.coinGeckoId, equals('eur'));
     });
 
-    test('binanceId should return uppercase symbol', () {
-      expect(FiatCurrency.usd.binanceId, equals('USD'));
-      expect(FiatCurrency.tryLira.binanceId, equals('TRY'));
+    test('binanceId should map to appropriate trading pairs', () {
+      expect(
+        FiatCurrency.usd.binanceId,
+        equals('USDT'),
+      ); // USD maps to USDT stablecoin
+      expect(
+        FiatCurrency.tryLira.binanceId,
+        equals('TRY'),
+      ); // TRY is directly supported
+      expect(
+        FiatCurrency.eur.binanceId,
+        equals('EUR'),
+      ); // EUR is directly supported
     });
 
     test('fromString should work case-insensitively', () {
@@ -394,7 +404,7 @@ void main() {
     });
 
     test('should maintain API compatibility for Binance IDs', () {
-      expect(FiatCurrency.usd.binanceId, equals('USD'));
+      expect(FiatCurrency.usd.binanceId, equals('USDT')); // USD maps to USDT
       expect(Stablecoin.usdt.binanceId, equals('USDT'));
       expect(Cryptocurrency.btc.binanceId, equals('BTC'));
       expect(Commodity.xau.binanceId, equals('XAU'));

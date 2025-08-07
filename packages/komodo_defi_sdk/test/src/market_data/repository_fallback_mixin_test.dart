@@ -63,6 +63,16 @@ void main() {
       registerFallbackValue(Stablecoin.usdt);
       registerFallbackValue(PriceRequestType.currentPrice);
       registerFallbackValue(<CexRepository>[]);
+
+      // Setup default supports behavior for all repositories
+      // (assuming they support all assets unless explicitly set otherwise)
+      when(
+        () => primaryRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
+
+      when(
+        () => fallbackRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
     });
 
     group('Repository Health Tracking', () {
@@ -125,19 +135,13 @@ void main() {
           testAsset,
           Stablecoin.usdt,
           PriceRequestType.currentPrice,
-          (repo) =>
-              repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+          (repo) => repo.getCoinFiatPrice(testAsset),
           'test',
         );
 
         // Verify
         expect(result, equals(Decimal.parse('50000.0')));
-        verify(
-          () => primaryRepo.getCoinFiatPrice(
-            testAsset,
-            fiatCurrency: Stablecoin.usdt,
-          ),
-        ).called(1);
+        verify(() => primaryRepo.getCoinFiatPrice(testAsset)).called(1);
         verifyNever(
           () => fallbackRepo.getCoinFiatPrice(
             any(),
@@ -176,25 +180,16 @@ void main() {
           testAsset,
           Stablecoin.usdt,
           PriceRequestType.currentPrice,
-          (repo) =>
-              repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+          (repo) => repo.getCoinFiatPrice(testAsset),
           'test',
         );
 
         // Verify
         expect(result, equals(Decimal.parse('49000.0')));
         verify(
-          () => primaryRepo.getCoinFiatPrice(
-            testAsset,
-            fiatCurrency: Stablecoin.usdt,
-          ),
-        ).called(2); // Called twice due to retry mechanism
-        verify(
-          () => fallbackRepo.getCoinFiatPrice(
-            testAsset,
-            fiatCurrency: Stablecoin.usdt,
-          ),
-        ).called(1);
+          () => primaryRepo.getCoinFiatPrice(testAsset),
+        ).called(1); // Called once, then fallback is tried
+        verify(() => fallbackRepo.getCoinFiatPrice(testAsset)).called(1);
       });
 
       test('throws when all repositories fail', () async {
@@ -228,8 +223,7 @@ void main() {
             testAsset,
             Stablecoin.usdt,
             PriceRequestType.currentPrice,
-            (repo) =>
-                repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+            (repo) => repo.getCoinFiatPrice(testAsset),
             'test',
           ),
           throwsA(isA<Exception>()),
@@ -266,8 +260,7 @@ void main() {
           testAsset,
           Stablecoin.usdt,
           PriceRequestType.currentPrice,
-          (repo) =>
-              repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+          (repo) => repo.getCoinFiatPrice(testAsset),
           'test',
         );
 
@@ -309,8 +302,7 @@ void main() {
           testAsset,
           Stablecoin.usdt,
           PriceRequestType.currentPrice,
-          (repo) =>
-              repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+          (repo) => repo.getCoinFiatPrice(testAsset),
           'test',
         );
 
@@ -318,12 +310,7 @@ void main() {
         expect(result, equals(Decimal.parse('48000.0')));
 
         // The fallback repo should be called since it was selected and succeeded
-        verify(
-          () => fallbackRepo.getCoinFiatPrice(
-            testAsset,
-            fiatCurrency: Stablecoin.usdt,
-          ),
-        ).called(1);
+        verify(() => fallbackRepo.getCoinFiatPrice(testAsset)).called(1);
       });
 
       test(
@@ -357,8 +344,7 @@ void main() {
             testAsset,
             Stablecoin.usdt,
             PriceRequestType.currentPrice,
-            (repo) =>
-                repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+            (repo) => repo.getCoinFiatPrice(testAsset),
             'test',
           );
 
@@ -380,8 +366,7 @@ void main() {
             testAsset,
             Stablecoin.usdt,
             PriceRequestType.currentPrice,
-            (repo) =>
-                repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+            (repo) => repo.getCoinFiatPrice(testAsset),
             'test',
           ),
           throwsA(isA<StateError>()),
@@ -392,8 +377,9 @@ void main() {
     group('Health Data Management', () {
       test('clearRepositoryHealthData resets all health tracking', () {
         // Make repositories unhealthy
-        manager.recordRepositoryFailureForTest(primaryRepo);
-        manager.recordRepositoryFailureForTest(fallbackRepo);
+        manager
+          ..recordRepositoryFailureForTest(primaryRepo)
+          ..recordRepositoryFailureForTest(fallbackRepo);
 
         // Verify they are recorded as having failures
         expect(
@@ -403,8 +389,9 @@ void main() {
 
         // Add more failures to make them unhealthy
         for (int i = 0; i < 2; i++) {
-          manager.recordRepositoryFailureForTest(primaryRepo);
-          manager.recordRepositoryFailureForTest(fallbackRepo);
+          manager
+            ..recordRepositoryFailureForTest(primaryRepo)
+            ..recordRepositoryFailureForTest(fallbackRepo);
         }
         expect(manager.isRepositoryHealthyForTest(primaryRepo), isFalse);
         expect(manager.isRepositoryHealthyForTest(fallbackRepo), isFalse);
@@ -444,25 +431,17 @@ void main() {
             testAsset,
             Stablecoin.usdt,
             PriceRequestType.priceChange,
-            (repo) => repo.getCoin24hrPriceChange(
-              testAsset,
-              fiatCurrency: Stablecoin.usdt,
-            ),
+            (repo) => repo.getCoin24hrPriceChange(testAsset),
             'priceChange24h',
           );
 
           // Verify
           expect(result, equals(Decimal.parse('0.05')));
-          verify(
-            () => primaryRepo.getCoin24hrPriceChange(
-              testAsset,
-              fiatCurrency: Stablecoin.usdt,
-            ),
-          ).called(1);
+          verify(() => primaryRepo.getCoin24hrPriceChange(testAsset)).called(1);
         },
       );
 
-      test('respects maxAttemptsPerRepo parameter', () async {
+      test('respects maxTotalAttempts parameter', () async {
         // Setup: Primary repo always fails
         when(
           () => mockStrategy.selectRepository(
@@ -487,25 +466,37 @@ void main() {
           ),
         ).thenAnswer((_) async => Decimal.parse('50000.0'));
 
-        // Test with custom maxAttemptsPerRepo
+        // Test with maxTotalAttempts = 1 should fail since primary fails
+        expect(
+          () => manager.tryRepositoriesInOrder(
+            testAsset,
+            Stablecoin.usdt,
+            PriceRequestType.currentPrice,
+            (repo) => repo.getCoinFiatPrice(testAsset),
+            'test',
+            maxTotalAttempts: 1,
+          ),
+          throwsA(isA<Exception>()),
+        );
+
+        // Test with maxTotalAttempts = 2 should succeed with fallback
         final result = await manager.tryRepositoriesInOrder(
           testAsset,
           Stablecoin.usdt,
           PriceRequestType.currentPrice,
-          (repo) =>
-              repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+          (repo) => repo.getCoinFiatPrice(testAsset),
           'test',
-          maxAttemptsPerRepo: 1,
+          maxTotalAttempts: 2,
         );
 
         // Verify fallback was used
         expect(result, equals(Decimal.parse('50000.0')));
         verify(
-          () => fallbackRepo.getCoinFiatPrice(
-            testAsset,
-            fiatCurrency: Stablecoin.usdt,
-          ),
-        ).called(1); // Only called once due to maxAttemptsPerRepo: 1
+          () => primaryRepo.getCoinFiatPrice(testAsset),
+        ).called(2); // Called once for each test
+        verify(
+          () => fallbackRepo.getCoinFiatPrice(testAsset),
+        ).called(1); // Called once in second test
       });
     });
   });

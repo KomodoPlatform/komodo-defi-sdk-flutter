@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
 import 'package:komodo_cex_market_data/src/models/models.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
@@ -354,6 +355,24 @@ void main() {
     });
 
     group('_mapFiatCurrencyToCoingecko mapping verification', () {
+      setUp(() {
+        // Mock the coin list response
+        when(() => mockProvider.fetchCoinList()).thenAnswer(
+          (_) async => [
+            const CexCoin(
+              id: 'bitcoin',
+              symbol: 'btc',
+              name: 'Bitcoin',
+              currencies: {},
+            ),
+          ],
+        );
+
+        // Mock supported currencies - deliberately exclude stablecoin symbols
+        when(
+          () => mockProvider.fetchSupportedVsCurrencies(),
+        ).thenAnswer((_) async => ['usd', 'eur', 'gbp', 'jpy']);
+      });
       test('should map USD stablecoins to usd', () {
         // This verifies the mapping indirectly through coinGeckoId
         expect(Stablecoin.usdt.coinGeckoId, equals('usd'));
@@ -387,6 +406,241 @@ void main() {
       test('should handle Turkish Lira special case', () {
         expect(FiatCurrency.tryLira.coinGeckoId, equals('try'));
       });
+
+      test(
+        'should always prefer underlying fiat for stablecoins even when stablecoin symbol is supported',
+        () async {
+          // Mock supported currencies to include both USD and USDT
+          when(
+            () => mockProvider.fetchSupportedVsCurrencies(),
+          ).thenAnswer((_) async => ['usd', 'usdt', 'eur', 'gbp']);
+
+          final repository = CoinGeckoRepository(
+            coinGeckoProvider: mockProvider,
+            enableMemoization: false,
+          );
+
+          // Get the coins list to populate the cache
+          await repository.getCoinList();
+
+          // Test the internal mapping method indirectly through getCoin24hrPriceChange
+          final assetId = AssetId(
+            id: 'bitcoin',
+            name: 'Bitcoin',
+            symbol: AssetSymbol(assetConfigId: 'BTC', coinGeckoId: 'bitcoin'),
+            chainId: AssetChainId(chainId: 0),
+            derivationPath: null,
+            subClass: CoinSubClass.utxo,
+          );
+
+          // Mock the market data response
+          when(
+            () => mockProvider.fetchCoinMarketData(
+              ids: any(named: 'ids'),
+              vsCurrency: any(named: 'vsCurrency'),
+            ),
+          ).thenAnswer(
+            (_) async => [
+              CoinMarketData(
+                id: 'bitcoin',
+                symbol: 'btc',
+                name: 'Bitcoin',
+                currentPrice: Decimal.fromInt(50000),
+                marketCap: Decimal.fromInt(1000000000),
+                marketCapRank: Decimal.fromInt(1),
+                fullyDilutedValuation: Decimal.fromInt(1050000000),
+                totalVolume: Decimal.fromInt(25000000),
+                high24h: Decimal.fromInt(52000),
+                low24h: Decimal.fromInt(48000),
+                priceChange24h: Decimal.fromInt(1000),
+                priceChangePercentage24h: Decimal.fromInt(2),
+                marketCapChange24h: Decimal.fromInt(50000000),
+                marketCapChangePercentage24h: Decimal.fromInt(5),
+                circulatingSupply: Decimal.fromInt(19000000),
+                totalSupply: Decimal.fromInt(21000000),
+                maxSupply: Decimal.fromInt(21000000),
+                ath: Decimal.fromInt(69000),
+                athChangePercentage: Decimal.parse('-27.5'),
+                athDate: DateTime.parse('2021-11-10T14:24:11.849Z'),
+                atl: Decimal.parse('67.81'),
+                atlChangePercentage: Decimal.parse('73662.1'),
+                atlDate: DateTime.parse('2013-07-06T00:00:00.000Z'),
+                lastUpdated: DateTime.now(),
+              ),
+            ],
+          );
+
+          // Call method with USDT - should use USD as vs_currency, not USDT
+          await repository.getCoin24hrPriceChange(
+            assetId,
+            fiatCurrency: Stablecoin.usdt,
+          );
+
+          // Verify that USD was used, not USDT
+          verify(
+            () => mockProvider.fetchCoinMarketData(
+              ids: ['bitcoin'],
+              vsCurrency: 'usd', // Should be 'usd', not 'usdt'
+            ),
+          ).called(1);
+        },
+      );
+
+      test(
+        'should never fall back to stablecoin symbol when underlying fiat is not cached',
+        () async {
+          // Mock supported currencies to exclude USD but include USDT
+          when(
+            () => mockProvider.fetchSupportedVsCurrencies(),
+          ).thenAnswer((_) async => ['usdt', 'eur', 'gbp']);
+
+          final repository = CoinGeckoRepository(
+            coinGeckoProvider: mockProvider,
+            enableMemoization: false,
+          );
+
+          // Get the coins list to populate the cache
+          await repository.getCoinList();
+
+          final assetId = AssetId(
+            id: 'bitcoin',
+            name: 'Bitcoin',
+            symbol: AssetSymbol(assetConfigId: 'BTC', coinGeckoId: 'bitcoin'),
+            chainId: AssetChainId(chainId: 0),
+            derivationPath: null,
+            subClass: CoinSubClass.utxo,
+          );
+
+          // Mock the market data response
+          when(
+            () => mockProvider.fetchCoinMarketData(
+              ids: any(named: 'ids'),
+              vsCurrency: any(named: 'vsCurrency'),
+            ),
+          ).thenAnswer(
+            (_) async => [
+              CoinMarketData(
+                id: 'bitcoin',
+                symbol: 'btc',
+                name: 'Bitcoin',
+                currentPrice: Decimal.fromInt(50000),
+                marketCap: Decimal.fromInt(1000000000),
+                marketCapRank: Decimal.fromInt(1),
+                fullyDilutedValuation: Decimal.fromInt(1050000000),
+                totalVolume: Decimal.fromInt(25000000),
+                high24h: Decimal.fromInt(52000),
+                low24h: Decimal.fromInt(48000),
+                priceChange24h: Decimal.fromInt(1000),
+                priceChangePercentage24h: Decimal.fromInt(2),
+                marketCapChange24h: Decimal.fromInt(50000000),
+                marketCapChangePercentage24h: Decimal.fromInt(5),
+                circulatingSupply: Decimal.fromInt(19000000),
+                totalSupply: Decimal.fromInt(21000000),
+                maxSupply: Decimal.fromInt(21000000),
+                ath: Decimal.fromInt(69000),
+                athChangePercentage: Decimal.parse('-27.5'),
+                athDate: DateTime.parse('2021-11-10T14:24:11.849Z'),
+                atl: Decimal.parse('67.81'),
+                atlChangePercentage: Decimal.parse('73662.1'),
+                atlDate: DateTime.parse('2013-07-06T00:00:00.000Z'),
+                lastUpdated: DateTime.now(),
+              ),
+            ],
+          );
+
+          // Call method with USDT - should fall back to USD (final fallback), not USDT
+          await repository.getCoin24hrPriceChange(
+            assetId,
+            fiatCurrency: Stablecoin.usdt,
+          );
+
+          // Verify that USD was used as final fallback, not USDT
+          verify(
+            () => mockProvider.fetchCoinMarketData(
+              ids: ['bitcoin'],
+              vsCurrency: 'usd', // Should fall back to 'usd', never 'usdt'
+            ),
+          ).called(1);
+        },
+      );
+
+      test(
+        'should allow fallback to original symbol for fiat currencies',
+        () async {
+          // Mock supported currencies to exclude EUR from coinGeckoId mapping but include original
+          when(
+            () => mockProvider.fetchSupportedVsCurrencies(),
+          ).thenAnswer((_) async => ['usd', 'eur', 'gbp']);
+
+          final repository = CoinGeckoRepository(
+            coinGeckoProvider: mockProvider,
+            enableMemoization: false,
+          );
+
+          // Get the coins list to populate the cache
+          await repository.getCoinList();
+
+          final assetId = AssetId(
+            id: 'bitcoin',
+            name: 'Bitcoin',
+            symbol: AssetSymbol(assetConfigId: 'BTC', coinGeckoId: 'bitcoin'),
+            chainId: AssetChainId(chainId: 0),
+            derivationPath: null,
+            subClass: CoinSubClass.utxo,
+          );
+
+          // Mock the market data response
+          when(
+            () => mockProvider.fetchCoinMarketData(
+              ids: any(named: 'ids'),
+              vsCurrency: any(named: 'vsCurrency'),
+            ),
+          ).thenAnswer(
+            (_) async => [
+              CoinMarketData(
+                id: 'bitcoin',
+                symbol: 'btc',
+                name: 'Bitcoin',
+                currentPrice: Decimal.fromInt(50000),
+                marketCap: Decimal.fromInt(1000000000),
+                marketCapRank: Decimal.fromInt(1),
+                fullyDilutedValuation: Decimal.fromInt(1050000000),
+                totalVolume: Decimal.fromInt(25000000),
+                high24h: Decimal.fromInt(52000),
+                low24h: Decimal.fromInt(48000),
+                priceChange24h: Decimal.fromInt(1000),
+                priceChangePercentage24h: Decimal.fromInt(2),
+                marketCapChange24h: Decimal.fromInt(50000000),
+                marketCapChangePercentage24h: Decimal.fromInt(5),
+                circulatingSupply: Decimal.fromInt(19000000),
+                totalSupply: Decimal.fromInt(21000000),
+                maxSupply: Decimal.fromInt(21000000),
+                ath: Decimal.fromInt(69000),
+                athChangePercentage: Decimal.parse('-27.5'),
+                athDate: DateTime.parse('2021-11-10T14:24:11.849Z'),
+                atl: Decimal.parse('67.81'),
+                atlChangePercentage: Decimal.parse('73662.1'),
+                atlDate: DateTime.parse('2013-07-06T00:00:00.000Z'),
+                lastUpdated: DateTime.now(),
+              ),
+            ],
+          );
+
+          // Call method with EUR fiat currency
+          await repository.getCoin24hrPriceChange(
+            assetId,
+            fiatCurrency: FiatCurrency.eur,
+          );
+
+          // Verify that EUR was used correctly
+          verify(
+            () => mockProvider.fetchCoinMarketData(
+              ids: ['bitcoin'],
+              vsCurrency: 'eur',
+            ),
+          ).called(1);
+        },
+      );
     });
   });
 }

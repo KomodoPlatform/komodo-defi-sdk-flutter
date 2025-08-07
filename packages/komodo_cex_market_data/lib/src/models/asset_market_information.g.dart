@@ -17,11 +17,11 @@ _AssetMarketInformation _$AssetMarketInformationFromJson(
   priceProvider: const CexDataProviderConverter().fromJson(
     json['price_provider'] as String?,
   ),
-  change24h: const DecimalConverter().fromJson(json['change_24h'] as String?),
+  change24h: const DecimalConverter().fromJson(json['change_24h']),
   change24hProvider: const CexDataProviderConverter().fromJson(
     json['change_24h_provider'] as String?,
   ),
-  volume24h: const DecimalConverter().fromJson(json['volume24h'] as String?),
+  volume24h: const DecimalConverter().fromJson(json['volume24h']),
   volumeProvider: const CexDataProviderConverter().fromJson(
     json['volume_provider'] as String?,
   ),

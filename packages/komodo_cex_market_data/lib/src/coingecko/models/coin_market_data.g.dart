@@ -6,69 +6,60 @@ part of 'coin_market_data.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_CoinMarketData _$CoinMarketDataFromJson(
-  Map<String, dynamic> json,
-) => _CoinMarketData(
-  id: json['id'] as String?,
-  symbol: json['symbol'] as String?,
-  name: json['name'] as String?,
-  image: json['image'] as String?,
-  currentPrice: const DecimalConverter().fromJson(
-    json['current_price'] as String?,
-  ),
-  marketCap: const DecimalConverter().fromJson(json['market_cap'] as String?),
-  marketCapRank: const DecimalConverter().fromJson(
-    json['market_cap_rank'] as String?,
-  ),
-  fullyDilutedValuation: const DecimalConverter().fromJson(
-    json['fully_diluted_valuation'] as String?,
-  ),
-  totalVolume: const DecimalConverter().fromJson(
-    json['total_volume'] as String?,
-  ),
-  high24h: const DecimalConverter().fromJson(json['high24h'] as String?),
-  low24h: const DecimalConverter().fromJson(json['low24h'] as String?),
-  priceChange24h: const DecimalConverter().fromJson(
-    json['price_change24h'] as String?,
-  ),
-  priceChangePercentage24h: const DecimalConverter().fromJson(
-    json['price_change_percentage24h'] as String?,
-  ),
-  marketCapChange24h: const DecimalConverter().fromJson(
-    json['market_cap_change24h'] as String?,
-  ),
-  marketCapChangePercentage24h: const DecimalConverter().fromJson(
-    json['market_cap_change_percentage24h'] as String?,
-  ),
-  circulatingSupply: const DecimalConverter().fromJson(
-    json['circulating_supply'] as String?,
-  ),
-  totalSupply: const DecimalConverter().fromJson(
-    json['total_supply'] as String?,
-  ),
-  maxSupply: const DecimalConverter().fromJson(json['max_supply'] as String?),
-  ath: const DecimalConverter().fromJson(json['ath'] as String?),
-  athChangePercentage: const DecimalConverter().fromJson(
-    json['ath_change_percentage'] as String?,
-  ),
-  athDate:
-      json['ath_date'] == null
-          ? null
-          : DateTime.parse(json['ath_date'] as String),
-  atl: const DecimalConverter().fromJson(json['atl'] as String?),
-  atlChangePercentage: const DecimalConverter().fromJson(
-    json['atl_change_percentage'] as String?,
-  ),
-  atlDate:
-      json['atl_date'] == null
-          ? null
-          : DateTime.parse(json['atl_date'] as String),
-  roi: json['roi'],
-  lastUpdated:
-      json['last_updated'] == null
-          ? null
-          : DateTime.parse(json['last_updated'] as String),
-);
+_CoinMarketData _$CoinMarketDataFromJson(Map<String, dynamic> json) =>
+    _CoinMarketData(
+      id: json['id'] as String?,
+      symbol: json['symbol'] as String?,
+      name: json['name'] as String?,
+      image: json['image'] as String?,
+      currentPrice: const DecimalConverter().fromJson(json['current_price']),
+      marketCap: const DecimalConverter().fromJson(json['market_cap']),
+      marketCapRank: const DecimalConverter().fromJson(json['market_cap_rank']),
+      fullyDilutedValuation: const DecimalConverter().fromJson(
+        json['fully_diluted_valuation'],
+      ),
+      totalVolume: const DecimalConverter().fromJson(json['total_volume']),
+      high24h: const DecimalConverter().fromJson(json['high24h']),
+      low24h: const DecimalConverter().fromJson(json['low24h']),
+      priceChange24h: const DecimalConverter().fromJson(
+        json['price_change24h'],
+      ),
+      priceChangePercentage24h: const DecimalConverter().fromJson(
+        json['price_change_percentage24h'],
+      ),
+      marketCapChange24h: const DecimalConverter().fromJson(
+        json['market_cap_change24h'],
+      ),
+      marketCapChangePercentage24h: const DecimalConverter().fromJson(
+        json['market_cap_change_percentage24h'],
+      ),
+      circulatingSupply: const DecimalConverter().fromJson(
+        json['circulating_supply'],
+      ),
+      totalSupply: const DecimalConverter().fromJson(json['total_supply']),
+      maxSupply: const DecimalConverter().fromJson(json['max_supply']),
+      ath: const DecimalConverter().fromJson(json['ath']),
+      athChangePercentage: const DecimalConverter().fromJson(
+        json['ath_change_percentage'],
+      ),
+      athDate:
+          json['ath_date'] == null
+              ? null
+              : DateTime.parse(json['ath_date'] as String),
+      atl: const DecimalConverter().fromJson(json['atl']),
+      atlChangePercentage: const DecimalConverter().fromJson(
+        json['atl_change_percentage'],
+      ),
+      atlDate:
+          json['atl_date'] == null
+              ? null
+              : DateTime.parse(json['atl_date'] as String),
+      roi: json['roi'],
+      lastUpdated:
+          json['last_updated'] == null
+              ? null
+              : DateTime.parse(json['last_updated'] as String),
+    );
 
 Map<String, dynamic> _$CoinMarketDataToJson(
   _CoinMarketData instance,

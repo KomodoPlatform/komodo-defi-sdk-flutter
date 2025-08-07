@@ -186,6 +186,60 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     required int fromUnixTimestamp,
     required int toUnixTimestamp,
     String? precision,
+  }) async {
+    // Validate that dates are within CoinGecko's historical data limit
+    _validateHistoricalDataAccess(fromUnixTimestamp, toUnixTimestamp);
+
+    const maxDaysPerRequest = 365;
+    const secondsPerDay = 86400;
+    const maxSecondsPerRequest = maxDaysPerRequest * secondsPerDay;
+
+    final totalDuration = toUnixTimestamp - fromUnixTimestamp;
+
+    // If the range is within 365 days, make a single request
+    if (totalDuration <= maxSecondsPerRequest) {
+      return _fetchCoinMarketChartSingle(
+        id: id,
+        vsCurrency: vsCurrency,
+        fromUnixTimestamp: fromUnixTimestamp,
+        toUnixTimestamp: toUnixTimestamp,
+        precision: precision,
+      );
+    }
+
+    // Split into multiple requests and combine results
+    final List<CoinMarketChart> charts = [];
+    int currentFrom = fromUnixTimestamp;
+
+    while (currentFrom < toUnixTimestamp) {
+      final currentTo =
+          (currentFrom + maxSecondsPerRequest) > toUnixTimestamp
+              ? toUnixTimestamp
+              : currentFrom + maxSecondsPerRequest;
+
+      final chart = await _fetchCoinMarketChartSingle(
+        id: id,
+        vsCurrency: vsCurrency,
+        fromUnixTimestamp: currentFrom,
+        toUnixTimestamp: currentTo,
+        precision: precision,
+      );
+
+      charts.add(chart);
+      currentFrom = currentTo;
+    }
+
+    // Combine all charts into one
+    return _combineCoinMarketCharts(charts);
+  }
+
+  /// Makes a single API request for coin market chart data.
+  Future<CoinMarketChart> _fetchCoinMarketChartSingle({
+    required String id,
+    required String vsCurrency,
+    required int fromUnixTimestamp,
+    required int toUnixTimestamp,
+    String? precision,
   }) {
     final queryParameters = <String, String>{
       'vs_currency': vsCurrency,
@@ -209,6 +263,84 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
         );
       }
     });
+  }
+
+  /// Combines multiple CoinMarketChart objects into a single one.
+  CoinMarketChart _combineCoinMarketCharts(List<CoinMarketChart> charts) {
+    if (charts.isEmpty) {
+      throw ArgumentError('Cannot combine empty list of charts');
+    }
+
+    if (charts.length == 1) {
+      return charts.first;
+    }
+
+    final List<List<num>> combinedPrices = [];
+    final List<List<num>> combinedMarketCaps = [];
+    final List<List<num>> combinedTotalVolumes = [];
+
+    for (final chart in charts) {
+      combinedPrices.addAll(chart.prices);
+      combinedMarketCaps.addAll(chart.marketCaps);
+      combinedTotalVolumes.addAll(chart.totalVolumes);
+    }
+
+    // Remove potential duplicate data points at boundaries
+    final uniquePrices = _removeDuplicateDataPoints(combinedPrices);
+    final uniqueMarketCaps = _removeDuplicateDataPoints(combinedMarketCaps);
+    final uniqueTotalVolumes = _removeDuplicateDataPoints(combinedTotalVolumes);
+
+    return CoinMarketChart(
+      prices: uniquePrices,
+      marketCaps: uniqueMarketCaps,
+      totalVolumes: uniqueTotalVolumes,
+    );
+  }
+
+  /// Removes duplicate data points based on timestamp (first element).
+  List<List<num>> _removeDuplicateDataPoints(List<List<num>> dataPoints) {
+    if (dataPoints.isEmpty) return dataPoints;
+
+    final Map<num, List<num>> uniquePoints = {};
+    for (final point in dataPoints) {
+      if (point.isNotEmpty) {
+        final timestamp = point[0];
+        uniquePoints[timestamp] = point;
+      }
+    }
+
+    final sortedKeys = uniquePoints.keys.toList()..sort();
+    return sortedKeys.map((key) => uniquePoints[key]!).toList();
+  }
+
+  /// Validates that the requested time range is within CoinGecko's historical data limits.
+  /// Public API users are limited to querying historical data within the past 365 days.
+  void _validateHistoricalDataAccess(
+    int fromUnixTimestamp,
+    int toUnixTimestamp,
+  ) {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    const maxDaysBack = 365;
+    const secondsPerDay = 86400;
+    const maxSecondsBack = maxDaysBack * secondsPerDay;
+
+    // Check if the from date is more than 365 days in the past
+    final daysFromNow = (now - fromUnixTimestamp) / secondsPerDay;
+    if (daysFromNow > maxDaysBack) {
+      throw ArgumentError(
+        'From date cannot be more than 365 days in the past for CoinGecko public API. '
+        'From date is ${daysFromNow.ceil()} days ago. Maximum allowed: $maxDaysBack days.',
+      );
+    }
+
+    // Check if the to date is more than 365 days in the past
+    final toDaysFromNow = (now - toUnixTimestamp) / secondsPerDay;
+    if (toDaysFromNow > maxDaysBack) {
+      throw ArgumentError(
+        'To date cannot be more than 365 days in the past for CoinGecko public API. '
+        'To date is ${toDaysFromNow.ceil()} days ago. Maximum allowed: $maxDaysBack days.',
+      );
+    }
   }
 
   /// Fetches the market chart data for a specific currency.
@@ -321,6 +453,13 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     int days, {
     int? precision,
   }) {
+    // Validate days constraint for CoinGecko public API
+    if (days > 365) {
+      throw ArgumentError(
+        'Days parameter cannot exceed 365 for CoinGecko public API. '
+        'Requested: $days days. Maximum allowed: 365 days.',
+      );
+    }
     final queryParameters = <String, String>{
       'id': id,
       'vs_currency': vsCurrency,

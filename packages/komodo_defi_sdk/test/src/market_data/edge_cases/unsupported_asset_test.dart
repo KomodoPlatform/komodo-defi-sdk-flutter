@@ -497,14 +497,16 @@ class TestManager with RepositoryFallbackMixin {
     QuoteCurrency quoteCurrency,
     PriceRequestType requestType,
     Future<T> Function(CexRepository repo) operation,
-    String operationName,
-  ) {
+    String operationName, {
+    int? maxTotalAttempts,
+  }) {
     return tryRepositoriesInOrder(
       assetId,
       quoteCurrency,
       requestType,
       operation,
       operationName,
+      maxTotalAttempts: maxTotalAttempts ?? 3,
     );
   }
 
@@ -514,14 +516,16 @@ class TestManager with RepositoryFallbackMixin {
     QuoteCurrency quoteCurrency,
     PriceRequestType requestType,
     Future<T> Function(CexRepository repo) operation,
-    String operationName,
-  ) {
+    String operationName, {
+    int? maxTotalAttempts,
+  }) {
     return tryRepositoriesInOrderMaybe(
       assetId,
       quoteCurrency,
       requestType,
       operation,
       operationName,
+      maxTotalAttempts: maxTotalAttempts ?? 3,
     );
   }
 }

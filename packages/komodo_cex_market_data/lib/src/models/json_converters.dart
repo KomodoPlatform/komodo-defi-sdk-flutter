@@ -2,14 +2,30 @@ import 'package:decimal/decimal.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 /// Custom converter for Decimal type
-class DecimalConverter implements JsonConverter<Decimal?, String?> {
+class DecimalConverter implements JsonConverter<Decimal?, dynamic> {
   const DecimalConverter();
 
   @override
-  Decimal? fromJson(String? json) {
-    if (json == null || json.isEmpty) return null;
+  Decimal? fromJson(dynamic json) {
+    if (json == null) return null;
+
     try {
-      return Decimal.parse(json);
+      // Handle different input types
+      if (json is String) {
+        if (json.isEmpty) return null;
+        return Decimal.parse(json);
+      } else if (json is num) {
+        return Decimal.parse(json.toString());
+      } else if (json is int) {
+        return Decimal.parse(json.toString());
+      } else if (json is double) {
+        return Decimal.parse(json.toString());
+      }
+
+      // Try to convert any other type to string first
+      final stringValue = json.toString();
+      if (stringValue.isEmpty || stringValue == 'null') return null;
+      return Decimal.parse(stringValue);
     } catch (e) {
       return null;
     }

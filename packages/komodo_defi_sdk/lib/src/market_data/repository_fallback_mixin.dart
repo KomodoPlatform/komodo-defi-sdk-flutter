@@ -16,6 +16,13 @@ mixin RepositoryFallbackMixin {
   static const _repositoryBackoffDuration = Duration(minutes: 5);
   static const _maxFailureCount = 3;
 
+  // Conservative backoff strategy for fallback operations
+  static final _fallbackBackoffStrategy = ExponentialBackoff(
+    initialDelay: const Duration(milliseconds: 300),
+    maxDelay: const Duration(seconds: 5),
+    withJitter: true,
+  );
+
   /// Must be implemented by the mixing class
   List<CexRepository> get priceRepositories;
   RepositorySelectionStrategy get selectionStrategy;
@@ -77,7 +84,21 @@ mixin RepositoryFallbackMixin {
       _logger.warning(
         'No healthy repositories available, using all repositories',
       );
-      return priceRepositories;
+      // Even when no healthy repos, still filter by support
+      final supportingRepos = <CexRepository>[];
+      for (final repo in priceRepositories) {
+        try {
+          if (await repo.supports(assetId, quoteCurrency, requestType)) {
+            supportingRepos.add(repo);
+          }
+        } catch (e) {
+          _logger.fine(
+            'Error checking support for repository ${repo.runtimeType}: $e',
+          );
+          // Skip repositories that error on supports check
+        }
+      }
+      return supportingRepos;
     }
 
     // Get primary repository from healthy ones
@@ -93,20 +114,39 @@ mixin RepositoryFallbackMixin {
       return <CexRepository>[];
     }
 
-    // Order: primary first, then other healthy repos, then unhealthy repos
+    // Order: primary first, then other healthy repos that support the asset,
+    // then unhealthy repos that support the asset
     final orderedRepos = <CexRepository>[primaryRepo];
 
-    // Add other healthy repositories
+    // Add other healthy repositories that support the asset
     for (final repo in healthyRepos) {
       if (repo != primaryRepo) {
-        orderedRepos.add(repo);
+        try {
+          if (await repo.supports(assetId, quoteCurrency, requestType)) {
+            orderedRepos.add(repo);
+          }
+        } catch (e) {
+          _logger.fine(
+            'Error checking support for healthy repository ${repo.runtimeType}: $e',
+          );
+          // Skip repositories that error on supports check
+        }
       }
     }
 
-    // Add unhealthy repositories as last resort
+    // Add unhealthy repositories that support the asset as last resort
     for (final repo in priceRepositories) {
       if (!_isRepositoryHealthy(repo)) {
-        orderedRepos.add(repo);
+        try {
+          if (await repo.supports(assetId, quoteCurrency, requestType)) {
+            orderedRepos.add(repo);
+          }
+        } catch (e) {
+          _logger.fine(
+            'Error checking support for unhealthy repository ${repo.runtimeType}: $e',
+          );
+          // Skip repositories that error on supports check
+        }
       }
     }
 
@@ -114,13 +154,15 @@ mixin RepositoryFallbackMixin {
   }
 
   /// Generic method to try repositories in order until one succeeds
+  /// Uses smart retry logic with maximum 3 total attempts across
+  /// all repositories
   Future<T> tryRepositoriesInOrder<T>(
     AssetId assetId,
     QuoteCurrency quoteCurrency,
     PriceRequestType requestType,
     Future<T> Function(CexRepository repo) operation,
     String operationName, {
-    int maxAttemptsPerRepo = 2,
+    int maxTotalAttempts = 3,
   }) async {
     final repositories = await _getHealthyRepositoriesInOrder(
       assetId,
@@ -135,26 +177,34 @@ mixin RepositoryFallbackMixin {
     }
 
     Exception? lastException;
+    var attemptCount = 0;
 
-    for (int i = 0; i < repositories.length; i++) {
-      final repo = repositories[i];
+    // Smart retry logic: try each repository in order first, then retry
+    // if needed
+    // Example with 3 attempts and 2 repos: repo1, repo2, repo1
+    for (var attempt = 0; attempt < maxTotalAttempts; attempt++) {
+      final repositoryIndex = attempt % repositories.length;
+      final repo = repositories[repositoryIndex];
+
       try {
+        attemptCount++;
         _logger.finer(
           'Attempting $operationName for ${assetId.symbol.configSymbol} '
-          'with repository ${repo.runtimeType} (attempt ${i + 1}/${repositories.length})',
+          'with repository ${repo.runtimeType} (attempt $attemptCount/$maxTotalAttempts)',
         );
 
         final result = await retry(
           () => operation(repo),
-          maxAttempts: maxAttemptsPerRepo,
+          maxAttempts: 1, // Single attempt per call, we handle retries here
+          backoffStrategy: _fallbackBackoffStrategy,
         );
 
         _recordRepositorySuccess(repo);
 
-        if (i > 0) {
+        if (attemptCount > 1) {
           _logger.info(
             'Successfully fetched $operationName for ${assetId.symbol.configSymbol} '
-            'using fallback repository ${repo.runtimeType}',
+            'using repository ${repo.runtimeType} on attempt $attemptCount',
           );
         }
 
@@ -165,28 +215,30 @@ mixin RepositoryFallbackMixin {
         _logger
           ..fine(
             'Repository ${repo.runtimeType} failed for $operationName '
-            '${assetId.symbol.configSymbol}: $e',
+            '${assetId.symbol.configSymbol} (attempt $attemptCount): $e',
           )
           ..finest('Stack trace: $s');
       }
     }
 
-    // All repositories failed
+    // All attempts exhausted
     _logger.warning(
-      'All repositories failed for $operationName ${assetId.symbol.configSymbol}',
+      'All $attemptCount attempts failed for $operationName '
+      '${assetId.symbol.configSymbol}',
     );
     throw lastException ??
-        Exception('All repositories failed for $operationName');
+        Exception('All $maxTotalAttempts attempts failed for $operationName');
   }
 
-  /// Tries repositories in order but returns null instead of throwing on failure
+  /// Tries repositories in order but returns null instead of
+  /// throwing on failure
   Future<T?> tryRepositoriesInOrderMaybe<T>(
     AssetId assetId,
     QuoteCurrency quoteCurrency,
     PriceRequestType requestType,
     Future<T> Function(CexRepository repo) operation,
     String operationName, {
-    int maxAttemptsPerRepo = 2,
+    int maxTotalAttempts = 3,
   }) async {
     try {
       return await tryRepositoriesInOrder(
@@ -195,12 +247,13 @@ mixin RepositoryFallbackMixin {
         requestType,
         operation,
         operationName,
-        maxAttemptsPerRepo: maxAttemptsPerRepo,
+        maxTotalAttempts: maxTotalAttempts,
       );
     } catch (e, s) {
       _logger
         ..fine(
-          'All repositories failed for $operationName ${assetId.symbol.configSymbol}: $e',
+          'All attempts failed for $operationName '
+          '${assetId.symbol.configSymbol}',
         )
         ..finest('Stack trace: $s');
       return null;
@@ -215,14 +268,17 @@ mixin RepositoryFallbackMixin {
 
   // Expose health tracking methods for testing
   @visibleForTesting
+  // ignore: public_member_api_docs
   bool isRepositoryHealthyForTest(CexRepository repo) =>
       _isRepositoryHealthy(repo);
 
   @visibleForTesting
+  // ignore: public_member_api_docs
   void recordRepositoryFailureForTest(CexRepository repo) =>
       _recordRepositoryFailure(repo);
 
   @visibleForTesting
+  // ignore: public_member_api_docs
   void recordRepositorySuccessForTest(CexRepository repo) =>
       _recordRepositorySuccess(repo);
 }

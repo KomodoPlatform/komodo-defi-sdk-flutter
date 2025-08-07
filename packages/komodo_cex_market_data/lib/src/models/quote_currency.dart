@@ -54,10 +54,92 @@ sealed class QuoteCurrency with _$QuoteCurrency {
   }
 
   /// Get the Binance API identifier
+  /// Maps fiat currencies to their stablecoin equivalents since Binance primarily
+  /// trades against stablecoins rather than direct fiat currencies.
   String get binanceId {
     return when(
-      fiat: (symbol, displayName) => symbol.toUpperCase(),
-      stablecoin: (symbol, displayName, underlyingFiat) => symbol.toUpperCase(),
+      fiat: (symbol, displayName) {
+        // Some fiat currencies are directly supported by Binance
+        const binanceDirectFiats = {
+          'EUR',
+          'GBP',
+          'AUD',
+          'BRL',
+          'ARS',
+          'NGN',
+          'PLN',
+          'RUB',
+          'TRY',
+          'UAH',
+          'ZAR',
+        };
+
+        final symbolUpper = symbol.toUpperCase();
+
+        // If directly supported by Binance, return the fiat symbol
+        if (binanceDirectFiats.contains(symbolUpper)) {
+          return symbolUpper;
+        }
+
+        // Otherwise, try to map to a stablecoin
+        final primary = primaryStablecoin;
+        if (primary != null) {
+          try {
+            return primary.binanceId;
+          } catch (e) {
+            // If primary stablecoin is not supported by Binance, try other available ones
+            for (final stablecoin in availableStablecoins) {
+              try {
+                return stablecoin.binanceId;
+              } catch (e) {
+                // Continue to next stablecoin
+                continue;
+              }
+            }
+          }
+        }
+
+        // If no stablecoins are available or supported, check if this should be the symbol itself
+        if (symbolUpper == 'USD') {
+          // USD is a special case - should map to USDT for Binance
+          return 'USDT';
+        }
+
+        // For other fiat currencies, return the symbol itself as fallback
+        return symbolUpper;
+      },
+      stablecoin: (symbol, displayName, underlyingFiat) {
+        // Common stablecoins supported by Binance
+        const binanceSupportedStablecoins = {
+          'USDT', 'USDC', 'BUSD', 'FDUSD', 'TUSD', 'USDD', 'USDP', // USD-pegged
+          'EURS', 'EURT', // EUR-pegged
+          'GBPT', // GBP-pegged
+          'JPYT', // JPY-pegged
+          'CNYT', // CNY-pegged
+          'IDRT', // IDR-pegged
+          'DAI', 'FRAX', 'LUSD', 'GUSD', 'SUSD', 'FEI', // Other USD stablecoins
+        };
+
+        final symbolUpper = symbol.toUpperCase();
+
+        // If the stablecoin is directly supported, use it
+        if (binanceSupportedStablecoins.contains(symbolUpper)) {
+          return symbolUpper;
+        }
+
+        // If not directly supported, try to use the underlying fiat's mapping
+        try {
+          return underlyingFiat.binanceId;
+        } catch (e) {
+          // If underlying fiat doesn't have a mapping, fall back to USDT for USD-pegged
+          if (underlyingFiat.symbol.toUpperCase() == 'USD') {
+            return 'USDT';
+          }
+          throw UnsupportedError(
+            'Binance does not support stablecoin: $symbol',
+          );
+        }
+      },
       crypto: (symbol, displayName) => symbol.toUpperCase(),
       commodity: (symbol, displayName) => symbol.toUpperCase(),
     );
@@ -376,6 +458,18 @@ class FiatCurrency {
 class Stablecoin {
   Stablecoin._();
 
+  /// Get all stablecoins that are pegged to the specified fiat currency
+  static List<QuoteCurrency> getStablecoinsForFiat(FiatQuoteCurrency fiat) {
+    return values
+        .where(
+          (stablecoin) => stablecoin.maybeWhen(
+            stablecoin: (_, __, underlying) => underlying == fiat,
+            orElse: () => false,
+          ),
+        )
+        .toList();
+  }
+
   // USD-pegged stablecoins
   static const usdt = QuoteCurrency.stablecoin(
     symbol: 'USDT',
@@ -486,6 +580,13 @@ class Stablecoin {
     underlyingFiat: FiatCurrency.cny as FiatQuoteCurrency,
   );
 
+  // IDR-pegged stablecoins
+  static const idrt = QuoteCurrency.stablecoin(
+    symbol: 'IDRT',
+    displayName: 'Rupiah Token',
+    underlyingFiat: FiatCurrency.idr as FiatQuoteCurrency,
+  );
+
   /// List of all available stablecoins.
   ///
   /// This array is useful for:
@@ -522,6 +623,7 @@ class Stablecoin {
     gbpt,
     jpyt,
     cnyt,
+    idrt,
   ];
 
   /// Optimized lookup map for fast symbol-to-stablecoin resolution.
@@ -705,5 +807,48 @@ extension QuoteCurrencyTypeChecking on QuoteCurrency {
       crypto: (symbol, displayName) => FiatCurrency.usd,
       commodity: (symbol, displayName) => FiatCurrency.usd,
     );
+  }
+}
+
+/// Extension methods for currency mapping functionality
+extension QuoteCurrencyMapping on QuoteCurrency {
+  /// Get all stablecoins pegged to this fiat currency
+  /// Returns empty list if this is not a fiat currency or has no stablecoins
+  List<QuoteCurrency> get availableStablecoins {
+    if (!isFiat) return [];
+    return Stablecoin.getStablecoinsForFiat(this as FiatQuoteCurrency);
+  }
+
+  /// Get the primary/most liquid stablecoin for this fiat currency
+  /// Returns null if this is not a fiat currency or has no stablecoins
+  QuoteCurrency? get primaryStablecoin {
+    if (!isFiat) return null;
+    return _getPrimaryStablecoinForFiat(this as FiatQuoteCurrency);
+  }
+
+  /// Internal method to determine the primary stablecoin for a fiat currency
+  /// Based on market cap, liquidity, and adoption
+  QuoteCurrency? _getPrimaryStablecoinForFiat(FiatQuoteCurrency fiat) {
+    final symbol = fiat.symbol.toUpperCase();
+
+    // Define primary stablecoins for each fiat currency
+    switch (symbol) {
+      case 'USD':
+        return Stablecoin.usdt; // Largest by market cap
+      case 'EUR':
+        return Stablecoin.eurs; // Largest EUR stablecoin
+      case 'GBP':
+        return Stablecoin.gbpt; // Main GBP stablecoin
+      case 'JPY':
+        return Stablecoin.jpyt; // Main JPY stablecoin
+      case 'CNY':
+        return Stablecoin.cnyt; // Main CNY stablecoin
+      case 'IDR':
+        return Stablecoin.idrt; // Indonesian Rupiah Token
+      default:
+        // For other currencies, return the first available stablecoin if any
+        final available = availableStablecoins;
+        return available.isNotEmpty ? available.first : null;
+    }
   }
 }

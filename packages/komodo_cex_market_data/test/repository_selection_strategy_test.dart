@@ -1,22 +1,87 @@
-import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
+import 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
+    show PriceRequestType;
+import 'package:komodo_cex_market_data/src/binance/binance.dart';
+import 'package:komodo_cex_market_data/src/binance/models/binance_24hr_ticker.dart';
+import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
+import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
+import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
-class MockBinanceRepository extends Mock implements BinanceRepository {}
+// Test provider implementations similar to repository_priority_manager_test.dart
+class TestBinanceProvider implements IBinanceProvider {
+  @override
+  Future<Binance24hrTicker> fetch24hrTicker(
+    String symbol, {
+    String? baseUrl,
+  }) async {
+    throw UnimplementedError();
+  }
 
-class MockCoinGeckoRepository extends Mock implements CoinGeckoRepository {}
+  @override
+  Future<BinanceExchangeInfoResponse> fetchExchangeInfo({
+    String? baseUrl,
+  }) async {
+    return BinanceExchangeInfoResponse(
+      symbols: [],
+      rateLimits: [],
+      serverTime: 0,
+      timezone: '',
+    );
+  }
+
+  @override
+  Future<BinanceExchangeInfoResponseReduced> fetchExchangeInfoReduced({
+    String? baseUrl,
+  }) async {
+    return BinanceExchangeInfoResponseReduced(
+      timezone: 'UTC',
+      serverTime: DateTime.now().millisecondsSinceEpoch,
+      symbols: [
+        SymbolReduced(
+          symbol: 'BTCUSD',
+          status: 'TRADING',
+          baseAsset: 'BTC',
+          baseAssetPrecision: 8,
+          quoteAsset: 'USD',
+          quotePrecision: 8,
+          quoteAssetPrecision: 8,
+          isSpotTradingAllowed: true,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Future<CoinOhlc> fetchKlines(
+    String symbol,
+    String interval, {
+    int? startUnixTimestampMilliseconds,
+    int? endUnixTimestampMilliseconds,
+    int? limit,
+    String? baseUrl,
+  }) async {
+    throw UnimplementedError();
+  }
+}
 
 void main() {
   group('RepositorySelectionStrategy', () {
     late RepositorySelectionStrategy strategy;
-    late MockBinanceRepository binance;
-    late MockCoinGeckoRepository gecko;
+    late BinanceRepository binance;
+    late CoinGeckoRepository gecko;
 
     setUp(() {
       strategy = DefaultRepositorySelectionStrategy();
-      binance = MockBinanceRepository();
-      gecko = MockCoinGeckoRepository();
+      binance = BinanceRepository(
+        binanceProvider: TestBinanceProvider(),
+        enableMemoization: false,
+      );
+      gecko = CoinGeckoRepository(
+        coinGeckoProvider: CoinGeckoCexProvider(),
+        enableMemoization: false,
+      );
     });
 
     test('selects repository based on priority', () async {
@@ -29,29 +94,6 @@ void main() {
         subClass: CoinSubClass.utxo,
       );
       final fiat = FiatCurrency.usd;
-
-      when(() => binance.getCoinList()).thenAnswer(
-        (_) async => [
-          CexCoin(
-            id: 'BTC',
-            symbol: 'BTC',
-            name: 'BTC',
-            currencies: {'USD'},
-            source: 'binance',
-          ),
-        ],
-      );
-      when(() => gecko.getCoinList()).thenAnswer(
-        (_) async => [
-          CexCoin(
-            id: 'BTC',
-            symbol: 'BTC',
-            name: 'BTC',
-            currencies: {'USD'},
-            source: 'gecko',
-          ),
-        ],
-      );
 
       final repo = await strategy.selectRepository(
         assetId: asset,

@@ -27,7 +27,11 @@ class CoinGeckoRepository implements CexRepository {
     bool enableMemoization = true,
   }) : _defaultBackoffStrategy =
            defaultBackoffStrategy ??
-           ExponentialBackoff(maxDelay: const Duration(seconds: 5)),
+           ExponentialBackoff(
+             initialDelay: const Duration(milliseconds: 300),
+             maxDelay: const Duration(seconds: 5),
+             withJitter: true,
+           ),
        _idResolutionStrategy = CoinGeckoIdResolutionStrategy(),
        _enableMemoization = enableMemoization;
 
@@ -50,50 +54,26 @@ class CoinGeckoRepository implements CexRepository {
   /// ```dart
   /// final List<CoinMarketData> marketData = await getCoinGeckoMarketData();
   /// ```
-  Future<List<CoinMarketData>> getCoinGeckoMarketData({
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
-  }) async {
-    return retry(
-      coinGeckoProvider.fetchCoinMarketData,
-      maxAttempts: maxAttempts,
-      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
-    );
+  Future<List<CoinMarketData>> getCoinGeckoMarketData() async {
+    return coinGeckoProvider.fetchCoinMarketData();
   }
 
   @override
-  Future<List<CexCoin>> getCoinList({
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
-  }) async {
+  Future<List<CexCoin>> getCoinList() async {
     if (_enableMemoization) {
-      return _coinListMemoizer.runOnce(
-        () => _fetchCoinListInternal(maxAttempts, backoffStrategy),
-      );
+      return _coinListMemoizer.runOnce(() => _fetchCoinListInternal());
     } else {
       // Warning: Direct API calls without memoization can lead to API rate limiting
       // and unnecessary network requests. Use this mode sparingly.
-      return _fetchCoinListInternal(maxAttempts, backoffStrategy);
+      return _fetchCoinListInternal();
     }
   }
 
   /// Internal method to fetch coin list data from the API.
-  Future<List<CexCoin>> _fetchCoinListInternal(
-    int maxAttempts,
-    BackoffStrategy? backoffStrategy,
-  ) async {
-    final effectiveBackoffStrategy = backoffStrategy ?? _defaultBackoffStrategy;
-
-    final coins = await retry(
-      coinGeckoProvider.fetchCoinList,
-      maxAttempts: maxAttempts,
-      backoffStrategy: effectiveBackoffStrategy,
-    );
-    final supportedCurrencies = await retry(
-      coinGeckoProvider.fetchSupportedVsCurrencies,
-      maxAttempts: maxAttempts,
-      backoffStrategy: effectiveBackoffStrategy,
-    );
+  Future<List<CexCoin>> _fetchCoinListInternal() async {
+    final coins = await coinGeckoProvider.fetchCoinList();
+    final supportedCurrencies =
+        await coinGeckoProvider.fetchSupportedVsCurrencies();
 
     final result =
         coins
@@ -116,8 +96,6 @@ class CoinGeckoRepository implements CexRepository {
     DateTime? startAt,
     DateTime? endAt,
     int? limit,
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
   }) async {
     var days = 1;
     if (startAt != null && endAt != null) {
@@ -127,14 +105,10 @@ class CoinGeckoRepository implements CexRepository {
 
     // If the request is within the CoinGecko limit, make a single request
     if (days <= maxCoinGeckoDays) {
-      return retry(
-        () => coinGeckoProvider.fetchCoinOhlc(
-          symbol.baseCoinTicker,
-          symbol.relCoinTicker,
-          days,
-        ),
-        maxAttempts: maxAttempts,
-        backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+      return coinGeckoProvider.fetchCoinOhlc(
+        symbol.baseCoinTicker,
+        symbol.relCoinTicker,
+        days,
       );
     }
 
@@ -156,14 +130,10 @@ class CoinGeckoRepository implements CexRepository {
       final batchDays = batchEndDate.difference(currentStart).inDays;
       if (batchDays <= 0) break;
 
-      final batchOhlc = await retry(
-        () => coinGeckoProvider.fetchCoinOhlc(
-          symbol.baseCoinTicker,
-          symbol.relCoinTicker,
-          batchDays,
-        ),
-        maxAttempts: maxAttempts,
-        backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+      final batchOhlc = await coinGeckoProvider.fetchCoinOhlc(
+        symbol.baseCoinTicker,
+        symbol.relCoinTicker,
+        batchDays,
       );
 
       allOhlcData.addAll(batchOhlc.ohlc);
@@ -194,10 +164,19 @@ class CoinGeckoRepository implements CexRepository {
       return mappedCurrency;
     }
 
-    // Fallback: Check if the original currency is directly supported
-    final original = fiatCurrency.symbol.toLowerCase();
-    if (_cachedFiatCurrencies?.contains(original.toUpperCase()) == true) {
-      return original;
+    // For stablecoins, never fall back to the stablecoin symbol itself
+    // Always prefer the underlying fiat currency
+    final isStablecoin = fiatCurrency.maybeWhen(
+      stablecoin: (_, __, ___) => true,
+      orElse: () => false,
+    );
+
+    if (!isStablecoin) {
+      // Fallback: Check if the original currency is directly supported (only for non-stablecoins)
+      final original = fiatCurrency.symbol.toLowerCase();
+      if (_cachedFiatCurrencies?.contains(original.toUpperCase()) == true) {
+        return original;
+      }
     }
 
     // Final fallback: Default to USD
@@ -209,19 +188,13 @@ class CoinGeckoRepository implements CexRepository {
     AssetId assetId, {
     DateTime? priceDate,
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
     final mappedFiatId = _mapFiatCurrencyToCoingecko(fiatCurrency);
 
-    final coinPrice = await retry(
-      () => coinGeckoProvider.fetchCoinHistoricalMarketData(
-        id: tradingSymbol,
-        date: priceDate ?? DateTime.now(),
-      ),
-      maxAttempts: maxAttempts,
-      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+    final coinPrice = await coinGeckoProvider.fetchCoinHistoricalMarketData(
+      id: tradingSymbol,
+      date: priceDate ?? DateTime.now(),
     );
 
     return _extractPriceFromResponse(coinPrice, mappedFiatId);
@@ -245,8 +218,6 @@ class CoinGeckoRepository implements CexRepository {
     AssetId assetId,
     List<DateTime> dates, {
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
     final mappedFiatId = _mapFiatCurrencyToCoingecko(fiatCurrency);
@@ -304,8 +275,6 @@ class CoinGeckoRepository implements CexRepository {
   Future<Decimal> getCoin24hrPriceChange(
     AssetId assetId, {
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
-    int maxAttempts = 5,
-    BackoffStrategy? backoffStrategy,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
     final mappedFiatId = _mapFiatCurrencyToCoingecko(fiatCurrency);
@@ -314,25 +283,19 @@ class CoinGeckoRepository implements CexRepository {
       throw ArgumentError('Coin and fiat coin cannot be the same');
     }
 
-    return retry(
-      () async {
-        final priceData = await coinGeckoProvider.fetchCoinMarketData(
-          ids: [tradingSymbol],
-          vsCurrency: mappedFiatId, // Use mapped fiat currency
-        );
-        if (priceData.length != 1) {
-          throw Exception('Invalid market data for $tradingSymbol');
-        }
-
-        final priceChange = priceData.first.priceChange24h;
-        if (priceChange == null) {
-          throw Exception('Price change data not available for $tradingSymbol');
-        }
-        return priceChange;
-      },
-      maxAttempts: maxAttempts,
-      backoffStrategy: backoffStrategy ?? _defaultBackoffStrategy,
+    final priceData = await coinGeckoProvider.fetchCoinMarketData(
+      ids: [tradingSymbol],
+      vsCurrency: mappedFiatId, // Use mapped fiat currency
     );
+    if (priceData.length != 1) {
+      throw Exception('Invalid market data for $tradingSymbol');
+    }
+
+    final priceChange = priceData.first.priceChange24h;
+    if (priceChange == null) {
+      throw Exception('Price change data not available for $tradingSymbol');
+    }
+    return priceChange;
   }
 
   @override
