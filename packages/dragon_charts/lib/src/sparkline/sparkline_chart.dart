@@ -43,7 +43,12 @@ class _CustomSparklinePainter extends CustomPainter {
     required this.lineThickness,
     required this.isCurved,
   }) {
-    average = data.reduce((a, b) => a + b) / data.length;
+    // Handle empty data
+    if (data.isEmpty) {
+      average = 0;
+    } else {
+      average = data.reduce((a, b) => a + b) / data.length;
+    }
   }
 
   final List<double> data;
@@ -55,9 +60,45 @@ class _CustomSparklinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Handle empty data
+    if (data.isEmpty) return;
+    
+    // Handle single data point
+    if (data.length == 1) {
+      // Draw a horizontal line at the middle of the canvas
+      final Paint paint = Paint()
+        ..color = data[0] >= 0 ? positiveLineColor : negativeLineColor
+        ..strokeWidth = lineThickness
+        ..style = PaintingStyle.stroke;
+      
+      canvas.drawLine(
+        Offset(0, size.height / 2),
+        Offset(size.width, size.height / 2),
+        paint,
+      );
+      return;
+    }
+    
     final double dx = size.width / (data.length - 1);
     final double minValue = data.reduce((a, b) => a < b ? a : b);
     final double maxValue = data.reduce((a, b) => a > b ? a : b);
+    
+    // Handle case where all values are the same
+    if (maxValue == minValue) {
+      // Draw a horizontal line at the middle of the canvas
+      final Paint paint = Paint()
+        ..color = data[0] >= average ? positiveLineColor : negativeLineColor
+        ..strokeWidth = lineThickness
+        ..style = PaintingStyle.stroke;
+      
+      canvas.drawLine(
+        Offset(0, size.height / 2),
+        Offset(size.width, size.height / 2),
+        paint,
+      );
+      return;
+    }
+    
     final double scaleY = size.height / (maxValue - minValue);
     final double yAvg = size.height - ((average - minValue) * scaleY);
 
