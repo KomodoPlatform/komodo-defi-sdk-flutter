@@ -24,6 +24,9 @@ class KomodoPriceRepository extends CexRepository {
   Map<String, AssetMarketInformation>? _cachedPrices;
   DateTime? _cacheTimestamp;
 
+  /// Future for pending cache refresh to prevent concurrent fetches
+  Future<Map<String, AssetMarketInformation>>? _pendingFetch;
+
   /// Cache lifetime in minutes
   static const int _cacheLifetimeMinutes = 5;
 
@@ -59,7 +62,13 @@ class KomodoPriceRepository extends CexRepository {
   }
 
   /// Gets cached Komodo prices or fetches fresh data if cache is expired.
+  /// Prevents concurrent cache refreshes by using a shared future.
   Future<Map<String, AssetMarketInformation>> _getCachedKomodoPrices() async {
+    // Check if a fetch is already in progress
+    if (_pendingFetch != null) {
+      return _pendingFetch!;
+    }
+
     // Check if cache is valid
     if (_cachedPrices != null && _cacheTimestamp != null) {
       final now = DateTime.now();
@@ -69,14 +78,17 @@ class KomodoPriceRepository extends CexRepository {
       }
     }
 
-    // Fetch fresh data
-    final prices = await _cexPriceProvider.getKomodoPrices();
+    // Start fetch and store the future
+    _pendingFetch = _cexPriceProvider.getKomodoPrices();
 
-    // Update cache
-    _cachedPrices = prices;
-    _cacheTimestamp = DateTime.now();
-
-    return prices;
+    try {
+      final prices = await _pendingFetch!;
+      _cachedPrices = prices;
+      _cacheTimestamp = DateTime.now();
+      return prices;
+    } finally {
+      _pendingFetch = null;
+    }
   }
 
   @override
@@ -85,8 +97,18 @@ class KomodoPriceRepository extends CexRepository {
     List<DateTime> dates, {
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
+    // Check if any dates are historical
+    final now = DateTime.now();
+    final hasHistoricalDates = dates.any(
+      (date) => date.isBefore(now.subtract(Duration(hours: 1))),
+    );
+    if (hasHistoricalDates) {
+      throw UnsupportedError(
+        'KomodoPriceRepository does not support historical price data',
+      );
+    }
+
     // Komodo API typically returns current prices, not historical
-    // For simplicity, return the same current price for all requested dates
     final currentPrice = await getCoinFiatPrice(
       assetId,
       fiatCurrency: fiatCurrency,
@@ -186,8 +208,19 @@ class KomodoPriceRepository extends CexRepository {
 
   @override
   bool canHandleAsset(AssetId assetId) {
+    // If cache is null, trigger population but don't wait for it
+    // This ensures subsequent calls will have the cache available
+    if (_cachedCoinsList == null) {
+      // Trigger cache population asynchronously without waiting
+      getCoinList().catchError((error) {
+        // Silently handle errors to prevent unhandled exceptions
+        // The cache will remain null and subsequent calls will retry
+      });
+      return false;
+    }
+
     final symbol = assetId.symbol.configSymbol.toUpperCase();
-    return _cachedCoinsList?.any((c) => c.id.toUpperCase() == symbol) ?? false;
+    return _cachedCoinsList!.any((c) => c.id.toUpperCase() == symbol);
   }
 
   /// Clears all cached data in the repository.
@@ -199,5 +232,6 @@ class KomodoPriceRepository extends CexRepository {
     _cacheTimestamp = null;
     _cachedCoinsList = null;
     _cachedFiatCurrencies = null;
+    _pendingFetch = null;
   }
 }

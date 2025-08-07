@@ -115,8 +115,7 @@ abstract class CexRepository {
   ///
   /// Returns the percentage change as a [Decimal] (e.g., 5.25 for +5.25%).
   ///
-  /// Throws an [UnimplementedError] by default. Subclasses should override
-  /// this method to provide the actual implementation.
+  /// Subclasses must provide their own implementation of this method.
   ///
   /// # Example usage:
   /// ```dart
@@ -136,14 +135,67 @@ abstract class CexRepository {
   });
 
   /// Resolves the platform-specific trading symbol for this repository.
-  /// Each implementation should override this to use their preferred ID.
+  ///
+  /// Each implementation should override this to use their preferred ID format.
+  ///
+  /// [assetId]: The asset to resolve the trading symbol for.
+  ///
+  /// Returns the platform-specific symbol/ticker as a [String]. If the asset
+  /// cannot be resolved to a valid trading symbol, implementations should
+  /// return an empty string rather than throwing an exception.
+  ///
+  /// # Example usage:
+  /// ```dart
+  /// final symbol = repository.resolveTradingSymbol(assetId);
+  /// if (symbol.isEmpty) {
+  ///   // Handle unsupported asset
+  /// }
+  /// ```
   String resolveTradingSymbol(AssetId assetId);
 
   /// Checks if this repository can handle the given asset.
-  /// Returns false if no suitable ID can be resolved.
+  ///
+  /// This method should perform a quick check to determine if the repository
+  /// can process requests for the given asset. It should not throw exceptions
+  /// for unsupported assets.
+  ///
+  /// [assetId]: The asset to check support for.
+  ///
+  /// Returns `true` if the repository can handle this asset, `false` otherwise.
+  /// When this returns `false`, other methods in this repository should not be
+  /// called with this asset as they may throw exceptions.
+  ///
+  /// # Example usage:
+  /// ```dart
+  /// if (repository.canHandleAsset(assetId)) {
+  ///   final price = await repository.getCoinFiatPrice(assetId);
+  /// }
+  /// ```
   bool canHandleAsset(AssetId assetId);
 
-  /// Checks if this repository supports the given asset, fiat, and request type.
+  /// Checks if this repository supports the given asset, fiat currency, and request type.
+  ///
+  /// This method provides a comprehensive capability check that considers not just
+  /// the asset, but also the target fiat currency and the type of data being requested.
+  ///
+  /// [assetId]: The asset to check support for.
+  /// [fiatCurrency]: The target fiat currency for price conversion.
+  /// [requestType]: The type of price request. Possible values are:
+  ///   - [PriceRequestType.currentPrice]: Current/live price data
+  ///   - [PriceRequestType.priceChange]: 24-hour price change data
+  ///   - [PriceRequestType.priceHistory]: Historical price data
+  ///
+  /// Returns `true` if the repository supports all the specified parameters,
+  /// `false` otherwise. This method should not throw exceptions.
+  ///
+  /// # Example usage:
+  /// ```dart
+  /// final canGetCurrentPrice = await repository.supports(
+  ///   assetId,
+  ///   Stablecoin.usdt,
+  ///   PriceRequestType.currentPrice,
+  /// );
+  /// ```
   Future<bool> supports(
     AssetId assetId,
     QuoteCurrency fiatCurrency,

@@ -171,51 +171,52 @@ void main() {
         expect(supports, isTrue);
       });
 
-      test(
-        'should support all USD-pegged stablecoins via USD mapping',
-        () async {
-          final assetId = AssetId(
-            id: 'bitcoin',
-            name: 'Bitcoin',
-            symbol: AssetSymbol(assetConfigId: 'BTC', coinGeckoId: 'bitcoin'),
-            chainId: AssetChainId(chainId: 0),
-            derivationPath: null,
-            subClass: CoinSubClass.utxo,
-          );
+      test('should support all USD-pegged stablecoins via USD mapping', () async {
+        final assetId = AssetId(
+          id: 'bitcoin',
+          name: 'Bitcoin',
+          symbol: AssetSymbol(assetConfigId: 'BTC', coinGeckoId: 'bitcoin'),
+          chainId: AssetChainId(chainId: 0),
+          derivationPath: null,
+          subClass: CoinSubClass.utxo,
+        );
 
-          final usdStablecoins = [
-            Stablecoin.usdt,
-            Stablecoin.usdc,
-            Stablecoin.busd,
-            Stablecoin.dai,
-            Stablecoin.tusd,
-            Stablecoin.frax,
-            Stablecoin.lusd,
-            Stablecoin.gusd,
-            Stablecoin.usdp,
-            Stablecoin.susd,
-            Stablecoin.fei,
-            Stablecoin.tribe,
-            Stablecoin.ust,
-            Stablecoin.ustc,
-          ];
+        final usdStablecoins = [
+          Stablecoin.usdt,
+          Stablecoin.usdc,
+          Stablecoin.busd,
+          Stablecoin.dai,
+          Stablecoin.tusd,
+          Stablecoin.frax,
+          Stablecoin.lusd,
+          Stablecoin.gusd,
+          Stablecoin.usdp,
+          Stablecoin.susd,
+          Stablecoin.fei,
+          Stablecoin.tribe,
+          Stablecoin.ust,
+          Stablecoin.ustc,
+        ];
 
-          for (final stablecoin in usdStablecoins) {
-            final supports = await repository.supports(
+        final supportResults = await Future.wait(
+          usdStablecoins.map(
+            (stablecoin) => repository.supports(
               assetId,
               stablecoin,
               PriceRequestType.currentPrice,
-            );
+            ),
+          ),
+        );
 
-            expect(
-              supports,
-              isTrue,
-              reason:
-                  '${stablecoin.symbol} should be supported via USD mapping',
-            );
-          }
-        },
-      );
+        for (var i = 0; i < usdStablecoins.length; i++) {
+          expect(
+            supportResults[i],
+            isTrue,
+            reason:
+                '${usdStablecoins[i].symbol} should be supported via USD mapping',
+          );
+        }
+      });
 
       test('should support EUR-pegged stablecoins via EUR mapping', () async {
         final assetId = AssetId(

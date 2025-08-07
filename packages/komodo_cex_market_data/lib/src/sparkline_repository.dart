@@ -156,7 +156,7 @@ class SparklineRepository {
         subClass: CoinSubClass.utxo,
       );
 
-      final fiatCurrency = Stablecoin.usdt;
+      const fiatCurrency = Stablecoin.usdt;
       return await repo.supports(
         assetId,
         fiatCurrency,

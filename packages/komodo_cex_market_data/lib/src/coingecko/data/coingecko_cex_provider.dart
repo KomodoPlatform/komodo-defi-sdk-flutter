@@ -4,6 +4,7 @@ import 'package:decimal/decimal.dart' show Decimal;
 import 'package:http/http.dart' as http;
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_cex_market_data/src/coingecko/models/coin_historical_data/coin_historical_data.dart';
+import 'package:logging/logging.dart';
 
 /// Interface for fetching data from CoinGecko API.
 abstract class ICoinGeckoProvider {
@@ -65,6 +66,8 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
 
   /// The API version for the CoinGecko API.
   final String apiVersion;
+
+  static final Logger _logger = Logger('CoinGeckoCexProvider');
 
   /// Fetches the list of coins supported by CoinGecko.
   ///
@@ -431,9 +434,34 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
       // TODO(Francois): map to multiple currencies, or only allow 1 vs currency
       final price = (pricesData as Map<String, dynamic>)['usd'] as num?;
 
+      // Parse price with explicit error handling
+      Decimal parsedPrice;
+      final priceString = price?.toString() ?? '';
+
+      if (price == null || priceString.isEmpty) {
+        _logger.warning(
+          'CoinGecko API returned null or empty price for $coingeckoId',
+        );
+        throw Exception(
+          'Invalid price data for $coingeckoId: received null or empty value',
+        );
+      }
+
+      final tempPrice = Decimal.tryParse(priceString);
+      if (tempPrice == null) {
+        _logger.warning(
+          'Failed to parse price "$priceString" for $coingeckoId as Decimal',
+        );
+        throw Exception(
+          'Invalid price data for $coingeckoId: could not parse "$priceString" as decimal',
+        );
+      }
+
+      parsedPrice = tempPrice;
+
       prices[coingeckoId] = AssetMarketInformation(
         ticker: coingeckoId,
-        lastPrice: Decimal.tryParse(price?.toString() ?? '') ?? Decimal.zero,
+        lastPrice: parsedPrice,
       );
     });
 

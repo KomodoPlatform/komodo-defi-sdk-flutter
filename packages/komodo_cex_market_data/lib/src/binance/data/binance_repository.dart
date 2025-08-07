@@ -8,9 +8,8 @@ import 'package:async/async.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart'
-    show BackoffStrategy, ExponentialBackoff, retry;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 // Declaring constants here to make this easier to copy & move around
 /// The base URL for the Binance API.
@@ -25,23 +24,16 @@ class BinanceRepository implements CexRepository {
   /// Creates a new [BinanceRepository] instance.
   BinanceRepository({
     required IBinanceProvider binanceProvider,
-    BackoffStrategy? defaultBackoffStrategy,
     bool enableMemoization = true,
   }) : _binanceProvider = binanceProvider,
-       _defaultBackoffStrategy =
-           defaultBackoffStrategy ??
-           ExponentialBackoff(
-             initialDelay: const Duration(milliseconds: 300),
-             maxDelay: const Duration(seconds: 5),
-             withJitter: true,
-           ),
        _idResolutionStrategy = BinanceIdResolutionStrategy(),
        _enableMemoization = enableMemoization;
 
   final IBinanceProvider _binanceProvider;
-  final BackoffStrategy _defaultBackoffStrategy;
   final IdResolutionStrategy _idResolutionStrategy;
   final bool _enableMemoization;
+
+  static final Logger _logger = Logger('BinanceRepository');
 
   final AsyncMemoizer<List<CexCoin>> _coinListMemoizer = AsyncMemoizer();
   Set<String>? _cachedFiatCurrencies;
@@ -49,10 +41,10 @@ class BinanceRepository implements CexRepository {
   @override
   Future<List<CexCoin>> getCoinList() async {
     if (_enableMemoization) {
-      return _coinListMemoizer.runOnce(() => _fetchCoinListInternal());
+      return _coinListMemoizer.runOnce(_fetchCoinListInternal);
     } else {
-      // Warning: Direct API calls without memoization can lead to API rate limiting
-      // and unnecessary network requests. Use this mode sparingly.
+      // Warning: Direct API calls without memoization can lead to API
+      // rate limiting and unnecessary network requests. Use this mode sparingly
       return _fetchCoinListInternal();
     }
   }
@@ -79,7 +71,12 @@ class BinanceRepository implements CexRepository {
       }
       throw lastException ?? Exception('All endpoints failed');
     } catch (e) {
-      _cachedFiatCurrencies = <String>{};
+      _logger.severe('Failed to fetch coin list from Binance API: $e');
+      // Clear cached currencies to indicate invalid state
+      _cachedFiatCurrencies = null;
+      // Return empty list as fallback, but log the error for visibility
+      // This prevents the supports() method from incorrectly reporting
+      // supported currencies based on stale cache data
       return List.empty();
     }
   }
@@ -174,10 +171,10 @@ class BinanceRepository implements CexRepository {
     List<DateTime> dates, {
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
-    final tradingSymbol = resolveTradingSymbol(assetId);
+    final tradingSymbol = resolveTradingSymbol(assetId).toLowerCase();
     final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
 
-    if (tradingSymbol.toUpperCase() == fiatCurrencyId.toUpperCase()) {
+    if (tradingSymbol == fiatCurrencyId) {
       throw ArgumentError('Coin and fiat coin cannot be the same');
     }
 

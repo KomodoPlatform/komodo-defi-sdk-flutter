@@ -99,7 +99,7 @@ class CexMarketDataManager
     }
 
     // Start cache clearing timer
-    _cacheTimer = Timer.periodic(_cacheClearInterval, (_) => _clearCaches);
+    _cacheTimer = Timer.periodic(_cacheClearInterval, (_) => _clearCaches());
     _logger.finer(
       'Started cache clearing timer with interval $_cacheClearInterval',
     );
@@ -139,7 +139,7 @@ class CexMarketDataManager
     DateTime? priceDate,
     QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
-    return '${assetId.symbol.configSymbol}_${quoteCurrency}_'
+    return '${assetId.id}_${assetId.chainId.formattedChainId}_${assetId.subClass.formatted}_${quoteCurrency}_'
         '${priceDate?.millisecondsSinceEpoch ?? 'current'}';
   }
 
@@ -148,7 +148,7 @@ class CexMarketDataManager
     AssetId assetId, {
     QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
-    return '${assetId.symbol.configSymbol}_${quoteCurrency}_change24h';
+    return '${assetId.id}_${assetId.chainId.formattedChainId}_${assetId.subClass.formatted}_${quoteCurrency}_change24h';
   }
 
   /// Validates that the manager hasn't been disposed

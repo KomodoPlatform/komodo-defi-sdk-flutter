@@ -799,13 +799,34 @@ extension QuoteCurrencyTypeChecking on QuoteCurrency {
   bool get isCommodity =>
       maybeWhen(commodity: (_, __) => true, orElse: () => false);
 
-  /// Get the underlying fiat currency (returns self if already fiat, or underlying for stablecoins)
+  /// Get the underlying fiat currency.
+  ///
+  /// Returns:
+  /// - For fiat currencies: returns self
+  /// - For stablecoins: returns the underlying fiat currency they're pegged to
+  /// - For crypto and commodities: throws AssertionError as they don't have underlying fiat
+  ///
+  /// Note: Crypto and commodity currencies do not have an underlying fiat currency
+  /// by definition. If you need a fiat reference for pricing purposes, use USD
+  /// explicitly rather than relying on this getter.
   QuoteCurrency get underlyingFiat {
     return when(
       fiat: (symbol, displayName) => this,
       stablecoin: (symbol, displayName, underlyingFiat) => underlyingFiat,
-      crypto: (symbol, displayName) => FiatCurrency.usd,
-      commodity: (symbol, displayName) => FiatCurrency.usd,
+      crypto: (symbol, displayName) {
+        assert(
+          false,
+          'Cryptocurrency $symbol does not have an underlying fiat currency',
+        );
+        return FiatCurrency.usd;
+      },
+      commodity: (symbol, displayName) {
+        assert(
+          false,
+          'Commodity $symbol does not have an underlying fiat currency',
+        );
+        return FiatCurrency.usd;
+      },
     );
   }
 }

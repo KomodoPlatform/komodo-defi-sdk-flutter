@@ -179,8 +179,28 @@ class CoinGeckoRepository implements CexRepository {
       }
     }
 
-    // Final fallback: Default to USD
-    return 'usd';
+    // For stablecoins, if the underlying fiat is not supported, 
+    // still return the underlying fiat currency (don't fallback to stablecoin symbol)
+    // This ensures we never use stablecoin symbols like 'usdt' as vs_currency
+    if (isStablecoin) {
+      return mappedCurrency; // This is already the underlying fiat from coinGeckoId
+    }
+
+    // Throw exception instead of silently falling back to USD
+    // This prevents incorrect price data without warning
+    throw UnsupportedError(
+      'Currency ${fiatCurrency.symbol} (mapped to $mappedCurrency) is not supported by CoinGecko. '
+      'Supported currencies: ${_cachedFiatCurrencies?.join(', ') ?? 'unknown (cache not loaded)'}',
+    );
+  }
+
+  /// Maps currency for supports() method - returns null instead of throwing for unsupported currencies
+  String? _mapFiatCurrencyToCoingeckoSafe(QuoteCurrency fiatCurrency) {
+    try {
+      return _mapFiatCurrencyToCoingecko(fiatCurrency);
+    } on UnsupportedError {
+      return null;
+    }
   }
 
   @override
@@ -204,7 +224,14 @@ class CoinGeckoRepository implements CexRepository {
     CoinHistoricalData coinPrice,
     String mappedFiatId,
   ) {
-    final price = coinPrice.marketData?.currentPrice?.usd;
+    final currentPriceMap = coinPrice.marketData?.currentPrice?.toJson();
+    if (currentPriceMap == null) {
+      throw Exception(
+        'Market data or current price not found in response: $coinPrice',
+      );
+    }
+
+    final price = currentPriceMap[mappedFiatId];
     if (price == null) {
       throw Exception(
         'Price data for $mappedFiatId not found in response: $coinPrice',
@@ -305,7 +332,12 @@ class CoinGeckoRepository implements CexRepository {
     PriceRequestType requestType,
   ) async {
     final coins = await getCoinList();
-    final mappedFiat = _mapFiatCurrencyToCoingecko(fiatCurrency);
+    final mappedFiat = _mapFiatCurrencyToCoingeckoSafe(fiatCurrency);
+
+    // If currency mapping failed, it's not supported
+    if (mappedFiat == null) {
+      return false;
+    }
 
     // Use the same logic as resolveTradingSymbol to find the coin
     final tradingSymbol = resolveTradingSymbol(assetId);

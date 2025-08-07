@@ -48,25 +48,35 @@ class DefaultRepositorySelectionStrategy
     required List<CexRepository> availableRepositories,
   }) async {
     await ensureCacheInitialized(availableRepositories);
-    final fiatSymbol = fiatCurrency.symbol.toUpperCase();
     final candidates =
-        availableRepositories.where((repo) {
-            final cache = _supportCache[repo];
-            if (cache == null) return false;
-            final supportsAsset = cache.coins.any(
-              (c) =>
-                  c.id.toUpperCase() ==
-                  assetId.symbol.configSymbol.toUpperCase(),
-            );
-            final supportsFiat = cache.fiatCurrencies.contains(fiatSymbol);
-            return supportsAsset && supportsFiat;
-          }).toList()
+        availableRepositories
+            .where((repo) => _supportsAssetAndFiat(repo, assetId, fiatCurrency))
+            .toList()
           ..sort(
             (a, b) => RepositoryPriorityManager.getPriority(
               a,
             ).compareTo(RepositoryPriorityManager.getPriority(b)),
           );
     return candidates.isNotEmpty ? candidates.first : null;
+  }
+
+  /// Checks if a repository supports the given asset and fiat currency
+  bool _supportsAssetAndFiat(
+    CexRepository repo,
+    AssetId assetId,
+    QuoteCurrency fiatCurrency,
+  ) {
+    final cache = _supportCache[repo];
+    if (cache == null) return false;
+
+    final supportsAsset = cache.coins.any(
+      (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
+    );
+    final supportsFiat = cache.fiatCurrencies.contains(
+      fiatCurrency.symbol.toUpperCase(),
+    );
+
+    return supportsAsset && supportsFiat;
   }
 }
 

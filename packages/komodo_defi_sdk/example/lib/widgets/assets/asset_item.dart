@@ -110,20 +110,33 @@ class _AssetItemTrailing extends StatelessWidget {
 }
 
 class CoinSparkline extends StatelessWidget {
-  final String coinId;
-  final SparklineRepository repository = sparklineRepository;
+  const CoinSparkline({required this.coinId, super.key});
 
-  CoinSparkline({required this.coinId, super.key});
+  final String coinId;
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<double>?>(
-      future: repository.fetchSparkline(coinId),
+      future: sparklineRepository.fetchSparkline(coinId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox.shrink();
+          return const SizedBox(
+            width: 130,
+            height: 35,
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
         } else if (snapshot.hasError) {
-          return Text('Error: ${snapshot.error}');
+          return const SizedBox(
+            width: 130,
+            height: 35,
+            child: Icon(Icons.show_chart, color: Colors.grey, size: 16),
+          );
         } else if (!snapshot.hasData || (snapshot.data?.isEmpty ?? true)) {
           return const SizedBox.shrink();
         } else {

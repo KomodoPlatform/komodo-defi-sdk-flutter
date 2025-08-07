@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
@@ -40,9 +38,9 @@ void main() {
         selectionStrategy: DefaultRepositorySelectionStrategy(),
       );
 
-      when(() => fallback.getCoinList()).thenAnswer(
+      when(fallback.getCoinList).thenAnswer(
         (_) async => [
-          CexCoin(
+          const CexCoin(
             id: 'BTC',
             symbol: 'BTC',
             name: 'BTC',
@@ -52,21 +50,13 @@ void main() {
         ],
       );
       when(
-        () => fallback.getCoinFiatPrice(
-          asset('BTC'),
-          fiatCurrency: Stablecoin.usdt,
-        ),
+        () => fallback.getCoinFiatPrice(asset('BTC')),
       ).thenAnswer((_) async => Decimal.parse('3.0'));
 
       await manager.init();
       final price = await manager.fiatPrice(asset('BTC'));
       expect(price, Decimal.parse('3.0'));
-      verify(
-        () => fallback.getCoinFiatPrice(
-          asset('BTC'),
-          fiatCurrency: Stablecoin.usdt,
-        ),
-      ).called(1);
+      verify(() => fallback.getCoinFiatPrice(asset('BTC'))).called(1);
     });
 
     test('fiatPrice uses fallback when primary repository fails', () async {
@@ -80,8 +70,8 @@ void main() {
       );
 
       // Setup repository coin lists
-      when(() => primaryRepo.getCoinList()).thenAnswer((_) async => []);
-      when(() => fallbackRepo.getCoinList()).thenAnswer((_) async => []);
+      when(primaryRepo.getCoinList).thenAnswer((_) async => []);
+      when(fallbackRepo.getCoinList).thenAnswer((_) async => []);
 
       // Setup strategy to return primary repo first
       when(
@@ -116,17 +106,9 @@ void main() {
       // Verify
       expect(price, equals(Decimal.parse('50000')));
       verify(
-        () => primaryRepo.getCoinFiatPrice(
-          asset('BTC'),
-          fiatCurrency: Stablecoin.usdt,
-        ),
+        () => primaryRepo.getCoinFiatPrice(asset('BTC')),
       ).called(2); // Called twice due to retry mechanism
-      verify(
-        () => fallbackRepo.getCoinFiatPrice(
-          asset('BTC'),
-          fiatCurrency: Stablecoin.usdt,
-        ),
-      ).called(1);
+      verify(() => fallbackRepo.getCoinFiatPrice(asset('BTC'))).called(1);
 
       await manager.dispose();
     });
@@ -142,8 +124,8 @@ void main() {
       );
 
       // Setup repository coin lists
-      when(() => primaryRepo.getCoinList()).thenAnswer((_) async => []);
-      when(() => fallbackRepo.getCoinList()).thenAnswer((_) async => []);
+      when(primaryRepo.getCoinList).thenAnswer((_) async => []);
+      when(fallbackRepo.getCoinList).thenAnswer((_) async => []);
 
       // Setup strategy to return primary repo first
       when(
@@ -192,8 +174,8 @@ void main() {
       );
 
       // Setup repository coin lists
-      when(() => primaryRepo.getCoinList()).thenAnswer((_) async => []);
-      when(() => fallbackRepo.getCoinList()).thenAnswer((_) async => []);
+      when(primaryRepo.getCoinList).thenAnswer((_) async => []);
+      when(fallbackRepo.getCoinList).thenAnswer((_) async => []);
 
       // Setup strategy to return primary repo first
       when(
@@ -242,8 +224,8 @@ void main() {
       );
 
       // Setup repository coin lists
-      when(() => primaryRepo.getCoinList()).thenAnswer((_) async => []);
-      when(() => fallbackRepo.getCoinList()).thenAnswer((_) async => []);
+      when(primaryRepo.getCoinList).thenAnswer((_) async => []);
+      when(fallbackRepo.getCoinList).thenAnswer((_) async => []);
 
       // Setup strategy to return primary repo first
       when(
@@ -277,12 +259,7 @@ void main() {
 
       // Verify
       expect(change, equals(Decimal.parse('0.05')));
-      verify(
-        () => fallbackRepo.getCoin24hrPriceChange(
-          asset('BTC'),
-          fiatCurrency: Stablecoin.usdt,
-        ),
-      ).called(1);
+      verify(() => fallbackRepo.getCoin24hrPriceChange(asset('BTC'))).called(1);
 
       await manager.dispose();
     });
@@ -298,10 +275,10 @@ void main() {
       );
 
       // Setup repository coin lists
-      when(() => primaryRepo.getCoinList()).thenAnswer((_) async => []);
-      when(() => fallbackRepo.getCoinList()).thenAnswer((_) async => []);
+      when(primaryRepo.getCoinList).thenAnswer((_) async => []);
+      when(fallbackRepo.getCoinList).thenAnswer((_) async => []);
 
-      final testDates = [DateTime(2023, 1, 1), DateTime(2023, 1, 2)];
+      final testDates = [DateTime(2023), DateTime(2023, 1, 2)];
 
       // Setup strategy to return primary repo first
       when(
@@ -346,11 +323,7 @@ void main() {
       expect(history[testDates[1]], equals(Decimal.parse('46000')));
 
       verify(
-        () => fallbackRepo.getCoinFiatPrices(
-          asset('BTC'),
-          testDates,
-          fiatCurrency: Stablecoin.usdt,
-        ),
+        () => fallbackRepo.getCoinFiatPrices(asset('BTC'), testDates),
       ).called(1);
 
       await manager.dispose();

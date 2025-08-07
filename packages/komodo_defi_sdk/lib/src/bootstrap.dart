@@ -8,7 +8,8 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
-import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
+import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart'
+    show CexMarketDataManager, MarketDataManager;
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
@@ -154,29 +155,10 @@ Future<void> bootstrap({
     return validator;
   });
 
-  // TODO: Consider if more appropropriate for initialization of these
-  // dependencies to be done internally in the `cex_market_data` package.
-  container.registerSingletonAsync<BinanceRepository>(
-    () async => BinanceRepository(binanceProvider: const BinanceProvider()),
-  );
-
-  container.registerSingleton<ICoinGeckoProvider>(CoinGeckoCexProvider());
-
-  container.registerSingletonAsync<CoinGeckoRepository>(
-    () async =>
-        CoinGeckoRepository(coinGeckoProvider: container<ICoinGeckoProvider>()),
-  );
-
-  container.registerSingleton<IKomodoPriceProvider>(KomodoPriceProvider());
-
-  container.registerSingletonAsync<KomodoPriceRepository>(
-    () async => KomodoPriceRepository(
-      cexPriceProvider: container<IKomodoPriceProvider>(),
-    ),
-  );
-
-  container.registerSingletonAsync<RepositorySelectionStrategy>(
-    () async => DefaultRepositorySelectionStrategy(),
+  // Register market data dependencies using factory pattern
+  await MarketDataBootstrap.register(
+    container,
+    config: config.marketDataConfig,
   );
 
   container.registerSingletonAsync<MessageSigningManager>(
@@ -184,26 +166,18 @@ Future<void> bootstrap({
     dependsOn: [ApiClient],
   );
 
-  container.registerSingletonAsync<MarketDataManager>(
-    () async {
-      final manager = CexMarketDataManager(
-        priceRepositories: [
-          container<KomodoPriceRepository>(),
-          container<BinanceRepository>(),
-          container<CoinGeckoRepository>(),
-        ],
-        selectionStrategy: container<RepositorySelectionStrategy>(),
-      );
-      await manager.init();
-      return manager;
-    },
-    dependsOn: [
-      RepositorySelectionStrategy,
-      BinanceRepository,
-      CoinGeckoRepository,
-      KomodoPriceRepository,
-    ],
-  );
+  container.registerSingletonAsync<MarketDataManager>(() async {
+    final repositories = await MarketDataBootstrap.buildRepositoryList(
+      container,
+      config.marketDataConfig,
+    );
+    final manager = CexMarketDataManager(
+      priceRepositories: repositories,
+      selectionStrategy: container<RepositorySelectionStrategy>(),
+    );
+    await manager.init();
+    return manager;
+  }, dependsOn: MarketDataBootstrap.buildDependencies(config.marketDataConfig));
 
   container.registerSingletonAsync<FeeManager>(() async {
     final client = await container.getAsync<ApiClient>();

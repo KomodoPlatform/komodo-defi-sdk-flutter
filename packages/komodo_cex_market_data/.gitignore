@@ -69,7 +69,6 @@ node_modules
 
 assets/config/test_wallet.json
 assets/**/debug_data.json
-contrib/coins_config.json
 
 # api native library
 libmm2.a

@@ -131,28 +131,17 @@ void main() {
 
         // Setup repository responses
         when(
-          () => mockBinanceRepo.getCoinFiatPrice(
-            any(),
-            fiatCurrency: any(named: 'fiatCurrency'),
-          ),
+          () => mockBinanceRepo.getCoinFiatPrice(supportedAsset),
         ).thenThrow(Exception('Binance failed'));
 
         when(
-          () => mockKomodoRepo.getCoinFiatPrice(
-            any(),
-            fiatCurrency: any(named: 'fiatCurrency'),
-          ),
+          () => mockKomodoRepo.getCoinFiatPrice(supportedAsset),
         ).thenAnswer((_) async => Decimal.parse('50000.0'));
 
         // CoinGecko should NOT be called since it doesn't support the asset
         when(
-          () => mockCoinGeckoRepo.getCoinFiatPrice(
-            any(),
-            fiatCurrency: any(named: 'fiatCurrency'),
-          ),
-        ).thenAnswer((_) async => Decimal.parse('49999.0'));
-
-        // Act
+          () => mockCoinGeckoRepo.getCoinFiatPrice(supportedAsset),
+        ).thenAnswer((_) async => Decimal.parse('49999.0')); // Act
         final result = await testManager.testTryRepositoriesInOrder(
           supportedAsset,
           Stablecoin.usdt,
@@ -164,7 +153,8 @@ void main() {
         // Assert
         expect(result, equals(Decimal.parse('50000.0')));
 
-        // Verify that only supporting repositories were called
+        // Verify that both supporting repositories were called
+        // (Binance failed, then Komodo succeeded)
         verify(
           () => mockBinanceRepo.getCoinFiatPrice(supportedAsset),
         ).called(1);
@@ -172,12 +162,7 @@ void main() {
         verify(() => mockKomodoRepo.getCoinFiatPrice(supportedAsset)).called(1);
 
         // CoinGecko should NEVER be called since it doesn't support the asset
-        verifyNever(
-          () => mockCoinGeckoRepo.getCoinFiatPrice(
-            any(),
-            fiatCurrency: any(named: 'fiatCurrency'),
-          ),
-        );
+        verifyNever(() => mockCoinGeckoRepo.getCoinFiatPrice(supportedAsset));
 
         // Verify supports was called for each repository
         verify(
@@ -328,17 +313,11 @@ void main() {
 
           // Setup: CoinGecko fails, should fall back to unhealthy Binance
           when(
-            () => mockCoinGeckoRepo.getCoinFiatPrice(
-              any(),
-              fiatCurrency: any(named: 'fiatCurrency'),
-            ),
+            () => mockCoinGeckoRepo.getCoinFiatPrice(supportedAsset),
           ).thenThrow(Exception('CoinGecko failed'));
 
           when(
-            () => mockBinanceRepo.getCoinFiatPrice(
-              any(),
-              fiatCurrency: any(named: 'fiatCurrency'),
-            ),
+            () => mockBinanceRepo.getCoinFiatPrice(supportedAsset),
           ).thenAnswer((_) async => Decimal.parse('50000.0'));
 
           // Act
@@ -363,12 +342,7 @@ void main() {
           ).called(1);
 
           // Komodo should NOT be called since it doesn't support the asset
-          verifyNever(
-            () => mockKomodoRepo.getCoinFiatPrice(
-              any(),
-              fiatCurrency: any(named: 'fiatCurrency'),
-            ),
-          );
+          verifyNever(() => mockKomodoRepo.getCoinFiatPrice(supportedAsset));
         },
       );
 

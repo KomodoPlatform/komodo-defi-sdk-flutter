@@ -33,12 +33,11 @@ class _AssetMarketInfoContent extends StatelessWidget {
         final balanceStr = _formatCurrency(state.usdBalance);
         final priceStr = _formatCurrency(state.price);
         final changeStr = _formatChange(state.change24h);
+        final change = state.change24h;
         final color =
-            state.change24h == null
+            change == null
                 ? null
-                : state.change24h! >= Decimal.zero
-                ? Colors.green
-                : Colors.red;
+                : (change >= Decimal.zero ? Colors.green : Colors.red);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.end,

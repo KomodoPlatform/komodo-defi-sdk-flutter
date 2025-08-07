@@ -28,19 +28,22 @@ class KomodoPriceProvider implements IKomodoPriceProvider {
   ///
   /// Example:
   /// ```dart
-  /// final Map<String, CexPrice>? prices =
-  ///   await cexPriceProvider.getLegacyKomodoPrices();
+  /// final Map<String, AssetMarketInformation> prices =
+  ///   await komodoPriceProvider.getKomodoPrices();
   /// ```
   @override
   Future<Map<String, AssetMarketInformation>> getKomodoPrices() async {
     final mainUri = Uri.parse(mainTickersUrl);
 
-    http.Response res;
-    String body;
-    res = await http.get(mainUri);
-    body = res.body;
+    final res = await http.get(mainUri);
 
-    final json = jsonDecode(body) as Map<String, dynamic>?;
+    if (res.statusCode != 200) {
+      throw Exception(
+        'HTTP ${res.statusCode}: Failed to fetch prices from Komodo API',
+      );
+    }
+
+    final json = jsonDecode(res.body) as Map<String, dynamic>?;
 
     if (json == null) {
       throw Exception('Invalid response from Komodo API: empty JSON');

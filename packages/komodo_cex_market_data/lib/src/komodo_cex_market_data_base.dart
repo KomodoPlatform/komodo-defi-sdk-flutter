@@ -1,4 +1,5 @@
 export 'binance/binance.dart';
+export 'bootstrap/market_data_bootstrap.dart';
 export 'cex_repository.dart';
 export 'coingecko/coingecko.dart';
 export 'id_resolution_strategy.dart';

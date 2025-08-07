@@ -35,7 +35,30 @@ class TestBinanceProvider implements IBinanceProvider {
     String symbol, {
     String? baseUrl,
   }) async {
-    throw UnimplementedError();
+    // Return mock data for testing
+    return Binance24hrTicker(
+      symbol: symbol,
+      priceChange: Decimal.zero,
+      priceChangePercent: Decimal.zero,
+      weightedAvgPrice: Decimal.zero,
+      prevClosePrice: Decimal.zero,
+      lastPrice: Decimal.zero,
+      lastQty: Decimal.zero,
+      bidPrice: Decimal.zero,
+      bidQty: Decimal.zero,
+      askPrice: Decimal.zero,
+      askQty: Decimal.zero,
+      openPrice: Decimal.zero,
+      highPrice: Decimal.zero,
+      lowPrice: Decimal.zero,
+      volume: Decimal.zero,
+      quoteVolume: Decimal.zero,
+      openTime: 0,
+      closeTime: 0,
+      firstId: 0,
+      lastId: 0,
+      count: 0,
+    );
   }
 
   @override

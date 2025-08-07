@@ -37,16 +37,18 @@ class DecimalConverter implements JsonConverter<Decimal?, dynamic> {
   }
 }
 
-/// Custom converter for timestamp
+/// Custom converter for timestamp (Unix epoch in seconds)
 class TimestampConverter implements JsonConverter<DateTime?, int?> {
   const TimestampConverter();
 
+  /// Converts Unix timestamp in seconds to DateTime
   @override
   DateTime? fromJson(int? json) {
     if (json == null) return null;
     return DateTime.fromMillisecondsSinceEpoch(json * 1000);
   }
 
+  /// Converts DateTime to Unix timestamp in seconds
   @override
   int? toJson(DateTime? dateTime) {
     if (dateTime == null) return null;

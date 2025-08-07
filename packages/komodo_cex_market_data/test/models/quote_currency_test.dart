@@ -292,10 +292,6 @@ void main() {
       expect(Stablecoin.usdt.underlyingFiat, equals(FiatCurrency.usd));
       expect(Stablecoin.eurs.underlyingFiat, equals(FiatCurrency.eur));
       expect(Stablecoin.gbpt.underlyingFiat, equals(FiatCurrency.gbp));
-
-      // For cryptos and commodities, return USD as fallback
-      expect(Cryptocurrency.btc.underlyingFiat, equals(FiatCurrency.usd));
-      expect(Commodity.xau.underlyingFiat, equals(FiatCurrency.usd));
     });
   });
 
