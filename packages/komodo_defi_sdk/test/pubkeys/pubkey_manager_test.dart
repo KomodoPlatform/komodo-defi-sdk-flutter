@@ -179,7 +179,7 @@ void main() {
     });
 
     test(
-      'watchPubkeys emits last known immediately, then refreshed value',
+      'watchPubkeys emits last known via controller, then refreshed value',
       () async {
         final user = nonHdUser();
         when(() => auth.currentUser).thenAnswer((_) async => user);
@@ -194,11 +194,10 @@ void main() {
 
         final stream = manager.watchPubkeys(tendermintAsset);
 
-        // First emit is the immediate lastKnown, second emit is the same from controller,
-        // third emit is the refreshed value after getPubkeys()
-        final firstThree = await stream.take(3).toList();
-        expect(firstThree[0].keys.first.address, 'cosmos1pre');
-        expect(firstThree[2].keys.first.address, 'cosmos1new');
+        // First emit is lastKnown from controller, second is refreshed value after getPubkeys()
+        final firstTwo = await stream.take(2).toList();
+        expect(firstTwo[0].keys.first.address, 'cosmos1pre');
+        expect(firstTwo[1].keys.first.address, 'cosmos1new');
       },
     );
 

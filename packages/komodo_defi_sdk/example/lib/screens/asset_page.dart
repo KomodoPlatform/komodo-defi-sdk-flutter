@@ -64,7 +64,8 @@ class _AssetPageState extends State<AssetPage> {
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
-      _refreshUnavailableReasons().ignore();
+      if (mounted) setState(() => _isLoading = false);
+      await _refreshUnavailableReasons();
     }
   }
 
