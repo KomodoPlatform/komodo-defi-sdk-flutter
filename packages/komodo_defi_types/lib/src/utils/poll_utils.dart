@@ -22,7 +22,9 @@ Future<T> poll<T>(
   final stopwatch = Stopwatch()..start();
 
   while (true) {
-    if (stopwatch.elapsed >= maxDuration) {
+    // Check timeout before invoking the function to avoid starting a call that would exceed the budget
+    final remainingBeforeCall = maxDuration - stopwatch.elapsed;
+    if (remainingBeforeCall <= Duration.zero) {
       throw TimeoutException(
         'Polling timed out after ${stopwatch.elapsed}',
         maxDuration,
@@ -30,20 +32,50 @@ Future<T> poll<T>(
     }
 
     try {
-      final result = await functionToPoll();
+      // Ensure the call itself respects the remaining time budget
+      final result = await functionToPoll().timeout(remainingBeforeCall);
       if (isComplete(result)) {
         return result;
       }
       delay = strategy.nextDelay(attempt, delay);
       onPoll?.call(attempt, delay);
       attempt++;
-      await Future<void>.delayed(delay);
+
+      // Cap or skip delay based on remaining budget after the call
+      final remainingBeforeDelay = maxDuration - stopwatch.elapsed;
+      if (remainingBeforeDelay <= Duration.zero) {
+        throw TimeoutException(
+          'Polling timed out after ${stopwatch.elapsed}',
+          maxDuration,
+        );
+      }
+
+      final effectiveDelay = delay <= remainingBeforeDelay ? delay : remainingBeforeDelay;
+      if (effectiveDelay > Duration.zero) {
+        await Future<void>.delayed(effectiveDelay);
+      }
     } catch (e) {
+      // Always propagate timeouts immediately
+      if (e is TimeoutException) {
+        rethrow;
+      }
       if (shouldContinueOnError != null && shouldContinueOnError(e)) {
         delay = strategy.nextDelay(attempt, delay);
         onPoll?.call(attempt, delay);
         attempt++;
-        await Future<void>.delayed(delay);
+
+        final remainingBeforeDelay = maxDuration - stopwatch.elapsed;
+        if (remainingBeforeDelay <= Duration.zero) {
+          throw TimeoutException(
+            'Polling timed out after ${stopwatch.elapsed}',
+            maxDuration,
+          );
+        }
+
+        final effectiveDelay = delay <= remainingBeforeDelay ? delay : remainingBeforeDelay;
+        if (effectiveDelay > Duration.zero) {
+          await Future<void>.delayed(effectiveDelay);
+        }
         continue;
       }
       rethrow;

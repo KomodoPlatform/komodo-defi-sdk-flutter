@@ -222,7 +222,9 @@ class TrezorAuthService implements IAuthService {
 
   /// Stop monitoring Trezor connection status.
   void _stopConnectionMonitoring() {
-    _connectionMonitor.stopMonitoring();
+    if (_connectionMonitor.isMonitoring) {
+      _connectionMonitor.stopMonitoring();
+    }
   }
 
   /// Signs out the current user if they are using the Trezor wallet

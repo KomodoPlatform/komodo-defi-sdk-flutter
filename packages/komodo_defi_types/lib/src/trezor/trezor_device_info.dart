@@ -1,8 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
-// ignore_for_file: non_abstract_class_inherits_abstract_member
-
 part 'trezor_device_info.freezed.dart';
 part 'trezor_device_info.g.dart';
 
@@ -22,4 +20,7 @@ abstract class TrezorDeviceInfo with _$TrezorDeviceInfo {
   /// Construct a [TrezorDeviceInfo] from json.
   factory TrezorDeviceInfo.fromJson(JsonMap json) =>
       _$TrezorDeviceInfoFromJson(json);
+
+  /// Convert this object to json.
+  JsonMap toJson() => _$TrezorDeviceInfoToJson(this);
 }

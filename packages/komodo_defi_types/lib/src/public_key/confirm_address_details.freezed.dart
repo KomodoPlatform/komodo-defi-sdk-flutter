@@ -15,48 +15,47 @@ T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$ConfirmAddressDetails {
-  @JsonKey(name: 'expected_address')
-  String get expectedAddress;
 
-  /// Create a copy of ConfirmAddressDetails
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  $ConfirmAddressDetailsCopyWith<ConfirmAddressDetails> get copyWith =>
-      _$ConfirmAddressDetailsCopyWithImpl<ConfirmAddressDetails>(
-          this as ConfirmAddressDetails, _$identity);
+@JsonKey(name: 'expected_address') String get expectedAddress;
+/// Create a copy of ConfirmAddressDetails
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ConfirmAddressDetailsCopyWith<ConfirmAddressDetails> get copyWith => _$ConfirmAddressDetailsCopyWithImpl<ConfirmAddressDetails>(this as ConfirmAddressDetails, _$identity);
 
   /// Serializes this ConfirmAddressDetails to a JSON map.
   Map<String, dynamic> toJson();
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is ConfirmAddressDetails &&
-            (identical(other.expectedAddress, expectedAddress) ||
-                other.expectedAddress == expectedAddress));
-  }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(runtimeType, expectedAddress);
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConfirmAddressDetails&&(identical(other.expectedAddress, expectedAddress) || other.expectedAddress == expectedAddress));
+}
 
-  @override
-  String toString() {
-    return 'ConfirmAddressDetails(expectedAddress: $expectedAddress)';
-  }
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,expectedAddress);
+
+@override
+String toString() {
+  return 'ConfirmAddressDetails(expectedAddress: $expectedAddress)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class $ConfirmAddressDetailsCopyWith<$Res> {
-  factory $ConfirmAddressDetailsCopyWith(ConfirmAddressDetails value,
-          $Res Function(ConfirmAddressDetails) _then) =
-      _$ConfirmAddressDetailsCopyWithImpl;
-  @useResult
-  $Res call({@JsonKey(name: 'expected_address') String expectedAddress});
-}
+abstract mixin class $ConfirmAddressDetailsCopyWith<$Res>  {
+  factory $ConfirmAddressDetailsCopyWith(ConfirmAddressDetails value, $Res Function(ConfirmAddressDetails) _then) = _$ConfirmAddressDetailsCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: 'expected_address') String expectedAddress
+});
 
+
+
+
+}
 /// @nodoc
 class _$ConfirmAddressDetailsCopyWithImpl<$Res>
     implements $ConfirmAddressDetailsCopyWith<$Res> {
@@ -65,80 +64,67 @@ class _$ConfirmAddressDetailsCopyWithImpl<$Res>
   final ConfirmAddressDetails _self;
   final $Res Function(ConfirmAddressDetails) _then;
 
-  /// Create a copy of ConfirmAddressDetails
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? expectedAddress = null,
-  }) {
-    return _then(_self.copyWith(
-      expectedAddress: null == expectedAddress
-          ? _self.expectedAddress
-          : expectedAddress // ignore: cast_nullable_to_non_nullable
-              as String,
-    ));
-  }
+/// Create a copy of ConfirmAddressDetails
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? expectedAddress = null,}) {
+  return _then(_self.copyWith(
+expectedAddress: null == expectedAddress ? _self.expectedAddress : expectedAddress // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
 }
+
+}
+
 
 /// @nodoc
 @JsonSerializable()
+
 class _ConfirmAddressDetails implements ConfirmAddressDetails {
-  const _ConfirmAddressDetails(
-      {@JsonKey(name: 'expected_address') required this.expectedAddress});
-  factory _ConfirmAddressDetails.fromJson(Map<String, dynamic> json) =>
-      _$ConfirmAddressDetailsFromJson(json);
+  const _ConfirmAddressDetails({@JsonKey(name: 'expected_address') required this.expectedAddress});
+  factory _ConfirmAddressDetails.fromJson(Map<String, dynamic> json) => _$ConfirmAddressDetailsFromJson(json);
 
-  @override
-  @JsonKey(name: 'expected_address')
-  final String expectedAddress;
+@override@JsonKey(name: 'expected_address') final  String expectedAddress;
 
-  /// Create a copy of ConfirmAddressDetails
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  _$ConfirmAddressDetailsCopyWith<_ConfirmAddressDetails> get copyWith =>
-      __$ConfirmAddressDetailsCopyWithImpl<_ConfirmAddressDetails>(
-          this, _$identity);
+/// Create a copy of ConfirmAddressDetails
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ConfirmAddressDetailsCopyWith<_ConfirmAddressDetails> get copyWith => __$ConfirmAddressDetailsCopyWithImpl<_ConfirmAddressDetails>(this, _$identity);
 
-  @override
-  Map<String, dynamic> toJson() {
-    return _$ConfirmAddressDetailsToJson(
-      this,
-    );
-  }
+@override
+Map<String, dynamic> toJson() {
+  return _$ConfirmAddressDetailsToJson(this, );
+}
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _ConfirmAddressDetails &&
-            (identical(other.expectedAddress, expectedAddress) ||
-                other.expectedAddress == expectedAddress));
-  }
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ConfirmAddressDetails&&(identical(other.expectedAddress, expectedAddress) || other.expectedAddress == expectedAddress));
+}
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(runtimeType, expectedAddress);
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,expectedAddress);
 
-  @override
-  String toString() {
-    return 'ConfirmAddressDetails(expectedAddress: $expectedAddress)';
-  }
+@override
+String toString() {
+  return 'ConfirmAddressDetails(expectedAddress: $expectedAddress)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class _$ConfirmAddressDetailsCopyWith<$Res>
-    implements $ConfirmAddressDetailsCopyWith<$Res> {
-  factory _$ConfirmAddressDetailsCopyWith(_ConfirmAddressDetails value,
-          $Res Function(_ConfirmAddressDetails) _then) =
-      __$ConfirmAddressDetailsCopyWithImpl;
-  @override
-  @useResult
-  $Res call({@JsonKey(name: 'expected_address') String expectedAddress});
-}
+abstract mixin class _$ConfirmAddressDetailsCopyWith<$Res> implements $ConfirmAddressDetailsCopyWith<$Res> {
+  factory _$ConfirmAddressDetailsCopyWith(_ConfirmAddressDetails value, $Res Function(_ConfirmAddressDetails) _then) = __$ConfirmAddressDetailsCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: 'expected_address') String expectedAddress
+});
 
+
+
+
+}
 /// @nodoc
 class __$ConfirmAddressDetailsCopyWithImpl<$Res>
     implements _$ConfirmAddressDetailsCopyWith<$Res> {
@@ -147,20 +133,16 @@ class __$ConfirmAddressDetailsCopyWithImpl<$Res>
   final _ConfirmAddressDetails _self;
   final $Res Function(_ConfirmAddressDetails) _then;
 
-  /// Create a copy of ConfirmAddressDetails
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $Res call({
-    Object? expectedAddress = null,
-  }) {
-    return _then(_ConfirmAddressDetails(
-      expectedAddress: null == expectedAddress
-          ? _self.expectedAddress
-          : expectedAddress // ignore: cast_nullable_to_non_nullable
-              as String,
-    ));
-  }
+/// Create a copy of ConfirmAddressDetails
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? expectedAddress = null,}) {
+  return _then(_ConfirmAddressDetails(
+expectedAddress: null == expectedAddress ? _self.expectedAddress : expectedAddress // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
 }
 
 // dart format on

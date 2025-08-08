@@ -31,7 +31,7 @@ enum TrezorConnectionStatus {
     }
   }
 
-  /// Convert enum back to string representation
+  /// Human-readable label for display purposes
   String get value {
     switch (this) {
       case TrezorConnectionStatus.connected:
@@ -46,6 +46,9 @@ enum TrezorConnectionStatus {
         return 'Unknown';
     }
   }
+
+  /// Lowercase identifier used by the API
+  String get apiValue => name; // matches fromString expectations
 
   /// Check if the status indicates the device is available for operations
   bool get isAvailable => this == TrezorConnectionStatus.connected;
