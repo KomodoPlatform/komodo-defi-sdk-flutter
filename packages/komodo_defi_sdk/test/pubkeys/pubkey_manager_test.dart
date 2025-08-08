@@ -179,7 +179,7 @@ void main() {
     });
 
     test(
-      'watchPubkeys emits last known via controller, then refreshed value',
+      'watchPubkeys emits last known immediately, then same via controller, then refreshed value',
       () async {
         final user = nonHdUser();
         when(() => auth.currentUser).thenAnswer((_) async => user);
@@ -194,10 +194,10 @@ void main() {
 
         final stream = manager.watchPubkeys(tendermintAsset);
 
-        // First emit is lastKnown from controller, second is refreshed value after getPubkeys()
-        final firstTwo = await stream.take(2).toList();
-        expect(firstTwo[0].keys.first.address, 'cosmos1pre');
-        expect(firstTwo[1].keys.first.address, 'cosmos1new');
+        // First emit is immediate lastKnown, second is same from controller, third is refreshed value
+        final firstThree = await stream.take(3).toList();
+        expect(firstThree[0].keys.first.address, 'cosmos1pre');
+        expect(firstThree[2].keys.first.address, 'cosmos1new');
       },
     );
 
@@ -427,6 +427,111 @@ void main() {
         expect(emitted.contains('cosmos1afterChange'), isTrue);
 
         await sub.cancel();
+      },
+    );
+
+    test(
+      'watchPubkeys second subscriber receives immediate lastKnown when controller exists (due to immediate yield)',
+      () async {
+        final user = nonHdUser();
+        when(() => auth.currentUser).thenAnswer((_) async => user);
+        await stubActivationAlwaysActive(tendermintAsset);
+
+        fakeAsync((async) {
+          // Seed cache
+          stubWalletMyBalance(
+            address: 'cosmos1pre',
+            coin: tendermintAsset.id.id,
+          );
+          // First fetch result for immediate refresh
+          stubWalletMyBalance(
+            address: 'cosmos1first',
+            coin: tendermintAsset.id.id,
+          );
+
+          final s1Events = <String>[];
+          final sub1 = manager.watchPubkeys(tendermintAsset).listen((e) {
+            s1Events.add(e.keys.first.address);
+          });
+
+          // Let initial get happen
+          async.flushMicrotasks();
+
+          // Prepare next poll result
+          stubWalletMyBalance(
+            address: 'cosmos1poll',
+            coin: tendermintAsset.id.id,
+          );
+
+          // Second subscriber joins AFTER controller already active
+          final s2Events = <String>[];
+          final sub2 = manager.watchPubkeys(tendermintAsset).listen((e) {
+            s2Events.add(e.keys.first.address);
+          });
+
+          // With immediate yield reintroduced, second subscriber sees immediate lastKnown
+          async.flushMicrotasks();
+          expect(s2Events, isNotEmpty);
+
+          // Only after the next polling tick (~30s) should second subscriber receive a new value
+          async
+            ..elapse(const Duration(seconds: 30))
+            ..flushMicrotasks();
+
+          expect(s2Events, contains('cosmos1poll'));
+
+          unawaited(sub1.cancel());
+          unawaited(sub2.cancel());
+        });
+      },
+    );
+
+    test(
+      'watchPubkeys activateIfNeeded is sticky per controller (first subscriber decides)',
+      () async {
+        final user = nonHdUser();
+        when(() => auth.currentUser).thenAnswer((_) async => user);
+
+        // Start as inactive; do NOT allow activation on first subscriber
+        when(
+          () => activation.isAssetActive(tendermintAsset.id),
+        ).thenAnswer((_) async => false);
+        when(
+          () => activation.activateAsset(tendermintAsset),
+        ).thenAnswer((_) async => ActivationResult.success(tendermintAsset.id));
+
+        // Do NOT pre-cache; we want to ensure no activation occurs and no emissions happen
+
+        // First subscriber: activateIfNeeded=false (controller is created here)
+        final s1Events = <String>[];
+        final s1 = manager
+            .watchPubkeys(tendermintAsset, activateIfNeeded: false)
+            .listen((e) {
+              s1Events.add(e.keys.first.address);
+            });
+
+        // Allow initial onListen to run
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // Second subscriber: activateIfNeeded=true but controller already exists
+        final s2Events = <String>[];
+        final s2 = manager.watchPubkeys(tendermintAsset).listen((e) {
+          s2Events.add(e.keys.first.address);
+        });
+
+        // Give listeners a brief moment
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // Because the controller was created with activateIfNeeded=false, no activation should occur
+        verifyNever(() => activation.activateAsset(tendermintAsset));
+
+        // No emissions should occur since activation is disabled and asset inactive
+        expect(s1Events, isEmpty);
+        expect(s2Events, isEmpty);
+
+        // Clean up
+        await s1.cancel();
+        await s2.cancel();
       },
     );
 

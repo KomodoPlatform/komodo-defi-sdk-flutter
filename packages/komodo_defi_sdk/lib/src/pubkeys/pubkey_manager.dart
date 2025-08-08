@@ -121,6 +121,12 @@ class PubkeyManager implements IPubkeyManager {
       throw StateError('PubkeyManager has been disposed');
     }
 
+    // Emit last known pubkeys immediately if available
+    final lastKnown = _pubkeysCache[asset.id];
+    if (lastKnown != null) {
+      yield lastKnown;
+    }
+
     final controller = _pubkeysControllers.putIfAbsent(
       asset.id,
       () => StreamController<AssetPubkeys>.broadcast(
