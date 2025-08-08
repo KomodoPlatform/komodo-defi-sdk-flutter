@@ -50,7 +50,7 @@ Future<T> poll<T>(
         );
       }
 
-      final effectiveDelay = delay <= remainingBeforeDelay ? delay : remainingBeforeDelay;
+      final effectiveDelay = _calculateEffectiveDelay(delay, remainingBeforeDelay);
       if (effectiveDelay > Duration.zero) {
         await Future<void>.delayed(effectiveDelay);
       }
@@ -72,7 +72,7 @@ Future<T> poll<T>(
           );
         }
 
-        final effectiveDelay = delay <= remainingBeforeDelay ? delay : remainingBeforeDelay;
+        final effectiveDelay = _calculateEffectiveDelay(delay, remainingBeforeDelay);
         if (effectiveDelay > Duration.zero) {
           await Future<void>.delayed(effectiveDelay);
         }
@@ -81,4 +81,10 @@ Future<T> poll<T>(
       rethrow;
     }
   }
+}
+
+/// Returns the smaller of the desired delay and the remaining time budget, ensuring non-negative.
+Duration _calculateEffectiveDelay(Duration desiredDelay, Duration remainingBudget) {
+  if (remainingBudget <= Duration.zero) return Duration.zero;
+  return desiredDelay <= remainingBudget ? desiredDelay : remainingBudget;
 }

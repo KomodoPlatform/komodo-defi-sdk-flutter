@@ -232,8 +232,8 @@ class TrezorAuthService implements IAuthService {
     final current = await _authService.getActiveUser();
     if (current?.walletId.name == trezorWalletName) {
       _log.warning("Signing out current '${current?.walletId.name}' user");
-      _stopConnectionMonitoring();
       try {
+        _stopConnectionMonitoring();
         await _authService.signOut();
       } catch (_) {
         // ignore sign out errors

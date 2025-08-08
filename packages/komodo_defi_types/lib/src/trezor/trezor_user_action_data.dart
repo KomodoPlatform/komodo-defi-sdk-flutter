@@ -19,17 +19,32 @@ enum TrezorUserActionType {
 /// Data sent to the API when providing a PIN or passphrase to a Trezor device.
 @freezed
 abstract class TrezorUserActionData with _$TrezorUserActionData {
-  @Assert(
-    '((actionType == TrezorUserActionType.trezorPin && pin != null) || '
-        '(actionType == TrezorUserActionType.trezorPassphrase && passphrase != null))',
-    'PIN must be provided for TrezorPin action, passphrase for TrezorPassphrase action',
-  )
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory TrezorUserActionData({
     required TrezorUserActionType actionType,
     String? pin,
     String? passphrase,
   }) = _TrezorUserActionData;
+
+  /// Convenience factory for PIN actions with strong validation.
+  factory TrezorUserActionData.pin(String pin) {
+    if (pin.isEmpty || !RegExp(r'^\d+$').hasMatch(pin)) {
+      throw ArgumentError('PIN must contain only digits and cannot be empty.');
+    }
+    return TrezorUserActionData(
+      actionType: TrezorUserActionType.trezorPin,
+      pin: pin,
+    );
+  }
+
+  /// Convenience factory for passphrase actions with strong validation.
+  factory TrezorUserActionData.passphrase(String passphrase) {
+    // Empty passphrase is allowed to access default wallet
+    return TrezorUserActionData(
+      actionType: TrezorUserActionType.trezorPassphrase,
+      passphrase: passphrase,
+    );
+  }
 
   factory TrezorUserActionData.fromJson(JsonMap json) =>
       _$TrezorUserActionDataFromJson(json);

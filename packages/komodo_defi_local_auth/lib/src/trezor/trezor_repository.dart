@@ -229,7 +229,13 @@ class TrezorRepository {
       );
     }
 
-    while (last!.shouldContinueMonitoring && stopwatch.elapsed < maxDuration) {
+    if (last == null) {
+      // Defensive: should not happen, but ensures safety if code changes
+      yield TrezorConnectionStatus.unreachable;
+      return;
+    }
+
+    while (last.shouldContinueMonitoring && stopwatch.elapsed < maxDuration) {
       await Future<void>.delayed(pollInterval);
       try {
         final current = await getConnectionStatus(devicePubkey: devicePubkey);

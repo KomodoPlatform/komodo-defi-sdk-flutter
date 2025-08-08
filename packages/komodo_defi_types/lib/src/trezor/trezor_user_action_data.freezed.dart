@@ -82,7 +82,7 @@ as String?,
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class _TrezorUserActionData implements TrezorUserActionData {
-  const _TrezorUserActionData({required this.actionType, this.pin, this.passphrase}): assert(((actionType == TrezorUserActionType.trezorPin && pin != null) || (actionType == TrezorUserActionType.trezorPassphrase && passphrase != null)), 'PIN must be provided for TrezorPin action, passphrase for TrezorPassphrase action');
+  const _TrezorUserActionData({required this.actionType, this.pin, this.passphrase});
   factory _TrezorUserActionData.fromJson(Map<String, dynamic> json) => _$TrezorUserActionDataFromJson(json);
 
 @override final  TrezorUserActionType actionType;
