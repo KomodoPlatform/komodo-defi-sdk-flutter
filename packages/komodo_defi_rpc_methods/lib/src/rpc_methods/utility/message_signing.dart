@@ -9,7 +9,7 @@ class SignMessageRequest
     required String rpcPass,
     required this.coin,
     required this.message,
-  }) : super(method: 'sign_message', rpcPass: rpcPass, mmrpc: '2.0');
+  }) : super(method: 'sign_message', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// The coin to sign a message with
   final String coin;
@@ -64,7 +64,11 @@ class VerifyMessageRequest
     required this.message,
     required this.signature,
     required this.address,
-  }) : super(method: 'verify_message', rpcPass: rpcPass, mmrpc: '2.0');
+  }) : super(
+         method: 'verify_message',
+         rpcPass: rpcPass,
+         mmrpc: RpcVersion.v2_0,
+       );
 
   /// The coin to verify a message with
   final String coin;

@@ -17,14 +17,19 @@ abstract class BalanceStrategy {
   bool protocolSupported(ProtocolClass protocol);
 }
 
-/// Factory to create appropriate strategy based on Wallet type
+/// Factory to create appropriate strategy based on Wallet type and protocol
 class BalanceStrategyFactory {
-  static BalanceStrategy createStrategy({required bool isHdWallet}) {
-    if (isHdWallet) {
+  static BalanceStrategy createStrategy({
+    required bool isHdWallet,
+    ProtocolClass? protocol,
+  }) {
+    // For HD wallets, check if the protocol supports multiple addresses
+    if (isHdWallet && protocol?.supportsMultipleAddresses == true) {
       return HDWalletBalanceStrategy();
     }
 
+    // Fall back to single address strategy for non-HD wallets or
+    // protocols that don't support multiple addresses
     return IguananaWalletBalanceStrategy();
   }
 }
-

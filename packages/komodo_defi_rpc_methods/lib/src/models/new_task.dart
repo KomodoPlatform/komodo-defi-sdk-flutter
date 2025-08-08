@@ -7,7 +7,7 @@ class TaskStatusRequest
     required this.taskId,
     required super.rpcPass,
     required super.method,
-  }) : super(mmrpc: '2.0');
+  }) : super(mmrpc: RpcVersion.v2_0);
 
   final int taskId;
 

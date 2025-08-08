@@ -38,13 +38,8 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     String? githubToken,
   }) {
     final config = buildConfig.coinCIConfig.copyWith(
-      // If the branch is `master`, use the repository mirror URL to avoid
-      // rate limiting issues. Consider refactoring config to allow branch
-      // specific mirror URLs to remove this workaround.
-      coinsRepoContentUrl:
-          buildConfig.coinCIConfig.isMainBranch
-              ? buildConfig.coinCIConfig.coinsRepoContentUrl
-              : buildConfig.coinCIConfig.rawContentUrl,
+      // Use the effective content URL which checks CDN mirrors
+      coinsRepoContentUrl: buildConfig.coinCIConfig.effectiveContentUrl,
     );
 
     final provider = GithubApiProvider.withBaseUrl(
@@ -125,9 +120,28 @@ class FetchCoinAssetsBuildStep extends BuildStep {
         configWithUpdatedCommit.bundledCoinsRepoCommit;
 
     if (wasCommitHashUpdated || !alreadyHadCoinAssets) {
-      const errorMessage =
-          'Coin assets have been updated. '
-          'Please re-run the build process for the changes to take effect.';
+      final errorMessage = '''
+        \n
+        ${'=-' * 20}
+        BUILD FAILED
+
+        What: Coin assets were updated.
+        
+        How to fix: Re-run the build process for the changes to take effect.
+
+        Why: This is due to a limitation in Flutter's build system. We're
+        working on a fix to Flutter, but it will depend on Flutter team
+        considering the PR.
+
+        How to avoid: If you absolutely need to avoid this double build, you
+        can manually run `flutter clean && flutter build bundle` but this is
+        not recommended since the double build will be fixed in the future.
+
+        For more details, follow the KomodoPlatform Flutter fork:
+        https://github.com/KomodPlatform/flutter
+        ${'=-' * 20}
+        \n
+      ''';
 
       // If it's not a debug build and the commit hash was updated, throw an
       // exception to indicate that the build process should be re-run. We can

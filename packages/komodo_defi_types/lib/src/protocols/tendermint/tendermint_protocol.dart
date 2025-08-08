@@ -1,3 +1,4 @@
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -49,4 +50,31 @@ class TendermintProtocol extends ProtocolClass {
 
   @override
   bool get requiresHdWallet => false;
+
+  @override
+  bool get isMemoSupported => false;
+
+  /// Create default activation params for Tendermint protocol.
+  /// Tendermint is single-address only, so no HD wallet parameters are used.
+  @override
+  TendermintActivationParams defaultActivationParams({
+    PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
+  }) {
+    // Create a config with mode if not present
+    final configWithMode = JsonMap.of(config)
+      ..setIfAbsentOrEmpty(
+        'mode',
+        () => {
+          'rpc': ActivationModeType.electrum.value,
+          'rpc_data': {'electrum': rpcUrlsMap},
+        },
+      );
+
+    // Get base parameters from config and set single-address defaults
+    return TendermintActivationParams.fromJson(configWithMode).copyWith(
+      txHistory: true,
+      privKeyPolicy: privKeyPolicy,
+      getBalances: true,
+    );
+  }
 }

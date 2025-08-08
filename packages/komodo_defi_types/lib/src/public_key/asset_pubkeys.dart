@@ -38,11 +38,11 @@ class AssetPubkeys extends Equatable {
 
   @override
   List<Object?> get props => [
-        assetId,
-        keys,
-        availableAddressesCount,
-        syncStatus,
-      ];
+    assetId,
+    keys,
+    availableAddressesCount,
+    syncStatus,
+  ];
 }
 
 /// Public type for the pubkeys info. Note that this is a separate type from the
@@ -50,13 +50,19 @@ class AssetPubkeys extends Equatable {
 /// the GUI types independent from the API types.
 
 class PubkeyInfo extends NewAddressInfo {
-  const PubkeyInfo({
-    required super.address,
-    required super.derivationPath,
-    required super.chain,
-    required super.balance,
+  PubkeyInfo({
+    required String address,
+    required String? derivationPath,
+    required String? chain,
+    required BalanceInfo balance,
+    required String coinTicker,
     this.name,
-  });
+  }) : super(
+         address: address,
+         derivationPath: derivationPath,
+         chain: chain,
+         balances: {coinTicker: balance},
+       );
 
   final String? name;
 

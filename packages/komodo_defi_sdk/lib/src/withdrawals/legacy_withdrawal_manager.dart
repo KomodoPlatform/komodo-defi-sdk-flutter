@@ -51,22 +51,22 @@ class LegacyWithdrawalManager implements WithdrawalManager {
         ),
       );
 
+      // Broadcast the transaction to the blockchain
       try {
-        // Broadcast the transaction
         final broadcastResponse = await _client.rpc.withdraw.sendRawTransaction(
           coin: parameters.asset,
           txHex: result.txHex,
         );
 
-        // Final success update
+        // Final success update with actual broadcast transaction hash
         yield WithdrawalProgress(
           status: WithdrawalStatus.complete,
-          message: 'Withdrawal complete',
+          message: 'Withdrawal completed successfully',
           withdrawalResult: WithdrawalResult(
             txHash: broadcastResponse.txHash,
             balanceChanges: result.balanceChanges,
-            coin: parameters.asset,
-            toAddress: parameters.toAddress,
+            coin: result.coin,
+            toAddress: result.to.first,
             fee: result.fee,
             kmdRewardsEligible:
                 result.kmdRewards != null &&
@@ -114,7 +114,7 @@ class LegacyWithdrawalManager implements WithdrawalManager {
       }
 
       return response.details as WithdrawResult;
-    } catch (e, s) {
+    } catch (e) {
       if (e is WithdrawalException) {
         rethrow;
       }
@@ -133,5 +133,12 @@ class LegacyWithdrawalManager implements WithdrawalManager {
   @override
   Future<void> dispose() async {
     // Do any cleanup here
+  }
+
+  /// Legacy implementation doesn't support priority-based fee options
+  @override
+  Future<WithdrawalFeeOptions?> getFeeOptions(String assetId) async {
+    // Legacy implementation doesn't support priority-based fees
+    return null;
   }
 }

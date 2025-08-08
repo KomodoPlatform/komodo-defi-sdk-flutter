@@ -8,7 +8,7 @@ class ConvertUtxoAddressRequest
     required this.coin,
     required this.address,
     required this.toCoin,
-  }) : super(method: 'convert_utxo_address', mmrpc: '2.0');
+  }) : super(method: 'convert_utxo_address', mmrpc: RpcVersion.v2_0);
 
   final String coin;
   final String address;

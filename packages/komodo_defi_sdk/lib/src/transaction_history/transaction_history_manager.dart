@@ -34,7 +34,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     this._client,
     this._auth,
     this._assetProvider,
-    this._activationManager, {
+    this._activationCoordinator, {
     required PubkeyManager pubkeyManager,
     TransactionStorage? storage,
   }) : _storage = storage ?? TransactionStorage.defaultForPlatform(),
@@ -53,7 +53,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final IAssetProvider _assetProvider;
-  final ActivationManager _activationManager;
+  final SharedActivationCoordinator _activationCoordinator;
   final TransactionStorage _storage;
 
   final _streamControllers = <AssetId, StreamController<Transaction>>{};
@@ -380,10 +380,10 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   }
 
   Future<void> _ensureAssetActivated(Asset asset) async {
-    final activationStatus = await _activationManager.activateAsset(asset).last;
-    if (activationStatus.isComplete && !activationStatus.isSuccess) {
+    final activationResult = await _activationCoordinator.activateAsset(asset);
+    if (activationResult.isFailure) {
       throw StateError(
-        'Failed to activate asset ${asset.id.name}. ${activationStatus.toJson()}',
+        'Failed to activate asset ${asset.id.name}. ${activationResult.errorMessage}',
       );
     }
   }

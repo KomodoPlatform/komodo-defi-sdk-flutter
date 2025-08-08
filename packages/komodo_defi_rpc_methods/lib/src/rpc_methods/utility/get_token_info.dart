@@ -10,7 +10,11 @@ class GetTokenInfoRequest
     required this.protocolType,
     required this.platform,
     required this.contractAddress,
-  }) : super(method: 'get_token_info', rpcPass: rpcPass, mmrpc: '2.0');
+  }) : super(
+         method: 'get_token_info',
+         rpcPass: rpcPass,
+         mmrpc: RpcVersion.v2_0,
+       );
 
   /// Token type - e.g ERC20 for tokens on the Ethereum network
   final String protocolType;

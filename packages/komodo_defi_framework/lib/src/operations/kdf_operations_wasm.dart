@@ -135,10 +135,11 @@ class KdfOperationsWasm implements IKdfOperations {
 
         // Check for code property
         if (jsObj.hasProperty('code'.toJS).toDart) {
-          final code = jsObj.getProperty('code'.toJS);
-          // Print all properties of the JSObject
-          if (isInstance<js_interop.JSNumber>(code, 'JSNumber')) {
-            final errorCode = (code! as js_interop.JSNumber).toDartInt;
+          final code = jsObj.getProperty<js_interop.JSNumber?>('code'.toJS);
+          // Check if the property is a JSNumber
+          if (code != null &&
+              isInstance<js_interop.JSNumber>(code, 'JSNumber')) {
+            final errorCode = code.toDartInt;
             _log(
               'KdfOperationsWasm: Resolved as JSObject->JSNumber error code: $errorCode',
             );
@@ -147,9 +148,10 @@ class KdfOperationsWasm implements IKdfOperations {
         }
 
         // Try toNumber method
-        final asNumber = jsObj.callMethod('toNumber'.toJS);
+        final asNumber =
+            jsObj.callMethod<js_interop.JSNumber?>('toNumber'.toJS);
         if (asNumber?.isDefinedAndNotNull ?? false) {
-          final errorCode = (asNumber! as js_interop.JSNumber).toDartInt;
+          final errorCode = asNumber!.toDartInt;
           _log(
             'KdfOperationsWasm: Resolved as JSNumber error code: $errorCode',
           );
@@ -188,8 +190,10 @@ class KdfOperationsWasm implements IKdfOperations {
   @override
   Future<MainStatus> kdfMainStatus() async {
     await _ensureLoaded();
-    final status = _kdfModule!.callMethod('mm2_main_status'.toJS);
-    return MainStatus.fromDefaultInt(status! as int);
+    final status = _kdfModule!
+        .callMethod<js_interop.JSNumber?>('mm2_main_status'.toJS)
+        ?.toDartInt;
+    return MainStatus.fromDefaultInt(status!);
   }
 
   @override
@@ -431,9 +435,11 @@ class KdfOperationsWasm implements IKdfOperations {
           'init_wasm',
           '__wbg_init',
         ],
-        value: (key) =>
-            'Has property: ${_kdfModule!.has(key as String)} with type: '
-            '${_kdfModule!.getProperty(key.toJS).runtimeType}',
+        value: (key) {
+          final jsKey = (key as String).toJS;
+          return 'Has property: ${_kdfModule!.hasProperty(jsKey).toDart} with type: '
+              '${_kdfModule!.getProperty<js_interop.JSAny?>(jsKey).runtimeType}';
+        },
       );
 
       _log('KDF Has properties: $debugProperties');

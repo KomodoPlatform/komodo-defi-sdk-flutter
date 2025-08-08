@@ -111,8 +111,8 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
   ExplorerUrlPattern get explorerPattern => ExplorerUrlPattern.fromJson(config);
 
   /// Whether the protocol supports memos
-  // TODO! Implement
-  bool get isMemoSupported => true;
+  /// Only ZHTLC and UTXO protocols support memos
+  bool get isMemoSupported;
 
   /// Convert protocol back to JSON representation
   JsonMap toJson() => {
