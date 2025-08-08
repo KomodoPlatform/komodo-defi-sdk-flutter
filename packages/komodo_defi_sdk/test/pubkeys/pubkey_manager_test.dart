@@ -107,16 +107,16 @@ void main() {
           };
         }
         if (method == 'unban_pubkeys') {
-          return {
-            'result': {
-              'still_banned': {},
-              'unbanned': {},
-              'were_not_banned': [],
+          return <String, dynamic>{
+            'result': <String, dynamic>{
+              'still_banned': <String, dynamic>{},
+              'unbanned': <String, dynamic>{},
+              'were_not_banned': <String>[],
             },
           };
         }
         // Default minimal success for other RPCs that might appear
-        return {'result': {}};
+        return <String, dynamic>{'result': <String, dynamic>{}};
       });
     }
 
@@ -376,6 +376,60 @@ void main() {
 
       expect(manager.lastKnown(tendermintAsset.id), isNull);
     });
+
+    test(
+      'auth wallet change emits error and restarts watching on same subscription',
+      () async {
+        // Arrange: setup auth to return a mutable current user
+        final user1 = nonHdUser();
+        KdfUser current = user1;
+        when(() => auth.currentUser).thenAnswer((_) async => current);
+        await stubActivationAlwaysActive(tendermintAsset);
+
+        // Prime cache and first fetches
+        stubWalletMyBalance(address: 'cosmos1pre', coin: tendermintAsset.id.id);
+        await manager.preCachePubkeys(tendermintAsset);
+        stubWalletMyBalance(
+          address: 'cosmos1first',
+          coin: tendermintAsset.id.id,
+        );
+
+        final emitted = <String>[];
+        final errors = <Object>[];
+        final sub = manager
+            .watchPubkeys(tendermintAsset)
+            .listen(
+              (pubkeys) => emitted.add(pubkeys.keys.first.address),
+              onError: errors.add,
+            );
+
+        // Allow immediate refresh
+        await Future<void>.delayed(Duration(milliseconds: 10));
+
+        // Act: change wallet and ensure new value is fetched on the same subscription
+        stubWalletMyBalance(
+          address: 'cosmos1afterChange',
+          coin: tendermintAsset.id.id,
+        );
+        final user2 = KdfUser(
+          walletId: WalletId(
+            name: 'other',
+            authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
+          ),
+          isBip39Seed: false,
+        );
+        current = user2; // update what auth.currentUser returns
+        authChanges.add(user2);
+
+        // Assert: receive an error and then a new emission without re-subscribing
+        await Future<void>.delayed(Duration(milliseconds: 80));
+        expect(errors.whereType<StateError>(), isNotEmpty);
+        // The controller remains open and should emit after restart
+        expect(emitted.contains('cosmos1afterChange'), isTrue);
+
+        await sub.cancel();
+      },
+    );
 
     test('dispose prevents further access', () async {
       await manager.dispose();

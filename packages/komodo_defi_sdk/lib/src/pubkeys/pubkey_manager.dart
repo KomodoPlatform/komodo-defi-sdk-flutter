@@ -51,6 +51,9 @@ class PubkeyManager implements IPubkeyManager {
   final Map<AssetId, AssetPubkeys> _pubkeysCache = {};
   final Map<AssetId, StreamSubscription<dynamic>> _activeWatchers = {};
   final Map<AssetId, StreamController<AssetPubkeys>> _pubkeysControllers = {};
+  // Track the Asset for each AssetId that has an associated controller so that
+  // we can restart watchers after auth changes without requiring new listeners
+  final Map<AssetId, Asset> _watchedAssets = {};
 
   StreamSubscription<KdfUser?>? _authSubscription;
   WalletId? _currentWalletId;
@@ -131,6 +134,8 @@ class PubkeyManager implements IPubkeyManager {
         onCancel: () => _stopWatchingPubkeys(asset.id),
       ),
     );
+    // Remember the Asset so we can restart the watcher after a reset
+    _watchedAssets[asset.id] = asset;
 
     yield* controller.stream;
   }
@@ -267,6 +272,10 @@ class PubkeyManager implements IPubkeyManager {
     }
   }
 
+  /// Called when authentication state changes to do the following:
+  /// - clear active watchers
+  /// - indicate disconnection with state error to controllers
+  /// - restart the pubkey watchers for the active controllers
   Future<void> _resetState() async {
     // Cancel all active watchers
     for (final subscription in _activeWatchers.values) {
@@ -274,29 +283,28 @@ class PubkeyManager implements IPubkeyManager {
     }
     _activeWatchers.clear();
 
-    // Wallet changes are normal user operations; do not signal as errors.
-    // If needed, consider using a dedicated event or state indicator.
-    for (final _ in _pubkeysControllers.values) {
-      // No-op: we intentionally keep controllers open so that consumers can
-      // re-listen, which will trigger a fresh watcher start when appropriate.
-      // Optionally, emit a state event here if the stream type supports it.
+    // Notify existing controllers with an error to signal reconnection
+    for (final controller in _pubkeysControllers.values) {
+      if (!controller.isClosed) {
+        controller.addError(
+          StateError('Wallet changed, reconnecting pubkey watchers'),
+        );
+      }
     }
 
     // Clear caches
     _pubkeysCache.clear();
 
-    // Restart watchers for existing controllers
+    // Restart pubkey watchers for controllers that remain open
     final existingControllers =
         Map<AssetId, StreamController<AssetPubkeys>>.from(_pubkeysControllers);
     for (final entry in existingControllers.entries) {
-      if (!entry.value.isClosed) {
-        // Asset recreation from AssetId is intentionally not performed here during state reset.
-        // This is because reconstructing an Asset instance from just its AssetId is non-trivial:
-        // it may require additional metadata or context that is not available at this point,
-        // and could depend on external state or configuration. Instead, we rely on callers to
-        // re-listen, which will trigger a restart with a fully constructed Asset. This approach
-        // avoids potential errors and ensures that watchers are started with complete information.
-        // We simply keep controllers; new listeners will call _startWatchingPubkeys as needed.
+      final controller = entry.value;
+      if (controller.isClosed) continue;
+      final assetId = entry.key;
+      final asset = _watchedAssets[assetId];
+      if (asset != null) {
+        await _startWatchingPubkeys(asset, true);
       }
     }
   }
@@ -321,6 +329,7 @@ class PubkeyManager implements IPubkeyManager {
     _pubkeysControllers.clear();
 
     _pubkeysCache.clear();
+    _watchedAssets.clear();
     _currentWalletId = null;
   }
 }
