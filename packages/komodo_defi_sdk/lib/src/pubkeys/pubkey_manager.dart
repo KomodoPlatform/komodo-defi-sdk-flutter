@@ -58,6 +58,7 @@ class PubkeyManager implements IPubkeyManager {
   final Duration _defaultPollingInterval = const Duration(seconds: 30);
 
   /// Get pubkeys for a given asset, handling HD/non-HD differences internally
+  @override
   Future<AssetPubkeys> getPubkeys(Asset asset) async {
     await retry(() => _activationCoordinator.activateAsset(asset));
     final strategy = await _resolvePubkeyStrategy(asset);
@@ -65,6 +66,7 @@ class PubkeyManager implements IPubkeyManager {
   }
 
   /// Create a new pubkey for an asset if supported
+  @override
   Future<PubkeyInfo> createNewPubkey(Asset asset) async {
     await retry(() => _activationCoordinator.activateAsset(asset));
     final strategy = await _resolvePubkeyStrategy(asset);
@@ -77,6 +79,7 @@ class PubkeyManager implements IPubkeyManager {
   }
 
   /// Streamed version of [createNewPubkey]
+  @override
   Stream<NewAddressState> createNewPubkeyStream(Asset asset) async* {
     await retry(() => _activationCoordinator.activateAsset(asset));
     final strategy = await _resolvePubkeyStrategy(asset);
@@ -90,6 +93,7 @@ class PubkeyManager implements IPubkeyManager {
   }
 
   /// Unban pubkeys according to [unbanBy] criteria
+  @override
   Future<UnbanPubkeysResult> unbanPubkeys(UnbanBy unbanBy) async {
     final response = await _client.rpc.wallet.unbanPubkeys(unbanBy: unbanBy);
     return response.result;
@@ -105,6 +109,7 @@ class PubkeyManager implements IPubkeyManager {
 
   /// Stream of pubkeys per asset. Polls pubkeys (not balances) and emits updates.
   /// Emits the initial known state if available.
+  @override
   Stream<AssetPubkeys> watchPubkeys(
     Asset asset, {
     bool activateIfNeeded = true,
@@ -269,13 +274,12 @@ class PubkeyManager implements IPubkeyManager {
     }
     _activeWatchers.clear();
 
-    // Notify existing controllers that watchers are being restarted
-    for (final controller in _pubkeysControllers.values) {
-      if (!controller.isClosed) {
-        controller.addError(
-          StateError('Wallet changed, reconnecting pubkeys watchers'),
-        );
-      }
+    // Wallet changes are normal user operations; do not signal as errors.
+    // If needed, consider using a dedicated event or state indicator.
+    for (final _ in _pubkeysControllers.values) {
+      // No-op: we intentionally keep controllers open so that consumers can
+      // re-listen, which will trigger a fresh watcher start when appropriate.
+      // Optionally, emit a state event here if the stream type supports it.
     }
 
     // Clear caches
@@ -286,14 +290,19 @@ class PubkeyManager implements IPubkeyManager {
         Map<AssetId, StreamController<AssetPubkeys>>.from(_pubkeysControllers);
     for (final entry in existingControllers.entries) {
       if (!entry.value.isClosed) {
-        // Recreate Asset from AssetId for restart is not trivial here, so rely on
-        // callers to re-listen which will trigger start with a concrete Asset.
-        // We simply keep controllers; new listeners will call _startWatchingPubkeys.
+        // Asset recreation from AssetId is intentionally not performed here during state reset.
+        // This is because reconstructing an Asset instance from just its AssetId is non-trivial:
+        // it may require additional metadata or context that is not available at this point,
+        // and could depend on external state or configuration. Instead, we rely on callers to
+        // re-listen, which will trigger a restart with a fully constructed Asset. This approach
+        // avoids potential errors and ensures that watchers are started with complete information.
+        // We simply keep controllers; new listeners will call _startWatchingPubkeys as needed.
       }
     }
   }
 
   /// Dispose of any resources
+  @override
   Future<void> dispose() async {
     if (_isDisposed) return;
     _isDisposed = true;
