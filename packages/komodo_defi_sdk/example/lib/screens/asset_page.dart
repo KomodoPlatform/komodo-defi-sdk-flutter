@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/widgets/asset/addresses_section_widget.dart';
@@ -22,23 +24,46 @@ class _AssetPageState extends State<AssetPage> {
   String? _error;
 
   late final _sdk = context.read<KomodoDefiSdk>();
+  StreamSubscription<AssetPubkeys>? _pubkeysSubscription;
 
   @override
   void initState() {
     super.initState();
     _refreshUnavailableReasons().ignore();
-    _loadPubkeys();
+    _startWatchingPubkeys();
   }
 
-  Future<void> _loadPubkeys() async {
+  void _startWatchingPubkeys() {
+    setState(() => _isLoading = true);
+    _pubkeysSubscription?.cancel();
+    _pubkeysSubscription = _sdk.pubkeys
+        .watchPubkeys(widget.asset)
+        .listen(
+          (pubkeys) {
+            if (!mounted) return;
+            setState(() {
+              _pubkeys = pubkeys;
+              _error = null;
+              _isLoading = false;
+            });
+          },
+          onError: (Object e) {
+            if (!mounted) return;
+            setState(() {
+              _error = e.toString();
+              _isLoading = false;
+            });
+          },
+        );
+  }
+
+  Future<void> _forceRefreshPubkeys() async {
     setState(() => _isLoading = true);
     try {
-      final pubkeys = await _sdk.pubkeys.getPubkeys(widget.asset);
-      _pubkeys = pubkeys;
+      await _sdk.pubkeys.preCachePubkeys(widget.asset);
     } catch (e) {
-      _error = e.toString();
+      if (mounted) setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _isLoading = false);
       _refreshUnavailableReasons().ignore();
     }
   }
@@ -80,7 +105,10 @@ class _AssetPageState extends State<AssetPage> {
       appBar: AppBar(
         title: Text(widget.asset.id.name),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadPubkeys),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _forceRefreshPubkeys,
+          ),
         ],
       ),
       body:
@@ -113,5 +141,12 @@ class _AssetPageState extends State<AssetPage> {
                 ],
               ),
     );
+  }
+
+  @override
+  void dispose() {
+    _pubkeysSubscription?.cancel();
+    _pubkeysSubscription = null;
+    super.dispose();
   }
 }
