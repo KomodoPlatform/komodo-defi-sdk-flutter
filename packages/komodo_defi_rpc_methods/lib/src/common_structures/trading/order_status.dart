@@ -1,3 +1,5 @@
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+
 /// Order status information
 class OrderStatus {
   OrderStatus({
@@ -5,15 +7,15 @@ class OrderStatus {
     this.data,
   });
 
-  factory OrderStatus.fromJson(Map<String, dynamic> json) {
+  factory OrderStatus.fromJson(JsonMap json) {
     return OrderStatus(
-      type: json['type'] as String,
-      data: json['data'] as Map<String, dynamic>?,
+      type: json.value<String>('type'),
+      data: json.valueOrNull<JsonMap?>('data'),
     );
   }
 
   final String type;
-  final Map<String, dynamic>? data;
+  final JsonMap? data;
 
   Map<String, dynamic> toJson() => {
     'type': type,
@@ -28,10 +30,10 @@ class OrderMatchStatus {
     required this.ongoing,
   });
 
-  factory OrderMatchStatus.fromJson(Map<String, dynamic> json) {
+  factory OrderMatchStatus.fromJson(JsonMap json) {
     return OrderMatchStatus(
-      matched: json['matched'] as bool,
-      ongoing: json['ongoing'] as bool,
+      matched: json.value<bool>('matched'),
+      ongoing: json.value<bool>('ongoing'),
     );
   }
 
@@ -61,20 +63,20 @@ class MyOrderInfo {
     this.confSettings,
   });
 
-  factory MyOrderInfo.fromJson(Map<String, dynamic> json) {
+  factory MyOrderInfo.fromJson(JsonMap json) {
     return MyOrderInfo(
-      uuid: json['uuid'] as String,
-      orderType: json['order_type'] as String,
-      base: json['base'] as String,
-      rel: json['rel'] as String,
-      price: json['price'] as String,
-      volume: json['volume'] as String,
-      createdAt: json['created_at'] as int,
-      lastUpdated: json['last_updated'] as int,
-      wasTimedOut: json['was_timed_out'] as bool,
-      status: OrderStatus.fromJson(json['status'] as Map<String, dynamic>),
-      matchBy: json['match_by'] as Map<String, dynamic>?,
-      confSettings: json['conf_settings'] as Map<String, dynamic>?,
+      uuid: json.value<String>('uuid'),
+      orderType: json.value<String>('order_type'),
+      base: json.value<String>('base'),
+      rel: json.value<String>('rel'),
+      price: json.value<String>('price'),
+      volume: json.value<String>('volume'),
+      createdAt: json.value<int>('created_at'),
+      lastUpdated: json.value<int>('last_updated'),
+      wasTimedOut: json.value<bool>('was_timed_out'),
+      status: OrderStatus.fromJson(json.value<JsonMap>('status')),
+      matchBy: json.valueOrNull<JsonMap?>('match_by'),
+      confSettings: json.valueOrNull<JsonMap?>('conf_settings'),
     );
   }
 
@@ -88,8 +90,8 @@ class MyOrderInfo {
   final int lastUpdated;
   final bool wasTimedOut;
   final OrderStatus status;
-  final Map<String, dynamic>? matchBy;
-  final Map<String, dynamic>? confSettings;
+  final JsonMap? matchBy;
+  final JsonMap? confSettings;
 
   Map<String, dynamic> toJson() => {
     'uuid': uuid,
