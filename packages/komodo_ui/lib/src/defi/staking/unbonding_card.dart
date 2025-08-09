@@ -1,7 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_ui/src/utils/formatters/asset_formatting.dart';
 
 /// A card widget for displaying unbonding (undelegation) positions.
