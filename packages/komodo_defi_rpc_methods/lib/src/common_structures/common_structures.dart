@@ -54,3 +54,5 @@ export 'pagination/pagination.dart';
 export 'primitive/numeric_value.dart';
 export 'transaction_history/transaction_info.dart';
 export 'transaction_history/transaction_sync_status.dart';
+export 'trading/order_status.dart';
+export 'trading/swap_info.dart';

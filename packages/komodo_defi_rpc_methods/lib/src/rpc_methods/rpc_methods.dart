@@ -44,27 +44,35 @@ export 'tendermint/task_enable_tendermint_init.dart';
 export 'tendermint/task_enable_tendermint_status.dart';
 export 'tendermint/tendermind_rpc_namespace.dart';
 export 'transaction_history/my_tx_history.dart';
-export 'transaction_history/transaction_history_namespace.dart';
+export 'transaction_history/transaction_history_methods.dart';
 export 'trezor/trezor_rpc_namespace.dart';
-export 'utility/get_token_info.dart';
-export 'utility/message_signing.dart';
 export 'utility/message_signing_rpc_namespace.dart';
 export 'utility/rpc_task_shepherd.dart';
-export 'utxo/task_enable_utxo_init.dart';
-export 'utxo/utxo_rpc_extensions.dart';
-export 'wallet/change_mnemonic_password.dart';
-export 'wallet/delete_wallet.dart';
-export 'wallet/get_mnemonic_request.dart';
-export 'wallet/get_mnemonic_response.dart';
-export 'wallet/get_private_keys.dart';
-export 'wallet/get_public_key_hash.dart';
+export 'utxo/utxo_rpc_namespace.dart';
 export 'wallet/get_wallet.dart';
-export 'wallet/get_wallet_names_request.dart';
-export 'wallet/get_wallet_names_response.dart';
-export 'wallet/my_balance.dart';
-export 'wallet/unban_pubkeys.dart';
-export 'withdrawal/send_raw_transaction_request.dart';
+export 'wallet/init_wallet.dart';
+export 'wallet/wallet_methods.dart';
+export 'withdrawal/send_raw_transaction.dart';
+export 'withdrawal/withdraw_cancel.dart';
+export 'withdrawal/withdraw_init.dart';
 export 'withdrawal/withdraw_request.dart';
+export 'withdrawal/withdraw_status.dart';
 export 'withdrawal/withdrawal_rpc_namespace.dart';
-export 'zhtlc/z_coin_tx_history.dart';
 export 'zhtlc/zhtlc_rpc_namespace.dart';
+
+// Lightning Network RPC methods
+export 'lightning/lightning_rpc_namespace.dart';
+export 'lightning/enable_lightning.dart';
+export 'lightning/get_channels.dart';
+export 'lightning/open_channel.dart';
+
+// Trading RPC methods
+export 'trading/trading_rpc_namespace.dart';
+export 'trading/start_swap.dart';
+export 'trading/swap_status.dart';
+export 'trading/active_swaps.dart';
+
+// Orderbook RPC methods
+export 'orderbook/orderbook_rpc_namespace.dart';
+export 'orderbook/orderbook.dart';
+export 'orderbook/set_order.dart';
