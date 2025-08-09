@@ -56,3 +56,7 @@ export 'transaction_history/transaction_info.dart';
 export 'transaction_history/transaction_sync_status.dart';
 export 'trading/order_status.dart';
 export 'trading/swap_info.dart';
+export 'trading/swap_method.dart';
+export 'orderbook/order_info.dart';
+export 'orderbook/order_type.dart';
+export 'lightning/channel_info.dart';

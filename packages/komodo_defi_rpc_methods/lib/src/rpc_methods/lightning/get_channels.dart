@@ -1,9 +1,19 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
-/// Request to get Lightning channels information
+/// Request to get Lightning channels information.
+/// 
+/// This RPC method retrieves information about both open and closed Lightning
+/// channels for a specified coin. Optionally, filters can be applied to
+/// narrow down the results.
 class GetChannelsRequest
     extends BaseRequest<GetChannelsResponse, GeneralErrorResponse> {
+  /// Creates a new [GetChannelsRequest].
+  /// 
+  /// - [rpcPass]: RPC password for authentication
+  /// - [coin]: The coin/ticker for which to retrieve channel information
+  /// - [openFilter]: Optional filter for open channels
+  /// - [closedFilter]: Optional filter for closed channels
   GetChannelsRequest({
     required String rpcPass,
     required this.coin,
@@ -15,8 +25,13 @@ class GetChannelsRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// The coin/ticker for which to retrieve channel information.
   final String coin;
+  
+  /// Optional filter to apply to open channels.
   final LightningOpenChannelsFilter? openFilter;
+  
+  /// Optional filter to apply to closed channels.
   final LightningClosedChannelsFilter? closedFilter;
 
   @override
@@ -45,14 +60,23 @@ class GetChannelsRequest
       GetChannelsResponse.parse(json);
 }
 
-/// Response containing Lightning channels information
+/// Response containing Lightning channels information.
+/// 
+/// This response provides lists of both open and closed channels,
+/// allowing for comprehensive channel management and monitoring.
 class GetChannelsResponse extends BaseResponse {
+  /// Creates a new [GetChannelsResponse].
+  /// 
+  /// - [mmrpc]: The RPC version
+  /// - [openChannels]: List of currently open channels
+  /// - [closedChannels]: List of closed channels
   GetChannelsResponse({
     required super.mmrpc,
     required this.openChannels,
     required this.closedChannels,
   });
 
+  /// Parses a [GetChannelsResponse] from a JSON map.
   factory GetChannelsResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
 
@@ -67,7 +91,14 @@ class GetChannelsResponse extends BaseResponse {
     );
   }
 
+  /// List of currently open Lightning channels.
+  /// 
+  /// These channels are active and can be used for sending and receiving payments.
   final List<ChannelInfo> openChannels;
+
+  /// List of closed Lightning channels.
+  /// 
+  /// These channels have been closed and include closure reasons when available.
   final List<ChannelInfo> closedChannels;
 
   @override
@@ -77,60 +108,5 @@ class GetChannelsResponse extends BaseResponse {
       'open_channels': openChannels.map((e) => e.toJson()).toList(),
       'closed_channels': closedChannels.map((e) => e.toJson()).toList(),
     },
-  };
-}
-
-/// Information about a Lightning channel
-class ChannelInfo {
-  ChannelInfo({
-    required this.channelId,
-    required this.counterpartyNodeId,
-    required this.fundingTxId,
-    required this.capacity,
-    required this.localBalance,
-    required this.remoteBalance,
-    required this.isOutbound,
-    required this.isPublic,
-    required this.isUsable,
-    this.closureReason,
-  });
-
-  factory ChannelInfo.fromJson(JsonMap json) {
-    return ChannelInfo(
-      channelId: json.value<String>('channel_id'),
-      counterpartyNodeId: json.value<String>('counterparty_node_id'),
-      fundingTxId: json.value<String>('funding_tx_id'),
-      capacity: json.value<int>('capacity'),
-      localBalance: json.value<int>('local_balance'),
-      remoteBalance: json.value<int>('remote_balance'),
-      isOutbound: json.value<bool>('is_outbound'),
-      isPublic: json.value<bool>('is_public'),
-      isUsable: json.value<bool>('is_usable'),
-      closureReason: json.valueOrNull<String?>('closure_reason'),
-    );
-  }
-
-  final String channelId;
-  final String counterpartyNodeId;
-  final String fundingTxId;
-  final int capacity;
-  final int localBalance;
-  final int remoteBalance;
-  final bool isOutbound;
-  final bool isPublic;
-  final bool isUsable;
-  final String? closureReason;
-
-  Map<String, dynamic> toJson() => {
-    'channel_id': channelId,
-    'counterparty_node_id': counterpartyNodeId,
-    'funding_tx_id': fundingTxId,
-    'capacity': capacity,
-    'local_balance': localBalance,
-    'remote_balance': remoteBalance,
-    'is_outbound': isOutbound,
-    'is_public': isPublic,
-    'is_usable': isUsable,
-    if (closureReason != null) 'closure_reason': closureReason,
   };
 }

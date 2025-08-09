@@ -1,9 +1,17 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
-/// Request to get orderbook
+/// Request to retrieve orderbook information for a trading pair.
+/// 
+/// This RPC method fetches the current state of the orderbook for a specified
+/// trading pair, including all active buy and sell orders.
 class OrderbookRequest
     extends BaseRequest<OrderbookResponse, GeneralErrorResponse> {
+  /// Creates a new [OrderbookRequest].
+  /// 
+  /// - [rpcPass]: RPC password for authentication
+  /// - [base]: The base coin of the trading pair
+  /// - [rel]: The rel/quote coin of the trading pair
   OrderbookRequest({
     required String rpcPass,
     required this.base,
@@ -14,7 +22,14 @@ class OrderbookRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// The base coin of the trading pair.
+  /// 
+  /// This is the coin being bought or sold in orders.
   final String base;
+  
+  /// The rel/quote coin of the trading pair.
+  /// 
+  /// This is the coin used to price the base coin.
   final String rel;
 
   @override
@@ -32,8 +47,21 @@ class OrderbookRequest
       OrderbookResponse.parse(json);
 }
 
-/// Response containing orderbook data
+/// Response containing orderbook data for a trading pair.
+/// 
+/// This response provides comprehensive orderbook information including
+/// all active bids and asks, along with metadata about the orderbook state.
 class OrderbookResponse extends BaseResponse {
+  /// Creates a new [OrderbookResponse].
+  /// 
+  /// - [mmrpc]: The RPC version
+  /// - [base]: The base coin of the trading pair
+  /// - [rel]: The rel/quote coin of the trading pair
+  /// - [bids]: List of buy orders
+  /// - [asks]: List of sell orders
+  /// - [numBids]: Total number of bid orders
+  /// - [numAsks]: Total number of ask orders
+  /// - [timestamp]: Unix timestamp of when the orderbook was fetched
   OrderbookResponse({
     required super.mmrpc,
     required this.base,
@@ -45,6 +73,7 @@ class OrderbookResponse extends BaseResponse {
     required this.timestamp,
   });
 
+  /// Parses an [OrderbookResponse] from a JSON map.
   factory OrderbookResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
 
@@ -64,12 +93,37 @@ class OrderbookResponse extends BaseResponse {
     );
   }
 
+  /// The base coin of the trading pair.
   final String base;
+  
+  /// The rel/quote coin of the trading pair.
   final String rel;
+  
+  /// List of buy orders (bids) in the orderbook.
+  /// 
+  /// These are orders from users wanting to buy the base coin with the rel coin.
+  /// Orders are typically sorted by price in descending order (best bid first).
   final List<OrderInfo> bids;
+  
+  /// List of sell orders (asks) in the orderbook.
+  /// 
+  /// These are orders from users wanting to sell the base coin for the rel coin.
+  /// Orders are typically sorted by price in ascending order (best ask first).
   final List<OrderInfo> asks;
+  
+  /// Total number of bid orders in the orderbook.
+  /// 
+  /// This may be larger than the length of [bids] if pagination is applied.
   final int numBids;
+  
+  /// Total number of ask orders in the orderbook.
+  /// 
+  /// This may be larger than the length of [asks] if pagination is applied.
   final int numAsks;
+  
+  /// Unix timestamp of when this orderbook snapshot was taken.
+  /// 
+  /// Useful for determining the freshness of the orderbook data.
   final int timestamp;
 
   @override
@@ -87,89 +141,32 @@ class OrderbookResponse extends BaseResponse {
   };
 }
 
-/// Information about an order
-class OrderInfo {
-  OrderInfo({
-    required this.uuid,
-    required this.price,
-    required this.maxVolume,
-    required this.minVolume,
-    required this.pubkey,
-    required this.age,
-    required this.zcredits,
-    required this.coin,
-    required this.address,
-  });
-
-  factory OrderInfo.fromJson(JsonMap json) {
-    return OrderInfo(
-      uuid: json.value<String>('uuid'),
-      price: json.value<String>('price'),
-      maxVolume: json.value<String>('max_volume'),
-      minVolume: json.value<String>('min_volume'),
-      pubkey: json.value<String>('pubkey'),
-      age: json.value<int>('age'),
-      zcredits: json.value<int>('zcredits'),
-      coin: json.value<String>('coin'),
-      address: json.value<String>('address'),
-    );
-  }
-
-  final String uuid;
-  final String price;
-  final String maxVolume;
-  final String minVolume;
-  final String pubkey;
-  final int age;
-  final int zcredits;
-  final String coin;
-  final String address;
-
-  Map<String, dynamic> toJson() => {
-    'uuid': uuid,
-    'price': price,
-    'max_volume': maxVolume,
-    'min_volume': minVolume,
-    'pubkey': pubkey,
-    'age': age,
-    'zcredits': zcredits,
-    'coin': coin,
-    'address': address,
-  };
-}
-
-/// Order type enum
-enum OrderType {
-  buy,
-  sell;
-
-  String toJson() => name;
-}
-
-/// Orderbook pair
-class OrderbookPair {
-  OrderbookPair({
-    required this.base,
-    required this.rel,
-  });
-
-  final String base;
-  final String rel;
-
-  Map<String, dynamic> toJson() => {
-    'base': base,
-    'rel': rel,
-  };
-}
-
-/// Cancel orders type
+/// Represents the type of order cancellation.
+/// 
+/// This class provides factory methods to create different cancellation types
+/// for the cancel_all_orders RPC method.
 class CancelOrdersType {
+  /// Creates a cancellation type to cancel all orders across all coins.
   CancelOrdersType.all() : coin = null, _type = 'all';
+  
+  /// Creates a cancellation type to cancel all orders for a specific coin.
+  /// 
+  /// - [coin]: The ticker of the coin whose orders should be cancelled
   CancelOrdersType.coin(this.coin) : _type = 'coin';
 
+  /// The coin ticker for coin-specific cancellation.
+  /// 
+  /// `null` when cancelling all orders across all coins.
   final String? coin;
+  
+  /// Internal type identifier.
   final String _type;
 
+  /// Converts this [CancelOrdersType] to its JSON representation.
+  /// 
+  /// Returns different structures based on the cancellation type:
+  /// - For all orders: `{"type": "all"}`
+  /// - For specific coin: `{"type": "coin", "data": {"coin": "TICKER"}}`
   Map<String, dynamic> toJson() {
     if (_type == 'all') {
       return {'type': 'all'};
