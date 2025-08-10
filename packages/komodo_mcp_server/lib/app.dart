@@ -54,7 +54,7 @@ class _KomodoMcpAppState extends State<KomodoMcpApp> {
       'health.ping',
       description: 'Ping the server',
       toolInputSchema: const mcp.ToolInputSchema(properties: {}),
-      callback: ({args, extra}) async => mcp.CallToolResult(
+      callback: ({args, extra}) async => mcp.CallToolResult.fromContent(
         content: const [mcp.TextContent(text: 'pong')],
       ),
     );

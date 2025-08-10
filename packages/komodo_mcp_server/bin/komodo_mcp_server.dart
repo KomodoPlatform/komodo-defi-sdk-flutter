@@ -59,7 +59,7 @@ class KomodoMcpServer {
           if (method == null) throw ArgumentError('method required');
           final request = <String, Object?>{'method': method, ...methodParams};
           final response = await _sdk.client.executeRpc(request);
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
             content: [mcp.TextContent(text: jsonEncode(response))],
           );
         }
@@ -71,7 +71,8 @@ class KomodoMcpServer {
             final res = await _sdk.client.executeRpc({'method': 'version'});
             version = (res['result'] as String?) ?? 'unknown';
           } catch (_) {}
-          return mcp.CallToolResult(content: [mcp.TextContent(text: version)]);
+          return mcp.CallToolResult.fromContent(
+              content: [mcp.TextContent(text: version)]);
         }
       case 'auth.signIn':
         {
@@ -81,7 +82,7 @@ class KomodoMcpServer {
             throw ArgumentError('walletName/password required');
           final user = await _sdk.auth
               .signIn(walletName: walletName, password: password);
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(user.toJson()))]);
         }
       case 'auth.register':
@@ -102,7 +103,7 @@ class KomodoMcpServer {
       case 'auth.currentUser':
         {
           final user = await _sdk.auth.currentUser;
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
             content: [
               user == null
                   ? const mcp.TextContent(text: 'null')
@@ -113,13 +114,13 @@ class KomodoMcpServer {
       case 'auth.signOut':
         {
           await _sdk.auth.signOut();
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: const [mcp.TextContent(text: 'signed out')]);
         }
       case 'auth.users':
         {
           final users = await _sdk.auth.getUsers();
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
             content: [
               mcp.TextContent(
                   text: jsonEncode(users.map((u) => u.toJson()).toList()))
@@ -131,7 +132,7 @@ class KomodoMcpServer {
           final assets = _sdk.assets.available.values
               .map((a) => a.toJson())
               .toList(growable: false);
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(assets))]);
         }
       case 'assets.findByTicker':
@@ -142,7 +143,7 @@ class KomodoMcpServer {
               .findAssetsByConfigId(ticker)
               .map((a) => a.toJson())
               .toList(growable: false);
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(matches))]);
         }
       case 'assets.activate':
@@ -152,13 +153,13 @@ class KomodoMcpServer {
           final assets = _sdk.assets.findAssetsByConfigId(ticker).toList();
           if (assets.isEmpty) throw ArgumentError('Unknown asset ticker');
           await _sdk.assets.activateAsset(assets.first).last;
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: const [mcp.TextContent(text: 'activated')]);
         }
       case 'assets.enabledTickers':
         {
           final tickers = await _sdk.assets.getEnabledCoins();
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(tickers.toList()))]);
         }
       case 'pubkeys.get':
@@ -168,7 +169,7 @@ class KomodoMcpServer {
           final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
           if (candidates.isEmpty) throw ArgumentError('Unknown asset ticker');
           final pubkeys = await _sdk.pubkeys.getPubkeys(candidates.first);
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(pubkeys.toJson()))]);
         }
       case 'pubkeys.new':
@@ -178,7 +179,7 @@ class KomodoMcpServer {
           final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
           if (candidates.isEmpty) throw ArgumentError('Unknown asset ticker');
           final newKey = await _sdk.pubkeys.createNewPubkey(candidates.first);
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(newKey.toJson()))]);
         }
       case 'addresses.validate':
@@ -198,7 +199,7 @@ class KomodoMcpServer {
             if (validation.invalidReason != null)
               'invalidReason': validation.invalidReason,
           };
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(validationJson))]);
         }
       case 'balances.get':
@@ -208,7 +209,7 @@ class KomodoMcpServer {
           final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
           if (candidates.isEmpty) throw ArgumentError('Unknown asset ticker');
           final bal = await _sdk.balances.getBalance(candidates.first.id);
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(bal.toJson()))]);
         }
       case 'tx.history':
@@ -233,7 +234,7 @@ class KomodoMcpServer {
             'currentPage': page.currentPage,
             'totalPages': page.totalPages,
           };
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(jsonObj))]);
         }
       case 'signing.signMessage':
@@ -246,7 +247,8 @@ class KomodoMcpServer {
           }
           final sig = await _sdk.messageSigning
               .signMessage(coin: coin, message: message, address: address);
-          return mcp.CallToolResult(content: [mcp.TextContent(text: sig)]);
+          return mcp.CallToolResult.fromContent(
+              content: [mcp.TextContent(text: sig)]);
         }
       case 'signing.verifyMessage':
         {
@@ -265,7 +267,7 @@ class KomodoMcpServer {
               message: message,
               signature: signature,
               address: address);
-          return mcp.CallToolResult(content: [
+          return mcp.CallToolResult.fromContent(content: [
             mcp.TextContent(text: jsonEncode({'valid': ok}))
           ]);
         }
@@ -296,7 +298,7 @@ class KomodoMcpServer {
           );
           final jsonMap = result.map((k, v) =>
               MapEntry(k.toJson(), v.map((e) => e.toJson()).toList()));
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(jsonMap))]);
         }
       case 'market.price':
@@ -312,7 +314,7 @@ class KomodoMcpServer {
               : DateTime.fromMillisecondsSinceEpoch(dateMs);
           final price = await _sdk.marketData.fiatPrice(candidates.first.id,
               priceDate: date, fiatCurrency: fiatCurrency);
-          return mcp.CallToolResult(content: [
+          return mcp.CallToolResult.fromContent(content: [
             mcp.TextContent(text: jsonEncode({'price': price.toString()}))
           ]);
         }
@@ -321,7 +323,7 @@ class KomodoMcpServer {
           final ticker = args['ticker'] as String?;
           if (ticker == null) throw ArgumentError('ticker required');
           final est = await _sdk.fees.getUtxoEstimatedFee(ticker);
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(est.toJson()))]);
         }
       case 'fees.ethEstimate':
@@ -329,7 +331,7 @@ class KomodoMcpServer {
           final ticker = args['ticker'] as String?;
           if (ticker == null) throw ArgumentError('ticker required');
           final est = await _sdk.fees.getEthEstimatedFeePerGas(ticker);
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(est.toJson()))]);
         }
       case 'withdraw.preview':
@@ -345,7 +347,7 @@ class KomodoMcpServer {
               toAddress: toAddress,
               amount: Decimal.parse(amountStr));
           final preview = await _sdk.withdrawals.previewWithdrawal(params);
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(preview.toJson()))]);
         }
       case 'withdraw.execute':
@@ -393,7 +395,7 @@ class KomodoMcpServer {
             if (last?.errorMessage != null) 'errorMessage': last!.errorMessage,
             if (last?.taskId != null) 'taskId': last!.taskId,
           };
-          return mcp.CallToolResult(
+          return mcp.CallToolResult.fromContent(
               content: [mcp.TextContent(text: jsonEncode(jsonObj))]);
         }
       default:
