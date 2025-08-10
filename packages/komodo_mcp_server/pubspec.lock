@@ -106,7 +106,7 @@ packages:
     source: hosted
     version: "1.1.1"
   flutter:
-    dependency: transitive
+    dependency: "direct main"
     description: flutter
     source: sdk
     version: "0.0.0"
@@ -377,6 +377,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.11.1"
+  mcp_dart:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: main
+      resolved-ref: f9a33854b8ddb5a31153c7ef13569948e1474c6d
+      url: "https://github.com/leehack/mcp_dart.git"
+    source: git
+    version: "0.6.0"
   meta:
     dependency: "direct main"
     description:

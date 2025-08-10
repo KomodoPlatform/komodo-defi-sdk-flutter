@@ -21,7 +21,7 @@ class _KomodoMcpAppState extends State<KomodoMcpApp> {
 
   KomodoDefiSdk? _sdk;
   mcp.McpServer? _server;
-  mcp.ServerTransport? _transport;
+  mcp.Transport? _transport;
   StreamSubscription? _logSub;
 
   Future<void> _start() async {
@@ -41,13 +41,21 @@ class _KomodoMcpAppState extends State<KomodoMcpApp> {
     await _sdk!.initialize();
 
     // Create MCP server and register a simple health tool
-    _server = mcp.McpServer(name: 'komodo-mcp', version: '0.1.0');
-    _server!.registerTool(
-      mcp.Tool(
-        name: 'health.ping',
-        description: 'Ping the server',
-        inputSchema: {'type': 'object', 'properties': {}},
-        handler: (_) async => {'content': [mcp.TextContent(text: 'pong')]},
+    _server = mcp.McpServer(
+      const mcp.Implementation(name: 'komodo-mcp', version: '0.1.0'),
+      options: const mcp.ServerOptions(
+        capabilities: mcp.ServerCapabilities(
+          tools: mcp.ServerCapabilitiesTools(),
+        ),
+      ),
+    );
+
+    _server!.tool(
+      'health.ping',
+      description: 'Ping the server',
+      toolInputSchema: const mcp.ToolInputSchema(properties: {}),
+      callback: ({args, extra}) async => mcp.CallToolResult(
+        content: const [mcp.TextContent(text: 'pong')],
       ),
     );
 
@@ -113,16 +121,22 @@ class _KomodoMcpAppState extends State<KomodoMcpApp> {
               ),
               Row(
                 children: [
-                  Checkbox(value: https, onChanged: (v) => setState(() => https = v ?? false)),
+                  Checkbox(
+                      value: https,
+                      onChanged: (v) => setState(() => https = v ?? false)),
                   const Text('HTTPS')
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  ElevatedButton(onPressed: running ? null : _start, child: const Text('Start')),
+                  ElevatedButton(
+                      onPressed: running ? null : _start,
+                      child: const Text('Start')),
                   const SizedBox(width: 8),
-                  ElevatedButton(onPressed: running ? _stop : null, child: const Text('Stop')),
+                  ElevatedButton(
+                      onPressed: running ? _stop : null,
+                      child: const Text('Stop')),
                 ],
               ),
             ],
