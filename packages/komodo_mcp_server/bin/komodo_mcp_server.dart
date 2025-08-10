@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:decimal/decimal.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // Minimal MCP constants
@@ -52,7 +55,8 @@ class StdioJsonRpcServer {
     final output = stdout;
     final buffered = <int>[];
 
-    Future<void> writeResponse(Object? id, Object? result, {JsonRpcError? error}) async {
+    Future<void> writeResponse(Object? id, Object? result,
+        {JsonRpcError? error}) async {
       final payload = <String, Object?>{
         'jsonrpc': Mcp.jsonrpc,
         if (id != null) 'id': id,
@@ -91,19 +95,22 @@ class StdioJsonRpcServer {
       try {
         decoded = json.decode(utf8.decode(body));
       } catch (e) {
-        await writeResponse(null, null, error: JsonRpcError(-32700, 'Parse error', e.toString()));
+        await writeResponse(null, null,
+            error: JsonRpcError(-32700, 'Parse error', e.toString()));
         continue;
       }
 
       if (decoded is! Map<String, Object?>) {
-        await writeResponse(null, null, error: JsonRpcError(-32600, 'Invalid Request'));
+        await writeResponse(null, null,
+            error: JsonRpcError(-32600, 'Invalid Request'));
         continue;
       }
       final id = decoded['id'];
       final method = decoded['method'];
       final params = decoded['params'];
       if (method is! String) {
-        await writeResponse(id, null, error: JsonRpcError(-32600, 'Invalid Request'));
+        await writeResponse(id, null,
+            error: JsonRpcError(-32600, 'Invalid Request'));
         continue;
       }
 
@@ -113,7 +120,9 @@ class StdioJsonRpcServer {
       } on JsonRpcError catch (e) {
         await writeResponse(id, null, error: e);
       } catch (e, st) {
-        await writeResponse(id, null, error: JsonRpcError(-32603, 'Internal error', {'error': e.toString(), 'stack': st.toString()}));
+        await writeResponse(id, null,
+            error: JsonRpcError(-32603, 'Internal error',
+                {'error': e.toString(), 'stack': st.toString()}));
       }
     }
   }
@@ -134,7 +143,8 @@ class StdioJsonRpcServer {
     }
   }
 
-  Future<List<int>?> _readBody(Stdin input, List<int> buffered, int length) async {
+  Future<List<int>?> _readBody(
+      Stdin input, List<int> buffered, int length) async {
     while (buffered.length < length) {
       final chunk = await _readChunk(input);
       if (chunk == null) return null;
@@ -152,7 +162,9 @@ class StdioJsonRpcServer {
       sub = input.listen((event) {
         completer.complete(event);
         sub.cancel();
-      }, onDone: () => completer.complete(null), onError: (Object _) => completer.complete(null));
+      },
+          onDone: () => completer.complete(null),
+          onError: (Object _) => completer.complete(null));
       return await completer.future;
     } catch (_) {
       return null;
@@ -229,7 +241,9 @@ class KomodoMcpServer {
         'resources': true,
         'prompts': true,
         'sampling': false,
-        'logging': {'levels': ['debug', 'info', 'warn', 'error']},
+        'logging': {
+          'levels': ['debug', 'info', 'warn', 'error']
+        },
       },
       'serverInfo': {'name': 'komodo-mcp', 'version': '0.1.0'},
     };
@@ -243,7 +257,8 @@ class KomodoMcpServer {
     final tools = [
       {
         'name': 'sdk.call',
-        'description': 'Call a raw KDF/mm2 RPC method via the Komodo DeFi Framework (mm2). Params: {method, params}',
+        'description':
+            'Call a raw KDF/mm2 RPC method via the Komodo DeFi Framework (mm2). Params: {method, params}',
         'inputSchema': {
           'type': 'object',
           'required': ['method'],
@@ -265,12 +280,16 @@ class KomodoMcpServer {
         'inputSchema': {
           'type': 'object',
           'required': ['walletName', 'password'],
-          'properties': {'walletName': {'type': 'string'}, 'password': {'type': 'string'}}
+          'properties': {
+            'walletName': {'type': 'string'},
+            'password': {'type': 'string'}
+          }
         }
       },
       {
         'name': 'auth.register',
-        'description': 'Register a new wallet. Args: {walletName, password, mnemonic?}',
+        'description':
+            'Register a new wallet. Args: {walletName, password, mnemonic?}',
         'inputSchema': {
           'type': 'object',
           'required': ['walletName', 'password'],
@@ -281,9 +300,21 @@ class KomodoMcpServer {
           }
         }
       },
-      {'name': 'auth.currentUser', 'description': 'Get current authenticated user if any', 'inputSchema': {'type': 'object', 'properties': {}}},
-      {'name': 'auth.signOut', 'description': 'Sign out current user', 'inputSchema': {'type': 'object', 'properties': {}}},
-      {'name': 'auth.users', 'description': 'List known users', 'inputSchema': {'type': 'object', 'properties': {}}},
+      {
+        'name': 'auth.currentUser',
+        'description': 'Get current authenticated user if any',
+        'inputSchema': {'type': 'object', 'properties': {}}
+      },
+      {
+        'name': 'auth.signOut',
+        'description': 'Sign out current user',
+        'inputSchema': {'type': 'object', 'properties': {}}
+      },
+      {
+        'name': 'auth.users',
+        'description': 'List known users',
+        'inputSchema': {'type': 'object', 'properties': {}}
+      },
       // Assets
       {
         'name': 'assets.listAvailable',
@@ -296,16 +327,21 @@ class KomodoMcpServer {
         'inputSchema': {
           'type': 'object',
           'required': ['ticker'],
-          'properties': {'ticker': {'type': 'string'}}
+          'properties': {
+            'ticker': {'type': 'string'}
+          }
         }
       },
       {
         'name': 'assets.activate',
-        'description': 'Activate an asset by ticker/config id (awaits completion)',
+        'description':
+            'Activate an asset by ticker/config id (awaits completion)',
         'inputSchema': {
           'type': 'object',
           'required': ['ticker'],
-          'properties': {'ticker': {'type': 'string'}}
+          'properties': {
+            'ticker': {'type': 'string'}
+          }
         }
       },
       {
@@ -320,7 +356,9 @@ class KomodoMcpServer {
         'inputSchema': {
           'type': 'object',
           'required': ['ticker'],
-          'properties': {'ticker': {'type': 'string'}}
+          'properties': {
+            'ticker': {'type': 'string'}
+          }
         }
       },
       {
@@ -329,7 +367,9 @@ class KomodoMcpServer {
         'inputSchema': {
           'type': 'object',
           'required': ['ticker'],
-          'properties': {'ticker': {'type': 'string'}}
+          'properties': {
+            'ticker': {'type': 'string'}
+          }
         }
       },
       {
@@ -338,19 +378,29 @@ class KomodoMcpServer {
         'inputSchema': {
           'type': 'object',
           'required': ['ticker', 'address'],
-          'properties': {'ticker': {'type': 'string'}, 'address': {'type': 'string'}}
+          'properties': {
+            'ticker': {'type': 'string'},
+            'address': {'type': 'string'}
+          }
         }
       },
       // Balances
       {
         'name': 'balances.get',
         'description': 'Get balance for an asset ticker',
-        'inputSchema': {'type': 'object', 'required': ['ticker'], 'properties': {'ticker': {'type': 'string'}}}
+        'inputSchema': {
+          'type': 'object',
+          'required': ['ticker'],
+          'properties': {
+            'ticker': {'type': 'string'}
+          }
+        }
       },
       // Transactions
       {
         'name': 'tx.history',
-        'description': 'Get paged transaction history: {ticker, pageNumber?, itemsPerPage?}',
+        'description':
+            'Get paged transaction history: {ticker, pageNumber?, itemsPerPage?}',
         'inputSchema': {
           'type': 'object',
           'required': ['ticker'],
@@ -392,12 +442,19 @@ class KomodoMcpServer {
       // Security
       {
         'name': 'security.getPrivateKeys',
-        'description': 'Export private keys. Danger: returns sensitive material. Args: {tickers?, mode?, startIndex?, endIndex?, accountIndex?}',
+        'description':
+            'Export private keys. Danger: returns sensitive material. Args: {tickers?, mode?, startIndex?, endIndex?, accountIndex?}',
         'inputSchema': {
           'type': 'object',
           'properties': {
-            'tickers': {'type': 'array', 'items': {'type': 'string'}},
-            'mode': {'type': 'string', 'enum': ['hd', 'iguana']},
+            'tickers': {
+              'type': 'array',
+              'items': {'type': 'string'}
+            },
+            'mode': {
+              'type': 'string',
+              'enum': ['hd', 'iguana']
+            },
             'startIndex': {'type': 'integer'},
             'endIndex': {'type': 'integer'},
             'accountIndex': {'type': 'integer'}
@@ -422,12 +479,24 @@ class KomodoMcpServer {
       {
         'name': 'fees.utxoEstimate',
         'description': 'Get UTXO fee estimates: {ticker}',
-        'inputSchema': {'type': 'object', 'required': ['ticker'], 'properties': {'ticker': {'type': 'string'}}}
+        'inputSchema': {
+          'type': 'object',
+          'required': ['ticker'],
+          'properties': {
+            'ticker': {'type': 'string'}
+          }
+        }
       },
       {
         'name': 'fees.ethEstimate',
         'description': 'Get ETH EIP-1559 gas estimates: {ticker}',
-        'inputSchema': {'type': 'object', 'required': ['ticker'], 'properties': {'ticker': {'type': 'string'}}}
+        'inputSchema': {
+          'type': 'object',
+          'required': ['ticker'],
+          'properties': {
+            'ticker': {'type': 'string'}
+          }
+        }
       },
       // Withdrawals
       {
@@ -445,7 +514,8 @@ class KomodoMcpServer {
       },
       {
         'name': 'withdraw.execute',
-        'description': 'Execute a withdrawal: {ticker, toAddress, amount, feePriority?}',
+        'description':
+            'Execute a withdrawal: {ticker, toAddress, amount, feePriority?}',
         'inputSchema': {
           'type': 'object',
           'required': ['ticker', 'toAddress', 'amount'],
@@ -453,7 +523,10 @@ class KomodoMcpServer {
             'ticker': {'type': 'string'},
             'toAddress': {'type': 'string'},
             'amount': {'type': 'string'},
-            'feePriority': {'type': 'string', 'enum': ['low', 'medium', 'high']}
+            'feePriority': {
+              'type': 'string',
+              'enum': ['low', 'medium', 'high']
+            }
           }
         }
       },
@@ -479,16 +552,26 @@ class KomodoMcpServer {
           throw JsonRpcError(-32602, 'Invalid params: arguments');
         }
         final method = arguments['method'];
-        final methodParams = (arguments['params'] as Map<String, Object?>?) ?? <String, Object?>{};
+        final methodParams = (arguments['params'] as Map<String, Object?>?) ??
+            <String, Object?>{};
         if (method is! String) {
           throw JsonRpcError(-32602, 'Invalid params: method');
         }
         final request = <String, Object?>{'method': method, ...methodParams};
         final response = await _sdk.client.executeRpc(request);
-        return {'content': [{'type': 'json', 'json': response}]};
+        return {
+          'content': [
+            {'type': 'json', 'json': response}
+          ]
+        };
       case 'sdk.version':
-        final version = await _sdk.client.rpc.version();
-        return {'content': [{'type': 'text', 'text': version ?? 'unknown'}]};
+        // TODO: Consider adding `version` to the RPC methods.
+        final version = await _sdk.client.executeRpc({'method': 'version'});
+        return {
+          'content': [
+            {'type': 'text', 'text': version.valueOrNull<String?>('result')}
+          ]
+        };
 
       // Auth
       case 'auth.signIn':
@@ -500,8 +583,13 @@ class KomodoMcpServer {
         if (walletName is! String || password is! String) {
           throw JsonRpcError(-32602, 'Invalid params: walletName/password');
         }
-        final user = await _sdk.auth.signIn(walletName: walletName, password: password);
-        return {'content': [{'type': 'json', 'json': user.toJson()}]};
+        final user =
+            await _sdk.auth.signIn(walletName: walletName, password: password);
+        return {
+          'content': [
+            {'type': 'json', 'json': user.toJson()}
+          ]
+        };
       case 'auth.register':
         if (arguments is! Map<String, Object?>) {
           throw JsonRpcError(-32602, 'Invalid params: arguments');
@@ -517,262 +605,443 @@ class KomodoMcpServer {
           password: password,
           mnemonic: mnemonic == null ? null : Mnemonic.plaintext(mnemonic),
         );
-        return {'content': [{'type': 'json', 'json': user.toJson()}]};
-      case 'auth.currentUser': {
-        final user = await _sdk.auth.currentUser;
-        return {'content': [if (user == null) {'type': 'text', 'text': 'null'} else {'type': 'json', 'json': user.toJson()}]};
-      }
+        return {
+          'content': [
+            {'type': 'json', 'json': user.toJson()}
+          ]
+        };
+      case 'auth.currentUser':
+        {
+          final user = await _sdk.auth.currentUser;
+          return {
+            'content': [
+              if (user == null)
+                {'type': 'text', 'text': 'null'}
+              else
+                {'type': 'json', 'json': user.toJson()}
+            ]
+          };
+        }
       case 'auth.signOut':
         await _sdk.auth.signOut();
-        return {'content': [{'type': 'text', 'text': 'signed out'}]};
-      case 'auth.users': {
-        final users = await _sdk.auth.getUsers();
-        return {'content': [{'type': 'json', 'json': users.map((u) => u.toJson()).toList()}]};
-      }
+        return {
+          'content': [
+            {'type': 'text', 'text': 'signed out'}
+          ]
+        };
+      case 'auth.users':
+        {
+          final users = await _sdk.auth.getUsers();
+          return {
+            'content': [
+              {'type': 'json', 'json': users.map((u) => u.toJson()).toList()}
+            ]
+          };
+        }
 
       // Assets
-      case 'assets.listAvailable': {
-        final assets = _sdk.assets.available.values.map((a) => a.toJson()).toList(growable: false);
-        return {'content': [{'type': 'json', 'json': assets}]};
-      }
-      case 'assets.findByTicker': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'];
-        if (ticker is! String) throw JsonRpcError(-32602, 'Invalid params: ticker');
-        final matches = _sdk.assets.findAssetsByConfigId(ticker).map((a) => a.toJson()).toList(growable: false);
-        return {'content': [{'type': 'json', 'json': matches}]};
-      }
-      case 'assets.activate': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'];
-        if (ticker is! String) throw JsonRpcError(-32602, 'Invalid params: ticker');
-        final assets = _sdk.assets.findAssetsByConfigId(ticker).toList();
-        if (assets.isEmpty) throw JsonRpcError(-32602, 'Unknown asset ticker', {'ticker': ticker});
-        await _sdk.assets.activateAsset(assets.first).last;
-        return {'content': [{'type': 'text', 'text': 'activated'}]};
-      }
-      case 'assets.enabledTickers': {
-        final tickers = await _sdk.assets.getEnabledCoins();
-        return {'content': [{'type': 'json', 'json': tickers.toList()}]};
-      }
+      case 'assets.listAvailable':
+        {
+          final assets = _sdk.assets.available.values
+              .map((a) => a.toJson())
+              .toList(growable: false);
+          return {
+            'content': [
+              {'type': 'json', 'json': assets}
+            ]
+          };
+        }
+      case 'assets.findByTicker':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'];
+          if (ticker is! String)
+            throw JsonRpcError(-32602, 'Invalid params: ticker');
+          final matches = _sdk.assets
+              .findAssetsByConfigId(ticker)
+              .map((a) => a.toJson())
+              .toList(growable: false);
+          return {
+            'content': [
+              {'type': 'json', 'json': matches}
+            ]
+          };
+        }
+      case 'assets.activate':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'];
+          if (ticker is! String)
+            throw JsonRpcError(-32602, 'Invalid params: ticker');
+          final assets = _sdk.assets.findAssetsByConfigId(ticker).toList();
+          if (assets.isEmpty)
+            throw JsonRpcError(
+                -32602, 'Unknown asset ticker', {'ticker': ticker});
+          await _sdk.assets.activateAsset(assets.first).last;
+          return {
+            'content': [
+              {'type': 'text', 'text': 'activated'}
+            ]
+          };
+        }
+      case 'assets.enabledTickers':
+        {
+          final tickers = await _sdk.assets.getEnabledCoins();
+          return {
+            'content': [
+              {'type': 'json', 'json': tickers.toList()}
+            ]
+          };
+        }
 
       // Pubkeys / addresses
-      case 'pubkeys.get': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'];
-        if (ticker is! String) throw JsonRpcError(-32602, 'Invalid params: ticker');
-        final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
-        if (candidates.isEmpty) throw JsonRpcError(-32602, 'Unknown asset ticker', {'ticker': ticker});
-        final pubkeys = await _sdk.pubkeys.getPubkeys(candidates.first);
-        return {'content': [{'type': 'json', 'json': pubkeys.toJson()}]};
-      }
-      case 'pubkeys.new': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'];
-        if (ticker is! String) throw JsonRpcError(-32602, 'Invalid params: ticker');
-        final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
-        if (candidates.isEmpty) throw JsonRpcError(-32602, 'Unknown asset ticker', {'ticker': ticker});
-        final newKey = await _sdk.pubkeys.createNewPubkey(candidates.first);
-        return {'content': [{'type': 'json', 'json': newKey.toJson()}]};
-      }
-      case 'addresses.validate': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'];
-        final address = arguments['address'];
-        if (ticker is! String || address is! String) throw JsonRpcError(-32602, 'Invalid params: ticker/address');
-        final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
-        final asset = candidates.isEmpty ? null : candidates.first;
-        if (asset == null) throw JsonRpcError(-32602, 'Unknown asset ticker', {'ticker': ticker});
-        final validation = await _sdk.addresses.validateAddress(asset: asset, address: address);
-        final validationJson = {
-          'isValid': validation.isValid,
-          'address': validation.address,
-          'asset': validation.asset.toJson(),
-          if (validation.invalidReason != null) 'invalidReason': validation.invalidReason,
-        };
-        return {'content': [{'type': 'json', 'json': validationJson}]};
-      }
+      case 'pubkeys.get':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'];
+          if (ticker is! String)
+            throw JsonRpcError(-32602, 'Invalid params: ticker');
+          final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
+          if (candidates.isEmpty)
+            throw JsonRpcError(
+                -32602, 'Unknown asset ticker', {'ticker': ticker});
+          final pubkeys = await _sdk.pubkeys.getPubkeys(candidates.first);
+          return {
+            'content': [
+              {'type': 'json', 'json': pubkeys.toJson()}
+            ]
+          };
+        }
+      case 'pubkeys.new':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'];
+          if (ticker is! String)
+            throw JsonRpcError(-32602, 'Invalid params: ticker');
+          final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
+          if (candidates.isEmpty)
+            throw JsonRpcError(
+                -32602, 'Unknown asset ticker', {'ticker': ticker});
+          final newKey = await _sdk.pubkeys.createNewPubkey(candidates.first);
+          return {
+            'content': [
+              {'type': 'json', 'json': newKey.toJson()}
+            ]
+          };
+        }
+      case 'addresses.validate':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'];
+          final address = arguments['address'];
+          if (ticker is! String || address is! String)
+            throw JsonRpcError(-32602, 'Invalid params: ticker/address');
+          final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
+          final asset = candidates.isEmpty ? null : candidates.first;
+          if (asset == null)
+            throw JsonRpcError(
+                -32602, 'Unknown asset ticker', {'ticker': ticker});
+          final validation = await _sdk.addresses
+              .validateAddress(asset: asset, address: address);
+          final validationJson = {
+            'isValid': validation.isValid,
+            'address': validation.address,
+            'asset': validation.asset.toJson(),
+            if (validation.invalidReason != null)
+              'invalidReason': validation.invalidReason,
+          };
+          return {
+            'content': [
+              {'type': 'json', 'json': validationJson}
+            ]
+          };
+        }
 
       // Balances
-      case 'balances.get': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'];
-        if (ticker is! String) throw JsonRpcError(-32602, 'Invalid params: ticker');
-        final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
-        if (candidates.isEmpty) throw JsonRpcError(-32602, 'Unknown asset ticker', {'ticker': ticker});
-        final bal = await _sdk.balances.getBalance(candidates.first.id);
-        return {'content': [{'type': 'json', 'json': bal.toJson()}]};
-      }
+      case 'balances.get':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'];
+          if (ticker is! String)
+            throw JsonRpcError(-32602, 'Invalid params: ticker');
+          final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
+          if (candidates.isEmpty)
+            throw JsonRpcError(
+                -32602, 'Unknown asset ticker', {'ticker': ticker});
+          final bal = await _sdk.balances.getBalance(candidates.first.id);
+          return {
+            'content': [
+              {'type': 'json', 'json': bal.toJson()}
+            ]
+          };
+        }
 
       // Transactions
-      case 'tx.history': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'];
-        final pageNumber = (arguments['pageNumber'] as num?)?.toInt();
-        final itemsPerPage = (arguments['itemsPerPage'] as num?)?.toInt();
-        if (ticker is! String) throw JsonRpcError(-32602, 'Invalid params: ticker');
-        final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
-        if (candidates.isEmpty) throw JsonRpcError(-32602, 'Unknown asset ticker', {'ticker': ticker});
-        final asset = candidates.first;
-        final page = await _sdk.transactions.getTransactionHistory(
-          asset,
-          pagination: pageNumber != null && itemsPerPage != null
-              ? PagePagination(pageNumber: pageNumber, itemsPerPage: itemsPerPage)
-              : null,
-        );
-        final jsonObj = {
-          'transactions': page.transactions.map((t) => t.toJson()).toList(),
-          'total': page.total,
-          'nextPageId': page.nextPageId,
-          'currentPage': page.currentPage,
-          'totalPages': page.totalPages,
-        };
-        return {'content': [{'type': 'json', 'json': jsonObj}]};
-      }
+      case 'tx.history':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'];
+          final pageNumber = (arguments['pageNumber'] as num?)?.toInt();
+          final itemsPerPage = (arguments['itemsPerPage'] as num?)?.toInt();
+          if (ticker is! String)
+            throw JsonRpcError(-32602, 'Invalid params: ticker');
+          final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
+          if (candidates.isEmpty)
+            throw JsonRpcError(
+                -32602, 'Unknown asset ticker', {'ticker': ticker});
+          final asset = candidates.first;
+          final page = await _sdk.transactions.getTransactionHistory(
+            asset,
+            pagination: pageNumber != null && itemsPerPage != null
+                ? PagePagination(
+                    pageNumber: pageNumber, itemsPerPage: itemsPerPage)
+                : null,
+          );
+          final jsonObj = {
+            'transactions': page.transactions.map((t) => t.toJson()).toList(),
+            'total': page.total,
+            'nextPageId': page.nextPageId,
+            'currentPage': page.currentPage,
+            'totalPages': page.totalPages,
+          };
+          return {
+            'content': [
+              {'type': 'json', 'json': jsonObj}
+            ]
+          };
+        }
 
       // Message signing
-      case 'signing.signMessage': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final coin = arguments['coin'];
-        final message = arguments['message'];
-        final address = arguments['address'];
-        if (coin is! String || message is! String || address is! String) {
-          throw JsonRpcError(-32602, 'Invalid params: coin/message/address');
+      case 'signing.signMessage':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final coin = arguments['coin'];
+          final message = arguments['message'];
+          final address = arguments['address'];
+          if (coin is! String || message is! String || address is! String) {
+            throw JsonRpcError(-32602, 'Invalid params: coin/message/address');
+          }
+          final sig = await _sdk.messageSigning
+              .signMessage(coin: coin, message: message, address: address);
+          return {
+            'content': [
+              {'type': 'text', 'text': sig}
+            ]
+          };
         }
-        final sig = await _sdk.messageSigning.signMessage(coin: coin, message: message, address: address);
-        return {'content': [{'type': 'text', 'text': sig}]} ;
-      }
-      case 'signing.verifyMessage': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final coin = arguments['coin'];
-        final message = arguments['message'];
-        final signature = arguments['signature'];
-        final address = arguments['address'];
-        if (coin is! String || message is! String || signature is! String || address is! String) {
-          throw JsonRpcError(-32602, 'Invalid params: coin/message/signature/address');
+      case 'signing.verifyMessage':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final coin = arguments['coin'];
+          final message = arguments['message'];
+          final signature = arguments['signature'];
+          final address = arguments['address'];
+          if (coin is! String ||
+              message is! String ||
+              signature is! String ||
+              address is! String) {
+            throw JsonRpcError(
+                -32602, 'Invalid params: coin/message/signature/address');
+          }
+          final ok = await _sdk.messageSigning.verifyMessage(
+              coin: coin,
+              message: message,
+              signature: signature,
+              address: address);
+          return {
+            'content': [
+              {
+                'type': 'json',
+                'json': {'valid': ok}
+              }
+            ]
+          };
         }
-        final ok = await _sdk.messageSigning.verifyMessage(coin: coin, message: message, signature: signature, address: address);
-        return {'content': [{'type': 'json', 'json': {'valid': ok}}]};
-      }
 
       // Security
-      case 'security.getPrivateKeys': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final tickers = (arguments['tickers'] as List?)?.cast<String>();
-        final modeStr = arguments['mode'] as String?;
-        final startIndex = (arguments['startIndex'] as num?)?.toInt();
-        final endIndex = (arguments['endIndex'] as num?)?.toInt();
-        final accountIndex = (arguments['accountIndex'] as num?)?.toInt();
-        final ids = tickers == null
-            ? null
-            : tickers.expand((t) => _sdk.assets.findAssetsByConfigId(t).map((a) => a.id)).toList();
-        final mode = modeStr == null
-            ? null
-            : (modeStr.toLowerCase() == 'hd' ? KeyExportMode.hd : KeyExportMode.iguana);
-        final result = await _sdk.security.getPrivateKeys(
-          assets: ids,
-          mode: mode,
-          startIndex: startIndex,
-          endIndex: endIndex,
-          accountIndex: accountIndex,
-        );
-        final jsonMap = result.map((k, v) => MapEntry(k.toJson(), v.map((e) => e.toJson()).toList()));
-        return {'content': [{'type': 'json', 'json': jsonMap}]};
-      }
+      case 'security.getPrivateKeys':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final tickers = (arguments['tickers'] as List?)?.cast<String>();
+          final modeStr = arguments['mode'] as String?;
+          final startIndex = (arguments['startIndex'] as num?)?.toInt();
+          final endIndex = (arguments['endIndex'] as num?)?.toInt();
+          final accountIndex = (arguments['accountIndex'] as num?)?.toInt();
+          final ids = tickers == null
+              ? null
+              : tickers
+                  .expand((t) =>
+                      _sdk.assets.findAssetsByConfigId(t).map((a) => a.id))
+                  .toList();
+          final mode = modeStr == null
+              ? null
+              : (modeStr.toLowerCase() == 'hd'
+                  ? KeyExportMode.hd
+                  : KeyExportMode.iguana);
+          final result = await _sdk.security.getPrivateKeys(
+            assets: ids,
+            mode: mode,
+            startIndex: startIndex,
+            endIndex: endIndex,
+            accountIndex: accountIndex,
+          );
+          final jsonMap = result.map((k, v) =>
+              MapEntry(k.toJson(), v.map((e) => e.toJson()).toList()));
+          return {
+            'content': [
+              {'type': 'json', 'json': jsonMap}
+            ]
+          };
+        }
 
       // Market data
-      case 'market.price': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'] as String?;
-        final dateMs = (arguments['dateMs'] as num?)?.toInt();
-        final fiatCurrency = (arguments['fiatCurrency'] as String?) ?? 'usdt';
-        if (ticker == null) throw JsonRpcError(-32602, 'Invalid params: ticker');
-        final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
-        if (candidates.isEmpty) throw JsonRpcError(-32602, 'Unknown asset ticker', {'ticker': ticker});
-        final date = dateMs == null ? null : DateTime.fromMillisecondsSinceEpoch(dateMs);
-        final price = await _sdk.marketData.fiatPrice(candidates.first.id, priceDate: date, fiatCurrency: fiatCurrency);
-        return {'content': [{'type': 'json', 'json': {'price': price.toString()}}]};
-      }
+      case 'market.price':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'] as String?;
+          final dateMs = (arguments['dateMs'] as num?)?.toInt();
+          final fiatCurrency = (arguments['fiatCurrency'] as String?) ?? 'usdt';
+          if (ticker == null)
+            throw JsonRpcError(-32602, 'Invalid params: ticker');
+          final candidates = _sdk.assets.findAssetsByConfigId(ticker).toList();
+          if (candidates.isEmpty)
+            throw JsonRpcError(
+                -32602, 'Unknown asset ticker', {'ticker': ticker});
+          final date = dateMs == null
+              ? null
+              : DateTime.fromMillisecondsSinceEpoch(dateMs);
+          final price = await _sdk.marketData.fiatPrice(candidates.first.id,
+              priceDate: date, fiatCurrency: fiatCurrency);
+          return {
+            'content': [
+              {
+                'type': 'json',
+                'json': {'price': price.toString()}
+              }
+            ]
+          };
+        }
 
       // Fees
-      case 'fees.utxoEstimate': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'] as String?;
-        if (ticker == null) throw JsonRpcError(-32602, 'Invalid params: ticker');
-        final est = await _sdk.fees.getUtxoEstimatedFee(ticker);
-        return {'content': [{'type': 'json', 'json': est.toJson()}]};
-      }
-      case 'fees.ethEstimate': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'] as String?;
-        if (ticker == null) throw JsonRpcError(-32602, 'Invalid params: ticker');
-        final est = await _sdk.fees.getEthEstimatedFeePerGas(ticker);
-        return {'content': [{'type': 'json', 'json': est.toJson()}]};
-      }
+      case 'fees.utxoEstimate':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'] as String?;
+          if (ticker == null)
+            throw JsonRpcError(-32602, 'Invalid params: ticker');
+          final est = await _sdk.fees.getUtxoEstimatedFee(ticker);
+          return {
+            'content': [
+              {'type': 'json', 'json': est.toJson()}
+            ]
+          };
+        }
+      case 'fees.ethEstimate':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'] as String?;
+          if (ticker == null)
+            throw JsonRpcError(-32602, 'Invalid params: ticker');
+          final est = await _sdk.fees.getEthEstimatedFeePerGas(ticker);
+          return {
+            'content': [
+              {'type': 'json', 'json': est.toJson()}
+            ]
+          };
+        }
 
       // Withdrawals
-      case 'withdraw.preview': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'] as String?;
-        final toAddress = arguments['toAddress'] as String?;
-        final amountStr = arguments['amount'] as String?;
-        if (ticker == null || toAddress == null || amountStr == null) {
-          throw JsonRpcError(-32602, 'Invalid params: ticker/toAddress/amount');
+      case 'withdraw.preview':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'] as String?;
+          final toAddress = arguments['toAddress'] as String?;
+          final amountStr = arguments['amount'] as String?;
+          if (ticker == null || toAddress == null || amountStr == null) {
+            throw JsonRpcError(
+                -32602, 'Invalid params: ticker/toAddress/amount');
+          }
+          final params = WithdrawParameters(
+            asset: ticker,
+            toAddress: toAddress,
+            amount: Decimal.parse(amountStr),
+          );
+          final preview = await _sdk.withdrawals.previewWithdrawal(params);
+          return {
+            'content': [
+              {'type': 'json', 'json': preview.toJson()}
+            ]
+          };
         }
-        final params = WithdrawParameters(
-          asset: ticker,
-          toAddress: toAddress,
-          amount: Decimal.parse(amountStr),
-        );
-        final preview = await _sdk.withdrawals.previewWithdrawal(params);
-        return {'content': [{'type': 'json', 'json': preview.toJson()}]};
-      }
-      case 'withdraw.execute': {
-        if (arguments is! Map<String, Object?>) throw JsonRpcError(-32602, 'Invalid params: arguments');
-        final ticker = arguments['ticker'] as String?;
-        final toAddress = arguments['toAddress'] as String?;
-        final amountStr = arguments['amount'] as String?;
-        final feePriorityStr = arguments['feePriority'] as String?;
-        if (ticker == null || toAddress == null || amountStr == null) {
-          throw JsonRpcError(-32602, 'Invalid params: ticker/toAddress/amount');
+      case 'withdraw.execute':
+        {
+          if (arguments is! Map<String, Object?>)
+            throw JsonRpcError(-32602, 'Invalid params: arguments');
+          final ticker = arguments['ticker'] as String?;
+          final toAddress = arguments['toAddress'] as String?;
+          final amountStr = arguments['amount'] as String?;
+          final feePriorityStr = arguments['feePriority'] as String?;
+          if (ticker == null || toAddress == null || amountStr == null) {
+            throw JsonRpcError(
+                -32602, 'Invalid params: ticker/toAddress/amount');
+          }
+          final feePriority = feePriorityStr == null
+              ? null
+              : switch (feePriorityStr.toLowerCase()) {
+                  'low' => WithdrawalFeeLevel.low,
+                  'medium' => WithdrawalFeeLevel.medium,
+                  'high' => WithdrawalFeeLevel.high,
+                  _ => null,
+                };
+          final paramsW = WithdrawParameters(
+            asset: ticker,
+            toAddress: toAddress,
+            amount: Decimal.parse(amountStr),
+            feePriority: feePriority,
+          );
+          // Collect progress until completion; return last snapshot
+          WithdrawalProgress? last;
+          await for (final p in _sdk.withdrawals.withdraw(paramsW)) {
+            last = p;
+          }
+          final jsonObj = {
+            'status': last?.status.toString(),
+            'message': last?.message,
+            if (last?.withdrawalResult != null)
+              'result': {
+                'txHash': last!.withdrawalResult!.txHash,
+                'balanceChanges':
+                    last.withdrawalResult!.balanceChanges.toJson(),
+                'coin': last.withdrawalResult!.coin,
+                'toAddress': last.withdrawalResult!.toAddress,
+                'fee': last.withdrawalResult!.fee.toJson(),
+                'kmdRewardsEligible': last.withdrawalResult!.kmdRewardsEligible,
+              },
+            if (last?.errorCode != null)
+              'errorCode': last!.errorCode.toString(),
+            if (last?.errorMessage != null) 'errorMessage': last!.errorMessage,
+            if (last?.taskId != null) 'taskId': last!.taskId,
+          };
+          return {
+            'content': [
+              {'type': 'json', 'json': jsonObj}
+            ]
+          };
         }
-        final feePriority = feePriorityStr == null
-            ? null
-            : switch (feePriorityStr.toLowerCase()) {
-                'low' => WithdrawalFeeLevel.low,
-                'medium' => WithdrawalFeeLevel.medium,
-                'high' => WithdrawalFeeLevel.high,
-                _ => null,
-              };
-        final paramsW = WithdrawParameters(
-          asset: ticker,
-          toAddress: toAddress,
-          amount: Decimal.parse(amountStr),
-          feePriority: feePriority,
-        );
-        // Collect progress until completion; return last snapshot
-        WithdrawalProgress? last;
-        await for (final p in _sdk.withdrawals.withdraw(paramsW)) {
-          last = p;
-        }
-        final jsonObj = {
-          'status': last?.status.toString(),
-          'message': last?.message,
-          if (last?.withdrawalResult != null)
-            'result': {
-              'txHash': last!.withdrawalResult!.txHash,
-              'balanceChanges': last!.withdrawalResult!.balanceChanges.toJson(),
-              'coin': last!.withdrawalResult!.coin,
-              'toAddress': last!.withdrawalResult!.toAddress,
-              'fee': last!.withdrawalResult!.fee.toJson(),
-              'kmdRewardsEligible': last!.withdrawalResult!.kmdRewardsEligible,
-            },
-          if (last?.errorCode != null) 'errorCode': last!.errorCode.toString(),
-          if (last?.errorMessage != null) 'errorMessage': last!.errorMessage,
-          if (last?.taskId != null) 'taskId': last!.taskId,
-        };
-        return {'content': [{'type': 'json', 'json': jsonObj}]};
-      }
 
       default:
         throw JsonRpcError(-32601, 'Tool not found', {'name': name});
