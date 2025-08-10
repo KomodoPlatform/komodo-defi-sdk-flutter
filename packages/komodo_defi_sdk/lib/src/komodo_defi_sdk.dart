@@ -6,14 +6,15 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/bootstrap.dart';
-import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
-import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
-import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
-import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
-import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
-import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+ import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
+ import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
+ import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
+ import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
+ import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
+ import 'package:komodo_defi_sdk/src/swaps/swap_manager.dart';
+ import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
+ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+ import 'package:komodo_defi_types/komodo_defi_types.dart' hide ApiClientMock;
 
 /// A high-level SDK that provides a simple way to build cross-platform applications
 /// using the Komodo DeFi Framework, with a primary focus on wallet functionality.
@@ -251,16 +252,23 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   MarketDataManager get marketData =>
       _assertSdkInitialized(_container<MarketDataManager>());
 
-  /// Provides access to fee management utilities.
-  FeeManager get fees => _assertSdkInitialized(_container<FeeManager>());
+     /// Provides access to fee management utilities.
+   FeeManager get fees => _assertSdkInitialized(_container<FeeManager>());
+ 
+   /// The swap manager instance.
+   ///
+   /// Provides orderbook, order placement/cancelation and swap execution APIs.
+   ///
+   /// Throws [StateError] if accessed before initialization.
+   SwapManager get swaps => _assertSdkInitialized(_container<SwapManager>());
 
-  /// Gets a reference to the balance manager for checking asset balances.
-  ///
-  /// Provides functionality for checking and monitoring asset balances.
-  ///
-  /// Throws [StateError] if accessed before initialization.
-  BalanceManager get balances =>
-      _assertSdkInitialized(_container<BalanceManager>());
+   /// Gets a reference to the balance manager for checking asset balances.
+   ///
+   /// Provides functionality for checking and monitoring asset balances.
+   ///
+   /// Throws [StateError] if accessed before initialization.
+   BalanceManager get balances =>
+       _assertSdkInitialized(_container<BalanceManager>());
 
   /// Initializes the SDK instance.
   ///
@@ -363,18 +371,19 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _isInitialized = false;
     _initializationFuture = null;
 
-    await Future.wait([
-      _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
-      _disposeIfRegistered<AssetManager>((m) => m.dispose()),
-      _disposeIfRegistered<ActivationManager>((m) => m.dispose()),
-      _disposeIfRegistered<BalanceManager>((m) => m.dispose()),
-      _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
-      _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
-      _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
-      _disposeIfRegistered<FeeManager>((m) => m.dispose()),
-      _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
-      _disposeIfRegistered<SecurityManager>((m) => m.dispose()),
-    ]);
+         await Future.wait([
+       _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
+       _disposeIfRegistered<AssetManager>((m) => m.dispose()),
+       _disposeIfRegistered<ActivationManager>((m) => m.dispose()),
+       _disposeIfRegistered<BalanceManager>((m) => m.dispose()),
+       _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
+       _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
+       _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
+       _disposeIfRegistered<FeeManager>((m) => m.dispose()),
+       _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
+       _disposeIfRegistered<SecurityManager>((m) => m.dispose()),
+       _disposeIfRegistered<SwapManager>((m) => m.dispose()),
+     ]);
 
     // Reset scoped container
     await _container.reset();
