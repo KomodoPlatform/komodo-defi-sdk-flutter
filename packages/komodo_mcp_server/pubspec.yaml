@@ -5,13 +5,21 @@ publish_to: "none"
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.22.0"
 
 dependencies:
+  flutter:
+    sdk: flutter
   args: ^2.5.0
   collection: ^1.18.0
   meta: ^1.12.0
   uuid: ^4.5.1
   decimal: ^3.2.1
+  # MCP server library
+  mcp_dart:
+    git:
+      url: https://github.com/leehack/mcp_dart.git
+      ref: main
   # Monorepo-local packages
   komodo_defi_sdk:
     path: ../komodo_defi_sdk
@@ -27,4 +35,5 @@ dependencies:
 executables:
   komodo_mcp_server: bin/komodo_mcp_server.dart
 
-# No dev dependencies initially
+flutter:
+  uses-material-design: false
