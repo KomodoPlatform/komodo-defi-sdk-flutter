@@ -17,7 +17,7 @@ dependencies:
   intl: ^0.20.2
   komodo_defi_types:
     path: ../komodo_defi_types
-  mobile_scanner: ^7.0.0
+  qr_code_scanner_plus: ^2.0.10+1
 
 dev_dependencies:
   flutter_test:
