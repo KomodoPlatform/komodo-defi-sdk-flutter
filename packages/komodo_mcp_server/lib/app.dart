@@ -29,7 +29,7 @@ class _KomodoMcpAppState extends State<KomodoMcpApp> {
     setState(() => status = 'Starting...');
 
     // Initialize SDK with chosen host
-    _sdk?.dispose();
+    await _sdk?.dispose();
     _sdk = KomodoDefiSdk(
       host: RemoteConfig(
         ipAddress: hostIp,

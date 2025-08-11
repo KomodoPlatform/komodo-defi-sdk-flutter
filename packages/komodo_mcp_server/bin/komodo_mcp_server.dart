@@ -7,7 +7,6 @@ import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
     show KeyExportMode;
-import 'package:decimal/decimal.dart';
 import 'package:mcp_dart/mcp_dart.dart' as mcp;
 
 // This entry can run as a stdio server if Flutter environment supports running Dart entrypoints.
