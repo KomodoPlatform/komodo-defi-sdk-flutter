@@ -7,7 +7,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 class GetEnabledCoinsRequest
     extends BaseRequest<GetEnabledCoinsResponse, GeneralErrorResponse> {
   GetEnabledCoinsRequest({super.rpcPass})
-    : super(method: 'get_enabled_coins', mmrpc: '2.0');
+    : super(method: 'get_enabled_coins', mmrpc: RpcVersion.v2_0);
 
   @override
   GetEnabledCoinsResponse parse(Map<String, dynamic> json) {

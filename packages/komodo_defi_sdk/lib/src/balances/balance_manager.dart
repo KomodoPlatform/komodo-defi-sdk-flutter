@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart'; // Add this import for debugPrint
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
+import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -51,14 +52,14 @@ class BalanceManager implements IBalanceManager {
   /// Creates a new instance of [BalanceManager].
   ///
   /// Requires an [IAssetLookup] to find asset information and [KomodoDefiLocalAuth] for auth.
-  /// The [activationManager] and [pubkeyManager] can be initialized as null and set later
+  /// The [activationCoordinator] and [pubkeyManager] can be initialized as null and set later
   /// to break circular dependencies.
   BalanceManager({
     required IAssetLookup assetLookup,
     required KomodoDefiLocalAuth auth,
     required PubkeyManager? pubkeyManager,
-    required ActivationManager? activationManager,
-  }) : _activationManager = activationManager,
+    required SharedActivationCoordinator? activationCoordinator,
+  }) : _activationCoordinator = activationCoordinator,
        _pubkeyManager = pubkeyManager,
        _assetLookup = assetLookup,
        _auth = auth {
@@ -66,7 +67,7 @@ class BalanceManager implements IBalanceManager {
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
   }
 
-  ActivationManager? _activationManager;
+  SharedActivationCoordinator? _activationCoordinator;
   PubkeyManager? _pubkeyManager;
   final IAssetLookup _assetLookup;
   final KomodoDefiLocalAuth _auth;
@@ -82,24 +83,22 @@ class BalanceManager implements IBalanceManager {
   /// Stream controllers for each asset being watched
   final Map<AssetId, StreamController<BalanceInfo>> _balanceControllers = {};
 
-  /// Track activation operations in progress to avoid duplicate activations
-  final Map<AssetId, Completer<void>> _pendingActivations = {};
-
   /// Current wallet ID being tracked
   WalletId? _currentWalletId;
 
   /// Flag indicating if the manager has been disposed
   bool _isDisposed = false;
 
-  /// Getter for activationManager to make it accessible
-  ActivationManager? get activationManager => _activationManager;
+  /// Getter for activationCoordinator to make it accessible
+  SharedActivationCoordinator? get activationCoordinator =>
+      _activationCoordinator;
 
   /// Getter for pubkeyManager to make it accessible
   PubkeyManager? get pubkeyManager => _pubkeyManager;
 
-  /// Setter for activationManager to resolve circular dependencies
-  void setActivationManager(ActivationManager manager) {
-    _activationManager = manager;
+  /// Setter for activationCoordinator to resolve circular dependencies
+  void setActivationCoordinator(SharedActivationCoordinator coordinator) {
+    _activationCoordinator = coordinator;
   }
 
   /// Setter for pubkeyManager to resolve circular dependencies
@@ -135,9 +134,8 @@ class BalanceManager implements IBalanceManager {
       }
     }
 
-    // Clear caches and pending operations
+    // Clear caches
     _balanceCache.clear();
-    _pendingActivations.clear();
 
     // Restart balance watchers for existing controllers with the new wallet
     final existingWatches = Map<AssetId, StreamController<BalanceInfo>>.from(
@@ -210,49 +208,32 @@ class BalanceManager implements IBalanceManager {
     yield* controller.stream;
   }
 
-  /// Ensures an asset is activated, with protection against duplicate activations
+  /// Ensures an asset is activated using the shared activation coordinator
   Future<bool> _ensureAssetActivated(Asset asset, bool activateIfNeeded) async {
-    // Check if activationManager is initialized
-    if (_activationManager == null) {
-      debugPrint('ActivationManager not initialized, cannot activate asset');
+    // Check if activationCoordinator is initialized
+    if (_activationCoordinator == null) {
+      debugPrint(
+        'SharedActivationCoordinator not initialized, cannot activate asset',
+      );
       return false;
     }
 
     if (!activateIfNeeded) {
-      return _activationManager!.isAssetActive(asset.id);
+      return _activationCoordinator!.isAssetActive(asset.id);
     }
 
-    final isActive = await _activationManager!.isAssetActive(asset.id);
+    final isActive = await _activationCoordinator!.isAssetActive(asset.id);
     if (isActive) {
       return true;
     }
 
-    // Check if activation is already in progress
-    if (_pendingActivations.containsKey(asset.id)) {
-      try {
-        // Wait for the existing activation to complete
-        await _pendingActivations[asset.id]!.future;
-        return await _activationManager!.isAssetActive(asset.id);
-      } catch (e) {
-        // If the activation fails, we'll try again
-        return false;
-      }
-    }
-
-    // Start a new activation
-    final completer = Completer<void>();
-    _pendingActivations[asset.id] = completer;
-
     try {
-      // Activate the asset
-      await _activationManager!.activateAsset(asset).last;
-      completer.complete();
-      return await _activationManager!.isAssetActive(asset.id);
+      // Use the shared coordinator to activate the asset
+      final result = await _activationCoordinator!.activateAsset(asset);
+      return result.isSuccess;
     } catch (e) {
-      completer.completeError(e);
+      debugPrint('Failed to activate asset ${asset.id.name}: $e');
       return false;
-    } finally {
-      _pendingActivations.remove(asset.id);
     }
   }
 
@@ -265,7 +246,7 @@ class BalanceManager implements IBalanceManager {
     if (controller == null || _isDisposed) return;
 
     // Check if dependencies are initialized
-    if (_activationManager == null || _pubkeyManager == null) {
+    if (_activationCoordinator == null || _pubkeyManager == null) {
       if (!controller.isClosed) {
         controller.addError(
           StateError('Dependencies not fully initialized yet'),
@@ -319,7 +300,7 @@ class BalanceManager implements IBalanceManager {
             if (_isDisposed) return null;
 
             // Check if dependencies are still initialized
-            if (_activationManager == null || _pubkeyManager == null) {
+            if (_activationCoordinator == null || _pubkeyManager == null) {
               return null;
             }
 
@@ -410,7 +391,6 @@ class BalanceManager implements IBalanceManager {
     _balanceControllers.clear();
 
     // Clear all other resources
-    _pendingActivations.clear();
     _balanceCache.clear();
     _currentWalletId = null;
   }
@@ -428,20 +408,44 @@ class BalanceManager implements IBalanceManager {
     final user = await _auth.currentUser;
     if (user == null) return;
 
-    try {
-      final balance = await _pubkeyManager!
-          .getPubkeys(asset)
-          .then((pubkeys) => pubkeys.balance);
-      _balanceCache[asset.id] = balance;
+    // Retry logic to handle timing issues after activation
+    const maxRetries = 3;
+    const baseDelay = Duration(milliseconds: 200);
 
-      // If there's an active stream controller for this asset, emit the balance
-      final controller = _balanceControllers[asset.id];
-      if (controller != null && !controller.isClosed) {
-        controller.add(balance);
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        final balance = await _pubkeyManager!
+            .getPubkeys(asset)
+            .then((pubkeys) => pubkeys.balance);
+        _balanceCache[asset.id] = balance;
+
+        // If there's an active stream controller for this asset, emit the balance
+        final controller = _balanceControllers[asset.id];
+        if (controller != null && !controller.isClosed) {
+          controller.add(balance);
+        }
+        return; // Success, exit retry loop
+      } catch (e) {
+        final isLastAttempt = attempt == maxRetries - 1;
+        final errorStr = e.toString().toLowerCase();
+        final isCoinNotFound =
+            errorStr.contains('no such coin') ||
+            errorStr.contains('coin not found') ||
+            errorStr.contains('not activated') ||
+            errorStr.contains('invalid coin');
+
+        if (isCoinNotFound && !isLastAttempt) {
+          debugPrint(
+            'Balance pre-cache failed (attempt ${attempt + 1}): Coin ${asset.id.name} not yet available, retrying...',
+          );
+          await Future.delayed(baseDelay * (attempt + 1));
+          continue;
+        }
+
+        // Either not a timing issue or final attempt - fail silently
+        debugPrint('Failed to pre-cache balance for ${asset.id.name}: $e');
+        return;
       }
-    } catch (e) {
-      // Silently fail pre-caching - this is just an optimization
-      debugPrint('Failed to pre-cache balance for ${asset.id.name}: $e');
     }
   }
 }

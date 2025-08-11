@@ -18,6 +18,7 @@ class AssetLogo extends StatelessWidget {
     this.asset, {
     this.size = 41,
     this.isDisabled = false,
+    this.heroTag,
     super.key,
   }) : _assetId = null,
        _legacyTicker = null,
@@ -28,6 +29,7 @@ class AssetLogo extends StatelessWidget {
     AssetId assetId, {
     this.size = 41,
     this.isDisabled = false,
+    this.heroTag,
     super.key,
   }) : asset = null,
        _assetId = assetId,
@@ -42,6 +44,7 @@ class AssetLogo extends StatelessWidget {
     String ticker, {
     this.size = 41,
     this.isDisabled = false,
+    this.heroTag,
     super.key,
   }) : _legacyTicker = ticker,
        asset = null,
@@ -59,6 +62,7 @@ class AssetLogo extends StatelessWidget {
     this.size = 41,
     this.isDisabled = false,
     this.isBlank = false,
+    this.heroTag,
     super.key,
   }) : asset = null,
        _assetId = null,
@@ -82,6 +86,9 @@ class AssetLogo extends StatelessWidget {
   /// Only used with the [AssetLogo.placeholder] constructor.
   final bool isBlank;
 
+  /// Optional tag for wrapping the icon in a [Hero] widget.
+  final Object? heroTag;
+
   @override
   Widget build(BuildContext context) {
     final resolvedId = asset?.id ?? _assetId;
@@ -93,6 +100,7 @@ class AssetLogo extends StatelessWidget {
         isBlank: isBlank,
         isDisabled: isDisabled,
         size: size,
+        heroTag: heroTag,
       );
     }
 
@@ -105,12 +113,18 @@ class AssetLogo extends StatelessWidget {
 
     final mainIcon =
         resolvedId != null
-            ? AssetIcon(resolvedId, size: size, suspended: isDisabled)
+            ? AssetIcon(
+              resolvedId,
+              size: size,
+              suspended: isDisabled,
+              heroTag: heroTag,
+            )
             : (resolvedTicker != null
                 ? AssetIcon.ofTicker(
                   resolvedTicker,
                   size: size,
                   suspended: isDisabled,
+                  heroTag: heroTag,
                 )
                 : throw ArgumentError(
                   'resolvedTicker cannot be null when both asset and '
@@ -133,35 +147,43 @@ class _AssetLogoPlaceholder extends StatelessWidget {
     required this.isBlank,
     required this.isDisabled,
     required this.size,
+    this.heroTag,
   });
 
   final bool isBlank;
   final bool isDisabled;
   final double size;
+  final Object? heroTag;
 
   @override
   Widget build(BuildContext context) {
-    if (isBlank) {
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color:
-              isDisabled
-                  ? Theme.of(context).disabledColor
-                  : Theme.of(context).colorScheme.secondaryContainer,
-        ),
-      );
+    final child =
+        isBlank
+            ? Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color:
+                    isDisabled
+                        ? Theme.of(context).disabledColor
+                        : Theme.of(context).colorScheme.secondaryContainer,
+              ),
+            )
+            : Icon(
+              Icons.monetization_on_outlined,
+              size: size,
+              color:
+                  isDisabled
+                      ? Theme.of(context).disabledColor
+                      : Theme.of(context).colorScheme.onSecondaryContainer,
+            );
+
+    if (heroTag != null) {
+      return Hero(tag: heroTag!, child: child);
     }
-    return Icon(
-      Icons.monetization_on_outlined,
-      size: size,
-      color:
-          isDisabled
-              ? Theme.of(context).disabledColor
-              : Theme.of(context).colorScheme.onSecondaryContainer,
-    );
+
+    return child;
   }
 }
 

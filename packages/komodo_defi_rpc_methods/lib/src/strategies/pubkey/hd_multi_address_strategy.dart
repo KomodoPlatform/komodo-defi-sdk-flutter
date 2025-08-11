@@ -14,9 +14,10 @@ mixin HDWalletMixin on PubkeyStrategy {
 
   @override
   bool protocolSupported(ProtocolClass protocol) {
-    //TODO! (ETH?) return protocol is UtxoProtocol || protocol is SlpProtocol;
-    // return protocol is UtxoProtocol || protocol is SlpProtocol;
-    return true;
+    // HD wallet strategies support protocols that can handle multiple addresses
+    // This includes UTXO protocols and EVM protocols
+    // Tendermint protocols use single addresses only
+    return protocol.supportsMultipleAddresses;
   }
 
   @override
@@ -64,6 +65,7 @@ mixin HDWalletMixin on PubkeyStrategy {
                 derivationPath: addr.derivationPath,
                 chain: addr.chain,
                 balance: addr.balance.balanceOf(assetId.id),
+                coinTicker: assetId.id,
               ),
             )
             .toList();
@@ -94,6 +96,11 @@ class ContextPrivKeyHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
   final KdfUser kdfUser;
 
   @override
+  /// Get the new address for the given asset ID and client.
+  ///
+  /// Filters out balances that are not for the given asset ID.
+  // TODO: Refactor to create a domain model with onlt a single balance entry.
+  // Currently we are bound to the RPC response data structure.
   Future<PubkeyInfo> getNewAddress(AssetId assetId, ApiClient client) async {
     final newAddress =
         (await client.rpc.hdWallet.getNewAddress(
@@ -103,11 +110,17 @@ class ContextPrivKeyHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
           gapLimit: _gapLimit,
         )).newAddress;
 
+    // Get the balance for the specific coin, or use the first balance if not
+    // found
+    final coinBalance =
+        newAddress.getBalanceForCoin(assetId.id) ?? BalanceInfo.zero();
+
     return PubkeyInfo(
       address: newAddress.address,
       derivationPath: newAddress.derivationPath,
       chain: newAddress.chain,
-      balance: newAddress.balance,
+      balance: coinBalance,
+      coinTicker: assetId.id,
     );
   }
 
@@ -142,6 +155,7 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
       derivationPath: newAddress.derivationPath,
       chain: newAddress.chain,
       balance: newAddress.balance,
+      coinTicker: assetId.id,
     );
   }
 
@@ -166,7 +180,7 @@ class TrezorHDWalletStrategy extends PubkeyStrategy with HDWalletMixin {
           forgetIfFinished: false,
         );
 
-        final state = status.toNewAddressState(initResponse.taskId);
+        final state = status.toNewAddressState(initResponse.taskId, assetId.id);
         yield state;
 
         if (state.status == NewAddressStatus.completed ||

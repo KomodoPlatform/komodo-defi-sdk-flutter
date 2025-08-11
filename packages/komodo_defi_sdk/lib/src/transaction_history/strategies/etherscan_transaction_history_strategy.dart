@@ -98,7 +98,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
           allTransactions.isNotEmpty ? allTransactions.first.blockHeight : 0;
 
       return MyTxHistoryResponse(
-        mmrpc: '2.0',
+        mmrpc: RpcVersion.v2_0,
         currentBlock: currentBlock,
         fromId: paginatedResults.transactions.lastOrNull?.txHash,
         limit: paginatedResults.pageSize,
@@ -156,7 +156,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
                 tx.valueOrNull<JsonMap>('fee_details') != null
                     ? FeeInfo.fromJson(
                       tx.value<JsonMap>('fee_details')
-                        ..setIfAbsentOrEmpty('type', 'Eth'),
+                        ..setIfAbsentOrEmpty('type', 'EthGas'),
                     )
                     : null,
             coin: coinId,
@@ -231,6 +231,10 @@ class EtherscanProtocolHelper {
 
     return Uri.parse(endpoint);
   }
+
+  /// Returns the URL for fetching transaction history by hash.
+  Uri transactionsByHashUrl(String txHash) =>
+      Uri.parse('$_txByHashUrl/$txHash');
 
   String? _getEndpointForAsset(Asset asset) {
     final baseEndpoint = _getBaseEndpoint(asset.id);

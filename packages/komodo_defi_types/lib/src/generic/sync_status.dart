@@ -17,6 +17,7 @@ enum SyncStatusEnum {
       case 'InProgress':
         return SyncStatusEnum.inProgress;
       case 'Success':
+      case 'Ok':
         return SyncStatusEnum.success;
       case 'Error':
         return SyncStatusEnum.error;

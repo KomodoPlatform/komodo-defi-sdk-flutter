@@ -16,11 +16,18 @@ class CoinConfigProvider {
         'https://api.github.com/repos/KomodoPlatform/coins',
     this.coinsPath = 'coins',
     this.coinsConfigPath = 'utils/coins_config_unfiltered.json',
+    this.githubToken,
   });
 
-  factory CoinConfigProvider.fromConfig(RuntimeUpdateConfig config) {
+  factory CoinConfigProvider.fromConfig(
+    RuntimeUpdateConfig config, {
+    String? githubToken,
+  }) {
     // TODO(Francois): derive all the values from the config
-    return CoinConfigProvider(branch: config.coinsRepoBranch);
+    return CoinConfigProvider(
+      branch: config.coinsRepoBranch,
+      githubToken: githubToken,
+    );
   }
 
   final String branch;
@@ -28,6 +35,7 @@ class CoinConfigProvider {
   final String coinsGithubApiUrl;
   final String coinsPath;
   final String coinsConfigPath;
+  final String? githubToken;
 
   /// Fetches the coins from the repository.
   /// [commit] is the commit hash to fetch the coins from.
@@ -81,7 +89,29 @@ class CoinConfigProvider {
     final client = http.Client();
     final url = Uri.parse('$coinsGithubApiUrl/branches/$branch');
     final header = <String, String>{'Accept': 'application/vnd.github+json'};
+
+    // Add authentication header if token is available
+    if (githubToken != null) {
+      header['Authorization'] = 'Bearer $githubToken';
+      print('CoinConfigProvider: Using authentication for GitHub API request');
+    } else {
+      print(
+        'CoinConfigProvider: No GitHub token available - making unauthenticated request',
+      );
+    }
+
     final response = await client.get(url, headers: header);
+
+    if (response.statusCode != 200) {
+      print(
+        'CoinConfigProvider: GitHub API request failed: ${response.statusCode} ${response.reasonPhrase}',
+      );
+      print('CoinConfigProvider: Response body: ${response.body}');
+      throw Exception(
+        'Failed to retrieve latest commit hash: $branch'
+        '[${response.statusCode}]: ${response.reasonPhrase}',
+      );
+    }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final commit = json['commit'] as Map<String, dynamic>;

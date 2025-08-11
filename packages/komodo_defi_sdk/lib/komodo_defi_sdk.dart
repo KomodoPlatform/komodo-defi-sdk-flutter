@@ -14,6 +14,8 @@ export 'package:komodo_defi_sdk/src/addresses/address_operations.dart'
 export 'package:komodo_defi_sdk/src/balances/balance_manager.dart'
     show BalanceManager;
 export 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
+export 'package:komodo_defi_sdk/src/security/security_manager.dart'
+    show SecurityManager;
 
 export 'src/assets/_assets_index.dart' show AssetHdWalletAddressesExtension;
 export 'src/assets/asset_extensions.dart'

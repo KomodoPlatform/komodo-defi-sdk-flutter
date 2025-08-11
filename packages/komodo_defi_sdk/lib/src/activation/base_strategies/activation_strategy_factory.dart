@@ -23,7 +23,10 @@ class ActivationStrategyFactory {
         EthWithTokensActivationStrategy(client, privKeyPolicy),
         Erc20ActivationStrategy(client, privKeyPolicy),
         // SlpActivationStrategy(client),
-        TendermintActivationStrategy(client, privKeyPolicy),
+        // Tendermint strategies follow same pattern as ETH: task -> platform -> tokens
+        TendermintTaskActivationStrategy(client, privKeyPolicy),
+        TendermintWithTokensActivationStrategy(client, privKeyPolicy),
+        TendermintTokenActivationStrategy(client, privKeyPolicy),
         QtumActivationStrategy(client, privKeyPolicy),
         ZhtlcActivationStrategy(client, privKeyPolicy),
         CustomErc20ActivationStrategy(client),

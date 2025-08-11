@@ -1,4 +1,5 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -215,7 +216,7 @@ void main() {
 
       test('throws ArgumentError for empty JSON object', () {
         expect(
-          () => PrivateKeyPolicy.fromLegacyJson({}),
+          () => PrivateKeyPolicy.fromLegacyJson(JsonMap()),
           throwsA(
             isA<ArgumentError>().having(
               (e) => e.message,
@@ -280,56 +281,56 @@ void main() {
 
   group('PrivateKeyPolicy.pascalCaseName', () {
     test('returns correct PascalCase name for contextPrivKey', () {
-      final policy = PrivateKeyPolicy.contextPrivKey();
+      const policy = PrivateKeyPolicy.contextPrivKey();
       expect(policy.pascalCaseName, 'ContextPrivKey');
     });
 
     test('returns correct PascalCase name for trezor', () {
-      final policy = PrivateKeyPolicy.trezor();
+      const policy = PrivateKeyPolicy.trezor();
       expect(policy.pascalCaseName, 'Trezor');
     });
 
     test('returns correct PascalCase name for metamask', () {
-      final policy = PrivateKeyPolicy.metamask();
+      const policy = PrivateKeyPolicy.metamask();
       expect(policy.pascalCaseName, 'Metamask');
     });
 
     test('returns correct PascalCase name for walletConnect', () {
-      final policy = PrivateKeyPolicy.walletConnect('test_session');
+      const policy = PrivateKeyPolicy.walletConnect('test_session');
       expect(policy.pascalCaseName, 'WalletConnect');
     });
 
     test(
       'returns correct PascalCase name for walletConnect with empty session',
       () {
-        final policy = PrivateKeyPolicy.walletConnect('');
+        const policy = PrivateKeyPolicy.walletConnect('');
         expect(policy.pascalCaseName, 'WalletConnect');
       },
     );
 
     test('pascalCaseName is consistent across different instances', () {
-      final policy1 = PrivateKeyPolicy.walletConnect('session1');
-      final policy2 = PrivateKeyPolicy.walletConnect('session2');
+      const policy1 = PrivateKeyPolicy.walletConnect('session1');
+      const policy2 = PrivateKeyPolicy.walletConnect('session2');
       expect(policy1.pascalCaseName, policy2.pascalCaseName);
     });
 
     test('pascalCaseName matches legacy string format', () {
       final testCases = [
         {
-          'policy': PrivateKeyPolicy.contextPrivKey(),
+          'policy': const PrivateKeyPolicy.contextPrivKey(),
           'expected': 'ContextPrivKey',
         },
-        {'policy': PrivateKeyPolicy.trezor(), 'expected': 'Trezor'},
-        {'policy': PrivateKeyPolicy.metamask(), 'expected': 'Metamask'},
+        {'policy': const PrivateKeyPolicy.trezor(), 'expected': 'Trezor'},
+        {'policy': const PrivateKeyPolicy.metamask(), 'expected': 'Metamask'},
         {
-          'policy': PrivateKeyPolicy.walletConnect('test'),
+          'policy': const PrivateKeyPolicy.walletConnect('test'),
           'expected': 'WalletConnect',
         },
       ];
 
       for (final testCase in testCases) {
-        final policy = testCase['policy'] as PrivateKeyPolicy;
-        final expected = testCase['expected'] as String;
+        final policy = testCase['policy']! as PrivateKeyPolicy;
+        final expected = testCase['expected']! as String;
         expect(policy.pascalCaseName, expected);
       }
     });

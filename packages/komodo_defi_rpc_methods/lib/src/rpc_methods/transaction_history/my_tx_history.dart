@@ -12,7 +12,7 @@ class MyTxHistoryRequest
     this.historyTarget,
     this.pagingOptions,
     super.rpcPass,
-  }) : super(method: 'my_tx_history', mmrpc: '2.0');
+  }) : super(method: 'my_tx_history', mmrpc: RpcVersion.v2_0);
 
   final String coin;
   final int limit;
@@ -113,7 +113,7 @@ class MyTxHistoryResponse extends BaseResponse {
   }
 
   factory MyTxHistoryResponse.empty() => MyTxHistoryResponse(
-    mmrpc: '2.0',
+    mmrpc: RpcVersion.v2_0,
     currentBlock: 0,
     fromId: null,
     limit: 0,

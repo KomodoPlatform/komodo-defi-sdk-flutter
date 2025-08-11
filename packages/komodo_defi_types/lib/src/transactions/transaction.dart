@@ -49,6 +49,9 @@ class Transaction extends Equatable {
   final BalanceChanges balanceChanges;
   final DateTime timestamp;
   final int confirmations;
+
+  // TODO! Investigate if this should be nullable. In theory it should be
+  // but we haven't encountered any errors.
   final int blockHeight;
   final List<String> from;
   final List<String> to;

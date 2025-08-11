@@ -84,7 +84,7 @@ class _AuthScreenState extends State<AuthScreen> {
       create: (context) => AuthBloc(sdk: widget.instanceState.sdk),
       child: InstanceView(
         instance: widget.instanceState,
-        state: widget.instanceState.instanceData,
+        state: 'auth',
         statusMessage: widget.statusMessage,
         searchController: _searchController,
         filteredAssets: _filteredAssets,

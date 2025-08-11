@@ -1,8 +1,12 @@
 // TODO: This may be better suited to be moved to the UI package.
 
+import 'dart:typed_data';
+
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 final Set<String> _validMnemonicWords = {};
+final Map<String, int> _wordToIndex = {};
 
 const _validLengths = [12, 15, 18, 21, 24];
 
@@ -11,6 +15,8 @@ enum MnemonicFailedReason {
   customNotSupportedForHd,
   customNotAllowed,
   invalidLength,
+  invalidWord,
+  invalidChecksum,
 }
 
 class MnemonicValidator {
@@ -19,7 +25,13 @@ class MnemonicValidator {
       final wordlist = await rootBundle.loadString(
         'packages/komodo_defi_types/assets/bip-0039/english-wordlist.txt',
       );
-      _validMnemonicWords.addAll(wordlist.split('\n').map((w) => w.trim()));
+      final words = wordlist.split('\n').map((w) => w.trim()).toList();
+      _validMnemonicWords.addAll(words);
+
+      // Build word-to-index mapping for BIP39 validation
+      for (int i = 0; i < words.length; i++) {
+        _wordToIndex[words[i]] = i;
+      }
     }
   }
 
@@ -50,19 +62,31 @@ class MnemonicValidator {
       return MnemonicFailedReason.invalidLength;
     }
 
-    final isValidBip39 = validateBip39(input);
+    // Get detailed validation error if any
+    final detailedError = _getDetailedValidationError(input);
 
-    if (isValidBip39) {
+    // If no error, it's a valid BIP39 mnemonic
+    if (detailedError == null) {
       return null;
     }
 
+    // For specific errors, return them directly
+    if (detailedError == MnemonicFailedReason.empty ||
+        detailedError == MnemonicFailedReason.invalidLength) {
+      return detailedError;
+    }
+
+    // For HD wallets, any BIP39 error means it's not supported
     if (isHd) {
       return MnemonicFailedReason.customNotSupportedForHd;
     }
 
+    // For non-HD wallets, check if custom seeds are allowed
     if (!allowCustomSeed) {
       return MnemonicFailedReason.customNotAllowed;
     }
+
+    // Custom seed is allowed, so return null (valid)
     return null;
   }
 
@@ -73,7 +97,7 @@ class MnemonicValidator {
       'Call MnemonicValidator.init() first.',
     );
 
-    final inputWordsList = input.split(' ');
+    final inputWordsList = input.trim().split(' ');
 
     if (!_validLengths.contains(inputWordsList.length)) {
       return false;
@@ -84,6 +108,94 @@ class MnemonicValidator {
     )) {
       return false;
     }
-    return true;
+
+    // Validate checksum
+    return _validateChecksum(inputWordsList);
   }
+
+  /// Validates the BIP39 checksum for a given mnemonic
+  bool _validateChecksum(List<String> words) {
+    try {
+      // Convert words to indices
+      final indices = <int>[];
+      for (final word in words) {
+        final index = _wordToIndex[word];
+        if (index == null) return false;
+        indices.add(index);
+      }
+
+      // Convert indices to binary string (11 bits per word)
+      final binaryString =
+          indices.map((i) => i.toRadixString(2).padLeft(11, '0')).join();
+
+      // Calculate entropy and checksum lengths
+      final totalBits = binaryString.length;
+      final checksumBits = totalBits ~/ 33; // Checksum is 1 bit per 3 words
+      final entropyBits = totalBits - checksumBits;
+
+      // Extract entropy and checksum
+      final entropyBinary = binaryString.substring(0, entropyBits);
+      final checksumBinary = binaryString.substring(entropyBits);
+
+      // Convert entropy to bytes
+      final entropyBytes = _binaryToBytes(entropyBinary);
+
+      // Calculate SHA256 hash of entropy
+      final hash = sha256.convert(entropyBytes);
+      final hashBits = _bytesToBinary(hash.bytes);
+
+      // Extract first checksumBits from hash
+      final calculatedChecksum = hashBits.substring(0, checksumBits);
+
+      // Compare checksums
+      return checksumBinary == calculatedChecksum;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Converts a binary string to bytes
+  Uint8List _binaryToBytes(String binary) {
+    final bytes = <int>[];
+    for (int i = 0; i < binary.length; i += 8) {
+      final byte = binary.substring(i, i + 8);
+      bytes.add(int.parse(byte, radix: 2));
+    }
+    return Uint8List.fromList(bytes);
+  }
+
+  /// Converts bytes to binary string
+  String _bytesToBinary(List<int> bytes) {
+    return bytes.map((b) => b.toRadixString(2).padLeft(8, '0')).join();
+  }
+
+  /// Gets detailed validation error for a mnemonic
+  MnemonicFailedReason? _getDetailedValidationError(String input) {
+    final words = input.trim().split(' ');
+
+    if (words.isEmpty || words.every((w) => w.isEmpty)) {
+      return MnemonicFailedReason.empty;
+    }
+
+    if (!_validLengths.contains(words.length)) {
+      return MnemonicFailedReason.invalidLength;
+    }
+
+    // Check for invalid words
+    for (final word in words) {
+      if (!_validMnemonicWords.contains(word)) {
+        return MnemonicFailedReason.invalidWord;
+      }
+    }
+
+    // Check checksum
+    if (!_validateChecksum(words)) {
+      return MnemonicFailedReason.invalidChecksum;
+    }
+
+    return null;
+  }
+
+  /// Checks if the wordlist has been initialized
+  bool get isInitialized => _validMnemonicWords.isNotEmpty;
 }

@@ -129,7 +129,7 @@ class WithdrawStatusRequest
     required super.rpcPass,
     required this.taskId,
     this.forgetIfFinished = true,
-  }) : super(method: 'task::withdraw::status', mmrpc: '2.0');
+  }) : super(method: 'task::withdraw::status', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final bool forgetIfFinished;
@@ -192,7 +192,7 @@ class WithdrawStatusResponse extends BaseResponse {
 class WithdrawCancelRequest
     extends BaseRequest<WithdrawCancelResponse, GeneralErrorResponse> {
   WithdrawCancelRequest({required super.rpcPass, required this.taskId})
-    : super(method: 'task::withdraw::cancel', mmrpc: '2.0');
+    : super(method: 'task::withdraw::cancel', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
 

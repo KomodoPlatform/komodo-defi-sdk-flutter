@@ -54,6 +54,9 @@ class UtxoProtocol extends ProtocolClass {
   @override
   bool get requiresHdWallet => false;
 
+  @override
+  bool get isMemoSupported => true;
+
   static void _validateUtxoConfig(JsonMap json) {
     if (json.value<bool>('is_testnet') == true) {
       return;

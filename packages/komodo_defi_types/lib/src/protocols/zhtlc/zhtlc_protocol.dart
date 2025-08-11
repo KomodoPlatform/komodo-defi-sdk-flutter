@@ -21,6 +21,9 @@ class ZhtlcProtocol extends ProtocolClass {
   @override
   bool get requiresHdWallet => false;
 
+  @override
+  bool get isMemoSupported => true;
+
   static void _validateZhtlcConfig(JsonMap json) {
     final requiredFields = {
       'electrum': 'Electrum servers',

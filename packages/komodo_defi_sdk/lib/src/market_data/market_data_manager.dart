@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:developer';
 
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
@@ -127,6 +128,73 @@ class CexMarketDataManager implements MarketDataManager {
     return assetId.symbol.configSymbol;
   }
 
+  /// Determines if the request can be handled by Komodo price repository
+  /// NOTE: currently only supports USDT and USD fiat currencies
+  /// and does not support specific price dates (always uses current price)
+  bool _canUseKomodoRepository({
+    DateTime? priceDate,
+    String fiatCurrency = 'usdt',
+  }) {
+    return priceDate == null &&
+        (fiatCurrency.toLowerCase() == 'usdt' ||
+            fiatCurrency.toLowerCase() == 'usd');
+  }
+
+  /// Attempts to get price from Komodo repository
+  Future<Decimal?> _tryKomodoPrice(String symbol) async {
+    try {
+      final komodoPrices = await _komodoPriceRepository.getKomodoPrices();
+      final priceData = komodoPrices[symbol];
+
+      if (priceData != null) {
+        return Decimal.parse(priceData.price.toString());
+      }
+    } catch (e) {
+      log(
+        'Failed to get price from Komodo repository for symbol: $symbol',
+        error: e,
+      );
+      // Ignore errors and fall back
+    }
+    return null;
+  }
+
+  /// Gets price with automatic fallback logic
+  Future<Decimal?> _getPriceWithFallback(
+    AssetId assetId, {
+    DateTime? priceDate,
+    String fiatCurrency = 'usdt',
+  }) async {
+    final symbol = _getTradingSymbol(assetId);
+
+    // Try Komodo repository first if applicable
+    if (_canUseKomodoRepository(
+      priceDate: priceDate,
+      fiatCurrency: fiatCurrency,
+    )) {
+      final komodoPrice = await _tryKomodoPrice(symbol);
+      if (komodoPrice != null) {
+        return komodoPrice;
+      }
+    }
+
+    // Fallback to CEX repository
+    try {
+      final priceDouble = await _priceRepository.getCoinFiatPrice(
+        symbol,
+        priceDate: priceDate,
+        fiatCoinId: fiatCurrency,
+      );
+      return Decimal.parse(priceDouble.toString());
+    } catch (e) {
+      log(
+        'Failed to get price from Cex Repository for symbol $symbol',
+        error: e,
+      );
+      return null;
+    }
+  }
+
   @override
   Decimal? priceIfKnown(
     AssetId assetId, {
@@ -143,6 +211,7 @@ class CexMarketDataManager implements MarketDataManager {
       fiatCurrency: fiatCurrency,
     );
 
+    // Check cache first
     return _priceCache[cacheKey];
   }
 
@@ -169,23 +238,20 @@ class CexMarketDataManager implements MarketDataManager {
       return cachedPrice;
     }
 
-    try {
-      final priceDouble = await _priceRepository.getCoinFiatPrice(
-        _getTradingSymbol(assetId),
-        priceDate: priceDate,
-        fiatCoinId: fiatCurrency,
-      );
+    final price = await _getPriceWithFallback(
+      assetId,
+      priceDate: priceDate,
+      fiatCurrency: fiatCurrency,
+    );
 
-      // Convert double to Decimal via string
-      final price = Decimal.parse(priceDouble.toString());
-
-      // Cache the result
-      _priceCache[cacheKey] = price;
-
-      return price;
-    } catch (e) {
-      throw StateError('Failed to get price for ${assetId.name}: $e');
+    if (price == null) {
+      throw StateError('Failed to get price for ${assetId.name}');
     }
+
+    // Cache the result
+    _priceCache[cacheKey] = price;
+
+    return price;
   }
 
   @override
@@ -208,23 +274,31 @@ class CexMarketDataManager implements MarketDataManager {
       return cachedPrice;
     }
 
+    // Check if ticker is known in CEX repository for fallback scenarios
     final tradingSymbol = _getTradingSymbol(assetId);
     final isKnownTicker = _knownTickers?.contains(tradingSymbol) ?? false;
 
-    if (!isKnownTicker) {
+    // If not using Komodo repository and ticker is not known in CEX, return null
+    if (!_canUseKomodoRepository(
+          priceDate: priceDate,
+          fiatCurrency: fiatCurrency,
+        ) &&
+        !isKnownTicker) {
       return null;
     }
 
-    try {
-      final price = await fiatPrice(
-        assetId,
-        priceDate: priceDate,
-        fiatCurrency: fiatCurrency,
-      );
-      return price;
-    } catch (_) {
-      return null;
+    final price = await _getPriceWithFallback(
+      assetId,
+      priceDate: priceDate,
+      fiatCurrency: fiatCurrency,
+    );
+
+    if (price != null) {
+      // Cache the result
+      _priceCache[cacheKey] = price;
     }
+
+    return price;
   }
 
   @override
