@@ -351,7 +351,7 @@ packages:
     source: path
     version: "0.3.0+0"
   komodo_defi_rpc_methods:
-    dependency: "direct overridden"
+    dependency: "direct main"
     description:
       path: "../../komodo_defi_rpc_methods"
       relative: true
@@ -458,7 +458,7 @@ packages:
     source: hosted
     version: "1.0.11"
   logging:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: logging
       sha256: c8245ada5f1717ed44271ed1c26b8ce85ca3228fd2ffdb75468ab01979309d61

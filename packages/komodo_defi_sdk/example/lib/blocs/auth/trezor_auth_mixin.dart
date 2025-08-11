@@ -4,12 +4,15 @@ part of 'auth_bloc.dart';
 mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
   KomodoDefiSdk get _sdk;
 
+  static final Logger _log = Logger('TrezorAuthMixin');
+
   /// Registers handlers for Trezor specific events.
   ///
   /// Note: PIN and passphrase handling is now automatic in the stream-based approach.
   /// The PIN and passphrase events are kept for backward compatibility but may not
   /// be needed in the new implementation.
   void setupTrezorEventHandlers() {
+    _log.finer('Registering Trezor event handlers');
     on<AuthTrezorInitAndAuthStarted>(_onTrezorInitAndAuth);
     on<AuthTrezorPinProvided>(_onTrezorProvidePin);
     on<AuthTrezorPassphraseProvided>(_onTrezorProvidePassphrase);
@@ -21,6 +24,9 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
+      _log.fine(
+        'Trezor init/auth started (isRegister=${event.isRegister}, method=${event.derivationMethod})',
+      );
       final authOptions = AuthOptions(
         derivationMethod: event.derivationMethod,
         privKeyPolicy: const PrivateKeyPolicy.trezor(),
@@ -30,12 +36,14 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
       // and manages PIN/passphrase handling through the streamed events.
       final Stream<AuthenticationState> authStream;
       if (event.isRegister) {
+        _log.finer('Creating auth.registerStream');
         authStream = _sdk.auth.registerStream(
           walletName: 'My Trezor',
           password: '',
           options: authOptions,
         );
       } else {
+        _log.finer('Creating auth.signInStream');
         authStream = _sdk.auth.signInStream(
           walletName: 'My Trezor',
           password: '',
@@ -44,16 +52,21 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
       }
 
       await for (final authState in authStream) {
+        _log.finer(
+          'Auth stream event: ${authState.status} taskId=${authState.taskId}',
+        );
         final mappedState = _handleAuthenticationState(authState);
         emit(mappedState);
 
         if (authState.status == AuthenticationStatus.completed ||
             authState.status == AuthenticationStatus.error ||
             authState.status == AuthenticationStatus.cancelled) {
+          _log.fine('Auth stream terminal status: ${authState.status}');
           break;
         }
       }
-    } catch (e) {
+    } catch (e, s) {
+      _log.severe('Trezor initialization error', e, s);
       emit(
         AuthState.error(
           message: 'Trezor initialization error: $e',
@@ -65,6 +78,8 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
   }
 
   AuthState _handleAuthenticationState(AuthenticationState authState) {
+    // Conservative logging
+    _log.finer('Handling auth state: ${authState.status}');
     switch (authState.status) {
       case AuthenticationStatus.initializing:
         return AuthState.trezorInitializing(
@@ -98,20 +113,24 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
         return AuthState.loading();
       case AuthenticationStatus.completed:
         if (authState.user != null) {
+          _log.fine('Trezor authentication completed with user');
           return AuthState.authenticated(
             user: authState.user!,
             knownUsers: state.knownUsers,
           );
         } else {
+          _log.fine('Trezor device is ready (no user)');
           return AuthState.trezorReady(deviceInfo: null);
         }
       case AuthenticationStatus.error:
+        _log.warning('Trezor authentication failed: ${authState.message}');
         return AuthState.error(
           message: 'Trezor authentication failed: ${authState.message}',
           walletName: 'My Trezor',
           knownUsers: state.knownUsers,
         );
       case AuthenticationStatus.cancelled:
+        _log.fine('Trezor authentication was cancelled');
         return AuthState.error(
           message: 'Trezor authentication was cancelled',
           walletName: 'My Trezor',
@@ -129,8 +148,10 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
+      _log.fine('Providing Trezor PIN for taskId=${event.taskId}');
       await _sdk.auth.setHardwareDevicePin(event.taskId, event.pin);
     } catch (e) {
+      _log.severe('Failed to provide PIN', e);
       emit(
         AuthState.error(
           message: 'Failed to provide PIN: $e',
@@ -146,11 +167,13 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
+      _log.fine('Providing Trezor passphrase for taskId=${event.taskId}');
       await _sdk.auth.setHardwareDevicePassphrase(
         event.taskId,
         event.passphrase,
       );
     } catch (e) {
+      _log.severe('Failed to provide passphrase', e);
       emit(
         AuthState.error(
           message: 'Failed to provide passphrase: $e',
@@ -167,6 +190,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
   ) async {
     // Cancellation is handled by stopping the stream subscription
     // This method is kept for backward compatibility
+    _log.info('Trezor authentication cancelled by user');
     emit(AuthState.unauthenticated(knownUsers: await _fetchKnownUsers()));
   }
 

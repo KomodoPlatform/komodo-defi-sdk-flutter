@@ -215,7 +215,7 @@ class TrezorRepository {
     Duration pollInterval = const Duration(seconds: 1),
     Duration maxDuration = const Duration(minutes: 30),
   }) async* {
-    TrezorConnectionStatus? last;
+    TrezorConnectionStatus last;
     final stopwatch = Stopwatch()..start();
     
     try {
@@ -227,12 +227,6 @@ class TrezorRepository {
         'Failed to get initial connection status',
         e.toString(),
       );
-    }
-
-    if (last == null) {
-      // Defensive: should not happen, but ensures safety if code changes
-      yield TrezorConnectionStatus.unreachable;
-      return;
     }
 
     while (last.shouldContinueMonitoring && stopwatch.elapsed < maxDuration) {

@@ -20,7 +20,4 @@ abstract class TrezorDeviceInfo with _$TrezorDeviceInfo {
   /// Construct a [TrezorDeviceInfo] from json.
   factory TrezorDeviceInfo.fromJson(JsonMap json) =>
       _$TrezorDeviceInfoFromJson(json);
-
-  /// Convert this object to json.
-  JsonMap toJson() => _$TrezorDeviceInfoToJson(this);
 }
