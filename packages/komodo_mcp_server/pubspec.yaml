@@ -33,7 +33,7 @@ dependencies:
     path: ../komodo_defi_rpc_methods
 
 executables:
-  komodo_mcp_server: bin/komodo_mcp_server.dart
+  komodo_mcp_server: komodo_mcp_server
 
 flutter:
   uses-material-design: false

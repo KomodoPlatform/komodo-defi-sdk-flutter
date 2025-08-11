@@ -86,7 +86,19 @@ class _KomodoMcpAppState extends State<KomodoMcpApp> {
 
   @override
   void dispose() {
-    _stop();
+    // Ensure we don't call setState after dispose
+    () async {
+      final wasMounted = mounted;
+      await _transport?.close();
+      await _sdk?.dispose();
+      await _logSub?.cancel();
+      if (wasMounted && mounted) {
+        setState(() {
+          running = false;
+          status = 'Stopped';
+        });
+      }
+    }();
     super.dispose();
   }
 

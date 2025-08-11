@@ -296,10 +296,14 @@ class KomodoMcpServer {
             endIndex: endIndex,
             accountIndex: accountIndex,
           );
-          final jsonMap = result.map((k, v) =>
-              MapEntry(k.toJson(), v.map((e) => e.toJson()).toList()));
+          final jsonList = result.entries
+              .map((e) => {
+                    'asset': e.key.toJson(),
+                    'keys': e.value.map((pk) => pk.toJson()).toList(),
+                  })
+              .toList();
           return mcp.CallToolResult.fromContent(
-              content: [mcp.TextContent(text: jsonEncode(jsonMap))]);
+              content: [mcp.TextContent(text: jsonEncode(jsonList))]);
         }
       case 'market.price':
         {
@@ -414,6 +418,8 @@ Future<int> _run(List<String> args) async {
     stdout.writeln('komodo_mcp_server [--stdio]');
     return 0;
   }
+
+  final runStdio = results['stdio'] as bool? ?? true;
 
   final server = KomodoMcpServer();
   await server.initialize();
@@ -623,8 +629,14 @@ Future<int> _run(List<String> args) async {
   });
 
   // Start stdio transport
-  final transport = mcp.StdioServerTransport(stdin: stdin, stdout: stdout);
-  await mcpServer.connect(transport);
+  if (runStdio) {
+    final transport = mcp.StdioServerTransport(stdin: stdin, stdout: stdout);
+    await mcpServer.connect(transport);
+  } else {
+    stdout.writeln('komodo_mcp_server started without stdio transport.');
+    // Keep process alive briefly or integrate another transport if needed.
+    await Future.delayed(const Duration(days: 365));
+  }
   return 0;
 }
 
