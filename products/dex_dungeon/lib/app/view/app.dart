@@ -4,7 +4,6 @@ import 'package:dex_dungeon/loading/loading.dart';
 import 'package:flame/cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -43,7 +42,8 @@ class AppView extends StatelessWidget {
             backgroundColor: WidgetStateProperty.all(const Color(0xFF2A48DF)),
           ),
         ),
-        textTheme: GoogleFonts.poppinsTextTheme(),
+        // Use default Material text theme to avoid proprietary font fetchers
+        textTheme: Typography.blackMountainView,
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

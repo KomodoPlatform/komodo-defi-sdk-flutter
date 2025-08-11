@@ -18,12 +18,7 @@ dependencies:
   flutter_bloc: ^9.1.1
   flutter_localizations:
     sdk: flutter
-  google_fonts: ^6.2.1
   intl: ^0.20.2
-  komodo_defi_sdk:
-    path: ../../packages/komodo_defi_sdk
-  komodo_defi_types:
-    path: ../../packages/komodo_defi_types
 
 dev_dependencies:
   bloc_test: ^10.0.0
