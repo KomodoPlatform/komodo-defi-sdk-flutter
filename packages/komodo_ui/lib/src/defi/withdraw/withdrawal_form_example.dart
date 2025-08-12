@@ -35,7 +35,7 @@ class _WithdrawalFormExampleState extends State<WithdrawalFormExample> {
   /// Simulates loading fee options from the API
   Future<void> _loadFeeOptions() async {
     // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 1));
+    await Future<void>.delayed(const Duration(seconds: 1));
 
     // In a real app, this would call the fee estimation API
     // For now, we simulate that fee estimation is disabled

@@ -57,7 +57,7 @@ class TaskEnableQtumStatus
 }
 
 class TaskEnableQtumUserAction
-    extends BaseRequest<UserActionResponse, GeneralErrorResponse> {
+    extends BaseRequest<QtumUserActionResponse, GeneralErrorResponse> {
   TaskEnableQtumUserAction({
     required this.taskId,
     required this.actionType,
@@ -82,17 +82,17 @@ class TaskEnableQtumUserAction
   };
 
   @override
-  UserActionResponse parse(Map<String, dynamic> json) {
-    return UserActionResponse.parse(json);
+  QtumUserActionResponse parse(Map<String, dynamic> json) {
+    return QtumUserActionResponse.parse(json);
   }
 }
 
 // lib/src/common_structures/activation/responses/user_action_response.dart
-class UserActionResponse extends BaseResponse {
-  UserActionResponse({required super.mmrpc, required this.result});
+class QtumUserActionResponse extends BaseResponse {
+  QtumUserActionResponse({required super.mmrpc, required this.result});
 
-  factory UserActionResponse.parse(JsonMap json) {
-    return UserActionResponse(
+  factory QtumUserActionResponse.parse(JsonMap json) {
+    return QtumUserActionResponse(
       mmrpc: json.value<String>('mmrpc'),
       result: json.value<String>('result'),
     );

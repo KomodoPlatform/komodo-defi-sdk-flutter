@@ -124,34 +124,6 @@ class WithdrawalPrioritySelector extends StatelessWidget {
     );
   }
 
-  Widget _buildLoadingState(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Transaction Priority',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        const Card(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 12),
-                Text('Loading fee options...'),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildPriorityOptions(BuildContext context) {
     return Column(

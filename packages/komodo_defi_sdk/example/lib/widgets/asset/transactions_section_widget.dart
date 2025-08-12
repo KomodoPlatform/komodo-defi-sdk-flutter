@@ -125,7 +125,7 @@ class _TransactionsSectionWidgetState extends State<TransactionsSectionWidget> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           trailing:
-                              transaction.blockHeight != null
+                              transaction.confirmations > 0
                                   ? Column(
                                     mainAxisSize: MainAxisSize.min,
                                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -156,7 +156,7 @@ class _TransactionsSectionWidgetState extends State<TransactionsSectionWidget> {
                                     ],
                                   ),
                           onTap: () {
-                            showDialog(
+                            showDialog<void>(
                               context: context,
                               builder:
                                   (context) => AlertDialog(

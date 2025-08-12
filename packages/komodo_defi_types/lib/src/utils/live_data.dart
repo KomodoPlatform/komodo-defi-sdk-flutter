@@ -15,9 +15,9 @@ class LiveData<T> extends ChangeNotifier implements ValueListenable<T> {
     this._value, {
     Future<T> Function()? refreshFunction,
     bool Function(T a, T b)? equalityComparer,
-  })  : _refreshFunction = refreshFunction,
-        _equalityComparer = equalityComparer,
-        _lastRefreshed = DateTime.now();
+  }) : _refreshFunction = refreshFunction,
+       _equalityComparer = equalityComparer,
+       _lastRefreshed = DateTime.now();
 
   /// Creates a [LiveData] instance that's connected to an existing [Stream].
   ///
@@ -29,10 +29,7 @@ class LiveData<T> extends ChangeNotifier implements ValueListenable<T> {
     Stream<T> sourceStream, {
     bool Function(T a, T b)? equalityComparer,
   }) {
-    final liveData = LiveData(
-      initialValue,
-      equalityComparer: equalityComparer,
-    );
+    final liveData = LiveData(initialValue, equalityComparer: equalityComparer);
 
     // Subscribe to the source stream and update the value when new items arrive
     liveData._sourceStreamSubscription = sourceStream.listen(
@@ -140,7 +137,7 @@ class LiveData<T> extends ChangeNotifier implements ValueListenable<T> {
     _setLoading(true);
 
     try {
-      final newValue = await _refreshFunction!();
+      final newValue = await _refreshFunction();
       if (!_areEqual(_value, newValue)) {
         _value = newValue;
         _lastRefreshed = DateTime.now();
@@ -188,7 +185,7 @@ class LiveData<T> extends ChangeNotifier implements ValueListenable<T> {
 
   bool _areEqual(T a, T b) {
     if (_equalityComparer != null) {
-      return _equalityComparer!(a, b);
+      return _equalityComparer(a, b);
     }
     return a == b;
   }

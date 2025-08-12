@@ -438,7 +438,7 @@ class BalanceManager implements IBalanceManager {
           debugPrint(
             'Balance pre-cache failed (attempt ${attempt + 1}): Coin ${asset.id.name} not yet available, retrying...',
           );
-          await Future.delayed(baseDelay * (attempt + 1));
+          await Future<void>.delayed(baseDelay * (attempt + 1));
           continue;
         }
 

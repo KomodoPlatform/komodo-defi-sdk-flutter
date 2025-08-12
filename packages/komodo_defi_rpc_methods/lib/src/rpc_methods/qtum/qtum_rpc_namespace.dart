@@ -29,7 +29,7 @@ class QtumMethodsNamespace extends BaseRpcMethodNamespace {
     );
   }
 
-  Future<UserActionResponse> sendUserAction({
+  Future<QtumUserActionResponse> sendUserAction({
     required int taskId,
     required String actionType,
     required String pin,
