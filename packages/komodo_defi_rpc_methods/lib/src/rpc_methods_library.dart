@@ -40,12 +40,16 @@ class KomodoDefiRpcMethods {
   TendermintMethodsNamespace get tendermint =>
       TendermintMethodsNamespace(_client);
   NftMethodsNamespace get nft => NftMethodsNamespace(_client);
+  ZhtlcMethodsNamespace get zhtlc => ZhtlcMethodsNamespace(_client);
 
   // Hardware wallet namespaces
   TrezorMethodsNamespace get trezor => TrezorMethodsNamespace(_client);
 
-  // Add other namespaces here, e.g.:
-  // TradeNamespace get trade => TradeNamespace(_client);
+  // Trading and DeFi namespaces
+  TradingMethodsNamespace get trading => TradingMethodsNamespace(_client);
+  OrderbookMethodsNamespace get orderbook => OrderbookMethodsNamespace(_client);
+  LightningMethodsNamespace get lightning => LightningMethodsNamespace(_client);
+
   MessageSigningMethodsNamespace get messageSigning =>
       MessageSigningMethodsNamespace(_client);
   UtilityMethods get utility => UtilityMethods(_client);
