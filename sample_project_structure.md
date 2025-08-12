@@ -28,16 +28,13 @@ dependencies:
   # Game Engine
   flame: ^1.16.0
   
-  # Komodo DeFi SDK
+  # Komodo DeFi SDK (High-level abstraction)
   komodo_defi_sdk: ^2.5.0
-  komodo_defi_framework: ^2.5.0
-  komodo_coins: ^2.5.0
-  komodo_cex_market_data: ^2.5.0
   komodo_defi_types: ^2.5.0
+  komodo_ui: ^2.5.0  # Optional - for UI components
   
   # UI and Utilities
   cupertino_icons: ^1.0.8
-  flutter_secure_storage: ^10.0.0-beta.4
 
 dev_dependencies:
   flutter_test:
@@ -69,8 +66,7 @@ lib/
 │       ├── collision_system.dart     # Game collision detection
 │       └── audio_system.dart         # Sound effects
 ├── services/
-│   ├── komodo_service.dart           # Komodo DeFi integration
-│   ├── market_data_service.dart      # Real-time market data
+│   ├── game_defi_service.dart        # High-level DeFi integration
 │   └── storage_service.dart          # Local data persistence
 ├── ui/
 │   ├── trading_ui.dart               # Trading interface
@@ -245,144 +241,145 @@ class CryptoCollectorGame extends FlameGame
 }
 ```
 
-### 3. services/komodo_service.dart
+### 3. services/game_defi_service.dart
 ```dart
-import 'package:komodo_defi_framework/komodo_defi_framework.dart';
+import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class KomodoService {
-  late KomodoDefiFramework _framework;
+class GameDeFiService {
+  late KomodoDefiSdk _sdk;
   bool _isInitialized = false;
 
   Future<void> initialize() async {
     try {
-      // Configure local KDF instance
-      final config = LocalConfig(userpass: 'your-secure-password');
-      _framework = KomodoDefiFramework(config: config);
-      
-      // Start KDF with seed phrase (use a test seed for demo)
-      final result = await _framework.startKdf('your-seed-phrase');
-      
-      if (result.isRunning()) {
-        _isInitialized = true;
-        print('Komodo DeFi Framework started successfully!');
-      } else {
-        throw Exception('Failed to start KDF: ${result.toString()}');
-      }
+      // Create SDK with default local configuration
+      _sdk = KomodoDefiSdk();
+      await _sdk.initialize();
+      _isInitialized = true;
+      print('Komodo DeFi SDK initialized successfully!');
     } catch (e) {
-      print('Error initializing Komodo service: $e');
+      print('Error initializing DeFi service: $e');
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> getBalance(String coin) async {
+  Future<void> authenticateUser(String password, String walletName) async {
     if (!_isInitialized) {
-      throw Exception('KDF not initialized');
+      throw Exception('SDK not initialized');
     }
     
     try {
-      final response = await _framework.executeRpc({
-        'method': 'get_balance',
-        'params': {'coin': coin}
-      });
-      
-      return response;
+      // Sign in user with wallet
+      await _sdk.auth.signIn(
+        password: password,
+        walletId: WalletId(walletName),
+      );
+      print('User authenticated successfully!');
     } catch (e) {
-      print('Error getting balance: $e');
+      print('Error authenticating user: $e');
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> createSwap(
-    String fromCoin, 
-    String toCoin, 
+  Future<Map<String, double>> getBalances(List<String> tickers) async {
+    if (!_isInitialized) {
+      throw Exception('SDK not initialized');
+    }
+    
+    final balances = <String, double>{};
+    
+    for (final ticker in tickers) {
+      try {
+        // Find asset by ticker
+        final assets = _sdk.assets.findAssetsByTicker(ticker);
+        if (assets.isNotEmpty) {
+          final asset = assets.first;
+          
+          // Get balance for the asset
+          final balance = await _sdk.balances.getBalance(asset);
+          balances[ticker] = balance.available.toDouble();
+        }
+      } catch (e) {
+        print('Error getting balance for $ticker: $e');
+        balances[ticker] = 0.0;
+      }
+    }
+    
+    return balances;
+  }
+
+  Future<Map<String, dynamic>> performSwap(
+    String fromTicker, 
+    String toTicker, 
     double amount
   ) async {
     if (!_isInitialized) {
-      throw Exception('KDF not initialized');
+      throw Exception('SDK not initialized');
     }
     
     try {
-      final response = await _framework.executeRpc({
-        'method': 'setprice',
-        'params': {
-          'base': fromCoin,
-          'rel': toCoin,
-          'volume': amount.toString(),
-          'price': '0.1', // Simplified for demo
-          'max': true
-        }
-      });
+      // Find assets by ticker
+      final fromAssets = _sdk.assets.findAssetsByTicker(fromTicker);
+      final toAssets = _sdk.assets.findAssetsByTicker(toTicker);
       
-      return response;
-    } catch (e) {
-      print('Error creating swap: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> dispose() async {
-    if (_isInitialized) {
-      try {
-        await _framework.kdfStop();
-        _isInitialized = false;
-      } catch (e) {
-        print('Error stopping KDF: $e');
+      if (fromAssets.isEmpty || toAssets.isEmpty) {
+        throw Exception('Asset not found');
       }
-    }
-  }
-}
-```
-
-### 4. services/market_data_service.dart
-```dart
-import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-
-class MarketDataService {
-  late KomodoCexMarketData _marketData;
-  bool _isInitialized = false;
-
-  Future<void> initialize() async {
-    try {
-      _marketData = KomodoCexMarketData();
-      _isInitialized = true;
+      
+      final fromAsset = fromAssets.first;
+      final toAsset = toAssets.first;
+      
+      // Get current market price
+      final price = await _sdk.marketData.getPrice(fromAsset);
+      
+      // Create swap order using the swap manager
+      final order = await _sdk.swaps.placeOrder(
+        baseAsset: fromAsset,
+        relAsset: toAsset,
+        volume: amount,
+        price: price,
+        side: OrderSide.sell,
+      );
+      
+      return {
+        'success': true,
+        'order_id': order.orderId,
+        'amount': amount,
+        'price': price,
+        'from_asset': fromTicker,
+        'to_asset': toTicker,
+      };
     } catch (e) {
-      print('Error initializing market data service: $e');
-      rethrow;
+      return {
+        'success': false,
+        'error': e.toString(),
+        'from_asset': fromTicker,
+        'to_asset': toTicker,
+        'amount': amount,
+      };
     }
   }
 
-  Future<double> getPrice(String coin) async {
+  Future<double> getPrice(String ticker) async {
     if (!_isInitialized) {
-      throw Exception('Market data service not initialized');
+      throw Exception('SDK not initialized');
     }
     
     try {
-      final data = await _marketData.getTicker(coin);
-      return double.parse(data['last'] ?? '0.0');
+      final assets = _sdk.assets.findAssetsByTicker(ticker);
+      if (assets.isNotEmpty) {
+        return await _sdk.marketData.getPrice(assets.first);
+      }
+      return 0.0;
     } catch (e) {
-      print('Error getting price for $coin: $e');
-      // Return fallback price for demo
-      return _getFallbackPrice(coin);
+      print('Error getting price for $ticker: $e');
+      return _getFallbackPrice(ticker);
     }
   }
 
-  Future<Map<String, dynamic>> getMarketData(String coin) async {
-    if (!_isInitialized) {
-      throw Exception('Market data service not initialized');
-    }
-    
-    try {
-      return await _marketData.getTicker(coin);
-    } catch (e) {
-      print('Error getting market data for $coin: $e');
-      return _getFallbackMarketData(coin);
-    }
-  }
-
-  double _getFallbackPrice(String coin) {
+  double _getFallbackPrice(String ticker) {
     // Fallback prices for demo purposes
-    switch (coin.toUpperCase()) {
+    switch (ticker.toUpperCase()) {
       case 'BTC':
         return 45000.0;
       case 'ETH':
@@ -394,69 +391,51 @@ class MarketDataService {
     }
   }
 
-  Map<String, dynamic> _getFallbackMarketData(String coin) {
-    return {
-      'last': _getFallbackPrice(coin).toString(),
-      'high': (_getFallbackPrice(coin) * 1.1).toString(),
-      'low': (_getFallbackPrice(coin) * 0.9).toString(),
-      'volume': '1000.0',
-    };
+  Future<void> dispose() async {
+    if (_isInitialized) {
+      await _sdk.dispose();
+      _isInitialized = false;
+    }
   }
 }
 ```
 
-### 5. game/systems/trading_system.dart
+
+
+### 4. game/systems/trading_system.dart
 ```dart
-import '../../services/komodo_service.dart';
-import '../../services/market_data_service.dart';
+import '../../services/game_defi_service.dart';
 
 class TradingSystem {
-  final KomodoService _komodoService;
-  final MarketDataService _marketDataService;
+  final GameDeFiService _defiService;
   
-  TradingSystem(this._komodoService) 
-      : _marketDataService = MarketDataService();
-
-  Future<void> initialize() async {
-    await _marketDataService.initialize();
-  }
+  TradingSystem(this._defiService);
 
   Future<Map<String, dynamic>> performSwap(
-    String fromCoin, 
-    String toCoin, 
+    String fromTicker, 
+    String toTicker, 
     double amount
   ) async {
     try {
-      // Get current market price
-      final price = await _marketDataService.getPrice(fromCoin);
+      // Perform swap using the DeFi service
+      final result = await _defiService.performSwap(fromTicker, toTicker, amount);
       
-      // Create swap order
-      final result = await _komodoService.createSwap(fromCoin, toCoin, amount);
-      
-      return {
-        'success': true,
-        'transaction_id': result['txid'] ?? 'demo-tx-${DateTime.now().millisecondsSinceEpoch}',
-        'amount': amount,
-        'price': price,
-        'from_coin': fromCoin,
-        'to_coin': toCoin,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
+      return result;
     } catch (e) {
       return {
         'success': false,
         'error': e.toString(),
-        'from_coin': fromCoin,
-        'to_coin': toCoin,
+        'from_ticker': fromTicker,
+        'to_ticker': toTicker,
         'amount': amount,
       };
     }
   }
 
-  Future<double> getExchangeRate(String fromCoin, String toCoin) async {
+  Future<double> getExchangeRate(String fromTicker, String toTicker) async {
     try {
-      final fromPrice = await _marketDataService.getPrice(fromCoin);
-      final toPrice = await _marketDataService.getPrice(toCoin);
+      final fromPrice = await _defiService.getPrice(fromTicker);
+      final toPrice = await _defiService.getPrice(toTicker);
       
       if (toPrice > 0) {
         return fromPrice / toPrice;
@@ -468,25 +447,13 @@ class TradingSystem {
     }
   }
 
-  Future<Map<String, double>> getBalances(List<String> coins) async {
-    final balances = <String, double>{};
-    
-    for (final coin in coins) {
-      try {
-        final balance = await _komodoService.getBalance(coin);
-        balances[coin] = double.parse(balance['balance'] ?? '0.0');
-      } catch (e) {
-        print('Error getting balance for $coin: $e');
-        balances[coin] = 0.0;
-      }
-    }
-    
-    return balances;
+  Future<Map<String, double>> getBalances(List<String> tickers) async {
+    return await _defiService.getBalances(tickers);
   }
 }
 ```
 
-### 6. ui/trading_ui.dart
+### 5. ui/trading_ui.dart
 ```dart
 import 'package:flutter/material.dart';
 import '../game/crypto_collector_game.dart';

@@ -71,25 +71,20 @@ Crypto Collector Game
 
 ### Komodo SDK Integration Points
 
-#### 1. **KomodoDefiFramework**
-- **Purpose:** Core blockchain connectivity
-- **Features:** RPC communication, transaction management
-- **Tutorial Focus:** Setup and basic operations
+#### 1. **KomodoDefiSdk**
+- **Purpose:** High-level abstraction layer
+- **Features:** Authentication, asset management, trading, market data
+- **Tutorial Focus:** Simple, intuitive API usage
 
-#### 2. **KomodoCexMarketData**
-- **Purpose:** Real-time market data
-- **Features:** Price feeds, trading pairs, market analytics
-- **Tutorial Focus:** Live price integration
-
-#### 3. **KomodoCoins**
-- **Purpose:** Cryptocurrency information and management
-- **Features:** Coin metadata, balance tracking
-- **Tutorial Focus:** Multi-coin support
-
-#### 4. **KomodoDefiTypes**
+#### 2. **KomodoDefiTypes**
 - **Purpose:** Type safety and data structures
-- **Features:** Strongly typed API responses
-- **Tutorial Focus:** Error handling and data validation
+- **Features:** Strongly typed API responses and models
+- **Tutorial Focus:** Type-safe operations and error handling
+
+#### 3. **KomodoUI** (Optional)
+- **Purpose:** Pre-built UI components
+- **Features:** Ready-to-use widgets for DeFi applications
+- **Tutorial Focus:** Rapid UI development
 
 ## Key Selling Points
 
@@ -160,9 +155,9 @@ Crypto Collector Game
 ## Competitive Advantages
 
 ### vs. Other DeFi SDKs
+- **High-Level Abstraction:** Simple API vs complex low-level operations
 - **Flutter Native:** Better mobile experience than web-based solutions
 - **Game Integration:** Specific focus on gaming use cases
-- **Simplified API:** Higher-level abstractions than raw blockchain APIs
 - **Cross-Platform:** Single codebase for multiple platforms
 
 ### vs. Traditional Game Development
