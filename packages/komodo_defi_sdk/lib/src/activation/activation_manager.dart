@@ -209,7 +209,7 @@ class ActivationManager {
             await _customTokenHistory.addAssetToWallet(user.walletId, asset);
           }
           // Pre-cache balance for the activated asset
-          await _balanceManager.preCacheBalance(asset);
+          await _balanceManager.precacheBalance(asset);
         }
       }
 
