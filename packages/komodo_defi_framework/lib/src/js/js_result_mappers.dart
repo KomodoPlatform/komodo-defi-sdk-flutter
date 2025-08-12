@@ -1,4 +1,7 @@
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
+import 'package:logging/logging.dart';
+
+final _logger = Logger('JsResultMappers');
 
 /// Maps the various possible JS return shapes from `mm2_stop` into [StopStatus].
 ///
@@ -39,8 +42,15 @@ StopStatus mapJsStopResult(dynamic result) {
     final code = map['code'];
     if (code is num) return StopStatus.fromDefaultInt(code.toInt());
 
+    // Log unexpected map structure for debugging
+    _logger.fine(
+      'Unexpected map structure in stop result, defaulting to ok: $map',
+    );
     return StopStatus.ok;
   }
 
+  _logger.fine(
+    'Unrecognized stop result type ${result.runtimeType}, defaulting to ok',
+  );
   return StopStatus.ok;
 }

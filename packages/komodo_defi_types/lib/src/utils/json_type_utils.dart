@@ -120,8 +120,8 @@ T? _traverseJson<T>(
           return jsonFromString(value) as T;
         } catch (e) {
           throw ArgumentError(
-            'Expected a JSON string to parse, but got an invalid type: '
-            '${value.runtimeType}',
+            'Failed to parse string as JsonMap. Expected valid JSON string, '
+            'but parsing failed for value of type: ${value.runtimeType}',
           );
         }
       }
@@ -136,8 +136,8 @@ T? _traverseJson<T>(
           return jsonListFromString(value) as T;
         } catch (e) {
           throw ArgumentError(
-            'Expected a JSON string representing a List, '
-            'but got an invalid type: ${value.runtimeType}',
+            'Failed to parse string as JsonList. Expected valid JSON array string, '
+            'but parsing failed for value of type: ${value.runtimeType}',
           );
         }
       }

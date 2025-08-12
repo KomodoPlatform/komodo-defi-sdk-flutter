@@ -49,9 +49,14 @@ String? extractMessageFromDartError(dynamic value) {
   return null;
 }
 
+const List<String> _alreadyRunningPatterns = [
+  'already running',
+  'already_running',
+];
+
 // TODO: generalise to a log/string-based watcher for other KDF errors
 /// Heuristic matcher for common "already running" messages.
 bool messageIndicatesAlreadyRunning(String message) {
   final lower = message.toLowerCase();
-  return lower.contains('already running') || lower.contains('already_running');
+  return _alreadyRunningPatterns.any(lower.contains);
 }

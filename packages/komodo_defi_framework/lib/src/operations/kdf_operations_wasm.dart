@@ -45,6 +45,12 @@ class KdfOperationsWasm implements IKdfOperations {
 
   void _log(String message) => (_logger ?? print).call(message);
 
+  void _debugLog(String message) {
+    if (KdfLoggingConfig.debugLogging) {
+      _log(message);
+    }
+  }
+
   @override
   Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
     try {
@@ -115,18 +121,14 @@ class KdfOperationsWasm implements IKdfOperations {
 
   KdfStartupResult _handleStartupJsError(js_interop.JSAny jsError) {
     try {
-      if (KdfLoggingConfig.debugLogging) {
-        _log('Handling JSAny error: [${jsError.runtimeType}] $jsError');
-      }
+      _debugLog('Handling JSAny error: [${jsError.runtimeType}] $jsError');
 
       // Direct JSNumber error
       if (isInstance<js_interop.JSNumber>(jsError, 'JSNumber')) {
         final dynamic dartNumber = (jsError as js_interop.JSNumber).dartify();
         final code = extractNumericCodeFromDartError(dartNumber);
         if (code != null) {
-          if (KdfLoggingConfig.debugLogging) {
-            _log('KdfOperationsWasm: Resolved as JSNumber code: $code');
-          }
+          _debugLog('KdfOperationsWasm: Resolved as JSNumber code: $code');
           return KdfStartupResult.fromDefaultInt(code);
         }
       }
@@ -155,9 +157,7 @@ class KdfOperationsWasm implements IKdfOperations {
 
       // Try dartify as last resort
       final dynamic error = jsError.dartify();
-      if (KdfLoggingConfig.debugLogging) {
-        _log('Dartified error type: ${error.runtimeType}, value: $error');
-      }
+      _debugLog('Dartified error type: ${error.runtimeType}, value: $error');
 
       final code = extractNumericCodeFromDartError(error);
       if (code != null) return KdfStartupResult.fromDefaultInt(code);
@@ -179,8 +179,7 @@ class KdfOperationsWasm implements IKdfOperations {
     js_interop.JSAny? obj, [
     String? typeString,
   ]) {
-    return obj is T ||
-        obj.instanceOfString(typeString ?? T.runtimeType.toString());
+    return obj.instanceOfString(typeString ?? T.runtimeType.toString());
   }
 
   @override
@@ -238,9 +237,7 @@ class KdfOperationsWasm implements IKdfOperations {
 
   /// Makes the JavaScript RPC call and returns the raw JS response
   Future<js_interop.JSObject> _makeJsCall(JsonMap request) async {
-    if (KdfLoggingConfig.debugLogging) {
-      _log('mm2Rpc request: ${request.censored()}');
-    }
+    _debugLog('mm2Rpc request: ${request.censored()}');
     request['userpass'] = _config.rpcPassword;
 
     final jsRequest = request.jsify() as js_interop.JSObject?;
@@ -277,13 +274,10 @@ class KdfOperationsWasm implements IKdfOperations {
       );
     }
 
-    if (KdfLoggingConfig.debugLogging) {
-      try {
-        final stringified = jsResponse.dartify().toString();
-        _log('Raw JS response: $stringified');
-      } catch (e) {
-        _log('Raw JS response: $jsResponse (stringify failed: $e)');
-      }
+    try {
+      _debugLog('Raw JS response: ${jsResponse.dartify()}');
+    } catch (e) {
+      _debugLog('Raw JS response: $jsResponse (stringify failed: $e)');
     }
     return jsResponse as js_interop.JSObject;
   }
@@ -305,9 +299,7 @@ class KdfOperationsWasm implements IKdfOperations {
       );
     }
 
-    if (KdfLoggingConfig.debugLogging) {
-      _log('JS response validated: $dartResponse');
-    }
+    _debugLog('JS response validated: $dartResponse');
   }
 
   @override
