@@ -60,7 +60,7 @@ class _AssetPageState extends State<AssetPage> {
   Future<void> _forceRefreshPubkeys() async {
     setState(() => _isLoading = true);
     try {
-      await _sdk.pubkeys.preCachePubkeys(widget.asset);
+      await _sdk.pubkeys.precachePubkeys(widget.asset);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -72,7 +72,7 @@ class _AssetPageState extends State<AssetPage> {
   Future<void> _generateNewAddress() async {
     setState(() => _isLoading = true);
     try {
-      final stream = _sdk.pubkeys.createNewPubkeyStream(widget.asset);
+      final stream = _sdk.pubkeys.watchCreateNewPubkey(widget.asset);
 
       final newPubkey = await showDialog<PubkeyInfo>(
         context: context,

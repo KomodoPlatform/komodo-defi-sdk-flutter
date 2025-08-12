@@ -31,6 +31,36 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(<String, dynamic>{});
+      registerFallbackValue(
+        AssetId(
+          id: 'DUMMY',
+          name: 'Dummy',
+          symbol: AssetSymbol(assetConfigId: 'DUMMY'),
+          chainId: AssetChainId(chainId: 0, decimalsValue: 0),
+          derivationPath: null,
+          subClass: CoinSubClass.tendermint,
+        ),
+      );
+      registerFallbackValue(
+        Asset(
+          id: AssetId(
+            id: 'DUMMY',
+            name: 'Dummy',
+            symbol: AssetSymbol(assetConfigId: 'DUMMY'),
+            chainId: AssetChainId(chainId: 0, decimalsValue: 0),
+            derivationPath: null,
+            subClass: CoinSubClass.tendermint,
+          ),
+          protocol: TendermintProtocol.fromJson({
+            'type': 'Tendermint',
+            'rpc_urls': [
+              {'url': 'http://localhost:26657'},
+            ],
+          }),
+          isWalletOnly: false,
+          signMessagePrefix: null,
+        ),
+      );
     });
 
     setUp(() {
@@ -163,7 +193,7 @@ void main() {
 
         final states =
             await manager
-                .createNewPubkeyStream(tendermintAsset)
+                .watchCreateNewPubkey(tendermintAsset)
                 .take(1)
                 .toList();
         expect(states.single.status, NewAddressStatus.error);
@@ -187,7 +217,7 @@ void main() {
 
         // First response used for preCache
         stubWalletMyBalance(address: 'cosmos1pre', coin: tendermintAsset.id.id);
-        await manager.preCachePubkeys(tendermintAsset);
+        await manager.precachePubkeys(tendermintAsset);
 
         // Update the stub to simulate a new address on refresh
         stubWalletMyBalance(address: 'cosmos1new', coin: tendermintAsset.id.id);
@@ -208,7 +238,7 @@ void main() {
 
       // Initial cache
       stubWalletMyBalance(address: 'cosmos1pre', coin: tendermintAsset.id.id);
-      await manager.preCachePubkeys(tendermintAsset);
+      await manager.precachePubkeys(tendermintAsset);
 
       fakeAsync((FakeAsync async) {
         // After start, we set a different address for the immediate refresh
@@ -252,7 +282,7 @@ void main() {
       await stubActivationAlwaysActive(tendermintAsset);
 
       stubWalletMyBalance(address: 'cosmos1pre', coin: tendermintAsset.id.id);
-      await manager.preCachePubkeys(tendermintAsset);
+      await manager.precachePubkeys(tendermintAsset);
 
       final received = <String>[];
       final sub = manager.watchPubkeys(tendermintAsset).listen((e) {
@@ -276,7 +306,7 @@ void main() {
       await stubActivationAlwaysActive(tendermintAsset);
 
       stubWalletMyBalance(address: 'cosmos1pre', coin: tendermintAsset.id.id);
-      await manager.preCachePubkeys(tendermintAsset);
+      await manager.precachePubkeys(tendermintAsset);
 
       // Change to a new address which should update via immediate get in start
       stubWalletMyBalance(address: 'cosmos1start', coin: tendermintAsset.id.id);
@@ -304,7 +334,7 @@ void main() {
           () => activation.isAssetActive(tendermintAsset.id),
         ).thenAnswer((_) async => true);
         stubWalletMyBalance(address: 'cosmos1pre', coin: tendermintAsset.id.id);
-        await manager.preCachePubkeys(tendermintAsset);
+        await manager.precachePubkeys(tendermintAsset);
 
         // Now simulate inactive asset and disable activation on watch
         when(
@@ -340,7 +370,7 @@ void main() {
         expect(manager.lastKnown(tendermintAsset.id), isNull);
 
         stubWalletMyBalance(address: 'cosmos1pre', coin: tendermintAsset.id.id);
-        await manager.preCachePubkeys(tendermintAsset);
+        await manager.precachePubkeys(tendermintAsset);
 
         final cached = manager.lastKnown(tendermintAsset.id);
         expect(cached, isNotNull);
@@ -359,7 +389,7 @@ void main() {
       ).thenAnswer((_) async => ActivationResult.success(tendermintAsset.id));
 
       stubWalletMyBalance(address: 'cosmos1pre', coin: tendermintAsset.id.id);
-      await manager.preCachePubkeys(tendermintAsset);
+      await manager.precachePubkeys(tendermintAsset);
       expect(manager.lastKnown(tendermintAsset.id), isNotNull);
 
       // Emit new user with different wallet ID
@@ -387,7 +417,7 @@ void main() {
 
         // Prime cache and first fetches
         stubWalletMyBalance(address: 'cosmos1pre', coin: tendermintAsset.id.id);
-        await manager.preCachePubkeys(tendermintAsset);
+        await manager.precachePubkeys(tendermintAsset);
         stubWalletMyBalance(
           address: 'cosmos1first',
           coin: tendermintAsset.id.id,
@@ -543,4 +573,172 @@ void main() {
       );
     });
   });
+
+  group('Dispose behavior for PubkeyManager', () {
+    late _MockApiClient client;
+    late _MockAuth auth;
+    late _MockActivationCoordinator activation;
+
+    setUp(() {
+      client = _MockApiClient();
+      auth = _MockAuth();
+      activation = _MockActivationCoordinator();
+    });
+
+    test(
+      'dispose swallows auth subscription cancel errors and is idempotent',
+      () async {
+        // Arrange auth stream that returns a subscription whose cancel throws
+        when(
+          () => auth.authStateChanges,
+        ).thenAnswer((_) => _StreamWithThrowingCancel<KdfUser?>());
+
+        final manager = PubkeyManager(client, auth, activation);
+
+        // Act + Assert: dispose does not throw even if cancel throws
+        await manager.dispose();
+        // Idempotent
+        await manager.dispose();
+      },
+    );
+
+    test(
+      'dispose during active watch stops further emissions (no race with timers)',
+      () async {
+        // Normal auth stream
+        final authChanges = StreamController<KdfUser?>.broadcast();
+        when(() => auth.authStateChanges).thenAnswer((_) => authChanges.stream);
+        when(() => auth.currentUser).thenAnswer(
+          (_) async => KdfUser(
+            walletId: WalletId(
+              name: 'w',
+              authOptions: AuthOptions(
+                derivationMethod: DerivationMethod.iguana,
+              ),
+            ),
+            isBip39Seed: false,
+          ),
+        );
+
+        final manager = PubkeyManager(client, auth, activation);
+        addTearDown(() async {
+          await manager.dispose();
+          await authChanges.close();
+        });
+
+        // Active asset
+        when(
+          () => activation.isAssetActive(any()),
+        ).thenAnswer((_) async => true);
+        when(() => activation.activateAsset(any())).thenAnswer((
+          invocation,
+        ) async {
+          final assetArg = invocation.positionalArguments.first as Asset;
+          return ActivationResult.success(assetArg.id);
+        });
+
+        // Provide a minimal single-address asset and RPC stub
+        final assetId = AssetId(
+          id: 'ATOM',
+          name: 'Cosmos',
+          symbol: AssetSymbol(assetConfigId: 'ATOM'),
+          chainId: AssetChainId(chainId: 118, decimalsValue: 6),
+          derivationPath: null,
+          subClass: CoinSubClass.tendermint,
+        );
+        final asset = Asset(
+          id: assetId,
+          protocol: TendermintProtocol.fromJson({
+            'type': 'Tendermint',
+            'rpc_urls': [
+              {'url': 'http://localhost:26657'},
+            ],
+          }),
+          isWalletOnly: false,
+          signMessagePrefix: null,
+        );
+
+        when(() => client.executeRpc(any())).thenAnswer((invocation) async {
+          final req =
+              invocation.positionalArguments.first as Map<String, dynamic>;
+          final method = req['method'] as String?;
+          if (method == 'my_balance') {
+            return {
+              'address': 'cosmos1pre',
+              'balance': '0',
+              'unspendable_balance': '0',
+              'coin': assetId.id,
+            };
+          }
+          return <String, dynamic>{'result': <String, dynamic>{}};
+        });
+
+        // Start watch
+        final events = <AssetPubkeys>[];
+        final sub = manager.watchPubkeys(asset).listen(events.add);
+
+        // Allow initial microtasks
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        final initial = events.length;
+
+        // Now dispose while timer could schedule next polls
+        await manager.dispose();
+
+        // Change RPC response that would be observed if polling still alive
+        when(() => client.executeRpc(any())).thenAnswer((invocation) async {
+          return {
+            'address': 'cosmos1new',
+            'balance': '0',
+            'unspendable_balance': '0',
+            'coin': assetId.id,
+          };
+        });
+
+        // Wait longer than polling interval to ensure nothing else emitted
+        await Future<void>.delayed(const Duration(seconds: 1));
+
+        // Assert: stream should not emit after dispose
+        expect(events.length, initial);
+        await sub.cancel();
+      },
+    );
+  });
+}
+
+class _ThrowingCancelSubscription<T> implements StreamSubscription<T> {
+  @override
+  Future<E> asFuture<E>([E? futureValue]) => Completer<E>().future;
+
+  @override
+  Future<void> cancel() => Future<void>.error(Exception('cancel failed'));
+
+  @override
+  bool get isPaused => false;
+
+  @override
+  void onData(void Function(T data)? handleData) {}
+
+  @override
+  void onDone(void Function()? handleDone) {}
+
+  @override
+  void onError(Function? handleError) {}
+
+  @override
+  void pause([Future<void>? resumeSignal]) {}
+
+  @override
+  void resume() {}
+}
+
+class _StreamWithThrowingCancel<T> extends Stream<T> {
+  @override
+  StreamSubscription<T> listen(
+    void Function(T event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _ThrowingCancelSubscription<T>();
+  }
 }

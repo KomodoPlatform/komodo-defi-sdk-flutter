@@ -4,6 +4,7 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 /// Interface defining the contract for pubkey management operations
 abstract class IPubkeyManager {
@@ -25,13 +26,13 @@ abstract class IPubkeyManager {
   Future<PubkeyInfo> createNewPubkey(Asset asset);
 
   /// Streamed version of [createNewPubkey]
-  Stream<NewAddressState> createNewPubkeyStream(Asset asset);
+  Stream<NewAddressState> watchCreateNewPubkey(Asset asset);
 
   /// Unban pubkeys according to [unbanBy] criteria
   Future<UnbanPubkeysResult> unbanPubkeys(UnbanBy unbanBy);
 
   /// Pre-caches pubkeys for an asset to warm the cache and notify listeners
-  Future<void> preCachePubkeys(Asset asset);
+  Future<void> precachePubkeys(Asset asset);
 
   /// Dispose of any resources
   Future<void> dispose();
@@ -41,7 +42,9 @@ abstract class IPubkeyManager {
 class PubkeyManager implements IPubkeyManager {
   PubkeyManager(this._client, this._auth, this._activationCoordinator) {
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
+    _logger.fine('Initialized');
   }
+  static final Logger _logger = Logger('PubkeyManager');
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
@@ -83,7 +86,7 @@ class PubkeyManager implements IPubkeyManager {
 
   /// Streamed version of [createNewPubkey]
   @override
-  Stream<NewAddressState> createNewPubkeyStream(Asset asset) async* {
+  Stream<NewAddressState> watchCreateNewPubkey(Asset asset) async* {
     await retry(() => _activationCoordinator.activateAsset(asset));
     final strategy = await _resolvePubkeyStrategy(asset);
     if (!strategy.supportsMultipleAddresses) {
@@ -130,8 +133,14 @@ class PubkeyManager implements IPubkeyManager {
     final controller = _pubkeysControllers.putIfAbsent(
       asset.id,
       () => StreamController<AssetPubkeys>.broadcast(
-        onListen: () => _startWatchingPubkeys(asset, activateIfNeeded),
+        onListen: () {
+          _logger.fine(
+            'onListen: ${asset.id.name}, activateIfNeeded: $activateIfNeeded',
+          );
+          _startWatchingPubkeys(asset, activateIfNeeded);
+        },
         onCancel: () {
+          _logger.fine('onCancel: ${asset.id.name}');
           _stopWatchingPubkeys(asset.id);
           _watchedAssets.remove(asset.id);
         },
@@ -163,9 +172,13 @@ class PubkeyManager implements IPubkeyManager {
     final user = await _auth.currentUser;
     if (user == null) {
       // Do not emit an error; wait for authentication changes
+      _logger.fine(
+        'Delaying watcher start for ${asset.id.name}: unauthenticated',
+      );
       return;
     }
     _currentWalletId = user.walletId;
+    _logger.fine('Starting watcher for ${asset.id.name}');
 
     // Emit last known immediately if available
     final maybeKnown = _pubkeysCache[asset.id];
@@ -187,6 +200,7 @@ class PubkeyManager implements IPubkeyManager {
         final first = await getPubkeys(asset);
         _pubkeysCache[asset.id] = first;
         if (!controller.isClosed) controller.add(first);
+        _logger.fine('Emitted initial pubkeys for ${asset.id.name}');
       }
 
       // Periodic polling for pubkeys updates
@@ -243,11 +257,12 @@ class PubkeyManager implements IPubkeyManager {
     if (watcher != null) {
       watcher.cancel();
       _activeWatchers.remove(assetId);
+      _logger.fine('Stopped watcher for ${assetId.name}');
     }
   }
 
   @override
-  Future<void> preCachePubkeys(Asset asset) async {
+  Future<void> precachePubkeys(Asset asset) async {
     if (_isDisposed) return;
 
     final user = await _auth.currentUser;
@@ -269,6 +284,9 @@ class PubkeyManager implements IPubkeyManager {
   Future<void> _handleAuthStateChanged(KdfUser? user) async {
     if (_isDisposed) return;
     final newWalletId = user?.walletId;
+    _logger.fine(
+      'Auth state changed. wallet: $_currentWalletId -> $newWalletId',
+    );
     if (_currentWalletId != newWalletId) {
       await _resetState();
       _currentWalletId = newWalletId;
@@ -280,6 +298,7 @@ class PubkeyManager implements IPubkeyManager {
   /// - indicate disconnection with state error to controllers
   /// - restart the pubkey watchers for the active controllers
   Future<void> _resetState() async {
+    _logger.fine('Resetting state');
     // Cancel all active watchers
     for (final subscription in _activeWatchers.values) {
       await subscription.cancel();
@@ -318,21 +337,41 @@ class PubkeyManager implements IPubkeyManager {
     if (_isDisposed) return;
     _isDisposed = true;
 
-    await _authSubscription?.cancel();
+    // Collect all async cleanup operations and run them concurrently.
+    final List<Future<void>> pending = <Future<void>>[];
+
+    final StreamSubscription<KdfUser?>? authSub = _authSubscription;
     _authSubscription = null;
-
-    for (final subscription in _activeWatchers.values) {
-      await subscription.cancel();
+    if (authSub != null) {
+      pending.add(authSub.cancel());
     }
+
+    final List<StreamSubscription<dynamic>> watcherSubs =
+        _activeWatchers.values.toList();
     _activeWatchers.clear();
-
-    for (final controller in _pubkeysControllers.values) {
-      await controller.close();
+    for (final StreamSubscription<dynamic> subscription in watcherSubs) {
+      pending.add(subscription.cancel());
     }
+
+    final List<StreamController<AssetPubkeys>> controllers =
+        _pubkeysControllers.values.toList();
     _pubkeysControllers.clear();
+    for (final StreamController<AssetPubkeys> controller in controllers) {
+      pending.add(controller.close());
+    }
+
+    try {
+      if (pending.isNotEmpty) {
+        await Future.wait(pending);
+      }
+    } catch (error, stackTrace) {
+      // Swallow errors during disposal to ensure best-effort cleanup
+      _logger.warning('Error during PubkeyManager disposal', error, stackTrace);
+    }
 
     _pubkeysCache.clear();
     _watchedAssets.clear();
     _currentWalletId = null;
+    _logger.fine('Disposed');
   }
 }
