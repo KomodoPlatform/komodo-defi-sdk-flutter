@@ -120,8 +120,9 @@ T? _traverseJson<T>(
           return jsonFromString(value) as T;
         } catch (e) {
           throw ArgumentError(
-              'Expected a JSON string to parse, but got an invalid type: '
-              '${value.runtimeType}');
+            'Expected a JSON string to parse, but got an invalid type: '
+            '${value.runtimeType}',
+          );
         }
       }
 
@@ -129,7 +130,7 @@ T? _traverseJson<T>(
         return jsonToString(value) as T;
       }
 
-// In the list handling section:
+      // In the list handling section:
       if (T == JsonList && value is String) {
         try {
           return jsonListFromString(value) as T;
@@ -152,6 +153,14 @@ T? _traverseJson<T>(
       // Cast 0 to false and 1 to true for boolean types
       if (T == bool && value is int && (value == 0 || value == 1)) {
         return (value == 1) as T;
+      }
+
+      // Normalize numeric types between int/double for WASM interop
+      if (T == int && value is num) {
+        return value.toInt() as T;
+      }
+      if (T == double && value is num) {
+        return value.toDouble() as T;
       }
 
       // Final type check
@@ -214,9 +223,7 @@ T _convertMap<T>(Map<dynamic, dynamic> sourceMap) {
   try {
     return sanitizedMap as T;
   } catch (e) {
-    throw ArgumentError(
-      'Failed to convert map to expected type $T: $e',
-    );
+    throw ArgumentError('Failed to convert map to expected type $T: $e');
   }
 }
 
@@ -373,9 +380,7 @@ extension MapCensoring<K, V> on Map<K, V> {
     }
 
     final censoredMap = <K, V>{};
-    final stack = <_CensorTask<K, V>>[
-      _CensorTask(targetMap, censoredMap),
-    ];
+    final stack = <_CensorTask<K, V>>[_CensorTask(targetMap, censoredMap)];
 
     while (stack.isNotEmpty) {
       final currentTask = stack.removeLast();
