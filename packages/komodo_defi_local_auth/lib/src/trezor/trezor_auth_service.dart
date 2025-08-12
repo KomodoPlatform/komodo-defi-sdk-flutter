@@ -119,7 +119,7 @@ class TrezorAuthService implements IAuthService {
 
   @override
   Future<void> signOut() async {
-    _stopConnectionMonitoring();
+    await _stopConnectionMonitoring();
     await _authService.signOut();
   }
 
@@ -231,9 +231,9 @@ class TrezorAuthService implements IAuthService {
   }
 
   /// Stop monitoring Trezor connection status.
-  void _stopConnectionMonitoring() {
+  Future<void> _stopConnectionMonitoring() async {
     if (_connectionMonitor.isMonitoring) {
-      _connectionMonitor.stopMonitoring();
+      await _connectionMonitor.stopMonitoring();
     }
   }
 
@@ -242,8 +242,8 @@ class TrezorAuthService implements IAuthService {
     final current = await _authService.getActiveUser();
     if (current?.walletId.name == trezorWalletName) {
       _log.warning("Signing out current '${current?.walletId.name}' user");
+      await _stopConnectionMonitoring();
       try {
-        _stopConnectionMonitoring();
         await _authService.signOut();
       } catch (_) {
         // ignore sign out errors

@@ -80,7 +80,7 @@ class _FakeConnectionMonitor extends TrezorConnectionMonitor {
   }
 
   @override
-  void stopMonitoring() {
+  Future<void> stopMonitoring() async {
     stopCalls += 1;
     started = false;
     stopped = true;

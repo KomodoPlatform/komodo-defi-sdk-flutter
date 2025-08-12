@@ -75,7 +75,7 @@ void main() {
       expect(monitor.lastKnownStatus, TrezorConnectionStatus.disconnected);
       expect(monitor.isMonitoring, isTrue);
 
-      monitor.stopMonitoring();
+      await monitor.stopMonitoring();
       expect(monitor.isMonitoring, isFalse);
       expect(monitor.lastKnownStatus, isNull);
       await repo.close();
@@ -114,7 +114,7 @@ void main() {
         expect(lostCount, 2);
         expect(restoredCount, 2);
 
-        monitor.stopMonitoring();
+        await monitor.stopMonitoring();
         await repo.close();
       },
     );
@@ -141,7 +141,7 @@ void main() {
 
         expect(restoredCount, 1);
 
-        monitor.stopMonitoring();
+        await monitor.stopMonitoring();
         await repo.close();
       },
     );
@@ -167,7 +167,7 @@ void main() {
       expect(repo.lastPollInterval, poll);
       expect(repo.lastMaxDuration, max);
 
-      monitor.stopMonitoring();
+      await monitor.stopMonitoring();
       await repo.close();
     });
 
@@ -182,7 +182,7 @@ void main() {
 
         repo.emit(TrezorConnectionStatus.connected);
         await Future<void>.delayed(const Duration(milliseconds: 5));
-        monitor.stopMonitoring();
+        await monitor.stopMonitoring();
 
         // After stop, lastKnown should be cleared and events ignored
         expect(monitor.lastKnownStatus, isNull);
@@ -212,7 +212,7 @@ void main() {
 
       expect(lost, 1);
 
-      monitor.stopMonitoring();
+      await monitor.stopMonitoring();
       await repo.close();
     });
 
@@ -239,7 +239,7 @@ void main() {
       ]);
       expect(monitor.isMonitoring, isTrue);
 
-      monitor.stopMonitoring();
+      await monitor.stopMonitoring();
       await repo.close();
     });
 
@@ -290,7 +290,7 @@ void main() {
       repo.emit(TrezorConnectionStatus.connected);
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
-      monitor.stopMonitoring();
+      await monitor.stopMonitoring();
       repo.emitError(Exception('late error'));
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
@@ -318,7 +318,7 @@ void main() {
 
         // No emissions; then stop
         await Future<void>.delayed(const Duration(milliseconds: 5));
-        monitor.stopMonitoring();
+        await monitor.stopMonitoring();
         await Future<void>.delayed(const Duration(milliseconds: 5));
 
         expect(statuses, isEmpty);

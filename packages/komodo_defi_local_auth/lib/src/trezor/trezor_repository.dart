@@ -221,11 +221,9 @@ class TrezorRepository {
       last = await getConnectionStatus(devicePubkey: devicePubkey);
       yield last;
     } catch (e) {
-      // If initial status check fails, we can't proceed
-      throw TrezorException(
-        'Failed to get initial connection status',
-        e.toString(),
-      );
+      // If initial status check fails, treat as disconnected and end stream
+      yield TrezorConnectionStatus.disconnected;
+      return;
     }
 
     while (last.shouldContinueMonitoring &&

@@ -35,7 +35,14 @@ class TrezorConnectionMonitor {
   }) {
     _log.info('Starting Trezor connection monitoring');
 
-    stopMonitoring(); // Stop any existing monitoring
+    // Stop any existing monitoring safely before starting a new one.
+    final previousSubscription = _connectionSubscription;
+    if (previousSubscription != null) {
+      _log.info('Stopping previous Trezor connection monitoring');
+      _connectionSubscription = null;
+      _lastStatus = null;
+      unawaited(previousSubscription.cancel());
+    }
 
     _connectionSubscription = _trezorRepository
         .watchConnectionStatus(
@@ -85,10 +92,10 @@ class TrezorConnectionMonitor {
   }
 
   /// Stop monitoring the Trezor connection status.
-  void stopMonitoring() {
+  Future<void> stopMonitoring() async {
     if (_connectionSubscription != null) {
       _log.info('Stopping Trezor connection monitoring');
-      _connectionSubscription?.cancel();
+      await _connectionSubscription?.cancel();
       _connectionSubscription = null;
       _lastStatus = null;
     }
@@ -102,6 +109,12 @@ class TrezorConnectionMonitor {
 
   /// Dispose of the monitor and clean up resources.
   void dispose() {
-    stopMonitoring();
+    // Make monitoring appear stopped synchronously.
+    final previousSubscription = _connectionSubscription;
+    _connectionSubscription = null;
+    _lastStatus = null;
+    if (previousSubscription != null) {
+      unawaited(previousSubscription.cancel());
+    }
   }
 }
