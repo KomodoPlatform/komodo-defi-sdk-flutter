@@ -118,7 +118,7 @@ class TrezorRepository {
 
       // Do not immediately emit the first status update to avoid race
       // conditions (i.e. KDF task not yet created). Use the provided polling
-      // interval for the first status chack.
+      // interval for the first status check.
       statusTimer = Timer.periodic(
         pollingInterval,
         (_) => unawaited(pollStatus()),

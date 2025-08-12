@@ -28,7 +28,7 @@ abstract class TrezorUserActionData with _$TrezorUserActionData {
 
   /// Convenience factory for PIN actions with strong validation.
   factory TrezorUserActionData.pin(String pin) {
-    if (pin.isEmpty || !RegExp(r'^\d+$').hasMatch(pin)) {
+    if (pin.isEmpty || !_pinRegex.hasMatch(pin)) {
       throw ArgumentError('PIN must contain only digits and cannot be empty.');
     }
     return TrezorUserActionData(
@@ -48,4 +48,6 @@ abstract class TrezorUserActionData with _$TrezorUserActionData {
 
   factory TrezorUserActionData.fromJson(JsonMap json) =>
       _$TrezorUserActionDataFromJson(json);
+
+  static final RegExp _pinRegex = RegExp(r'^\d+$');
 }

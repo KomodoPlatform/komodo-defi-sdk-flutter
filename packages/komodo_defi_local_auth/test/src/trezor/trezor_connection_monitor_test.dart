@@ -200,17 +200,27 @@ void main() {
       final monitor = TrezorConnectionMonitor(repo);
 
       var lost = 0;
-      monitor.startMonitoring(onConnectionLost: () => lost++);
+      var statusCount = 0;
+      monitor.startMonitoring(
+        onConnectionLost: () => lost++,
+        onStatusChanged: (_) => statusCount++,
+      );
 
       // Emit any status to set previousStatus
       repo.emit(TrezorConnectionStatus.connected);
       await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(statusCount, 1);
 
       // Now emit error from repository stream
       repo.emitError(Exception('stream failure'));
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
       expect(lost, 1);
+
+      // Verify monitoring continues after error if not stopped
+      repo.emit(TrezorConnectionStatus.busy);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(statusCount, 2);
 
       await monitor.stopMonitoring();
       await repo.close();
