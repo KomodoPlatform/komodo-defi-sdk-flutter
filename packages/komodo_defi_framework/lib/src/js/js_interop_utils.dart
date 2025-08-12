@@ -111,10 +111,21 @@ Future<T> parseJsInteropMaybePromise<T>(
     }
   }
   if (T == double || T == num) {
-    if (dartValue is num) return dartValue as T;
+    if (dartValue is num) {
+      if (T == double) return dartValue.toDouble() as T;
+      return dartValue as T; // T == num
+    }
     if (dartValue is String) {
       final parsed = double.tryParse(dartValue);
-      if (parsed != null) return (T == num ? parsed : parsed) as T;
+      if (parsed != null) {
+        if (T == num) {
+          final num n = parsed;
+          return n as T;
+        } else {
+          final double d = parsed;
+          return d as T;
+        }
+      }
     }
   }
   if (T == String) {

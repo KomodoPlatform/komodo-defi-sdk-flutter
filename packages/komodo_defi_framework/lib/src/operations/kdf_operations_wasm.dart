@@ -115,14 +115,18 @@ class KdfOperationsWasm implements IKdfOperations {
 
   KdfStartupResult _handleStartupJsError(js_interop.JSAny jsError) {
     try {
-      _log('Handling JSAny error: [${jsError.runtimeType}] $jsError');
+      if (KdfLoggingConfig.debugLogging) {
+        _log('Handling JSAny error: [${jsError.runtimeType}] $jsError');
+      }
 
       // Direct JSNumber error
       if (isInstance<js_interop.JSNumber>(jsError, 'JSNumber')) {
         final dynamic dartNumber = (jsError as js_interop.JSNumber).dartify();
         final code = extractNumericCodeFromDartError(dartNumber);
         if (code != null) {
-          _log('KdfOperationsWasm: Resolved as JSNumber code: $code');
+          if (KdfLoggingConfig.debugLogging) {
+            _log('KdfOperationsWasm: Resolved as JSNumber code: $code');
+          }
           return KdfStartupResult.fromDefaultInt(code);
         }
       }
@@ -151,7 +155,9 @@ class KdfOperationsWasm implements IKdfOperations {
 
       // Try dartify as last resort
       final dynamic error = jsError.dartify();
-      _log('Dartified error type: ${error.runtimeType}, value: $error');
+      if (KdfLoggingConfig.debugLogging) {
+        _log('Dartified error type: ${error.runtimeType}, value: $error');
+      }
 
       final code = extractNumericCodeFromDartError(error);
       if (code != null) return KdfStartupResult.fromDefaultInt(code);

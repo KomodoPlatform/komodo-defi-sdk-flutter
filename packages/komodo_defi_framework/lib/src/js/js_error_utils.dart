@@ -1,4 +1,9 @@
-// Utilities for extracting error codes and messages from dartified JS values.
+/// Utilities for extracting error codes and messages from dartified JS values.
+///
+/// Provides functions to extract numeric error codes and human-readable messages
+/// from dartified JavaScript error objects, as well as heuristics for common
+/// error patterns.
+library;
 
 bool _isFiniteNum(num value) => value.isFinite;
 
