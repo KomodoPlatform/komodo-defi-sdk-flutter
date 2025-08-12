@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart'; // Add this import for debugPrint
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
 import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 /// Interface defining the contract for balance management operations
 abstract class IBalanceManager {
@@ -42,7 +42,7 @@ abstract class IBalanceManager {
 
   /// Pre-caches the balance for an asset.
   /// This is an internal method used during activation to optimize initial balance fetches.
-  Future<void> preCacheBalance(Asset asset);
+  Future<void> precacheBalance(Asset asset);
 }
 
 /// Implementation of the [IBalanceManager] interface for managing asset balances.
@@ -66,7 +66,9 @@ class BalanceManager implements IBalanceManager {
        _auth = auth {
     // Listen for auth state changes
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
+    _logger.fine('Initialized');
   }
+  static final Logger _logger = Logger('BalanceManager');
 
   SharedActivationCoordinator? _activationCoordinator;
   PubkeyManager? _pubkeyManager;
@@ -112,6 +114,9 @@ class BalanceManager implements IBalanceManager {
     if (_isDisposed) return;
     final newWalletId = user?.walletId;
     // If the wallet ID has changed, reset all state
+    _logger.fine(
+      'Auth state changed. wallet: $_currentWalletId -> $newWalletId',
+    );
     if (_currentWalletId != newWalletId) {
       await _resetState();
       _currentWalletId = newWalletId;
@@ -120,6 +125,7 @@ class BalanceManager implements IBalanceManager {
 
   /// Reset all internal state when wallet changes
   Future<void> _resetState() async {
+    _logger.fine('Resetting state');
     // Cancel all active watchers
     for (final subscription in _activeWatchers.values) {
       await subscription.cancel();
@@ -201,8 +207,16 @@ class BalanceManager implements IBalanceManager {
     final controller = _balanceControllers.putIfAbsent(
       assetId,
       () => StreamController<BalanceInfo>.broadcast(
-        onListen: () => _startWatchingBalance(assetId, activateIfNeeded),
-        onCancel: () => _stopWatchingBalance(assetId),
+        onListen: () {
+          _logger.fine(
+            'onListen: ${assetId.name}, activateIfNeeded: $activateIfNeeded',
+          );
+          _startWatchingBalance(assetId, activateIfNeeded);
+        },
+        onCancel: () {
+          _logger.fine('onCancel: ${assetId.name}');
+          _stopWatchingBalance(assetId);
+        },
       ),
     );
 
@@ -213,7 +227,7 @@ class BalanceManager implements IBalanceManager {
   Future<bool> _ensureAssetActivated(Asset asset, bool activateIfNeeded) async {
     // Check if activationCoordinator is initialized
     if (_activationCoordinator == null) {
-      debugPrint(
+      _logger.fine(
         'SharedActivationCoordinator not initialized, cannot activate asset',
       );
       return false;
@@ -233,7 +247,7 @@ class BalanceManager implements IBalanceManager {
       final result = await _activationCoordinator!.activateAsset(asset);
       return result.isSuccess;
     } catch (e) {
-      debugPrint('Failed to activate asset ${asset.id.name}: $e');
+      _logger.fine('Failed to activate asset ${asset.id.name}: $e');
       return false;
     }
   }
@@ -272,16 +286,21 @@ class BalanceManager implements IBalanceManager {
     final user = await _auth.currentUser;
     if (user == null) {
       // Don't throw an error, just wait for authentication
+      _logger.fine(
+        'Delaying balance watcher start for ${assetId.name}: unauthenticated',
+      );
       return;
     }
 
     // Keep track of the wallet ID this balance is for
     _currentWalletId = user.walletId;
+    _logger.fine('Starting balance watcher for ${assetId.name}');
 
     // Emit the last known balance immediately if available
     final maybeKnownBalance = lastKnown(assetId);
     if (maybeKnownBalance != null) {
       controller.add(maybeKnownBalance);
+      _logger.fine('Emitted initial balance for ${assetId.name}');
     }
 
     try {
@@ -343,6 +362,7 @@ class BalanceManager implements IBalanceManager {
             },
             onDone: () {
               _stopWatchingBalance(assetId);
+              _logger.fine('Stopped watching ${assetId.name}');
             },
             cancelOnError: false,
           );
@@ -357,6 +377,7 @@ class BalanceManager implements IBalanceManager {
     if (watcher != null) {
       watcher.cancel();
       _activeWatchers.remove(assetId);
+      _logger.fine('Stopped watcher for ${assetId.name}');
     }
     // Don't close the controller here, just remove the watcher
     // The controller will be closed when all listeners are gone
@@ -375,34 +396,66 @@ class BalanceManager implements IBalanceManager {
     if (_isDisposed) return;
     _isDisposed = true;
 
-    // Cancel auth subscription
-    await _authSubscription?.cancel();
+    // Take snapshots to avoid concurrent modification while cancelling/closing
+    final StreamSubscription<KdfUser?>? authSub = _authSubscription;
     _authSubscription = null;
 
-    // Cancel all active watchers
-    for (final subscription in _activeWatchers.values) {
-      await subscription.cancel();
-    }
+    final List<StreamSubscription<dynamic>> watcherSubs =
+        List<StreamSubscription<dynamic>>.from(_activeWatchers.values);
     _activeWatchers.clear();
 
-    // Close all stream controllers
-    for (final controller in _balanceControllers.values) {
-      await controller.close();
+    // Cancel auth subscription and all watchers concurrently; swallow errors
+    final List<Future<void>> cancelFutures = <Future<void>>[];
+    if (authSub != null) {
+      cancelFutures.add(
+        authSub.cancel().catchError((Object e, StackTrace s) {
+          _logger.warning('Error cancelling auth subscription', e, s);
+        }),
+      );
     }
+    for (final StreamSubscription<dynamic> sub in watcherSubs) {
+      cancelFutures.add(
+        sub.cancel().catchError((Object e, StackTrace s) {
+          _logger.warning('Error cancelling balance watcher', e, s);
+        }),
+      );
+    }
+    if (cancelFutures.isNotEmpty) {
+      await Future.wait(cancelFutures);
+    }
+
+    // Snapshot controllers and close all concurrently; swallow errors
+    final List<StreamController<BalanceInfo>> controllers =
+        List<StreamController<BalanceInfo>>.from(_balanceControllers.values);
     _balanceControllers.clear();
+
+    final List<Future<void>> closeFutures = <Future<void>>[];
+    for (final StreamController<BalanceInfo> controller in controllers) {
+      if (!controller.isClosed) {
+        closeFutures.add(
+          controller.close().catchError((Object e, StackTrace s) {
+            _logger.warning('Error closing balance controller', e, s);
+          }),
+        );
+      }
+    }
+    if (closeFutures.isNotEmpty) {
+      await Future.wait(closeFutures);
+    }
 
     // Clear all other resources
     _balanceCache.clear();
     _currentWalletId = null;
+    _logger.fine('Disposed');
   }
 
   @override
-  Future<void> preCacheBalance(Asset asset) async {
+  Future<void> precacheBalance(Asset asset) async {
     if (_isDisposed) return;
 
     // Check if pubkeyManager is initialized
     if (_pubkeyManager == null) {
-      debugPrint('Cannot pre-cache balance: PubkeyManager not initialized');
+      _logger.fine('Cannot pre-cache balance: PubkeyManager not initialized');
       return;
     }
 
@@ -436,15 +489,15 @@ class BalanceManager implements IBalanceManager {
             errorStr.contains('invalid coin');
 
         if (isCoinNotFound && !isLastAttempt) {
-          debugPrint(
-            'Balance pre-cache failed (attempt ${attempt + 1}): Coin ${asset.id.name} not yet available, retrying...',
+          _logger.fine(
+            'Balance pre-cache retry ${attempt + 1}: ${asset.id.name} not yet available',
           );
-          await Future.delayed(baseDelay * (attempt + 1));
+          await Future<void>.delayed(baseDelay * (attempt + 1));
           continue;
         }
 
         // Either not a timing issue or final attempt - fail silently
-        debugPrint('Failed to pre-cache balance for ${asset.id.name}: $e');
+        _logger.fine('Failed to pre-cache balance for ${asset.id.name}: $e');
         return;
       }
     }
