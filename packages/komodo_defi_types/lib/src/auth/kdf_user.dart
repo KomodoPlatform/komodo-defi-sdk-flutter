@@ -48,8 +48,14 @@ class WalletId extends Equatable {
 
   bool get isHd => authOptions.derivationMethod == DerivationMethod.hdWallet;
 
+  // TODO(takenagain): Consider if it is problematic to have this method and
+  // also an equality operator. If it is safe to use the equality operator to
+  // compare if two wallets are the same, then this method would be unnecessary.
   bool isSameAs(WalletId other) =>
-      name == other.name && pubkeyHash == other.pubkeyHash;
+      // Use pubkey hash for comparison if available.
+      hasFullIdentity && pubkeyHash == other.pubkeyHash ||
+      // Otherwise, use name + HD mode for comparison.
+      name == other.name && isHd == other.isHd;
 
   @override
   List<Object?> get props => [name, authOptions, pubkeyHash];
