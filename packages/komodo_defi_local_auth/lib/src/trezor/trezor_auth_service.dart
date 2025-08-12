@@ -16,8 +16,17 @@ import 'package:logging/logging.dart';
 /// handling passphrase requirements and ignoring PIN prompts. All other
 /// [IAuthService] methods are delegated to the composed auth service.
 class TrezorAuthService implements IAuthService {
-  TrezorAuthService(this._authService, this._trezor)
-    : _connectionMonitor = TrezorConnectionMonitor(_trezor);
+  TrezorAuthService(
+    this._authService,
+    this._trezor, {
+    TrezorConnectionMonitor? connectionMonitor,
+    FlutterSecureStorage? secureStorage,
+    String Function(int length)? passwordGenerator,
+  }) : _connectionMonitor =
+           connectionMonitor ?? TrezorConnectionMonitor(_trezor),
+       _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+       _generatePassword =
+           passwordGenerator ?? SecurityUtils.generatePasswordSecure;
 
   static const String trezorWalletName = 'My Trezor';
   static const String _passwordKey = 'trezor_wallet_password';
@@ -25,8 +34,9 @@ class TrezorAuthService implements IAuthService {
 
   final IAuthService _authService;
   final TrezorRepository _trezor;
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final FlutterSecureStorage _secureStorage;
   final TrezorConnectionMonitor _connectionMonitor;
+  final String Function(int length) _generatePassword;
 
   Future<void> provideTrezorPin(int taskId, String pin) =>
       _trezor.providePin(taskId, pin);
@@ -196,7 +206,7 @@ class TrezorAuthService implements IAuthService {
 
     if (existing != null) return existing;
 
-    final newPassword = SecurityUtils.generatePasswordSecure(16);
+    final newPassword = _generatePassword(16);
     await _secureStorage.write(key: _passwordKey, value: newPassword);
     return newPassword;
   }
