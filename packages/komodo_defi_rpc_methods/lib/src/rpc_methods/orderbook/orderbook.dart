@@ -81,12 +81,8 @@ class OrderbookResponse extends BaseResponse {
       mmrpc: json.value<String>('mmrpc'),
       base: result.value<String>('base'),
       rel: result.value<String>('rel'),
-      bids: (result.value<List<dynamic>>('bids'))
-          .map((e) => OrderInfo.fromJson(e as JsonMap))
-          .toList(),
-      asks: (result.value<List<dynamic>>('asks'))
-          .map((e) => OrderInfo.fromJson(e as JsonMap))
-          .toList(),
+      bids: result.value<JsonList>('bids').map(OrderInfo.fromJson).toList(),
+      asks: result.value<JsonList>('asks').map(OrderInfo.fromJson).toList(),
       numBids: result.value<int>('num_bids'),
       numAsks: result.value<int>('num_asks'),
       timestamp: result.value<int>('timestamp'),

@@ -37,19 +37,17 @@ class TradePreimageRequest
   final String? price;
 
   @override
-  Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'base': base,
-      'rel': rel,
-      'swap_method':
-          swapMethod == SwapMethod.setPrice ? 'setprice' : swapMethod.name,
-    };
-    if (volume != null) params['volume'] = volume;
-    if (max != null) params['max'] = max;
-    if (price != null) params['price'] = price;
-
-    return super.toJson().deepMerge({'params': params});
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          'base': base,
+          'rel': rel,
+          'swap_method':
+              swapMethod == SwapMethod.setPrice ? 'setprice' : swapMethod.name,
+          if (volume != null) 'volume': volume,
+          if (max != null) 'max': max,
+          if (price != null) 'price': price,
+        },
+      });
 
   @override
   TradePreimageResponse parse(Map<String, dynamic> json) =>

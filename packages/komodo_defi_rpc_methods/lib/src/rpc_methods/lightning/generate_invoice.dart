@@ -29,16 +29,14 @@ class GenerateInvoiceRequest
   final int? expiry;
 
   @override
-  Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'coin': coin,
-      'description': description,
-    };
-    if (amountMsat != null) params['amount_in_msat'] = amountMsat;
-    if (expiry != null) params['expiry'] = expiry;
-
-    return super.toJson().deepMerge({'params': params});
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          'coin': coin,
+          'description': description,
+          if (amountMsat != null) 'amount_in_msat': amountMsat,
+          if (expiry != null) 'expiry': expiry,
+        },
+      });
 
   @override
   GenerateInvoiceResponse parse(Map<String, dynamic> json) =>

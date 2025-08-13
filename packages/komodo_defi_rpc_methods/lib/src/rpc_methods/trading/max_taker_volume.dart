@@ -17,8 +17,9 @@ class MaxTakerVolumeRequest
   final String coin;
 
   @override
-  Map<String, dynamic> toJson() =>
-      super.toJson().deepMerge({'params': {'coin': coin}});
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {'coin': coin},
+      });
 
   @override
   MaxTakerVolumeResponse parse(Map<String, dynamic> json) =>

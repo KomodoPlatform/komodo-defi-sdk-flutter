@@ -25,15 +25,13 @@ class PayInvoiceRequest
   final int? maxFeeMsat;
 
   @override
-  Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'coin': coin,
-      'invoice': invoice,
-    };
-    if (maxFeeMsat != null) params['max_fee_msat'] = maxFeeMsat;
-
-    return super.toJson().deepMerge({'params': params});
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          'coin': coin,
+          'invoice': invoice,
+          if (maxFeeMsat != null) 'max_fee_msat': maxFeeMsat,
+        },
+      });
 
   @override
   PayInvoiceResponse parse(Map<String, dynamic> json) =>

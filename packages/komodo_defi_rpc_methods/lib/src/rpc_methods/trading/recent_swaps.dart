@@ -29,17 +29,17 @@ class RecentSwapsRequest
   final String? coin;
 
   @override
-  Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{};
-    final filter = <String, dynamic>{};
-    if (limit != null) filter['limit'] = limit;
-    if (pageNumber != null) filter['page_number'] = pageNumber;
-    if (fromUuid != null) filter['from_uuid'] = fromUuid;
-    if (coin != null) filter['my_coin'] = coin;
-    if (filter.isNotEmpty) params['filter'] = filter;
-
-    return super.toJson().deepMerge({'params': params});
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          if (limit != null || pageNumber != null || fromUuid != null || coin != null)
+            'filter': {
+              if (limit != null) 'limit': limit,
+              if (pageNumber != null) 'page_number': pageNumber,
+              if (fromUuid != null) 'from_uuid': fromUuid,
+              if (coin != null) 'my_coin': coin,
+            },
+        },
+      });
 
   @override
   RecentSwapsResponse parse(Map<String, dynamic> json) =>
@@ -48,19 +48,14 @@ class RecentSwapsRequest
 
 /// Response containing recent swaps
 class RecentSwapsResponse extends BaseResponse {
-  RecentSwapsResponse({
-    required super.mmrpc,
-    required this.swaps,
-  });
+  RecentSwapsResponse({required super.mmrpc, required this.swaps});
 
   factory RecentSwapsResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
 
     return RecentSwapsResponse(
       mmrpc: json.value<String>('mmrpc'),
-      swaps: (result.value<List<dynamic>>('swaps'))
-          .map((e) => SwapInfo.fromJson(e as JsonMap))
-          .toList(),
+      swaps: result.value<JsonList>('swaps').map(SwapInfo.fromJson).toList(),
     );
   }
 
@@ -70,10 +65,6 @@ class RecentSwapsResponse extends BaseResponse {
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {
-      'swaps': swaps.map((e) => e.toJson()).toList(),
-    },
+    'result': {'swaps': swaps.map((e) => e.toJson()).toList()},
   };
 }
-
-

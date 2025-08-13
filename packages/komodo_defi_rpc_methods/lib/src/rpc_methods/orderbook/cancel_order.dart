@@ -11,11 +11,9 @@ class CancelOrderRequest
   final String uuid;
 
   @override
-  Map<String, dynamic> toJson() {
-    return super.toJson().deepMerge({
-      'params': {'uuid': uuid},
-    });
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {'uuid': uuid},
+      });
 
   @override
   CancelOrderResponse parse(Map<String, dynamic> json) =>

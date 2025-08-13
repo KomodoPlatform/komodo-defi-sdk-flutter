@@ -17,8 +17,9 @@ class MinTradingVolumeRequest
   final String coin;
 
   @override
-  Map<String, dynamic> toJson() =>
-      super.toJson().deepMerge({'params': {'coin': coin}});
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {'coin': coin},
+      });
 
   @override
   MinTradingVolumeResponse parse(Map<String, dynamic> json) =>

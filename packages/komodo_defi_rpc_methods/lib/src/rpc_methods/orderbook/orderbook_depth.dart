@@ -17,13 +17,11 @@ class OrderbookDepthRequest
   final List<OrderbookPair> pairs;
 
   @override
-  Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'pairs': pairs.map((e) => [e.base, e.rel]).toList(),
-    };
-
-    return super.toJson().deepMerge({'params': params});
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          'pairs': pairs.map((e) => [e.base, e.rel]).toList(),
+        },
+      });
 
   @override
   OrderbookDepthResponse parse(Map<String, dynamic> json) =>

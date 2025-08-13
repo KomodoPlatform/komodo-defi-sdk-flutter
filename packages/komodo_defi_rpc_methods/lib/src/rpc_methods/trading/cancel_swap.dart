@@ -17,8 +17,9 @@ class CancelSwapRequest
   final String uuid;
 
   @override
-  Map<String, dynamic> toJson() =>
-      super.toJson().deepMerge({'params': {'uuid': uuid}});
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {'uuid': uuid},
+      });
 
   @override
   CancelSwapResponse parse(Map<String, dynamic> json) =>

@@ -8,9 +8,6 @@ class MyOrdersRequest
     : super(method: 'my_orders', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   @override
-  Map<String, dynamic> toJson() => super.toJson();
-
-  @override
   MyOrdersResponse parse(Map<String, dynamic> json) =>
       MyOrdersResponse.parse(json);
 }
@@ -24,9 +21,8 @@ class MyOrdersResponse extends BaseResponse {
 
     return MyOrdersResponse(
       mmrpc: json.value<String>('mmrpc'),
-      orders: result.value<List<dynamic>>('orders')
-          .map((e) => MyOrderInfo.fromJson(e as JsonMap))
-          .toList(),
+      orders:
+          result.value<JsonList>('orders').map(MyOrderInfo.fromJson).toList(),
     );
   }
 

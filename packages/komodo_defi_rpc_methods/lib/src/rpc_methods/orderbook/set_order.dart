@@ -49,23 +49,20 @@ class SetOrderRequest
   final bool? relNota;
 
   @override
-  Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'base': base,
-      'rel': rel,
-      'price': price,
-      'volume': volume,
-    };
-
-    if (orderType != null) params['order_type'] = orderType!.toJson();
-    if (minVolume != null) params['min_volume'] = minVolume;
-    if (baseConfs != null) params['base_confs'] = baseConfs;
-    if (baseNota != null) params['base_nota'] = baseNota;
-    if (relConfs != null) params['rel_confs'] = relConfs;
-    if (relNota != null) params['rel_nota'] = relNota;
-
-    return super.toJson().deepMerge({'params': params});
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          'base': base,
+          'rel': rel,
+          'price': price,
+          'volume': volume,
+          if (orderType != null) 'order_type': orderType!.toJson(),
+          if (minVolume != null) 'min_volume': minVolume,
+          if (baseConfs != null) 'base_confs': baseConfs,
+          if (baseNota != null) 'base_nota': baseNota,
+          if (relConfs != null) 'rel_confs': relConfs,
+          if (relNota != null) 'rel_nota': relNota,
+        },
+      });
 
   @override
   SetOrderResponse parse(Map<String, dynamic> json) =>

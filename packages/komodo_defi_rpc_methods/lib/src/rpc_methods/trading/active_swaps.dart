@@ -15,11 +15,11 @@ class ActiveSwapsRequest
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {
-          if (coin != null) 'coin': coin,
-          if (includeStatus != null) 'include_status': includeStatus,
-        },
-      });
+    'params': {
+      if (coin != null) 'coin': coin,
+      if (includeStatus != null) 'include_status': includeStatus,
+    },
+  });
 
   @override
   ActiveSwapsResponse parse(Map<String, dynamic> json) =>
@@ -37,8 +37,7 @@ class ActiveSwapsResponse extends BaseResponse {
   factory ActiveSwapsResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
 
-    final uuids =
-        (result.value<List<dynamic>>('uuids')).map((e) => e as String).toList();
+    final uuids = result.value<List<String>>('uuids').map((e) => e).toList();
 
     final statusesJson = result.valueOrNull<JsonMap>('statuses');
     final statuses = <String, ActiveSwapStatus>{};

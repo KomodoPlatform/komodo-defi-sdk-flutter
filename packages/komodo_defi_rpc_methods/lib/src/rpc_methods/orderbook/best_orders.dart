@@ -21,18 +21,16 @@ class BestOrdersRequest
   final String volume;
 
   @override
-  Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'coin': coin,
-      'action': action.toJson(),
-      'request_by': {
-        'type': 'volume',
-        'value': double.tryParse(volume) ?? volume,
-      },
-    };
-
-    return super.toJson().deepMerge({'params': params});
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          'coin': coin,
+          'action': action.toJson(),
+          'request_by': {
+            'type': 'volume',
+            'value': double.tryParse(volume) ?? volume,
+          },
+        },
+      });
 
   @override
   BestOrdersResponse parse(Map<String, dynamic> json) =>

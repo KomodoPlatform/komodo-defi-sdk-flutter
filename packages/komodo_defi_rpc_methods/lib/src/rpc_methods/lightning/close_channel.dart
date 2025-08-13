@@ -25,18 +25,13 @@ class CloseChannelRequest
   final bool forceClose;
 
   @override
-  Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'coin': coin,
-      'channel_id': channelId,
-    };
-
-    if (forceClose) {
-      params['force_close'] = forceClose;
-    }
-
-    return super.toJson().deepMerge({'params': params});
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          'coin': coin,
+          'channel_id': channelId,
+          if (forceClose) 'force_close': forceClose,
+        },
+      });
 
   @override
   CloseChannelResponse parse(Map<String, dynamic> json) =>
