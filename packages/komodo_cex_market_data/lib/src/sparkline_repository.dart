@@ -98,8 +98,10 @@ class SparklineRepository with RepositoryFallbackMixin {
       }
     }
 
-    // USDT special case (constant price)
-    if (symbol.split('-').firstOrNull?.toUpperCase() == 'USDT') {
+    // Use quote currency utilities instead of hardcoded USDT check
+    const quoteCurrency = Stablecoin.usdt;
+    final assetAsQuote = QuoteCurrency.fromString(symbol);
+    if (assetAsQuote != null && assetAsQuote == quoteCurrency) {
       _logger.fine('Using straightline stablecoin sparkline for $symbol');
       return _createStraightlineStableCoinSparkline(symbol);
     }
@@ -107,7 +109,6 @@ class SparklineRepository with RepositoryFallbackMixin {
     // Build request context
     final startAt = DateTime.now().subtract(const Duration(days: 7));
     final endAt = DateTime.now();
-    const quoteCurrency = Stablecoin.usdt;
 
     // Use fallback mixin to pick a supporting repo and retry if needed
     _logger.fine('Fetching OHLC for $symbol with fallback across repositories');

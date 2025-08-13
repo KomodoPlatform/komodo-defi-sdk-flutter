@@ -13,7 +13,15 @@ class MarketDataConfig {
   /// Example:
   /// ```dart
   /// const config = MarketDataConfig(
-  ///   // configuration parameters
+  ///   enableBinance: true,
+  ///   enableCoinGecko: false,
+  ///   enableKomodoPrice: true,
+  ///   customRepositories: [myCustomRepo],
+  ///   selectionStrategy: MyCustomStrategy(),
+  ///   // Optional: inject test providers for better testability
+  ///   // binanceProvider: MyMockBinanceProvider(),
+  ///   // coinGeckoProvider: MyMockCoinGeckoProvider(),
+  ///   // komodoPriceProvider: MyMockKomodoPriceProvider(),
   /// );
   /// ```
   const MarketDataConfig({
@@ -22,6 +30,9 @@ class MarketDataConfig {
     this.enableKomodoPrice = true,
     this.customRepositories = const [],
     this.selectionStrategy,
+    this.binanceProvider,
+    this.coinGeckoProvider,
+    this.komodoPriceProvider,
   });
 
   /// Whether to enable Binance repository
@@ -38,6 +49,15 @@ class MarketDataConfig {
 
   /// Custom selection strategy (uses default if null)
   final RepositorySelectionStrategy? selectionStrategy;
+
+  /// Optional custom Binance provider (uses default if null)
+  final IBinanceProvider? binanceProvider;
+
+  /// Optional custom CoinGecko provider (uses default if null)
+  final ICoinGeckoProvider? coinGeckoProvider;
+
+  /// Optional custom Komodo price provider (uses default if null)
+  final IKomodoPriceProvider? komodoPriceProvider;
 }
 
 /// Bootstrap factory for market data dependencies
@@ -50,41 +70,43 @@ class MarketDataBootstrap {
     MarketDataConfig config = const MarketDataConfig(),
   }) async {
     // Register providers first
-    await _registerProviders(container, config);
+    await registerProviders(container, config);
 
     // Register repositories
-    await _registerRepositories(container, config);
+    await registerRepositories(container, config);
 
     // Register selection strategy
-    await _registerSelectionStrategy(container, config);
+    await registerSelectionStrategy(container, config);
   }
 
   /// Registers providers for market data sources
-  static Future<void> _registerProviders(
+  static Future<void> registerProviders(
     GetIt container,
     MarketDataConfig config,
   ) async {
     if (config.enableCoinGecko) {
       container.registerSingletonAsync<ICoinGeckoProvider>(
-        () async => CoinGeckoCexProvider(),
+        () async => config.coinGeckoProvider ?? CoinGeckoCexProvider(),
       );
     }
 
     if (config.enableKomodoPrice) {
       container.registerSingletonAsync<IKomodoPriceProvider>(
-        () async => KomodoPriceProvider(),
+        () async => config.komodoPriceProvider ?? KomodoPriceProvider(),
       );
     }
   }
 
   /// Registers repository instances
-  static Future<void> _registerRepositories(
+  static Future<void> registerRepositories(
     GetIt container,
     MarketDataConfig config,
   ) async {
     if (config.enableBinance) {
       container.registerSingletonAsync<BinanceRepository>(
-        () async => BinanceRepository(binanceProvider: const BinanceProvider()),
+        () async => BinanceRepository(
+          binanceProvider: config.binanceProvider ?? const BinanceProvider(),
+        ),
       );
     }
 
@@ -108,7 +130,7 @@ class MarketDataBootstrap {
   }
 
   /// Registers the repository selection strategy
-  static Future<void> _registerSelectionStrategy(
+  static Future<void> registerSelectionStrategy(
     GetIt container,
     MarketDataConfig config,
   ) async {
@@ -125,7 +147,16 @@ class MarketDataBootstrap {
   ) async {
     final repositories = <CexRepository>[];
 
-    // Add repositories in priority order
+    // Add repositories in priority order:
+    // 1) KomodoPrice — preferred primary source. It is tailored to the
+    //    Komodo ecosystem, aggregates curated pricing, and aligns IDs with our
+    //    asset model, which typically yields the most consistent coverage.
+    // 2) Binance — highly reliable centralized exchange with deep liquidity
+    //    and robust OHLC endpoints; good quality prices but narrower asset
+    //    coverage than CoinGecko for long-tail tokens.
+    // 3) CoinGecko — broadest asset coverage via aggregation across venues,
+    //    but subject to stricter rate limits and occasional data gaps; used as
+    //    a last resort.
     if (config.enableKomodoPrice) {
       repositories.add(await container.getAsync<KomodoPriceRepository>());
     }

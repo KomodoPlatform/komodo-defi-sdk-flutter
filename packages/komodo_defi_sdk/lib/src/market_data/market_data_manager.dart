@@ -71,9 +71,9 @@ class CexMarketDataManager
     implements MarketDataManager {
   /// Creates a new instance of [CexMarketDataManager]
   CexMarketDataManager({
-    required List<CexRepository> priceRepositories,
+    required List<CexRepository> repositories,
     RepositorySelectionStrategy? selectionStrategy,
-  }) : _priceRepositories = priceRepositories,
+  }) : _priceRepositories = repositories,
        _selectionStrategy =
            selectionStrategy ?? DefaultRepositorySelectionStrategy();
 
@@ -138,8 +138,9 @@ class CexMarketDataManager
     DateTime? priceDate,
     QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
+    final protocolKey = assetId.parentId?.id ?? 'base';
     return '${assetId.id}_${assetId.chainId.formattedChainId}_'
-        '${assetId.subClass.formatted}_${quoteCurrency}_'
+        '${assetId.subClass.formatted}_${protocolKey}_${quoteCurrency}_'
         '${priceDate?.millisecondsSinceEpoch ?? 'current'}';
   }
 
@@ -148,8 +149,9 @@ class CexMarketDataManager
     AssetId assetId, {
     QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
+    final protocolKey = assetId.parentId?.id ?? 'base';
     return '${assetId.id}_${assetId.chainId.formattedChainId}_'
-        '${assetId.subClass.formatted}_${quoteCurrency}_change24h';
+        '${assetId.subClass.formatted}_${protocolKey}_${quoteCurrency}_change24h';
   }
 
   /// Validates that the manager hasn't been disposed

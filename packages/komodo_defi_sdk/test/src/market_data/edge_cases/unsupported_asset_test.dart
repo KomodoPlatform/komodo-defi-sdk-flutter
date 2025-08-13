@@ -401,7 +401,7 @@ void main() {
 
       setUp(() {
         marketDataManager = CexMarketDataManager(
-          priceRepositories: [mockBinanceRepo, mockCoinGeckoRepo],
+          repositories: [mockBinanceRepo, mockCoinGeckoRepo],
           selectionStrategy: mockSelectionStrategy,
         );
       });

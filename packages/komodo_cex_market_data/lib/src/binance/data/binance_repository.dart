@@ -70,14 +70,9 @@ class BinanceRepository implements CexRepository {
         }
       }
       throw lastException ?? Exception('All endpoints failed');
-    } catch (e) {
-      _logger.severe('Failed to fetch coin list from Binance API: $e');
-      // Clear cached currencies to indicate invalid state
-      _cachedFiatCurrencies = null;
-      // Return empty list as fallback, but log the error for visibility
-      // This prevents the supports() method from incorrectly reporting
-      // supported currencies based on stale cache data
-      return List.empty();
+    } catch (e, s) {
+      _logger.severe('Failed to fetch coin list from Binance API: $e', e, s);
+      rethrow;
     }
   }
 

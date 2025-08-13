@@ -128,6 +128,16 @@ class _CoinSparklineState extends State<CoinSparkline> {
   }
 
   @override
+  void didUpdateWidget(covariant CoinSparkline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.assetId != widget.assetId) {
+      setState(() {
+        _sparklineFuture = sparklineRepository.fetchSparkline(widget.assetId);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<double>?>(
       future: _sparklineFuture,

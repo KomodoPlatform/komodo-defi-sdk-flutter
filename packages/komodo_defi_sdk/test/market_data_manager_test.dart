@@ -34,7 +34,7 @@ void main() {
     test('uses CexRepository when available', () async {
       final fallback = MockPrimaryRepository();
       final manager = CexMarketDataManager(
-        priceRepositories: [fallback],
+        repositories: [fallback],
         selectionStrategy: DefaultRepositorySelectionStrategy(),
       );
 
@@ -65,7 +65,7 @@ void main() {
       final mockStrategy = MockRepositorySelectionStrategy();
 
       final manager = CexMarketDataManager(
-        priceRepositories: [primaryRepo, fallbackRepo],
+        repositories: [primaryRepo, fallbackRepo],
         selectionStrategy: mockStrategy,
       );
 
@@ -125,7 +125,7 @@ void main() {
       final mockStrategy = MockRepositorySelectionStrategy();
 
       final manager = CexMarketDataManager(
-        priceRepositories: [primaryRepo, fallbackRepo],
+        repositories: [primaryRepo, fallbackRepo],
         selectionStrategy: mockStrategy,
       );
 
@@ -183,7 +183,7 @@ void main() {
       final mockStrategy = MockRepositorySelectionStrategy();
 
       final manager = CexMarketDataManager(
-        priceRepositories: [primaryRepo, fallbackRepo],
+        repositories: [primaryRepo, fallbackRepo],
         selectionStrategy: mockStrategy,
       );
 
@@ -241,7 +241,7 @@ void main() {
       final mockStrategy = MockRepositorySelectionStrategy();
 
       final manager = CexMarketDataManager(
-        priceRepositories: [primaryRepo, fallbackRepo],
+        repositories: [primaryRepo, fallbackRepo],
         selectionStrategy: mockStrategy,
       );
 
@@ -300,7 +300,7 @@ void main() {
       final mockStrategy = MockRepositorySelectionStrategy();
 
       final manager = CexMarketDataManager(
-        priceRepositories: [primaryRepo, fallbackRepo],
+        repositories: [primaryRepo, fallbackRepo],
         selectionStrategy: mockStrategy,
       );
 

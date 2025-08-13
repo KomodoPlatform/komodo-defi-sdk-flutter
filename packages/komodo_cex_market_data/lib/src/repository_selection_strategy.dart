@@ -4,14 +4,17 @@ import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/models/cex_coin.dart';
 import 'package:komodo_cex_market_data/src/models/quote_currency.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart' show Logger;
 
 /// Enum for the type of price request
 enum PriceRequestType { currentPrice, priceChange, priceHistory }
 
 /// Strategy interface for selecting repositories
 abstract class RepositorySelectionStrategy {
+  /// Ensures the cache is initialized for the given repositories
   Future<void> ensureCacheInitialized(List<CexRepository> repositories);
 
+  /// Selects the best repository for a given asset, fiat, and request type
   Future<CexRepository?> selectRepository({
     required AssetId assetId,
     required QuoteCurrency fiatCurrency,
@@ -25,16 +28,27 @@ class DefaultRepositorySelectionStrategy
     implements RepositorySelectionStrategy {
   final Map<CexRepository, _RepositorySupportCache> _supportCache = {};
 
+  static final Logger _logger = Logger('DefaultRepositorySelectionStrategy');
+
   @override
   Future<void> ensureCacheInitialized(List<CexRepository> repositories) async {
     for (final repo in repositories) {
       if (!_supportCache.containsKey(repo)) {
-        final coins = await repo.getCoinList();
-        final fiatCurrencies = coins.expand((c) => c.currencies).toSet();
-        _supportCache[repo] = _RepositorySupportCache(
-          coins: coins,
-          fiatCurrencies: fiatCurrencies,
-        );
+        try {
+          final coins = await repo.getCoinList();
+          final fiatCurrencies =
+              coins
+                  .expand((c) => c.currencies.map((s) => s.toUpperCase()))
+                  .toSet();
+          _supportCache[repo] = _RepositorySupportCache(
+            coins: coins,
+            fiatCurrencies: fiatCurrencies,
+          );
+        } catch (e, st) {
+          // Ignore repository initialization failures and continue.
+          // Repositories that fail to initialize won't be selected.
+          _logger.severe('Failed to initialize repository', e, st);
+        }
       }
     }
   }
@@ -81,7 +95,8 @@ class DefaultRepositorySelectionStrategy
 }
 
 class _RepositorySupportCache {
+  _RepositorySupportCache({required this.coins, required this.fiatCurrencies});
+
   final List<CexCoin> coins;
   final Set<String> fiatCurrencies;
-  _RepositorySupportCache({required this.coins, required this.fiatCurrencies});
 }
