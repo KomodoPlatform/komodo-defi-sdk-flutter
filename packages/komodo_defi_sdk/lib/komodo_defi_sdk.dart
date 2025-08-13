@@ -19,6 +19,8 @@ export 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 export 'package:komodo_defi_sdk/src/security/security_manager.dart'
     show SecurityManager;
 export 'package:komodo_defi_sdk/src/swaps/swap_manager.dart' show SwapManager;
+export 'package:komodo_defi_sdk/src/swaps/swap_manager_interface.dart'
+    show ISwapManager;
 export 'package:komodo_defi_types/komodo_defi_types.dart'
     show
         SwapStatus,

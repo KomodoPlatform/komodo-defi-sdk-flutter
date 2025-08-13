@@ -8,6 +8,7 @@ import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_sdk/src/swaps/services/orderbook_service.dart';
 import 'package:komodo_defi_sdk/src/swaps/services/swap_watch_service.dart';
+import 'package:komodo_defi_sdk/src/swaps/swap_manager_interface.dart';
 
 // OrderSide, SwapStatus, PlacedOrderSummary, OrderbookEntry, OrderbookSnapshot,
 // and SwapProgress have been moved to the types library under
@@ -18,7 +19,7 @@ import 'package:komodo_defi_sdk/src/swaps/services/swap_watch_service.dart';
 ///
 /// Follows SDK manager patterns: authentication-aware, activation-coordinated,
 /// and stream-friendly APIs for easy UI integration.
-class SwapManager {
+class SwapManager implements ISwapManager {
   SwapManager(
     this._client,
     this._auth,
