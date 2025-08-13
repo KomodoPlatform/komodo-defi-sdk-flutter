@@ -1,0 +1,4 @@
+enum LabelPlacement {
+  vertical,
+  horizontal,
+}
