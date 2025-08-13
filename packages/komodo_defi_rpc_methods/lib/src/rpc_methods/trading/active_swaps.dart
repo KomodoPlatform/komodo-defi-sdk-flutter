@@ -4,15 +4,10 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// Request to get active swaps
 class ActiveSwapsRequest
     extends BaseRequest<ActiveSwapsResponse, GeneralErrorResponse> {
-  ActiveSwapsRequest({
-    required String rpcPass,
-    this.coin,
-  }) : super(
-         method: 'active_swaps',
-         rpcPass: rpcPass,
-         mmrpc: RpcVersion.v2_0,
-       );
+  ActiveSwapsRequest({required String rpcPass, this.includeStatus, this.coin})
+    : super(method: 'active_swaps', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
+  final bool? includeStatus;
   final String? coin;
 
   @override
@@ -21,10 +16,11 @@ class ActiveSwapsRequest
     if (coin != null) {
       params['coin'] = coin;
     }
+    if (includeStatus != null) {
+      params['include_status'] = includeStatus;
+    }
 
-    return super.toJson().deepMerge({
-      'params': params,
-    });
+    return super.toJson().deepMerge({'params': params});
   }
 
   @override
@@ -37,32 +33,62 @@ class ActiveSwapsResponse extends BaseResponse {
   ActiveSwapsResponse({
     required super.mmrpc,
     required this.uuids,
-    required this.swaps,
+    required this.statuses,
   });
 
   factory ActiveSwapsResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
 
+    final uuids =
+        (result.value<List<dynamic>>('uuids')).map((e) => e as String).toList();
+
+    final statusesJson = result.valueOrNull<JsonMap>('statuses');
+    final statuses = <String, ActiveSwapStatus>{};
+    if (statusesJson != null) {
+      for (final entry in statusesJson.entries) {
+        final key = entry.key;
+        final value = entry.value as JsonMap;
+        statuses[key] = ActiveSwapStatus.fromJson(value);
+      }
+    }
+
     return ActiveSwapsResponse(
       mmrpc: json.value<String>('mmrpc'),
-      uuids: (result.value<List<dynamic>>('uuids'))
-          .map((e) => e as String)
-          .toList(),
-      swaps: (result.value<List<dynamic>>('swaps'))
-          .map((e) => SwapInfo.fromJson(e as JsonMap))
-          .toList(),
+      uuids: uuids,
+      statuses: statuses.isEmpty ? null : statuses,
     );
   }
 
   final List<String> uuids;
-  final List<SwapInfo> swaps;
+  final Map<String, ActiveSwapStatus>? statuses;
 
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
     'result': {
       'uuids': uuids,
-      'swaps': swaps.map((e) => e.toJson()).toList(),
+      if (statuses != null)
+        'statuses': statuses!.map((k, v) => MapEntry(k, v.toJson())),
     },
+  };
+}
+
+/// Active swap status entry as returned by active_swaps when include_status is true
+class ActiveSwapStatus {
+  ActiveSwapStatus({required this.swapType, required this.swapData});
+
+  factory ActiveSwapStatus.fromJson(JsonMap json) {
+    return ActiveSwapStatus(
+      swapType: json.value<String>('swap_type'),
+      swapData: SwapInfo.fromJson(json.value<JsonMap>('swap_data')),
+    );
+  }
+
+  final String swapType;
+  final SwapInfo swapData;
+
+  Map<String, dynamic> toJson() => {
+    'swap_type': swapType,
+    'swap_data': swapData.toJson(),
   };
 }
