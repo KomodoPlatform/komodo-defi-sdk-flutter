@@ -7,9 +7,7 @@ void main() {
   group(
     'Coingecko CEX provider tests',
     () {
-      setUp(() {
-        // Additional setup goes here.
-      });
+      // No additional setup required.
 
       test('fetchCoinList test', () async {
         // Arrange
@@ -112,7 +110,7 @@ void main() {
 
           // Act & Assert
           expect(
-            () => provider.fetchCoinMarketChart(
+            () async => provider.fetchCoinMarketChart(
               id: 'bitcoin',
               vsCurrency: 'usd',
               fromUnixTimestamp: fromUnixTimestamp,
@@ -129,7 +127,7 @@ void main() {
 
         // Act & Assert
         expect(
-          () => provider.fetchCoinOhlc('bitcoin', 'usd', 400),
+          () async => provider.fetchCoinOhlc('bitcoin', 'usd', 400),
           throwsA(isA<ArgumentError>()),
         );
       });
@@ -142,7 +140,8 @@ void main() {
     skip:
         _runLiveApiTests
             ? false
-            : 'Live API tests are skipped by default. Enable with RUN_LIVE_API_TESTS=true',
+            : 'Live API tests are skipped by default. Enable with -DRUN_LIVE_API_TESTS=true (dart test) '
+                'or --dart-define=RUN_LIVE_API_TESTS=true (flutter test).',
   );
 
   // test('fetchCoinHistoricalData test', () async {

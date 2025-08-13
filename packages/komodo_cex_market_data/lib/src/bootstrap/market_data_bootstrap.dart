@@ -33,6 +33,11 @@ class MarketDataConfig {
     this.binanceProvider,
     this.coinGeckoProvider,
     this.komodoPriceProvider,
+    this.repositoryPriority = const [
+      RepositoryType.komodoPrice,
+      RepositoryType.binance,
+      RepositoryType.coinGecko,
+    ],
   });
 
   /// Whether to enable Binance repository
@@ -58,7 +63,13 @@ class MarketDataConfig {
 
   /// Optional custom Komodo price provider (uses default if null)
   final IKomodoPriceProvider? komodoPriceProvider;
+
+  /// The priority order for repository selection
+  final List<RepositoryType> repositoryPriority;
 }
+
+/// Enum representing available repository types
+enum RepositoryType { komodoPrice, binance, coinGecko }
 
 /// Bootstrap factory for market data dependencies
 class MarketDataBootstrap {
@@ -147,26 +158,30 @@ class MarketDataBootstrap {
   ) async {
     final repositories = <CexRepository>[];
 
-    // Add repositories in priority order:
-    // 1) KomodoPrice — preferred primary source. It is tailored to the
-    //    Komodo ecosystem, aggregates curated pricing, and aligns IDs with our
-    //    asset model, which typically yields the most consistent coverage.
-    // 2) Binance — highly reliable centralized exchange with deep liquidity
-    //    and robust OHLC endpoints; good quality prices but narrower asset
-    //    coverage than CoinGecko for long-tail tokens.
-    // 3) CoinGecko — broadest asset coverage via aggregation across venues,
-    //    but subject to stricter rate limits and occasional data gaps; used as
-    //    a last resort.
+    // Collect available repositories keyed by type
+    final availableRepos = <RepositoryType, CexRepository>{};
+
     if (config.enableKomodoPrice) {
-      repositories.add(await container.getAsync<KomodoPriceRepository>());
+      availableRepos[RepositoryType.komodoPrice] =
+          await container.getAsync<KomodoPriceRepository>();
     }
 
     if (config.enableBinance) {
-      repositories.add(await container.getAsync<BinanceRepository>());
+      availableRepos[RepositoryType.binance] =
+          await container.getAsync<BinanceRepository>();
     }
 
     if (config.enableCoinGecko) {
-      repositories.add(await container.getAsync<CoinGeckoRepository>());
+      availableRepos[RepositoryType.coinGecko] =
+          await container.getAsync<CoinGeckoRepository>();
+    }
+
+    // Add repositories in configured priority order
+    for (final type in config.repositoryPriority) {
+      final repo = availableRepos[type];
+      if (repo != null) {
+        repositories.add(repo);
+      }
     }
 
     // Add any custom repositories

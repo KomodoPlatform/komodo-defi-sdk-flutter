@@ -261,7 +261,7 @@ class CoinGeckoRepository implements CexRepository {
       throw Exception('Invalid market data for $tradingSymbol');
     }
 
-    final priceChange = priceData.first.priceChange24h;
+    final priceChange = priceData.first.priceChangePercentage24h;
     if (priceChange == null) {
       throw Exception('Price change data not available for $tradingSymbol');
     }

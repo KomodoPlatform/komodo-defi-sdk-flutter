@@ -276,17 +276,6 @@ void main() {
     });
 
     group('Backoff Strategy Verification', () {
-      test('uses 300ms initial delay with jitter', () {
-        final binanceRepo = BinanceRepository(
-          binanceProvider: MockBinanceProvider(),
-        );
-
-        // Verify that default backoff strategy is configured correctly
-        // Note: This is more of a configuration verification test
-        // The actual timing would be tested in integration tests
-        expect(binanceRepo, isNotNull);
-      });
-
       test('conservative retry behavior under load', () async {
         // Use single repository manager to test retry behavior
         final singleRepoManager = TestRetryManager(

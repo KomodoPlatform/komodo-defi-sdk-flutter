@@ -157,7 +157,7 @@ void main() {
         final dynamic dynConverter = converter;
         expect(
           () => dynConverter.fromJson('1691404800'),
-          throwsA(isA<Error>()),
+          throwsA(isA<TypeError>()),
         );
       });
     });

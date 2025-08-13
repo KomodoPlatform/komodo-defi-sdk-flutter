@@ -11,6 +11,17 @@ class MockRepositorySelectionStrategy extends Mock
 
 class FakeAssetId extends Fake implements AssetId {}
 
+AssetId createTestAsset(String id, String symbol) {
+  return AssetId(
+    id: id,
+    symbol: AssetSymbol(assetConfigId: symbol),
+    name: symbol,
+    chainId: AssetChainId(chainId: 1),
+    derivationPath: '1234',
+    subClass: CoinSubClass.utxo,
+  );
+}
+
 void main() {
   setUpAll(() {
     registerFallbackValue(FakeAssetId());
@@ -43,14 +54,7 @@ void main() {
         'should not try any repositories when selection strategy returns null',
         () async {
           // Arrange: Create an unsupported asset
-          final unsupportedAsset = AssetId(
-            id: 'test-marty',
-            symbol: AssetSymbol(assetConfigId: 'MARTY'),
-            name: 'MARTY',
-            chainId: AssetChainId(chainId: 1),
-            derivationPath: '1234',
-            subClass: CoinSubClass.utxo,
-          );
+          final unsupportedAsset = createTestAsset('test-marty', 'MARTY');
 
           // Mock selection strategy to return null (no repository supports this asset)
           when(
@@ -108,14 +112,7 @@ void main() {
         'correctly throws StateError when no repository supports asset (after fix)',
         () async {
           // This test verifies the correct behavior after the bug fix
-          final unsupportedAsset = AssetId(
-            id: 'test-doc',
-            symbol: AssetSymbol(assetConfigId: 'DOC'),
-            name: 'DOC',
-            chainId: AssetChainId(chainId: 1),
-            derivationPath: '1234',
-            subClass: CoinSubClass.utxo,
-          );
+          final unsupportedAsset = createTestAsset('test-doc', 'DOC');
 
           // Selection strategy returns null (correct behavior)
           when(
@@ -168,22 +165,8 @@ void main() {
         final coinGeckoStrategy = CoinGeckoIdResolutionStrategy();
 
         // Test with clearly unsupported assets
-        final martyAsset = AssetId(
-          id: 'test-marty',
-          symbol: AssetSymbol(assetConfigId: 'MARTY'),
-          name: 'MARTY',
-          chainId: AssetChainId(chainId: 1),
-          derivationPath: '1234',
-          subClass: CoinSubClass.utxo,
-        );
-        final docAsset = AssetId(
-          id: 'test-doc',
-          symbol: AssetSymbol(assetConfigId: 'DOC'),
-          name: 'DOC',
-          chainId: AssetChainId(chainId: 1),
-          derivationPath: '1234',
-          subClass: CoinSubClass.utxo,
-        );
+        final martyAsset = createTestAsset('test-marty', 'MARTY');
+        final docAsset = createTestAsset('test-doc', 'DOC');
 
         // Binance will claim it can resolve these assets because it falls back to configSymbol
         expect(binanceStrategy.canResolve(martyAsset), isTrue);
@@ -343,22 +326,8 @@ void main() {
           );
 
           // Test unsupported assets
-          final martyAsset = AssetId(
-            id: 'test-marty',
-            symbol: AssetSymbol(assetConfigId: 'MARTY'),
-            name: 'MARTY',
-            chainId: AssetChainId(chainId: 1),
-            derivationPath: '1234',
-            subClass: CoinSubClass.utxo,
-          );
-          final docAsset = AssetId(
-            id: 'test-doc',
-            symbol: AssetSymbol(assetConfigId: 'DOC'),
-            name: 'DOC',
-            chainId: AssetChainId(chainId: 1),
-            derivationPath: '1234',
-            subClass: CoinSubClass.utxo,
-          );
+          final martyAsset = createTestAsset('test-marty', 'MARTY');
+          final docAsset = createTestAsset('test-doc', 'DOC');
 
           expect(
             await mockBinanceRepo.supports(
@@ -401,7 +370,7 @@ void main() {
 
       setUp(() {
         marketDataManager = CexMarketDataManager(
-          repositories: [mockBinanceRepo, mockCoinGeckoRepo],
+          priceRepositories: [mockBinanceRepo, mockCoinGeckoRepo],
           selectionStrategy: mockSelectionStrategy,
         );
       });
@@ -421,13 +390,9 @@ void main() {
             ),
           ).thenAnswer((_) async => null);
 
-          final unsupportedAsset = AssetId(
-            id: 'test-unsupported',
-            symbol: AssetSymbol(assetConfigId: 'UNSUPPORTED'),
-            name: 'UNSUPPORTED',
-            chainId: AssetChainId(chainId: 1),
-            derivationPath: '1234',
-            subClass: CoinSubClass.utxo,
+          final unsupportedAsset = createTestAsset(
+            'test-unsupported',
+            'UNSUPPORTED',
           );
 
           final result = await marketDataManager.maybeFiatPrice(
@@ -452,13 +417,9 @@ void main() {
             ),
           ).thenAnswer((_) async => null);
 
-          final unsupportedAsset = AssetId(
-            id: 'test-unsupported',
-            symbol: AssetSymbol(assetConfigId: 'UNSUPPORTED'),
-            name: 'UNSUPPORTED',
-            chainId: AssetChainId(chainId: 1),
-            derivationPath: '1234',
-            subClass: CoinSubClass.utxo,
+          final unsupportedAsset = createTestAsset(
+            'test-unsupported',
+            'UNSUPPORTED',
           );
 
           expect(

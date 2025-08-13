@@ -86,10 +86,28 @@ class KomodoPriceRepository extends CexRepository {
       final prices = await _pendingFetch!;
       _cachedPrices = prices;
       _cacheTimestamp = DateTime.now();
+      // Update coin list cache when prices are refreshed
+      _updateCoinListCache(prices);
       return prices;
     } finally {
       _pendingFetch = null;
     }
+  }
+
+  void _updateCoinListCache(Map<String, AssetMarketInformation> prices) {
+    _cachedCoinsList =
+        prices.values
+            .map(
+              (e) => CexCoin(
+                id: e.ticker,
+                symbol: e.ticker,
+                name: e.ticker,
+                currencies: const <String>{'USD', 'USDT'},
+                source: 'komodo',
+              ),
+            )
+            .toList();
+    _cachedFiatCurrencies = {'USD', 'USDT'};
   }
 
   @override
@@ -169,24 +187,11 @@ class KomodoPriceRepository extends CexRepository {
 
   @override
   Future<List<CexCoin>> getCoinList() async {
-    if (_cachedCoinsList != null) {
-      return _cachedCoinsList!;
+    // Ensure prices are cached first
+    if (_cachedCoinsList == null) {
+      await _getCachedKomodoPrices();
     }
-    final prices = await _getCachedKomodoPrices();
-    _cachedCoinsList =
-        prices.values
-            .map(
-              (e) => CexCoin(
-                id: e.ticker,
-                symbol: e.ticker,
-                name: e.ticker,
-                currencies: const <String>{'USD', 'USDT'},
-                source: 'komodo',
-              ),
-            )
-            .toList();
-    _cachedFiatCurrencies = {'USD', 'USDT'};
-    return _cachedCoinsList!;
+    return _cachedCoinsList ?? [];
   }
 
   @override

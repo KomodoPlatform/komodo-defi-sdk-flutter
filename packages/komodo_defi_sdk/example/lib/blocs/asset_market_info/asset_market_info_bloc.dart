@@ -15,7 +15,10 @@ class AssetMarketInfoBloc
   AssetMarketInfoBloc({required KomodoDefiSdk sdk})
     : _sdk = sdk,
       super(const AssetMarketInfoState()) {
-    on<AssetMarketInfoRequested>(_onWatchAssetMarketInfo, transformer: restartable());
+    on<AssetMarketInfoRequested>(
+      _onWatchAssetMarketInfo,
+      transformer: restartable(),
+    );
   }
 
   final KomodoDefiSdk _sdk;

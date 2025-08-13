@@ -60,7 +60,9 @@ class BinanceIdResolutionStrategy implements IdResolutionStrategy {
       // Thrown when the asset lacks a Binance identifier and no suitable
       // fallback exists in [getIdPriority]. Callers should catch this in
       // feature-detection paths (e.g., supports()).
-      throw ArgumentError('Cannot resolve trading symbol for asset ${assetId.id} on $platformName');
+      throw ArgumentError(
+        'Cannot resolve trading symbol for asset ${assetId.id} on $platformName',
+      );
     }
 
     final resolvedSymbol = ids.first;
@@ -80,6 +82,9 @@ class CoinGeckoIdResolutionStrategy implements IdResolutionStrategy {
   @override
   String get platformName => 'CoinGecko';
 
+  /// Only uses the coinGeckoId, as CoinGecko API does not support or map
+  /// to configSymbol. If coinGeckoId is null, then the CoinGecko API cannot
+  /// be used and an error is thrown in [resolveTradingSymbol].
   @override
   List<String> getIdPriority(AssetId assetId) {
     final coinGeckoId = assetId.symbol.coinGeckoId;
@@ -108,7 +113,9 @@ class CoinGeckoIdResolutionStrategy implements IdResolutionStrategy {
       // Thrown when the asset lacks a CoinGecko identifier and no suitable
       // fallback exists in [getIdPriority]. Callers should catch this in
       // feature-detection paths (e.g., supports()).
-      throw ArgumentError('Cannot resolve trading symbol for asset ${assetId.id} on $platformName');
+      throw ArgumentError(
+        'Cannot resolve trading symbol for asset ${assetId.id} on $platformName',
+      );
     }
 
     final resolvedSymbol = ids.first;
@@ -143,7 +150,9 @@ class KomodoIdResolutionStrategy implements IdResolutionStrategy {
       // Thrown when the asset lacks a Komodo identifier and no suitable
       // fallback exists in [getIdPriority]. Callers should catch this in
       // feature-detection paths (e.g., supports()).
-      throw ArgumentError('Cannot resolve trading symbol for asset ${assetId.id} on $platformName');
+      throw ArgumentError(
+        'Cannot resolve trading symbol for asset ${assetId.id} on $platformName',
+      );
     }
     return ids.first;
   }

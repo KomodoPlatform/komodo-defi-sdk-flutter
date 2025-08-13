@@ -490,12 +490,48 @@ void main() {
 
         // Verify fallback was used
         expect(result, equals(Decimal.parse('50000.0')));
-        verify(
-          () => primaryRepo.getCoinFiatPrice(testAsset),
-        ).called(2); // Called once for each test
+        verify(() => primaryRepo.getCoinFiatPrice(testAsset)).called(
+          2,
+        ); // Called once for maxTotalAttempts=1 test and once for maxTotalAttempts=2 test
         verify(
           () => fallbackRepo.getCoinFiatPrice(testAsset),
         ).called(1); // Called once in second test
+      });
+
+      test('handles maxTotalAttempts edge cases', () async {
+        // Setup mocks (same as above)
+        when(
+          () => mockStrategy.selectRepository(
+            assetId: any(named: 'assetId'),
+            fiatCurrency: any(named: 'fiatCurrency'),
+            requestType: any(named: 'requestType'),
+            availableRepositories: any(named: 'availableRepositories'),
+          ),
+        ).thenAnswer((_) async => primaryRepo);
+
+        when(
+          () => primaryRepo.getCoinFiatPrice(
+            any(),
+            fiatCurrency: any(named: 'fiatCurrency'),
+          ),
+        ).thenThrow(Exception('Always fails'));
+
+        // Test with maxTotalAttempts = 0 should fail immediately
+        expect(
+          () => manager.tryRepositoriesInOrder(
+            testAsset,
+            Stablecoin.usdt,
+            PriceRequestType.currentPrice,
+            (repo) => repo.getCoinFiatPrice(testAsset),
+            'test',
+            maxTotalAttempts: 0,
+          ),
+          throwsA(isA<Exception>()),
+        );
+
+        // Verify no repository was called
+        verifyNever(() => primaryRepo.getCoinFiatPrice(any()));
+        verifyNever(() => fallbackRepo.getCoinFiatPrice(any()));
       });
     });
   });

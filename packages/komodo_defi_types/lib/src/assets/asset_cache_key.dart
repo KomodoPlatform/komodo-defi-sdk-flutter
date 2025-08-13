@@ -26,6 +26,9 @@ String canonicalCustomFieldsSuffix(Map<String, Object?> customFields) {
   final keys = customFields.keys.toList()..sort();
   final parts = <String>[];
   for (final key in keys) {
+    if (key.isEmpty) {
+      throw ArgumentError('Custom field keys cannot be empty');
+    }
     parts.add('$key=${customFields[key]}');
   }
   return '{${parts.join('|')}}';

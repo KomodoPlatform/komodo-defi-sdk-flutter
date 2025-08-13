@@ -172,7 +172,7 @@ Future<void> bootstrap({
       config.marketDataConfig,
     );
     final manager = CexMarketDataManager(
-      repositories: repositories,
+      priceRepositories: repositories,
       selectionStrategy: container<RepositorySelectionStrategy>(),
     );
     await manager.init();

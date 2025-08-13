@@ -71,9 +71,9 @@ class CexMarketDataManager
     implements MarketDataManager {
   /// Creates a new instance of [CexMarketDataManager]
   CexMarketDataManager({
-    required List<CexRepository> repositories,
+    required List<CexRepository> priceRepositories,
     RepositorySelectionStrategy? selectionStrategy,
-  }) : _priceRepositories = repositories,
+  }) : _priceRepositories = priceRepositories,
        _selectionStrategy =
            selectionStrategy ?? DefaultRepositorySelectionStrategy();
 
