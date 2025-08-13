@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:characters/characters.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Enum representing different types of password validation errors
@@ -50,9 +51,9 @@ abstract class SecurityUtils {
       return PasswordValidationError.tooShort;
     }
 
-    if (password
-        .toLowerCase()
-        .contains(RegExp('password', caseSensitive: false, unicode: true))) {
+    if (password.toLowerCase().contains(
+      RegExp('password', caseSensitive: false, unicode: true),
+    )) {
       return PasswordValidationError.containsPassword;
     }
 
@@ -103,7 +104,8 @@ abstract class SecurityUtils {
 
     const extendedSpecial = r'~`$^*+=<>?';
 
-    final allCharacters = upperCaseLetters +
+    final allCharacters =
+        upperCaseLetters +
         lowerCaseLetters +
         digits +
         specialCharacters +
@@ -148,6 +150,7 @@ extension CensoredJsonMap on JsonMap {
     const sensitive = [
       'seed',
       'userpass',
+      'pin',
       'passphrase',
       'password',
       'mnemonic',
@@ -167,11 +170,38 @@ extension CensoredJsonMap on JsonMap {
   }
 }
 
+/// Wrapper for sensitive strings that should never reveal their value when
+/// implicitly stringified (e.g. in logs via interpolation).
+class SensitiveString {
+  const SensitiveString(this.value);
+
+  final String value;
+
+  @override
+  String toString() => '[REDACTED]';
+}
+
+/// JSON converter for [SensitiveString] that preserves the raw string in
+/// serialized JSON while restoring it as a [SensitiveString] on deserialization.
+class SensitiveStringConverter
+    implements JsonConverter<SensitiveString?, String?> {
+  const SensitiveStringConverter();
+
+  @override
+  SensitiveString? fromJson(String? json) =>
+      json == null ? null : SensitiveString(json);
+
+  @override
+  String? toJson(SensitiveString? object) => object?.value;
+}
+
 // Example Test
 void main() {
   final password = SecurityUtils.generatePasswordSecure(24);
-  final extendedPassword =
-      SecurityUtils.generatePasswordSecure(24, extendedSpecialCharacters: true);
+  final extendedPassword = SecurityUtils.generatePasswordSecure(
+    24,
+    extendedSpecialCharacters: true,
+  );
 
   // ignore: avoid_print
   print('Password: $password');

@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TrezorUserActionData {
 
- TrezorUserActionType get actionType; String? get pin; String? get passphrase;
+ TrezorUserActionType get actionType;@SensitiveStringConverter() SensitiveString? get pin;@SensitiveStringConverter() SensitiveString? get passphrase;
 /// Create a copy of TrezorUserActionData
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -36,10 +36,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,actionType,pin,passphrase);
 
-@override
-String toString() {
-  return 'TrezorUserActionData(actionType: $actionType, pin: $pin, passphrase: $passphrase)';
-}
 
 
 }
@@ -49,7 +45,7 @@ abstract mixin class $TrezorUserActionDataCopyWith<$Res>  {
   factory $TrezorUserActionDataCopyWith(TrezorUserActionData value, $Res Function(TrezorUserActionData) _then) = _$TrezorUserActionDataCopyWithImpl;
 @useResult
 $Res call({
- TrezorUserActionType actionType, String? pin, String? passphrase
+ TrezorUserActionType actionType,@SensitiveStringConverter() SensitiveString? pin,@SensitiveStringConverter() SensitiveString? passphrase
 });
 
 
@@ -70,8 +66,8 @@ class _$TrezorUserActionDataCopyWithImpl<$Res>
   return _then(_self.copyWith(
 actionType: null == actionType ? _self.actionType : actionType // ignore: cast_nullable_to_non_nullable
 as TrezorUserActionType,pin: freezed == pin ? _self.pin : pin // ignore: cast_nullable_to_non_nullable
-as String?,passphrase: freezed == passphrase ? _self.passphrase : passphrase // ignore: cast_nullable_to_non_nullable
-as String?,
+as SensitiveString?,passphrase: freezed == passphrase ? _self.passphrase : passphrase // ignore: cast_nullable_to_non_nullable
+as SensitiveString?,
   ));
 }
 
@@ -81,13 +77,13 @@ as String?,
 /// @nodoc
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class _TrezorUserActionData implements TrezorUserActionData {
-  const _TrezorUserActionData({required this.actionType, this.pin, this.passphrase});
+class _TrezorUserActionData extends TrezorUserActionData {
+  const _TrezorUserActionData({required this.actionType, @SensitiveStringConverter() this.pin, @SensitiveStringConverter() this.passphrase}): super._();
   factory _TrezorUserActionData.fromJson(Map<String, dynamic> json) => _$TrezorUserActionDataFromJson(json);
 
 @override final  TrezorUserActionType actionType;
-@override final  String? pin;
-@override final  String? passphrase;
+@override@SensitiveStringConverter() final  SensitiveString? pin;
+@override@SensitiveStringConverter() final  SensitiveString? passphrase;
 
 /// Create a copy of TrezorUserActionData
 /// with the given fields replaced by the non-null parameter values.
@@ -109,10 +105,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,actionType,pin,passphrase);
 
-@override
-String toString() {
-  return 'TrezorUserActionData(actionType: $actionType, pin: $pin, passphrase: $passphrase)';
-}
 
 
 }
@@ -122,7 +114,7 @@ abstract mixin class _$TrezorUserActionDataCopyWith<$Res> implements $TrezorUser
   factory _$TrezorUserActionDataCopyWith(_TrezorUserActionData value, $Res Function(_TrezorUserActionData) _then) = __$TrezorUserActionDataCopyWithImpl;
 @override @useResult
 $Res call({
- TrezorUserActionType actionType, String? pin, String? passphrase
+ TrezorUserActionType actionType,@SensitiveStringConverter() SensitiveString? pin,@SensitiveStringConverter() SensitiveString? passphrase
 });
 
 
@@ -143,8 +135,8 @@ class __$TrezorUserActionDataCopyWithImpl<$Res>
   return _then(_TrezorUserActionData(
 actionType: null == actionType ? _self.actionType : actionType // ignore: cast_nullable_to_non_nullable
 as TrezorUserActionType,pin: freezed == pin ? _self.pin : pin // ignore: cast_nullable_to_non_nullable
-as String?,passphrase: freezed == passphrase ? _self.passphrase : passphrase // ignore: cast_nullable_to_non_nullable
-as String?,
+as SensitiveString?,passphrase: freezed == passphrase ? _self.passphrase : passphrase // ignore: cast_nullable_to_non_nullable
+as SensitiveString?,
   ));
 }
 

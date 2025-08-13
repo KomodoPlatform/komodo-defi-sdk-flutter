@@ -17,14 +17,16 @@ enum TrezorUserActionType {
 }
 
 /// Data sent to the API when providing a PIN or passphrase to a Trezor device.
-@freezed
+@Freezed(toStringOverride: false)
 abstract class TrezorUserActionData with _$TrezorUserActionData {
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory TrezorUserActionData({
     required TrezorUserActionType actionType,
-    String? pin,
-    String? passphrase,
+    @SensitiveStringConverter() SensitiveString? pin,
+    @SensitiveStringConverter() SensitiveString? passphrase,
   }) = _TrezorUserActionData;
+
+  const TrezorUserActionData._();
 
   /// Convenience factory for PIN actions with strong validation.
   factory TrezorUserActionData.pin(String pin) {
@@ -33,7 +35,7 @@ abstract class TrezorUserActionData with _$TrezorUserActionData {
     }
     return TrezorUserActionData(
       actionType: TrezorUserActionType.trezorPin,
-      pin: pin,
+      pin: SensitiveString(pin),
     );
   }
 
@@ -42,7 +44,7 @@ abstract class TrezorUserActionData with _$TrezorUserActionData {
     // Empty passphrase is allowed to access default wallet
     return TrezorUserActionData(
       actionType: TrezorUserActionType.trezorPassphrase,
-      passphrase: passphrase,
+      passphrase: SensitiveString(passphrase),
     );
   }
 
@@ -50,4 +52,11 @@ abstract class TrezorUserActionData with _$TrezorUserActionData {
       _$TrezorUserActionDataFromJson(json);
 
   static final RegExp _pinRegex = RegExp(r'^\d+$');
+
+  @override
+  String toString() {
+    final pinRedacted = pin == null ? 'null' : '[REDACTED]';
+    final passphraseRedacted = passphrase == null ? 'null' : '[REDACTED]';
+    return 'TrezorUserActionData(actionType: $actionType, pin: $pinRedacted, passphrase: $passphraseRedacted)';
+  }
 }

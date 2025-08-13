@@ -10,16 +10,18 @@ _TrezorUserActionData _$TrezorUserActionDataFromJson(
   Map<String, dynamic> json,
 ) => _TrezorUserActionData(
   actionType: $enumDecode(_$TrezorUserActionTypeEnumMap, json['action_type']),
-  pin: json['pin'] as String?,
-  passphrase: json['passphrase'] as String?,
+  pin: const SensitiveStringConverter().fromJson(json['pin'] as String?),
+  passphrase: const SensitiveStringConverter().fromJson(
+    json['passphrase'] as String?,
+  ),
 );
 
 Map<String, dynamic> _$TrezorUserActionDataToJson(
   _TrezorUserActionData instance,
 ) => <String, dynamic>{
   'action_type': _$TrezorUserActionTypeEnumMap[instance.actionType]!,
-  'pin': instance.pin,
-  'passphrase': instance.passphrase,
+  'pin': const SensitiveStringConverter().toJson(instance.pin),
+  'passphrase': const SensitiveStringConverter().toJson(instance.passphrase),
 };
 
 const _$TrezorUserActionTypeEnumMap = {

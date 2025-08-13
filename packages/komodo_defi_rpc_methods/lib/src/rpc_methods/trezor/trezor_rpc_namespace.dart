@@ -1,7 +1,7 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart'
-    show TrezorDeviceInfo, TrezorUserActionData, TrezorUserActionType;
+    show TrezorDeviceInfo, TrezorUserActionData;
 
 /// Trezor hardware wallet methods namespace
 class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
@@ -87,10 +87,7 @@ class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
 
     return userAction(
       taskId: taskId,
-      userAction: TrezorUserActionData(
-        actionType: TrezorUserActionType.trezorPin,
-        pin: pin,
-      ),
+      userAction: TrezorUserActionData.pin(pin),
     );
   }
 
@@ -101,10 +98,7 @@ class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
   }) {
     return userAction(
       taskId: taskId,
-      userAction: TrezorUserActionData(
-        actionType: TrezorUserActionType.trezorPassphrase,
-        passphrase: passphrase,
-      ),
+      userAction: TrezorUserActionData.passphrase(passphrase),
     );
   }
 
