@@ -1,17 +1,18 @@
+import 'package:dragon_charts_flutter/dragon_charts_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:dragon_charts/src/sparkline/sparkline_chart.dart';
 
 void main() {
   group('SparklineChart', () {
-    testWidgets('handles empty data without crashing', (WidgetTester tester) async {
+    testWidgets('handles empty data without crashing',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SizedBox(
             width: 200,
             height: 100,
             child: SparklineChart(
-              data: const [],
+              data: [],
               positiveLineColor: Colors.green,
               negativeLineColor: Colors.red,
               lineThickness: 2,
@@ -23,14 +24,15 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('handles single data point without crashing', (WidgetTester tester) async {
+    testWidgets('handles single data point without crashing',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SizedBox(
             width: 200,
             height: 100,
             child: SparklineChart(
-              data: const [5.0],
+              data: [5.0],
               positiveLineColor: Colors.green,
               negativeLineColor: Colors.red,
               lineThickness: 2,
@@ -42,14 +44,15 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('handles all same values without crashing', (WidgetTester tester) async {
+    testWidgets('handles all same values without crashing',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SizedBox(
             width: 200,
             height: 100,
             child: SparklineChart(
-              data: const [5.0, 5.0, 5.0, 5.0],
+              data: [5.0, 5.0, 5.0, 5.0],
               positiveLineColor: Colors.green,
               negativeLineColor: Colors.red,
               lineThickness: 2,
@@ -61,14 +64,15 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('handles negative values correctly', (WidgetTester tester) async {
+    testWidgets('handles negative values correctly',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SizedBox(
             width: 200,
             height: 100,
             child: SparklineChart(
-              data: const [-5.0, -2.0, 3.0, 1.0, -1.0],
+              data: [-5.0, -2.0, 3.0, 1.0, -1.0],
               positiveLineColor: Colors.green,
               negativeLineColor: Colors.red,
               lineThickness: 2,
@@ -82,12 +86,12 @@ void main() {
 
     testWidgets('handles curved line option', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SizedBox(
             width: 200,
             height: 100,
             child: SparklineChart(
-              data: const [1.0, 5.0, 2.0, 8.0, 3.0],
+              data: [1.0, 5.0, 2.0, 8.0, 3.0],
               positiveLineColor: Colors.green,
               negativeLineColor: Colors.red,
               lineThickness: 2,
@@ -102,12 +106,12 @@ void main() {
 
     testWidgets('handles zero values', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SizedBox(
             width: 200,
             height: 100,
             child: SparklineChart(
-              data: const [0.0, 0.0, 0.0],
+              data: [0.0, 0.0, 0.0],
               positiveLineColor: Colors.green,
               negativeLineColor: Colors.red,
               lineThickness: 2,
