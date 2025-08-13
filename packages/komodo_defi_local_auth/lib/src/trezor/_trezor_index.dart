@@ -4,6 +4,8 @@
 library _trezor;
 
 export 'trezor_auth_service.dart';
+export 'trezor_connection_monitor.dart';
+export 'trezor_connection_status.dart';
 export 'trezor_exception.dart';
 export 'trezor_initialization_state.dart';
 export 'trezor_repository.dart';

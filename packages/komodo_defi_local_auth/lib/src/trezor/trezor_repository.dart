@@ -1,6 +1,7 @@
 import 'dart:async' show StreamController, Timer, unawaited;
 
 import 'package:komodo_defi_local_auth/src/auth/auth_state.dart';
+import 'package:komodo_defi_local_auth/src/trezor/trezor_connection_status.dart';
 import 'package:komodo_defi_local_auth/src/trezor/trezor_exception.dart';
 import 'package:komodo_defi_local_auth/src/trezor/trezor_initialization_state.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -48,9 +49,11 @@ class TrezorRepository {
   }) async* {
     int? taskId;
     StreamController<TrezorInitializationState>? controller;
+    // Ensure we can always cancel the timer even if the stream is cancelled
+    // by the subscriber.
+    Timer? statusTimer;
 
     try {
-      // Start initialization
       yield const TrezorInitializationState(
         status: AuthenticationStatus.initializing,
         message: 'Starting Trezor initialization...',
@@ -70,8 +73,6 @@ class TrezorRepository {
         taskId: taskId,
       );
 
-      // Poll for status updates
-      Timer? statusTimer;
       var isComplete = false;
 
       Future<void> pollStatus() async {
@@ -115,7 +116,9 @@ class TrezorRepository {
         }
       }
 
-      // Start polling
+      // Do not immediately emit the first status update to avoid race
+      // conditions (i.e. KDF task not yet created). Use the provided polling
+      // interval for the first status check.
       statusTimer = Timer.periodic(
         pollingInterval,
         (_) => unawaited(pollStatus()),
@@ -128,9 +131,10 @@ class TrezorRepository {
         error: 'Initialization failed: $e',
         taskId: taskId,
       );
-
-      throw TrezorException('Failed to initialize Trezor device', e.toString());
     } finally {
+      // Always cancel the timer to avoid leaks if the subscriber cancels
+      // the stream or if we exit early for any reason.
+      statusTimer?.cancel();
       if (taskId != null) {
         _activeInitializations.remove(taskId);
         if (controller != null && !controller.isClosed) {
@@ -184,6 +188,61 @@ class TrezorRepository {
       return response.result == 'success';
     } catch (e) {
       throw TrezorException('Failed to cancel initialization', e.toString());
+    }
+  }
+
+  /// Returns the current connection status as a parsed enum.
+  Future<TrezorConnectionStatus> getConnectionStatus({
+    String? devicePubkey,
+  }) async {
+    final response = await _client.rpc.trezor.connectionStatus(
+      devicePubkey: devicePubkey,
+    );
+    return TrezorConnectionStatus.fromString(response.status);
+  }
+
+  /// Continuously polls the Trezor connection status and emits parsed enum updates.
+  ///
+  /// The stream immediately yields the current status, then continues to poll
+  /// using [pollInterval]. If the status changes, a new value is emitted.
+  /// The stream closes once a `Disconnected` status is observed. If
+  /// [maxDuration] is provided, the stream will also end after the duration
+  /// elapses by emitting `TrezorConnectionStatus.unreachable`. If `maxDuration`
+  /// is null (default), the polling continues without a time limit.
+  Stream<TrezorConnectionStatus> watchConnectionStatus({
+    String? devicePubkey,
+    Duration pollInterval = const Duration(seconds: 1),
+    Duration? maxDuration,
+  }) async* {
+    TrezorConnectionStatus last;
+    final stopwatch = maxDuration != null ? (Stopwatch()..start()) : null;
+
+    try {
+      last = await getConnectionStatus(devicePubkey: devicePubkey);
+      yield last;
+    } catch (e) {
+      // If initial status check fails, treat as disconnected and end stream
+      yield TrezorConnectionStatus.disconnected;
+      return;
+    }
+
+    while (last.shouldContinueMonitoring &&
+        (maxDuration == null || stopwatch!.elapsed < maxDuration)) {
+      await Future<void>.delayed(pollInterval);
+      try {
+        final current = await getConnectionStatus(devicePubkey: devicePubkey);
+        if (current != last) {
+          last = current;
+          yield current;
+        }
+      } catch (e) {
+        yield TrezorConnectionStatus.disconnected;
+        return;
+      }
+    }
+
+    if (maxDuration != null && stopwatch!.elapsed >= maxDuration) {
+      yield TrezorConnectionStatus.unreachable;
     }
   }
 
