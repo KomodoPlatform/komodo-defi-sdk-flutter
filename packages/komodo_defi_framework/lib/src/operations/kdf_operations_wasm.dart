@@ -7,6 +7,9 @@ import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:http/http.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
+import 'package:komodo_defi_framework/src/js/js_error_utils.dart';
+import 'package:komodo_defi_framework/src/js/js_interop_utils.dart';
+import 'package:komodo_defi_framework/src/js/js_result_mappers.dart' as js_maps;
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:mutex/mutex.dart';
 
@@ -41,6 +44,12 @@ class KdfOperationsWasm implements IKdfOperations {
   void Function(String)? _logger;
 
   void _log(String message) => (_logger ?? print).call(message);
+
+  void _debugLog(String message) {
+    if (KdfLoggingConfig.debugLogging) {
+      _log(message);
+    }
+  }
 
   @override
   Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
@@ -96,79 +105,66 @@ class KdfOperationsWasm implements IKdfOperations {
   Future<KdfStartupResult> _executeKdfMain(
     js_interop.JSObject? jsConfig,
   ) async {
-    final future = _kdfModule!
-        .callMethod(
-          'mm2_main'.toJS,
-          jsConfig,
-          (int level, String message) {
-            _log('[$level] KDF: $message');
-          }.toJS,
-        )
-        .dartify() as Future<dynamic>?;
+    final jsMethod = _kdfModule!.callMethod(
+      'mm2_main'.toJS,
+      jsConfig,
+      (int level, String message) {
+        _log('[$level] KDF: $message');
+      }.toJS,
+    );
 
-    final result = await future;
+    final result = await parseJsInteropMaybePromise<int>(jsMethod);
     _log('mm2_main called: $result');
 
-    if (result is int) {
-      return KdfStartupResult.fromDefaultInt(result);
-    }
-
-    throw Exception(
-      'KDF main returned unexpected type: ${result.runtimeType}',
-    );
+    return KdfStartupResult.fromDefaultInt(result);
   }
 
   KdfStartupResult _handleStartupJsError(js_interop.JSAny jsError) {
     try {
-      _log('Handling JSAny error: [${jsError.runtimeType}] $jsError');
+      _debugLog('Handling JSAny error: [${jsError.runtimeType}] $jsError');
 
-      // Try to extract error code from JSNumber
+      // Direct JSNumber error
       if (isInstance<js_interop.JSNumber>(jsError, 'JSNumber')) {
-        final errorCode = (jsError as js_interop.JSNumber).toDartInt;
-        _log('KdfOperationsWasm: Resolved as JSNumber error code: $errorCode');
-        return KdfStartupResult.fromDefaultInt(errorCode);
+        final dynamic dartNumber = (jsError as js_interop.JSNumber).dartify();
+        final code = extractNumericCodeFromDartError(dartNumber);
+        if (code != null) {
+          _debugLog('KdfOperationsWasm: Resolved as JSNumber code: $code');
+          return KdfStartupResult.fromDefaultInt(code);
+        }
       }
 
-      // Try to extract error code from JSObject
+      // JSObject with useful fields
       if (isInstance<js_interop.JSObject>(jsError, 'JSObject')) {
         final jsObj = jsError as js_interop.JSObject;
 
-        // Check for code property
-        if (jsObj.hasProperty('code'.toJS).toDart) {
-          final code = jsObj.getProperty<js_interop.JSNumber?>('code'.toJS);
-          // Check if the property is a JSNumber
-          if (code != null &&
-              isInstance<js_interop.JSNumber>(code, 'JSNumber')) {
-            final errorCode = code.toDartInt;
-            _log(
-              'KdfOperationsWasm: Resolved as JSObject->JSNumber error code: $errorCode',
-            );
-            return KdfStartupResult.fromDefaultInt(errorCode);
-          }
+        // Prefer robust dartify and then inspect
+        final dynamic dartified = jsObj.dartify();
+        final code = extractNumericCodeFromDartError(dartified);
+        if (code != null) return KdfStartupResult.fromDefaultInt(code);
+
+        final msg = extractMessageFromDartError(dartified);
+        if (msg != null && messageIndicatesAlreadyRunning(msg)) {
+          return KdfStartupResult.alreadyRunning;
         }
 
-        // Try toNumber method
-        final asNumber =
-            jsObj.callMethod<js_interop.JSNumber?>('toNumber'.toJS);
-        if (asNumber?.isDefinedAndNotNull ?? false) {
-          final errorCode = asNumber!.toDartInt;
-          _log(
-            'KdfOperationsWasm: Resolved as JSNumber error code: $errorCode',
-          );
-          return KdfStartupResult.fromDefaultInt(errorCode);
+        // Fallback for 'code' property directly on JS object if not covered above
+        if (jsObj.hasProperty('code'.toJS).toDart) {
+          final jsAnyCode = jsObj.getProperty<js_interop.JSAny?>('code'.toJS);
+          final code2 = extractNumericCodeFromDartError(jsAnyCode?.dartify());
+          if (code2 != null) return KdfStartupResult.fromDefaultInt(code2);
         }
       }
 
       // Try dartify as last resort
       final dynamic error = jsError.dartify();
-      _log('Dartified error type: ${error.runtimeType}, value: $error');
+      _debugLog('Dartified error type: ${error.runtimeType}, value: $error');
 
-      if (error is int) {
-        return KdfStartupResult.fromDefaultInt(error);
-      } else if (error is num) {
-        return KdfStartupResult.fromDefaultInt(error.toInt());
-      } else if (error is String && int.tryParse(error) != null) {
-        return KdfStartupResult.fromDefaultInt(int.parse(error));
+      final code = extractNumericCodeFromDartError(error);
+      if (code != null) return KdfStartupResult.fromDefaultInt(code);
+
+      final msg = extractMessageFromDartError(error);
+      if (msg != null && messageIndicatesAlreadyRunning(msg)) {
+        return KdfStartupResult.alreadyRunning;
       }
 
       _log('Could not extract error code from JSAny: $error');
@@ -183,8 +179,7 @@ class KdfOperationsWasm implements IKdfOperations {
     js_interop.JSAny? obj, [
     String? typeString,
   ]) {
-    return obj is T ||
-        obj.instanceOfString(typeString ?? T.runtimeType.toString());
+    return obj.instanceOfString(typeString ?? T.runtimeType.toString());
   }
 
   @override
@@ -201,35 +196,32 @@ class KdfOperationsWasm implements IKdfOperations {
     await _ensureLoaded();
 
     try {
-      final errorOrNull = await (_kdfModule!
-          .callMethod('mm2_stop'.toJS)
-          .dartify()! as Future<Object?>);
+      // Call mm2_stop which may return a Promise or a direct value
+      final jsAny = _kdfModule!.callMethod<js_interop.JSAny?>('mm2_stop'.toJS);
+      final status =
+          await parseJsInteropMaybePromise(jsAny, js_maps.mapJsStopResult);
 
-      if (errorOrNull is int) {
-        return StopStatus.fromDefaultInt(errorOrNull);
+      // Ensure the node actually stops when we expect success or already stopped
+      if (status == StopStatus.ok || status == StopStatus.stoppingAlready) {
+        await Future.doWhile(() async {
+          final isStopped = (await kdfMainStatus()) == MainStatus.notRunning;
+          if (!isStopped) {
+            await Future<void>.delayed(const Duration(milliseconds: 300));
+          }
+          return !isStopped;
+        }).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('KDF stop timed out'),
+        );
       }
 
-      _log('KDF stop result: $errorOrNull');
-
-      await Future.doWhile(() async {
-        final isStopped = (await kdfMainStatus()) == MainStatus.notRunning;
-
-        if (!isStopped) {
-          await Future<void>.delayed(const Duration(milliseconds: 300));
-        }
-        return !isStopped;
-      }).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('KDF stop timed out'),
-      );
+      return status;
     } on int catch (e) {
       return StopStatus.fromDefaultInt(e);
     } catch (e) {
       _log('Error stopping KDF: $e');
       return StopStatus.errorStopping;
     }
-
-    return StopStatus.ok;
   }
 
   @override
@@ -237,7 +229,7 @@ class KdfOperationsWasm implements IKdfOperations {
     await _ensureLoaded();
 
     final jsResponse = await _makeJsCall(request);
-    final dartResponse = _parseDartResponse(jsResponse, request);
+    final dartResponse = parseJsInteropJson(jsResponse);
     _validateResponse(dartResponse, request, jsResponse);
 
     return JsonMap.from(dartResponse);
@@ -245,9 +237,7 @@ class KdfOperationsWasm implements IKdfOperations {
 
   /// Makes the JavaScript RPC call and returns the raw JS response
   Future<js_interop.JSObject> _makeJsCall(JsonMap request) async {
-    if (KdfLoggingConfig.debugLogging) {
-      _log('mm2Rpc request: ${request.censored()}');
-    }
+    _debugLog('mm2Rpc request: ${request.censored()}');
     request['userpass'] = _config.rpcPassword;
 
     final jsRequest = request.jsify() as js_interop.JSObject?;
@@ -284,33 +274,12 @@ class KdfOperationsWasm implements IKdfOperations {
       );
     }
 
-    if (KdfLoggingConfig.debugLogging) {
-      try {
-        final stringified = jsResponse.dartify().toString();
-        _log('Raw JS response: $stringified');
-      } catch (e) {
-        _log('Raw JS response: $jsResponse (stringify failed: $e)');
-      }
+    try {
+      _debugLog('Raw JS response: ${jsResponse.dartify()}');
+    } catch (e) {
+      _debugLog('Raw JS response: $jsResponse (stringify failed: $e)');
     }
     return jsResponse as js_interop.JSObject;
-  }
-
-  /// Converts JS response to Dart Map
-  JsonMap _parseDartResponse(
-    js_interop.JSObject jsResponse,
-    JsonMap request,
-  ) {
-    try {
-      final dynamic converted = jsResponse.dartify();
-      if (converted is! JsonMap) {
-        return _deepConvertMap(converted as Map);
-      }
-      return converted;
-    } catch (e) {
-      _log('Response parsing error for method ${request['method']}:\n'
-          'Request: $request');
-      rethrow;
-    }
   }
 
   /// Validates the response structure
@@ -330,30 +299,7 @@ class KdfOperationsWasm implements IKdfOperations {
       );
     }
 
-    if (KdfLoggingConfig.debugLogging) {
-      _log('JS response validated: $dartResponse');
-    }
-  }
-
-  /// Recursively converts the provided map to JsonMap. This is required, as
-  /// many of the responses received from the sdk are
-  /// LinkedHashMap<Object?, Object?>
-  Map<String, dynamic> _deepConvertMap(Map<dynamic, dynamic> map) {
-    return map.map((key, value) {
-      if (value is Map) return MapEntry(key.toString(), _deepConvertMap(value));
-      if (value is List) {
-        return MapEntry(key.toString(), _deepConvertList(value));
-      }
-      return MapEntry(key.toString(), value);
-    });
-  }
-
-  List<dynamic> _deepConvertList(List<dynamic> list) {
-    return list.map((value) {
-      if (value is Map) return _deepConvertMap(value);
-      if (value is List) return _deepConvertList(value);
-      return value;
-    }).toList();
+    _debugLog('JS response validated: $dartResponse');
   }
 
   @override
