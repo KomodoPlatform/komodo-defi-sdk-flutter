@@ -48,8 +48,8 @@ class GetPaymentHistoryResponse extends BaseResponse {
     return GetPaymentHistoryResponse(
       mmrpc: json.value<String>('mmrpc'),
       payments:
-          (result.valueOrNull<List<dynamic>>('payments') ?? [])
-              .map((e) => LightningPayment.fromJson(e as JsonMap))
+          (result.valueOrNull<JsonList>('payments') ?? [])
+              .map(LightningPayment.fromJson)
               .toList(),
     );
   }

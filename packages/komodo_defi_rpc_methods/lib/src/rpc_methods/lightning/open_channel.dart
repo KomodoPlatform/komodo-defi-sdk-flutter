@@ -28,14 +28,12 @@ class OpenChannelRequest
       'node_id': nodeId,
       'amount_sat': amountSat,
     };
-    
+
     if (options != null) {
       params['options'] = options!.toJson();
     }
 
-    return super.toJson().deepMerge({
-      'params': params,
-    });
+    return super.toJson().deepMerge({'params': params});
   }
 
   @override
@@ -67,9 +65,6 @@ class OpenChannelResponse extends BaseResponse {
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {
-      'channel_id': channelId,
-      'funding_tx_id': fundingTxId,
-    },
+    'result': {'channel_id': channelId, 'funding_tx_id': fundingTxId},
   };
 }

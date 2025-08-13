@@ -2,14 +2,14 @@ import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to get Lightning channels information.
-/// 
+///
 /// This RPC method retrieves information about both open and closed Lightning
 /// channels for a specified coin. Optionally, filters can be applied to
 /// narrow down the results.
 class GetChannelsRequest
     extends BaseRequest<GetChannelsResponse, GeneralErrorResponse> {
   /// Creates a new [GetChannelsRequest].
-  /// 
+  ///
   /// - [rpcPass]: RPC password for authentication
   /// - [coin]: The coin/ticker for which to retrieve channel information
   /// - [openFilter]: Optional filter for open channels
@@ -27,32 +27,24 @@ class GetChannelsRequest
 
   /// The coin/ticker for which to retrieve channel information.
   final String coin;
-  
+
   /// Optional filter to apply to open channels.
   final LightningOpenChannelsFilter? openFilter;
-  
+
   /// Optional filter to apply to closed channels.
   final LightningClosedChannelsFilter? closedFilter;
 
   @override
   Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'coin': coin,
-    };
-    
+    final params = <String, dynamic>{'coin': coin};
+
     if (openFilter != null) {
-      params['filter'] = {
-        'open': openFilter!.toJson(),
-      };
+      params['filter'] = {'open': openFilter!.toJson()};
     } else if (closedFilter != null) {
-      params['filter'] = {
-        'closed': closedFilter!.toJson(),
-      };
+      params['filter'] = {'closed': closedFilter!.toJson()};
     }
 
-    return super.toJson().deepMerge({
-      'params': params,
-    });
+    return super.toJson().deepMerge({'params': params});
   }
 
   @override
@@ -61,12 +53,12 @@ class GetChannelsRequest
 }
 
 /// Response containing Lightning channels information.
-/// 
+///
 /// This response provides lists of both open and closed channels,
 /// allowing for comprehensive channel management and monitoring.
 class GetChannelsResponse extends BaseResponse {
   /// Creates a new [GetChannelsResponse].
-  /// 
+  ///
   /// - [mmrpc]: The RPC version
   /// - [openChannels]: List of currently open channels
   /// - [closedChannels]: List of closed channels
@@ -82,22 +74,24 @@ class GetChannelsResponse extends BaseResponse {
 
     return GetChannelsResponse(
       mmrpc: json.value<String>('mmrpc'),
-      openChannels: (result.valueOrNull<List<dynamic>>('open_channels') ?? [])
-          .map((e) => ChannelInfo.fromJson(e as JsonMap))
-          .toList(),
-      closedChannels: (result.valueOrNull<List<dynamic>>('closed_channels') ?? [])
-          .map((e) => ChannelInfo.fromJson(e as JsonMap))
-          .toList(),
+      openChannels:
+          (result.valueOrNull<JsonList>('open_channels') ?? [])
+              .map(ChannelInfo.fromJson)
+              .toList(),
+      closedChannels:
+          (result.valueOrNull<JsonList>('closed_channels') ?? [])
+              .map(ChannelInfo.fromJson)
+              .toList(),
     );
   }
 
   /// List of currently open Lightning channels.
-  /// 
+  ///
   /// These channels are active and can be used for sending and receiving payments.
   final List<ChannelInfo> openChannels;
 
   /// List of closed Lightning channels.
-  /// 
+  ///
   /// These channels have been closed and include closure reasons when available.
   final List<ChannelInfo> closedChannels;
 

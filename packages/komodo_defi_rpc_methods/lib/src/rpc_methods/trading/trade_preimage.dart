@@ -1,5 +1,6 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:rational/rational.dart';
 
 /// Request to calculate trade preimage (fees, validation)
 class TradePreimageRequest
@@ -58,11 +59,11 @@ class TradePreimageRequest
 class TradePreimageResponse extends BaseResponse {
   TradePreimageResponse({
     required super.mmrpc,
+    required this.totalFees,
     this.baseCoinFee,
     this.relCoinFee,
     this.takerFee,
     this.feeToSendTakerFee,
-    required this.totalFees,
   });
 
   factory TradePreimageResponse.parse(JsonMap json) {
@@ -89,8 +90,8 @@ class TradePreimageResponse extends BaseResponse {
               )
               : null,
       totalFees:
-          (result.valueOrNull<List<dynamic>>('total_fees') ?? [])
-              .map((e) => PreimageTotalFee.fromJson(e as JsonMap))
+          (result.valueOrNull<JsonList>('total_fees') ?? [])
+              .map(PreimageTotalFee.fromJson)
               .toList(),
     );
   }
@@ -124,6 +125,58 @@ class TradePreimageResponse extends BaseResponse {
   };
 }
 
+/// Signed big integer parts used by MM2 rational encoding
+const _mm2LimbBase = 4294967296; // 2^32
+
+BigInt _bigIntFromMm2Json(List<dynamic> json) {
+  final sign = json[0] as int;
+  final limbs = (json[1] as List).cast<int>();
+  if (sign == 0) return BigInt.zero;
+  var value = BigInt.zero;
+  var multiplier = BigInt.one;
+  for (final limb in limbs) {
+    value += BigInt.from(limb) * multiplier;
+    multiplier *= BigInt.from(_mm2LimbBase);
+  }
+  return sign < 0 ? -value : value;
+}
+
+List<dynamic> _bigIntToMm2Json(BigInt value) {
+  if (value == BigInt.zero) {
+    return [
+      0,
+      <int>[0],
+    ];
+  }
+  final sign = value.isNegative ? -1 : 1;
+  var x = value.abs();
+  final limbs = <int>[];
+  final base = BigInt.from(_mm2LimbBase);
+  while (x > BigInt.zero) {
+    final q = x ~/ base;
+    final r = x - q * base;
+    limbs.add(r.toInt());
+    x = q;
+  }
+  if (limbs.isEmpty) limbs.add(0);
+  return [sign, limbs];
+}
+
+Rational _rationalFromMm2(List<dynamic> json) {
+  final numJson = (json[0] as List).cast<dynamic>();
+  final denJson = (json[1] as List).cast<dynamic>();
+  final num = _bigIntFromMm2Json(numJson);
+  final den = _bigIntFromMm2Json(denJson);
+  if (den == BigInt.zero) {
+    throw const FormatException('Denominator cannot be zero in MM2 rational');
+  }
+  return Rational(num, den);
+}
+
+List<dynamic> _rationalToMm2(Rational r) {
+  return [_bigIntToMm2Json(r.numerator), _bigIntToMm2Json(r.denominator)];
+}
+
 class PreimageCoinFee {
   PreimageCoinFee({
     required this.coin,
@@ -140,7 +193,7 @@ class PreimageCoinFee {
       amountFraction: PreimageFraction.fromJson(
         json.value<JsonMap>('amount_fraction'),
       ),
-      amountRat: json.value<dynamic>('amount_rat'),
+      amountRat: _rationalFromMm2(json.value<List<dynamic>>('amount_rat')),
       paidFromTradingVol: json.value<bool>('paid_from_trading_vol'),
     );
   }
@@ -155,7 +208,7 @@ class PreimageCoinFee {
   final PreimageFraction amountFraction;
 
   /// Rational form of the amount (as returned by API)
-  final dynamic amountRat;
+  final Rational amountRat;
 
   /// True if the fee is deducted from the trading volume
   final bool paidFromTradingVol;
@@ -164,7 +217,7 @@ class PreimageCoinFee {
     'coin': coin,
     'amount': amount,
     'amount_fraction': amountFraction.toJson(),
-    'amount_rat': amountRat,
+    'amount_rat': _rationalToMm2(amountRat),
     'paid_from_trading_vol': paidFromTradingVol,
   };
 }
@@ -187,12 +240,14 @@ class PreimageTotalFee {
       amountFraction: PreimageFraction.fromJson(
         json.value<JsonMap>('amount_fraction'),
       ),
-      amountRat: json.value<dynamic>('amount_rat'),
+      amountRat: _rationalFromMm2(json.value<List<dynamic>>('amount_rat')),
       requiredBalance: json.value<String>('required_balance'),
       requiredBalanceFraction: PreimageFraction.fromJson(
         json.value<JsonMap>('required_balance_fraction'),
       ),
-      requiredBalanceRat: json.value<dynamic>('required_balance_rat'),
+      requiredBalanceRat: _rationalFromMm2(
+        json.value<List<dynamic>>('required_balance_rat'),
+      ),
     );
   }
 
@@ -206,7 +261,7 @@ class PreimageTotalFee {
   final PreimageFraction amountFraction;
 
   /// Rational representation of the amount (API-specific)
-  final dynamic amountRat;
+  final Rational amountRat;
 
   /// Required balance to perform the trade
   final String requiredBalance;
@@ -215,16 +270,16 @@ class PreimageTotalFee {
   final PreimageFraction requiredBalanceFraction;
 
   /// Rational representation of the required balance
-  final dynamic requiredBalanceRat;
+  final Rational requiredBalanceRat;
 
   Map<String, dynamic> toJson() => {
     'coin': coin,
     'amount': amount,
     'amount_fraction': amountFraction.toJson(),
-    'amount_rat': amountRat,
+    'amount_rat': _rationalToMm2(amountRat),
     'required_balance': requiredBalance,
     'required_balance_fraction': requiredBalanceFraction.toJson(),
-    'required_balance_rat': requiredBalanceRat,
+    'required_balance_rat': _rationalToMm2(requiredBalanceRat),
   };
 }
 

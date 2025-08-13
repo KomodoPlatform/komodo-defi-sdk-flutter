@@ -46,11 +46,7 @@ class BestOrdersResponse extends BaseResponse {
 
     return BestOrdersResponse(
       mmrpc: json.value<String>('mmrpc'),
-      orders:
-          result
-              .value<List<dynamic>>('orders')
-              .map((e) => OrderInfo.fromJson(e as JsonMap))
-              .toList(),
+      orders: result.value<JsonList>('orders').map(OrderInfo.fromJson).toList(),
     );
   }
 

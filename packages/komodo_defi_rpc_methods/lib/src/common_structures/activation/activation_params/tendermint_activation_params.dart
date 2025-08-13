@@ -24,8 +24,8 @@ class TendermintActivationParams extends ActivationParams {
             .toList();
     final tokensParams =
         json
-            .valueOrNull<List<dynamic>>('tokens_params')
-            ?.map((e) => TokensRequest.fromJson(e as JsonMap))
+            .valueOrNull<JsonList>('tokens_params')
+            ?.map(TokensRequest.fromJson)
             .toList() ??
         [];
     final getBalances = json.valueOrNull<bool>('get_balances') ?? true;

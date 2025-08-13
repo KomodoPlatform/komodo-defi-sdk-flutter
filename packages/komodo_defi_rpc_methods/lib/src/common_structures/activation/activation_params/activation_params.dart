@@ -382,14 +382,13 @@ class ActivationRpcData {
   /// Creates [ActivationRpcData] from JSON configuration
   factory ActivationRpcData.fromJson(JsonMap json) {
     return ActivationRpcData(
-      lightWalletDServers:
-          json
-              .valueOrNull<List<dynamic>>('light_wallet_d_servers')
-              ?.cast<String>(),
+      lightWalletDServers: json.valueOrNull<List<String>>(
+        'light_wallet_d_servers',
+      ),
       electrum:
           json
-              .valueOrNull<List<dynamic>>('electrum')
-              ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
+              .valueOrNull<JsonList>('electrum')
+              ?.map(ActivationServers.fromJsonConfig)
               .toList(),
       syncParams: json.valueOrNull<dynamic>('sync_params'),
     );
