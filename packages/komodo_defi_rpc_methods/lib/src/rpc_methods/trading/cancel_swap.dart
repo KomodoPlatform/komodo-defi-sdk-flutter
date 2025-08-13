@@ -4,22 +4,16 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// Request to cancel a swap
 class CancelSwapRequest
     extends BaseRequest<CancelSwapResponse, GeneralErrorResponse> {
-  CancelSwapRequest({
-    required String rpcPass,
-    required this.uuid,
-  }) : super(
-         method: 'cancel_swap',
-         rpcPass: rpcPass,
-         mmrpc: RpcVersion.v2_0,
-       );
+  CancelSwapRequest({required String rpcPass, required this.uuid})
+    : super(method: 'cancel_swap', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// UUID of the swap to cancel
   final String uuid;
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {'uuid': uuid},
-      });
+    'params': {'uuid': uuid},
+  });
 
   @override
   CancelSwapResponse parse(Map<String, dynamic> json) =>
@@ -28,10 +22,7 @@ class CancelSwapRequest
 
 /// Response from cancelling a swap
 class CancelSwapResponse extends BaseResponse {
-  CancelSwapResponse({
-    required super.mmrpc,
-    required this.cancelled,
-  });
+  CancelSwapResponse({required super.mmrpc, required this.cancelled});
 
   factory CancelSwapResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
@@ -48,10 +39,6 @@ class CancelSwapResponse extends BaseResponse {
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {
-      'success': cancelled,
-    },
+    'result': {'success': cancelled},
   };
 }
-
-

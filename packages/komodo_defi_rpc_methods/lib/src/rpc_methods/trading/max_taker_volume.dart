@@ -4,22 +4,16 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// Request to get maximum taker volume for a coin
 class MaxTakerVolumeRequest
     extends BaseRequest<MaxTakerVolumeResponse, GeneralErrorResponse> {
-  MaxTakerVolumeRequest({
-    required String rpcPass,
-    required this.coin,
-  }) : super(
-         method: 'max_taker_vol',
-         rpcPass: rpcPass,
-         mmrpc: RpcVersion.v2_0,
-       );
+  MaxTakerVolumeRequest({required String rpcPass, required this.coin})
+    : super(method: 'max_taker_vol', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// Coin ticker to compute max taker volume for
   final String coin;
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {'coin': coin},
-      });
+    'params': {'coin': coin},
+  });
 
   @override
   MaxTakerVolumeResponse parse(Map<String, dynamic> json) =>
@@ -28,10 +22,7 @@ class MaxTakerVolumeRequest
 
 /// Response with maximum taker volume
 class MaxTakerVolumeResponse extends BaseResponse {
-  MaxTakerVolumeResponse({
-    required super.mmrpc,
-    required this.amount,
-  });
+  MaxTakerVolumeResponse({required super.mmrpc, required this.amount});
 
   factory MaxTakerVolumeResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
@@ -48,10 +39,6 @@ class MaxTakerVolumeResponse extends BaseResponse {
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {
-      'amount': amount,
-    },
+    'result': {'amount': amount},
   };
 }
-
-

@@ -38,16 +38,16 @@ class TradePreimageRequest
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {
-          'base': base,
-          'rel': rel,
-          'swap_method':
-              swapMethod == SwapMethod.setPrice ? 'setprice' : swapMethod.name,
-          if (volume != null) 'volume': volume,
-          if (max != null) 'max': max,
-          if (price != null) 'price': price,
-        },
-      });
+    'params': {
+      'base': base,
+      'rel': rel,
+      'swap_method':
+          swapMethod == SwapMethod.setPrice ? 'setprice' : swapMethod.name,
+      if (volume != null) 'volume': volume,
+      if (max != null) 'max': max,
+      if (price != null) 'price': price,
+    },
+  });
 
   @override
   TradePreimageResponse parse(Map<String, dynamic> json) =>

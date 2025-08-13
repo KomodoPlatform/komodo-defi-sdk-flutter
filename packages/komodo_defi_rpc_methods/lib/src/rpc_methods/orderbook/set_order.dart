@@ -50,19 +50,19 @@ class SetOrderRequest
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {
-          'base': base,
-          'rel': rel,
-          'price': price,
-          'volume': volume,
-          if (orderType != null) 'order_type': orderType!.toJson(),
-          if (minVolume != null) 'min_volume': minVolume,
-          if (baseConfs != null) 'base_confs': baseConfs,
-          if (baseNota != null) 'base_nota': baseNota,
-          if (relConfs != null) 'rel_confs': relConfs,
-          if (relNota != null) 'rel_nota': relNota,
-        },
-      });
+    'params': {
+      'base': base,
+      'rel': rel,
+      'price': price,
+      'volume': volume,
+      if (orderType != null) 'order_type': orderType!.toJson(),
+      if (minVolume != null) 'min_volume': minVolume,
+      if (baseConfs != null) 'base_confs': baseConfs,
+      if (baseNota != null) 'base_nota': baseNota,
+      if (relConfs != null) 'rel_confs': relConfs,
+      if (relNota != null) 'rel_nota': relNota,
+    },
+  });
 
   @override
   SetOrderResponse parse(Map<String, dynamic> json) =>

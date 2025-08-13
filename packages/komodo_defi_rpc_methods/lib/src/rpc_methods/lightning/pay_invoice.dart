@@ -26,12 +26,12 @@ class PayInvoiceRequest
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {
-          'coin': coin,
-          'invoice': invoice,
-          if (maxFeeMsat != null) 'max_fee_msat': maxFeeMsat,
-        },
-      });
+    'params': {
+      'coin': coin,
+      'invoice': invoice,
+      if (maxFeeMsat != null) 'max_fee_msat': maxFeeMsat,
+    },
+  });
 
   @override
   PayInvoiceResponse parse(Map<String, dynamic> json) =>
@@ -54,9 +54,11 @@ class PayInvoiceResponse extends BaseResponse {
       mmrpc: json.value<String>('mmrpc'),
       preimage: result.value<String>('preimage'),
       feePaidMsat: result.value<int>('fee_paid_msat'),
-      routeHops: result.valueOrNull<List<dynamic>?>('route_hops')
-          ?.map((e) => e as String)
-          .toList(),
+      routeHops:
+          result
+              .valueOrNull<List<dynamic>?>('route_hops')
+              ?.map((e) => e as String)
+              .toList(),
     );
   }
 
@@ -79,5 +81,3 @@ class PayInvoiceResponse extends BaseResponse {
     },
   };
 }
-
-

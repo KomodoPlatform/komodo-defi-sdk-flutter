@@ -26,12 +26,12 @@ class CloseChannelRequest
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {
-          'coin': coin,
-          'channel_id': channelId,
-          if (forceClose) 'force_close': forceClose,
-        },
-      });
+    'params': {
+      'coin': coin,
+      'channel_id': channelId,
+      if (forceClose) 'force_close': forceClose,
+    },
+  });
 
   @override
   CloseChannelResponse parse(Map<String, dynamic> json) =>
@@ -52,10 +52,12 @@ class CloseChannelResponse extends BaseResponse {
 
     return CloseChannelResponse(
       mmrpc: json.value<String>('mmrpc'),
-      channelId: result.valueOrNull<String?>('channel_id') ??
+      channelId:
+          result.valueOrNull<String?>('channel_id') ??
           result.valueOrNull<String?>('rpc_channel_id')?.toString() ??
           '',
-      closingTxId: result.valueOrNull<String?>('closing_tx_id') ??
+      closingTxId:
+          result.valueOrNull<String?>('closing_tx_id') ??
           result.valueOrNull<String?>('tx_id'),
       forceClosed: result.valueOrNull<bool?>('force_closed'),
     );
@@ -80,5 +82,3 @@ class CloseChannelResponse extends BaseResponse {
     },
   };
 }
-
-

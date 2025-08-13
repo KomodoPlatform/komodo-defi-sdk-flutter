@@ -30,13 +30,13 @@ class GenerateInvoiceRequest
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {
-          'coin': coin,
-          'description': description,
-          if (amountMsat != null) 'amount_in_msat': amountMsat,
-          if (expiry != null) 'expiry': expiry,
-        },
-      });
+    'params': {
+      'coin': coin,
+      'description': description,
+      if (amountMsat != null) 'amount_in_msat': amountMsat,
+      if (expiry != null) 'expiry': expiry,
+    },
+  });
 
   @override
   GenerateInvoiceResponse parse(Map<String, dynamic> json) =>
@@ -82,5 +82,3 @@ class GenerateInvoiceResponse extends BaseResponse {
     },
   };
 }
-
-

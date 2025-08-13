@@ -4,22 +4,20 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// Request to get minimum trading volume for a coin
 class MinTradingVolumeRequest
     extends BaseRequest<MinTradingVolumeResponse, GeneralErrorResponse> {
-  MinTradingVolumeRequest({
-    required String rpcPass,
-    required this.coin,
-  }) : super(
-         method: 'min_trading_vol',
-         rpcPass: rpcPass,
-         mmrpc: RpcVersion.v2_0,
-       );
+  MinTradingVolumeRequest({required String rpcPass, required this.coin})
+    : super(
+        method: 'min_trading_vol',
+        rpcPass: rpcPass,
+        mmrpc: RpcVersion.v2_0,
+      );
 
   /// Coin ticker to query minimum trading volume for
   final String coin;
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {'coin': coin},
-      });
+    'params': {'coin': coin},
+  });
 
   @override
   MinTradingVolumeResponse parse(Map<String, dynamic> json) =>
@@ -28,10 +26,7 @@ class MinTradingVolumeRequest
 
 /// Response with minimum trading volume
 class MinTradingVolumeResponse extends BaseResponse {
-  MinTradingVolumeResponse({
-    required super.mmrpc,
-    required this.amount,
-  });
+  MinTradingVolumeResponse({required super.mmrpc, required this.amount});
 
   factory MinTradingVolumeResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
@@ -48,10 +43,6 @@ class MinTradingVolumeResponse extends BaseResponse {
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {
-      'amount': amount,
-    },
+    'result': {'amount': amount},
   };
 }
-
-

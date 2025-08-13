@@ -16,10 +16,8 @@ class CancelAllOrdersRequest
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {
-          if (cancelType != null) 'cancel_by': cancelType!.toJson(),
-        },
-      });
+    'params': {if (cancelType != null) 'cancel_by': cancelType!.toJson()},
+  });
 
   @override
   CancelAllOrdersResponse parse(Map<String, dynamic> json) =>

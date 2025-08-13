@@ -30,16 +30,19 @@ class RecentSwapsRequest
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-        'params': {
-          if (limit != null || pageNumber != null || fromUuid != null || coin != null)
-            'filter': {
-              if (limit != null) 'limit': limit,
-              if (pageNumber != null) 'page_number': pageNumber,
-              if (fromUuid != null) 'from_uuid': fromUuid,
-              if (coin != null) 'my_coin': coin,
-            },
+    'params': {
+      if (limit != null ||
+          pageNumber != null ||
+          fromUuid != null ||
+          coin != null)
+        'filter': {
+          if (limit != null) 'limit': limit,
+          if (pageNumber != null) 'page_number': pageNumber,
+          if (fromUuid != null) 'from_uuid': fromUuid,
+          if (coin != null) 'my_coin': coin,
         },
-      });
+    },
+  });
 
   @override
   RecentSwapsResponse parse(Map<String, dynamic> json) =>
