@@ -59,14 +59,15 @@ class TrezorConnectionMonitor {
 
             onStatusChanged?.call(status);
 
-            if (status.isUnavailable &&
-                (previousStatus?.isAvailable ?? false)) {
+            final previouslyAvailable = previousStatus?.isAvailable ?? true;
+            if (status.isUnavailable && previouslyAvailable) {
               _log.warning('Trezor connection lost: ${status.value}');
               onConnectionLost?.call();
             }
 
-            if (status.isAvailable &&
-                (previousStatus?.isUnavailable ?? false)) {
+            final previouslyUnavailable =
+                previousStatus?.isUnavailable ?? false;
+            if (status.isAvailable && previouslyUnavailable) {
               _log.info('Trezor connection restored');
               onConnectionRestored?.call();
             }
@@ -77,7 +78,8 @@ class TrezorConnectionMonitor {
               error,
               stackTrace,
             );
-            // Only call onConnectionLost if this is a real connection error, not a disposal
+            // Only call onConnectionLost if this is a real connection error,
+            // not a disposal
             if (_connectionSubscription != null) {
               onConnectionLost?.call();
             }
