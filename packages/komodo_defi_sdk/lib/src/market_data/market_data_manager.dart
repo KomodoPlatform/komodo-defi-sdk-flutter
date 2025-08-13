@@ -132,16 +132,18 @@ class CexMarketDataManager
     _priceChangeCache.clear();
   }
 
-  // Helper method to generate cache keys
+  // Helper method to generate canonical string cache keys
   String _getCacheKey(
     AssetId assetId, {
     DateTime? priceDate,
     QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
-    final protocolKey = assetId.parentId?.id ?? 'base';
-    return '${assetId.id}_${assetId.chainId.formattedChainId}_'
-        '${assetId.subClass.formatted}_${protocolKey}_${quoteCurrency}_'
-        '${priceDate?.millisecondsSinceEpoch ?? 'current'}';
+    final basePrefix = assetId.baseCacheKeyPrefix;
+    return canonicalCacheKeyFromBasePrefix(basePrefix, {
+      'quote': quoteCurrency.symbol,
+      'kind': 'price',
+      if (priceDate != null) 'ts': priceDate.millisecondsSinceEpoch,
+    });
   }
 
   // Helper method to generate change cache keys
@@ -149,9 +151,11 @@ class CexMarketDataManager
     AssetId assetId, {
     QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
-    final protocolKey = assetId.parentId?.id ?? 'base';
-    return '${assetId.id}_${assetId.chainId.formattedChainId}_'
-        '${assetId.subClass.formatted}_${protocolKey}_${quoteCurrency}_change24h';
+    final basePrefix = assetId.baseCacheKeyPrefix;
+    return canonicalCacheKeyFromBasePrefix(basePrefix, {
+      'quote': quoteCurrency.symbol,
+      'kind': 'change24h',
+    });
   }
 
   /// Validates that the manager hasn't been disposed
