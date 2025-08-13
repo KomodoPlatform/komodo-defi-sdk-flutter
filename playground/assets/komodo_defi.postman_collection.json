@@ -14473,7 +14473,7 @@
 									"body": "{\n    \"mmrpc\": \"2.0\",\n    \"error\": \"Wallets storage error: Internal error: `wallet_name` cannot be None!\",\n    \"error_path\": \"lp_wallet.mnemonics_storage\",\n    \"error_trace\": \"lp_wallet:489] mnemonics_storage:48]\",\n    \"error_type\": \"WalletsStorageError\",\n    \"error_data\": \"Internal error: `wallet_name` cannot be None!\",\n    \"id\": null\n}"
 								},
 								{
-									"name": "Error: Wallet name not found (plaintext)",
+									"name": "Error: Wallet name not found in plaintext",
 									"originalRequest": {
 										"method": "POST",
 										"header": [
@@ -16908,7 +16908,7 @@
 											"body": "{\n    \"mmrpc\": \"2.0\",\n    \"result\": {\n        \"format\": \"encrypted\",\n        \"encrypted_mnemonic_data\": {\n            \"encryption_algorithm\": \"AES256CBC\",\n            \"key_derivation_details\": {\n                \"Argon2\": {\n                    \"params\": {\n                        \"algorithm\": \"Argon2id\",\n                        \"version\": \"0x13\",\n                        \"m_cost\": 65536,\n                        \"t_cost\": 2,\n                        \"p_cost\": 1\n                    },\n                    \"salt_aes\": \"CqkfcntVxFJNXqOKPHaG8w\",\n                    \"salt_hmac\": \"i63qgwjc+3oWMuHWC2XSJA\"\n                }\n            },\n            \"iv\": \"mNjmbZLJqgLzulKFBDBuPA==\",\n            \"ciphertext\": \"tP2vF0hRhllW00pGvYiKysBI0vl3acLj+aoocBViTTByXCpjpkLuaMWqe0Vs02cb1wvgPsVqZkE4MPg4sCQxbd18iS7Er6+BbVY3HQ2LSig=\",\n            \"tag\": \"TwWXhIFQl1TSdR4cJpbkK2oNXd9zIEhJmO6pML1uc2E=\"\n        }\n    },\n    \"id\": null\n}"
 										},
 										{
-											"name": "get_mnemonic (plaintext)",
+											"name": "get_mnemonic in plaintext",
 											"originalRequest": {
 												"method": "POST",
 												"header": [

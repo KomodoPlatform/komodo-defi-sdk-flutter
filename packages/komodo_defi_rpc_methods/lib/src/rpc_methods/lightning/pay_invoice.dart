@@ -1,0 +1,75 @@
+import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+
+/// Request to pay a Lightning invoice
+class PayInvoiceRequest
+    extends BaseRequest<PayInvoiceResponse, GeneralErrorResponse> {
+  PayInvoiceRequest({
+    required String rpcPass,
+    required this.coin,
+    required this.invoice,
+    this.maxFeeMsat,
+  }) : super(
+         method: 'lightning::pay_invoice',
+         rpcPass: rpcPass,
+         mmrpc: RpcVersion.v2_0,
+       );
+
+  final String coin;
+  final String invoice;
+  final int? maxFeeMsat;
+
+  @override
+  Map<String, dynamic> toJson() {
+    final params = <String, dynamic>{
+      'coin': coin,
+      'invoice': invoice,
+    };
+    if (maxFeeMsat != null) params['max_fee_msat'] = maxFeeMsat;
+
+    return super.toJson().deepMerge({'params': params});
+  }
+
+  @override
+  PayInvoiceResponse parse(Map<String, dynamic> json) =>
+      PayInvoiceResponse.parse(json);
+}
+
+/// Response from paying a Lightning invoice
+class PayInvoiceResponse extends BaseResponse {
+  PayInvoiceResponse({
+    required super.mmrpc,
+    required this.preimage,
+    required this.feePaidMsat,
+    this.routeHops,
+  });
+
+  factory PayInvoiceResponse.parse(JsonMap json) {
+    final result = json.value<JsonMap>('result');
+
+    return PayInvoiceResponse(
+      mmrpc: json.value<String>('mmrpc'),
+      preimage: result.value<String>('preimage'),
+      feePaidMsat: result.value<int>('fee_paid_msat'),
+      routeHops: result.valueOrNull<List<dynamic>?>('route_hops')
+          ?.map((e) => e as String)
+          .toList(),
+    );
+  }
+
+  final String preimage;
+  final int feePaidMsat;
+  final List<String>? routeHops;
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'mmrpc': mmrpc,
+    'result': {
+      'preimage': preimage,
+      'fee_paid_msat': feePaidMsat,
+      if (routeHops != null) 'route_hops': routeHops,
+    },
+  };
+}
+
+

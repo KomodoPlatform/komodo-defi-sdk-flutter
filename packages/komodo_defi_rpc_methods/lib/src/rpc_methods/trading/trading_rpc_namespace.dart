@@ -152,7 +152,7 @@ class TradingMethodsNamespace extends BaseRpcMethodNamespace {
   /// the previous response as the [fromUuid] parameter.
   Future<RecentSwapsResponse> recentSwaps({
     int? limit,
-    int? fromUuid,
+    String? fromUuid,
     String? coin,
     String? rpcPass,
   }) {

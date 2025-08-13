@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:decimal/decimal.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
@@ -102,6 +101,7 @@ class SwapManager {
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
   }
 
+  // ignore: unused_field
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final IAssetLookup _assetLookup;
@@ -111,14 +111,16 @@ class SwapManager {
   WalletId? _currentWalletId;
   bool _isDisposed = false;
 
-  final Map<String, StreamController<OrderbookSnapshot>> _orderbookControllers = {};
+  final Map<String, StreamController<OrderbookSnapshot>> _orderbookControllers =
+      {};
   final Map<String, StreamSubscription<dynamic>> _orderbookWatchers = {};
 
   final Map<String, StreamController<SwapProgress>> _swapControllers = {};
   final Map<String, StreamSubscription<dynamic>> _swapWatchers = {};
 
   /// Create a unique key for a pair
-  String _pairKey(String base, String rel) => '${base.toUpperCase()}__${rel.toUpperCase()}';
+  String _pairKey(String base, String rel) =>
+      '${base.toUpperCase()}__${rel.toUpperCase()}';
 
   Future<void> _handleAuthStateChanged(KdfUser? user) async {
     if (_isDisposed) return;
@@ -151,6 +153,11 @@ class SwapManager {
 
   /// Ensures both assets are activated if required for a swap
   Future<void> _ensurePairActivated(String base, String rel) async {
+    // Validate pair
+    if (base.trim().toUpperCase() == rel.trim().toUpperCase()) {
+      throw ArgumentError('Base and rel must be different assets');
+    }
+
     final baseAsset = _assetLookup.findAssetsByConfigId(base).firstOrNull;
     final relAsset = _assetLookup.findAssetsByConfigId(rel).firstOrNull;
 
@@ -162,13 +169,17 @@ class SwapManager {
     if (!await _activationCoordinator.isAssetActive(baseAsset.id)) {
       final result = await _activationCoordinator.activateAsset(baseAsset);
       if (!result.isSuccess) {
-        throw StateError('Failed to activate $base: ${result.message ?? 'Unknown error'}');
+        throw StateError(
+          'Failed to activate $base: ${result.errorMessage ?? 'Unknown error'}',
+        );
       }
     }
     if (!await _activationCoordinator.isAssetActive(relAsset.id)) {
       final result = await _activationCoordinator.activateAsset(relAsset);
       if (!result.isSuccess) {
-        throw StateError('Failed to activate $rel: ${result.message ?? 'Unknown error'}');
+        throw StateError(
+          'Failed to activate $rel: ${result.errorMessage ?? 'Unknown error'}',
+        );
       }
     }
   }
@@ -233,20 +244,27 @@ class SwapManager {
 
     // Periodic polling
     final periodic = Stream<void>.periodic(interval);
-    _orderbookWatchers[key] = periodic.asyncMap<OrderbookSnapshot?>((_) async {
-      if (_isDisposed) return null;
-      try {
-        return await getOrderbook(base: base, rel: rel);
-      } catch (_) {
-        return null;
-      }
-    }).listen((snapshot) {
-      if (snapshot != null && !controller.isClosed) {
-        controller.add(snapshot);
-      }
-    }, onError: (Object error, StackTrace st) {
-      if (!controller.isClosed) controller.addError(error, st);
-    }, onDone: () => _stopWatchingOrderbook(key), cancelOnError: false);
+    _orderbookWatchers[key] = periodic
+        .asyncMap<OrderbookSnapshot?>((_) async {
+          if (_isDisposed) return null;
+          try {
+            return await getOrderbook(base: base, rel: rel);
+          } catch (_) {
+            return null;
+          }
+        })
+        .listen(
+          (snapshot) {
+            if (snapshot != null && !controller.isClosed) {
+              controller.add(snapshot);
+            }
+          },
+          onError: (Object error, StackTrace st) {
+            if (!controller.isClosed) controller.addError(error, st);
+          },
+          onDone: () => _stopWatchingOrderbook(key),
+          cancelOnError: false,
+        );
   }
 
   void _stopWatchingOrderbook(String key) {
@@ -287,8 +305,9 @@ class SwapManager {
 
   /// Execute a simple market swap and stream its progress until completion.
   ///
-  /// The [amount] is in base units when [side] is buy (buy base for rel),
-  /// and in base units when [side] is sell (sell base for rel).
+  /// The [amount] is in base units regardless of [side].
+  /// - buy: acquire [amount] of base using rel
+  /// - sell: sell [amount] of base for rel
   Stream<SwapProgress> marketSwap({
     required String base,
     required String rel,
@@ -301,19 +320,38 @@ class SwapManager {
     final user = await _auth.currentUser;
     if (user == null) throw AuthException.notSignedIn();
 
+    if (amount <= Decimal.zero) {
+      throw ArgumentError('Swap amount must be positive');
+    }
+    if (statusPollInterval.inMicroseconds <= 0) {
+      throw ArgumentError('statusPollInterval must be positive');
+    }
+
     await _ensurePairActivated(base, rel);
 
     // Create controller per swap
-    final controller = StreamController<SwapProgress>();
     final swapKey = 'swap_${DateTime.now().microsecondsSinceEpoch}';
+    late final StreamController<SwapProgress> controller;
+    controller = StreamController<SwapProgress>(
+      onCancel: () async {
+        await _swapWatchers[swapKey]?.cancel();
+        _swapWatchers.remove(swapKey);
+        _swapControllers.remove(swapKey);
+        if (!controller.isClosed) {
+          await controller.close();
+        }
+      },
+    );
     _swapControllers[swapKey] = controller;
 
     // Emit initial in-progress status
-    controller.add(SwapProgress(
-      status: SwapStatus.inProgress,
-      message: 'Swap initiated',
-      swapUuid: swapKey,
-    ));
+    controller.add(
+      SwapProgress(
+        status: SwapStatus.inProgress,
+        message: 'Swap initiated',
+        swapUuid: swapKey,
+      ),
+    );
 
     // Placeholder polling loop to simulate progress until completion
     // Replace with RPC `my_swaps`/`swap_status` polling when available
@@ -324,20 +362,25 @@ class SwapManager {
       if (_isDisposed || controller.isClosed) return;
       ticks += 1;
       if (ticks >= 3) {
-        controller.add(SwapProgress(
-          status: SwapStatus.completed,
-          message: 'Swap completed',
-          swapUuid: swapKey,
-        ));
+        controller.add(
+          SwapProgress(
+            status: SwapStatus.completed,
+            message: 'Swap completed',
+            swapUuid: swapKey,
+          ),
+        );
         await controller.close();
         await _swapWatchers[swapKey]?.cancel();
         _swapWatchers.remove(swapKey);
+        _swapControllers.remove(swapKey);
       } else {
-        controller.add(SwapProgress(
-          status: SwapStatus.inProgress,
-          message: 'Processing... (${ticks}/3)',
-          swapUuid: swapKey,
-        ));
+        controller.add(
+          SwapProgress(
+            status: SwapStatus.inProgress,
+            message: 'Processing... (${ticks}/3)',
+            swapUuid: swapKey,
+          ),
+        );
       }
     });
 
