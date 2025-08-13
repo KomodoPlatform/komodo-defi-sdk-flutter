@@ -14,17 +14,12 @@ class ActiveSwapsRequest
   final String? coin;
 
   @override
-  Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{};
-    if (coin != null) {
-      params['coin'] = coin;
-    }
-    if (includeStatus != null) {
-      params['include_status'] = includeStatus;
-    }
-
-    return super.toJson().deepMerge({'params': params});
-  }
+  Map<String, dynamic> toJson() => super.toJson().deepMerge({
+        'params': {
+          if (coin != null) 'coin': coin,
+          if (includeStatus != null) 'include_status': includeStatus,
+        },
+      });
 
   @override
   ActiveSwapsResponse parse(Map<String, dynamic> json) =>
