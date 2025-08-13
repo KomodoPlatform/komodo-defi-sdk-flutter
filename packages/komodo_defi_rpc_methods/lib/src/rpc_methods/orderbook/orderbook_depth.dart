@@ -13,6 +13,7 @@ class OrderbookDepthRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// List of trading pairs to query depth for
   final List<OrderbookPair> pairs;
 
   @override

@@ -18,21 +18,28 @@ class SetOrderRequest
     this.relNota,
   }) : super(method: 'setprice', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
+  /// Base coin ticker to trade
   final String base;
+  /// Rel/quote coin ticker to trade
   final String rel;
+  /// Price per unit of [base] in [rel] (string numeric)
   final String price;
+  /// Amount of [base] to trade (string numeric)
   final String volume;
+  /// Optional order type specification (maker/taker config)
   final OrderType? orderType;
 
-  // API expects min_volume as a numeric volume string
+  /// Minimum acceptable fill amount (string numeric)
   final String? minVolume;
 
-  // API expects confirmations as integers
+  /// Required confirmations for base coin
   final int? baseConfs;
+  /// Required confirmations for rel coin
   final int? relConfs;
 
-  // API expects NOTA flags as booleans
+  /// Whether notarization is required for base coin
   final bool? baseNota;
+  /// Whether notarization is required for rel coin
   final bool? relNota;
 
   @override
@@ -72,6 +79,7 @@ class SetOrderResponse extends BaseResponse {
     );
   }
 
+  /// Information about the created order
   final MyOrderInfo orderInfo;
 
   @override

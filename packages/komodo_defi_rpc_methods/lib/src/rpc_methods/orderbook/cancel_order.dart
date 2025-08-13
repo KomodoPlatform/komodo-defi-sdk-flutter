@@ -13,6 +13,7 @@ class CancelOrderRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// UUID of the order to cancel
   final String uuid;
 
   @override
@@ -40,6 +41,7 @@ class CancelOrderResponse extends BaseResponse {
     );
   }
 
+  /// True if the order was cancelled successfully
   final bool cancelled;
 
   @override

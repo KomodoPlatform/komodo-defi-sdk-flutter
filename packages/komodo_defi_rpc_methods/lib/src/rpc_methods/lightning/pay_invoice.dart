@@ -15,8 +15,11 @@ class PayInvoiceRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// Coin ticker for the Lightning-enabled asset (e.g. 'BTC')
   final String coin;
+  /// BOLT 11 invoice string to be paid
   final String invoice;
+  /// Optional fee limit in millisatoshis
   final int? maxFeeMsat;
 
   @override
@@ -57,8 +60,11 @@ class PayInvoiceResponse extends BaseResponse {
     );
   }
 
+  /// Payment preimage proving successful payment
   final String preimage;
+  /// Total fee paid in millisatoshis
   final int feePaidMsat;
+  /// Route hop pubkeys, if available
   final List<String>? routeHops;
 
   @override

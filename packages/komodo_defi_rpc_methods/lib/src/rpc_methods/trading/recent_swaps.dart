@@ -16,9 +16,13 @@ class RecentSwapsRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// Maximum number of swaps to return
   final int? limit;
+  /// Page number for pagination (1-based)
   final int? pageNumber;
+  /// UUID to start from (exclusive) for pagination
   final String? fromUuid;
+  /// Optional coin filter; limits to swaps involving this coin
   final String? coin;
 
   @override
@@ -57,6 +61,7 @@ class RecentSwapsResponse extends BaseResponse {
     );
   }
 
+  /// List of recent swaps matching the filter/pagination
   final List<SwapInfo> swaps;
 
   @override

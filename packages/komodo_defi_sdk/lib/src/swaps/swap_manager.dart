@@ -26,13 +26,28 @@ class PlacedOrderSummary {
     this.isMine = true,
   });
 
+  /// Unique identifier of the order created by the DEX
   final String uuid;
+
+  /// Base asset ticker (e.g. 'BTC')
   final String base;
+
+  /// Rel/quote asset ticker (e.g. 'KMD')
   final String rel;
+
+  /// Whether this is a buy or sell order
   final OrderSide side;
+
+  /// Price per unit of [base] in [rel]
   final Decimal price;
+
+  /// Order volume in [base] units
   final Decimal volume;
+
+  /// Creation timestamp (local clock)
   final DateTime timestamp;
+
+  /// True if the order belongs to the current wallet
   final bool isMine;
 }
 
@@ -47,11 +62,22 @@ class OrderbookEntry {
     this.age,
   });
 
+  /// Price for this order level
   final Decimal price;
+
+  /// Available amount denominated in base asset units
   final Decimal baseAmount;
+
+  /// Available amount denominated in rel asset units
   final Decimal relAmount;
+
+  /// Unique order identifier, if known
   final String? uuid;
+
+  /// Maker's public node key, if available
   final String? pubkey;
+
+  /// How long the order has been on the book
   final Duration? age;
 }
 
@@ -65,10 +91,19 @@ class OrderbookSnapshot {
     required this.timestamp,
   });
 
+  /// Base asset ticker of the pair
   final String base;
+
+  /// Rel/quote asset ticker of the pair
   final String rel;
+
+  /// Sorted list of sell orders (lowest price first)
   final List<OrderbookEntry> asks;
+
+  /// Sorted list of buy orders (highest price first)
   final List<OrderbookEntry> bids;
+
+  /// Snapshot timestamp (local clock)
   final DateTime timestamp;
 }
 
@@ -81,9 +116,16 @@ class SwapProgress {
     this.details,
   });
 
+  /// Current status in the swap lifecycle
   final SwapStatus status;
+
+  /// Human-readable progress message
   final String? message;
+
+  /// Swap identifier if available
   final String? swapUuid;
+
+  /// Additional implementation-specific details
   final Map<String, dynamic>? details;
 }
 
@@ -205,8 +247,11 @@ class SwapManager {
 
   /// Watch the orderbook for a pair with periodic polling
   Stream<OrderbookSnapshot> watchOrderbook({
+    /// Base asset ticker
     required String base,
+    /// Rel/quote asset ticker
     required String rel,
+    /// Polling interval for refreshing snapshots
     Duration interval = const Duration(seconds: 5),
   }) {
     _assertNotDisposed();
@@ -274,10 +319,15 @@ class SwapManager {
 
   /// Place a limit order. Returns the order UUID.
   Future<String> placeLimitOrder({
+    /// Base asset ticker
     required String base,
+    /// Rel/quote asset ticker
     required String rel,
+    /// Buy or sell side
     required OrderSide side,
+    /// Price per unit of [base] in [rel]
     required Decimal price,
+    /// Volume in [base] units
     required Decimal volume,
   }) async {
     _assertNotDisposed();
@@ -309,10 +359,15 @@ class SwapManager {
   /// - buy: acquire [amount] of base using rel
   /// - sell: sell [amount] of base for rel
   Stream<SwapProgress> marketSwap({
+    /// Base asset ticker
     required String base,
+    /// Rel/quote asset ticker
     required String rel,
+    /// Buy or sell side
     required OrderSide side,
+    /// Amount in [base] units
     required Decimal amount,
+    /// Polling interval for progress updates
     Duration statusPollInterval = const Duration(seconds: 5),
   }) async* {
     _assertNotDisposed();

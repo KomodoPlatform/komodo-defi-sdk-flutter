@@ -11,6 +11,7 @@ class CancelAllOrdersRequest
         mmrpc: RpcVersion.v2_0,
       );
 
+  /// Criteria for which orders to cancel (all or by coin)
   final CancelOrdersType? cancelType;
 
   @override
@@ -38,6 +39,7 @@ class CancelAllOrdersResponse extends BaseResponse {
     );
   }
 
+  /// True if the cancellation request succeeded
   final bool cancelled;
 
   @override

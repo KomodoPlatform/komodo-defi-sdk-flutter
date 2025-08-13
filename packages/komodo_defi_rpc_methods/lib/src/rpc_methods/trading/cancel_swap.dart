@@ -13,6 +13,7 @@ class CancelSwapRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// UUID of the swap to cancel
   final String uuid;
 
   @override
@@ -40,6 +41,7 @@ class CancelSwapResponse extends BaseResponse {
     );
   }
 
+  /// True if the swap was cancelled (request accepted by node)
   final bool cancelled;
 
   @override

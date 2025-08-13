@@ -15,15 +15,18 @@ class GetPaymentHistoryRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// Coin ticker to query payment history for
   final String coin;
+
+  /// Optional filter to restrict returned payments
   final LightningPaymentFilter? filter;
+
+  /// Optional pagination parameters
   final Pagination? pagination;
 
   @override
   Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'coin': coin,
-    };
+    final params = <String, dynamic>{'coin': coin};
     if (filter != null) params['filter'] = filter!.toJson();
     if (pagination != null) params['pagination'] = pagination!.toJson();
 
@@ -37,31 +40,26 @@ class GetPaymentHistoryRequest
 
 /// Response containing Lightning payments history
 class GetPaymentHistoryResponse extends BaseResponse {
-  GetPaymentHistoryResponse({
-    required super.mmrpc,
-    required this.payments,
-  });
+  GetPaymentHistoryResponse({required super.mmrpc, required this.payments});
 
   factory GetPaymentHistoryResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
 
     return GetPaymentHistoryResponse(
       mmrpc: json.value<String>('mmrpc'),
-      payments: (result.valueOrNull<List<dynamic>>('payments') ?? [])
-          .map((e) => LightningPayment.fromJson(e as JsonMap))
-          .toList(),
+      payments:
+          (result.valueOrNull<List<dynamic>>('payments') ?? [])
+              .map((e) => LightningPayment.fromJson(e as JsonMap))
+              .toList(),
     );
   }
 
+  /// List of Lightning payments matching the query
   final List<LightningPayment> payments;
 
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {
-      'payments': payments.map((e) => e.toJson()).toList(),
-    },
+    'result': {'payments': payments.map((e) => e.toJson()).toList()},
   };
 }
-
-

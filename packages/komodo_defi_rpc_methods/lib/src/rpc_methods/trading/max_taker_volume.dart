@@ -13,6 +13,7 @@ class MaxTakerVolumeRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// Coin ticker to compute max taker volume for
   final String coin;
 
   @override
@@ -40,6 +41,7 @@ class MaxTakerVolumeResponse extends BaseResponse {
     );
   }
 
+  /// Maximum tradeable amount as a string numeric (coin units)
   final String amount;
 
   @override

@@ -15,8 +15,11 @@ class BestOrdersRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// Coin ticker to trade
   final String coin;
+  /// Desired trade direction
   final OrderType action;
+  /// Desired trade volume as a numeric string
   final String volume;
 
   @override
@@ -56,6 +59,7 @@ class BestOrdersResponse extends BaseResponse {
     );
   }
 
+  /// Sorted list of best orders that can fulfill the request
   final List<OrderInfo> orders;
 
   @override

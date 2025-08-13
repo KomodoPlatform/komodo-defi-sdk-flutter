@@ -38,6 +38,7 @@ class MyOrdersResponse extends BaseResponse {
     );
   }
 
+  /// List of orders created by the current wallet
   final List<MyOrderInfo> orders;
 
   @override

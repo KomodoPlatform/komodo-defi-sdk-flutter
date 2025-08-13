@@ -13,6 +13,7 @@ class MinTradingVolumeRequest
          mmrpc: RpcVersion.v2_0,
        );
 
+  /// Coin ticker to query minimum trading volume for
   final String coin;
 
   @override
@@ -40,6 +41,7 @@ class MinTradingVolumeResponse extends BaseResponse {
     );
   }
 
+  /// Minimum tradeable amount as a string numeric (coin units)
   final String amount;
 
   @override
