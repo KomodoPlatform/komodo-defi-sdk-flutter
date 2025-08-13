@@ -155,8 +155,6 @@ class BinanceRepository implements CexRepository {
       throw ArgumentError('Coin and fiat coin cannot be the same');
     }
 
-    final trimmedCoinId = tradingSymbol.replaceAll(RegExp('-segwit'), '');
-
     final endAt = priceDate ?? DateTime.now();
     final startAt = endAt.subtract(const Duration(days: 1));
 
@@ -185,7 +183,6 @@ class BinanceRepository implements CexRepository {
     }
 
     dates.sort();
-    final trimmedCoinId = tradingSymbol.replaceAll(RegExp('-segwit'), '');
 
     if (dates.isEmpty) {
       return {};
@@ -291,13 +288,19 @@ class BinanceRepository implements CexRepository {
     QuoteCurrency fiatCurrency,
     PriceRequestType requestType,
   ) async {
-    final coins = await getCoinList();
-    final fiat = fiatCurrency.binanceId;
-    final supportsAsset = coins.any(
-      (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
-    );
-    final supportsFiat =
-        _cachedFiatCurrencies?.contains(fiat.toUpperCase()) ?? false;
-    return supportsAsset && supportsFiat;
+    try {
+      final coins = await getCoinList();
+      final fiat = fiatCurrency.binanceId;
+      // If resolveTradingSymbol throws, treat as unsupported
+      final tradingSymbol = resolveTradingSymbol(assetId);
+      final supportsAsset = coins.any(
+        (c) => c.id.toUpperCase() == tradingSymbol.toUpperCase(),
+      );
+      final supportsFiat =
+          _cachedFiatCurrencies?.contains(fiat.toUpperCase()) ?? false;
+      return supportsAsset && supportsFiat;
+    } on ArgumentError {
+      return false;
+    }
   }
 }

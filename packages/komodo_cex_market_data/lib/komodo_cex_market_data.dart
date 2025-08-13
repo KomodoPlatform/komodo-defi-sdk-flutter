@@ -4,3 +4,4 @@
 library;
 
 export 'src/komodo_cex_market_data_base.dart';
+export 'src/repository_fallback_mixin.dart';

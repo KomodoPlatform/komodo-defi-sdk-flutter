@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-import 'package:komodo_defi_sdk/src/market_data/repository_fallback_mixin.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -139,7 +138,8 @@ class CexMarketDataManager
     DateTime? priceDate,
     QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
-    return '${assetId.id}_${assetId.chainId.formattedChainId}_${assetId.subClass.formatted}_${quoteCurrency}_'
+    return '${assetId.id}_${assetId.chainId.formattedChainId}_'
+        '${assetId.subClass.formatted}_${quoteCurrency}_'
         '${priceDate?.millisecondsSinceEpoch ?? 'current'}';
   }
 
@@ -148,7 +148,8 @@ class CexMarketDataManager
     AssetId assetId, {
     QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
-    return '${assetId.id}_${assetId.chainId.formattedChainId}_${assetId.subClass.formatted}_${quoteCurrency}_change24h';
+    return '${assetId.id}_${assetId.chainId.formattedChainId}_'
+        '${assetId.subClass.formatted}_${quoteCurrency}_change24h';
   }
 
   /// Validates that the manager hasn't been disposed
@@ -192,7 +193,7 @@ class CexMarketDataManager
     _priceCache[cacheKey] = price;
     _logger.finer(
       'Fetched price from ${repo.runtimeType} for '
-      '${assetId.symbol.configSymbol}: $price',
+      '${assetId.symbol.assetConfigId}: $price',
     );
     return price;
   }
@@ -315,7 +316,7 @@ class CexMarketDataManager
         _priceChangeCache[cacheKey] = priceChange;
         _logger.finer(
           'Fetched 24h price change from ${repo.runtimeType} for '
-          '${assetId.symbol.configSymbol}: $priceChange',
+          '${assetId.symbol.assetConfigId}: $priceChange',
         );
         return priceChange;
       },

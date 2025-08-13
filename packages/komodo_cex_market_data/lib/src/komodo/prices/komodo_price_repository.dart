@@ -101,7 +101,7 @@ class KomodoPriceRepository extends CexRepository {
     // Check if any dates are historical
     final now = DateTime.now();
     final hasHistoricalDates = dates.any(
-      (date) => date.isBefore(now.subtract(Duration(hours: 1))),
+      (date) => date.isBefore(now.subtract(const Duration(hours: 1))),
     );
     if (hasHistoricalDates) {
       throw UnsupportedError(
@@ -195,16 +195,21 @@ class KomodoPriceRepository extends CexRepository {
     QuoteCurrency fiatCurrency,
     PriceRequestType requestType,
   ) async {
-    final coins = await getCoinList();
-    final fiat = fiatCurrency.symbol.toUpperCase();
-    final supportsAsset = coins.any(
-      (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
-    );
-    final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
-    final supportsRequestType =
-        requestType == PriceRequestType.currentPrice ||
-        requestType == PriceRequestType.priceChange;
-    return supportsAsset && supportsFiat && supportsRequestType;
+    try {
+      final coins = await getCoinList();
+      final fiat = fiatCurrency.symbol.toUpperCase();
+      final tradingSymbol = resolveTradingSymbol(assetId);
+      final supportsAsset = coins.any(
+        (c) => c.id.toUpperCase() == tradingSymbol.toUpperCase(),
+      );
+      final supportsFiat = _cachedFiatCurrencies?.contains(fiat) ?? false;
+      final supportsRequestType =
+          requestType == PriceRequestType.currentPrice ||
+          requestType == PriceRequestType.priceChange;
+      return supportsAsset && supportsFiat && supportsRequestType;
+    } on ArgumentError {
+      return false;
+    }
   }
 
   @override
@@ -216,6 +221,7 @@ class KomodoPriceRepository extends CexRepository {
       getCoinList().catchError((error) {
         // Silently handle errors to prevent unhandled exceptions
         // The cache will remain null and subsequent calls will retry
+        return <CexCoin>[];
       });
       return false;
     }

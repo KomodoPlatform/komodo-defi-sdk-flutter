@@ -1,7 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
+import 'package:komodo_cex_market_data/src/cex_repository.dart';
+import 'package:komodo_cex_market_data/src/models/quote_currency.dart';
+import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
@@ -19,12 +20,13 @@ mixin RepositoryFallbackMixin {
   // Conservative backoff strategy for fallback operations
   static final _fallbackBackoffStrategy = ExponentialBackoff(
     initialDelay: const Duration(milliseconds: 300),
-    maxDelay: const Duration(seconds: 5),
     withJitter: true,
   );
 
   /// Must be implemented by the mixing class
   List<CexRepository> get priceRepositories;
+
+  /// Must be implemented by the mixing class
   RepositorySelectionStrategy get selectionStrategy;
 
   /// Checks if a repository is healthy (not in backoff period)
@@ -91,9 +93,11 @@ mixin RepositoryFallbackMixin {
           if (await repo.supports(assetId, quoteCurrency, requestType)) {
             supportingRepos.add(repo);
           }
-        } catch (e) {
+        } catch (e, s) {
           _logger.fine(
-            'Error checking support for repository ${repo.runtimeType}: $e',
+            'Error checking support for repository ${repo.runtimeType}',
+            e,
+            s,
           );
           // Skip repositories that error on supports check
         }
@@ -125,9 +129,11 @@ mixin RepositoryFallbackMixin {
           if (await repo.supports(assetId, quoteCurrency, requestType)) {
             orderedRepos.add(repo);
           }
-        } catch (e) {
+        } catch (e, s) {
           _logger.fine(
-            'Error checking support for healthy repository ${repo.runtimeType}: $e',
+            'Error checking support for healthy repository ${repo.runtimeType}',
+            e,
+            s,
           );
           // Skip repositories that error on supports check
         }
@@ -141,9 +147,12 @@ mixin RepositoryFallbackMixin {
           if (await repo.supports(assetId, quoteCurrency, requestType)) {
             orderedRepos.add(repo);
           }
-        } catch (e) {
+        } catch (e, s) {
           _logger.fine(
-            'Error checking support for unhealthy repository ${repo.runtimeType}: $e',
+            'Error checking support for unhealthy repository '
+            '${repo.runtimeType}',
+            e,
+            s,
           );
           // Skip repositories that error on supports check
         }
@@ -172,7 +181,8 @@ mixin RepositoryFallbackMixin {
 
     if (repositories.isEmpty) {
       throw StateError(
-        'No repository supports ${assetId.symbol.configSymbol}/$quoteCurrency for $operationName',
+        'No repository supports ${assetId.symbol.assetConfigId}/$quoteCurrency '
+        'for $operationName',
       );
     }
 
@@ -189,8 +199,9 @@ mixin RepositoryFallbackMixin {
       try {
         attemptCount++;
         _logger.finer(
-          'Attempting $operationName for ${assetId.symbol.configSymbol} '
-          'with repository ${repo.runtimeType} (attempt $attemptCount/$maxTotalAttempts)',
+          'Attempting $operationName for ${assetId.symbol.assetConfigId} '
+          'with repository ${repo.runtimeType} '
+          '(attempt $attemptCount/$maxTotalAttempts)',
         );
 
         final result = await retry(
@@ -203,7 +214,8 @@ mixin RepositoryFallbackMixin {
 
         if (attemptCount > 1) {
           _logger.info(
-            'Successfully fetched $operationName for ${assetId.symbol.configSymbol} '
+            'Successfully fetched $operationName for '
+            '${assetId.symbol.assetConfigId} '
             'using repository ${repo.runtimeType} on attempt $attemptCount',
           );
         }
@@ -215,7 +227,7 @@ mixin RepositoryFallbackMixin {
         _logger
           ..fine(
             'Repository ${repo.runtimeType} failed for $operationName '
-            '${assetId.symbol.configSymbol} (attempt $attemptCount): $e',
+            '${assetId.symbol.assetConfigId} (attempt $attemptCount): $e',
           )
           ..finest('Stack trace: $s');
       }
@@ -224,7 +236,7 @@ mixin RepositoryFallbackMixin {
     // All attempts exhausted
     _logger.warning(
       'All $attemptCount attempts failed for $operationName '
-      '${assetId.symbol.configSymbol}',
+      '${assetId.symbol.assetConfigId}',
     );
     throw lastException ??
         Exception('All $maxTotalAttempts attempts failed for $operationName');
@@ -267,17 +279,14 @@ mixin RepositoryFallbackMixin {
   }
 
   // Expose health tracking methods for testing
-  @visibleForTesting
   // ignore: public_member_api_docs
   bool isRepositoryHealthyForTest(CexRepository repo) =>
       _isRepositoryHealthy(repo);
 
-  @visibleForTesting
   // ignore: public_member_api_docs
   void recordRepositoryFailureForTest(CexRepository repo) =>
       _recordRepositoryFailure(repo);
 
-  @visibleForTesting
   // ignore: public_member_api_docs
   void recordRepositorySuccessForTest(CexRepository repo) =>
       _recordRepositorySuccess(repo);

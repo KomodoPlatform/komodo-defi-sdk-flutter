@@ -2,12 +2,18 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
 /// Strategy for resolving platform-specific asset identifiers
+///
+/// Exceptions:
+/// - [ArgumentError]: Thrown by [resolveTradingSymbol] when an asset cannot be
+///   resolved for a given platform (i.e., no usable identifiers are available).
 abstract class IdResolutionStrategy {
   /// Checks if this strategy can resolve a trading symbol for the given asset
   bool canResolve(AssetId assetId);
 
   /// Resolves the trading symbol for the given asset
-  /// Throws [ArgumentError] if the asset cannot be resolved
+  ///
+  /// Throws:
+  /// - [ArgumentError] if the asset cannot be resolved using this strategy.
   String resolveTradingSymbol(AssetId assetId);
 
   /// Returns the priority order for ID resolution (filtered to non-null, non-empty values)
@@ -51,9 +57,10 @@ class BinanceIdResolutionStrategy implements IdResolutionStrategy {
   String resolveTradingSymbol(AssetId assetId) {
     final ids = getIdPriority(assetId);
     if (ids.isEmpty) {
-      throw ArgumentError(
-        'Cannot resolve trading symbol for asset ${assetId.id} on $platformName',
-      );
+      // Thrown when the asset lacks a Binance identifier and no suitable
+      // fallback exists in [getIdPriority]. Callers should catch this in
+      // feature-detection paths (e.g., supports()).
+      throw ArgumentError('Cannot resolve trading symbol for asset ${assetId.id} on $platformName');
     }
 
     final resolvedSymbol = ids.first;
@@ -76,7 +83,6 @@ class CoinGeckoIdResolutionStrategy implements IdResolutionStrategy {
   @override
   List<String> getIdPriority(AssetId assetId) {
     final coinGeckoId = assetId.symbol.coinGeckoId;
-    final configSymbol = assetId.symbol.configSymbol;
 
     if (coinGeckoId == null || coinGeckoId.isEmpty) {
       _logger.warning(
@@ -87,7 +93,6 @@ class CoinGeckoIdResolutionStrategy implements IdResolutionStrategy {
 
     return [
       coinGeckoId,
-      configSymbol,
     ].where((id) => id != null && id.isNotEmpty).cast<String>().toList();
   }
 
@@ -100,9 +105,10 @@ class CoinGeckoIdResolutionStrategy implements IdResolutionStrategy {
   String resolveTradingSymbol(AssetId assetId) {
     final ids = getIdPriority(assetId);
     if (ids.isEmpty) {
-      throw ArgumentError(
-        'Cannot resolve trading symbol for asset ${assetId.id} on $platformName',
-      );
+      // Thrown when the asset lacks a CoinGecko identifier and no suitable
+      // fallback exists in [getIdPriority]. Callers should catch this in
+      // feature-detection paths (e.g., supports()).
+      throw ArgumentError('Cannot resolve trading symbol for asset ${assetId.id} on $platformName');
     }
 
     final resolvedSymbol = ids.first;
@@ -134,9 +140,10 @@ class KomodoIdResolutionStrategy implements IdResolutionStrategy {
   String resolveTradingSymbol(AssetId assetId) {
     final ids = getIdPriority(assetId);
     if (ids.isEmpty) {
-      throw ArgumentError(
-        'Cannot resolve trading symbol for asset ${assetId.id} on $platformName',
-      );
+      // Thrown when the asset lacks a Komodo identifier and no suitable
+      // fallback exists in [getIdPriority]. Callers should catch this in
+      // feature-detection paths (e.g., supports()).
+      throw ArgumentError('Cannot resolve trading symbol for asset ${assetId.id} on $platformName');
     }
     return ids.first;
   }

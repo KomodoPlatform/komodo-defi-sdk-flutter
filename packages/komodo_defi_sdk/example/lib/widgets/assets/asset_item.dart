@@ -72,7 +72,7 @@ class _AssetItemTrailing extends StatelessWidget {
           const Icon(Icons.lock, color: Colors.grey),
           const SizedBox(width: 8),
         ],
-        CoinSparkline(coinId: asset.id.symbol.configSymbol),
+        CoinSparkline(assetId: asset.id),
         const SizedBox(width: 8),
         AssetMarketInfo(asset),
         const SizedBox(width: 8),
@@ -109,15 +109,28 @@ class _AssetItemTrailing extends StatelessWidget {
   }
 }
 
-class CoinSparkline extends StatelessWidget {
-  const CoinSparkline({required this.coinId, super.key});
+class CoinSparkline extends StatefulWidget {
+  const CoinSparkline({required this.assetId, super.key});
 
-  final String coinId;
+  final AssetId assetId;
+
+  @override
+  State<CoinSparkline> createState() => _CoinSparklineState();
+}
+
+class _CoinSparklineState extends State<CoinSparkline> {
+  late Future<List<double>?> _sparklineFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _sparklineFuture = sparklineRepository.fetchSparkline(widget.assetId);
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<double>?>(
-      future: sparklineRepository.fetchSparkline(coinId),
+      future: _sparklineFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(
@@ -148,7 +161,7 @@ class CoinSparkline extends StatelessWidget {
                 data: snapshot.data!,
                 positiveLineColor: Colors.green,
                 negativeLineColor: Colors.red,
-                lineThickness: 1.0,
+                lineThickness: 1,
                 isCurved: true,
               ),
             ),

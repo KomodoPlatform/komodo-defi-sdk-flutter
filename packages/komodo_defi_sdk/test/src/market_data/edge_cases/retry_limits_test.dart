@@ -1,7 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-import 'package:komodo_defi_sdk/src/market_data/repository_fallback_mixin.dart';
+import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 

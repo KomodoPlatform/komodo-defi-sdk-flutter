@@ -274,16 +274,21 @@ class CoinGeckoRepository implements CexRepository {
     QuoteCurrency fiatCurrency,
     PriceRequestType requestType,
   ) async {
-    final coins = await getCoinList();
-    final mappedFiat = fiatCurrency.coinGeckoId;
+    try {
+      final coins = await getCoinList();
+      final mappedFiat = fiatCurrency.coinGeckoId;
 
-    // Use the same logic as resolveTradingSymbol to find the coin
-    final tradingSymbol = resolveTradingSymbol(assetId);
-    final supportsAsset = coins.any(
-      (c) => c.id.toLowerCase() == tradingSymbol.toLowerCase(),
-    );
-    final supportsFiat =
-        _cachedFiatCurrencies?.contains(mappedFiat.toUpperCase()) ?? false;
-    return supportsAsset && supportsFiat;
+      // Use the same logic as resolveTradingSymbol to find the coin
+      final tradingSymbol = resolveTradingSymbol(assetId);
+      final supportsAsset = coins.any(
+        (c) => c.id.toLowerCase() == tradingSymbol.toLowerCase(),
+      );
+      final supportsFiat =
+          _cachedFiatCurrencies?.contains(mappedFiat.toUpperCase()) ?? false;
+      return supportsAsset && supportsFiat;
+    } on ArgumentError {
+      // If we cannot resolve a trading symbol, treat as unsupported
+      return false;
+    }
   }
 }

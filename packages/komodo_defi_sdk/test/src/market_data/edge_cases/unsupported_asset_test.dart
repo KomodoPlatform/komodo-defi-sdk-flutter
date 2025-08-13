@@ -1,6 +1,5 @@
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
-import 'package:komodo_defi_sdk/src/market_data/repository_fallback_mixin.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -134,10 +133,7 @@ void main() {
               unsupportedAsset,
               Stablecoin.usdt,
               PriceRequestType.currentPrice,
-              (repo) => repo.getCoinFiatPrice(
-                unsupportedAsset,
-                fiatCurrency: Stablecoin.usdt,
-              ),
+              (repo) => repo.getCoinFiatPrice(unsupportedAsset),
               'fiatPrice',
             ),
             throwsA(
@@ -486,6 +482,7 @@ class TestManager with RepositoryFallbackMixin {
   TestManager({required this.repositories, required this.selectionStrategy});
 
   final List<CexRepository> repositories;
+  @override
   final RepositorySelectionStrategy selectionStrategy;
 
   @override
