@@ -2,17 +2,15 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Order status information
 class OrderStatus {
-  OrderStatus({
-    required this.type,
-    this.data,
-  });
+  OrderStatus({required this.type, this.data});
 
   factory OrderStatus.fromJson(JsonMap json) {
     return OrderStatus(
       type: json.value<String>('type'),
-      data: json.containsKey('data') 
-          ? OrderStatusData.fromJson(json.value<JsonMap>('data'))
-          : null,
+      data:
+          json.containsKey('data')
+              ? OrderStatusData.fromJson(json.value<JsonMap>('data'))
+              : null,
     );
   }
 
@@ -27,11 +25,7 @@ class OrderStatus {
 
 /// Order status data
 class OrderStatusData {
-  OrderStatusData({
-    this.swapUuid,
-    this.cancelledBy,
-    this.errorMessage,
-  });
+  OrderStatusData({this.swapUuid, this.cancelledBy, this.errorMessage});
 
   factory OrderStatusData.fromJson(JsonMap json) {
     return OrderStatusData(
@@ -56,10 +50,7 @@ class OrderStatusData {
 
 /// Order match status
 class OrderMatchStatus {
-  OrderMatchStatus({
-    required this.matched,
-    required this.ongoing,
-  });
+  OrderMatchStatus({required this.matched, required this.ongoing});
 
   factory OrderMatchStatus.fromJson(JsonMap json) {
     return OrderMatchStatus(
@@ -71,25 +62,18 @@ class OrderMatchStatus {
   final bool matched;
   final bool ongoing;
 
-  Map<String, dynamic> toJson() => {
-    'matched': matched,
-    'ongoing': ongoing,
-  };
+  Map<String, dynamic> toJson() => {'matched': matched, 'ongoing': ongoing};
 }
 
 /// Order match settings
 class OrderMatchBy {
-  OrderMatchBy({
-    required this.type,
-    this.data,
-  });
+  OrderMatchBy({required this.type, this.data});
 
   factory OrderMatchBy.fromJson(JsonMap json) {
+    final dataJson = json.valueOrNull<JsonMap>('data');
     return OrderMatchBy(
       type: json.value<String>('type'),
-      data: json.valueOrNull<OrderMatchByData?>('data') != null
-          ? OrderMatchByData.fromJson(json.value<JsonMap>('data'))
-          : null,
+      data: dataJson != null ? OrderMatchByData.fromJson(dataJson) : null,
     );
   }
 
@@ -104,10 +88,7 @@ class OrderMatchBy {
 
 /// Order match by data
 class OrderMatchByData {
-  OrderMatchByData({
-    this.coin,
-    this.value,
-  });
+  OrderMatchByData({this.coin, this.value});
 
   factory OrderMatchByData.fromJson(JsonMap json) {
     return OrderMatchByData(
@@ -187,12 +168,16 @@ class MyOrderInfo {
       lastUpdated: json.value<int>('last_updated'),
       wasTimedOut: json.value<bool>('was_timed_out'),
       status: OrderStatus.fromJson(json.value<JsonMap>('status')),
-      matchBy: json.containsKey('match_by')
-          ? OrderMatchBy.fromJson(json.value<JsonMap>('match_by'))
-          : null,
-      confSettings: json.containsKey('conf_settings')
-          ? OrderConfirmationSettings.fromJson(json.value<JsonMap>('conf_settings'))
-          : null,
+      matchBy:
+          json.containsKey('match_by')
+              ? OrderMatchBy.fromJson(json.value<JsonMap>('match_by'))
+              : null,
+      confSettings:
+          json.containsKey('conf_settings')
+              ? OrderConfirmationSettings.fromJson(
+                json.value<JsonMap>('conf_settings'),
+              )
+              : null,
     );
   }
 
