@@ -1,4 +1,6 @@
 // sdk_config.dart
+import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
+
 class KomodoDefiSdkConfig {
   const KomodoDefiSdkConfig({
     this.defaultAssets = const {'KMD', 'BTC', 'ETH', 'DOC', 'MARTY'},
@@ -7,6 +9,7 @@ class KomodoDefiSdkConfig {
     this.preActivateCustomTokenAssets = true,
     this.maxPreActivationAttempts = 3,
     this.activationRetryDelay = const Duration(seconds: 2),
+    this.marketDataConfig = const MarketDataConfig(),
   });
 
   /// Set of asset IDs that should be enabled by default
@@ -27,6 +30,9 @@ class KomodoDefiSdkConfig {
   /// Delay between retry attempts
   final Duration activationRetryDelay;
 
+  /// Configuration for market data repositories
+  final MarketDataConfig marketDataConfig;
+
   KomodoDefiSdkConfig copyWith({
     Set<String>? defaultAssets,
     bool? preActivateDefaultAssets,
@@ -34,6 +40,7 @@ class KomodoDefiSdkConfig {
     bool? preActivateCustomTokenAssets,
     int? maxPreActivationAttempts,
     Duration? activationRetryDelay,
+    MarketDataConfig? marketDataConfig,
   }) {
     return KomodoDefiSdkConfig(
       defaultAssets: defaultAssets ?? this.defaultAssets,
@@ -46,6 +53,7 @@ class KomodoDefiSdkConfig {
       maxPreActivationAttempts:
           maxPreActivationAttempts ?? this.maxPreActivationAttempts,
       activationRetryDelay: activationRetryDelay ?? this.activationRetryDelay,
+      marketDataConfig: marketDataConfig ?? this.marketDataConfig,
     );
   }
 }
