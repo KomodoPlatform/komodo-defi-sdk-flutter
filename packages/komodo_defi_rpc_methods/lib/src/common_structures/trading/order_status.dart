@@ -16,6 +16,7 @@ class OrderStatus {
 
   /// Status type string as returned by the node
   final String type;
+
   /// Optional structured data for the status
   final OrderStatusData? data;
 
@@ -39,8 +40,10 @@ class OrderStatusData {
 
   /// Related swap UUID if available
   final String? swapUuid;
+
   /// Who cancelled the order (user/system), if applicable
   final String? cancelledBy;
+
   /// Error message if the order failed
   final String? errorMessage;
 
@@ -66,6 +69,7 @@ class OrderMatchStatus {
 
   /// True if order has been matched
   final bool matched;
+
   /// True if matching is currently in progress
   final bool ongoing;
 
@@ -86,6 +90,7 @@ class OrderMatchBy {
 
   /// Matching strategy type
   final String type;
+
   /// Additional parameters for the strategy
   final OrderMatchByData? data;
 
@@ -108,6 +113,7 @@ class OrderMatchByData {
 
   /// Coin ticker if the strategy is coin-specific
   final String? coin;
+
   /// Strategy parameter value
   final String? value;
 
@@ -139,10 +145,13 @@ class OrderConfirmationSettings {
 
   /// Required confirmations for the base coin
   final int baseConfs;
+
   /// Whether notarization is required for the base coin
   final bool baseNota;
+
   /// Required confirmations for the rel coin
   final int relConfs;
+
   /// Whether notarization is required for the rel coin
   final bool relNota;
 
@@ -198,26 +207,37 @@ class MyOrderInfo {
 
   /// Order UUID
   final String uuid;
+
   /// Order type (maker/taker)
   final String orderType;
+
   /// Base coin ticker
   final String base;
+
   /// Rel/quote coin ticker
   final String rel;
+
   /// Price per unit of base in rel (string numeric)
   final String price;
+
   /// Volume in base units (string numeric)
   final String volume;
+
   /// Creation timestamp (unix seconds)
   final int createdAt;
+
   /// Last updated timestamp (unix seconds)
   final int lastUpdated;
+
   /// True if the order timed out
   final bool wasTimedOut;
+
   /// Current status details
   final OrderStatus status;
+
   /// Matching strategy used for this order
   final OrderMatchBy? matchBy;
+
   /// Confirmation settings applied to this order
   final OrderConfirmationSettings? confSettings;
 

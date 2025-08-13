@@ -4,21 +4,17 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// Request to cancel a specific order
 class CancelOrderRequest
     extends BaseRequest<CancelOrderResponse, GeneralErrorResponse> {
-  CancelOrderRequest({
-    required String rpcPass,
-    required this.uuid,
-  }) : super(
-         method: 'cancel_order',
-         rpcPass: rpcPass,
-         mmrpc: RpcVersion.v2_0,
-       );
+  CancelOrderRequest({required String rpcPass, required this.uuid})
+    : super(method: 'cancel_order', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// UUID of the order to cancel
   final String uuid;
 
   @override
   Map<String, dynamic> toJson() {
-    return super.toJson().deepMerge({'params': {'uuid': uuid}});
+    return super.toJson().deepMerge({
+      'params': {'uuid': uuid},
+    });
   }
 
   @override
@@ -28,10 +24,7 @@ class CancelOrderRequest
 
 /// Response from cancelling an order
 class CancelOrderResponse extends BaseResponse {
-  CancelOrderResponse({
-    required super.mmrpc,
-    required this.cancelled,
-  });
+  CancelOrderResponse({required super.mmrpc, required this.cancelled});
 
   factory CancelOrderResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
@@ -47,10 +40,6 @@ class CancelOrderResponse extends BaseResponse {
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {
-      'cancelled': cancelled,
-    },
+    'result': {'cancelled': cancelled},
   };
 }
-
-

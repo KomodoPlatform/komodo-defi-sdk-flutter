@@ -18,10 +18,13 @@ class GenerateInvoiceRequest
 
   /// Coin ticker for the Lightning-enabled asset (e.g. 'BTC')
   final String coin;
+
   /// Human-readable description to embed in the invoice
   final String description;
+
   /// Payment amount in millisatoshis; if null, invoice is amount-less
   final int? amountMsat;
+
   /// Expiry time in seconds; implementation default is used when null
   final int? expiry;
 
@@ -64,8 +67,10 @@ class GenerateInvoiceResponse extends BaseResponse {
 
   /// Encoded BOLT 11 invoice string
   final String invoice;
+
   /// Payment hash associated with the invoice
   final String paymentHash;
+
   /// Expiry time in seconds, if provided by the node
   final int? expiry;
 

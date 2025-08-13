@@ -20,14 +20,19 @@ class TradePreimageRequest
 
   /// Base coin ticker for the potential trade
   final String base;
+
   /// Rel/quote coin ticker for the potential trade
   final String rel;
+
   /// Desired swap method (setprice, buy, sell)
   final SwapMethod swapMethod;
+
   /// Trade volume as a string numeric
   final String? volume;
+
   /// If true, compute preimage for "max" taker volume
   final bool? max;
+
   /// Optional price for maker trades
   final String? price;
 
@@ -94,12 +99,16 @@ class TradePreimageResponse extends BaseResponse {
 
   /// Estimated fee for the base coin leg
   final PreimageCoinFee? baseCoinFee;
+
   /// Estimated fee for the rel/quote coin leg
   final PreimageCoinFee? relCoinFee;
+
   /// Estimated taker fee, if applicable
   final PreimageCoinFee? takerFee;
+
   /// Fee required to send the taker fee, if applicable
   final PreimageCoinFee? feeToSendTakerFee;
+
   /// Aggregated list of total fees across involved coins
   final List<PreimageTotalFee> totalFees;
 
@@ -140,12 +149,16 @@ class PreimageCoinFee {
 
   /// Coin ticker for which the fee applies
   final String coin;
+
   /// Fee amount as a string numeric
   final String amount;
+
   /// Fractional representation of the fee
   final PreimageFraction amountFraction;
+
   /// Rational form of the amount (as returned by API)
   final dynamic amountRat;
+
   /// True if the fee is deducted from the trading volume
   final bool paidFromTradingVol;
 
@@ -187,16 +200,22 @@ class PreimageTotalFee {
 
   /// Coin ticker for which the total fee summary applies
   final String coin;
+
   /// Total fee amount as a string numeric
   final String amount;
+
   /// Fractional representation of the amount
   final PreimageFraction amountFraction;
+
   /// Rational representation of the amount (API-specific)
   final dynamic amountRat;
+
   /// Required balance to perform the trade
   final String requiredBalance;
+
   /// Fractional representation of the required balance
   final PreimageFraction requiredBalanceFraction;
+
   /// Rational representation of the required balance
   final dynamic requiredBalanceRat;
 
@@ -223,6 +242,7 @@ class PreimageFraction {
 
   /// Numerator of the fraction
   final String numer;
+
   /// Denominator of the fraction
   final String denom;
 

@@ -8,10 +8,28 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:collection/collection.dart';
 
 /// Order side for limit orders
-enum OrderSide { buy, sell }
+enum OrderSide {
+  /// Buy the base asset using the rel/quote asset
+  buy,
+
+  /// Sell the base asset for the rel/quote asset
+  sell,
+}
 
 /// Status of a swap lifecycle
-enum SwapStatus { inProgress, completed, failed, canceled }
+enum SwapStatus {
+  /// Swap has started and is in progress
+  inProgress,
+
+  /// Swap finished successfully
+  completed,
+
+  /// Swap failed due to an error
+  failed,
+
+  /// Swap was cancelled before completion
+  canceled,
+}
 
 /// Summary of a placed order
 class PlacedOrderSummary {
@@ -249,8 +267,10 @@ class SwapManager {
   Stream<OrderbookSnapshot> watchOrderbook({
     /// Base asset ticker
     required String base,
+
     /// Rel/quote asset ticker
     required String rel,
+
     /// Polling interval for refreshing snapshots
     Duration interval = const Duration(seconds: 5),
   }) {
@@ -321,12 +341,16 @@ class SwapManager {
   Future<String> placeLimitOrder({
     /// Base asset ticker
     required String base,
+
     /// Rel/quote asset ticker
     required String rel,
+
     /// Buy or sell side
     required OrderSide side,
+
     /// Price per unit of [base] in [rel]
     required Decimal price,
+
     /// Volume in [base] units
     required Decimal volume,
   }) async {
@@ -361,12 +385,16 @@ class SwapManager {
   Stream<SwapProgress> marketSwap({
     /// Base asset ticker
     required String base,
+
     /// Rel/quote asset ticker
     required String rel,
+
     /// Buy or sell side
     required OrderSide side,
+
     /// Amount in [base] units
     required Decimal amount,
+
     /// Polling interval for progress updates
     Duration statusPollInterval = const Duration(seconds: 5),
   }) async* {
@@ -442,6 +470,9 @@ class SwapManager {
     yield* controller.stream;
   }
 
+  /// Disposes internal resources and cancels background watchers.
+  ///
+  /// After calling this method the instance must not be used.
   Future<void> dispose() async {
     if (_isDisposed) return;
     _isDisposed = true;

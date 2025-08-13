@@ -9,6 +9,7 @@ class ActiveSwapsRequest
 
   /// If true, include detailed status objects for each active swap
   final bool? includeStatus;
+
   /// Optional coin filter to limit returned swaps
   final String? coin;
 
@@ -63,6 +64,7 @@ class ActiveSwapsResponse extends BaseResponse {
 
   /// List of active swap UUIDs
   final List<String> uuids;
+
   /// Optional map of UUID -> status when [includeStatus] was requested
   final Map<String, ActiveSwapStatus>? statuses;
 
@@ -90,6 +92,7 @@ class ActiveSwapStatus {
 
   /// Swap type string (maker/taker)
   final String swapType;
+
   /// Detailed swap information
   final SwapInfo swapData;
 

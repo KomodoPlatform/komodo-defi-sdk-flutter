@@ -4,13 +4,8 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// Request to get current user's orders
 class MyOrdersRequest
     extends BaseRequest<MyOrdersResponse, GeneralErrorResponse> {
-  MyOrdersRequest({
-    required String rpcPass,
-  }) : super(
-         method: 'my_orders',
-         rpcPass: rpcPass,
-         mmrpc: RpcVersion.v2_0,
-       );
+  MyOrdersRequest({required String rpcPass})
+    : super(method: 'my_orders', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   @override
   Map<String, dynamic> toJson() => super.toJson();
@@ -22,17 +17,14 @@ class MyOrdersRequest
 
 /// Response with user's orders
 class MyOrdersResponse extends BaseResponse {
-  MyOrdersResponse({
-    required super.mmrpc,
-    required this.orders,
-  });
+  MyOrdersResponse({required super.mmrpc, required this.orders});
 
   factory MyOrdersResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
 
     return MyOrdersResponse(
       mmrpc: json.value<String>('mmrpc'),
-      orders: (result.value<List<dynamic>>('orders'))
+      orders: result.value<List<dynamic>>('orders')
           .map((e) => MyOrderInfo.fromJson(e as JsonMap))
           .toList(),
     );
@@ -44,10 +36,6 @@ class MyOrdersResponse extends BaseResponse {
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {
-      'orders': orders.map((e) => e.toJson()).toList(),
-    },
+    'result': {'orders': orders.map((e) => e.toJson()).toList()},
   };
 }
-
-

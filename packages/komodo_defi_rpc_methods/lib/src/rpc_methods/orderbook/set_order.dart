@@ -20,12 +20,16 @@ class SetOrderRequest
 
   /// Base coin ticker to trade
   final String base;
+
   /// Rel/quote coin ticker to trade
   final String rel;
+
   /// Price per unit of [base] in [rel] (string numeric)
   final String price;
+
   /// Amount of [base] to trade (string numeric)
   final String volume;
+
   /// Optional order type specification (maker/taker config)
   final OrderType? orderType;
 
@@ -34,11 +38,13 @@ class SetOrderRequest
 
   /// Required confirmations for base coin
   final int? baseConfs;
+
   /// Required confirmations for rel coin
   final int? relConfs;
 
   /// Whether notarization is required for base coin
   final bool? baseNota;
+
   /// Whether notarization is required for rel coin
   final bool? relNota;
 

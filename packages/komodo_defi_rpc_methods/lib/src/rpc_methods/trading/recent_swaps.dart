@@ -18,10 +18,13 @@ class RecentSwapsRequest
 
   /// Maximum number of swaps to return
   final int? limit;
+
   /// Page number for pagination (1-based)
   final int? pageNumber;
+
   /// UUID to start from (exclusive) for pagination
   final String? fromUuid;
+
   /// Optional coin filter; limits to swaps involving this coin
   final String? coin;
 

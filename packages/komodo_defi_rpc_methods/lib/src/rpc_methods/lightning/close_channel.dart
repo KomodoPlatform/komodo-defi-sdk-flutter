@@ -17,8 +17,10 @@ class CloseChannelRequest
 
   /// Coin ticker for the Lightning-enabled asset (e.g. 'BTC')
   final String coin;
+
   /// Identifier of the channel to close
   final String channelId;
+
   /// If true, attempts an uncooperative force-close
   final bool forceClose;
 
@@ -66,8 +68,10 @@ class CloseChannelResponse extends BaseResponse {
 
   /// Identifier of the channel that was closed
   final String channelId;
+
   /// On-chain transaction ID used to close the channel, if applicable
   final String? closingTxId;
+
   /// True if the channel was force-closed
   final bool? forceClosed;
 

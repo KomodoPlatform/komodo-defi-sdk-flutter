@@ -9,16 +9,14 @@ class BestOrdersRequest
     required this.coin,
     required this.action,
     required this.volume,
-  }) : super(
-         method: 'best_orders',
-         rpcPass: rpcPass,
-         mmrpc: RpcVersion.v2_0,
-       );
+  }) : super(method: 'best_orders', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// Coin ticker to trade
   final String coin;
+
   /// Desired trade direction
   final OrderType action;
+
   /// Desired trade volume as a numeric string
   final String volume;
 
@@ -43,19 +41,18 @@ class BestOrdersRequest
 
 /// Response containing best orders list
 class BestOrdersResponse extends BaseResponse {
-  BestOrdersResponse({
-    required super.mmrpc,
-    required this.orders,
-  });
+  BestOrdersResponse({required super.mmrpc, required this.orders});
 
   factory BestOrdersResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
 
     return BestOrdersResponse(
       mmrpc: json.value<String>('mmrpc'),
-      orders: (result.value<List<dynamic>>('orders'))
-          .map((e) => OrderInfo.fromJson(e as JsonMap))
-          .toList(),
+      orders:
+          result
+              .value<List<dynamic>>('orders')
+              .map((e) => OrderInfo.fromJson(e as JsonMap))
+              .toList(),
     );
   }
 
@@ -65,10 +62,6 @@ class BestOrdersResponse extends BaseResponse {
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {
-      'orders': orders.map((e) => e.toJson()).toList(),
-    },
+    'result': {'orders': orders.map((e) => e.toJson()).toList()},
   };
 }
-
-
