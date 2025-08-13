@@ -5,7 +5,6 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:collection/collection.dart';
 
 /// Order side for limit orders
 enum OrderSide {
@@ -212,17 +211,17 @@ class SwapManager {
   }
 
   /// Ensures both assets are activated if required for a swap
-  Future<void> _ensurePairActivated(String base, String rel) async {
+  Future<void> _ensurePairActivatedById(AssetId base, AssetId rel) async {
     // Validate pair
-    if (base.trim().toUpperCase() == rel.trim().toUpperCase()) {
+    if (base.isSameAsset(rel)) {
       throw ArgumentError('Base and rel must be different assets');
     }
 
-    final baseAsset = _assetLookup.findAssetsByConfigId(base).firstOrNull;
-    final relAsset = _assetLookup.findAssetsByConfigId(rel).firstOrNull;
+    final baseAsset = _assetLookup.fromId(base);
+    final relAsset = _assetLookup.fromId(rel);
 
     if (baseAsset == null || relAsset == null) {
-      throw ArgumentError('Unknown asset(s): $base/$rel');
+      throw ArgumentError('Unknown asset(s): ${base.id}/${rel.id}');
     }
 
     // Only attempt activation if not active
@@ -230,7 +229,7 @@ class SwapManager {
       final result = await _activationCoordinator.activateAsset(baseAsset);
       if (!result.isSuccess) {
         throw StateError(
-          'Failed to activate $base: ${result.errorMessage ?? 'Unknown error'}',
+          'Failed to activate ${base.id}: ${result.errorMessage ?? 'Unknown error'}',
         );
       }
     }
@@ -238,7 +237,7 @@ class SwapManager {
       final result = await _activationCoordinator.activateAsset(relAsset);
       if (!result.isSuccess) {
         throw StateError(
-          'Failed to activate $rel: ${result.errorMessage ?? 'Unknown error'}',
+          'Failed to activate ${rel.id}: ${result.errorMessage ?? 'Unknown error'}',
         );
       }
     }
@@ -246,17 +245,16 @@ class SwapManager {
 
   /// Fetch a one-time orderbook snapshot
   Future<OrderbookSnapshot> getOrderbook({
-    required String base,
-    required String rel,
+    required AssetId base,
+    required AssetId rel,
   }) async {
     _assertNotDisposed();
-    // NB: Orderbook queries don't require wallet auth, but we still record auth state
     final now = DateTime.now();
     // Placeholder implementation until RPC mapping is ready
     // Return empty orderbook to keep API stable
     return OrderbookSnapshot(
-      base: base.toUpperCase(),
-      rel: rel.toUpperCase(),
+      base: base.id.toUpperCase(),
+      rel: rel.id.toUpperCase(),
       asks: const [],
       bids: const [],
       timestamp: now,
@@ -265,17 +263,17 @@ class SwapManager {
 
   /// Watch the orderbook for a pair with periodic polling
   Stream<OrderbookSnapshot> watchOrderbook({
-    /// Base asset ticker
-    required String base,
+    /// Base asset id
+    required AssetId base,
 
-    /// Rel/quote asset ticker
-    required String rel,
+    /// Rel/quote asset id
+    required AssetId rel,
 
     /// Polling interval for refreshing snapshots
     Duration interval = const Duration(seconds: 5),
   }) {
     _assertNotDisposed();
-    final key = _pairKey(base, rel);
+    final key = _pairKey(base.id, rel.id);
 
     final controller = _orderbookControllers.putIfAbsent(
       key,
@@ -289,11 +287,11 @@ class SwapManager {
   }
 
   Future<void> _startWatchingOrderbook(
-    String base,
-    String rel,
+    AssetId base,
+    AssetId rel,
     Duration interval,
   ) async {
-    final key = _pairKey(base, rel);
+    final key = _pairKey(base.id, rel.id);
     final controller = _orderbookControllers[key];
     if (controller == null || _isDisposed) return;
 
@@ -339,11 +337,11 @@ class SwapManager {
 
   /// Place a limit order. Returns the order UUID.
   Future<String> placeLimitOrder({
-    /// Base asset ticker
-    required String base,
+    /// Base asset id
+    required AssetId base,
 
-    /// Rel/quote asset ticker
-    required String rel,
+    /// Rel/quote asset id
+    required AssetId rel,
 
     /// Buy or sell side
     required OrderSide side,
@@ -359,7 +357,7 @@ class SwapManager {
     final user = await _auth.currentUser;
     if (user == null) throw AuthException.notSignedIn();
 
-    await _ensurePairActivated(base, rel);
+    await _ensurePairActivatedById(base, rel);
 
     // Placeholder: in future, call RPC buy/sell and return UUID
     // For now, return a synthetic UUID-like string for dev/testing flows
@@ -383,11 +381,11 @@ class SwapManager {
   /// - buy: acquire [amount] of base using rel
   /// - sell: sell [amount] of base for rel
   Stream<SwapProgress> marketSwap({
-    /// Base asset ticker
-    required String base,
+    /// Base asset id
+    required AssetId base,
 
-    /// Rel/quote asset ticker
-    required String rel,
+    /// Rel/quote asset id
+    required AssetId rel,
 
     /// Buy or sell side
     required OrderSide side,
@@ -410,7 +408,7 @@ class SwapManager {
       throw ArgumentError('statusPollInterval must be positive');
     }
 
-    await _ensurePairActivated(base, rel);
+    await _ensurePairActivatedById(base, rel);
 
     // Create controller per swap
     final swapKey = 'swap_${DateTime.now().microsecondsSinceEpoch}';
@@ -439,7 +437,7 @@ class SwapManager {
     // Placeholder polling loop to simulate progress until completion
     // Replace with RPC `my_swaps`/`swap_status` polling when available
     int ticks = 0;
-    _swapWatchers[swapKey]?.cancel();
+    await _swapWatchers[swapKey]?.cancel();
     final periodic = Stream<void>.periodic(statusPollInterval);
     _swapWatchers[swapKey] = periodic.listen((_) async {
       if (_isDisposed || controller.isClosed) return;
@@ -460,7 +458,7 @@ class SwapManager {
         controller.add(
           SwapProgress(
             status: SwapStatus.inProgress,
-            message: 'Processing... (${ticks}/3)',
+            message: 'Processing... ($ticks/3)',
             swapUuid: swapKey,
           ),
         );
