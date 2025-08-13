@@ -2,149 +2,15 @@ import 'dart:async';
 
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-/// Order side for limit orders
-enum OrderSide {
-  /// Buy the base asset using the rel/quote asset
-  buy,
-
-  /// Sell the base asset for the rel/quote asset
-  sell,
-}
-
-/// Status of a swap lifecycle
-enum SwapStatus {
-  /// Swap has started and is in progress
-  inProgress,
-
-  /// Swap finished successfully
-  completed,
-
-  /// Swap failed due to an error
-  failed,
-
-  /// Swap was cancelled before completion
-  canceled,
-}
-
-/// Summary of a placed order
-class PlacedOrderSummary {
-  PlacedOrderSummary({
-    required this.uuid,
-    required this.base,
-    required this.rel,
-    required this.side,
-    required this.price,
-    required this.volume,
-    required this.timestamp,
-    this.isMine = true,
-  });
-
-  /// Unique identifier of the order created by the DEX
-  final String uuid;
-
-  /// Base asset ticker (e.g. 'BTC')
-  final String base;
-
-  /// Rel/quote asset ticker (e.g. 'KMD')
-  final String rel;
-
-  /// Whether this is a buy or sell order
-  final OrderSide side;
-
-  /// Price per unit of [base] in [rel]
-  final Decimal price;
-
-  /// Order volume in [base] units
-  final Decimal volume;
-
-  /// Creation timestamp (local clock)
-  final DateTime timestamp;
-
-  /// True if the order belongs to the current wallet
-  final bool isMine;
-}
-
-/// One orderbook entry
-class OrderbookEntry {
-  OrderbookEntry({
-    required this.price,
-    required this.baseAmount,
-    required this.relAmount,
-    this.uuid,
-    this.pubkey,
-    this.age,
-  });
-
-  /// Price for this order level
-  final Decimal price;
-
-  /// Available amount denominated in base asset units
-  final Decimal baseAmount;
-
-  /// Available amount denominated in rel asset units
-  final Decimal relAmount;
-
-  /// Unique order identifier, if known
-  final String? uuid;
-
-  /// Maker's public node key, if available
-  final String? pubkey;
-
-  /// How long the order has been on the book
-  final Duration? age;
-}
-
-/// Orderbook snapshot for a trading pair
-class OrderbookSnapshot {
-  OrderbookSnapshot({
-    required this.base,
-    required this.rel,
-    required this.asks,
-    required this.bids,
-    required this.timestamp,
-  });
-
-  /// Base asset ticker of the pair
-  final String base;
-
-  /// Rel/quote asset ticker of the pair
-  final String rel;
-
-  /// Sorted list of sell orders (lowest price first)
-  final List<OrderbookEntry> asks;
-
-  /// Sorted list of buy orders (highest price first)
-  final List<OrderbookEntry> bids;
-
-  /// Snapshot timestamp (local clock)
-  final DateTime timestamp;
-}
-
-/// Progress update for an active swap
-class SwapProgress {
-  SwapProgress({
-    required this.status,
-    this.message,
-    this.swapUuid,
-    this.details,
-  });
-
-  /// Current status in the swap lifecycle
-  final SwapStatus status;
-
-  /// Human-readable progress message
-  final String? message;
-
-  /// Swap identifier if available
-  final String? swapUuid;
-
-  /// Additional implementation-specific details
-  final Map<String, dynamic>? details;
-}
+// OrderSide, SwapStatus, PlacedOrderSummary, OrderbookEntry, OrderbookSnapshot,
+// and SwapProgress have been moved to the types library under
+// `komodo_defi_types/src/trading/swap_types.dart` and re-exported via
+// `package:komodo_defi_types/komodo_defi_types.dart`.
 
 /// Abstraction over swaps and order management operations.
 ///
@@ -249,15 +115,60 @@ class SwapManager {
     required AssetId rel,
   }) async {
     _assertNotDisposed();
-    final now = DateTime.now();
-    // Placeholder implementation until RPC mapping is ready
-    // Return empty orderbook to keep API stable
-    return OrderbookSnapshot(
+    // No activation required to view orderbook
+    final response = await _client.rpc.orderbook.orderbook(
       base: base.id.toUpperCase(),
       rel: rel.id.toUpperCase(),
-      asks: const [],
-      bids: const [],
-      timestamp: now,
+    );
+
+    OrderbookEntry mapOrderToEntry(
+      OrderInfo o,
+      String baseTicker,
+      String relTicker,
+    ) {
+      final price = Decimal.parse(o.price);
+      Decimal baseAmount;
+      if (o.coin.toUpperCase() == baseTicker.toUpperCase()) {
+        baseAmount = Decimal.parse(o.maxVolume);
+      } else if (o.coin.toUpperCase() == relTicker.toUpperCase()) {
+        // Convert rel volume to base using price; guard against zero
+        final relVol = Decimal.parse(o.maxVolume);
+        if (price == Decimal.zero) {
+          baseAmount = Decimal.zero;
+        } else {
+          baseAmount = Decimal.parse((relVol / price).toString());
+        }
+      } else {
+        // Fallback: treat provided max_volume as base units
+        baseAmount = Decimal.parse(o.maxVolume);
+      }
+      final relAmount = Decimal.parse((baseAmount * price).toString());
+      return OrderbookEntry(
+        price: price,
+        baseAmount: baseAmount,
+        relAmount: relAmount,
+        uuid: o.uuid,
+        pubkey: o.pubkey,
+        age: Duration(seconds: o.age),
+      );
+    }
+
+    final asks =
+        response.asks
+            .map((o) => mapOrderToEntry(o, response.base, response.rel))
+            .toList();
+    final bids =
+        response.bids
+            .map((o) => mapOrderToEntry(o, response.base, response.rel))
+            .toList();
+
+    final ts = DateTime.fromMillisecondsSinceEpoch(response.timestamp * 1000);
+    return OrderbookSnapshot(
+      base: response.base,
+      rel: response.rel,
+      asks: asks,
+      bids: bids,
+      timestamp: ts,
     );
   }
 
@@ -359,10 +270,14 @@ class SwapManager {
 
     await _ensurePairActivatedById(base, rel);
 
-    // Placeholder: in future, call RPC buy/sell and return UUID
-    // For now, return a synthetic UUID-like string for dev/testing flows
-    final pseudoUuid = 'order_${DateTime.now().millisecondsSinceEpoch}';
-    return pseudoUuid;
+    final resp = await _client.rpc.orderbook.setOrder(
+      base: base.id.toUpperCase(),
+      rel: rel.id.toUpperCase(),
+      price: price.toString(),
+      volume: volume.toString(),
+    );
+
+    return resp.orderInfo.uuid;
   }
 
   /// Cancel an order by UUID
@@ -371,8 +286,8 @@ class SwapManager {
     final user = await _auth.currentUser;
     if (user == null) throw AuthException.notSignedIn();
 
-    // Placeholder: invoke RPC cancel
-    return true;
+    final resp = await _client.rpc.orderbook.cancelOrder(uuid: uuid);
+    return resp.cancelled;
   }
 
   /// Execute a simple market swap and stream its progress until completion.
@@ -410,14 +325,31 @@ class SwapManager {
 
     await _ensurePairActivatedById(base, rel);
 
-    // Create controller per swap
-    final swapKey = 'swap_${DateTime.now().microsecondsSinceEpoch}';
+    // Start the swap using trading.startSwap and stream progress by polling
+    final method = side == OrderSide.buy ? SwapMethod.buy : SwapMethod.sell;
+    final start = await _client.rpc.trading.startSwap(
+      swapRequest: SwapRequest(
+        base: base.id.toUpperCase(),
+        rel: rel.id.toUpperCase(),
+        // Preserve precision by sending string params directly
+        baseCoinAmount: amount.toString(),
+        // For taker swaps, one side amount is primary; set the other to "0"
+        relCoinAmount: '0',
+        method: method,
+      ),
+    );
+
+    final swapKey = start.uuid;
     late final StreamController<SwapProgress> controller;
     controller = StreamController<SwapProgress>(
       onCancel: () async {
         await _swapWatchers[swapKey]?.cancel();
         _swapWatchers.remove(swapKey);
         _swapControllers.remove(swapKey);
+        // Attempt to cancel the swap at the node if still active
+        try {
+          await _client.rpc.trading.cancelSwap(uuid: swapKey);
+        } catch (_) {}
         if (!controller.isClosed) {
           await controller.close();
         }
@@ -434,34 +366,47 @@ class SwapManager {
       ),
     );
 
-    // Placeholder polling loop to simulate progress until completion
-    // Replace with RPC `my_swaps`/`swap_status` polling when available
-    int ticks = 0;
+    // Poll actual swap status until terminal state
     await _swapWatchers[swapKey]?.cancel();
     final periodic = Stream<void>.periodic(statusPollInterval);
     _swapWatchers[swapKey] = periodic.listen((_) async {
       if (_isDisposed || controller.isClosed) return;
-      ticks += 1;
-      if (ticks >= 3) {
-        controller.add(
-          SwapProgress(
-            status: SwapStatus.completed,
-            message: 'Swap completed',
-            swapUuid: swapKey,
-          ),
-        );
-        await controller.close();
-        await _swapWatchers[swapKey]?.cancel();
-        _swapWatchers.remove(swapKey);
-        _swapControllers.remove(swapKey);
-      } else {
-        controller.add(
-          SwapProgress(
-            status: SwapStatus.inProgress,
-            message: 'Processing... ($ticks/3)',
-            swapUuid: swapKey,
-          ),
-        );
+      try {
+        final status = await _client.rpc.trading.swapStatus(uuid: swapKey);
+        final info = status.swapInfo;
+        if (info.isComplete) {
+          controller.add(
+            SwapProgress(
+              status:
+                  info.isSuccessful ? SwapStatus.completed : SwapStatus.failed,
+              message:
+                  info.isSuccessful
+                      ? 'Swap completed'
+                      : (info.errorEvents.isNotEmpty
+                          ? 'Swap failed: ${info.errorEvents.last}'
+                          : 'Swap failed'),
+              swapUuid: swapKey,
+              details: info.toJson(),
+            ),
+          );
+          await controller.close();
+          await _swapWatchers[swapKey]?.cancel();
+          _swapWatchers.remove(swapKey);
+          _swapControllers.remove(swapKey);
+        } else {
+          final last =
+              info.successEvents.isNotEmpty ? info.successEvents.last : null;
+          controller.add(
+            SwapProgress(
+              status: SwapStatus.inProgress,
+              message: last ?? 'In progress',
+              swapUuid: swapKey,
+              details: info.toJson(),
+            ),
+          );
+        }
+      } catch (e) {
+        // If status request fails, keep the stream alive unless disposed
       }
     });
 

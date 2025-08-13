@@ -52,6 +52,7 @@ export 'public_key/pubkey_strategy.dart';
 export 'public_key/token_balance_map.dart';
 export 'public_key/wallet_balance.dart';
 export 'seed_node/seed_node.dart';
+export 'trading/swap_types.dart';
 export 'transactions/asset_transaction_history_id.dart';
 export 'transactions/balance_changes.dart';
 export 'transactions/fee_info.dart';
