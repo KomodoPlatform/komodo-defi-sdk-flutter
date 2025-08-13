@@ -11,9 +11,12 @@ _NewAddressState _$NewAddressStateFromJson(Map<String, dynamic> json) =>
       status: $enumDecode(_$NewAddressStatusEnumMap, json['status']),
       message: json['message'] as String?,
       taskId: (json['taskId'] as num?)?.toInt(),
-      address: json['address'] == null
-          ? null
-          : NewAddressInfo.fromJson(json['address'] as Map<String, dynamic>),
+      address:
+          json['address'] == null
+              ? null
+              : NewAddressInfo.fromJson(
+                json['address'] as Map<String, dynamic>,
+              ),
       expectedAddress: json['expectedAddress'] as String?,
       error: json['error'] as String?,
     );

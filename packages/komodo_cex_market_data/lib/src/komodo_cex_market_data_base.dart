@@ -1,5 +1,10 @@
 export 'binance/binance.dart';
+export 'bootstrap/market_data_bootstrap.dart';
 export 'cex_repository.dart';
 export 'coingecko/coingecko.dart';
+export 'id_resolution_strategy.dart';
 export 'komodo/komodo.dart';
 export 'models/models.dart';
+export 'repository_priority_manager.dart';
+export 'repository_selection_strategy.dart';
+export 'sparkline_repository.dart';
