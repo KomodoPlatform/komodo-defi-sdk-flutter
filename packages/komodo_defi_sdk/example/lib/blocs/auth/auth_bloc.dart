@@ -6,11 +6,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
-part 'trezor_auth_mixin.dart';
 part 'trezor_auth_event.dart';
+part 'trezor_auth_mixin.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> with TrezorAuthMixin {
   AuthBloc({required KomodoDefiSdk sdk})
