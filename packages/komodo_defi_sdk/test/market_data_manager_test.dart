@@ -73,6 +73,14 @@ void main() {
       when(primaryRepo.getCoinList).thenAnswer((_) async => []);
       when(fallbackRepo.getCoinList).thenAnswer((_) async => []);
 
+      // Ensure repositories are considered for attempts
+      when(
+        () => primaryRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
+      when(
+        () => fallbackRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
+
       // Setup strategy to return primary repo first
       when(
         () => mockStrategy.selectRepository(
@@ -105,9 +113,7 @@ void main() {
 
       // Verify
       expect(price, equals(Decimal.parse('50000')));
-      verify(
-        () => primaryRepo.getCoinFiatPrice(asset('BTC')),
-      ).called(2); // Called twice due to retry mechanism
+      verify(() => primaryRepo.getCoinFiatPrice(asset('BTC'))).called(1);
       verify(() => fallbackRepo.getCoinFiatPrice(asset('BTC'))).called(1);
 
       await manager.dispose();
@@ -126,6 +132,14 @@ void main() {
       // Setup repository coin lists
       when(primaryRepo.getCoinList).thenAnswer((_) async => []);
       when(fallbackRepo.getCoinList).thenAnswer((_) async => []);
+
+      // Ensure repositories are considered for attempts
+      when(
+        () => primaryRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
+      when(
+        () => fallbackRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
 
       // Setup strategy to return primary repo first
       when(
@@ -177,6 +191,14 @@ void main() {
       when(primaryRepo.getCoinList).thenAnswer((_) async => []);
       when(fallbackRepo.getCoinList).thenAnswer((_) async => []);
 
+      // Ensure repositories are considered for attempts
+      when(
+        () => primaryRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
+      when(
+        () => fallbackRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
+
       // Setup strategy to return primary repo first
       when(
         () => mockStrategy.selectRepository(
@@ -226,6 +248,14 @@ void main() {
       // Setup repository coin lists
       when(primaryRepo.getCoinList).thenAnswer((_) async => []);
       when(fallbackRepo.getCoinList).thenAnswer((_) async => []);
+
+      // Ensure repositories are considered for attempts
+      when(
+        () => primaryRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
+      when(
+        () => fallbackRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
 
       // Setup strategy to return primary repo first
       when(
@@ -277,6 +307,14 @@ void main() {
       // Setup repository coin lists
       when(primaryRepo.getCoinList).thenAnswer((_) async => []);
       when(fallbackRepo.getCoinList).thenAnswer((_) async => []);
+
+      // Ensure repositories are considered for attempts
+      when(
+        () => primaryRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
+      when(
+        () => fallbackRepo.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
 
       final testDates = [DateTime(2023), DateTime(2023, 1, 2)];
 

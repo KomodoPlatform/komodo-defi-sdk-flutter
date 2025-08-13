@@ -1,6 +1,6 @@
 import 'package:decimal/decimal.dart';
-import 'package:test/test.dart';
 import 'package:komodo_cex_market_data/src/models/json_converters.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('DecimalConverter', () {
@@ -91,6 +91,25 @@ void main() {
         final decimal = Decimal.parse('-67.89');
         expect(converter.toJson(decimal), equals('-67.89'));
       });
+
+      test('should handle very large decimal values', () {
+        const largeStr =
+            '123456789012345678901234567890.123456789012345678901234567890';
+        final large = Decimal.parse(largeStr);
+        final json = converter.toJson(large);
+        // Decimal normalizes trailing zeros in fractional part in toString
+        expect(json, equals(Decimal.parse(largeStr).toString()));
+        // Round-trip preserves numeric value
+        expect(Decimal.parse(json!), equals(large));
+      });
+
+      test('should handle very small decimal values with many places', () {
+        final small = Decimal.parse('0.000000000000000000000000000123456789');
+        expect(
+          converter.toJson(small),
+          equals('0.000000000000000000000000000123456789'),
+        );
+      });
     });
   });
 
@@ -117,6 +136,29 @@ void main() {
         final result = converter.fromJson(0);
         expect(result, isA<DateTime>());
         expect(result!.millisecondsSinceEpoch, equals(0));
+      });
+
+      test('should handle negative timestamps (pre-epoch)', () {
+        const timestamp = -1; // 1 second before Unix epoch
+        final result = converter.fromJson(timestamp);
+        expect(result, isA<DateTime>());
+        expect(result!.millisecondsSinceEpoch, equals(-1000));
+      });
+
+      test('should handle very large timestamps near upper bound', () {
+        // 9999-12-31T23:59:59Z in seconds
+        const timestamp = 253402300799;
+        final result = converter.fromJson(timestamp);
+        expect(result, isA<DateTime>());
+        expect(result!.millisecondsSinceEpoch, equals(timestamp * 1000));
+      });
+
+      test('should throw for invalid input types when invoked dynamically', () {
+        final dynamic dynConverter = converter;
+        expect(
+          () => dynConverter.fromJson('1691404800'),
+          throwsA(isA<Error>()),
+        );
       });
     });
 

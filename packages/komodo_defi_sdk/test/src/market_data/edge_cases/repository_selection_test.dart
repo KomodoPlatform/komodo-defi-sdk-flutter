@@ -1,9 +1,134 @@
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
+import 'package:komodo_cex_market_data/src/binance/models/binance_24hr_ticker.dart';
+import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
+import 'package:komodo_cex_market_data/src/coingecko/models/coin_historical_data/coin_historical_data.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 class MockCexRepository extends Mock implements CexRepository {}
+
+// Lightweight stub providers to create real repository instances for
+// priority-based selection tests without hitting the network.
+class _TestBinanceProvider implements IBinanceProvider {
+  @override
+  Future<CoinOhlc> fetchKlines(
+    String symbol,
+    String interval, {
+    int? startUnixTimestampMilliseconds,
+    int? endUnixTimestampMilliseconds,
+    int? limit,
+    String? baseUrl,
+  }) async {
+    return const CoinOhlc(ohlc: []);
+  }
+
+  @override
+  Future<Binance24hrTicker> fetch24hrTicker(String symbol, {String? baseUrl}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<BinanceExchangeInfoResponse> fetchExchangeInfo({String? baseUrl}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<BinanceExchangeInfoResponseReduced> fetchExchangeInfoReduced({
+    String? baseUrl,
+  }) async {
+    return BinanceExchangeInfoResponseReduced(
+      timezone: '',
+      serverTime: 0,
+      symbols: [
+        SymbolReduced(
+          symbol: 'BTCUSDT',
+          status: 'TRADING',
+          baseAsset: 'BTC',
+          baseAssetPrecision: 8,
+          quoteAsset: 'USDT',
+          quotePrecision: 8,
+          quoteAssetPrecision: 8,
+          isSpotTradingAllowed: true,
+        ),
+      ],
+    );
+  }
+}
+
+class _TestCoinGeckoProvider implements ICoinGeckoProvider {
+  @override
+  Future<List<CexCoin>> fetchCoinList({bool includePlatforms = false}) async {
+    return const [
+      CexCoin(
+        id: 'BTC',
+        symbol: 'BTC',
+        name: 'Bitcoin',
+        currencies: <String>{},
+      ),
+    ];
+  }
+
+  @override
+  Future<List<String>> fetchSupportedVsCurrencies() async {
+    return ['usdt'];
+  }
+
+  @override
+  Future<List<CoinMarketData>> fetchCoinMarketData({
+    String vsCurrency = 'usd',
+    List<String>? ids,
+    String? category,
+    String order = 'market_cap_asc',
+    int perPage = 100,
+    int page = 1,
+    bool sparkline = false,
+    String? priceChangePercentage,
+    String locale = 'en',
+    String? precision,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CoinMarketChart> fetchCoinMarketChart({
+    required String id,
+    required String vsCurrency,
+    required int fromUnixTimestamp,
+    required int toUnixTimestamp,
+    String? precision,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CoinOhlc> fetchCoinOhlc(
+    String id,
+    String vsCurrency,
+    int days, {
+    int? precision,
+  }) async {
+    return const CoinOhlc(ohlc: []);
+  }
+
+  @override
+  Future<CoinHistoricalData> fetchCoinHistoricalMarketData({
+    required String id,
+    required DateTime date,
+    String vsCurrency = 'usd',
+    bool localization = false,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, AssetMarketInformation>> fetchCoinPrices(
+    List<String> coinGeckoIds, {
+    List<String> vsCurrencies = const <String>['usd'],
+  }) {
+    throw UnimplementedError();
+  }
+}
 
 void main() {
   group('Repository Selection Strategy Edge Cases', () {
@@ -354,23 +479,15 @@ void main() {
       test(
         'selectRepository returns highest priority repository when multiple support the asset',
         () async {
-          // Setup both repositories to support BTC
-          final commonCoins = [
-            const CexCoin(
-              id: 'BTC',
-              symbol: 'BTC',
-              name: 'Bitcoin',
-              currencies: {'USDT'},
-              source: 'common',
-            ),
-          ];
-
-          when(
-            () => mockBinanceRepo.getCoinList(),
-          ).thenAnswer((_) async => commonCoins);
-          when(
-            () => mockCoinGeckoRepo.getCoinList(),
-          ).thenAnswer((_) async => commonCoins);
+          // Use real repository types with stub providers so priority mapping applies
+          final binanceRepo = BinanceRepository(
+            binanceProvider: _TestBinanceProvider(),
+            enableMemoization: false,
+          );
+          final coinGeckoRepo = CoinGeckoRepository(
+            coinGeckoProvider: _TestCoinGeckoProvider(),
+            enableMemoization: false,
+          );
 
           final btcAsset = AssetId(
             id: 'bitcoin',
@@ -386,15 +503,13 @@ void main() {
             fiatCurrency: Stablecoin.usdt,
             requestType: PriceRequestType.currentPrice,
             availableRepositories: [
-              mockCoinGeckoRepo,
-              mockBinanceRepo,
+              coinGeckoRepo,
+              binanceRepo,
             ], // Order shouldn't matter
           );
 
-          // Should return the repository with highest priority
-          // (Based on RepositoryPriorityManager implementation)
-          expect(result, isNotNull);
-          expect(result, isIn([mockBinanceRepo, mockCoinGeckoRepo]));
+          // According to RepositoryPriorityManager: Binance(2) > CoinGecko(3)
+          expect(result, equals(binanceRepo));
         },
       );
     });

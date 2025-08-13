@@ -1,76 +1,48 @@
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:test/test.dart';
 
+const bool _runLiveApiTests = bool.fromEnvironment('RUN_LIVE_API_TESTS');
+
 void main() {
-  group('Coingecko CEX provider tests', () {
-    setUp(() {
-      // Additional setup goes here.
-    });
+  group(
+    'Coingecko CEX provider tests',
+    () {
+      setUp(() {
+        // Additional setup goes here.
+      });
 
-    test('fetchCoinList test', () async {
-      // Arrange
-      final provider = CoinGeckoCexProvider();
-
-      // Act
-      final result = await provider.fetchCoinList();
-
-      // Assert
-      expect(result, isA<List<CexCoin>>());
-      expect(result.length, greaterThan(0));
-    });
-
-    test('fetchCoinMarketData test', () async {
-      // Arrange
-      final provider = CoinGeckoCexProvider();
-
-      // Act
-      final result = await provider.fetchCoinMarketData();
-
-      // Assert
-      expect(result, isA<List<CoinMarketData>>());
-      expect(result.length, greaterThan(0));
-    });
-
-    test('fetchCoinMarketChart test', () async {
-      // Arrange
-      final provider = CoinGeckoCexProvider();
-
-      // Use timestamps from 7 days ago to 3 days ago (within 365-day limit)
-      final now = DateTime.now();
-      final fromDate = now.subtract(const Duration(days: 7));
-      final toDate = now.subtract(const Duration(days: 3));
-      final fromUnixTimestamp = fromDate.millisecondsSinceEpoch ~/ 1000;
-      final toUnixTimestamp = toDate.millisecondsSinceEpoch ~/ 1000;
-
-      // Act
-      final result = await provider.fetchCoinMarketChart(
-        id: 'bitcoin',
-        vsCurrency: 'usd',
-        fromUnixTimestamp: fromUnixTimestamp,
-        toUnixTimestamp: toUnixTimestamp,
-      );
-
-      // Assert
-      expect(result, isA<CoinMarketChart>());
-      expect(result.prices, isA<List<List<num>>>());
-      expect(result.prices.length, greaterThan(0));
-      expect(result.marketCaps, isA<List<List<num>>>());
-      expect(result.marketCaps.length, greaterThan(0));
-      expect(result.totalVolumes, isA<List<List<num>>>());
-      expect(result.totalVolumes.length, greaterThan(0));
-    });
-
-    test(
-      'fetchCoinMarketChart handles large time ranges within constraints',
-      () async {
+      test('fetchCoinList test', () async {
         // Arrange
         final provider = CoinGeckoCexProvider();
 
-        // Use timestamps that are close to the maximum allowed range but within constraints
-        // This tests the splitting functionality without exceeding API limits
+        // Act
+        final result = await provider.fetchCoinList();
+
+        // Assert
+        expect(result, isA<List<CexCoin>>());
+        expect(result.length, greaterThan(0));
+      });
+
+      test('fetchCoinMarketData test', () async {
+        // Arrange
+        final provider = CoinGeckoCexProvider();
+
+        // Act
+        final result = await provider.fetchCoinMarketData();
+
+        // Assert
+        expect(result, isA<List<CoinMarketData>>());
+        expect(result.length, greaterThan(0));
+      });
+
+      test('fetchCoinMarketChart test', () async {
+        // Arrange
+        final provider = CoinGeckoCexProvider();
+
+        // Use timestamps from 7 days ago to 3 days ago (within 365-day limit)
         final now = DateTime.now();
-        final fromDate = now.subtract(const Duration(days: 350));
-        final toDate = now.subtract(const Duration(days: 7));
+        final fromDate = now.subtract(const Duration(days: 7));
+        final toDate = now.subtract(const Duration(days: 3));
         final fromUnixTimestamp = fromDate.millisecondsSinceEpoch ~/ 1000;
         final toUnixTimestamp = toDate.millisecondsSinceEpoch ~/ 1000;
 
@@ -90,50 +62,88 @@ void main() {
         expect(result.marketCaps.length, greaterThan(0));
         expect(result.totalVolumes, isA<List<List<num>>>());
         expect(result.totalVolumes.length, greaterThan(0));
-      },
-    );
+      });
 
-    test(
-      'fetchCoinMarketChart validates historical data access limit',
-      () async {
-        // Arrange
-        final provider = CoinGeckoCexProvider();
+      test(
+        'fetchCoinMarketChart handles large time ranges within constraints',
+        () async {
+          // Arrange
+          final provider = CoinGeckoCexProvider();
 
-        // Use timestamps that exceed the 365-day historical limit
-        final now = DateTime.now();
-        final fromDate = now.subtract(const Duration(days: 400));
-        final toDate = now.subtract(const Duration(days: 390));
-        final fromUnixTimestamp = fromDate.millisecondsSinceEpoch ~/ 1000;
-        final toUnixTimestamp = toDate.millisecondsSinceEpoch ~/ 1000;
+          // Use timestamps that are close to the maximum allowed range but within constraints
+          // This tests the splitting functionality without exceeding API limits
+          final now = DateTime.now();
+          final fromDate = now.subtract(const Duration(days: 350));
+          final toDate = now.subtract(const Duration(days: 7));
+          final fromUnixTimestamp = fromDate.millisecondsSinceEpoch ~/ 1000;
+          final toUnixTimestamp = toDate.millisecondsSinceEpoch ~/ 1000;
 
-        // Act & Assert
-        expect(
-          () => provider.fetchCoinMarketChart(
+          // Act
+          final result = await provider.fetchCoinMarketChart(
             id: 'bitcoin',
             vsCurrency: 'usd',
             fromUnixTimestamp: fromUnixTimestamp,
             toUnixTimestamp: toUnixTimestamp,
-          ),
+          );
+
+          // Assert
+          expect(result, isA<CoinMarketChart>());
+          expect(result.prices, isA<List<List<num>>>());
+          expect(result.prices.length, greaterThan(0));
+          expect(result.marketCaps, isA<List<List<num>>>());
+          expect(result.marketCaps.length, greaterThan(0));
+          expect(result.totalVolumes, isA<List<List<num>>>());
+          expect(result.totalVolumes.length, greaterThan(0));
+        },
+      );
+
+      test(
+        'fetchCoinMarketChart validates historical data access limit',
+        () async {
+          // Arrange
+          final provider = CoinGeckoCexProvider();
+
+          // Use timestamps that exceed the 365-day historical limit
+          final now = DateTime.now();
+          final fromDate = now.subtract(const Duration(days: 400));
+          final toDate = now.subtract(const Duration(days: 390));
+          final fromUnixTimestamp = fromDate.millisecondsSinceEpoch ~/ 1000;
+          final toUnixTimestamp = toDate.millisecondsSinceEpoch ~/ 1000;
+
+          // Act & Assert
+          expect(
+            () => provider.fetchCoinMarketChart(
+              id: 'bitcoin',
+              vsCurrency: 'usd',
+              fromUnixTimestamp: fromUnixTimestamp,
+              toUnixTimestamp: toUnixTimestamp,
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+        },
+      );
+
+      test('fetchCoinOhlc validates 365-day limit', () async {
+        // Arrange
+        final provider = CoinGeckoCexProvider();
+
+        // Act & Assert
+        expect(
+          () => provider.fetchCoinOhlc('bitcoin', 'usd', 400),
           throwsA(isA<ArgumentError>()),
         );
-      },
-    );
+      });
 
-    test('fetchCoinOhlc validates 365-day limit', () async {
-      // Arrange
-      final provider = CoinGeckoCexProvider();
-
-      // Act & Assert
-      expect(
-        () => provider.fetchCoinOhlc('bitcoin', 'usd', 400),
-        throwsA(isA<ArgumentError>()),
-      );
-    });
-
-    // Skip flaky live API unit tests. On occasion, these tests may fail due to
-    // network issues or API rate limits. They can be re-enabled once the
-    // underlying issues are resolved.
-  }, skip: true);
+      // Skip flaky live API unit tests. On occasion, these tests may fail due to
+      // network issues or API rate limits. They can be re-enabled once the
+      // underlying issues are resolved.
+    },
+    tags: ['live', 'integration'],
+    skip:
+        _runLiveApiTests
+            ? false
+            : 'Live API tests are skipped by default. Enable with RUN_LIVE_API_TESTS=true',
+  );
 
   // test('fetchCoinHistoricalData test', () async {
   //   // Arrange

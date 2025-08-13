@@ -1,9 +1,8 @@
 import 'package:decimal/decimal.dart';
-import 'package:test/test.dart';
-import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:test/test.dart';
 
 class MockCexRepository extends Mock implements CexRepository {}
 
@@ -19,6 +18,7 @@ class TestRetryManager with RepositoryFallbackMixin {
   });
 
   final List<CexRepository> repositories;
+  @override
   final RepositorySelectionStrategy selectionStrategy;
 
   @override
@@ -73,24 +73,62 @@ void main() {
     });
 
     group('Repository-Level Retry Limits', () {
-      test('BinanceRepository defaults to maxAttempts = 3', () {
-        final binanceRepo = BinanceRepository(
-          binanceProvider: MockBinanceProvider(),
-        );
+      test(
+        'BinanceRepository getCoinList does not exceed 3 attempts on failure',
+        () async {
+          final mockProvider = MockBinanceProvider();
+          var callCount = 0;
+          when(
+            () => mockProvider.fetchExchangeInfoReduced(
+              baseUrl: any(named: 'baseUrl'),
+            ),
+          ).thenAnswer((_) async {
+            callCount++;
+            throw Exception('Simulated Binance API failure');
+          });
 
-        // Check that the default constructor uses conservative retry limits
-        // This test verifies the API signature has changed to maxAttempts = 3
-        expect(() => binanceRepo.getCoinList(), returnsNormally);
-      });
+          final binanceRepo = BinanceRepository(
+            binanceProvider: mockProvider,
+            enableMemoization: false,
+          );
 
-      test('CoinGeckoRepository defaults to maxAttempts = 3', () {
-        final coinGeckoRepo = CoinGeckoRepository(
-          coinGeckoProvider: MockCoinGeckoProvider(),
-        );
+          // Should handle internal failures gracefully and not spam beyond limit
+          try {
+            await binanceRepo.getCoinList();
+          } catch (_) {
+            // Some implementations may propagate the last error; ignore for call count assertion
+          }
 
-        // Check that the default constructor uses conservative retry limits
-        expect(() => coinGeckoRepo.getCoinList(), returnsNormally);
-      });
+          // Binance tries primary and secondary endpoints; ensure attempts <= 3
+          expect(callCount, lessThanOrEqualTo(3));
+        },
+      );
+
+      test(
+        'CoinGeckoRepository getCoinList does not exceed 3 attempts on failure',
+        () async {
+          final mockProvider = MockCoinGeckoProvider();
+          var callCount = 0;
+          when(mockProvider.fetchCoinList).thenAnswer((_) async {
+            callCount++;
+            throw Exception('Simulated CoinGecko API failure');
+          });
+
+          final coinGeckoRepo = CoinGeckoRepository(
+            coinGeckoProvider: mockProvider,
+            enableMemoization: false,
+          );
+
+          try {
+            await coinGeckoRepo.getCoinList();
+          } catch (_) {
+            // Expected to fail due to simulated provider failure
+          }
+
+          // Ensure the repository does not retry more than a conservative cap
+          expect(callCount, lessThanOrEqualTo(3));
+        },
+      );
     });
 
     group('Fallback Mixin Retry Behavior', () {
@@ -103,6 +141,14 @@ void main() {
           derivationPath: '1234',
           subClass: CoinSubClass.utxo,
         );
+
+        // Ensure repositories report support so fallback ordering includes them
+        when(
+          () => mockBinanceRepo.supports(any(), any(), any()),
+        ).thenAnswer((_) async => true);
+        when(
+          () => mockCoinGeckoRepo.supports(any(), any(), any()),
+        ).thenAnswer((_) async => true);
 
         // Mock selection strategy to return primary repo
         when(
@@ -139,8 +185,7 @@ void main() {
           testAsset,
           Stablecoin.usdt,
           PriceRequestType.currentPrice,
-          (repo) =>
-              repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+          (repo) => repo.getCoinFiatPrice(testAsset),
           'fiatPrice',
           maxTotalAttempts: 2,
         );
@@ -163,6 +208,14 @@ void main() {
             derivationPath: '1234',
             subClass: CoinSubClass.utxo,
           );
+
+          // Ensure repositories report support so primary is used and fallback is available
+          when(
+            () => mockBinanceRepo.supports(any(), any(), any()),
+          ).thenAnswer((_) async => true);
+          when(
+            () => mockCoinGeckoRepo.supports(any(), any(), any()),
+          ).thenAnswer((_) async => true);
 
           // Mock selection strategy to return primary repo
           when(
@@ -199,15 +252,12 @@ void main() {
           });
 
           // Should fail after trying both repositories with limited retries
-          expect(
-            () => testManager.testTryRepositoriesInOrder(
+          await expectLater(
+            testManager.testTryRepositoriesInOrder(
               testAsset,
               Stablecoin.usdt,
               PriceRequestType.currentPrice,
-              (repo) => repo.getCoinFiatPrice(
-                testAsset,
-                fiatCurrency: Stablecoin.usdt,
-              ),
+              (repo) => repo.getCoinFiatPrice(testAsset),
               'fiatPrice',
               maxTotalAttempts: 1, // Limit to 1 total attempt
             ),
@@ -284,8 +334,7 @@ void main() {
           testAsset,
           Stablecoin.usdt,
           PriceRequestType.currentPrice,
-          (repo) =>
-              repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+          (repo) => repo.getCoinFiatPrice(testAsset),
           'fiatPrice',
           maxTotalAttempts: 3,
         );
@@ -335,8 +384,7 @@ void main() {
             testAsset,
             Stablecoin.usdt,
             PriceRequestType.currentPrice,
-            (repo) =>
-                repo.getCoinFiatPrice(testAsset, fiatCurrency: Stablecoin.usdt),
+            (repo) => repo.getCoinFiatPrice(testAsset),
             'fiatPrice',
             maxTotalAttempts: 1,
           ),
@@ -350,7 +398,7 @@ void main() {
           expect(result, equals(Decimal.parse('50000.0')));
         }
 
-        // Total calls should equal number of requests (5) since maxAttemptsPerRepo = 1
+        // Total calls should equal number of requests (5) since maxTotalAttempts = 1
         expect(totalCalls, equals(5));
       });
 
@@ -387,17 +435,14 @@ void main() {
           throw Exception('Persistent failure');
         });
 
-        // Multiple attempts should be limited by maxAttemptsPerRepo
+        // Multiple attempts should be limited by maxTotalAttempts
         for (int i = 0; i < 3; i++) {
           try {
             await testManager.testTryRepositoriesInOrder(
               testAsset,
               Stablecoin.usdt,
               PriceRequestType.currentPrice,
-              (repo) => repo.getCoinFiatPrice(
-                testAsset,
-                fiatCurrency: Stablecoin.usdt,
-              ),
+              (repo) => repo.getCoinFiatPrice(testAsset),
               'fiatPrice',
               maxTotalAttempts: 1,
             );

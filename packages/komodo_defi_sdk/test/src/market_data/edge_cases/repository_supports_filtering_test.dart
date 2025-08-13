@@ -25,6 +25,12 @@ class TestSupportFilteringManager with RepositoryFallbackMixin {
   @override
   List<CexRepository> get priceRepositories => repositories;
 
+  // Expose repository failure recording for tests
+  @override
+  void recordRepositoryFailureForTest(CexRepository repository) {
+    super.recordRepositoryFailureForTest(repository);
+  }
+
   // Expose the mixin method for testing
   Future<T> testTryRepositoriesInOrder<T>(
     AssetId assetId,
@@ -50,6 +56,7 @@ void main() {
     registerFallbackValue(FakeAssetId());
     registerFallbackValue(Stablecoin.usdt);
     registerFallbackValue(PriceRequestType.currentPrice);
+    registerFallbackValue(<CexRepository>[]);
   });
 
   group('Repository Supports Filtering Tests', () {
@@ -138,10 +145,7 @@ void main() {
           () => mockKomodoRepo.getCoinFiatPrice(supportedAsset),
         ).thenAnswer((_) async => Decimal.parse('50000.0'));
 
-        // CoinGecko should NOT be called since it doesn't support the asset
-        when(
-          () => mockCoinGeckoRepo.getCoinFiatPrice(supportedAsset),
-        ).thenAnswer((_) async => Decimal.parse('49999.0')); // Act
+        // Act
         final result = await testManager.testTryRepositoriesInOrder(
           supportedAsset,
           Stablecoin.usdt,
@@ -164,15 +168,7 @@ void main() {
         // CoinGecko should NEVER be called since it doesn't support the asset
         verifyNever(() => mockCoinGeckoRepo.getCoinFiatPrice(supportedAsset));
 
-        // Verify supports was called for each repository
-        verify(
-          () => mockBinanceRepo.supports(
-            supportedAsset,
-            Stablecoin.usdt,
-            PriceRequestType.currentPrice,
-          ),
-        ).called(greaterThanOrEqualTo(1));
-
+        // Verify supports was called for non-primary repositories
         verify(
           () => mockCoinGeckoRepo.supports(
             supportedAsset,
@@ -275,6 +271,11 @@ void main() {
           for (int i = 0; i < 3; i++) {
             testManager.recordRepositoryFailureForTest(mockBinanceRepo);
           }
+          // Verify Binance is now unhealthy
+          expect(
+            testManager.isRepositoryHealthyForTest(mockBinanceRepo),
+            isFalse,
+          );
 
           // Setup: Only CoinGecko supports the asset (and is healthy)
           when(
@@ -332,17 +333,19 @@ void main() {
           // Assert
           expect(result, equals(Decimal.parse('50000.0')));
 
-          // Verify both supporting repositories were attempted
-          verify(
-            () => mockCoinGeckoRepo.getCoinFiatPrice(supportedAsset),
-          ).called(1);
-
+          // Verify Binance was attempted and succeeded
           verify(
             () => mockBinanceRepo.getCoinFiatPrice(supportedAsset),
           ).called(1);
 
           // Komodo should NOT be called since it doesn't support the asset
           verifyNever(() => mockKomodoRepo.getCoinFiatPrice(supportedAsset));
+
+          // After Binance succeeds, health should be reset
+          expect(
+            testManager.isRepositoryHealthyForTest(mockBinanceRepo),
+            isTrue,
+          );
         },
       );
 
@@ -509,6 +512,160 @@ void main() {
           ),
         );
       });
+
+      test(
+        'does not call selection strategy when no healthy repositories',
+        () async {
+          // Make Binance unhealthy; since health is keyed by runtimeType, all mocks become unhealthy
+          for (int i = 0; i < 3; i++) {
+            testManager.recordRepositoryFailureForTest(mockBinanceRepo);
+          }
+
+          // All repos support the asset so fallback path will use them
+          when(
+            () => mockCoinGeckoRepo.supports(any(), any(), any()),
+          ).thenAnswer((_) async => true);
+          when(
+            () => mockKomodoRepo.supports(any(), any(), any()),
+          ).thenAnswer((_) async => true);
+          when(
+            () => mockBinanceRepo.supports(any(), any(), any()),
+          ).thenAnswer((_) async => true);
+
+          // Binance (first in ordering) succeeds
+          when(
+            () => mockBinanceRepo.getCoinFiatPrice(supportedAsset),
+          ).thenAnswer((_) async => Decimal.parse('50123.0'));
+
+          await testManager.testTryRepositoriesInOrder(
+            supportedAsset,
+            Stablecoin.usdt,
+            PriceRequestType.currentPrice,
+            (repo) => repo.getCoinFiatPrice(supportedAsset),
+            'fiatPrice',
+          );
+
+          // Since no healthy repos, strategy shouldn't be called
+          verifyNever(
+            () => mockSelectionStrategy.selectRepository(
+              assetId: any(named: 'assetId'),
+              fiatCurrency: any(named: 'fiatCurrency'),
+              requestType: any(named: 'requestType'),
+              availableRepositories: any(named: 'availableRepositories'),
+            ),
+          );
+        },
+      );
+
+      test(
+        'repository unhealthy state clears after subsequent success',
+        () async {
+          // Mark Binance unhealthy
+          for (int i = 0; i < 3; i++) {
+            testManager.recordRepositoryFailureForTest(mockBinanceRepo);
+          }
+          expect(
+            testManager.isRepositoryHealthyForTest(mockBinanceRepo),
+            isFalse,
+          );
+
+          // Only CoinGecko supports among healthy repos, Komodo does not
+          when(
+            () => mockCoinGeckoRepo.supports(any(), any(), any()),
+          ).thenAnswer((_) async => true);
+          when(
+            () => mockKomodoRepo.supports(any(), any(), any()),
+          ).thenAnswer((_) async => false);
+          // Binance supports (unhealthy list will be used as fallback)
+          when(
+            () => mockBinanceRepo.supports(any(), any(), any()),
+          ).thenAnswer((_) async => true);
+
+          // Strategy chooses CoinGecko from healthy repos
+          when(
+            () => mockSelectionStrategy.selectRepository(
+              assetId: any(named: 'assetId'),
+              fiatCurrency: any(named: 'fiatCurrency'),
+              requestType: any(named: 'requestType'),
+              availableRepositories: any(named: 'availableRepositories'),
+            ),
+          ).thenAnswer((_) async => mockCoinGeckoRepo);
+
+          // CoinGecko fails, Binance (unhealthy) succeeds
+          when(
+            () => mockCoinGeckoRepo.getCoinFiatPrice(supportedAsset),
+          ).thenThrow(Exception('CoinGecko failed'));
+          when(
+            () => mockBinanceRepo.getCoinFiatPrice(supportedAsset),
+          ).thenAnswer((_) async => Decimal.parse('50000.0'));
+
+          final price = await testManager.testTryRepositoriesInOrder(
+            supportedAsset,
+            Stablecoin.usdt,
+            PriceRequestType.currentPrice,
+            (repo) => repo.getCoinFiatPrice(supportedAsset),
+            'fiatPrice',
+          );
+          expect(price, Decimal.parse('50000.0'));
+
+          // Binance should be marked healthy again after success
+          expect(
+            testManager.isRepositoryHealthyForTest(mockBinanceRepo),
+            isTrue,
+          );
+        },
+      );
+
+      test(
+        'supports check exceptions do not affect repository health',
+        () async {
+          // Initial health
+          expect(
+            testManager.isRepositoryHealthyForTest(mockCoinGeckoRepo),
+            isTrue,
+          );
+          expect(
+            testManager.isRepositoryHealthyForTest(mockBinanceRepo),
+            isTrue,
+          );
+
+          // CoinGecko throws on supports, Binance supports and succeeds
+          when(
+            () => mockCoinGeckoRepo.supports(any(), any(), any()),
+          ).thenThrow(Exception('supports failed'));
+          when(
+            () => mockBinanceRepo.supports(any(), any(), any()),
+          ).thenAnswer((_) async => true);
+
+          when(
+            () => mockSelectionStrategy.selectRepository(
+              assetId: any(named: 'assetId'),
+              fiatCurrency: any(named: 'fiatCurrency'),
+              requestType: any(named: 'requestType'),
+              availableRepositories: any(named: 'availableRepositories'),
+            ),
+          ).thenAnswer((_) async => mockBinanceRepo);
+
+          when(
+            () => mockBinanceRepo.getCoinFiatPrice(supportedAsset),
+          ).thenAnswer((_) async => Decimal.parse('50000.0'));
+
+          final price = await testManager.testTryRepositoriesInOrder(
+            supportedAsset,
+            Stablecoin.usdt,
+            PriceRequestType.currentPrice,
+            (repo) => repo.getCoinFiatPrice(supportedAsset),
+            'fiatPrice',
+          );
+          expect(price, Decimal.parse('50000.0'));
+
+          // CoinGecko should remain healthy despite supports throwing
+          expect(
+            testManager.isRepositoryHealthyForTest(mockCoinGeckoRepo),
+            isTrue,
+          );
+        },
+      );
     });
   });
 }

@@ -6,6 +6,8 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
+import 'binance_test_helpers.dart';
+
 class MockIBinanceProvider extends Mock implements IBinanceProvider {}
 
 void main() {
@@ -24,172 +26,7 @@ void main() {
     group('USD equivalent currency mapping', () {
       setUp(() {
         // Mock the exchange info response with typical Binance quote assets
-        final mockExchangeInfo = BinanceExchangeInfoResponseReduced(
-          timezone: 'UTC',
-          serverTime: DateTime.now().millisecondsSinceEpoch,
-          symbols: [
-            SymbolReduced(
-              symbol: 'BTCUSDT',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'USDT',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCUSDC',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'USDC',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCBUSD',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'BUSD',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCEUR',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'EUR',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'ETHUSDT',
-              status: 'TRADING',
-              baseAsset: 'ETH',
-              baseAssetPrecision: 8,
-              quoteAsset: 'USDT',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'ETHUSDC',
-              status: 'TRADING',
-              baseAsset: 'ETH',
-              baseAssetPrecision: 8,
-              quoteAsset: 'USDC',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCTUSD',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'TUSD',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCDAI',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'DAI',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCUSDP',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'USDP',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCEURS',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'EURS',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCEURT',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'EURT',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCFRAX',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'FRAX',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCLUSD',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'LUSD',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCGUSD',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'GUSD',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCSUSD',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'SUSD',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-            SymbolReduced(
-              symbol: 'BTCFEI',
-              status: 'TRADING',
-              baseAsset: 'BTC',
-              baseAssetPrecision: 8,
-              quoteAsset: 'FEI',
-              quotePrecision: 8,
-              quoteAssetPrecision: 8,
-              isSpotTradingAllowed: true,
-            ),
-          ],
-        );
+        final mockExchangeInfo = buildComprehensiveExchangeInfo();
 
         when(
           () => mockProvider.fetchExchangeInfoReduced(
@@ -327,22 +164,7 @@ void main() {
         'should not support currency when neither original nor fallback is available',
         () async {
           // Create a mock exchange info without GBP or USDT
-          final mockExchangeInfoNoFallback = BinanceExchangeInfoResponseReduced(
-            timezone: 'UTC',
-            serverTime: DateTime.now().millisecondsSinceEpoch,
-            symbols: [
-              SymbolReduced(
-                symbol: 'BTCEUR',
-                status: 'TRADING',
-                baseAsset: 'BTC',
-                baseAssetPrecision: 8,
-                quoteAsset: 'EUR',
-                quotePrecision: 8,
-                quoteAssetPrecision: 8,
-                isSpotTradingAllowed: true,
-              ),
-            ],
-          );
+          final mockExchangeInfoNoFallback = buildMinimalExchangeInfo();
 
           when(
             () => mockProvider.fetchExchangeInfoReduced(
@@ -559,6 +381,14 @@ void main() {
     });
 
     group('_mapFiatCurrencyToBinance method behavior', () {
+      setUp(() {
+        when(
+          () => mockProvider.fetchExchangeInfoReduced(
+            baseUrl: any(named: 'baseUrl'),
+          ),
+        ).thenAnswer((_) async => buildComprehensiveExchangeInfo());
+      });
+
       test('should preserve directly supported currencies', () async {
         // Initialize the repository to populate cached currencies
         await repository.getCoinList();

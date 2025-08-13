@@ -163,53 +163,51 @@ void main() {
     });
 
     group('ID Resolution Strategy Edge Cases', () {
-      test(
-        'ID resolution strategies are too permissive for unsupported assets',
-        () {
-          final binanceStrategy = BinanceIdResolutionStrategy();
-          final coinGeckoStrategy = CoinGeckoIdResolutionStrategy();
+      test('Binance is permissive; CoinGecko is strict for unsupported assets', () {
+        final binanceStrategy = BinanceIdResolutionStrategy();
+        final coinGeckoStrategy = CoinGeckoIdResolutionStrategy();
 
-          // Test with clearly unsupported assets
-          final martyAsset = AssetId(
-            id: 'test-marty',
-            symbol: AssetSymbol(assetConfigId: 'MARTY'),
-            name: 'MARTY',
-            chainId: AssetChainId(chainId: 1),
-            derivationPath: '1234',
-            subClass: CoinSubClass.utxo,
-          );
-          final docAsset = AssetId(
-            id: 'test-doc',
-            symbol: AssetSymbol(assetConfigId: 'DOC'),
-            name: 'DOC',
-            chainId: AssetChainId(chainId: 1),
-            derivationPath: '1234',
-            subClass: CoinSubClass.utxo,
-          );
+        // Test with clearly unsupported assets
+        final martyAsset = AssetId(
+          id: 'test-marty',
+          symbol: AssetSymbol(assetConfigId: 'MARTY'),
+          name: 'MARTY',
+          chainId: AssetChainId(chainId: 1),
+          derivationPath: '1234',
+          subClass: CoinSubClass.utxo,
+        );
+        final docAsset = AssetId(
+          id: 'test-doc',
+          symbol: AssetSymbol(assetConfigId: 'DOC'),
+          name: 'DOC',
+          chainId: AssetChainId(chainId: 1),
+          derivationPath: '1234',
+          subClass: CoinSubClass.utxo,
+        );
 
-          // Both strategies will claim they can resolve these assets
-          // because they have configSymbol values
-          expect(binanceStrategy.canResolve(martyAsset), isTrue);
-          expect(binanceStrategy.canResolve(docAsset), isTrue);
-          expect(coinGeckoStrategy.canResolve(martyAsset), isTrue);
-          expect(coinGeckoStrategy.canResolve(docAsset), isTrue);
+        // Binance will claim it can resolve these assets because it falls back to configSymbol
+        expect(binanceStrategy.canResolve(martyAsset), isTrue);
+        expect(binanceStrategy.canResolve(docAsset), isTrue);
+        // CoinGecko is now strict and requires a coinGeckoId; unsupported assets cannot be resolved
+        expect(coinGeckoStrategy.canResolve(martyAsset), isFalse);
+        expect(coinGeckoStrategy.canResolve(docAsset), isFalse);
 
-          // They will return the configSymbol as trading symbol
-          expect(
-            binanceStrategy.resolveTradingSymbol(martyAsset),
-            equals('MARTY'),
-          );
-          expect(binanceStrategy.resolveTradingSymbol(docAsset), equals('DOC'));
-          expect(
-            coinGeckoStrategy.resolveTradingSymbol(martyAsset),
-            equals('MARTY'),
-          );
-          expect(
-            coinGeckoStrategy.resolveTradingSymbol(docAsset),
-            equals('DOC'),
-          );
-        },
-      );
+        // Binance will return the configSymbol as trading symbol
+        expect(
+          binanceStrategy.resolveTradingSymbol(martyAsset),
+          equals('MARTY'),
+        );
+        expect(binanceStrategy.resolveTradingSymbol(docAsset), equals('DOC'));
+        // CoinGecko should throw when attempting to resolve unsupported assets
+        expect(
+          () => coinGeckoStrategy.resolveTradingSymbol(martyAsset),
+          throwsA(isA<ArgumentError>()),
+        );
+        expect(
+          () => coinGeckoStrategy.resolveTradingSymbol(docAsset),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
 
       test('ID resolution with empty/null fields should fail', () {
         final binanceStrategy = BinanceIdResolutionStrategy();
