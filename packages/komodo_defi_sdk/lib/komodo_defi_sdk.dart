@@ -16,10 +16,20 @@ export 'package:komodo_defi_sdk/src/addresses/address_operations.dart'
 export 'package:komodo_defi_sdk/src/balances/balance_manager.dart'
     show BalanceManager;
 export 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
- export 'package:komodo_defi_sdk/src/security/security_manager.dart'
-     show SecurityManager;
- export 'package:komodo_defi_sdk/src/swaps/swap_manager.dart'
-     show SwapManager, SwapStatus, OrderSide, OrderbookSnapshot, OrderbookEntry, PlacedOrderSummary;
+export 'package:komodo_defi_sdk/src/security/security_manager.dart'
+    show SecurityManager;
+export 'package:komodo_defi_sdk/src/swaps/swap_manager.dart' show SwapManager;
+export 'package:komodo_defi_types/komodo_defi_types.dart'
+    show
+        SwapStatus,
+        OrderSide,
+        OrderbookSnapshot,
+        OrderbookEntry,
+        PlacedOrderSummary,
+        TradePreimageQuote,
+        CoinAmount,
+        TotalFeeEntry,
+        SwapSummary;
 
 export 'src/assets/_assets_index.dart' show AssetHdWalletAddressesExtension;
 export 'src/assets/asset_extensions.dart'
