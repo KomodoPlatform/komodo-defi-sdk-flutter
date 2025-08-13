@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:komodo_cex_market_data/src/binance/data/binance_provider_interface.dart';
+import 'package:komodo_cex_market_data/src/binance/models/binance_24hr_ticker.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
 import 'package:komodo_cex_market_data/src/models/coin_ohlc.dart';
@@ -35,14 +36,13 @@ class BinanceProvider implements IBinanceProvider {
     };
 
     final baseRequestUrl = baseUrl ?? apiUrl;
-    final uri = Uri.parse('$baseRequestUrl/klines')
-        .replace(queryParameters: queryParameters);
+    final uri = Uri.parse(
+      '$baseRequestUrl/klines',
+    ).replace(queryParameters: queryParameters);
 
     final response = await http.get(uri);
     if (response.statusCode == 200) {
-      return CoinOhlc.fromJson(
-        jsonDecode(response.body) as List<dynamic>,
-      );
+      return CoinOhlc.fromJson(jsonDecode(response.body) as List<dynamic>);
     } else {
       throw Exception(
         'Failed to load klines for \'$symbol\': '
@@ -90,6 +90,31 @@ class BinanceProvider implements IBinanceProvider {
     } else {
       throw http.ClientException(
         'Failed to load exchange info: ${response.statusCode} ${response.body}',
+      );
+    }
+  }
+
+  @override
+  Future<Binance24hrTicker> fetch24hrTicker(
+    String symbol, {
+    String? baseUrl,
+  }) async {
+    final queryParameters = <String, dynamic>{'symbol': symbol};
+
+    final baseRequestUrl = baseUrl ?? apiUrl;
+    final uri = Uri.parse(
+      '$baseRequestUrl/ticker/24hr',
+    ).replace(queryParameters: queryParameters);
+
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      return Binance24hrTicker.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    } else {
+      throw Exception(
+        'Failed to load 24hr ticker for \'$symbol\': '
+        '${response.statusCode} ${response.body}',
       );
     }
   }

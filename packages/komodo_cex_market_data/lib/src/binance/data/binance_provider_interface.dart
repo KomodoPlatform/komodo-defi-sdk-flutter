@@ -1,3 +1,4 @@
+import 'package:komodo_cex_market_data/src/binance/models/binance_24hr_ticker.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
 import 'package:komodo_cex_market_data/src/models/coin_ohlc.dart';
@@ -50,9 +51,7 @@ abstract class IBinanceProvider {
   ///
   /// Returns a [Future] that resolves to a [BinanceExchangeInfoResponse] object
   /// Throws an [Exception] if the request fails.
-  Future<BinanceExchangeInfoResponse> fetchExchangeInfo({
-    String? baseUrl,
-  });
+  Future<BinanceExchangeInfoResponse> fetchExchangeInfo({String? baseUrl});
 
   /// Fetches the exchange information from Binance.
   ///
@@ -62,4 +61,26 @@ abstract class IBinanceProvider {
   Future<BinanceExchangeInfoResponseReduced> fetchExchangeInfoReduced({
     String? baseUrl,
   });
+
+  /// Fetches 24hr ticker price change statistics from Binance API.
+  ///
+  /// Retrieves the 24hr ticker price change statistics for a specific symbol
+  /// from the Binance API.
+  ///
+  /// Parameters:
+  /// - [symbol]: The trading symbol for which to fetch the 24hr ticker data.
+  /// - [baseUrl]: Optional base URL to override the default API endpoint.
+  ///
+  /// Returns:
+  /// A [Future] that resolves to a [Binance24hrTicker] object containing the
+  /// 24hr price change statistics.
+  ///
+  /// Example usage:
+  /// ```dart
+  /// final Binance24hrTicker ticker = await fetch24hrTicker('BTCUSDT');
+  /// ```
+  ///
+  /// Throws:
+  /// - [Exception] if the API request fails.
+  Future<Binance24hrTicker> fetch24hrTicker(String symbol, {String? baseUrl});
 }

@@ -142,6 +142,15 @@ class AssetId extends Equatable {
   }
 }
 
+extension AssetIdCacheKeyPrefix on AssetId {
+  /// Returns `<id>_<chainId>_<subClass>_<protocolKey>` to be used as the
+  /// base prefix for canonical cache keys.
+  String get baseCacheKeyPrefix {
+    final protocolKey = parentId?.id ?? 'base';
+    return '${id}_${chainId.formattedChainId}_${subClass.formatted}_$protocolKey';
+  }
+}
+
 abstract class ChainId with EquatableMixin {
   static ChainId parse(JsonMap json) {
     final chainParseAttempts = [
