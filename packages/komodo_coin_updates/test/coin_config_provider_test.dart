@@ -39,26 +39,7 @@ void main() {
       expect(sha, 'abc123');
     });
 
-    test('getLatestCoins parses list of Coin', () async {
-      final uri = Uri.parse(
-        '${provider.coinsGithubContentUrl}/${provider.branch}/${provider.coinsPath}',
-      );
-
-      when(() => client.get(uri)).thenAnswer(
-        (_) async => http.Response(
-          jsonEncode([
-            {'coin': 'KMD', 'decimals': 8},
-          ]),
-          200,
-        ),
-      );
-
-      final coins = await provider.getLatestCoins();
-      expect(coins, isNotEmpty);
-      expect(coins.first.coin, 'KMD');
-    });
-
-    test('getLatestCoinConfigs parses map', () async {
+    test('getLatestAssets parses list of Asset from config map', () async {
       final uri = Uri.parse(
         '${provider.coinsGithubContentUrl}/${provider.branch}/${provider.coinsConfigPath}',
       );
@@ -66,15 +47,24 @@ void main() {
       when(() => client.get(uri)).thenAnswer(
         (_) async => http.Response(
           jsonEncode({
-            'KMD': {'coin': 'KMD', 'decimals': 8},
+            'KMD': {
+              'coin': 'KMD',
+              'decimals': 8,
+              'type': 'UTXO',
+              'protocol': {'type': 'UTXO'},
+              'fname': 'Komodo',
+              'chain_id': 0,
+            },
           }),
           200,
         ),
       );
 
-      final configs = await provider.getLatestCoinConfigs();
-      expect(configs, contains('KMD'));
-      expect(configs['KMD']!.coin, 'KMD');
+      final assets = await provider.getLatestAssets();
+      expect(assets, isNotEmpty);
+      expect(assets.first.id.id, 'KMD');
     });
+
+    // CoinConfig retrieval removed; configs can be derived from Asset if needed.
   });
 }

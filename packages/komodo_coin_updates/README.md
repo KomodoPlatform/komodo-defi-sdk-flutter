@@ -1,6 +1,7 @@
-# Komodo Coin Updater
+# Komodo Asset Updater
 
 This package provides the functionality to update the coins list and configuration files for the Komodo Platform at runtime.
+
 ## Usage
 
 To use this package, you need to add `komodo_coin_updater` to your `pubspec.yaml` file.
@@ -18,7 +19,7 @@ Then you can use the `KomodoCoinUpdater` class to initialize the package.
 import 'package:komodo_coin_updater/komodo_coin_updater.dart';
 
 void main() async {
-  await KomodoCoinUpdater.ensureInitialized("path/to/komodo/coin/files");
+  await KomodoCoinUpdater.ensureInitialized("path/to/komodo/asset/files");
 }
 ```
 
@@ -31,7 +32,7 @@ import 'package:komodo_coin_updater/komodo_coin_updater.dart';
 
 Future<void> main() async {
     WidgetsFlutterBinding.ensureInitialized();
-    await KomodoCoinUpdater.ensureInitialized("path/to/komodo/coin/files");
+    await KomodoCoinUpdater.ensureInitialized("path/to/komodo/asset/files");
 
     final provider = const CoinConfigProvider();
     final coins = await provider.getLatestCoins();
@@ -55,16 +56,16 @@ Future<void> main() async {
         storageProvider: CoinConfigStorageProvider.withDefaults(),
     ); 
     
-    // Load the coin configuration if it is saved, otherwise update it 
+    // Load the asset configuration if it is saved, otherwise update it 
     if(await repository.coinConfigExists()) {
         if (await repository.isLatestCommit()) {
             await repository.loadCoinConfigs();
         } else {
-            await repository.updateCoinConfig();
+           await repository.updateCoinConfig();
         }
     }
     else {
-        await repository.updateCoinConfig();
+       await repository.updateCoinConfig();
     }
 }
 ```

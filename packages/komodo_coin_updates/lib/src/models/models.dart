@@ -1,13 +1,3 @@
-export 'address_format.dart';
-export 'checkpoint_block.dart';
-export 'coin.dart';
-export 'coin_config.dart';
-export 'consensus_params.dart';
-export 'contact.dart';
-export 'electrum.dart';
-export 'links.dart';
-export 'node.dart';
-export 'protocol.dart';
-export 'protocol_data.dart';
-export 'rpc_url.dart';
+// Intentionally kept minimal. Most model definitions have moved to
+// `komodo_defi_types` or been removed as part of the Asset migration.
 export 'runtime_update_config.dart';

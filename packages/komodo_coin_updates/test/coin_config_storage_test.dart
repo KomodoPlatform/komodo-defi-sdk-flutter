@@ -1,28 +1,23 @@
 import 'package:komodo_coin_updates/src/data/coin_config_storage.dart';
-import 'package:komodo_coin_updates/src/models/coin.dart';
-import 'package:komodo_coin_updates/src/models/coin_config.dart';
-import 'package:komodo_coin_updates/src/models/coin_info.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
 
+import 'helpers/asset_test_extensions.dart';
+
 class _FakeStorage implements CoinConfigStorage {
-  Map<String, CoinInfo> store = {};
+  Map<String, Asset> store = {};
   String? commit;
 
   @override
   Future<bool> coinConfigExists() async => store.isNotEmpty && commit != null;
 
   @override
-  Future<Coin?> getCoin(String coinId) async => store[coinId]?.coin;
+  Future<Asset?> getAsset(AssetId assetId) async => store[assetId.id];
 
   @override
-  Future<Map<String, CoinConfig>?> getCoinConfigs() async => {
-    for (final entry in store.entries)
-      if (entry.value.coinConfig != null) entry.key: entry.value.coinConfig!,
-  };
-
-  @override
-  Future<List<Coin>?> getCoins() async =>
-      store.values.map((e) => e.coin).toList();
+  Future<List<Asset>?> getAssets({
+    List<String> excludedAssets = const [],
+  }) async => store.values.toList();
 
   @override
   Future<String?> getCurrentCommit() async => commit;
@@ -31,25 +26,18 @@ class _FakeStorage implements CoinConfigStorage {
   Future<bool> isLatestCommit() async => false;
 
   @override
-  Future<CoinConfig?> getCoinConfig(String coinId) async =>
-      store[coinId]?.coinConfig;
-
+  // No explicit coin config anymore
   @override
-  Future<void> saveCoinData(
-    List<Coin> coins,
-    Map<String, CoinConfig> coinConfig,
-    String commit,
-  ) async {
-    for (final c in coins) {
-      store[c.coin] = CoinInfo(coin: c, coinConfig: coinConfig[c.coin]);
+  Future<void> saveAssetData(List<Asset> assets, String commit) async {
+    for (final a in assets) {
+      store[a.id.id] = a;
     }
     this.commit = commit;
   }
 
   @override
-  Future<void> saveRawCoinData(
-    List<dynamic> coins,
-    Map<String, dynamic> coinConfig,
+  Future<void> saveRawAssetData(
+    Map<String, dynamic> coinConfigsBySymbol,
     String commit,
   ) async {}
 }
@@ -58,14 +46,14 @@ void main() {
   group('CoinConfigStorage (contract)', () {
     test('basic save and read flow', () async {
       final s = _FakeStorage();
-      await s.saveCoinData(
-        [const Coin(coin: 'KMD', decimals: 8)],
-        {'KMD': const CoinConfig(coin: 'KMD', decimals: 8)},
-        'HEAD',
-      );
+      final asset = buildKmdTestAsset();
+      await s.saveAssetData([asset], 'HEAD');
 
-      expect(await s.getCoins(), isNotEmpty);
-      expect((await s.getCoin('KMD'))?.coin, 'KMD');
+      expect(await s.getAssets(), isNotEmpty);
+      expect(
+        (await s.getAsset('KMD'.toTestAssetId(name: 'Komodo')))?.id.id,
+        'KMD',
+      );
       expect(await s.getCurrentCommit(), 'HEAD');
       expect(await s.coinConfigExists(), isTrue);
     });

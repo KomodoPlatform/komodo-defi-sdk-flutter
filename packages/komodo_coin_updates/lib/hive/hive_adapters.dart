@@ -1,32 +1,28 @@
 import 'package:hive_ce/hive.dart';
-// Import all model classes used in persistence
-import 'package:komodo_coin_updates/src/models/address_format.dart';
-import 'package:komodo_coin_updates/src/models/checkpoint_block.dart';
-import 'package:komodo_coin_updates/src/models/coin.dart';
-import 'package:komodo_coin_updates/src/models/coin_config.dart';
-import 'package:komodo_coin_updates/src/models/coin_info.dart';
-import 'package:komodo_coin_updates/src/models/consensus_params.dart';
-import 'package:komodo_coin_updates/src/models/contact.dart';
-import 'package:komodo_coin_updates/src/models/electrum.dart';
-import 'package:komodo_coin_updates/src/models/links.dart';
-import 'package:komodo_coin_updates/src/models/node.dart';
-import 'package:komodo_coin_updates/src/models/protocol.dart';
-import 'package:komodo_coin_updates/src/models/protocol_data.dart';
-import 'package:komodo_coin_updates/src/models/rpc_url.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-@GenerateAdapters(<AdapterSpec<dynamic>>[
-  AdapterSpec<Coin>(),
-  AdapterSpec<Protocol>(),
-  AdapterSpec<ProtocolData>(),
-  AdapterSpec<AddressFormat>(),
-  AdapterSpec<Links>(),
-  AdapterSpec<ConsensusParams>(),
-  AdapterSpec<CheckPointBlock>(),
-  AdapterSpec<CoinConfig>(),
-  AdapterSpec<Electrum>(),
-  AdapterSpec<Node>(),
-  AdapterSpec<Contact>(),
-  AdapterSpec<RpcUrl>(),
-  AdapterSpec<CoinInfo>(),
-])
-part 'hive_adapters.g.dart';
+// Manual adapter for Asset. We do not use codegen here to avoid generating
+// adapters for nested protocol types.
+
+class AssetAdapter extends TypeAdapter<Asset> {
+  @override
+  final int typeId = 15; // next free id per existing registry
+
+  @override
+  Asset read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    final json = (fields[0] as Map).cast<String, dynamic>();
+    return Asset.fromJson(json);
+  }
+
+  @override
+  void write(BinaryWriter writer, Asset obj) {
+    writer
+      ..writeByte(1)
+      ..writeByte(0)
+      ..write(obj.toJson());
+  }
+}

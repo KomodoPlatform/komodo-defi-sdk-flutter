@@ -1,31 +1,21 @@
-import 'package:komodo_coin_updates/src/models/coin.dart';
-import 'package:komodo_coin_updates/src/models/coin_config.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A storage provider that fetches the coins and coin configs from the storage.
 /// The storage provider is responsible for fetching the coins and coin configs
 /// from the storage and saving the coins and coin configs to the storage.
 abstract class CoinConfigStorage {
-  /// Fetches the coins from the storage provider.
-  /// Returns a list of [Coin] objects.
+  /// Fetches the assets from the storage provider.
+  /// Returns a list of [Asset] objects.
   /// Throws an [Exception] if the request fails.
-  Future<List<Coin>?> getCoins();
+  Future<List<Asset>?> getAssets({
+    List<String> excludedAssets = const <String>[],
+  });
 
-  /// Fetches the specified coin from the storage provider.
-  /// [coinId] is the coin symbol.
-  /// Returns a [Coin] object.
+  /// Fetches the specified asset from the storage provider.
+  /// [assetId] identifies the asset (its `id.id` is used as box key).
+  /// Returns an [Asset] object.
   /// Throws an [Exception] if the request fails.
-  Future<Coin?> getCoin(String coinId);
-
-  /// Fetches the coin configs from the storage provider.
-  /// Returns a map of [CoinConfig] objects.
-  /// Throws an [Exception] if the request fails.
-  Future<Map<String, CoinConfig>?> getCoinConfigs();
-
-  /// Fetches the specified coin config from the storage provider.
-  /// [coinId] is the coin symbol.
-  /// Returns a [CoinConfig] object.
-  /// Throws an [Exception] if the request fails.
-  Future<CoinConfig?> getCoinConfig(String coinId);
+  Future<Asset?> getAsset(AssetId assetId);
 
   /// Checks if the latest commit is the same as the current commit.
   /// Returns `true` if the latest commit is the same as the current commit,
@@ -38,30 +28,23 @@ abstract class CoinConfigStorage {
   /// Throws an [Exception] if the request fails.
   Future<String?> getCurrentCommit();
 
-  /// Checks if the coin configs are saved in the storage provider.
-  /// Returns `true` if the coin configs are saved, otherwise `false`.
+  /// Checks if the assets are saved in the storage provider.
+  /// Returns `true` if the assets are saved, otherwise `false`.
   /// Throws an [Exception] if the request fails.
   Future<bool> coinConfigExists();
 
-  /// Saves the coin data to the storage provider.
-  /// [coins] is a list of [Coin] objects.
-  /// [coinConfig] is a map of [CoinConfig] objects.
+  /// Saves the assets data to the storage provider.
+  /// [assets] is a list of [Asset] objects.
   /// [commit] is the commit hash.
   /// Throws an [Exception] if the request fails.
-  Future<void> saveCoinData(
-    List<Coin> coins,
-    Map<String, CoinConfig> coinConfig,
-    String commit,
-  );
+  Future<void> saveAssetData(List<Asset> assets, String commit);
 
-  /// Saves the raw coin data to the storage provider.
-  /// [coins] is a list of [Coin] objects in raw JSON `dynamic` form.
-  /// [coinConfig] is a map of [CoinConfig] objects in raw JSON `dynamic` form.
+  /// Saves the raw asset data to the storage provider.
+  /// [coinConfigsBySymbol] is a map of raw JSON `dynamic` coin configs keyed by ticker.
   /// [commit] is the commit hash.
   /// Throws an [Exception] if the request fails.
-  Future<void> saveRawCoinData(
-    List<dynamic> coins,
-    Map<String, dynamic> coinConfig,
+  Future<void> saveRawAssetData(
+    Map<String, dynamic> coinConfigsBySymbol,
     String commit,
   );
 }

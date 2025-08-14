@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:komodo_coin_updates/src/models/models.dart';
+import 'package:komodo_coin_updates/src/models/runtime_update_config.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A provider that fetches the coins and coin configs from the repository.
 /// The repository is hosted on GitHub.
@@ -67,50 +68,41 @@ class CoinConfigProvider {
 
   final http.Client _client;
 
-  /// Fetches the coins from the repository.
-  /// [commit] is the commit hash to fetch the coins from.
-  /// If [commit] is not provided, it will fetch the coins from the latest commit.
-  /// Returns a list of [Coin] objects.
-  /// Throws an [Exception] if the request fails.
-  Future<List<Coin>> getCoins(String commit) async {
-    final url = _contentUri(coinsPath, branchOrCommit: commit);
-    final response = await _client.get(url);
-    final items = jsonDecode(response.body) as List<dynamic>;
-    return items
-        .map((dynamic e) => Coin.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  /// Fetches the coins from the repository.
-  /// Returns a list of [Coin] objects.
-  /// Throws an [Exception] if the request fails.
-  Future<List<Coin>> getLatestCoins() async {
-    return getCoins(branch);
-  }
-
-  /// Fetches the coin configs from the repository.
-  /// [commit] is the commit hash to fetch the coin configs from.
-  /// If [commit] is not provided, it will fetch the coin configs
-  /// from the latest commit.
-  /// Returns a map of [CoinConfig] objects.
-  /// Throws an [Exception] if the request fails.
-  /// The key of the map is the coin symbol.
-  Future<Map<String, CoinConfig>> getCoinConfigs(String commit) async {
+  /// Fetches the assets from the repository by reading the unified
+  /// unfiltered coin configuration file and parsing it as a list of [Asset].
+  Future<List<Asset>> getAssets(String commit) async {
     final url = _contentUri(coinsConfigPath, branchOrCommit: commit);
     final response = await _client.get(url);
     final items = jsonDecode(response.body) as Map<String, dynamic>;
-    return <String, CoinConfig>{
-      for (final String key in items.keys)
-        key: CoinConfig.fromJson(items[key] as Map<String, dynamic>),
+
+    // First pass: collect known AssetId for parent-child resolution
+    final knownIds = <AssetId>{
+      for (final entry in items.entries)
+        AssetId.parse(entry.value as Map<String, dynamic>, knownIds: const {}),
     };
+
+    // Second pass: create Asset from config with resolved AssetId
+    final assets = <Asset>[
+      for (final entry in items.entries)
+        Asset.fromJsonWithId(
+          entry.value as Map<String, dynamic>,
+          assetId: AssetId.parse(
+            entry.value as Map<String, dynamic>,
+            knownIds: knownIds,
+          ),
+        ),
+    ];
+    return assets;
   }
 
-  /// Fetches the latest coin configs from the repository.
-  /// Returns a map of [CoinConfig] objects.
+  /// Fetches the assets from the repository.
+  /// Returns a list of [Asset] objects.
   /// Throws an [Exception] if the request fails.
-  Future<Map<String, CoinConfig>> getLatestCoinConfigs() async {
-    return getCoinConfigs(branch);
+  Future<List<Asset>> getLatestAssets() async {
+    return getAssets(branch);
   }
+
+  // Deprecated: explicit coin configs can be derived from Asset if needed.
 
   /// Fetches the latest commit hash from the repository.
   /// Returns the latest commit hash.

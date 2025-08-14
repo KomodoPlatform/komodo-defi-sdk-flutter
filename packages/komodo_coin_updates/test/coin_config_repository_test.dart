@@ -1,11 +1,11 @@
+import 'helpers/asset_test_extensions.dart';
 import 'dart:io';
 
 import 'package:hive_ce/hive.dart' as hive;
 import 'package:komodo_coin_updates/hive/hive_registrar.g.dart';
 import 'package:komodo_coin_updates/src/data/coin_config_provider.dart';
 import 'package:komodo_coin_updates/src/data/coin_config_repository.dart';
-import 'package:komodo_coin_updates/src/models/coin.dart';
-import 'package:komodo_coin_updates/src/models/coin_config.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -30,42 +30,47 @@ void main() {
       await hive.Hive.deleteFromDisk();
     });
 
-    test('saveCoinData writes to boxes and can be read back', () async {
-      const kmd = Coin(coin: 'KMD', decimals: 8);
-      const cfg = CoinConfig(coin: 'KMD', decimals: 8);
+    test('saveAssetData writes to boxes and can be read back', () async {
+      final kmd = buildKmdTestAsset();
 
       when(() => provider.getLatestCommit()).thenAnswer((_) async => 'HEAD');
 
-      await repo.saveCoinData([kmd], {'KMD': cfg}, 'HEAD');
+      await repo.saveAssetData([kmd], 'HEAD');
 
-      final coin = await repo.getCoin('KMD');
-      expect(coin?.coin, 'KMD');
-
-      final configs = await repo.getCoinConfigs();
-      expect(configs, contains('KMD'));
-      expect(configs!['KMD']!.coin, 'KMD');
+      final asset = await repo.getAsset(
+        AssetId(
+          id: 'KMD',
+          name: 'Komodo',
+          symbol: AssetSymbol(assetConfigId: 'KMD'),
+          chainId: AssetChainId(chainId: 0),
+          derivationPath: null,
+          subClass: CoinSubClass.utxo,
+        ),
+      );
+      expect(asset?.id.id, 'KMD');
 
       final commit = await repo.getCurrentCommit();
       expect(commit, 'HEAD');
     });
 
-    test('saveRawCoinData persists raw json correctly', () async {
+    test('saveRawAssetData persists raw json correctly', () async {
       when(() => provider.getLatestCommit()).thenAnswer((_) async => 'HEAD');
 
-      await repo.saveRawCoinData(
-        [
-          {'coin': 'BTC', 'decimals': 8},
-        ],
-        {
-          'BTC': {'coin': 'BTC', 'decimals': 8},
-        },
-        'HEAD',
-      );
+      await repo.saveRawAssetData({
+        'BTC': buildBtcTestAsset().toJson(),
+      }, 'HEAD');
 
-      final c = await repo.getCoin('BTC');
-      expect(c?.coin, 'BTC');
-      final cfgs = await repo.getCoinConfigs();
-      expect(cfgs, contains('BTC'));
+      final a = await repo.getAsset(
+        AssetId(
+          id: 'BTC',
+          name: 'Bitcoin',
+          symbol: AssetSymbol(assetConfigId: 'BTC'),
+          chainId: AssetChainId(chainId: 0),
+          derivationPath: null,
+          subClass: CoinSubClass.utxo,
+        ),
+      );
+      expect(a?.id.id, 'BTC');
     });
 
     test(
@@ -73,11 +78,8 @@ void main() {
       () async {
         expect(await repo.coinConfigExists(), isFalse);
         when(() => provider.getLatestCommit()).thenAnswer((_) async => 'HEAD');
-        await repo.saveCoinData(
-          [const Coin(coin: 'KMD')],
-          {'KMD': const CoinConfig(coin: 'KMD')},
-          'HEAD',
-        );
+        final kmd = buildKmdTestAsset();
+        await repo.saveAssetData([kmd], 'HEAD');
         expect(await repo.coinConfigExists(), isTrue);
       },
     );

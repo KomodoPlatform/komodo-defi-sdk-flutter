@@ -9,6 +9,7 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
+  decimal: ^3.2.1
   flutter_bloc: ^9.1.1
   freezed_annotation: ^3.0.0
   hive_ce: ^2.2.3+ce
