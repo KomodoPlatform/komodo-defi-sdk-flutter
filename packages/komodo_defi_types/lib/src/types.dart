@@ -30,6 +30,7 @@ export 'generic/sync_status.dart';
 export 'komodo_defi_types_base.dart';
 export 'legacy/legacy_coin_model.dart';
 export 'migration/migration_preview.dart';
+export 'private_keys/private_key.dart';
 export 'protocols/base/exceptions.dart';
 export 'protocols/base/explorer_url_pattern.dart';
 export 'protocols/erc20/erc20_protocol.dart';
