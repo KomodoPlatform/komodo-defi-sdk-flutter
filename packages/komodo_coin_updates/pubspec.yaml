@@ -11,15 +11,21 @@ environment:
 dependencies:
   equatable: ^2.0.7
   flutter_bloc: ^9.1.1
-  hive: 2.2.3
-  hive_flutter: 1.1.0
+  freezed_annotation: ^3.0.0
+  hive_ce: ^2.2.3+ce
+  hive_ce_flutter: ^2.2.3+ce
   http: ^1.4.0
+  json_annotation: ^4.9.0
   komodo_defi_types:
     path: ../komodo_defi_types
   very_good_analysis: ^8.0.0
 
 dev_dependencies:
+  build_runner: ^2.4.14
   flutter_test:
     sdk: flutter
+  freezed: ^3.0.4
+  hive_ce_generator: ^1.9.2
+  json_serializable: ^6.7.1
   lints: ^6.0.0
   test: ^1.25.7

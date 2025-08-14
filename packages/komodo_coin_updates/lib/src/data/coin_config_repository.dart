@@ -59,6 +59,9 @@ class CoinConfigRepository implements CoinConfigStorage {
   }
 
   @override
+  /// Returns whether the currently stored commit matches the latest
+  /// commit on the configured branch. Also caches the latest commit hash
+  /// in memory for subsequent calls.
   Future<bool> isLatestCommit() async {
     final commit = await getCurrentCommit();
     if (commit != null) {
@@ -69,6 +72,8 @@ class CoinConfigRepository implements CoinConfigStorage {
   }
 
   @override
+  /// Retrieves all coins from storage, excluding any whose symbol appears
+  /// in [excludedAssets]. Returns `null` if storage is empty.
   Future<List<Coin>?> getCoins({
     List<String> excludedAssets = const <String>[],
   }) async {
@@ -83,11 +88,14 @@ class CoinConfigRepository implements CoinConfigStorage {
   }
 
   @override
+  /// Retrieves a single [Coin] by its [coinId] from storage.
   Future<Coin?> getCoin(String coinId) async {
     return (await coinsDatabase.get(coinId))!.coin;
   }
 
   @override
+  /// Retrieves all available [CoinConfig] entries from storage as a map
+  /// keyed by coin symbol, excluding entries for which configuration is null.
   Future<Map<String, CoinConfig>?> getCoinConfigs({
     List<String> excludedAssets = const <String>[],
   }) async {
@@ -106,11 +114,14 @@ class CoinConfigRepository implements CoinConfigStorage {
   }
 
   @override
+  /// Retrieves a single [CoinConfig] by its [coinId] from storage.
   Future<CoinConfig?> getCoinConfig(String coinId) async {
     return (await coinsDatabase.get(coinId))!.coinConfig;
   }
 
   @override
+  /// Returns the commit hash currently persisted in the settings storage
+  /// for the coin data, or `null` if not present.
   Future<String?> getCurrentCommit() async {
     return coinSettingsDatabase.get(coinsCommitKey).then((
       PersistedString? persistedString,
@@ -120,6 +131,9 @@ class CoinConfigRepository implements CoinConfigStorage {
   }
 
   @override
+  /// Persists coin list and configuration map to storage and records the
+  /// associated repository [commit]. Also updates the in-memory cached
+  /// latest commit if it has not yet been set.
   Future<void> saveCoinData(
     List<Coin> coins,
     Map<String, CoinConfig> coinConfig,
@@ -139,11 +153,15 @@ class CoinConfigRepository implements CoinConfigStorage {
   }
 
   @override
+  /// Returns `true` when both the coins database and the coin settings
+  /// database have been initialized and contain data.
   Future<bool> coinConfigExists() async {
     return await coinsDatabase.exists() && await coinSettingsDatabase.exists();
   }
 
   @override
+  /// Persists raw JSON coin data and configuration map to storage without
+  /// requiring prior deserialization by the caller.
   Future<void> saveRawCoinData(
     List<dynamic> coins,
     Map<String, dynamic> coinConfig,
