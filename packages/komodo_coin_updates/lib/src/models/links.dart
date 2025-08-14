@@ -1,25 +1,11 @@
-import 'package:equatable/equatable.dart';
-import 'package:hive/hive.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'adapters/links_adapter.dart';
+part 'links.freezed.dart';
+part 'links.g.dart';
 
-class Links extends Equatable {
-  const Links({this.github, this.homepage});
+@freezed
+abstract class Links with _$Links {
+  const factory Links({String? github, String? homepage}) = _Links;
 
-  factory Links.fromJson(Map<String, dynamic> json) {
-    return Links(
-      github: json['github'] as String?,
-      homepage: json['homepage'] as String?,
-    );
-  }
-
-  final String? github;
-  final String? homepage;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{'github': github, 'homepage': homepage};
-  }
-
-  @override
-  List<Object?> get props => <Object?>[github, homepage];
+  factory Links.fromJson(Map<String, dynamic> json) => _$LinksFromJson(json);
 }

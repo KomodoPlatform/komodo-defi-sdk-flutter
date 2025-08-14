@@ -1,25 +1,13 @@
-import 'package:equatable/equatable.dart';
-import 'package:hive/hive.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'adapters/address_format_adapter.dart';
+part 'address_format.freezed.dart';
+part 'address_format.g.dart';
 
-class AddressFormat extends Equatable {
-  const AddressFormat({this.format, this.network});
+@freezed
+abstract class AddressFormat with _$AddressFormat {
+  const factory AddressFormat({String? format, String? network}) =
+      _AddressFormat;
 
-  factory AddressFormat.fromJson(Map<String, dynamic> json) {
-    return AddressFormat(
-      format: json['format'] as String?,
-      network: json['network'] as String?,
-    );
-  }
-
-  final String? format;
-  final String? network;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{'format': format, 'network': network};
-  }
-
-  @override
-  List<Object?> get props => <Object?>[format, network];
+  factory AddressFormat.fromJson(Map<String, dynamic> json) =>
+      _$AddressFormatFromJson(json);
 }

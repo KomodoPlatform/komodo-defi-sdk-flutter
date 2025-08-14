@@ -1,20 +1,16 @@
-import 'package:equatable/equatable.dart';
-import 'package:hive/hive.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
-import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
 
-part 'adapters/coin_info_adapter.dart';
+part 'coin_info.freezed.dart';
+part 'coin_info.g.dart';
 
-class CoinInfo extends Equatable implements ObjectWithPrimaryKey<String> {
-  const CoinInfo({required this.coin, required this.coinConfig});
+@freezed
+abstract class CoinInfo with _$CoinInfo {
+  const factory CoinInfo({required Coin coin, CoinConfig? coinConfig}) =
+      _CoinInfo;
 
-  final Coin coin;
-  final CoinConfig? coinConfig;
+  factory CoinInfo.fromJson(Map<String, dynamic> json) =>
+      _$CoinInfoFromJson(json);
 
-  @override
-  String get primaryKey => coin.coin;
-
-  @override
-  // TODO(Francois): optimize for comparisons - decide on fields to use when comparing
-  List<Object?> get props => <Object?>[coin, coinConfig];
+  const CoinInfo._();
 }

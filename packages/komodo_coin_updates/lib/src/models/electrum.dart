@@ -1,39 +1,18 @@
-import 'package:equatable/equatable.dart';
-import 'package:hive/hive.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_coin_updates/src/models/contact.dart';
 
-part 'adapters/electrum_adapter.dart';
+part 'electrum.freezed.dart';
+part 'electrum.g.dart';
 
-// ignore: must_be_immutable
-class Electrum extends Equatable {
-  Electrum({this.url, this.wsUrl, this.protocol, this.contact});
+@freezed
+abstract class Electrum with _$Electrum {
+  const factory Electrum({
+    String? url,
+    String? wsUrl,
+    String? protocol,
+    List<Contact>? contact,
+  }) = _Electrum;
 
-  factory Electrum.fromJson(Map<String, dynamic> json) {
-    return Electrum(
-      url: json['url'] as String?,
-      wsUrl: json['ws_url'] as String?,
-      protocol: json['protocol'] as String?,
-      contact:
-          (json['contact'] as List<dynamic>?)
-              ?.map((dynamic e) => Contact.fromJson(e as Map<String, dynamic>))
-              .toList(),
-    );
-  }
-
-  final String? url;
-  String? wsUrl;
-  final String? protocol;
-  final List<Contact>? contact;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'url': url,
-      'ws_url': wsUrl,
-      'protocol': protocol,
-      'contact': contact?.map((Contact e) => e.toJson()).toList(),
-    };
-  }
-
-  @override
-  List<Object?> get props => <Object?>[url, wsUrl, protocol, contact];
+  factory Electrum.fromJson(Map<String, dynamic> json) =>
+      _$ElectrumFromJson(json);
 }

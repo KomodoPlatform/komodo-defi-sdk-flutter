@@ -1,8 +1,6 @@
+import 'package:hive_ce/hive.dart';
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coin_updates/src/models/coin_info.dart';
-import 'package:komodo_coin_updates/src/persistence/hive/hive.dart';
-import 'package:komodo_coin_updates/src/persistence/persisted_types.dart';
-import 'package:komodo_coin_updates/src/persistence/persistence_provider.dart';
 
 /// A repository that fetches the coins and coin configs from the provider and
 /// stores them in the storage provider.
@@ -12,11 +10,7 @@ class CoinConfigRepository implements CoinConfigStorage {
   /// [coinsDatabase] is the database that stores the coins and their configs.
   /// [coinSettingsDatabase] is the database that stores the coin settings
   /// (i.e. current commit hash).
-  CoinConfigRepository({
-    required this.coinConfigProvider,
-    required this.coinsDatabase,
-    required this.coinSettingsDatabase,
-  });
+  CoinConfigRepository({required this.coinConfigProvider});
 
   /// Creates a coin config storage provider with default databases.
   /// The default databases are HiveLazyBoxProvider.
@@ -27,20 +21,13 @@ class CoinConfigRepository implements CoinConfigStorage {
   }) : coinConfigProvider = CoinConfigProvider.fromConfig(
          config,
          githubToken: githubToken,
-       ),
-       coinsDatabase = HiveLazyBoxProvider<String, CoinInfo>(name: 'coins'),
-       coinSettingsDatabase = HiveBoxProvider<String, PersistedString>(
-         name: 'coins_settings',
        );
 
   /// The provider that fetches the coins and coin configs.
   final CoinConfigProvider coinConfigProvider;
 
-  /// The database that stores the coins. The key is the coin id.
-  final PersistenceProvider<String, CoinInfo> coinsDatabase;
-
-  /// The database that stores the coin settings. The key is the coin settings key.
-  final PersistenceProvider<String, PersistedString> coinSettingsDatabase;
+  LazyBox<CoinInfo>? _coinsBox;
+  Box<String>? _settingsBox;
 
   /// The key for the coins commit. The value is the commit hash.
   final String coinsCommitKey = 'coins_commit';
@@ -77,20 +64,23 @@ class CoinConfigRepository implements CoinConfigStorage {
   Future<List<Coin>?> getCoins({
     List<String> excludedAssets = const <String>[],
   }) async {
-    final result = await coinsDatabase.getAll();
-    return result
-        .where(
-          (CoinInfo? coin) =>
-              coin != null && !excludedAssets.contains(coin.coin.coin),
-        )
-        .map((CoinInfo? coin) => coin!.coin)
+    final box = await _openCoinsBox();
+    final keys = box.keys;
+    final values = await Future.wait(
+      keys.map((dynamic key) => box.get(key as String)),
+    );
+    return values
+        .whereType<CoinInfo>()
+        .where((ci) => !excludedAssets.contains(ci.coin.coin))
+        .map((ci) => ci.coin)
         .toList();
   }
 
   @override
   /// Retrieves a single [Coin] by its [coinId] from storage.
   Future<Coin?> getCoin(String coinId) async {
-    return (await coinsDatabase.get(coinId))!.coin;
+    final ci = await (await _openCoinsBox()).get(coinId);
+    return ci?.coin;
   }
 
   @override
@@ -99,35 +89,36 @@ class CoinConfigRepository implements CoinConfigStorage {
   Future<Map<String, CoinConfig>?> getCoinConfigs({
     List<String> excludedAssets = const <String>[],
   }) async {
+    final box = await _openCoinsBox();
+    final keys = box.keys;
+    final values = await Future.wait(
+      keys.map((dynamic key) => box.get(key as String)),
+    );
     final coinConfigs =
-        (await coinsDatabase.getAll())
-            .where((CoinInfo? e) => e != null && e.coinConfig != null)
-            .cast<CoinInfo>()
-            .map((CoinInfo e) => e.coinConfig)
-            .cast<CoinConfig>()
+        values
+            .whereType<CoinInfo>()
+            .map((ci) => ci.coinConfig)
+            .whereType<CoinConfig>()
             .toList();
 
     return <String, CoinConfig>{
-      for (final CoinConfig coinConfig in coinConfigs)
-        coinConfig.primaryKey: coinConfig,
+      for (final CoinConfig cfg in coinConfigs) cfg.coin: cfg,
     };
   }
 
   @override
   /// Retrieves a single [CoinConfig] by its [coinId] from storage.
   Future<CoinConfig?> getCoinConfig(String coinId) async {
-    return (await coinsDatabase.get(coinId))!.coinConfig;
+    final ci = await (await _openCoinsBox()).get(coinId);
+    return ci?.coinConfig;
   }
 
   @override
   /// Returns the commit hash currently persisted in the settings storage
   /// for the coin data, or `null` if not present.
   Future<String?> getCurrentCommit() async {
-    return coinSettingsDatabase.get(coinsCommitKey).then((
-      PersistedString? persistedString,
-    ) {
-      return persistedString?.value;
-    });
+    final box = await _openSettingsBox();
+    return box.get(coinsCommitKey);
   }
 
   @override
@@ -147,8 +138,14 @@ class CoinConfigRepository implements CoinConfigStorage {
       );
     }
 
-    await coinsDatabase.insertAll(combinedCoins.values.toList());
-    await coinSettingsDatabase.insert(PersistedString(coinsCommitKey, commit));
+    final coinsBox = await _openCoinsBox();
+    final putMap = <String, CoinInfo>{
+      for (final ci in combinedCoins.values) ci.coin.coin: ci,
+    };
+    await coinsBox.putAll(putMap);
+
+    final settings = await _openSettingsBox();
+    await settings.put(coinsCommitKey, commit);
     _latestCommit = _latestCommit ?? await coinConfigProvider.getLatestCommit();
   }
 
@@ -156,7 +153,8 @@ class CoinConfigRepository implements CoinConfigStorage {
   /// Returns `true` when both the coins database and the coin settings
   /// database have been initialized and contain data.
   Future<bool> coinConfigExists() async {
-    return await coinsDatabase.exists() && await coinSettingsDatabase.exists();
+    return await Hive.boxExists('coins') &&
+        await Hive.boxExists('coins_settings');
   }
 
   @override
@@ -183,7 +181,23 @@ class CoinConfigRepository implements CoinConfigStorage {
       );
     }
 
-    await coinsDatabase.insertAll(combinedCoins.values.toList());
-    await coinSettingsDatabase.insert(PersistedString(coinsCommitKey, commit));
+    final coinsBox = await _openCoinsBox();
+    final putMap = <String, CoinInfo>{
+      for (final ci in combinedCoins.values) ci.coin.coin: ci,
+    };
+    await coinsBox.putAll(putMap);
+
+    final settings = await _openSettingsBox();
+    await settings.put(coinsCommitKey, commit);
+  }
+
+  Future<LazyBox<CoinInfo>> _openCoinsBox() async {
+    _coinsBox ??= await Hive.openLazyBox<CoinInfo>('coins');
+    return _coinsBox!;
+  }
+
+  Future<Box<String>> _openSettingsBox() async {
+    _settingsBox ??= await Hive.openBox<String>('coins_settings');
+    return _settingsBox!;
   }
 }

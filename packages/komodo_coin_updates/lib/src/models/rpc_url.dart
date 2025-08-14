@@ -1,21 +1,11 @@
-import 'package:equatable/equatable.dart';
-import 'package:hive/hive.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'adapters/rpc_url_adapter.dart';
+part 'rpc_url.freezed.dart';
+part 'rpc_url.g.dart';
 
-class RpcUrl extends Equatable {
-  const RpcUrl({this.url});
+@freezed
+abstract class RpcUrl with _$RpcUrl {
+  const factory RpcUrl({String? url}) = _RpcUrl;
 
-  factory RpcUrl.fromJson(Map<String, dynamic> json) {
-    return RpcUrl(url: json['url'] as String?);
-  }
-
-  final String? url;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{'url': url};
-  }
-
-  @override
-  List<Object?> get props => <Object?>[url];
+  factory RpcUrl.fromJson(Map<String, dynamic> json) => _$RpcUrlFromJson(json);
 }

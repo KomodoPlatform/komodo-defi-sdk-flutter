@@ -1,25 +1,12 @@
-import 'package:equatable/equatable.dart';
-import 'package:hive/hive.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'adapters/contact_adapter.dart';
+part 'contact.freezed.dart';
+part 'contact.g.dart';
 
-class Contact extends Equatable {
-  const Contact({this.email, this.github});
+@freezed
+abstract class Contact with _$Contact {
+  const factory Contact({String? email, String? github}) = _Contact;
 
-  factory Contact.fromJson(Map<String, dynamic> json) {
-    return Contact(
-      email: json['email'] as String?,
-      github: json['github'] as String?,
-    );
-  }
-
-  final String? email;
-  final String? github;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{'email': email, 'github': github};
-  }
-
-  @override
-  List<Object?> get props => <Object?>[email, github];
+  factory Contact.fromJson(Map<String, dynamic> json) =>
+      _$ContactFromJson(json);
 }

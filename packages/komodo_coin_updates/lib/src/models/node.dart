@@ -1,40 +1,17 @@
-import 'package:equatable/equatable.dart';
-import 'package:hive/hive.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:komodo_coin_updates/src/models/contact.dart';
 
-import 'package:komodo_coin_updates/komodo_coin_updates.dart';
+part 'node.freezed.dart';
+part 'node.g.dart';
 
-part 'adapters/node_adapter.dart';
+@freezed
+abstract class Node with _$Node {
+  const factory Node({
+    String? url,
+    String? wsUrl,
+    bool? guiAuth,
+    Contact? contact,
+  }) = _Node;
 
-class Node extends Equatable {
-  const Node({this.url, this.wsUrl, this.guiAuth, this.contact});
-
-  factory Node.fromJson(Map<String, dynamic> json) {
-    return Node(
-      url: json['url'] as String?,
-      wsUrl: json['ws_url'] as String?,
-      guiAuth: (json['gui_auth'] ?? json['komodo_proxy']) as bool?,
-      contact:
-          json['contact'] != null
-              ? Contact.fromJson(json['contact'] as Map<String, dynamic>)
-              : null,
-    );
-  }
-
-  final String? url;
-  final String? wsUrl;
-  final bool? guiAuth;
-  final Contact? contact;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'url': url,
-      'ws_url': wsUrl,
-      'gui_auth': guiAuth,
-      'komodo_proxy': guiAuth,
-      'contact': contact?.toJson(),
-    };
-  }
-
-  @override
-  List<Object?> get props => <Object?>[url, wsUrl, guiAuth, contact];
+  factory Node.fromJson(Map<String, dynamic> json) => _$NodeFromJson(json);
 }
