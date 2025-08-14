@@ -1,27 +1,41 @@
 import 'package:hive_ce/hive.dart';
+import 'package:komodo_coin_updates/src/config_transform.dart';
 import 'package:komodo_coin_updates/src/data/coin_config_provider.dart';
 import 'package:komodo_coin_updates/src/data/coin_config_storage.dart';
 import 'package:komodo_coin_updates/src/models/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
-/// A repository that fetches the coins and coin configs from the provider and
-/// stores them in the storage provider.
+/// Repository that orchestrates fetching coin configuration from a
+/// [CoinConfigProvider] and performing CRUD operations against local
+/// Hive storage. Parsed [Asset] models are persisted along with the
+/// source repository commit hash for traceability.
 class CoinConfigRepository implements CoinConfigStorage {
   /// Creates a coin config repository.
   /// [coinConfigProvider] is the provider that fetches the coins and coin configs.
   /// (i.e. current commit hash).
-  CoinConfigRepository({required this.coinConfigProvider});
+  CoinConfigRepository({
+    required this.coinConfigProvider,
+    this.assetsBoxName = 'assets',
+    this.settingsBoxName = 'coins_settings',
+    this.coinsCommitKey = 'coins_commit',
+  });
 
-  /// Creates a coin config storage provider with default databases.
-  /// The default databases are HiveLazyBoxProvider.
-  /// The default databases are named 'coins' and 'coins_settings'.
+  /// Convenience factory that derives a provider from a runtime config and
+  /// uses default Hive boxes (`assets`, `coins_settings`).
   CoinConfigRepository.withDefaults(
     RuntimeUpdateConfig config, {
     String? githubToken,
-  }) : coinConfigProvider = CoinConfigProvider.fromConfig(
+    CoinConfigTransformer? transformer,
+    this.assetsBoxName = 'assets',
+    this.settingsBoxName = 'coins_settings',
+    this.coinsCommitKey = 'coins_commit',
+  }) : coinConfigProvider = GithubCoinConfigProvider.fromConfig(
          config,
          githubToken: githubToken,
+         transformer: transformer,
        );
+  static final Logger _log = Logger('CoinConfigRepository');
 
   /// The provider that fetches the coins and coin configs.
   final CoinConfigProvider coinConfigProvider;
@@ -29,18 +43,30 @@ class CoinConfigRepository implements CoinConfigStorage {
   LazyBox<Asset>? _assetsBox;
   Box<String>? _settingsBox;
 
+  /// Configurable Hive box names and settings key.
+  final String assetsBoxName;
+
+  /// The name of the Hive box for the coins settings.
+  final String settingsBoxName;
+
   /// The key for the coins commit. The value is the commit hash.
-  final String coinsCommitKey = 'coins_commit';
+  final String coinsCommitKey;
 
-  String? _latestCommit;
-
-  /// Updates the assets from the provider and stores them in the storage provider.
-  /// Throws an [Exception] if the request fails.
+  /// Fetches the latest commit from the provider, downloads assets for that
+  /// commit, and upserts them in local storage along with the commit hash.
+  /// Throws an [Exception] if the request fails at any step.
   Future<void> updateCoinConfig({
     List<String> excludedAssets = const <String>[],
   }) async {
-    final assets = await coinConfigProvider.getLatestAssets();
-    await saveAssetData(assets, _latestCommit ?? '');
+    _log.fine('Updating coin config: fetching latest commit');
+    final latestCommit = await coinConfigProvider.getLatestCommit();
+    _log.fine('Fetched latest commit: $latestCommit; fetching assets');
+    final assets = await coinConfigProvider.getAssetsForCommit(latestCommit);
+    _log.fine(
+      'Fetched ${assets.length} assets for commit $latestCommit; upserting',
+    );
+    await upsertAssets(assets, latestCommit);
+    _log.fine('Update complete for commit $latestCommit');
   }
 
   @override
@@ -48,11 +74,15 @@ class CoinConfigRepository implements CoinConfigStorage {
   /// commit on the configured branch. Also caches the latest commit hash
   /// in memory for subsequent calls.
   Future<bool> isLatestCommit() async {
+    _log.fine('Checking if stored commit is latest');
     final commit = await getCurrentCommit();
     if (commit != null) {
-      _latestCommit = await coinConfigProvider.getLatestCommit();
-      return commit == _latestCommit;
+      final latestCommit = await coinConfigProvider.getLatestCommit();
+      final isLatest = commit == latestCommit;
+      _log.fine('Stored commit=$commit latest=$latestCommit result=$isLatest');
+      return isLatest;
     }
+    _log.fine('No stored commit found');
     return false;
   }
 
@@ -62,20 +92,27 @@ class CoinConfigRepository implements CoinConfigStorage {
   Future<List<Asset>?> getAssets({
     List<String> excludedAssets = const <String>[],
   }) async {
+    _log.fine(
+      'Retrieving all assets (excluding ${excludedAssets.length} symbols)',
+    );
     final box = await _openAssetsBox();
     final keys = box.keys;
     final values = await Future.wait(
       keys.map((dynamic key) => box.get(key as String)),
     );
-    return values
-        .whereType<Asset>()
-        .where((a) => !excludedAssets.contains(a.id.id))
-        .toList();
+    final result =
+        values
+            .whereType<Asset>()
+            .where((a) => !excludedAssets.contains(a.id.id))
+            .toList();
+    _log.fine('Retrieved ${result.length} assets');
+    return result;
   }
 
   @override
   /// Retrieves a single [Asset] by its [assetId] from storage.
   Future<Asset?> getAsset(AssetId assetId) async {
+    _log.fine('Retrieving asset ${assetId.id}');
     final a = await (await _openAssetsBox()).get(assetId.id);
     return a;
   }
@@ -88,38 +125,47 @@ class CoinConfigRepository implements CoinConfigStorage {
   /// Returns the commit hash currently persisted in the settings storage
   /// for the coin data, or `null` if not present.
   Future<String?> getCurrentCommit() async {
+    _log.fine('Reading current commit');
     final box = await _openSettingsBox();
     return box.get(coinsCommitKey);
   }
 
   @override
-  /// Persists asset list to storage and records the
-  /// associated repository [commit]. Also updates the in-memory cached
-  /// latest commit if it has not yet been set.
-  Future<void> saveAssetData(List<Asset> assets, String commit) async {
+  /// Creates or updates stored assets keyed by `AssetId.id`, and records the
+  /// associated repository [commit]. Also refreshes the in-memory cached
+  /// latest commit when not yet initialized.
+  Future<void> upsertAssets(List<Asset> assets, String commit) async {
+    _log.fine('Upserting ${assets.length} assets for commit $commit');
     final assetsBox = await _openAssetsBox();
     final putMap = <String, Asset>{for (final a in assets) a.id.id: a};
     await assetsBox.putAll(putMap);
 
     final settings = await _openSettingsBox();
     await settings.put(coinsCommitKey, commit);
-    _latestCommit = _latestCommit ?? await coinConfigProvider.getLatestCommit();
+    _log.fine(
+      'Upserted ${assets.length} assets; commit stored under "$coinsCommitKey"',
+    );
   }
 
   @override
   /// Returns `true` when both the assets database and the settings
   /// database have been initialized and contain data.
   Future<bool> coinConfigExists() async {
-    return await Hive.boxExists('assets') &&
-        await Hive.boxExists('coins_settings');
+    final assetsExists = await Hive.boxExists(assetsBoxName);
+    final settingsExists = await Hive.boxExists(settingsBoxName);
+    _log.fine(
+      'Box existence check: $assetsBoxName=$assetsExists $settingsBoxName=$settingsExists',
+    );
+    return assetsExists && settingsExists;
   }
 
   @override
-  /// Persists raw JSON coin config map to storage by parsing to [Asset].
-  Future<void> saveRawAssetData(
+  /// Parses raw JSON coin config map to [Asset]s and delegates to [upsertAssets].
+  Future<void> upsertRawAssets(
     Map<String, dynamic> coinConfigsBySymbol,
     String commit,
   ) async {
+    _log.fine('Parsing and upserting raw assets for commit $commit');
     // First pass: known ids
     final knownIds = <AssetId>{
       for (final e in coinConfigsBySymbol.entries)
@@ -136,16 +182,41 @@ class CoinConfigRepository implements CoinConfigStorage {
           ),
         ),
     ];
-    await saveAssetData(assets, commit);
+    _log.fine('Parsed ${assets.length} assets from raw; delegating to upsert');
+    await upsertAssets(assets, commit);
   }
 
+  @override
+  Future<void> deleteAsset(AssetId assetId) async {
+    _log.fine('Deleting asset ${assetId.id}');
+    final assetsBox = await _openAssetsBox();
+    await assetsBox.delete(assetId.id);
+  }
+
+  @override
+  Future<void> deleteAllAssets() async {
+    _log.fine('Clearing all assets and removing commit key "$coinsCommitKey"');
+    final assetsBox = await _openAssetsBox();
+    await assetsBox.clear();
+    final settings = await _openSettingsBox();
+    await settings.delete(coinsCommitKey);
+  }
+
+  // ---- end CRUD ----
+
   Future<LazyBox<Asset>> _openAssetsBox() async {
-    _assetsBox ??= await Hive.openLazyBox<Asset>('assets');
+    if (_assetsBox == null) {
+      _log.fine('Opening assets box "$assetsBoxName"');
+      _assetsBox = await Hive.openLazyBox<Asset>(assetsBoxName);
+    }
     return _assetsBox!;
   }
 
   Future<Box<String>> _openSettingsBox() async {
-    _settingsBox ??= await Hive.openBox<String>('coins_settings');
+    if (_settingsBox == null) {
+      _log.fine('Opening settings box "$settingsBoxName"');
+      _settingsBox = await Hive.openBox<String>(settingsBoxName);
+    }
     return _settingsBox!;
   }
 }

@@ -1,7 +1,10 @@
+import 'dart:async';
+import 'dart:ui_web' show AssetManager;
+
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coins/src/asset_filter.dart';
-import 'package:komodo_coins/src/config_transform.dart';
+import 'package:komodo_coins/src/repository/runtime_update_config_repository.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -9,7 +12,31 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// coin data and seed nodes.
 ///
 /// NB: [init] must be called before accessing any assets.
+typedef CoinConfigRepositoryBuilder = CoinConfigRepository Function(
+  RuntimeUpdateConfig config,
+  CoinConfigTransformer transformer,
+);
+
+typedef LocalProviderBuilder = CoinConfigProvider Function(
+  RuntimeUpdateConfig config,
+);
+
 class KomodoCoins {
+  KomodoCoins({
+    RuntimeUpdateConfigRepository? configRepository,
+    CoinConfigTransformer? transformer,
+    CoinConfigRepositoryBuilder? repositoryBuilder,
+    LocalProviderBuilder? localProviderBuilder,
+  })  : _configRepository = configRepository ?? RuntimeUpdateConfigRepository(),
+        _transformer = transformer ?? const CoinConfigTransformer(),
+        _repositoryBuilder = repositoryBuilder ??
+            ((config, transformer) => CoinConfigRepository.withDefaults(
+                  config,
+                  transformer: transformer,
+                )),
+        _localProviderBuilder =
+            localProviderBuilder ?? LocalAssetCoinConfigProvider.fromConfig;
+
   /// Creates an instance of [KomodoCoins] and initializes it.
   static Future<KomodoCoins> create() async {
     final instance = KomodoCoins();
@@ -17,8 +44,50 @@ class KomodoCoins {
     return instance;
   }
 
+  /// Fetches the list of coin configuration maps to be passed to mm2 on start.
+  ///
+  /// - Uses only read paths and does not attempt to update or persist assets.
+  /// - If local storage already contains assets, returns those.
+  /// - Otherwise, falls back to the bundled local asset provider.
+  static Future<JsonList> fetchAndTransformCoinsList() async {
+    // Load runtime config (from asset if available)
+    final runtimeConfig = await RuntimeUpdateConfigRepository().tryLoad() ??
+        RuntimeUpdateConfig.withDefaults();
+
+    // Build repository and attempt to read stored assets only
+    const transformer = CoinConfigTransformer();
+    final repo = CoinConfigRepository.withDefaults(
+      runtimeConfig,
+      transformer: transformer,
+    );
+
+    List<Asset> assets;
+    if (await repo.coinConfigExists()) {
+      assets = await repo.getAssets() ?? const <Asset>[];
+    } else {
+      // Fall back to local bundled coins (no persistence)
+      final localProvider = LocalAssetCoinConfigProvider.fromConfig(
+        runtimeConfig,
+        transformer: transformer,
+      );
+      assets = await localProvider.getAssets();
+    }
+
+    // Convert to raw coin config maps expected by mm2
+    final configs = <JsonMap>[
+      for (final asset in assets) asset.protocol.config,
+    ];
+    return JsonList.of(configs);
+  }
+
   Map<AssetId, Asset>? _assets;
   final Map<String, Map<AssetId, Asset>> _filterCache = {};
+  bool _bootstrappedFromLocal = false;
+
+  final RuntimeUpdateConfigRepository _configRepository;
+  final CoinConfigTransformer _transformer;
+  final CoinConfigRepositoryBuilder _repositoryBuilder;
+  final LocalProviderBuilder _localProviderBuilder;
 
   @mustCallSuper
   Future<void> init() async {
@@ -35,91 +104,69 @@ class KomodoCoins {
   }
 
   Future<Map<AssetId, Asset>> fetchAssets() async {
-    if (_assets != null) return _assets!;
+    // Load runtime config (from asset if available)
+    final runtimeConfig =
+        await _configRepository.tryLoad() ?? RuntimeUpdateConfig.withDefaults();
 
-    final url = Uri.parse(
-      'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
-    );
+    final repo = _repositoryBuilder(runtimeConfig, _transformer);
 
-    try {
-      final response = await http.get(url);
-      if (response.statusCode != 200) {
-        throw Exception('Failed to fetch assets: ${response.statusCode}');
+    if (_assets != null) {
+      // If we previously bootstrapped from local and storage is now ready,
+      // refresh memory from storage so subsequent calls use the persisted set.
+      if (_bootstrappedFromLocal && await repo.coinConfigExists()) {
+        final refreshed = await repo.getAssets();
+        final mapped = <AssetId, Asset>{
+          for (final asset in refreshed ?? const <Asset>[]) asset.id: asset,
+        };
+        _assets = mapped;
+        _bootstrappedFromLocal = false;
       }
-      final jsonData = jsonFromString(response.body);
-
-      // First pass: Parse all platform coin AssetIds
-      final platformIds = <AssetId>{};
-      for (final entry in jsonData.entries) {
-        // Apply transforms before processing
-        final coinData = (entry.value as JsonMap).applyTransforms;
-
-        if (_hasNoParent(coinData)) {
-          try {
-            platformIds.addAll(AssetId.parseAllTypes(coinData, knownIds: {}));
-          } catch (e) {
-            debugPrint('Error parsing platform coin ${entry.key}: $e');
-          }
-        }
-      }
-
-      // Second pass: Create assets with proper parent relationships
-      final assets = <AssetId, Asset>{};
-
-      for (final entry in jsonData.entries) {
-        // Apply transforms before processing
-        final coinData = (entry.value as JsonMap).applyTransforms;
-
-        // Filter out excluded coins
-        if (const CoinFilter().shouldFilter(entry.value as JsonMap)) {
-          debugPrint('[Komodo Coins] Excluding coin ${entry.key}');
-          continue;
-        }
-
-        try {
-          // Parse all possible AssetIds for this coin
-          final assetIds = AssetId.parseAllTypes(
-            coinData,
-            knownIds: platformIds,
-          ).map(
-            (id) => id.isChildAsset
-                ? AssetId.parse(coinData, knownIds: platformIds)
-                : id,
-          );
-
-          // Create Asset instance for each valid AssetId
-          for (final assetId in assetIds) {
-            final asset = Asset.fromJsonWithId(coinData, assetId: assetId);
-            // if (asset != null) {
-            assets[assetId] = asset;
-            // }
-          }
-        }
-        // Log exceptions related to missing config fields
-        on MissingProtocolFieldException catch (e) {
-          debugPrint(
-            'Skipping asset ${entry.key} due to missing protocol field: $e',
-          );
-        } catch (e) {
-          debugPrint(
-            'Error parsing asset ${entry.key}: $e , '
-            'with transformed data: \n${coinData.toJsonString()}\n',
-          );
-        }
-      }
-
-      _assets = assets;
-      return assets;
-    } catch (e) {
-      debugPrint('Error fetching assets: $e');
-      rethrow;
+      return _assets!;
     }
+
+    // Prefer returning cached storage if present
+    if (await repo.coinConfigExists()) {
+      final list = await repo.getAssets();
+      // Trigger background update check (fire-and-forget)
+      unawaited(_maybeUpdateFromRemote(repo));
+      final mapped = <AssetId, Asset>{
+        for (final asset in list ?? const <Asset>[]) asset.id: asset,
+      };
+      _assets = mapped;
+      return mapped;
+    }
+
+    // Cold start: load from local asset then fetch and persist latest remote
+    final localProvider = _localProviderBuilder(runtimeConfig);
+    final localAssets = await localProvider.getAssets();
+    final mapped = <AssetId, Asset>{
+      for (final asset in localAssets) asset.id: asset,
+    };
+    _assets = mapped;
+    _bootstrappedFromLocal = true;
+
+    // Fetch remote latest and upsert for next call (do not block first load)
+    unawaited(() async {
+      try {
+        final remoteAssets = await repo.coinConfigProvider.getAssets();
+        final latestCommit = await repo.coinConfigProvider.getLatestCommit();
+        await repo.upsertAssets(remoteAssets, latestCommit);
+      } catch (_) {}
+    }());
+
+    return mapped;
   }
 
-  static bool _hasNoParent(JsonMap coinData) {
-    return !coinData.containsKey('parent_coin') ||
-        coinData.valueOrNull<String>('parent_coin') == null;
+  Future<void> _maybeUpdateFromRemote(CoinConfigRepository repo) async {
+    try {
+      final isLatest = await repo.isLatestCommit();
+      if (!isLatest) {
+        await repo.updateCoinConfig();
+      }
+    } catch (_) {}
   }
+
+  // Removed unused helper to satisfy lints after refactor
 
   /// Returns the assets filtered using the provided [strategy].
   ///
@@ -166,26 +213,5 @@ class KomodoCoins {
         .where((e) => e.key.isChildAsset && e.key.parentId == parentId)
         .map((e) => e.value)
         .toSet();
-  }
-
-  static Future<JsonList> fetchAndTransformCoinsList() async {
-    const coinsUrl = 'https://komodoplatform.github.io/coins/coins';
-
-    try {
-      final response = await http.get(Uri.parse(coinsUrl));
-
-      if (response.statusCode != 200) {
-        throw HttpException(
-          'Failed to fetch coins list. Status code: ${response.statusCode}',
-          uri: Uri.parse(coinsUrl),
-        );
-      }
-
-      final coins = jsonListFromString(response.body);
-      return coins.applyTransforms;
-    } catch (e) {
-      debugPrint('Error fetching and transforming coins list: $e');
-      throw Exception('Failed to fetch or process coins list: $e');
-    }
   }
 }

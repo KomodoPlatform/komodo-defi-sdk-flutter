@@ -1,50 +1,54 @@
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-/// A storage provider that fetches the coins and coin configs from the storage.
-/// The storage provider is responsible for fetching the coins and coin configs
-/// from the storage and saving the coins and coin configs to the storage.
+/// Storage abstraction for CRUD operations on the locally persisted
+/// coin configuration using Hive. Implementations are responsible for
+/// persisting and retrieving parsed [Asset] models as well as tracking
+/// the repository commit hash they were sourced from.
+///
+/// This interface intentionally focuses on storage concerns; fetching
+/// fresh coin configuration from a remote source is handled by a
+/// corresponding provider (see `coin_config_provider.dart`).
 abstract class CoinConfigStorage {
-  /// Fetches the assets from the storage provider.
-  /// Returns a list of [Asset] objects.
-  /// Throws an [Exception] if the request fails.
+  /// Reads all stored [Asset] items, excluding any whose symbol appears
+  /// in [excludedAssets]. Returns `null` when storage is empty.
   Future<List<Asset>?> getAssets({
     List<String> excludedAssets = const <String>[],
   });
 
-  /// Fetches the specified asset from the storage provider.
-  /// [assetId] identifies the asset (its `id.id` is used as box key).
-  /// Returns an [Asset] object.
-  /// Throws an [Exception] if the request fails.
+  /// Reads a single [Asset] identified by [assetId]. Returns `null` if
+  /// the asset is not present.
   Future<Asset?> getAsset(AssetId assetId);
 
-  /// Checks if the latest commit is the same as the current commit.
-  /// Returns `true` if the latest commit is the same as the current commit,
-  /// otherwise `false`.
-  /// Throws an [Exception] if the request fails.
+  /// Returns `true` if the locally stored commit matches the latest commit
+  /// reported by the configured provider. Implementations may cache the
+  /// latest commit value in memory.
   Future<bool> isLatestCommit();
 
-  /// Fetches the current commit hash.
-  /// Returns the commit hash as a [String].
-  /// Throws an [Exception] if the request fails.
+  /// Returns the commit hash currently stored alongside the assets, or `null`
+  /// if not present.
   Future<String?> getCurrentCommit();
 
-  /// Checks if the assets are saved in the storage provider.
-  /// Returns `true` if the assets are saved, otherwise `false`.
-  /// Throws an [Exception] if the request fails.
+  /// Returns `true` when storage boxes exist and contain data for the coin
+  /// configuration. This is a lightweight readiness check, not a deep
+  /// validation of contents.
   Future<bool> coinConfigExists();
 
-  /// Saves the assets data to the storage provider.
-  /// [assets] is a list of [Asset] objects.
-  /// [commit] is the commit hash.
-  /// Throws an [Exception] if the request fails.
-  Future<void> saveAssetData(List<Asset> assets, String commit);
+  /// Creates or updates the stored assets and persists the associated
+  /// repository [commit]. Implementations should upsert by `AssetId`.
+  Future<void> upsertAssets(List<Asset> assets, String commit);
 
-  /// Saves the raw asset data to the storage provider.
-  /// [coinConfigsBySymbol] is a map of raw JSON `dynamic` coin configs keyed by ticker.
-  /// [commit] is the commit hash.
-  /// Throws an [Exception] if the request fails.
-  Future<void> saveRawAssetData(
+  /// Creates or updates the stored assets from raw JSON entries keyed by
+  /// ticker symbol and persists the associated [commit]. Implementations
+  /// should parse entries into [Asset] and delegate to [upsertAssets].
+  Future<void> upsertRawAssets(
     Map<String, dynamic> coinConfigsBySymbol,
     String commit,
   );
+
+  /// Deletes a single stored [Asset] identified by [assetId].
+  Future<void> deleteAsset(AssetId assetId);
+
+  /// Deletes all stored assets and clears any associated metadata
+  /// (such as the stored commit hash).
+  Future<void> deleteAllAssets();
 }

@@ -28,6 +28,31 @@ class AssetTestHelpers {
     };
   }
 
+  /// Minimal JSON required for an EVM-like asset (e.g., ETH).
+  static Map<String, dynamic> evmJson({
+    String coin = 'ETH',
+    String fname = 'Ethereum',
+    int chainId = 1,
+    bool isTestnet = false,
+    String? trezorCoin,
+  }) {
+    return <String, dynamic>{
+      'coin': coin,
+      'fname': fname,
+      'chain_id': chainId,
+      'type': 'ETH',
+      'protocol': {
+        'type': 'ETH',
+        'protocol_data': {'chain_id': chainId},
+      },
+      'nodes': [
+        {'url': 'https://rpc'},
+      ],
+      if (trezorCoin != null) 'trezor_coin': trezorCoin,
+      'is_testnet': isTestnet,
+    };
+  }
+
   /// Convenience builder for an Asset using the minimal UTXO config.
   static Asset utxoAsset({
     String coin = 'KMD',

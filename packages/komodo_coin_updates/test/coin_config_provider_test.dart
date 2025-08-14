@@ -8,9 +8,9 @@ import 'package:test/test.dart';
 class _MockHttpClient extends Mock implements http.Client {}
 
 void main() {
-  group('CoinConfigProvider CDN mirrors', () {
+  group('GithubCoinConfigProvider CDN mirrors', () {
     test('uses CDN base when exact branch mirror exists', () {
-      final provider = CoinConfigProvider(
+      final provider = GithubCoinConfigProvider(
         cdnBranchMirrors: const {
           'master': 'https://komodoplatform.github.io/coins',
         },
@@ -26,7 +26,7 @@ void main() {
     });
 
     test('falls back to raw content when branch has no mirror', () {
-      final provider = CoinConfigProvider(
+      final provider = GithubCoinConfigProvider(
         branch: 'dev',
         cdnBranchMirrors: const {
           'master': 'https://komodoplatform.github.io/coins',
@@ -43,7 +43,7 @@ void main() {
     });
 
     test('branchOrCommit override uses matching CDN when available', () {
-      final provider = CoinConfigProvider(
+      final provider = GithubCoinConfigProvider(
         branch: 'dev',
         cdnBranchMirrors: const {
           'master': 'https://komodoplatform.github.io/coins',
@@ -61,7 +61,7 @@ void main() {
     });
 
     test('branchOrCommit override falls back to raw when not mirrored', () {
-      final provider = CoinConfigProvider(
+      final provider = GithubCoinConfigProvider(
         cdnBranchMirrors: const {
           'master': 'https://komodoplatform.github.io/coins',
         },
@@ -78,7 +78,7 @@ void main() {
     });
 
     test('ignores empty CDN entry and falls back to raw', () {
-      final provider = CoinConfigProvider(
+      final provider = GithubCoinConfigProvider(
         branch: 'dev',
         cdnBranchMirrors: const {'dev': ''},
       );
@@ -93,7 +93,7 @@ void main() {
     });
 
     test('handles null mirrors and falls back to raw', () {
-      final provider = CoinConfigProvider();
+      final provider = GithubCoinConfigProvider();
 
       final uri = provider.buildContentUri(
         'utils/coins_config_unfiltered.json',
@@ -109,13 +109,13 @@ void main() {
     registerFallbackValue(<String, String>{});
   });
 
-  group('CoinConfigProvider', () {
+  group('GithubCoinConfigProvider', () {
     late _MockHttpClient client;
-    late CoinConfigProvider provider;
+    late GithubCoinConfigProvider provider;
 
     setUp(() {
       client = _MockHttpClient();
-      provider = CoinConfigProvider(httpClient: client);
+      provider = GithubCoinConfigProvider(httpClient: client);
     });
 
     test('getLatestCommit returns sha on 200', () async {
@@ -157,7 +157,7 @@ void main() {
         ),
       );
 
-      final assets = await provider.getLatestAssets();
+      final assets = await provider.getAssets();
       expect(assets, isNotEmpty);
       expect(assets.first.id.id, 'KMD');
     });

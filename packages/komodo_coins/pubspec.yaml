@@ -13,11 +13,12 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.4.0
-  # meta:
-  meta: ^1.15.0
-
+  komodo_coin_updates:
+    path: ../komodo_coin_updates
   komodo_defi_types:
     path: ../komodo_defi_types
+  meta: ^1.15.0
+
 
 dev_dependencies:
   flutter_test:

@@ -34,7 +34,7 @@ void main() {
     );
 
     test(
-      'saveAssetData/getAssets/getAsset/getCurrentCommit/coinConfigExists',
+      'upsertAssets/getAssets/getAsset/getCurrentCommit/coinConfigExists',
       () async {
         final repo = CoinConfigRepository.withDefaults(config());
 
@@ -44,7 +44,7 @@ void main() {
         ];
         const commit = 'abc123';
 
-        await repo.saveAssetData(assets, commit);
+        await repo.upsertAssets(assets, commit);
 
         final exists = await repo.coinConfigExists();
         expect(exists, isTrue);
@@ -69,7 +69,7 @@ void main() {
       },
     );
 
-    test('saveRawAssetData parses and persists', () async {
+    test('upsertRawAssets parses and persists', () async {
       final repo = CoinConfigRepository.withDefaults(config());
 
       final raw = <String, dynamic>{
@@ -81,7 +81,7 @@ void main() {
         ),
       };
 
-      await repo.saveRawAssetData(raw, 'def456');
+      await repo.upsertRawAssets(raw, 'def456');
 
       final all = await repo.getAssets();
       expect(all, isNotNull);
@@ -95,7 +95,7 @@ void main() {
         AssetTestHelpers.utxoAsset(),
         AssetTestHelpers.utxoAsset(coin: 'BTC', fname: 'Bitcoin', chainId: 0),
       ];
-      await repo.saveAssetData(assets, 'ghi789');
+      await repo.upsertAssets(assets, 'ghi789');
 
       final all = await repo.getAssets(excludedAssets: const ['BTC']);
       expect(all!.map((a) => a.id.id).toList(), equals(['KMD']));

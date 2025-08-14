@@ -6,6 +6,7 @@
 /// persists them to Hive, tracking the source commit for update checks.
 library;
 
+export 'src/config_transform.dart';
 export 'src/data/data.dart';
 export 'src/komodo_coin_updater.dart';
 export 'src/models/models.dart';

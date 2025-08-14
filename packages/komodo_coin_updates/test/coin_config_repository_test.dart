@@ -1,3 +1,4 @@
+import 'package:hive_ce/hive.dart';
 import 'package:komodo_coin_updates/src/data/coin_config_provider.dart';
 import 'package:komodo_coin_updates/src/data/coin_config_repository.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -26,12 +27,12 @@ void main() {
       await env.dispose();
     });
 
-    test('saveAssetData writes to boxes and can be read back', () async {
+    test('upsertAssets writes to boxes and can be read back', () async {
       final kmd = buildKmdTestAsset();
 
       when(() => provider.getLatestCommit()).thenAnswer((_) async => 'HEAD');
 
-      await repo.saveAssetData([kmd], 'HEAD');
+      await repo.upsertAssets([kmd], 'HEAD');
 
       final asset = await repo.getAsset(
         AssetId(
@@ -49,10 +50,10 @@ void main() {
       expect(commit, 'HEAD');
     });
 
-    test('saveRawAssetData persists raw json correctly', () async {
+    test('upsertRawAssets persists raw json correctly', () async {
       when(() => provider.getLatestCommit()).thenAnswer((_) async => 'HEAD');
 
-      await repo.saveRawAssetData({
+      await repo.upsertRawAssets({
         'BTC': AssetTestHelpers.utxoJson(
           coin: 'BTC',
           fname: 'Bitcoin',
@@ -79,9 +80,44 @@ void main() {
         expect(await repo.coinConfigExists(), isFalse);
         when(() => provider.getLatestCommit()).thenAnswer((_) async => 'HEAD');
         final kmd = buildKmdTestAsset();
-        await repo.saveAssetData([kmd], 'HEAD');
+        await repo.upsertAssets([kmd], 'HEAD');
         expect(await repo.coinConfigExists(), isTrue);
       },
     );
+
+    test('respects custom box names and commit key', () async {
+      final customRepo = CoinConfigRepository(
+        coinConfigProvider: provider,
+        assetsBoxName: 'custom_assets',
+        settingsBoxName: 'custom_settings',
+        coinsCommitKey: 'custom_commit',
+      );
+
+      when(() => provider.getLatestCommit()).thenAnswer((_) async => 'C0MM1T');
+
+      // Write an asset and commit using custom repo
+      await customRepo.upsertAssets([buildKmdTestAsset()], 'C0MM1T');
+
+      // Verify boxes exist with custom names
+      expect(await Hive.boxExists('custom_assets'), isTrue);
+      expect(await Hive.boxExists('custom_settings'), isTrue);
+
+      // Verify commit is stored with custom key
+      final settings = await Hive.openBox<String>('custom_settings');
+      expect(settings.get('custom_commit'), equals('C0MM1T'));
+
+      // Verify read works using same repo
+      final asset = await customRepo.getAsset(
+        AssetId(
+          id: 'KMD',
+          name: 'Komodo',
+          symbol: AssetSymbol(assetConfigId: 'KMD'),
+          chainId: AssetChainId(chainId: 0),
+          derivationPath: null,
+          subClass: CoinSubClass.utxo,
+        ),
+      );
+      expect(asset?.id.id, 'KMD');
+    });
   });
 }

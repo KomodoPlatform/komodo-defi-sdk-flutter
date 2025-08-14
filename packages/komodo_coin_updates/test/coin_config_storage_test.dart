@@ -25,10 +25,10 @@ class _FakeStorage implements CoinConfigStorage {
   @override
   Future<bool> isLatestCommit() async => false;
 
+  // Deprecated methods removed from interface; using new API below
+
   @override
-  // No explicit coin config anymore
-  @override
-  Future<void> saveAssetData(List<Asset> assets, String commit) async {
+  Future<void> upsertAssets(List<Asset> assets, String commit) async {
     for (final a in assets) {
       store[a.id.id] = a;
     }
@@ -36,10 +36,21 @@ class _FakeStorage implements CoinConfigStorage {
   }
 
   @override
-  Future<void> saveRawAssetData(
+  Future<void> upsertRawAssets(
     Map<String, dynamic> coinConfigsBySymbol,
     String commit,
   ) async {}
+
+  @override
+  Future<void> deleteAsset(AssetId assetId) async {
+    store.remove(assetId.id);
+  }
+
+  @override
+  Future<void> deleteAllAssets() async {
+    store.clear();
+    commit = null;
+  }
 }
 
 void main() {
@@ -47,7 +58,7 @@ void main() {
     test('basic save and read flow', () async {
       final s = _FakeStorage();
       final asset = buildKmdTestAsset();
-      await s.saveAssetData([asset], 'HEAD');
+      await s.upsertAssets([asset], 'HEAD');
 
       expect(await s.getAssets(), isNotEmpty);
       expect(
