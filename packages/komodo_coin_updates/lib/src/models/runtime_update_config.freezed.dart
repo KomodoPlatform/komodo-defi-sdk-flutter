@@ -16,7 +16,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RuntimeUpdateConfig {
 
- String get bundledCoinsRepoCommit; String get coinsRepoApiUrl; String get coinsRepoContentUrl; String get coinsRepoBranch; bool get runtimeUpdatesEnabled;
+// Mirrors `coins` section in build_config.json
+ bool get fetchAtBuildEnabled; bool get updateCommitOnBuild; String get bundledCoinsRepoCommit; String get coinsRepoApiUrl; String get coinsRepoContentUrl; String get coinsRepoBranch; bool get runtimeUpdatesEnabled; Map<String, String> get mappedFiles; Map<String, String> get mappedFolders; bool get concurrentDownloadsEnabled; Map<String, String> get cdnBranchMirrors;
 /// Create a copy of RuntimeUpdateConfig
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +30,16 @@ $RuntimeUpdateConfigCopyWith<RuntimeUpdateConfig> get copyWith => _$RuntimeUpdat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RuntimeUpdateConfig&&(identical(other.bundledCoinsRepoCommit, bundledCoinsRepoCommit) || other.bundledCoinsRepoCommit == bundledCoinsRepoCommit)&&(identical(other.coinsRepoApiUrl, coinsRepoApiUrl) || other.coinsRepoApiUrl == coinsRepoApiUrl)&&(identical(other.coinsRepoContentUrl, coinsRepoContentUrl) || other.coinsRepoContentUrl == coinsRepoContentUrl)&&(identical(other.coinsRepoBranch, coinsRepoBranch) || other.coinsRepoBranch == coinsRepoBranch)&&(identical(other.runtimeUpdatesEnabled, runtimeUpdatesEnabled) || other.runtimeUpdatesEnabled == runtimeUpdatesEnabled));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RuntimeUpdateConfig&&(identical(other.fetchAtBuildEnabled, fetchAtBuildEnabled) || other.fetchAtBuildEnabled == fetchAtBuildEnabled)&&(identical(other.updateCommitOnBuild, updateCommitOnBuild) || other.updateCommitOnBuild == updateCommitOnBuild)&&(identical(other.bundledCoinsRepoCommit, bundledCoinsRepoCommit) || other.bundledCoinsRepoCommit == bundledCoinsRepoCommit)&&(identical(other.coinsRepoApiUrl, coinsRepoApiUrl) || other.coinsRepoApiUrl == coinsRepoApiUrl)&&(identical(other.coinsRepoContentUrl, coinsRepoContentUrl) || other.coinsRepoContentUrl == coinsRepoContentUrl)&&(identical(other.coinsRepoBranch, coinsRepoBranch) || other.coinsRepoBranch == coinsRepoBranch)&&(identical(other.runtimeUpdatesEnabled, runtimeUpdatesEnabled) || other.runtimeUpdatesEnabled == runtimeUpdatesEnabled)&&const DeepCollectionEquality().equals(other.mappedFiles, mappedFiles)&&const DeepCollectionEquality().equals(other.mappedFolders, mappedFolders)&&(identical(other.concurrentDownloadsEnabled, concurrentDownloadsEnabled) || other.concurrentDownloadsEnabled == concurrentDownloadsEnabled)&&const DeepCollectionEquality().equals(other.cdnBranchMirrors, cdnBranchMirrors));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bundledCoinsRepoCommit,coinsRepoApiUrl,coinsRepoContentUrl,coinsRepoBranch,runtimeUpdatesEnabled);
+int get hashCode => Object.hash(runtimeType,fetchAtBuildEnabled,updateCommitOnBuild,bundledCoinsRepoCommit,coinsRepoApiUrl,coinsRepoContentUrl,coinsRepoBranch,runtimeUpdatesEnabled,const DeepCollectionEquality().hash(mappedFiles),const DeepCollectionEquality().hash(mappedFolders),concurrentDownloadsEnabled,const DeepCollectionEquality().hash(cdnBranchMirrors));
 
 @override
 String toString() {
-  return 'RuntimeUpdateConfig(bundledCoinsRepoCommit: $bundledCoinsRepoCommit, coinsRepoApiUrl: $coinsRepoApiUrl, coinsRepoContentUrl: $coinsRepoContentUrl, coinsRepoBranch: $coinsRepoBranch, runtimeUpdatesEnabled: $runtimeUpdatesEnabled)';
+  return 'RuntimeUpdateConfig(fetchAtBuildEnabled: $fetchAtBuildEnabled, updateCommitOnBuild: $updateCommitOnBuild, bundledCoinsRepoCommit: $bundledCoinsRepoCommit, coinsRepoApiUrl: $coinsRepoApiUrl, coinsRepoContentUrl: $coinsRepoContentUrl, coinsRepoBranch: $coinsRepoBranch, runtimeUpdatesEnabled: $runtimeUpdatesEnabled, mappedFiles: $mappedFiles, mappedFolders: $mappedFolders, concurrentDownloadsEnabled: $concurrentDownloadsEnabled, cdnBranchMirrors: $cdnBranchMirrors)';
 }
 
 
@@ -49,7 +50,7 @@ abstract mixin class $RuntimeUpdateConfigCopyWith<$Res>  {
   factory $RuntimeUpdateConfigCopyWith(RuntimeUpdateConfig value, $Res Function(RuntimeUpdateConfig) _then) = _$RuntimeUpdateConfigCopyWithImpl;
 @useResult
 $Res call({
- String bundledCoinsRepoCommit, String coinsRepoApiUrl, String coinsRepoContentUrl, String coinsRepoBranch, bool runtimeUpdatesEnabled
+ bool fetchAtBuildEnabled, bool updateCommitOnBuild, String bundledCoinsRepoCommit, String coinsRepoApiUrl, String coinsRepoContentUrl, String coinsRepoBranch, bool runtimeUpdatesEnabled, Map<String, String> mappedFiles, Map<String, String> mappedFolders, bool concurrentDownloadsEnabled, Map<String, String> cdnBranchMirrors
 });
 
 
@@ -66,14 +67,20 @@ class _$RuntimeUpdateConfigCopyWithImpl<$Res>
 
 /// Create a copy of RuntimeUpdateConfig
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? bundledCoinsRepoCommit = null,Object? coinsRepoApiUrl = null,Object? coinsRepoContentUrl = null,Object? coinsRepoBranch = null,Object? runtimeUpdatesEnabled = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? fetchAtBuildEnabled = null,Object? updateCommitOnBuild = null,Object? bundledCoinsRepoCommit = null,Object? coinsRepoApiUrl = null,Object? coinsRepoContentUrl = null,Object? coinsRepoBranch = null,Object? runtimeUpdatesEnabled = null,Object? mappedFiles = null,Object? mappedFolders = null,Object? concurrentDownloadsEnabled = null,Object? cdnBranchMirrors = null,}) {
   return _then(_self.copyWith(
-bundledCoinsRepoCommit: null == bundledCoinsRepoCommit ? _self.bundledCoinsRepoCommit : bundledCoinsRepoCommit // ignore: cast_nullable_to_non_nullable
+fetchAtBuildEnabled: null == fetchAtBuildEnabled ? _self.fetchAtBuildEnabled : fetchAtBuildEnabled // ignore: cast_nullable_to_non_nullable
+as bool,updateCommitOnBuild: null == updateCommitOnBuild ? _self.updateCommitOnBuild : updateCommitOnBuild // ignore: cast_nullable_to_non_nullable
+as bool,bundledCoinsRepoCommit: null == bundledCoinsRepoCommit ? _self.bundledCoinsRepoCommit : bundledCoinsRepoCommit // ignore: cast_nullable_to_non_nullable
 as String,coinsRepoApiUrl: null == coinsRepoApiUrl ? _self.coinsRepoApiUrl : coinsRepoApiUrl // ignore: cast_nullable_to_non_nullable
 as String,coinsRepoContentUrl: null == coinsRepoContentUrl ? _self.coinsRepoContentUrl : coinsRepoContentUrl // ignore: cast_nullable_to_non_nullable
 as String,coinsRepoBranch: null == coinsRepoBranch ? _self.coinsRepoBranch : coinsRepoBranch // ignore: cast_nullable_to_non_nullable
 as String,runtimeUpdatesEnabled: null == runtimeUpdatesEnabled ? _self.runtimeUpdatesEnabled : runtimeUpdatesEnabled // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,mappedFiles: null == mappedFiles ? _self.mappedFiles : mappedFiles // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,mappedFolders: null == mappedFolders ? _self.mappedFolders : mappedFolders // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,concurrentDownloadsEnabled: null == concurrentDownloadsEnabled ? _self.concurrentDownloadsEnabled : concurrentDownloadsEnabled // ignore: cast_nullable_to_non_nullable
+as bool,cdnBranchMirrors: null == cdnBranchMirrors ? _self.cdnBranchMirrors : cdnBranchMirrors // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,
   ));
 }
 
@@ -84,14 +91,39 @@ as bool,
 @JsonSerializable()
 
 class _RuntimeUpdateConfig implements RuntimeUpdateConfig {
-  const _RuntimeUpdateConfig({required this.bundledCoinsRepoCommit, required this.coinsRepoApiUrl, required this.coinsRepoContentUrl, required this.coinsRepoBranch, required this.runtimeUpdatesEnabled});
+  const _RuntimeUpdateConfig({required this.fetchAtBuildEnabled, required this.updateCommitOnBuild, required this.bundledCoinsRepoCommit, required this.coinsRepoApiUrl, required this.coinsRepoContentUrl, required this.coinsRepoBranch, required this.runtimeUpdatesEnabled, required final  Map<String, String> mappedFiles, required final  Map<String, String> mappedFolders, required this.concurrentDownloadsEnabled, required final  Map<String, String> cdnBranchMirrors}): _mappedFiles = mappedFiles,_mappedFolders = mappedFolders,_cdnBranchMirrors = cdnBranchMirrors;
   factory _RuntimeUpdateConfig.fromJson(Map<String, dynamic> json) => _$RuntimeUpdateConfigFromJson(json);
 
+// Mirrors `coins` section in build_config.json
+@override final  bool fetchAtBuildEnabled;
+@override final  bool updateCommitOnBuild;
 @override final  String bundledCoinsRepoCommit;
 @override final  String coinsRepoApiUrl;
 @override final  String coinsRepoContentUrl;
 @override final  String coinsRepoBranch;
 @override final  bool runtimeUpdatesEnabled;
+ final  Map<String, String> _mappedFiles;
+@override Map<String, String> get mappedFiles {
+  if (_mappedFiles is EqualUnmodifiableMapView) return _mappedFiles;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_mappedFiles);
+}
+
+ final  Map<String, String> _mappedFolders;
+@override Map<String, String> get mappedFolders {
+  if (_mappedFolders is EqualUnmodifiableMapView) return _mappedFolders;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_mappedFolders);
+}
+
+@override final  bool concurrentDownloadsEnabled;
+ final  Map<String, String> _cdnBranchMirrors;
+@override Map<String, String> get cdnBranchMirrors {
+  if (_cdnBranchMirrors is EqualUnmodifiableMapView) return _cdnBranchMirrors;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_cdnBranchMirrors);
+}
+
 
 /// Create a copy of RuntimeUpdateConfig
 /// with the given fields replaced by the non-null parameter values.
@@ -106,16 +138,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RuntimeUpdateConfig&&(identical(other.bundledCoinsRepoCommit, bundledCoinsRepoCommit) || other.bundledCoinsRepoCommit == bundledCoinsRepoCommit)&&(identical(other.coinsRepoApiUrl, coinsRepoApiUrl) || other.coinsRepoApiUrl == coinsRepoApiUrl)&&(identical(other.coinsRepoContentUrl, coinsRepoContentUrl) || other.coinsRepoContentUrl == coinsRepoContentUrl)&&(identical(other.coinsRepoBranch, coinsRepoBranch) || other.coinsRepoBranch == coinsRepoBranch)&&(identical(other.runtimeUpdatesEnabled, runtimeUpdatesEnabled) || other.runtimeUpdatesEnabled == runtimeUpdatesEnabled));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RuntimeUpdateConfig&&(identical(other.fetchAtBuildEnabled, fetchAtBuildEnabled) || other.fetchAtBuildEnabled == fetchAtBuildEnabled)&&(identical(other.updateCommitOnBuild, updateCommitOnBuild) || other.updateCommitOnBuild == updateCommitOnBuild)&&(identical(other.bundledCoinsRepoCommit, bundledCoinsRepoCommit) || other.bundledCoinsRepoCommit == bundledCoinsRepoCommit)&&(identical(other.coinsRepoApiUrl, coinsRepoApiUrl) || other.coinsRepoApiUrl == coinsRepoApiUrl)&&(identical(other.coinsRepoContentUrl, coinsRepoContentUrl) || other.coinsRepoContentUrl == coinsRepoContentUrl)&&(identical(other.coinsRepoBranch, coinsRepoBranch) || other.coinsRepoBranch == coinsRepoBranch)&&(identical(other.runtimeUpdatesEnabled, runtimeUpdatesEnabled) || other.runtimeUpdatesEnabled == runtimeUpdatesEnabled)&&const DeepCollectionEquality().equals(other._mappedFiles, _mappedFiles)&&const DeepCollectionEquality().equals(other._mappedFolders, _mappedFolders)&&(identical(other.concurrentDownloadsEnabled, concurrentDownloadsEnabled) || other.concurrentDownloadsEnabled == concurrentDownloadsEnabled)&&const DeepCollectionEquality().equals(other._cdnBranchMirrors, _cdnBranchMirrors));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bundledCoinsRepoCommit,coinsRepoApiUrl,coinsRepoContentUrl,coinsRepoBranch,runtimeUpdatesEnabled);
+int get hashCode => Object.hash(runtimeType,fetchAtBuildEnabled,updateCommitOnBuild,bundledCoinsRepoCommit,coinsRepoApiUrl,coinsRepoContentUrl,coinsRepoBranch,runtimeUpdatesEnabled,const DeepCollectionEquality().hash(_mappedFiles),const DeepCollectionEquality().hash(_mappedFolders),concurrentDownloadsEnabled,const DeepCollectionEquality().hash(_cdnBranchMirrors));
 
 @override
 String toString() {
-  return 'RuntimeUpdateConfig(bundledCoinsRepoCommit: $bundledCoinsRepoCommit, coinsRepoApiUrl: $coinsRepoApiUrl, coinsRepoContentUrl: $coinsRepoContentUrl, coinsRepoBranch: $coinsRepoBranch, runtimeUpdatesEnabled: $runtimeUpdatesEnabled)';
+  return 'RuntimeUpdateConfig(fetchAtBuildEnabled: $fetchAtBuildEnabled, updateCommitOnBuild: $updateCommitOnBuild, bundledCoinsRepoCommit: $bundledCoinsRepoCommit, coinsRepoApiUrl: $coinsRepoApiUrl, coinsRepoContentUrl: $coinsRepoContentUrl, coinsRepoBranch: $coinsRepoBranch, runtimeUpdatesEnabled: $runtimeUpdatesEnabled, mappedFiles: $mappedFiles, mappedFolders: $mappedFolders, concurrentDownloadsEnabled: $concurrentDownloadsEnabled, cdnBranchMirrors: $cdnBranchMirrors)';
 }
 
 
@@ -126,7 +158,7 @@ abstract mixin class _$RuntimeUpdateConfigCopyWith<$Res> implements $RuntimeUpda
   factory _$RuntimeUpdateConfigCopyWith(_RuntimeUpdateConfig value, $Res Function(_RuntimeUpdateConfig) _then) = __$RuntimeUpdateConfigCopyWithImpl;
 @override @useResult
 $Res call({
- String bundledCoinsRepoCommit, String coinsRepoApiUrl, String coinsRepoContentUrl, String coinsRepoBranch, bool runtimeUpdatesEnabled
+ bool fetchAtBuildEnabled, bool updateCommitOnBuild, String bundledCoinsRepoCommit, String coinsRepoApiUrl, String coinsRepoContentUrl, String coinsRepoBranch, bool runtimeUpdatesEnabled, Map<String, String> mappedFiles, Map<String, String> mappedFolders, bool concurrentDownloadsEnabled, Map<String, String> cdnBranchMirrors
 });
 
 
@@ -143,14 +175,20 @@ class __$RuntimeUpdateConfigCopyWithImpl<$Res>
 
 /// Create a copy of RuntimeUpdateConfig
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? bundledCoinsRepoCommit = null,Object? coinsRepoApiUrl = null,Object? coinsRepoContentUrl = null,Object? coinsRepoBranch = null,Object? runtimeUpdatesEnabled = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? fetchAtBuildEnabled = null,Object? updateCommitOnBuild = null,Object? bundledCoinsRepoCommit = null,Object? coinsRepoApiUrl = null,Object? coinsRepoContentUrl = null,Object? coinsRepoBranch = null,Object? runtimeUpdatesEnabled = null,Object? mappedFiles = null,Object? mappedFolders = null,Object? concurrentDownloadsEnabled = null,Object? cdnBranchMirrors = null,}) {
   return _then(_RuntimeUpdateConfig(
-bundledCoinsRepoCommit: null == bundledCoinsRepoCommit ? _self.bundledCoinsRepoCommit : bundledCoinsRepoCommit // ignore: cast_nullable_to_non_nullable
+fetchAtBuildEnabled: null == fetchAtBuildEnabled ? _self.fetchAtBuildEnabled : fetchAtBuildEnabled // ignore: cast_nullable_to_non_nullable
+as bool,updateCommitOnBuild: null == updateCommitOnBuild ? _self.updateCommitOnBuild : updateCommitOnBuild // ignore: cast_nullable_to_non_nullable
+as bool,bundledCoinsRepoCommit: null == bundledCoinsRepoCommit ? _self.bundledCoinsRepoCommit : bundledCoinsRepoCommit // ignore: cast_nullable_to_non_nullable
 as String,coinsRepoApiUrl: null == coinsRepoApiUrl ? _self.coinsRepoApiUrl : coinsRepoApiUrl // ignore: cast_nullable_to_non_nullable
 as String,coinsRepoContentUrl: null == coinsRepoContentUrl ? _self.coinsRepoContentUrl : coinsRepoContentUrl // ignore: cast_nullable_to_non_nullable
 as String,coinsRepoBranch: null == coinsRepoBranch ? _self.coinsRepoBranch : coinsRepoBranch // ignore: cast_nullable_to_non_nullable
 as String,runtimeUpdatesEnabled: null == runtimeUpdatesEnabled ? _self.runtimeUpdatesEnabled : runtimeUpdatesEnabled // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,mappedFiles: null == mappedFiles ? _self._mappedFiles : mappedFiles // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,mappedFolders: null == mappedFolders ? _self._mappedFolders : mappedFolders // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,concurrentDownloadsEnabled: null == concurrentDownloadsEnabled ? _self.concurrentDownloadsEnabled : concurrentDownloadsEnabled // ignore: cast_nullable_to_non_nullable
+as bool,cdnBranchMirrors: null == cdnBranchMirrors ? _self._cdnBranchMirrors : cdnBranchMirrors // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,
   ));
 }
 

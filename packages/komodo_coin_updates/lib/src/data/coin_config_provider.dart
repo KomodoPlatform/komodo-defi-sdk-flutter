@@ -26,6 +26,7 @@ class CoinConfigProvider {
         'https://api.github.com/repos/KomodoPlatform/coins',
     this.coinsPath = 'coins',
     this.coinsConfigPath = 'utils/coins_config_unfiltered.json',
+    this.cdnBranchMirrors,
     this.githubToken,
     http.Client? httpClient,
   }) : _client = httpClient ?? http.Client();
@@ -39,9 +40,22 @@ class CoinConfigProvider {
     String? githubToken,
     http.Client? httpClient,
   }) {
-    // TODO(Francois): derive all the values from the config
+    // Derive URLs and paths from build_config `coins` section.
+    // We expect the following mapped files in the config:
+    // - 'assets/config/coins_config.json' → path to unfiltered config JSON in repo
+    // - 'assets/config/coins.json' → path to the coins folder in repo
+    final coinsConfigPath =
+        config.mappedFiles['assets/config/coins_config.json'] ??
+        'utils/coins_config_unfiltered.json';
+    final coinsPath = config.mappedFiles['assets/config/coins.json'] ?? 'coins';
+
     return CoinConfigProvider(
       branch: config.coinsRepoBranch,
+      coinsGithubContentUrl: config.coinsRepoContentUrl,
+      coinsGithubApiUrl: config.coinsRepoApiUrl,
+      coinsConfigPath: coinsConfigPath,
+      coinsPath: coinsPath,
+      cdnBranchMirrors: config.cdnBranchMirrors,
       githubToken: githubToken,
       httpClient: httpClient,
     );
@@ -65,6 +79,13 @@ class CoinConfigProvider {
   /// Optional GitHub token used for authenticated requests to reduce
   /// the risk of rate limiting.
   final String? githubToken;
+
+  /// Optional mapping of branch name to CDN base URL that directly hosts
+  /// the repository contents for that branch (without an extra branch
+  /// segment in the path). When present and the current [branch] is found
+  /// in this mapping, requests will be made against that base URL without
+  /// including the branch in the path.
+  final Map<String, String>? cdnBranchMirrors;
 
   final http.Client _client;
 
@@ -140,8 +161,19 @@ class CoinConfigProvider {
     return latestCommitHash;
   }
 
+  /// Public helper primarily for testing to resolve a content URI using the
+  /// provider's configuration and optional [branchOrCommit] override.
+  Uri buildContentUri(String path, {String? branchOrCommit}) =>
+      _contentUri(path, branchOrCommit: branchOrCommit);
+
   Uri _contentUri(String path, {String? branchOrCommit}) {
     branchOrCommit ??= branch;
+    // If a CDN mirror exists for this branch, use it directly without
+    // adding the branch to the path.
+    final cdnBase = cdnBranchMirrors?[branchOrCommit];
+    if (cdnBase != null && cdnBase.isNotEmpty) {
+      return Uri.parse('$cdnBase/$path');
+    }
     return Uri.parse('$coinsGithubContentUrl/$branchOrCommit/$path');
   }
 }
