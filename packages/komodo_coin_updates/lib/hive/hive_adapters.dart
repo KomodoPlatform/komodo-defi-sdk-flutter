@@ -14,8 +14,22 @@ class AssetAdapter extends TypeAdapter<Asset> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    final json = (fields[0] as Map).cast<String, dynamic>();
-    return Asset.fromJson(json);
+    final stored = (fields[0] as Map).cast<String, dynamic>();
+    // Stored shape is Asset.toJson(): { 'protocol': {...}, 'id': {...}, ... }
+    // Reconstruct the top-level config expected by Asset.fromJson by merging
+    // the nested 'protocol' and 'id' maps back to the root.
+    final idJson = (stored['id'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final protocolJson =
+        (stored['protocol'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final merged = <String, dynamic>{
+      ...protocolJson,
+      ...idJson,
+      if (stored.containsKey('wallet_only'))
+        'wallet_only': stored['wallet_only'],
+      if (stored.containsKey('sign_message_prefix'))
+        'sign_message_prefix': stored['sign_message_prefix'],
+    };
+    return Asset.fromJson(merged);
   }
 
   @override

@@ -14,6 +14,7 @@ extension AssetTestBuilders on String {
       'protocol': {'type': 'UTXO'},
       'fname': name ?? this,
       'chain_id': chainId,
+      'is_testnet': false,
     };
     final assetId = AssetId.parse(json, knownIds: const {});
     return Asset.fromJsonWithId(json, assetId: assetId);

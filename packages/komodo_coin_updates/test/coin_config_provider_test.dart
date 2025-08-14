@@ -8,6 +8,102 @@ import 'package:test/test.dart';
 class _MockHttpClient extends Mock implements http.Client {}
 
 void main() {
+  group('CoinConfigProvider CDN mirrors', () {
+    test('uses CDN base when exact branch mirror exists', () {
+      final provider = CoinConfigProvider(
+        cdnBranchMirrors: const {
+          'master': 'https://komodoplatform.github.io/coins',
+        },
+      );
+
+      final uri = provider.buildContentUri(
+        'utils/coins_config_unfiltered.json',
+      );
+      expect(
+        uri.toString(),
+        'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
+      );
+    });
+
+    test('falls back to raw content when branch has no mirror', () {
+      final provider = CoinConfigProvider(
+        branch: 'dev',
+        cdnBranchMirrors: const {
+          'master': 'https://komodoplatform.github.io/coins',
+        },
+      );
+
+      final uri = provider.buildContentUri(
+        'utils/coins_config_unfiltered.json',
+      );
+      expect(
+        uri.toString(),
+        'https://raw.githubusercontent.com/KomodoPlatform/coins/dev/utils/coins_config_unfiltered.json',
+      );
+    });
+
+    test('branchOrCommit override uses matching CDN when available', () {
+      final provider = CoinConfigProvider(
+        branch: 'dev',
+        cdnBranchMirrors: const {
+          'master': 'https://komodoplatform.github.io/coins',
+        },
+      );
+
+      final uri = provider.buildContentUri(
+        'utils/coins_config_unfiltered.json',
+        branchOrCommit: 'master',
+      );
+      expect(
+        uri.toString(),
+        'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
+      );
+    });
+
+    test('branchOrCommit override falls back to raw when not mirrored', () {
+      final provider = CoinConfigProvider(
+        cdnBranchMirrors: const {
+          'master': 'https://komodoplatform.github.io/coins',
+        },
+      );
+
+      final uri = provider.buildContentUri(
+        'utils/coins_config_unfiltered.json',
+        branchOrCommit: 'feature/example',
+      );
+      expect(
+        uri.toString(),
+        'https://raw.githubusercontent.com/KomodoPlatform/coins/feature/example/utils/coins_config_unfiltered.json',
+      );
+    });
+
+    test('ignores empty CDN entry and falls back to raw', () {
+      final provider = CoinConfigProvider(
+        branch: 'dev',
+        cdnBranchMirrors: const {'dev': ''},
+      );
+
+      final uri = provider.buildContentUri(
+        'utils/coins_config_unfiltered.json',
+      );
+      expect(
+        uri.toString(),
+        'https://raw.githubusercontent.com/KomodoPlatform/coins/dev/utils/coins_config_unfiltered.json',
+      );
+    });
+
+    test('handles null mirrors and falls back to raw', () {
+      final provider = CoinConfigProvider();
+
+      final uri = provider.buildContentUri(
+        'utils/coins_config_unfiltered.json',
+      );
+      expect(
+        uri.toString(),
+        'https://raw.githubusercontent.com/KomodoPlatform/coins/master/utils/coins_config_unfiltered.json',
+      );
+    });
+  });
   setUpAll(() {
     registerFallbackValue(Uri.parse('https://example.com'));
     registerFallbackValue(<String, String>{});
@@ -54,6 +150,7 @@ void main() {
               'protocol': {'type': 'UTXO'},
               'fname': 'Komodo',
               'chain_id': 0,
+              'is_testnet': false,
             },
           }),
           200,

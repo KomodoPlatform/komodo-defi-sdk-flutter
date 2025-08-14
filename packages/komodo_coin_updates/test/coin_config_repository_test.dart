@@ -1,13 +1,12 @@
-import 'helpers/asset_test_extensions.dart';
-import 'dart:io';
-
-import 'package:hive_ce/hive.dart' as hive;
-import 'package:komodo_coin_updates/hive/hive_registrar.g.dart';
 import 'package:komodo_coin_updates/src/data/coin_config_provider.dart';
 import 'package:komodo_coin_updates/src/data/coin_config_repository.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
+
+import 'helpers/asset_test_extensions.dart';
+import 'helpers/asset_test_helpers.dart';
+import 'hive/test_harness.dart';
 
 class _MockCoinConfigProvider extends Mock implements CoinConfigProvider {}
 
@@ -15,19 +14,16 @@ void main() {
   group('CoinConfigRepository', () {
     late _MockCoinConfigProvider provider;
     late CoinConfigRepository repo;
+    final env = HiveTestEnv();
 
     setUp(() async {
-      final dir = await Directory.systemTemp.createTemp('kcu_test_');
-      hive.Hive.init(dir.path);
-      if (!hive.Hive.isAdapterRegistered(0)) {
-        hive.Hive.registerAdapters();
-      }
+      await env.setup();
       provider = _MockCoinConfigProvider();
       repo = CoinConfigRepository(coinConfigProvider: provider);
     });
 
     tearDown(() async {
-      await hive.Hive.deleteFromDisk();
+      await env.dispose();
     });
 
     test('saveAssetData writes to boxes and can be read back', () async {
@@ -57,7 +53,11 @@ void main() {
       when(() => provider.getLatestCommit()).thenAnswer((_) async => 'HEAD');
 
       await repo.saveRawAssetData({
-        'BTC': buildBtcTestAsset().toJson(),
+        'BTC': AssetTestHelpers.utxoJson(
+          coin: 'BTC',
+          fname: 'Bitcoin',
+          chainId: 0,
+        ),
       }, 'HEAD');
 
       final a = await repo.getAsset(

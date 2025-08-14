@@ -1,0 +1,104 @@
+import 'package:komodo_coin_updates/src/data/coin_config_repository.dart';
+import 'package:komodo_coin_updates/src/models/runtime_update_config.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:test/test.dart';
+
+import '../helpers/asset_test_helpers.dart';
+import 'test_harness.dart';
+
+void main() {
+  group('CoinConfigRepository + Hive integration', () {
+    final env = HiveTestEnv();
+
+    setUp(() async {
+      await env.setup();
+    });
+
+    tearDown(() async {
+      await env.dispose();
+    });
+
+    RuntimeUpdateConfig config() => const RuntimeUpdateConfig(
+      fetchAtBuildEnabled: false,
+      updateCommitOnBuild: false,
+      bundledCoinsRepoCommit: 'local',
+      coinsRepoApiUrl: 'https://api.github.com/repos/KomodoPlatform/coins',
+      coinsRepoContentUrl:
+          'https://raw.githubusercontent.com/KomodoPlatform/coins',
+      coinsRepoBranch: 'master',
+      runtimeUpdatesEnabled: false,
+      mappedFiles: {},
+      mappedFolders: {},
+      concurrentDownloadsEnabled: false,
+      cdnBranchMirrors: {},
+    );
+
+    test(
+      'saveAssetData/getAssets/getAsset/getCurrentCommit/coinConfigExists',
+      () async {
+        final repo = CoinConfigRepository.withDefaults(config());
+
+        final assets = <Asset>[
+          AssetTestHelpers.utxoAsset(),
+          AssetTestHelpers.utxoAsset(coin: 'BTC', fname: 'Bitcoin', chainId: 0),
+        ];
+        const commit = 'abc123';
+
+        await repo.saveAssetData(assets, commit);
+
+        final exists = await repo.coinConfigExists();
+        expect(exists, isTrue);
+
+        final all = await repo.getAssets();
+        expect(all, isNotNull);
+        expect(all!.map((a) => a.id.id).toSet(), equals({'KMD', 'BTC'}));
+
+        final kmd = await repo.getAsset(
+          AssetId.parse(const {
+            'coin': 'KMD',
+            'fname': 'Komodo',
+            'type': 'UTXO',
+            'chain_id': 777,
+          }, knownIds: const {}),
+        );
+        expect(kmd, isNotNull);
+        expect(kmd!.id.id, equals('KMD'));
+
+        final storedCommit = await repo.getCurrentCommit();
+        expect(storedCommit, equals(commit));
+      },
+    );
+
+    test('saveRawAssetData parses and persists', () async {
+      final repo = CoinConfigRepository.withDefaults(config());
+
+      final raw = <String, dynamic>{
+        'KMD': AssetTestHelpers.utxoJson(),
+        'BTC': AssetTestHelpers.utxoJson(
+          coin: 'BTC',
+          fname: 'Bitcoin',
+          chainId: 0,
+        ),
+      };
+
+      await repo.saveRawAssetData(raw, 'def456');
+
+      final all = await repo.getAssets();
+      expect(all, isNotNull);
+      expect(all!.length, equals(2));
+      expect(all.map((a) => a.id.id).toSet(), equals({'KMD', 'BTC'}));
+    });
+
+    test('excludedAssets filter works', () async {
+      final repo = CoinConfigRepository.withDefaults(config());
+      final assets = <Asset>[
+        AssetTestHelpers.utxoAsset(),
+        AssetTestHelpers.utxoAsset(coin: 'BTC', fname: 'Bitcoin', chainId: 0),
+      ];
+      await repo.saveAssetData(assets, 'ghi789');
+
+      final all = await repo.getAssets(excludedAssets: const ['BTC']);
+      expect(all!.map((a) => a.id.id).toList(), equals(['KMD']));
+    });
+  });
+}
