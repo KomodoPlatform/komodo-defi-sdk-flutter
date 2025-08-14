@@ -6,7 +6,7 @@ void main() {
   group('SeedNodeUpdater', () {
     test('should convert seed nodes to string list', () {
       final seedNodes = [
-        SeedNode(
+        const SeedNode(
           name: 'seed-node-1',
           host: 'seed01.kmdefi.net',
           type: 'domain',
@@ -14,7 +14,7 @@ void main() {
           netId: 8762,
           contact: [SeedNodeContact(email: '')],
         ),
-        SeedNode(
+        const SeedNode(
           name: 'seed-node-2',
           host: 'seed02.kmdefi.net',
           type: 'domain',

@@ -26,7 +26,8 @@ class CoinConfigProvider {
     this.coinsPath = 'coins',
     this.coinsConfigPath = 'utils/coins_config_unfiltered.json',
     this.githubToken,
-  });
+    http.Client? httpClient,
+  }) : _client = httpClient ?? http.Client();
 
   /// Creates a provider from a runtime configuration.
   ///
@@ -35,11 +36,13 @@ class CoinConfigProvider {
   factory CoinConfigProvider.fromConfig(
     RuntimeUpdateConfig config, {
     String? githubToken,
+    http.Client? httpClient,
   }) {
     // TODO(Francois): derive all the values from the config
     return CoinConfigProvider(
       branch: config.coinsRepoBranch,
       githubToken: githubToken,
+      httpClient: httpClient,
     );
   }
 
@@ -62,6 +65,8 @@ class CoinConfigProvider {
   /// the risk of rate limiting.
   final String? githubToken;
 
+  final http.Client _client;
+
   /// Fetches the coins from the repository.
   /// [commit] is the commit hash to fetch the coins from.
   /// If [commit] is not provided, it will fetch the coins from the latest commit.
@@ -69,7 +74,7 @@ class CoinConfigProvider {
   /// Throws an [Exception] if the request fails.
   Future<List<Coin>> getCoins(String commit) async {
     final url = _contentUri(coinsPath, branchOrCommit: commit);
-    final response = await http.get(url);
+    final response = await _client.get(url);
     final items = jsonDecode(response.body) as List<dynamic>;
     return items
         .map((dynamic e) => Coin.fromJson(e as Map<String, dynamic>))
@@ -92,7 +97,7 @@ class CoinConfigProvider {
   /// The key of the map is the coin symbol.
   Future<Map<String, CoinConfig>> getCoinConfigs(String commit) async {
     final url = _contentUri(coinsConfigPath, branchOrCommit: commit);
-    final response = await http.get(url);
+    final response = await _client.get(url);
     final items = jsonDecode(response.body) as Map<String, dynamic>;
     return <String, CoinConfig>{
       for (final String key in items.keys)
@@ -111,7 +116,6 @@ class CoinConfigProvider {
   /// Returns the latest commit hash.
   /// Throws an [Exception] if the request fails.
   Future<String> getLatestCommit() async {
-    final client = http.Client();
     final url = Uri.parse('$coinsGithubApiUrl/branches/$branch');
     final header = <String, String>{'Accept': 'application/vnd.github+json'};
 
@@ -125,7 +129,7 @@ class CoinConfigProvider {
       );
     }
 
-    final response = await client.get(url, headers: header);
+    final response = await _client.get(url, headers: header);
 
     if (response.statusCode != 200) {
       print(
@@ -146,6 +150,6 @@ class CoinConfigProvider {
 
   Uri _contentUri(String path, {String? branchOrCommit}) {
     branchOrCommit ??= branch;
-    return Uri.parse('$coinsGithubContentUrl/$branch/$path');
+    return Uri.parse('$coinsGithubContentUrl/$branchOrCommit/$path');
   }
 }

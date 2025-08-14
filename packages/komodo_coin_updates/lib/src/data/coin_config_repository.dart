@@ -1,6 +1,10 @@
 import 'package:hive_ce/hive.dart';
-import 'package:komodo_coin_updates/komodo_coin_updates.dart';
+import 'package:komodo_coin_updates/src/data/coin_config_provider.dart';
+import 'package:komodo_coin_updates/src/data/coin_config_storage.dart';
+import 'package:komodo_coin_updates/src/models/coin.dart';
+import 'package:komodo_coin_updates/src/models/coin_config.dart';
 import 'package:komodo_coin_updates/src/models/coin_info.dart';
+import 'package:komodo_coin_updates/src/models/runtime_update_config.dart';
 
 /// A repository that fetches the coins and coin configs from the provider and
 /// stores them in the storage provider.
