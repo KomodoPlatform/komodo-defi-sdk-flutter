@@ -14,7 +14,6 @@ import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
-import 'package:komodo_defi_sdk/src/swaps/swap_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -254,20 +253,6 @@ Future<void> bootstrap({
       SharedActivationCoordinator,
     ],
   );
-
-  // Register swap manager
-  container.registerSingletonAsync<SwapManager>(() async {
-    final client = await container.getAsync<ApiClient>();
-    final auth = await container.getAsync<KomodoDefiLocalAuth>();
-    final assets = await container.getAsync<AssetManager>();
-    final activation = await container.getAsync<SharedActivationCoordinator>();
-    return SwapManager(client, auth, assets, activation);
-  }, dependsOn: [
-    ApiClient,
-    KomodoDefiLocalAuth,
-    AssetManager,
-    SharedActivationCoordinator,
-  ]);
 
   // Wait for all async singletons to initialize
   await container.allReady();
