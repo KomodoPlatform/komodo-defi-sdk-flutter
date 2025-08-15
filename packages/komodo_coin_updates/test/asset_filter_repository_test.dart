@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:komodo_coin_updates/hive/hive_registrar.g.dart';
@@ -9,23 +11,33 @@ import 'helpers/asset_test_helpers.dart';
 void main() {
   group('Repository-driven asset filtering', () {
     late CoinConfigRepository repo;
+    late String hivePath;
     setUp(() async {
+      hivePath =
+          './.dart_tool/test_hive_${DateTime.now().microsecondsSinceEpoch}';
       Hive
-        ..init(
-          './.dart_tool/test_hive_${DateTime.now().microsecondsSinceEpoch}',
-        )
+        ..init(hivePath)
         ..registerAdapters();
-      repo = CoinConfigRepository.withDefaults(
-        RuntimeUpdateConfig.withDefaults(),
-      );
+      repo = CoinConfigRepository.withDefaults(const RuntimeUpdateConfig());
       await repo.upsertRawAssets({'KMD': AssetTestHelpers.utxoJson()}, 'test');
+    });
+
+    tearDown(() async {
+      try {
+        await Hive.close();
+      } catch (_) {}
+      try {
+        final dir = Directory(hivePath);
+        if (await dir.exists()) {
+          await dir.delete(recursive: true);
+        }
+      } catch (_) {}
     });
 
     test('UTXO-only filter using repository assets', () async {
       final all = await repo.getAssets();
-      expect(all, isNotNull);
       final utxoOnly =
-          all!
+          all
               .where(
                 (a) =>
                     a.protocol.subClass == CoinSubClass.utxo ||

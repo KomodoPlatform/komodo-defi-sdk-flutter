@@ -1,5 +1,7 @@
-# melos_managed_dependency_overrides: komodo_defi_rpc_methods,komodo_defi_types
+# melos_managed_dependency_overrides: komodo_defi_rpc_methods,komodo_defi_types,komodo_coin_updates
 dependency_overrides:
+  komodo_coin_updates:
+    path: ../komodo_coin_updates
   komodo_defi_rpc_methods:
     path: ../komodo_defi_rpc_methods
   komodo_defi_types:

@@ -10,8 +10,8 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// corresponding provider (see `coin_config_provider.dart`).
 abstract class CoinConfigStorage {
   /// Reads all stored [Asset] items, excluding any whose symbol appears
-  /// in [excludedAssets]. Returns `null` when storage is empty.
-  Future<List<Asset>?> getAssets({
+  /// in [excludedAssets]. Returns an empty list when storage is empty.
+  Future<List<Asset>> getAssets({
     List<String> excludedAssets = const <String>[],
   });
 
@@ -19,10 +19,9 @@ abstract class CoinConfigStorage {
   /// the asset is not present.
   Future<Asset?> getAsset(AssetId assetId);
 
-  /// Returns `true` if the locally stored commit matches the latest commit
-  /// reported by the configured provider. Implementations may cache the
-  /// latest commit value in memory.
-  Future<bool> isLatestCommit();
+  /// Returns `true` if the locally stored commit matches [latestCommit].
+  /// Storage should not query remote providers.
+  Future<bool> isLatestCommit({String? latestCommit});
 
   /// Returns the commit hash currently stored alongside the assets, or `null`
   /// if not present.

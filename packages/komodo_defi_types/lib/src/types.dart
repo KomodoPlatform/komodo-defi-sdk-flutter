@@ -9,6 +9,7 @@ export 'addresses/address_conversion_result.dart';
 export 'addresses/address_validation.dart';
 export 'api/api_client.dart';
 export 'assets/asset.dart';
+export 'assets/asset_cache_key.dart';
 export 'assets/asset_id.dart';
 export 'assets/asset_symbol.dart';
 export 'auth/auth_options.dart';

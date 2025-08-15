@@ -12,7 +12,7 @@ void main() {
           type: 'domain',
           wss: true,
           netId: 8762,
-          contact: [SeedNodeContact(email: '')],
+          contact: [SeedNodeContact(email: 'test1@example.com')],
         ),
         const SeedNode(
           name: 'seed-node-2',
@@ -20,7 +20,7 @@ void main() {
           type: 'domain',
           wss: true,
           netId: 8762,
-          contact: [SeedNodeContact(email: '')],
+          contact: [SeedNodeContact(email: 'test1@example.com')],
         ),
       ];
 

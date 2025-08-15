@@ -88,37 +88,37 @@ as Map<String, String>,
 
 
 /// @nodoc
-@JsonSerializable()
 
+@JsonSerializable(explicitToJson: true, fieldRename: FieldRename.snake)
 class _RuntimeUpdateConfig implements RuntimeUpdateConfig {
-  const _RuntimeUpdateConfig({required this.fetchAtBuildEnabled, required this.updateCommitOnBuild, required this.bundledCoinsRepoCommit, required this.coinsRepoApiUrl, required this.coinsRepoContentUrl, required this.coinsRepoBranch, required this.runtimeUpdatesEnabled, required final  Map<String, String> mappedFiles, required final  Map<String, String> mappedFolders, required this.concurrentDownloadsEnabled, required final  Map<String, String> cdnBranchMirrors}): _mappedFiles = mappedFiles,_mappedFolders = mappedFolders,_cdnBranchMirrors = cdnBranchMirrors;
+  const _RuntimeUpdateConfig({this.fetchAtBuildEnabled = true, this.updateCommitOnBuild = true, this.bundledCoinsRepoCommit = 'master', this.coinsRepoApiUrl = 'https://api.github.com/repos/KomodoPlatform/coins', this.coinsRepoContentUrl = 'https://raw.githubusercontent.com/KomodoPlatform/coins', this.coinsRepoBranch = 'master', this.runtimeUpdatesEnabled = true, final  Map<String, String> mappedFiles = const <String, String>{'assets/config/coins_config.json' : 'utils/coins_config_unfiltered.json', 'assets/config/coins.json' : 'coins', 'assets/config/seed_nodes.json' : 'seed-nodes.json'}, final  Map<String, String> mappedFolders = const <String, String>{'assets/coin_icons/png/' : 'icons'}, this.concurrentDownloadsEnabled = false, final  Map<String, String> cdnBranchMirrors = const <String, String>{'master' : 'https://komodoplatform.github.io/coins', 'main' : 'https://komodoplatform.github.io/coins'}}): _mappedFiles = mappedFiles,_mappedFolders = mappedFolders,_cdnBranchMirrors = cdnBranchMirrors;
   factory _RuntimeUpdateConfig.fromJson(Map<String, dynamic> json) => _$RuntimeUpdateConfigFromJson(json);
 
 // Mirrors `coins` section in build_config.json
-@override final  bool fetchAtBuildEnabled;
-@override final  bool updateCommitOnBuild;
-@override final  String bundledCoinsRepoCommit;
-@override final  String coinsRepoApiUrl;
-@override final  String coinsRepoContentUrl;
-@override final  String coinsRepoBranch;
-@override final  bool runtimeUpdatesEnabled;
+@override@JsonKey() final  bool fetchAtBuildEnabled;
+@override@JsonKey() final  bool updateCommitOnBuild;
+@override@JsonKey() final  String bundledCoinsRepoCommit;
+@override@JsonKey() final  String coinsRepoApiUrl;
+@override@JsonKey() final  String coinsRepoContentUrl;
+@override@JsonKey() final  String coinsRepoBranch;
+@override@JsonKey() final  bool runtimeUpdatesEnabled;
  final  Map<String, String> _mappedFiles;
-@override Map<String, String> get mappedFiles {
+@override@JsonKey() Map<String, String> get mappedFiles {
   if (_mappedFiles is EqualUnmodifiableMapView) return _mappedFiles;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_mappedFiles);
 }
 
  final  Map<String, String> _mappedFolders;
-@override Map<String, String> get mappedFolders {
+@override@JsonKey() Map<String, String> get mappedFolders {
   if (_mappedFolders is EqualUnmodifiableMapView) return _mappedFolders;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_mappedFolders);
 }
 
-@override final  bool concurrentDownloadsEnabled;
+@override@JsonKey() final  bool concurrentDownloadsEnabled;
  final  Map<String, String> _cdnBranchMirrors;
-@override Map<String, String> get cdnBranchMirrors {
+@override@JsonKey() Map<String, String> get cdnBranchMirrors {
   if (_cdnBranchMirrors is EqualUnmodifiableMapView) return _cdnBranchMirrors;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_cdnBranchMirrors);

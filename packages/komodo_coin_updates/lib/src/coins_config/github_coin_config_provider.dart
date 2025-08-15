@@ -1,7 +1,8 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
-import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
 import 'package:komodo_coin_updates/src/coins_config/coin_config_provider.dart';
+import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
 import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
@@ -104,6 +105,17 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
   Future<List<Asset>> getAssetsForCommit(String commit) async {
     final url = _contentUri(coinsConfigPath, branchOrCommit: commit);
     final response = await _client.get(url);
+    if (response.statusCode != 200) {
+      final body = response.body;
+      final preview = body.length > 1024 ? '${body.substring(0, 1024)}…' : body;
+      _log.warning(
+        'Failed to fetch coin configs [status: ${response.statusCode}] url: $url, ref: $commit, body: $preview',
+      );
+      throw Exception(
+        'Failed to fetch coin configs from $url at $commit [${response.statusCode}]: $preview',
+      );
+    }
+
     final items = jsonDecode(response.body) as Map<String, dynamic>;
 
     // Optionally transform each coin JSON before parsing
@@ -182,7 +194,10 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
     final effectiveToken = githubToken ?? this.githubToken;
 
     final url = Uri.parse('$effectiveApiBaseUrl/branches/$effectiveBranch');
-    final header = <String, String>{'Accept': 'application/vnd.github+json'};
+    final header = <String, String>{
+      'Accept': 'application/vnd.github+json',
+      'User-Agent': 'komodo-coin-updates',
+    };
 
     if (effectiveToken != null) {
       header['Authorization'] = 'Bearer $effectiveToken';
@@ -215,11 +230,23 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
   /// Helper to construct a content URI for a [path].
   Uri _contentUri(String path, {String? branchOrCommit}) {
     branchOrCommit ??= branch;
+    final normalizedPath = path.startsWith('/') ? path.substring(1) : path;
     final cdnBase = cdnBranchMirrors?[branchOrCommit];
+
     if (cdnBase != null && cdnBase.isNotEmpty) {
-      return Uri.parse('$cdnBase/$path');
+      final baseWithSlash = cdnBase.endsWith('/') ? cdnBase : '$cdnBase/';
+      final baseUri = Uri.parse(baseWithSlash);
+      return baseUri.resolve(normalizedPath);
     }
-    return Uri.parse('$coinsGithubContentUrl/$branchOrCommit/$path');
+
+    final contentBaseWithSlash =
+        coinsGithubContentUrl.endsWith('/')
+            ? coinsGithubContentUrl
+            : '$coinsGithubContentUrl/';
+    final contentBase = Uri.parse(
+      contentBaseWithSlash,
+    ).resolve('$branchOrCommit/');
+    return contentBase.resolve(normalizedPath);
   }
 
   bool _hasNoParent(Map<String, dynamic> coinData) =>

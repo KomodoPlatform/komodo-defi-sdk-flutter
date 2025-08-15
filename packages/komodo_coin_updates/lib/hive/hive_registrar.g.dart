@@ -5,12 +5,18 @@ import 'package:komodo_coin_updates/hive/hive_adapters.dart';
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
-    registerAdapter(AssetAdapter());
+    final assetAdapter = AssetAdapter();
+    if (!isAdapterRegistered(assetAdapter.typeId)) {
+      registerAdapter(assetAdapter);
+    }
   }
 }
 
 extension IsolatedHiveRegistrar on IsolatedHiveInterface {
   void registerAdapters() {
-    registerAdapter(AssetAdapter());
+    final assetAdapter = AssetAdapter();
+    if (!isAdapterRegistered(assetAdapter.typeId)) {
+      registerAdapter(assetAdapter);
+    }
   }
 }

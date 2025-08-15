@@ -15,15 +15,16 @@ class _FakeStorage implements CoinConfigStorage {
   Future<Asset?> getAsset(AssetId assetId) async => store[assetId.id];
 
   @override
-  Future<List<Asset>?> getAssets({
+  Future<List<Asset>> getAssets({
     List<String> excludedAssets = const [],
-  }) async => store.values.toList();
+  }) async =>
+      store.values.where((a) => !excludedAssets.contains(a.id.id)).toList();
 
   @override
   Future<String?> getCurrentCommit() async => commit;
 
   @override
-  Future<bool> isLatestCommit() async => false;
+  Future<bool> isLatestCommit({String? latestCommit}) async => false;
 
   // Deprecated methods removed from interface; using new API below
 
@@ -39,7 +40,11 @@ class _FakeStorage implements CoinConfigStorage {
   Future<void> upsertRawAssets(
     Map<String, dynamic> coinConfigsBySymbol,
     String commit,
-  ) async {}
+  ) async {
+    // For the fake storage, we only need to track the commit persistence
+    // to keep getCurrentCommit in sync with other upsert operations.
+    this.commit = commit;
+  }
 
   @override
   Future<void> deleteAsset(AssetId assetId) async {

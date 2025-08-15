@@ -50,8 +50,7 @@ void main() {
         expect(exists, isTrue);
 
         final all = await repo.getAssets();
-        expect(all, isNotNull);
-        expect(all!.map((a) => a.id.id).toSet(), equals({'KMD', 'BTC'}));
+        expect(all.map((a) => a.id.id).toSet(), equals({'KMD', 'BTC'}));
 
         final kmd = await repo.getAsset(
           AssetId.parse(const {
@@ -84,8 +83,7 @@ void main() {
       await repo.upsertRawAssets(raw, 'def456');
 
       final all = await repo.getAssets();
-      expect(all, isNotNull);
-      expect(all!.length, equals(2));
+      expect(all.length, equals(2));
       expect(all.map((a) => a.id.id).toSet(), equals({'KMD', 'BTC'}));
     });
 
@@ -98,7 +96,7 @@ void main() {
       await repo.upsertAssets(assets, 'ghi789');
 
       final all = await repo.getAssets(excludedAssets: const ['BTC']);
-      expect(all!.map((a) => a.id.id).toList(), equals(['KMD']));
+      expect(all.map((a) => a.id.id).toList(), equals(['KMD']));
     });
   });
 }

@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:ui_web' show AssetManager;
 
 import 'package:flutter/foundation.dart';
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coins/src/asset_filter.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 /// A high-level library that provides a simple way to access Komodo Platform
 /// coin data and seed nodes.
@@ -18,10 +18,14 @@ class KomodoCoins {
         _transformer = transformer ?? const CoinConfigTransformer(),
         _dataFactory = dataFactory ?? const DefaultCoinConfigDataFactory();
 
+  static final Logger _log = Logger('KomodoCoins');
+
   /// Creates an instance of [KomodoCoins] and initializes it.
   static Future<KomodoCoins> create() async {
+    _log.fine('Creating KomodoCoins');
     final instance = KomodoCoins();
     await instance.init();
+    _log.fine('KomodoCoins initialized');
     return instance;
   }
 
@@ -31,9 +35,10 @@ class KomodoCoins {
   /// - If local storage already contains assets, returns those.
   /// - Otherwise, falls back to the bundled local asset provider.
   static Future<JsonList> fetchAndTransformCoinsList() async {
+    _log.fine('fetchAndTransformCoinsList: start');
     // Load runtime config (from asset if available)
     final runtimeConfig = await RuntimeUpdateConfigRepository().tryLoad() ??
-        RuntimeUpdateConfig.withDefaults();
+        const RuntimeUpdateConfig();
 
     // Build repository and attempt to read stored assets only
     const transformer = CoinConfigTransformer();
@@ -44,9 +49,13 @@ class KomodoCoins {
 
     List<Asset> assets;
     if (await repo.coinConfigExists()) {
-      assets = await repo.getAssets() ?? const <Asset>[];
+      _log.fine('Using stored assets from repository');
+      assets = await repo.getAssets();
     } else {
       // Fall back to local bundled coins (no persistence)
+      _log.info(
+        'Stored assets not found; falling back to local bundled assets',
+      );
       final localProvider = LocalAssetCoinConfigProvider.fromConfig(
         runtimeConfig,
         transformer: transformer,
@@ -58,6 +67,7 @@ class KomodoCoins {
     final configs = <JsonMap>[
       for (final asset in assets) asset.protocol.config,
     ];
+    _log.fine('fetchAndTransformCoinsList: produced ${configs.length} configs');
     return JsonList.of(configs);
   }
 
@@ -72,6 +82,7 @@ class KomodoCoins {
 
   @mustCallSuper
   Future<void> init() async {
+    _log.fine('init: fetching assets');
     await fetchAssets();
   }
 
@@ -86,8 +97,9 @@ class KomodoCoins {
 
   Future<RuntimeUpdateConfig> _getRuntimeConfig() async {
     if (_runtimeConfig != null) return _runtimeConfig!;
+    _log.fine('Loading runtime update config');
     _runtimeConfig =
-        await _configRepository.tryLoad() ?? RuntimeUpdateConfig.withDefaults();
+        await _configRepository.tryLoad() ?? const RuntimeUpdateConfig();
     return _runtimeConfig!;
   }
 
@@ -102,6 +114,7 @@ class KomodoCoins {
       };
 
   Future<Map<AssetId, Asset>> fetchAssets() async {
+    _log.fine('fetchAssets: start');
     final runtimeConfig = await _getRuntimeConfig();
     final repo = _repoFor(runtimeConfig);
 
@@ -109,14 +122,19 @@ class KomodoCoins {
       // If we previously bootstrapped from local and storage is now ready,
       // refresh memory from storage so subsequent calls use the persisted set.
       if (_bootstrappedFromLocal && await repo.coinConfigExists()) {
+        _log.fine(
+          'Refreshing cached assets from storage after local bootstrap',
+        );
         _assets = _mapAssets(await repo.getAssets());
         _bootstrappedFromLocal = false;
       }
+      _log.finer('Returning cached assets: ${_assets!.length}');
       return _assets!;
     }
 
     // Prefer returning cached storage if present
     if (await repo.coinConfigExists()) {
+      _log.info('Storage exists; loading assets from repository');
       final mapped = _mapAssets(await repo.getAssets());
       // Trigger background update check (fire-and-forget)
       unawaited(_maybeUpdateFromRemote(repo));
@@ -125,6 +143,7 @@ class KomodoCoins {
     }
 
     // Cold start: load from local asset then fetch and persist latest remote
+    _log.info('Cold start: loading assets from local asset bundle');
     final localProvider = _localProviderFor(runtimeConfig);
     final localAssets = await localProvider.getAssets();
     final mapped = _mapAssets(localAssets);
@@ -134,10 +153,18 @@ class KomodoCoins {
     // Fetch remote latest and upsert for next call (do not block first load)
     unawaited(() async {
       try {
+        _log.fine(
+          'Background refresh: fetching remote assets and latest commit',
+        );
         final remoteAssets = await repo.coinConfigProvider.getAssets();
         final latestCommit = await repo.coinConfigProvider.getLatestCommit();
         await repo.upsertAssets(remoteAssets, latestCommit);
-      } catch (_) {}
+        _log.info(
+          'Background refresh: updated ${remoteAssets.length} assets at commit $latestCommit',
+        );
+      } catch (e, s) {
+        _log.warning('Background refresh failed', e, s);
+      }
     }());
 
     return mapped;
@@ -147,9 +174,15 @@ class KomodoCoins {
     try {
       final isLatest = await repo.isLatestCommit();
       if (!isLatest) {
+        _log.info('Remote commit is newer; updating coin config');
         await repo.updateCoinConfig();
+        _log.fine('Coin config updated');
+      } else {
+        _log.fine('Already at latest commit; no update performed');
       }
-    } catch (_) {}
+    } catch (e, s) {
+      _log.warning('Failed to check/update remote coin config', e, s);
+    }
   }
 
   /// Returns the currently active coins commit hash.
@@ -161,8 +194,13 @@ class KomodoCoins {
     final repo = _repoFor(runtimeConfig);
 
     if (await repo.coinConfigExists()) {
-      return repo.getCurrentCommit();
+      final commit = await repo.getCurrentCommit();
+      _log.fine('Current stored commit: $commit');
+      return commit;
     }
+    _log.fine(
+      'No stored commit; returning bundled commit: ${runtimeConfig.bundledCoinsRepoCommit}',
+    );
     return runtimeConfig.bundledCoinsRepoCommit;
   }
 
@@ -171,15 +209,18 @@ class KomodoCoins {
     final runtimeConfig = await _getRuntimeConfig();
     final repo = _repoFor(runtimeConfig);
     try {
-      return repo.coinConfigProvider.getLatestCommit();
-    } catch (_) {
+      final latest = await repo.coinConfigProvider.getLatestCommit();
+      _log.fine('Latest remote commit: $latest');
+      return latest;
+    } catch (e, s) {
+      _log.warning('Failed to fetch latest commit', e, s);
       return null;
     }
   }
 
   /// Returns the assets filtered using the provided [strategy].
   ///
-  /// This allows higher-level components, such as [AssetManager], to tailor
+  /// This allows higher-level components, such as AssetManager to tailor
   /// the visible asset list to the active authentication context. For example,
   /// a hardware wallet may only support a subset of coins, which can be
   /// enforced by supplying an appropriate [AssetFilterStrategy].
@@ -199,6 +240,9 @@ class KomodoCoins {
       }
     }
     _filterCache[cacheKey] = result;
+    _log.finer(
+      'filteredAssets(${strategy.strategyId}): ${result.length} assets',
+    );
     return result;
   }
 

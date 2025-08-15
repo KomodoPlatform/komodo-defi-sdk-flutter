@@ -17,13 +17,13 @@ dependencies:
     path: ../komodo_coin_updates
   komodo_defi_types:
     path: ../komodo_defi_types
+  logging: ^1.3.0
   meta: ^1.15.0
 
-
 dev_dependencies:
+  flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
   very_good_analysis: ^8.0.0
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

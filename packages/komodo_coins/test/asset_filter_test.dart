@@ -62,7 +62,7 @@ void main() {
 
     Future<Map<AssetId, Asset>> assetsFromRepo() async {
       final list = await repo.getAssets();
-      return {for (final a in list ?? const <Asset>[]) a.id: a};
+      return {for (final a in list) a.id: a};
     }
 
     test('Trezor filter excludes assets missing trezor_coin', () async {

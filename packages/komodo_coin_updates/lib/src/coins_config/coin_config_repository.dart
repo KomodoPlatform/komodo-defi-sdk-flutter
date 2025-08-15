@@ -74,9 +74,9 @@ class CoinConfigRepository implements CoinConfigStorage {
   /// Returns whether the currently stored commit matches the latest
   /// commit on the configured branch. Also caches the latest commit hash
   /// in memory for subsequent calls.
-  Future<bool> isLatestCommit() async {
+  Future<bool> isLatestCommit({String? latestCommit}) async {
     _log.fine('Checking if stored commit is latest');
-    final commit = await getCurrentCommit();
+    final commit = latestCommit ?? await getCurrentCommit();
     if (commit != null) {
       final latestCommit = await coinConfigProvider.getLatestCommit();
       final isLatest = commit == latestCommit;
@@ -89,8 +89,8 @@ class CoinConfigRepository implements CoinConfigStorage {
 
   @override
   /// Retrieves all assets from storage, excluding any whose symbol appears
-  /// in [excludedAssets]. Returns `null` if storage is empty.
-  Future<List<Asset>?> getAssets({
+  /// in [excludedAssets]. Returns an empty list if storage is empty.
+  Future<List<Asset>> getAssets({
     List<String> excludedAssets = const <String>[],
   }) async {
     _log.fine(
@@ -118,9 +118,6 @@ class CoinConfigRepository implements CoinConfigStorage {
     return a;
   }
 
-  @override
-  // Explicit coin configs are no longer stored; callers should use [Asset].
-  @override
   // Explicit coin config retrieval removed; derive from [Asset] if needed.
   @override
   /// Returns the commit hash currently persisted in the settings storage

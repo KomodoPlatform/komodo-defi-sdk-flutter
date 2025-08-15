@@ -34,9 +34,9 @@ class LocalAssetCoinConfigProvider implements CoinConfigProvider {
     CoinConfigTransformer? transformer,
     AssetBundle? bundle,
   }) {
-    final coinsConfigAsset =
-        config.mappedFiles['assets/config/coins_config.json'] ??
-        'assets/config/coins_config.json';
+    // For local asset-backed provider, always load from the bundled asset path.
+    // Runtime mapped file paths are intended for remote providers.
+    const coinsConfigAsset = 'assets/config/coins_config.json';
     return LocalAssetCoinConfigProvider(
       packageName: packageName,
       coinsConfigAssetPath: coinsConfigAsset,

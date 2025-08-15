@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:komodo_coin_updates/src/coins_config/coin_config_provider.dart';
 import 'package:komodo_coin_updates/src/coins_config/github_coin_config_provider.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -102,6 +101,38 @@ void main() {
       expect(
         uri.toString(),
         'https://raw.githubusercontent.com/KomodoPlatform/coins/master/utils/coins_config_unfiltered.json',
+      );
+    });
+
+    test('CDN base with trailing slash and path with leading slash', () {
+      final provider = GithubCoinConfigProvider(
+        cdnBranchMirrors: const {
+          'master': 'https://komodoplatform.github.io/coins/',
+        },
+      );
+
+      final uri = provider.buildContentUri(
+        '/utils/coins_config_unfiltered.json',
+      );
+      expect(
+        uri.toString(),
+        'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
+      );
+    });
+
+    test('Raw content base with trailing slash and path with leading slash', () {
+      final provider = GithubCoinConfigProvider(
+        branch: 'feature/example',
+        coinsGithubContentUrl:
+            'https://raw.githubusercontent.com/KomodoPlatform/coins/',
+      );
+
+      final uri = provider.buildContentUri(
+        '/utils/coins_config_unfiltered.json',
+      );
+      expect(
+        uri.toString(),
+        'https://raw.githubusercontent.com/KomodoPlatform/coins/feature/example/utils/coins_config_unfiltered.json',
       );
     });
   });
