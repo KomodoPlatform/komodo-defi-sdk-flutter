@@ -11,7 +11,6 @@ extension AssetTestBuilders on String {
       'coin': this,
       if (decimals != null) 'decimals': decimals,
       'type': 'UTXO',
-      'protocol': {'type': 'UTXO'},
       'fname': name ?? this,
       'chain_id': chainId,
       'is_testnet': false,
@@ -38,6 +37,7 @@ extension AssetTestBuilders on String {
 }
 
 /// Common ready-to-use assets
-Asset buildKmdTestAsset() => 'KMD'.toUtxoTestAsset(name: 'Komodo', decimals: 8);
+Asset buildKmdTestAsset() =>
+    'KMD'.toUtxoTestAsset(name: 'Komodo', decimals: 8, chainId: 777);
 Asset buildBtcTestAsset() =>
     'BTC'.toUtxoTestAsset(name: 'Bitcoin', decimals: 8);

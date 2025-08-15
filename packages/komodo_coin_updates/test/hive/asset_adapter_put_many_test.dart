@@ -47,6 +47,10 @@ void main() {
       for (final s in sampled) {
         expect(s, isA<Asset>());
       }
+      for (var i = 0; i < sampled.length; i++) {
+        final asset = sampled[i]!;
+        expect(asset.id.id, equals(sampleKeys[i]));
+      }
     });
   });
 }

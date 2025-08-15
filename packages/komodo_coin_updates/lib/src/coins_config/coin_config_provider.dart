@@ -6,6 +6,10 @@ abstract class CoinConfigProvider {
   Future<List<Asset>> getAssetsForCommit(String commit);
 
   /// Fetches the assets for the provider's default branch or reference.
+  ///
+  /// The optional [branch] parameter can be either a branch name or a
+  /// specific commit SHA. If omitted, the provider's default branch/ref
+  /// is used.
   Future<List<Asset>> getAssets({String? branch});
 
   /// Retrieves the latest commit hash for the configured branch.

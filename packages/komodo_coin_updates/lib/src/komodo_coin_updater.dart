@@ -39,13 +39,4 @@ class KomodoCoinUpdater {
       _log.fine('Hive adapters already registered (isolate); ignoring: $e');
     }
   }
-
-  /// Initializes the Hive adapters for the Komodo Coin Updates package.
-  ///
-  /// This method registers the adapters for the various Hive types used in the
-  /// Komodo Coin Updates package.
-  ///
-  /// The adapters are used to convert between the Hive types and the Dart
-  /// objects.
-  static void initializeAdapters() {}
 }

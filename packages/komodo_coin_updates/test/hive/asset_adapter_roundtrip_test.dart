@@ -27,6 +27,8 @@ void main() {
       final readBack = await box.get(asset.id.id);
       expect(readBack, isNotNull);
       expect(readBack!.id.id, equals(asset.id.id));
+      expect(readBack.id.name, equals(asset.id.name));
+      expect(readBack.id.subClass, equals(asset.id.subClass));
       expect(readBack.id.subClass, equals(asset.id.subClass));
       expect(readBack.protocol.subClass, equals(asset.protocol.subClass));
       expect(readBack.isWalletOnly, equals(asset.isWalletOnly));
@@ -44,6 +46,11 @@ void main() {
       final readBack = await reopened.get(key);
       expect(readBack, isNotNull);
       expect(readBack!.id.id, equals(key));
+      expect(readBack.id.name, equals('Komodo'));
+      expect(readBack.id.subClass, equals(CoinSubClass.utxo));
+      expect(readBack.protocol.subClass, equals(CoinSubClass.utxo));
+      expect(readBack.isWalletOnly, isFalse);
+      expect(readBack.signMessagePrefix, isNull);
     });
   });
 }

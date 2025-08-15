@@ -30,7 +30,7 @@ void main() {
     test('upsertAssets writes to boxes and can be read back', () async {
       final kmd = buildKmdTestAsset();
 
-      when(() => provider.getLatestCommit()).thenAnswer((_) async => 'HEAD');
+      // No need to stub getLatestCommit() here since we pass the commit explicitly.
 
       await repo.upsertAssets([kmd], 'HEAD');
 
@@ -48,10 +48,26 @@ void main() {
 
       final commit = await repo.getCurrentCommit();
       expect(commit, 'HEAD');
+
+      // Simulate process restart and ensure data persists
+      await env.restart();
+      final repo2 = CoinConfigRepository(coinConfigProvider: provider);
+      final kmdAfterRestart = await repo2.getAsset(
+        AssetId.parse(const {
+          'coin': 'KMD',
+          'fname': 'Komodo',
+          'type': 'UTXO',
+          'chain_id': 777,
+        }, knownIds: const {}),
+      );
+      expect(kmdAfterRestart, isNotNull);
+      expect(kmdAfterRestart!.id.id, equals('KMD'));
+      final commitAfterRestart = await repo2.getCurrentCommit();
+      expect(commitAfterRestart, equals('HEAD'));
     });
 
     test('upsertRawAssets persists raw json correctly', () async {
-      when(() => provider.getLatestCommit()).thenAnswer((_) async => 'HEAD');
+      // No need to stub getLatestCommit() here since we pass the commit explicitly.
 
       await repo.upsertRawAssets({
         'BTC': AssetTestHelpers.utxoJson(
@@ -74,16 +90,13 @@ void main() {
       expect(a?.id.id, 'BTC');
     });
 
-    test(
-      'coinConfigExists returns false before write then true after',
-      () async {
-        expect(await repo.coinConfigExists(), isFalse);
-        when(() => provider.getLatestCommit()).thenAnswer((_) async => 'HEAD');
-        final kmd = buildKmdTestAsset();
-        await repo.upsertAssets([kmd], 'HEAD');
-        expect(await repo.coinConfigExists(), isTrue);
-      },
-    );
+    test('coinConfigExists returns false before write then true after', () async {
+      expect(await repo.coinConfigExists(), isFalse);
+      // No need to stub getLatestCommit() here since we pass the commit explicitly.
+      final kmd = buildKmdTestAsset();
+      await repo.upsertAssets([kmd], 'HEAD');
+      expect(await repo.coinConfigExists(), isTrue);
+    });
 
     test('respects custom box names and commit key', () async {
       final customRepo = CoinConfigRepository(
@@ -93,7 +106,7 @@ void main() {
         coinsCommitKey: 'custom_commit',
       );
 
-      when(() => provider.getLatestCommit()).thenAnswer((_) async => 'C0MM1T');
+      // No need to stub getLatestCommit() here since we pass the commit explicitly.
 
       // Write an asset and commit using custom repo
       await customRepo.upsertAssets([buildKmdTestAsset()], 'C0MM1T');
@@ -105,6 +118,9 @@ void main() {
       // Verify commit is stored with custom key
       final settings = await Hive.openBox<String>('custom_settings');
       expect(settings.get('custom_commit'), equals('C0MM1T'));
+
+      // Verify via repository API as well
+      expect(await customRepo.getCurrentCommit(), equals('C0MM1T'));
 
       // Verify read works using same repo
       final asset = await customRepo.getAsset(

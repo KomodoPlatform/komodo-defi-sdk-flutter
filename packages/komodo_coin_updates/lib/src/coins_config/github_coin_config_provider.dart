@@ -251,4 +251,9 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
 
   bool _hasNoParent(Map<String, dynamic> coinData) =>
       coinData['parent_coin'] == null;
+
+  /// Dispose HTTP resources if this provider owns the client.
+  void dispose() {
+    _client.close();
+  }
 }

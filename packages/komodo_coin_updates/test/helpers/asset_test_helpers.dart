@@ -73,4 +73,23 @@ class AssetTestHelpers {
       ),
     );
   }
+
+  /// Convenience builder for an Asset using the minimal EVM config.
+  static Asset evmAsset({
+    String coin = 'ETH',
+    String fname = 'Ethereum',
+    int chainId = 1,
+    bool isTestnet = false,
+    String? trezorCoin,
+  }) {
+    return Asset.fromJson(
+      evmJson(
+        coin: coin,
+        fname: fname,
+        chainId: chainId,
+        isTestnet: isTestnet,
+        trezorCoin: trezorCoin,
+      ),
+    );
+  }
 }

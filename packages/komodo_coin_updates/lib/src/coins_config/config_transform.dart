@@ -1,4 +1,3 @@
-// lib/src/config_transform.dart
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 

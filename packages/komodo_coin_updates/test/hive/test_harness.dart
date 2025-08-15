@@ -8,9 +8,9 @@ class HiveTestEnv {
   Directory? _tempDir;
   static bool _adaptersRegistered = false;
 
-  String get path => _tempDir!.path;
+  String? get path => _tempDir?.path;
 
-  Future<void> _initHive() async {
+  void _initHive() {
     Hive.init(_tempDir!.path);
     if (!_adaptersRegistered) {
       Hive.registerAdapters();
@@ -20,12 +20,12 @@ class HiveTestEnv {
 
   Future<void> setup() async {
     _tempDir ??= await Directory.systemTemp.createTemp('hive_test_');
-    await _initHive();
+    _initHive();
   }
 
   Future<void> restart() async {
     await Hive.close();
-    await _initHive();
+    _initHive();
   }
 
   Future<void> dispose() async {

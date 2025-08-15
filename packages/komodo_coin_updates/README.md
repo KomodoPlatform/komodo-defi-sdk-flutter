@@ -8,7 +8,7 @@ This package fetches the unified coins configuration JSON from the `KomodoPlatfo
 
 - Fetch latest commit from the `KomodoPlatform/coins` repo
 - Retrieve the latest coins_config JSON and parse to strongly-typed `Asset` models
-- Persist assets in Hive (`assets` lazy box) and store current commit in `coins_settings`
+- Persist assets in Hive (`assets` lazy box) and store the current commit hash in `coins_settings`
 - Check whether the stored commit is up to date and update when needed
 - Configurable repo URLs, branch/commit, CDN mirrors, and optional GitHub token
 - Initialize in the main isolate or a background isolate

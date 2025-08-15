@@ -1,8 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
-import 'package:komodo_coin_updates/src/coins_config/github_coin_config_provider.dart';
+import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';

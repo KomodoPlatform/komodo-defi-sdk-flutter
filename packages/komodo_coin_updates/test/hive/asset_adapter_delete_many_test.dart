@@ -34,6 +34,9 @@ void main() {
       expect(await box.get('D'), isNull);
       expect(await box.get('A'), isA<Asset>());
       expect(await box.get('C'), isA<Asset>());
+      expect(box.length, equals(2));
+      final remainingKeys = box.keys.cast<String>().toSet();
+      expect(remainingKeys, equals({'A', 'C'}));
     });
   });
 }

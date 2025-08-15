@@ -7,6 +7,7 @@ import 'helpers/asset_test_extensions.dart';
 class _FakeStorage implements CoinConfigStorage {
   Map<String, Asset> store = {};
   String? commit;
+  bool _latest = false;
 
   @override
   Future<bool> coinConfigExists() async => store.isNotEmpty && commit != null;
@@ -24,7 +25,10 @@ class _FakeStorage implements CoinConfigStorage {
   Future<String?> getCurrentCommit() async => commit;
 
   @override
-  Future<bool> isLatestCommit({String? latestCommit}) async => false;
+  Future<bool> isLatestCommit({String? latestCommit}) async => _latest;
+
+  // Helper for tests to toggle latest commit state
+  void setIsLatest(bool value) => _latest = value;
 
   // Deprecated methods removed from interface; using new API below
 
@@ -72,6 +76,57 @@ void main() {
       );
       expect(await s.getCurrentCommit(), 'HEAD');
       expect(await s.coinConfigExists(), isTrue);
+    });
+
+    test('getAssets supports excludedAssets filtering', () async {
+      final s = _FakeStorage();
+      final kmd = buildKmdTestAsset();
+      final btc = buildBtcTestAsset();
+      await s.upsertAssets([kmd, btc], 'HEAD');
+
+      final all = await s.getAssets();
+      expect(all.map((a) => a.id.id).toSet(), containsAll(['KMD', 'BTC']));
+
+      final filtered = await s.getAssets(excludedAssets: ['KMD']);
+      expect(filtered.map((a) => a.id.id).toSet(), contains('BTC'));
+      expect(filtered.any((a) => a.id.id == 'KMD'), isFalse);
+    });
+
+    test('deleteAsset removes a single asset and keeps commit', () async {
+      final s = _FakeStorage();
+      final kmd = buildKmdTestAsset();
+      final btc = buildBtcTestAsset();
+      await s.upsertAssets([kmd, btc], 'HEAD1');
+
+      await s.deleteAsset('BTC'.toTestAssetId(name: 'Bitcoin'));
+
+      expect(await s.getAsset('BTC'.toTestAssetId(name: 'Bitcoin')), isNull);
+      expect(
+        (await s.getAsset('KMD'.toTestAssetId(name: 'Komodo')))?.id.id,
+        'KMD',
+      );
+      expect(await s.getCurrentCommit(), 'HEAD1');
+    });
+
+    test('deleteAllAssets clears store and resets commit', () async {
+      final s = _FakeStorage();
+      await s.upsertAssets([buildKmdTestAsset()], 'HEAD2');
+
+      await s.deleteAllAssets();
+
+      expect(await s.getAssets(), isEmpty);
+      expect(await s.getCurrentCommit(), isNull);
+      expect(await s.coinConfigExists(), isFalse);
+    });
+
+    test('isLatestCommit can assert both true and false branches', () async {
+      final s = _FakeStorage();
+
+      // default false
+      expect(await s.isLatestCommit(latestCommit: 'HEAD'), isFalse);
+
+      s.setIsLatest(true);
+      expect(await s.isLatestCommit(latestCommit: 'HEAD'), isTrue);
     });
   });
 }

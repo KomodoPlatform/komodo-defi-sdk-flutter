@@ -22,14 +22,9 @@ void main() {
       fetchAtBuildEnabled: false,
       updateCommitOnBuild: false,
       bundledCoinsRepoCommit: 'local',
-      coinsRepoApiUrl: 'https://api.github.com/repos/KomodoPlatform/coins',
-      coinsRepoContentUrl:
-          'https://raw.githubusercontent.com/KomodoPlatform/coins',
-      coinsRepoBranch: 'master',
       runtimeUpdatesEnabled: false,
       mappedFiles: {},
       mappedFolders: {},
-      concurrentDownloadsEnabled: false,
       cdnBranchMirrors: {},
     );
 
@@ -65,6 +60,14 @@ void main() {
 
         final storedCommit = await repo.getCurrentCommit();
         expect(storedCommit, equals(commit));
+
+        // Validate persistence after restart
+        await env.restart();
+        final repo2 = CoinConfigRepository.withDefaults(config());
+        final all2 = await repo2.getAssets();
+        expect(all2.map((a) => a.id.id).toSet(), equals({'KMD', 'BTC'}));
+        final commitAfterRestart = await repo2.getCurrentCommit();
+        expect(commitAfterRestart, equals(commit));
       },
     );
 
@@ -85,6 +88,8 @@ void main() {
       final all = await repo.getAssets();
       expect(all.length, equals(2));
       expect(all.map((a) => a.id.id).toSet(), equals({'KMD', 'BTC'}));
+      final storedCommit = await repo.getCurrentCommit();
+      expect(storedCommit, equals('def456'));
     });
 
     test('excludedAssets filter works', () async {
@@ -96,7 +101,7 @@ void main() {
       await repo.upsertAssets(assets, 'ghi789');
 
       final all = await repo.getAssets(excludedAssets: const ['BTC']);
-      expect(all.map((a) => a.id.id).toList(), equals(['KMD']));
+      expect(all.map((a) => a.id.id).toSet(), equals({'KMD'}));
     });
   });
 }

@@ -27,22 +27,7 @@ void main() {
       // intentionally no 'trezor_coin'
     };
 
-    final repo = CoinConfigRepository.withDefaults(
-      const RuntimeUpdateConfig(
-        fetchAtBuildEnabled: false,
-        updateCommitOnBuild: false,
-        bundledCoinsRepoCommit: 'local',
-        coinsRepoApiUrl: 'https://api.github.com/repos/KomodoPlatform/coins',
-        coinsRepoContentUrl:
-            'https://raw.githubusercontent.com/KomodoPlatform/coins',
-        coinsRepoBranch: 'master',
-        runtimeUpdatesEnabled: false,
-        mappedFiles: {},
-        mappedFolders: {},
-        concurrentDownloadsEnabled: false,
-        cdnBranchMirrors: {},
-      ),
-    );
+    late CoinConfigRepository repo;
     // Use repository helpers to parse and store assets from raw JSON
     setUp(() async {
       Hive.init(
@@ -51,6 +36,17 @@ void main() {
       try {
         Hive.registerAdapters();
       } catch (_) {}
+      repo = CoinConfigRepository.withDefaults(
+        const RuntimeUpdateConfig(
+          fetchAtBuildEnabled: false,
+          updateCommitOnBuild: false,
+          bundledCoinsRepoCommit: 'local',
+          runtimeUpdatesEnabled: false,
+          mappedFiles: {},
+          mappedFolders: {},
+          cdnBranchMirrors: {},
+        ),
+      );
       await repo.upsertRawAssets(
         {
           'BTC': btcConfig,
@@ -58,6 +54,10 @@ void main() {
         },
         'test',
       );
+    });
+
+    tearDown(() async {
+      await Hive.close();
     });
 
     Future<Map<AssetId, Asset>> assetsFromRepo() async {

@@ -9,8 +9,10 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// fresh coin configuration from a remote source is handled by a
 /// corresponding provider (see `coin_config_provider.dart`).
 abstract class CoinConfigStorage {
-  /// Reads all stored [Asset] items, excluding any whose symbol appears
-  /// in [excludedAssets]. Returns an empty list when storage is empty.
+  /// Reads all stored [Asset] items, excluding any whose ticker appears
+  /// in [excludedAssets]. The ticker corresponds to `AssetId.id` (the
+  /// `coin` field in the source JSON). Returns an empty list when storage
+  /// is empty.
   Future<List<Asset>> getAssets({
     List<String> excludedAssets = const <String>[],
   });
@@ -33,12 +35,17 @@ abstract class CoinConfigStorage {
   Future<bool> coinConfigExists();
 
   /// Creates or updates the stored assets and persists the associated
-  /// repository [commit]. Implementations should upsert by `AssetId`.
+  /// repository [commit]. Implementations should upsert by `AssetId`
+  /// (idempotent per asset). Where possible, persist the commit only
+  /// after assets have been successfully written to storage to avoid
+  /// inconsistent states on partial failures.
   Future<void> upsertAssets(List<Asset> assets, String commit);
 
   /// Creates or updates the stored assets from raw JSON entries keyed by
-  /// ticker symbol and persists the associated [commit]. Implementations
-  /// should parse entries into [Asset] and delegate to [upsertAssets].
+  /// ticker and persists the associated [commit]. Entries are keyed by
+  /// the `coin` ticker. Implementations should parse entries into [Asset]
+  /// and delegate to [upsertAssets]. See [upsertAssets] for guidance on
+  /// idempotency and commit persistence ordering.
   Future<void> upsertRawAssets(
     Map<String, dynamic> coinConfigsBySymbol,
     String commit,
