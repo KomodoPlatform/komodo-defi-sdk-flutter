@@ -1,10 +1,20 @@
 name: Flutter package tests (matrix)
+permissions:
+  contents: read
 
 on:
   push:
-    branches: [ main, develop, feat/**, fix/** ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, dev, feat/**, bugfix/**, hotfix/** ]
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Optional package path to test (e.g., packages/komodo_coin_updates or komodo_coin_updates)'
+        required: false
+      package_regex:
+        description: 'Optional regex to filter packages (applied to full path under packages/*)'
+        required: false
 
 jobs:
   discover:
@@ -21,12 +31,47 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t packages < <(find packages -mindepth 1 -maxdepth 1 -type d -exec test -e '{}/pubspec.yaml' ';' -print | sort)
-          if [ ${#packages[@]} -eq 0 ]; then
+          input_pkg="${{ github.event.inputs.package || '' }}"
+          input_re="${{ github.event.inputs.package_regex || '' }}"
+
+          # Discover all packages with pubspec.yaml
+          mapfile -t all_pkgs < <(find packages -mindepth 1 -maxdepth 1 -type d -exec test -e '{}/pubspec.yaml' ';' -print | sort)
+
+          filter_pkgs=()
+          if [ -n "$input_pkg" ]; then
+            # Normalize to packages/<name>
+            if [[ "$input_pkg" != packages/* ]]; then
+              input_pkg="packages/$input_pkg"
+            fi
+            if [ -e "$input_pkg/pubspec.yaml" ]; then
+              filter_pkgs+=("$input_pkg")
+            else
+              echo "No pubspec.yaml found at $input_pkg; producing empty matrix" >&2
+            fi
+          elif [ -n "$input_re" ]; then
+            while IFS= read -r p; do
+              if echo "$p" | grep -Eq "$input_re"; then
+                filter_pkgs+=("$p")
+              fi
+            done < <(printf '%s\n' "${all_pkgs[@]}")
+          else
+            filter_pkgs=("${all_pkgs[@]}")
+          fi
+
+          # Keep only packages that contain a test/ directory
+          with_tests=()
+          for p in "${filter_pkgs[@]}"; do
+            if [ -d "$p/test" ]; then
+              with_tests+=("$p")
+            fi
+          done
+
+          if [ ${#with_tests[@]} -eq 0 ]; then
             echo "matrix=[]" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          json=$(printf '%s\n' "${packages[@]}" | jq -R -s -c 'split("\n")[:-1] | map({path: .})')
+
+          json=$(printf '%s\n' "${with_tests[@]}" | jq -R -s -c 'split("\n")[:-1] | map({path: .})')
           echo "matrix=$json" >> "$GITHUB_OUTPUT"
 
   test:
