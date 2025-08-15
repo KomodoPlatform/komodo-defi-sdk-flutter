@@ -55,6 +55,7 @@ export 'orderbook/order_type.dart';
 export 'pagination/history_target.dart';
 export 'pagination/pagination.dart';
 export 'primitive/numeric_value.dart';
+export 'trading/match_by.dart';
 export 'trading/order_status.dart';
 export 'trading/swap_info.dart';
 export 'trading/swap_method.dart';
