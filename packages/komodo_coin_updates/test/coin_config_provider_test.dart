@@ -1,11 +1,26 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
 import 'package:komodo_coin_updates/src/coins_config/github_coin_config_provider.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 class _MockHttpClient extends Mock implements http.Client {}
+
+class _ForceWalletOnlyTransform implements CoinConfigTransform {
+  const _ForceWalletOnlyTransform();
+  @override
+  JsonMap transform(JsonMap config) {
+    final out = JsonMap.of(config);
+    out['wallet_only'] = true;
+    return out;
+  }
+
+  @override
+  bool needsTransform(JsonMap config) => true;
+}
 
 void main() {
   group('GithubCoinConfigProvider CDN mirrors', () {
@@ -194,6 +209,137 @@ void main() {
       expect(assets.first.id.id, 'KMD');
     });
 
-    // CoinConfig retrieval removed; configs can be derived from Asset if needed.
+    test('getLatestCommit throws on non-200 and includes headers', () async {
+      final uri = Uri.parse(
+        '${provider.coinsGithubApiUrl}/branches/${provider.branch}',
+      );
+      when(() => client.get(uri, headers: any(named: 'headers'))).thenAnswer(
+        (_) async => http.Response('nope', 403, reasonPhrase: 'Forbidden'),
+      );
+
+      expect(() => provider.getLatestCommit(), throwsA(isA<Exception>()));
+    });
+
+    test('getAssetsForCommit throws on non-200', () async {
+      final url = provider.buildContentUri(provider.coinsConfigPath);
+      when(
+        () => client.get(url),
+      ).thenAnswer((_) async => http.Response('error', 500));
+      expect(
+        () => provider.getAssetsForCommit(provider.branch),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test(
+      'transformation pipeline applies and filters excluded coins',
+      () async {
+        final p = GithubCoinConfigProvider(
+          httpClient: client,
+          transformer: const CoinConfigTransformer(
+            transforms: [_ForceWalletOnlyTransform()],
+          ),
+        );
+
+        final uri = Uri.parse(
+          '${p.coinsGithubContentUrl}/${p.branch}/${p.coinsConfigPath}',
+        );
+        when(() => client.get(uri)).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'KMD': {
+                'coin': 'KMD',
+                'type': 'UTXO',
+                'protocol': {'type': 'UTXO'},
+                'fname': 'Komodo',
+                'chain_id': 0,
+                'is_testnet': false,
+              },
+              'SLP': {
+                'coin': 'SLP',
+                'type': 'SLP',
+                'protocol': {'type': 'SLP'},
+                'fname': 'SLP Token',
+                'chain_id': 0,
+                'is_testnet': false,
+              },
+            }),
+            200,
+          ),
+        );
+
+        final assets = await p.getAssets();
+        expect(assets.any((a) => a.id.id == 'SLP'), isFalse);
+        final kmd = assets.firstWhere((a) => a.id.id == 'KMD');
+        expect(kmd.isWalletOnly, isTrue);
+      },
+    );
+
+    test('buildContentUri normalizes coinsPath entries', () {
+      final p = GithubCoinConfigProvider(
+        coinsGithubContentUrl:
+            'https://raw.githubusercontent.com/KomodoPlatform/coins/',
+        cdnBranchMirrors: const {
+          'master': 'https://komodoplatform.github.io/coins/',
+        },
+      );
+
+      final cdnUri = p.buildContentUri('/coins/KMD.json');
+      expect(
+        cdnUri.toString(),
+        'https://komodoplatform.github.io/coins/coins/KMD.json',
+      );
+
+      final rawP = GithubCoinConfigProvider(
+        coinsGithubContentUrl:
+            'https://raw.githubusercontent.com/KomodoPlatform/coins/',
+        cdnBranchMirrors: const {},
+      );
+      final rawUri = rawP.buildContentUri('/coins/KMD.json');
+      expect(
+        rawUri.toString(),
+        'https://raw.githubusercontent.com/KomodoPlatform/coins/master/coins/KMD.json',
+      );
+    });
+
+    test('getAssets with branch override uses that ref', () async {
+      final p = GithubCoinConfigProvider(httpClient: client);
+      final uri = Uri.parse(
+        '${p.coinsGithubContentUrl}/dev/${p.coinsConfigPath}',
+      );
+      when(() => client.get(uri)).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            'KMD': {
+              'coin': 'KMD',
+              'type': 'UTXO',
+              'protocol': {'type': 'UTXO'},
+              'fname': 'Komodo',
+              'chain_id': 0,
+              'is_testnet': false,
+            },
+          }),
+          200,
+        ),
+      );
+      final assets = await p.getAssets(branch: 'dev');
+      expect(assets, isNotEmpty);
+    });
+
+    test('getLatestCommit sends Accept and UA headers', () async {
+      final uri = Uri.parse(
+        '${provider.coinsGithubApiUrl}/branches/${provider.branch}',
+      );
+      when(() => client.get(uri, headers: any(named: 'headers'))).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            'commit': {'sha': 'abc123'},
+          }),
+          200,
+        ),
+      );
+      await provider.getLatestCommit();
+      verify(() => client.get(uri, headers: any(named: 'headers'))).called(1);
+    });
   });
 }

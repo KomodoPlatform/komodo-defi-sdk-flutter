@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show AssetBundle, ByteData;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
-import 'package:komodo_coin_updates/src/coins_config/local_asset_coin_config_provider.dart';
 
 import 'hive/test_harness.dart';
 
@@ -35,17 +34,12 @@ void main() {
       fetchAtBuildEnabled: false,
       updateCommitOnBuild: false,
       bundledCoinsRepoCommit: 'local-commit',
-      coinsRepoApiUrl: 'https://api.github.com/repos/KomodoPlatform/coins',
-      coinsRepoContentUrl:
-          'https://raw.githubusercontent.com/KomodoPlatform/coins',
-      coinsRepoBranch: 'master',
       runtimeUpdatesEnabled: false,
       mappedFiles: {
         'assets/config/coins_config.json': 'utils/coins_config_unfiltered.json',
         'assets/config/coins.json': 'coins',
       },
       mappedFolders: {},
-      concurrentDownloadsEnabled: false,
       cdnBranchMirrors: {},
     );
 
