@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_sdk/src/swaps/match_by_filter.dart';
 
 /// Interface describing the high-level Swap and Orderbook operations exposed by
 /// the SDK.
@@ -78,6 +79,7 @@ abstract class ISwapManager {
     required AssetId rel,
     required OrderSide side,
     required Decimal volume,
+    CounterpartyMatch? match,
   });
 
   /// Validate a user-intended order or swap against network constraints.
@@ -147,6 +149,7 @@ abstract class ISwapManager {
     required AssetId rel,
     required OrderSide side,
     required Decimal amount,
+    CounterpartyMatch? match,
   });
 
   /// Compute a human-friendly trade preimage/fee quote for the provided intent.

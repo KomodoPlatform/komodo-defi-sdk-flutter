@@ -5,10 +5,11 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_sdk/src/swaps/services/orderbook_service.dart';
+import 'package:komodo_defi_sdk/src/swaps/match_by_filter.dart';
 import 'package:komodo_defi_sdk/src/swaps/services/swap_watch_service.dart';
 import 'package:komodo_defi_sdk/src/swaps/swap_manager_interface.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 // OrderSide, SwapStatus, PlacedOrderSummary, OrderbookEntry, OrderbookSnapshot,
 // and SwapProgress have been moved to the types library under
@@ -109,6 +110,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Fetch a one-time orderbook snapshot
+  @override
   Future<OrderbookSnapshot> getOrderbook({
     required AssetId base,
     required AssetId rel,
@@ -119,6 +121,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Watch the orderbook for a pair with periodic polling
+  @override
   Stream<OrderbookSnapshot> watchOrderbook({
     /// Base asset id
     required AssetId base,
@@ -133,6 +136,7 @@ class SwapManager implements ISwapManager {
   // Orderbook mapping/signatures are handled inside OrderbookService
 
   /// Batch fetch orderbook depth for multiple pairs.
+  @override
   Future<Map<String, OrderbookSnapshot>> getOrderbookDepth({
     required List<MapEntry<AssetId, AssetId>> pairs,
   }) async {
@@ -144,11 +148,13 @@ class SwapManager implements ISwapManager {
   ///
   /// - For side=buy: requests best sell orders of [base], sweeping until [volume] is filled
   /// - For side=sell: requests best buy orders of [base], sweeping until [volume] is filled
+  @override
   Future<TakerQuote> takerQuote({
     required AssetId base,
     required AssetId rel,
     required OrderSide side,
     required Decimal volume,
+    CounterpartyMatch? match,
   }) async {
     _assertNotDisposed();
     final user = await _auth.currentUser;
@@ -171,6 +177,14 @@ class SwapManager implements ISwapManager {
     Decimal accumulatedRel = Decimal.zero;
     Decimal accumulatedBase = Decimal.zero;
     for (final ord in best.orders) {
+      if (match != null && match.values != null) {
+        if (match.isPubkeys && !match.values!.contains(ord.pubkey)) {
+          continue;
+        }
+        if (match.isOrders && !match.values!.contains(ord.uuid)) {
+          continue;
+        }
+      }
       if (remainingBase <= Decimal.zero) break;
       final price = Decimal.parse(ord.price);
       Decimal baseAvailable;
@@ -222,6 +236,7 @@ class SwapManager implements ISwapManager {
 
   /// Validate a user-intended order or swap against network constraints.
   /// Throws if invalid; returns normally if valid.
+  @override
   Future<void> validateTradeIntent({
     required AssetId base,
     required AssetId rel,
@@ -239,7 +254,7 @@ class SwapManager implements ISwapManager {
     final minBase = await minTradingVolume(coin: base);
     if (volume < minBase) {
       throw StateError(
-        'Volume ${volume.toString()} is below minimum ${minBase.toString()} for ${base.id.toUpperCase()}',
+        'Volume $volume is below minimum $minBase for ${base.id.toUpperCase()}',
       );
     }
 
@@ -254,6 +269,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Place a limit order. Returns the order UUID.
+  @override
   Future<String> placeLimitOrder({
     /// Base asset id
     required AssetId base,
@@ -289,6 +305,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Cancel an order by UUID
+  @override
   Future<bool> cancelOrder(String uuid) async {
     _assertNotDisposed();
     final user = await _auth.currentUser;
@@ -299,6 +316,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Cancel all open orders for the current wallet, optionally by coin.
+  @override
   Future<bool> cancelAllOrders({AssetId? coin}) async {
     _assertNotDisposed();
     final user = await _auth.currentUser;
@@ -313,6 +331,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Get current user's open orders.
+  @override
   Future<List<PlacedOrderSummary>> myOrders() async {
     _assertNotDisposed();
     final user = await _auth.currentUser;
@@ -342,6 +361,7 @@ class SwapManager implements ISwapManager {
   /// The [amount] is in base units regardless of [side].
   /// - buy: acquire [amount] of base using rel
   /// - sell: sell [amount] of base for rel
+  @override
   Stream<SwapProgress> marketSwap({
     /// Base asset id
     required AssetId base,
@@ -354,6 +374,7 @@ class SwapManager implements ISwapManager {
 
     /// Amount in [base] units
     required Decimal amount,
+    CounterpartyMatch? match,
   }) async* {
     _assertNotDisposed();
 
@@ -376,6 +397,7 @@ class SwapManager implements ISwapManager {
         // For taker swaps, one side amount is primary; set the other to "0"
         relCoinAmount: '0',
         method: method,
+        matchBy: match?.toRpc(),
       ),
     );
 
@@ -464,11 +486,12 @@ class SwapManager implements ISwapManager {
         onDone: emitter.close,
         cancelOnError: false,
       );
-      emitter.onCancel = () => sub.cancel();
+      emitter.onCancel = sub.cancel;
     });
   }
 
   /// Compute a human-friendly trade preimage quote.
+  @override
   Future<TradePreimageQuote> preimageQuote({
     required AssetId base,
     required AssetId rel,
@@ -521,6 +544,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Convenience to fetch the maximum taker volume available for a coin.
+  @override
   Future<Decimal> maxTakerVolume({required AssetId coin}) async {
     _assertNotDisposed();
     final user = await _auth.currentUser;
@@ -532,6 +556,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Minimum trading volume for a coin.
+  @override
   Future<Decimal> minTradingVolume({required AssetId coin}) async {
     _assertNotDisposed();
     final user = await _auth.currentUser;
@@ -543,6 +568,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// List active swaps; optionally include detailed status.
+  @override
   Future<List<SwapSummary>> activeSwaps({
     AssetId? coin,
     bool includeStatus = true,
@@ -573,6 +599,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Recent swap history with optional pagination.
+  @override
   Future<List<SwapSummary>> recentSwaps({
     int? limit,
     int? pageNumber,
@@ -598,6 +625,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Fetch current status for a specific swap UUID.
+  @override
   Future<SwapSummary> getSwapStatus(String uuid) async {
     _assertNotDisposed();
     final user = await _auth.currentUser;
@@ -609,6 +637,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Attempt to cancel an in-progress swap.
+  @override
   Future<bool> cancelSwap(String uuid) async {
     _assertNotDisposed();
     final user = await _auth.currentUser;
@@ -618,6 +647,7 @@ class SwapManager implements ISwapManager {
   }
 
   /// Watch an existing swap by periodically polling its status.
+  @override
   Stream<SwapProgress> watchSwap({required String uuid}) async* {
     _assertNotDisposed();
     final user = await _auth.currentUser;
@@ -726,7 +756,7 @@ class SwapManager implements ISwapManager {
         onDone: emitter.close,
         cancelOnError: false,
       );
-      emitter.onCancel = () => sub.cancel();
+      emitter.onCancel = sub.cancel;
     });
   }
 
@@ -762,6 +792,7 @@ class SwapManager implements ISwapManager {
   /// Disposes internal resources and cancels background watchers.
   ///
   /// After calling this method the instance must not be used.
+  @override
   Future<void> dispose() async {
     if (_isDisposed) return;
     _isDisposed = true;
