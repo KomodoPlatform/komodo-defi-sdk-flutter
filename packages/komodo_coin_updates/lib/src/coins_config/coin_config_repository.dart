@@ -1,8 +1,9 @@
 import 'package:hive_ce/hive.dart';
-import 'package:komodo_coin_updates/src/config_transform.dart';
-import 'package:komodo_coin_updates/src/data/coin_config_provider.dart';
-import 'package:komodo_coin_updates/src/data/coin_config_storage.dart';
-import 'package:komodo_coin_updates/src/models/runtime_update_config.dart';
+import 'package:komodo_coin_updates/src/coins_config/coin_config_provider.dart';
+import 'package:komodo_coin_updates/src/coins_config/coin_config_storage.dart';
+import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
+import 'package:komodo_coin_updates/src/coins_config/github_coin_config_provider.dart';
+import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 

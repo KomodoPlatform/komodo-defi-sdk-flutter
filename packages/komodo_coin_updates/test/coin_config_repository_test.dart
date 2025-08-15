@@ -1,6 +1,6 @@
 import 'package:hive_ce/hive.dart';
-import 'package:komodo_coin_updates/src/data/coin_config_provider.dart';
-import 'package:komodo_coin_updates/src/data/coin_config_repository.dart';
+import 'package:komodo_coin_updates/src/coins_config/coin_config_provider.dart';
+import 'package:komodo_coin_updates/src/coins_config/coin_config_repository.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';

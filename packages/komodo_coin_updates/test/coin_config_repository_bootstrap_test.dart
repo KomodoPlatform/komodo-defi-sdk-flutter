@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show AssetBundle, ByteData;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
+import 'package:komodo_coin_updates/src/coins_config/local_asset_coin_config_provider.dart';
 
 import 'hive/test_harness.dart';
 

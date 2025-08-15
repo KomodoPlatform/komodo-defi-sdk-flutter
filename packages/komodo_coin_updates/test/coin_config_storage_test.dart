@@ -1,4 +1,4 @@
-import 'package:komodo_coin_updates/src/data/coin_config_storage.dart';
+import 'package:komodo_coin_updates/src/coins_config/coin_config_storage.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
 

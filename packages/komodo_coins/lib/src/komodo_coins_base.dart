@@ -4,38 +4,19 @@ import 'dart:ui_web' show AssetManager;
 import 'package:flutter/foundation.dart';
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coins/src/asset_filter.dart';
-import 'package:komodo_coins/src/repository/runtime_update_config_repository.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// A high-level library that provides a simple way to access Komodo Platform
 /// coin data and seed nodes.
-///
-/// NB: [init] must be called before accessing any assets.
-typedef CoinConfigRepositoryBuilder = CoinConfigRepository Function(
-  RuntimeUpdateConfig config,
-  CoinConfigTransformer transformer,
-);
-
-typedef LocalProviderBuilder = CoinConfigProvider Function(
-  RuntimeUpdateConfig config,
-);
-
 class KomodoCoins {
   KomodoCoins({
     RuntimeUpdateConfigRepository? configRepository,
     CoinConfigTransformer? transformer,
-    CoinConfigRepositoryBuilder? repositoryBuilder,
-    LocalProviderBuilder? localProviderBuilder,
+    CoinConfigDataFactory? dataFactory,
   })  : _configRepository = configRepository ?? RuntimeUpdateConfigRepository(),
         _transformer = transformer ?? const CoinConfigTransformer(),
-        _repositoryBuilder = repositoryBuilder ??
-            ((config, transformer) => CoinConfigRepository.withDefaults(
-                  config,
-                  transformer: transformer,
-                )),
-        _localProviderBuilder =
-            localProviderBuilder ?? LocalAssetCoinConfigProvider.fromConfig;
+        _dataFactory = dataFactory ?? const DefaultCoinConfigDataFactory();
 
   /// Creates an instance of [KomodoCoins] and initializes it.
   static Future<KomodoCoins> create() async {
@@ -83,11 +64,11 @@ class KomodoCoins {
   Map<AssetId, Asset>? _assets;
   final Map<String, Map<AssetId, Asset>> _filterCache = {};
   bool _bootstrappedFromLocal = false;
+  RuntimeUpdateConfig? _runtimeConfig;
 
   final RuntimeUpdateConfigRepository _configRepository;
   final CoinConfigTransformer _transformer;
-  final CoinConfigRepositoryBuilder _repositoryBuilder;
-  final LocalProviderBuilder _localProviderBuilder;
+  final CoinConfigDataFactory _dataFactory;
 
   @mustCallSuper
   Future<void> init() async {
@@ -103,22 +84,32 @@ class KomodoCoins {
     return _assets!;
   }
 
-  Future<Map<AssetId, Asset>> fetchAssets() async {
-    // Load runtime config (from asset if available)
-    final runtimeConfig =
+  Future<RuntimeUpdateConfig> _getRuntimeConfig() async {
+    if (_runtimeConfig != null) return _runtimeConfig!;
+    _runtimeConfig =
         await _configRepository.tryLoad() ?? RuntimeUpdateConfig.withDefaults();
+    return _runtimeConfig!;
+  }
 
-    final repo = _repositoryBuilder(runtimeConfig, _transformer);
+  CoinConfigRepository _repoFor(RuntimeUpdateConfig config) =>
+      _dataFactory.createRepository(config, _transformer);
+
+  CoinConfigProvider _localProviderFor(RuntimeUpdateConfig config) =>
+      _dataFactory.createLocalProvider(config);
+
+  Map<AssetId, Asset> _mapAssets(List<Asset>? list) => <AssetId, Asset>{
+        for (final asset in list ?? const <Asset>[]) asset.id: asset,
+      };
+
+  Future<Map<AssetId, Asset>> fetchAssets() async {
+    final runtimeConfig = await _getRuntimeConfig();
+    final repo = _repoFor(runtimeConfig);
 
     if (_assets != null) {
       // If we previously bootstrapped from local and storage is now ready,
       // refresh memory from storage so subsequent calls use the persisted set.
       if (_bootstrappedFromLocal && await repo.coinConfigExists()) {
-        final refreshed = await repo.getAssets();
-        final mapped = <AssetId, Asset>{
-          for (final asset in refreshed ?? const <Asset>[]) asset.id: asset,
-        };
-        _assets = mapped;
+        _assets = _mapAssets(await repo.getAssets());
         _bootstrappedFromLocal = false;
       }
       return _assets!;
@@ -126,22 +117,17 @@ class KomodoCoins {
 
     // Prefer returning cached storage if present
     if (await repo.coinConfigExists()) {
-      final list = await repo.getAssets();
+      final mapped = _mapAssets(await repo.getAssets());
       // Trigger background update check (fire-and-forget)
       unawaited(_maybeUpdateFromRemote(repo));
-      final mapped = <AssetId, Asset>{
-        for (final asset in list ?? const <Asset>[]) asset.id: asset,
-      };
       _assets = mapped;
       return mapped;
     }
 
     // Cold start: load from local asset then fetch and persist latest remote
-    final localProvider = _localProviderBuilder(runtimeConfig);
+    final localProvider = _localProviderFor(runtimeConfig);
     final localAssets = await localProvider.getAssets();
-    final mapped = <AssetId, Asset>{
-      for (final asset in localAssets) asset.id: asset,
-    };
+    final mapped = _mapAssets(localAssets);
     _assets = mapped;
     _bootstrappedFromLocal = true;
 
@@ -166,7 +152,30 @@ class KomodoCoins {
     } catch (_) {}
   }
 
-  // Removed unused helper to satisfy lints after refactor
+  /// Returns the currently active coins commit hash.
+  ///
+  /// If storage exists, returns the stored commit. Otherwise returns the
+  /// bundled coins commit from the runtime config asset, when available.
+  Future<String?> getCurrentCommitHash() async {
+    final runtimeConfig = await _getRuntimeConfig();
+    final repo = _repoFor(runtimeConfig);
+
+    if (await repo.coinConfigExists()) {
+      return repo.getCurrentCommit();
+    }
+    return runtimeConfig.bundledCoinsRepoCommit;
+  }
+
+  /// Returns the latest commit hash available from the configured remote.
+  Future<String?> getLatestCommitHash() async {
+    final runtimeConfig = await _getRuntimeConfig();
+    final repo = _repoFor(runtimeConfig);
+    try {
+      return repo.coinConfigProvider.getLatestCommit();
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Returns the assets filtered using the provided [strategy].
   ///
@@ -193,7 +202,6 @@ class KomodoCoins {
     return result;
   }
 
-  // Helper methods
   Asset? findByTicker(String ticker, CoinSubClass subClass) {
     return all.entries
         .where((e) => e.key.id == ticker && e.key.subClass == subClass)

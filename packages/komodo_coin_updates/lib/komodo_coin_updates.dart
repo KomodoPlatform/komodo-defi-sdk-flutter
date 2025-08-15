@@ -6,8 +6,8 @@
 /// persists them to Hive, tracking the source commit for update checks.
 library;
 
-export 'src/config_transform.dart';
-export 'src/data/data.dart';
-export 'src/komodo_coin_updater.dart';
-export 'src/models/models.dart';
-export 'src/seed_node_updater.dart';
+export 'src/coins_config/_coins_config_index.dart';
+export 'src/komodo_coin_updater.dart' show KomodoCoinUpdater;
+export 'src/runtime_update_config/_runtime_update_config_index.dart'
+    show RuntimeUpdateConfig, RuntimeUpdateConfigRepository;
+export 'src/seed_node_updater.dart' show SeedNodeUpdater;

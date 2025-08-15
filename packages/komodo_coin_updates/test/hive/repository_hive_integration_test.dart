@@ -1,5 +1,5 @@
-import 'package:komodo_coin_updates/src/data/coin_config_repository.dart';
-import 'package:komodo_coin_updates/src/models/runtime_update_config.dart';
+import 'package:komodo_coin_updates/src/coins_config/coin_config_repository.dart';
+import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
 

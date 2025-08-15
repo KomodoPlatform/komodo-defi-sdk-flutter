@@ -95,6 +95,12 @@ class AssetManager implements IAssetProvider {
     await _initializeCustomTokens();
   }
 
+  /// Exposes the currently active commit hash for coins config.
+  Future<String?> get currentCoinsCommit async => _coins.getCurrentCommitHash();
+
+  /// Exposes the latest available commit hash for coins config.
+  Future<String?> get latestCoinsCommit async => _coins.getLatestCommitHash();
+
   void _refreshCoins(AssetFilterStrategy strategy) {
     if (_currentFilterStrategy?.strategyId == strategy.strategyId) return;
     _orderedCoins

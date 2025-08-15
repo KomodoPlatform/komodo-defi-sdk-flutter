@@ -1,11 +1,16 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart' show AssetBundle, rootBundle;
-import 'package:komodo_coin_updates/komodo_coin_updates.dart';
+import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 
 /// Loads the coins runtime update configuration from a build_config.json
 /// bundled in a dependency package (defaults to `komodo_defi_framework`).
 class RuntimeUpdateConfigRepository {
+  /// Creates a runtime update config repository.
+  ///
+  /// - [packageName]: the name of the package containing the runtime update config asset.
+  /// - [assetPath]: the path to the runtime update config asset.
+  /// - [bundle]: the asset bundle to load the runtime update config from.
   RuntimeUpdateConfigRepository({
     this.packageName = 'komodo_defi_framework',
     this.assetPath = 'app_build/build_config.json',

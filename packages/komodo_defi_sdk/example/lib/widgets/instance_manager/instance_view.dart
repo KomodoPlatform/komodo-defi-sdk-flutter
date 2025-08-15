@@ -295,6 +295,24 @@ class _InstanceViewState extends State<InstanceView> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             InstanceStatus(instance: widget.instance),
+            const SizedBox(height: 8),
+            FutureBuilder<List<String?>>(
+              future: () async {
+                final current =
+                    await widget.instance.sdk.assets.currentCoinsCommit;
+                final latest =
+                    await widget.instance.sdk.assets.latestCoinsCommit;
+                return [current, latest];
+              }(),
+              builder: (context, snapshot) {
+                final current = snapshot.data?[0] ?? '-';
+                final latest = snapshot.data?[1] ?? '-';
+                return Text(
+                  'Coins commit: current=$current, latest=$latest',
+                  style: Theme.of(context).textTheme.bodySmall,
+                );
+              },
+            ),
             const SizedBox(height: 16),
             Text(widget.statusMessage),
             if (currentUser != null) ...[
