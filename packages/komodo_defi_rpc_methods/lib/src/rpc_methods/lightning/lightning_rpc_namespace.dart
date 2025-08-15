@@ -3,8 +3,8 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 /// RPC namespace for Lightning Network operations.
 ///
 /// This namespace provides methods for managing Lightning Network functionality
-/// within the Komodo DeFi Framework. It includes operations for channel management,
-/// payment processing, and Lightning Network node administration.
+/// within the Komodo DeFi Framework. It includes operations for channel
+/// management, payment processing, and Lightning Network node administration.
 ///
 /// ## Key Features:
 ///
@@ -98,6 +98,51 @@ class LightningMethodsNamespace extends BaseRpcMethodNamespace {
     );
   }
 
+  /// Lists closed channels by optional filter.
+  Future<ListClosedChannelsByFilterResponse> listClosedChannelsByFilter({
+    required String coin,
+    LightningClosedChannelsFilter? filter,
+    String? rpcPass,
+  }) {
+    return execute(
+      ListClosedChannelsByFilterRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        coin: coin,
+        filter: filter,
+      ),
+    );
+  }
+
+  /// Gets a specific channel details by rpc_channel_id.
+  Future<GetChannelDetailsResponse> getChannelDetails({
+    required String coin,
+    required int rpcChannelId,
+    String? rpcPass,
+  }) {
+    return execute(
+      GetChannelDetailsRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        coin: coin,
+        rpcChannelId: rpcChannelId,
+      ),
+    );
+  }
+
+  /// Gets claimable balances (optionally including open channels balances).
+  Future<GetClaimableBalancesResponse> getClaimableBalances({
+    required String coin,
+    bool? includeOpenChannelsBalances,
+    String? rpcPass,
+  }) {
+    return execute(
+      GetClaimableBalancesRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        coin: coin,
+        includeOpenChannelsBalances: includeOpenChannelsBalances,
+      ),
+    );
+  }
+
   /// Opens a new Lightning channel with a specified node.
   ///
   /// This method initiates the opening of a Lightning channel by creating
@@ -119,8 +164,9 @@ class LightningMethodsNamespace extends BaseRpcMethodNamespace {
   /// - Channel amount is below minimum requirements
   Future<OpenChannelResponse> openChannel({
     required String coin,
-    required String nodeId,
-    required int amountSat,
+    required String nodeAddress,
+    required LightningChannelAmount amount,
+    int? pushMsat,
     LightningChannelOptions? options,
     String? rpcPass,
   }) {
@@ -128,8 +174,9 @@ class LightningMethodsNamespace extends BaseRpcMethodNamespace {
       OpenChannelRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         coin: coin,
-        nodeId: nodeId,
-        amountSat: amountSat,
+        nodeAddress: nodeAddress,
+        amount: amount,
+        pushMsat: pushMsat,
         options: options,
       ),
     );
@@ -141,7 +188,7 @@ class LightningMethodsNamespace extends BaseRpcMethodNamespace {
   /// can be closed cooperatively (mutual close) or unilaterally (force close).
   ///
   /// - [coin]: The coin ticker for the channel
-  /// - [channelId]: The ID of the channel to close
+  /// - [rpcChannelId]: The ID of the channel to close
   /// - [forceClose]: Whether to force close the channel unilaterally
   /// - [rpcPass]: Optional RPC password override
   ///
@@ -152,7 +199,7 @@ class LightningMethodsNamespace extends BaseRpcMethodNamespace {
   /// for a timeout period and higher on-chain fees.
   Future<CloseChannelResponse> closeChannel({
     required String coin,
-    required String channelId,
+    required int rpcChannelId,
     bool forceClose = false,
     String? rpcPass,
   }) {
@@ -160,7 +207,7 @@ class LightningMethodsNamespace extends BaseRpcMethodNamespace {
       CloseChannelRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         coin: coin,
-        channelId: channelId,
+        rpcChannelId: rpcChannelId,
         forceClose: forceClose,
       ),
     );
@@ -187,8 +234,8 @@ class LightningMethodsNamespace extends BaseRpcMethodNamespace {
   /// - Expiry timestamp
   Future<GenerateInvoiceResponse> generateInvoice({
     required String coin,
-    required int amountMsat,
     required String description,
+    int? amountMsat,
     int? expiry,
     String? rpcPass,
   }) {
@@ -196,8 +243,8 @@ class LightningMethodsNamespace extends BaseRpcMethodNamespace {
       GenerateInvoiceRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         coin: coin,
-        amountMsat: amountMsat,
         description: description,
+        amountMsat: amountMsat,
         expiry: expiry,
       ),
     );
@@ -224,16 +271,14 @@ class LightningMethodsNamespace extends BaseRpcMethodNamespace {
   /// - Payment fails after retries
   Future<PayInvoiceResponse> payInvoice({
     required String coin,
-    required String invoice,
-    int? maxFeeMsat,
+    required LightningPayment payment,
     String? rpcPass,
   }) {
     return execute(
       PayInvoiceRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         coin: coin,
-        invoice: invoice,
-        maxFeeMsat: maxFeeMsat,
+        payment: payment,
       ),
     );
   }

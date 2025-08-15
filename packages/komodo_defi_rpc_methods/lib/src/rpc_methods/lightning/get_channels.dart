@@ -20,7 +20,7 @@ class GetChannelsRequest
     this.openFilter,
     this.closedFilter,
   }) : super(
-         method: 'lightning::channels',
+         method: 'lightning::channels::list_open_channels_by_filter',
          rpcPass: rpcPass,
          mmrpc: RpcVersion.v2_0,
        );
@@ -36,15 +36,13 @@ class GetChannelsRequest
 
   @override
   Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{'coin': coin};
-
-    if (openFilter != null) {
-      params['filter'] = {'open': openFilter!.toJson()};
-    } else if (closedFilter != null) {
-      params['filter'] = {'closed': closedFilter!.toJson()};
-    }
-
-    return super.toJson().deepMerge({'params': params});
+    // This request now targets open channels list; use open filter if provided.
+    return super.toJson().deepMerge({
+      'params': {
+        'coin': coin,
+        if (openFilter != null) 'filter': openFilter!.toJson(),
+      },
+    });
   }
 
   @override
@@ -75,13 +73,10 @@ class GetChannelsResponse extends BaseResponse {
     return GetChannelsResponse(
       mmrpc: json.value<String>('mmrpc'),
       openChannels:
-          (result.valueOrNull<JsonList>('open_channels') ?? [])
+          (result.valueOrNull<JsonList>('channels') ?? [])
               .map(ChannelInfo.fromJson)
               .toList(),
-      closedChannels:
-          (result.valueOrNull<JsonList>('closed_channels') ?? [])
-              .map(ChannelInfo.fromJson)
-              .toList(),
+      closedChannels: const [],
     );
   }
 
@@ -90,9 +85,7 @@ class GetChannelsResponse extends BaseResponse {
   /// These channels are active and can be used for sending and receiving payments.
   final List<ChannelInfo> openChannels;
 
-  /// List of closed Lightning channels.
-  ///
-  /// These channels have been closed and include closure reasons when available.
+  /// List of closed Lightning channels (not populated by this request).
   final List<ChannelInfo> closedChannels;
 
   @override

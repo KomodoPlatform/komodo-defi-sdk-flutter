@@ -10,7 +10,6 @@ class SetOrderRequest
     required this.rel,
     required this.price,
     required this.volume,
-    this.orderType,
     this.minVolume,
     this.baseConfs,
     this.baseNota,
@@ -29,9 +28,6 @@ class SetOrderRequest
 
   /// Amount of [base] to trade (string numeric)
   final String volume;
-
-  /// Optional order type specification (maker/taker config)
-  final OrderType? orderType;
 
   /// Minimum acceptable fill amount (string numeric)
   final String? minVolume;
@@ -55,7 +51,6 @@ class SetOrderRequest
       'rel': rel,
       'price': price,
       'volume': volume,
-      if (orderType != null) 'order_type': orderType!.toJson(),
       if (minVolume != null) 'min_volume': minVolume,
       if (baseConfs != null) 'base_confs': baseConfs,
       if (baseNota != null) 'base_nota': baseNota,

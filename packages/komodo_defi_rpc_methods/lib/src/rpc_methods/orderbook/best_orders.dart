@@ -8,7 +8,8 @@ class BestOrdersRequest
     required String rpcPass,
     required this.coin,
     required this.action,
-    required this.volume,
+    required this.requestBy,
+    this.excludeMine,
   }) : super(method: 'best_orders', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// Coin ticker to trade
@@ -17,18 +18,19 @@ class BestOrdersRequest
   /// Desired trade direction
   final OrderType action;
 
-  /// Desired trade volume as a numeric string
-  final String volume;
+  /// Request-by selector (volume or number)
+  final RequestBy requestBy;
+
+  /// Whether to exclude orders created by the current wallet. Defaults to false in API.
+  final bool? excludeMine;
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
     'params': {
       'coin': coin,
       'action': action.toJson(),
-      'request_by': {
-        'type': 'volume',
-        'value': double.tryParse(volume) ?? volume,
-      },
+      if (excludeMine != null) 'exclude_mine': excludeMine,
+      'request_by': requestBy.toJson(),
     },
   });
 

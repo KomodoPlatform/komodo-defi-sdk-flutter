@@ -154,6 +154,9 @@ class TradingMethodsNamespace extends BaseRpcMethodNamespace {
     int? pageNumber,
     String? fromUuid,
     String? coin,
+    String? otherCoin,
+    int? fromTimestamp,
+    int? toTimestamp,
     String? rpcPass,
   }) {
     return execute(
@@ -163,6 +166,9 @@ class TradingMethodsNamespace extends BaseRpcMethodNamespace {
         pageNumber: pageNumber,
         fromUuid: fromUuid,
         coin: coin,
+        otherCoin: otherCoin,
+        fromTimestamp: fromTimestamp,
+        toTimestamp: toTimestamp,
       ),
     );
   }

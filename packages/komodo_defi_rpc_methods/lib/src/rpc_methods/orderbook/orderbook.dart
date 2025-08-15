@@ -2,13 +2,13 @@ import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to retrieve orderbook information for a trading pair.
-/// 
+///
 /// This RPC method fetches the current state of the orderbook for a specified
 /// trading pair, including all active buy and sell orders.
 class OrderbookRequest
     extends BaseRequest<OrderbookResponse, GeneralErrorResponse> {
   /// Creates a new [OrderbookRequest].
-  /// 
+  ///
   /// - [rpcPass]: RPC password for authentication
   /// - [base]: The base coin of the trading pair
   /// - [rel]: The rel/quote coin of the trading pair
@@ -16,29 +16,22 @@ class OrderbookRequest
     required String rpcPass,
     required this.base,
     required this.rel,
-  }) : super(
-         method: 'orderbook',
-         rpcPass: rpcPass,
-         mmrpc: RpcVersion.v2_0,
-       );
+  }) : super(method: 'orderbook', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// The base coin of the trading pair.
-  /// 
+  ///
   /// This is the coin being bought or sold in orders.
   final String base;
-  
+
   /// The rel/quote coin of the trading pair.
-  /// 
+  ///
   /// This is the coin used to price the base coin.
   final String rel;
 
   @override
   Map<String, dynamic> toJson() {
     return super.toJson().deepMerge({
-      'params': {
-        'base': base,
-        'rel': rel,
-      },
+      'params': {'base': base, 'rel': rel},
     });
   }
 
@@ -48,12 +41,12 @@ class OrderbookRequest
 }
 
 /// Response containing orderbook data for a trading pair.
-/// 
+///
 /// This response provides comprehensive orderbook information including
 /// all active bids and asks, along with metadata about the orderbook state.
 class OrderbookResponse extends BaseResponse {
   /// Creates a new [OrderbookResponse].
-  /// 
+  ///
   /// - [mmrpc]: The RPC version
   /// - [base]: The base coin of the trading pair
   /// - [rel]: The rel/quote coin of the trading pair
@@ -91,34 +84,34 @@ class OrderbookResponse extends BaseResponse {
 
   /// The base coin of the trading pair.
   final String base;
-  
+
   /// The rel/quote coin of the trading pair.
   final String rel;
-  
+
   /// List of buy orders (bids) in the orderbook.
-  /// 
+  ///
   /// These are orders from users wanting to buy the base coin with the rel coin.
   /// Orders are typically sorted by price in descending order (best bid first).
   final List<OrderInfo> bids;
-  
+
   /// List of sell orders (asks) in the orderbook.
-  /// 
+  ///
   /// These are orders from users wanting to sell the base coin for the rel coin.
   /// Orders are typically sorted by price in ascending order (best ask first).
   final List<OrderInfo> asks;
-  
+
   /// Total number of bid orders in the orderbook.
-  /// 
+  ///
   /// This may be larger than the length of [bids] if pagination is applied.
   final int numBids;
-  
+
   /// Total number of ask orders in the orderbook.
-  /// 
+  ///
   /// This may be larger than the length of [asks] if pagination is applied.
   final int numAsks;
-  
+
   /// Unix timestamp of when this orderbook snapshot was taken.
-  /// 
+  ///
   /// Useful for determining the freshness of the orderbook data.
   final int timestamp;
 
@@ -138,39 +131,70 @@ class OrderbookResponse extends BaseResponse {
 }
 
 /// Represents the type of order cancellation.
-/// 
+///
 /// This class provides factory methods to create different cancellation types
 /// for the cancel_all_orders RPC method.
 class CancelOrdersType {
   /// Creates a cancellation type to cancel all orders across all coins.
-  CancelOrdersType.all() : coin = null, _type = 'all';
-  
-  /// Creates a cancellation type to cancel all orders for a specific coin.
-  /// 
-  /// - [coin]: The ticker of the coin whose orders should be cancelled
-  CancelOrdersType.coin(this.coin) : _type = 'coin';
+  CancelOrdersType.all()
+    : ticker = null,
+      base = null,
+      rel = null,
+      _type = 'All';
 
-  /// The coin ticker for coin-specific cancellation.
-  /// 
-  /// `null` when cancelling all orders across all coins.
-  final String? coin;
-  
+  /// Creates a cancellation type to cancel all orders for a specific coin.
+  ///
+  /// - [coin]: The ticker of the coin whose orders should be cancelled
+  CancelOrdersType.coin(String coin)
+    : ticker = coin,
+      base = null,
+      rel = null,
+      _type = 'Coin';
+
+  /// Creates a cancellation type to cancel all orders for a specific pair.
+  ///
+  /// - [base]: The base coin ticker
+  /// - [rel]: The rel/quote coin ticker
+  CancelOrdersType.pair({required String base, required String rel})
+    : base = base,
+      rel = rel,
+      ticker = null,
+      _type = 'Pair';
+
+  /// The coin ticker for coin-specific cancellation (used when [_type] == 'Coin').
+  final String? ticker;
+
+  /// Base coin ticker (used when [_type] == 'Pair').
+  final String? base;
+
+  /// Rel/quote coin ticker (used when [_type] == 'Pair').
+  final String? rel;
+
   /// Internal type identifier.
   final String _type;
 
   /// Converts this [CancelOrdersType] to its JSON representation.
-  /// 
+  ///
   /// Returns different structures based on the cancellation type:
-  /// - For all orders: `{"type": "all"}`
-  /// - For specific coin: `{"type": "coin", "data": {"coin": "TICKER"}}`
+  /// - For all orders: `{"type": "All"}`
+  /// - For specific coin: `{"type": "Coin", "data": {"ticker": "TICKER"}}`
+  /// - For specific pair: `{"type": "Pair", "data": {"base": "BASE", "rel": "REL"}}`
   Map<String, dynamic> toJson() {
-    if (_type == 'all') {
-      return {'type': 'all'};
-    } else {
+    if (_type == 'All') {
+      return {'type': 'All'};
+    }
+
+    if (_type == 'Coin') {
       return {
-        'type': 'coin',
-        'data': {'coin': coin},
+        'type': 'Coin',
+        'data': {'ticker': ticker},
       };
     }
+
+    // Pair
+    return {
+      'type': 'Pair',
+      'data': {'base': base, 'rel': rel},
+    };
   }
 }

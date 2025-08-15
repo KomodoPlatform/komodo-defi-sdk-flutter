@@ -10,7 +10,7 @@ class GetPaymentHistoryRequest
     this.filter,
     this.pagination,
   }) : super(
-         method: 'lightning::get_payment_history',
+         method: 'lightning::payments::list_payments_by_filter',
          rpcPass: rpcPass,
          mmrpc: RpcVersion.v2_0,
        );

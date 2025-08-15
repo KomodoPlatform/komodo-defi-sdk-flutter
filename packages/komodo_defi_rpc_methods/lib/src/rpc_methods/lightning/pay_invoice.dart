@@ -7,10 +7,9 @@ class PayInvoiceRequest
   PayInvoiceRequest({
     required String rpcPass,
     required this.coin,
-    required this.invoice,
-    this.maxFeeMsat,
+    required this.payment,
   }) : super(
-         method: 'lightning::pay_invoice',
+         method: 'lightning::payments::send_payment',
          rpcPass: rpcPass,
          mmrpc: RpcVersion.v2_0,
        );
@@ -18,19 +17,12 @@ class PayInvoiceRequest
   /// Coin ticker for the Lightning-enabled asset (e.g. 'BTC')
   final String coin;
 
-  /// BOLT 11 invoice string to be paid
-  final String invoice;
-
-  /// Optional fee limit in millisatoshis
-  final int? maxFeeMsat;
+  /// Payment union: {type: 'invoice'|'keysend', ...}
+  final LightningPayment payment;
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-    'params': {
-      'coin': coin,
-      'invoice': invoice,
-      if (maxFeeMsat != null) 'max_fee_msat': maxFeeMsat,
-    },
+    'params': {'coin': coin, 'payment': payment.toJson()},
   });
 
   @override
@@ -52,8 +44,8 @@ class PayInvoiceResponse extends BaseResponse {
 
     return PayInvoiceResponse(
       mmrpc: json.value<String>('mmrpc'),
-      preimage: result.value<String>('preimage'),
-      feePaidMsat: result.value<int>('fee_paid_msat'),
+      preimage: result.valueOrNull<String?>('preimage') ?? '',
+      feePaidMsat: result.valueOrNull<int?>('fee_paid_msat') ?? 0,
       routeHops: result.valueOrNull<List<String>?>('route_hops'),
     );
   }

@@ -7,10 +7,10 @@ class CloseChannelRequest
   CloseChannelRequest({
     required String rpcPass,
     required this.coin,
-    required this.channelId,
+    required this.rpcChannelId,
     this.forceClose = false,
   }) : super(
-         method: 'lightning::close_channel',
+         method: 'lightning::channels::close_channel',
          rpcPass: rpcPass,
          mmrpc: RpcVersion.v2_0,
        );
@@ -18,8 +18,8 @@ class CloseChannelRequest
   /// Coin ticker for the Lightning-enabled asset (e.g. 'BTC')
   final String coin;
 
-  /// Identifier of the channel to close
-  final String channelId;
+  /// RPC identifier of the channel to close (integer id)
+  final int rpcChannelId;
 
   /// If true, attempts an uncooperative force-close
   final bool forceClose;
@@ -28,7 +28,7 @@ class CloseChannelRequest
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
     'params': {
       'coin': coin,
-      'channel_id': channelId,
+      'rpc_channel_id': rpcChannelId,
       if (forceClose) 'force_close': forceClose,
     },
   });
@@ -52,10 +52,7 @@ class CloseChannelResponse extends BaseResponse {
 
     return CloseChannelResponse(
       mmrpc: json.value<String>('mmrpc'),
-      channelId:
-          result.valueOrNull<String?>('channel_id') ??
-          result.valueOrNull<String?>('rpc_channel_id')?.toString() ??
-          '',
+      channelId: result.valueOrNull<String?>('channel_id') ?? '',
       closingTxId:
           result.valueOrNull<String?>('closing_tx_id') ??
           result.valueOrNull<String?>('tx_id'),

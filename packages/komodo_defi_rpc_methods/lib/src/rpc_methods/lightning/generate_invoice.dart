@@ -11,7 +11,7 @@ class GenerateInvoiceRequest
     this.amountMsat,
     this.expiry,
   }) : super(
-         method: 'lightning::generate_invoice',
+         method: 'lightning::payments::generate_invoice',
          rpcPass: rpcPass,
          mmrpc: RpcVersion.v2_0,
        );

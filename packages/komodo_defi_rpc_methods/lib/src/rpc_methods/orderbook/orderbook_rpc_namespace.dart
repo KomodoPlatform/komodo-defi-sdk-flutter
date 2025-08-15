@@ -125,7 +125,8 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
   Future<BestOrdersResponse> bestOrders({
     required String coin,
     required OrderType action,
-    required String volume,
+    required RequestBy requestBy,
+    bool? excludeMine,
     String? rpcPass,
   }) {
     return execute(
@@ -133,7 +134,8 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         coin: coin,
         action: action,
-        volume: volume,
+        requestBy: requestBy,
+        excludeMine: excludeMine,
       ),
     );
   }
@@ -148,7 +150,6 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
   /// - [rel]: The rel/quote coin to trade
   /// - [price]: The price per unit of base coin in rel coin
   /// - [volume]: The amount of base coin to trade
-  /// - [orderType]: Optional order type specification
   /// - [minVolume]: Optional minimum acceptable volume for partial fills (string numeric)
   /// - [baseConfs]: Optional required confirmations for base coin (int)
   /// - [baseNota]: Optional NOTA requirement for base coin (bool)
@@ -170,7 +171,6 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
     required String rel,
     required String price,
     required String volume,
-    OrderType? orderType,
     String? minVolume,
     int? baseConfs,
     bool? baseNota,
@@ -185,7 +185,6 @@ class OrderbookMethodsNamespace extends BaseRpcMethodNamespace {
         rel: rel,
         price: price,
         volume: volume,
-        orderType: orderType,
         minVolume: minVolume,
         baseConfs: baseConfs,
         baseNota: baseNota,

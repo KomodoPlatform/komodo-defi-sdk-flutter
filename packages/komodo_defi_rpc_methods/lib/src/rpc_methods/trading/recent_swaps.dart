@@ -4,44 +4,19 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// Request to get recent swaps (history)
 class RecentSwapsRequest
     extends BaseRequest<RecentSwapsResponse, GeneralErrorResponse> {
-  RecentSwapsRequest({
-    required String rpcPass,
-    this.limit,
-    this.pageNumber,
-    this.fromUuid,
-    this.coin,
-  }) : super(
-         method: 'my_recent_swaps',
-         rpcPass: rpcPass,
-         mmrpc: RpcVersion.v2_0,
-       );
+  RecentSwapsRequest({required String rpcPass, this.filter})
+    : super(
+        method: 'my_recent_swaps',
+        rpcPass: rpcPass,
+        mmrpc: RpcVersion.v2_0,
+      );
 
-  /// Maximum number of swaps to return
-  final int? limit;
-
-  /// Page number for pagination (1-based)
-  final int? pageNumber;
-
-  /// UUID to start from (exclusive) for pagination
-  final String? fromUuid;
-
-  /// Optional coin filter; limits to swaps involving this coin
-  final String? coin;
+  /// Optional typed filter
+  final RecentSwapsFilter? filter;
 
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-    'params': {
-      if (limit != null ||
-          pageNumber != null ||
-          fromUuid != null ||
-          coin != null)
-        'filter': {
-          if (limit != null) 'limit': limit,
-          if (pageNumber != null) 'page_number': pageNumber,
-          if (fromUuid != null) 'from_uuid': fromUuid,
-          if (coin != null) 'my_coin': coin,
-        },
-    },
+    'params': {if (filter != null) 'filter': filter!.toJson()},
   });
 
   @override
