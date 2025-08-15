@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
+import 'package:kdf_sdk_example/blocs/coins_commit/coins_commit_cubit.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/auth_form_widget.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_status.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
@@ -30,11 +31,19 @@ class InstanceView extends StatefulWidget {
 }
 
 class _InstanceViewState extends State<InstanceView> {
+  late final CoinsCommitCubit _coinsCommitCubit;
   @override
   void initState() {
     super.initState();
     context.read<AuthBloc>().add(const AuthKnownUsersFetched());
     context.read<AuthBloc>().add(const AuthInitialStateChecked());
+    _coinsCommitCubit = CoinsCommitCubit(sdk: widget.instance.sdk)..load();
+  }
+
+  @override
+  void dispose() {
+    _coinsCommitCubit.close();
+    super.dispose();
   }
 
   Future<void> _deleteWallet(String walletName) async {
@@ -296,17 +305,11 @@ class _InstanceViewState extends State<InstanceView> {
           children: [
             InstanceStatus(instance: widget.instance),
             const SizedBox(height: 8),
-            FutureBuilder<List<String?>>(
-              future: () async {
-                final current =
-                    await widget.instance.sdk.assets.currentCoinsCommit;
-                final latest =
-                    await widget.instance.sdk.assets.latestCoinsCommit;
-                return [current, latest];
-              }(),
-              builder: (context, snapshot) {
-                final current = snapshot.data?[0] ?? '-';
-                final latest = snapshot.data?[1] ?? '-';
+            BlocBuilder<CoinsCommitCubit, CoinsCommitState>(
+              bloc: _coinsCommitCubit,
+              builder: (context, coinsState) {
+                final current = coinsState.current ?? '-';
+                final latest = coinsState.latest ?? '-';
                 return Text(
                   'Coins commit: current=$current, latest=$latest',
                   style: Theme.of(context).textTheme.bodySmall,
