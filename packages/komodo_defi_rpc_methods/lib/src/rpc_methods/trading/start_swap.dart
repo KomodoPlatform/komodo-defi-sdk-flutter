@@ -1,5 +1,6 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:decimal/decimal.dart';
 
 /// Request to initiate a new atomic swap.
 ///
@@ -56,6 +57,29 @@ class SwapRequest {
     this.destPubkey,
     this.matchBy,
   });
+
+  /// Decimal-friendly factory to avoid precision loss in UI->RPC path
+  factory SwapRequest.fromDecimals({
+    required String base,
+    required String rel,
+    required Decimal baseCoinAmount,
+    required Decimal relCoinAmount,
+    required SwapMethod method,
+    String? senderPubkey,
+    String? destPubkey,
+    MatchBy? matchBy,
+  }) {
+    return SwapRequest(
+      base: base,
+      rel: rel,
+      baseCoinAmount: baseCoinAmount.toString(),
+      relCoinAmount: relCoinAmount.toString(),
+      method: method,
+      senderPubkey: senderPubkey,
+      destPubkey: destPubkey,
+      matchBy: matchBy,
+    );
+  }
 
   /// The base coin ticker.
   ///

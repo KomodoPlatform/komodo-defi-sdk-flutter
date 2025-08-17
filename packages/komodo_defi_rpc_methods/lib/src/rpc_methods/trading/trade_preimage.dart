@@ -1,6 +1,7 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:rational/rational.dart';
+import 'package:decimal/decimal.dart';
 
 /// Request to calculate trade preimage (fees, validation)
 class TradePreimageRequest
@@ -18,6 +19,25 @@ class TradePreimageRequest
          rpcPass: rpcPass,
          mmrpc: RpcVersion.v2_0,
        );
+
+  /// Decimal-friendly constructor to avoid precision loss in UI->RPC path
+  TradePreimageRequest.decimal({
+    required String rpcPass,
+    required String base,
+    required String rel,
+    required SwapMethod swapMethod,
+    Decimal? volume,
+    bool? max,
+    Decimal? price,
+  }) : this(
+          rpcPass: rpcPass,
+          base: base,
+          rel: rel,
+          swapMethod: swapMethod,
+          volume: volume?.toString(),
+          max: max,
+          price: price?.toString(),
+        );
 
   /// Base coin ticker for the potential trade
   final String base;

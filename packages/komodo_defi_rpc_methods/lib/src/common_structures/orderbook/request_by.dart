@@ -3,11 +3,16 @@
 /// Mirrors the KDF API structure:
 /// - type: "volume" | "number"
 /// - value: Decimal (as string) when type == volume, Unsigned int when type == number
+import 'package:decimal/decimal.dart';
 class RequestBy {
   RequestBy._(this.type, this.volumeValue, this.numberValue);
 
   /// Create a volume-based request_by with a decimal value represented as string.
   factory RequestBy.volume(String value) => RequestBy._('volume', value, null);
+
+  /// Decimal-friendly constructor to avoid precision loss in UI->RPC path
+  factory RequestBy.volumeDecimal(Decimal value) =>
+      RequestBy._('volume', value.toString(), null);
 
   /// Create a number-based request_by with an unsigned integer value.
   factory RequestBy.number(int value) => RequestBy._('number', null, value);

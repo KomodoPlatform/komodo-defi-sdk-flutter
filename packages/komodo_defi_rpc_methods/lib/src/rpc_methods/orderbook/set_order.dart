@@ -1,5 +1,6 @@
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:decimal/decimal.dart';
 
 /// Request to create a new order
 class SetOrderRequest
@@ -16,6 +17,31 @@ class SetOrderRequest
     this.relConfs,
     this.relNota,
   }) : super(method: 'setprice', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
+
+  /// Decimal-friendly constructor to avoid precision loss in UI->RPC path
+  SetOrderRequest.decimal({
+    required String rpcPass,
+    required String base,
+    required String rel,
+    required Decimal price,
+    required Decimal volume,
+    Decimal? minVolume,
+    int? baseConfs,
+    bool? baseNota,
+    int? relConfs,
+    bool? relNota,
+  }) : this(
+          rpcPass: rpcPass,
+          base: base,
+          rel: rel,
+          price: price.toString(),
+          volume: volume.toString(),
+          minVolume: minVolume?.toString(),
+          baseConfs: baseConfs,
+          baseNota: baseNota,
+          relConfs: relConfs,
+          relNota: relNota,
+        );
 
   /// Base coin ticker to trade
   final String base;

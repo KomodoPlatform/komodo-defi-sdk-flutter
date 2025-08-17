@@ -60,10 +60,10 @@ class PlacedOrderSummary {
   /// Whether this is a buy or sell order.
   final OrderSide side;
 
-  /// Price per unit of [base] in [rel].
+  /// Price per unit of [base] in [rel]. Uses Decimal to preserve full precision.
   final Decimal price;
 
-  /// Order volume in [base] units.
+  /// Order volume in [base] units. Uses Decimal to preserve full precision.
   final Decimal volume;
 
   /// Creation timestamp (local clock).
