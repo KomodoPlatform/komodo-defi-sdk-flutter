@@ -126,7 +126,7 @@ class TradePreimageResponse extends BaseResponse {
 }
 
 /// Signed big integer parts used by MM2 rational encoding
-const _mm2LimbBase = 4294967296; // 2^32
+const _mm2LimbBase = 1 << 32; // 2^32
 
 BigInt _bigIntFromMm2Json(List<dynamic> json) {
   final sign = json[0] as int;

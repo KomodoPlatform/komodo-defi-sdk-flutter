@@ -140,7 +140,7 @@ class CancelOrdersType {
     : ticker = null,
       base = null,
       rel = null,
-      _type = 'All';
+      _type = 'all';
 
   /// Creates a cancellation type to cancel all orders for a specific coin.
   ///
@@ -149,7 +149,7 @@ class CancelOrdersType {
     : ticker = coin,
       base = null,
       rel = null,
-      _type = 'Coin';
+      _type = 'coin';
 
   /// Creates a cancellation type to cancel all orders for a specific pair.
   ///
@@ -159,15 +159,15 @@ class CancelOrdersType {
     : base = base,
       rel = rel,
       ticker = null,
-      _type = 'Pair';
+      _type = 'pair';
 
-  /// The coin ticker for coin-specific cancellation (used when [_type] == 'Coin').
+  /// The coin ticker for coin-specific cancellation (used when [_type] == 'coin').
   final String? ticker;
 
-  /// Base coin ticker (used when [_type] == 'Pair').
+  /// Base coin ticker (used when [_type] == 'pair').
   final String? base;
 
-  /// Rel/quote coin ticker (used when [_type] == 'Pair').
+  /// Rel/quote coin ticker (used when [_type] == 'pair').
   final String? rel;
 
   /// Internal type identifier.
@@ -176,24 +176,24 @@ class CancelOrdersType {
   /// Converts this [CancelOrdersType] to its JSON representation.
   ///
   /// Returns different structures based on the cancellation type:
-  /// - For all orders: `{"type": "All"}`
-  /// - For specific coin: `{"type": "Coin", "data": {"ticker": "TICKER"}}`
-  /// - For specific pair: `{"type": "Pair", "data": {"base": "BASE", "rel": "REL"}}`
+  /// - For all orders: `{"type": "all"}`
+  /// - For specific coin: `{"type": "coin", "data": {"coin": "TICKER"}}`
+  /// - For specific pair: `{"type": "pair", "data": {"base": "BASE", "rel": "REL"}}`
   Map<String, dynamic> toJson() {
-    if (_type == 'All') {
-      return {'type': 'All'};
+    if (_type == 'all') {
+      return {'type': 'all'};
     }
 
-    if (_type == 'Coin') {
+    if (_type == 'coin') {
       return {
-        'type': 'Coin',
-        'data': {'ticker': ticker},
+        'type': 'coin',
+        'data': {'coin': ticker},
       };
     }
 
     // Pair
     return {
-      'type': 'Pair',
+      'type': 'pair',
       'data': {'base': base, 'rel': rel},
     };
   }
