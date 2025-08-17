@@ -11,10 +11,146 @@ CCXT-compatible API bridge (Shelf) for KDF via SDK.
 ### Run
 
 ```sh
-dart run komodo_ccxt_bridge serve --host 0.0.0.0 --port 8080
+dart run komodo_ccxt_bridge serve --host 0.0.0.0 --port 8080 \
+  --kdf-url http://127.0.0.1:7783 --kdf-pass <rpc-userpass>
 ```
 
 Health check: `GET /health` → `ok`.
+
+#### Serve options
+
+- `--host` (default `0.0.0.0`)
+- `--port` (default `8080`)
+- `--kdf-url` (default `http://127.0.0.1:7783`) Remote KDF RPC HTTP endpoint
+- `--kdf-pass` RPC userpass for the KDF
+
+### Endpoints
+
+- `GET /health`
+
+  - Returns `ok`.
+
+- `GET /markets`
+
+  - Returns enabled symbols from the node.
+  - Response: `{ "symbols": ["KMD", "BTC", ...] }`
+
+- `GET /orderbook?base=KMD&rel=BTC`
+
+  - Returns a simplified orderbook snapshot.
+  - Response:
+
+    ```json
+    {
+      "symbol": "KMD/BTC",
+      "bids": [["price","max_volume"], ...],
+      "asks": [["price","max_volume"], ...],
+      "timestamp": 1712345678
+    }
+    ```
+
+- `GET /balance?coin=KMD`
+
+  - Response:
+
+    ```json
+    { "coin": "KMD", "address": "...", "balance": "1.23", "unspendable": "0" }
+    ```
+
+- `POST /orders`
+
+  - Body:
+
+    ```json
+    {
+      "base": "KMD",
+      "rel": "BTC",
+      "price": "0.00001",
+      "volume": "100",
+      "minVolume": "10",
+      "baseConfs": 1,
+      "baseNota": false,
+      "relConfs": 1,
+      "relNota": false
+    }
+    ```
+
+  - Response: the created order info from KDF.
+
+- `DELETE /orders/<uuid>`
+
+  - Response: `{ "cancelled": true }`
+
+- `GET /orders/open`
+
+  - Response: `{ "orders": [ ...MyOrderInfo... ] }`
+
+- `GET /orders/<uuid>`
+
+  - Looks up the order in `my_orders` and returns it if present.
+
+- `GET /trades/my?limit=50&page=1&fromUuid=...&myCoin=KMD&otherCoin=BTC&fromTs=...&toTs=...`
+  - Response: `{ "swaps": [ ...SwapInfo... ] }`
+
+### Examples
+
+- Run server:
+
+```sh
+dart run komodo_ccxt_bridge serve \
+  --kdf-url http://127.0.0.1:7783 \
+  --kdf-pass "$KDF_USERPASS"
+```
+
+- Health:
+
+```sh
+curl -s http://localhost:8080/health
+```
+
+- Markets (enabled coins):
+
+```sh
+curl -s http://localhost:8080/markets | jq
+```
+
+- Orderbook for `KMD/BTC`:
+
+```sh
+curl -s "http://localhost:8080/orderbook?base=KMD&rel=BTC" | jq
+```
+
+- Balance for `KMD`:
+
+```sh
+curl -s "http://localhost:8080/balance?coin=KMD" | jq
+```
+
+- Create maker order:
+
+```sh
+curl -sX POST http://localhost:8080/orders \
+  -H 'content-type: application/json' \
+  -d '{"base":"KMD","rel":"BTC","price":"0.00001","volume":"100"}' | jq
+```
+
+- Cancel order:
+
+```sh
+curl -sX DELETE http://localhost:8080/orders/<uuid> | jq
+```
+
+- My open orders:
+
+```sh
+curl -s http://localhost:8080/orders/open | jq
+```
+
+- My recent swaps:
+
+```sh
+curl -s 'http://localhost:8080/trades/my?limit=50' | jq
+```
 
 ---
 
@@ -47,9 +183,9 @@ $ komodo_ccxt_bridge --help
 To run all unit tests use the following command:
 
 ```sh
-$ dart pub global activate coverage 1.2.0
-$ dart test --coverage=coverage
-$ dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info
+dart pub global activate coverage 1.2.0
+dart test --coverage=coverage
+dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info
 ```
 
 To view the generated coverage report you can use [lcov](https://github.com/linux-test-project/lcov)
