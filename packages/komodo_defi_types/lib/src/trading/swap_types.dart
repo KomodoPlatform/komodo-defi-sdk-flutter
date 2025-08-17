@@ -46,6 +46,8 @@ class PlacedOrderSummary {
     required this.volume,
     required this.timestamp,
     required this.isMine,
+    this.priceString,
+    this.volumeString,
   });
 
   /// Unique identifier of the order created by the DEX.
@@ -71,6 +73,12 @@ class PlacedOrderSummary {
 
   /// True if the order belongs to the current wallet.
   final bool isMine;
+
+  /// Optional exact price string as returned/accepted by API
+  final String? priceString;
+
+  /// Optional exact volume string as returned/accepted by API
+  final String? volumeString;
 }
 
 /// One aggregated level/entry in an orderbook snapshot.
@@ -86,6 +94,9 @@ class OrderbookEntry {
     this.uuid,
     this.pubkey,
     this.age,
+    this.priceString,
+    this.baseAmountString,
+    this.relAmountString,
   });
 
   /// Price for this order level (base in rel).
@@ -105,6 +116,15 @@ class OrderbookEntry {
 
   /// How long the order has been on the book.
   final Duration? age;
+
+  /// Optional exact price string as returned by API
+  final String? priceString;
+
+  /// Optional exact base amount string as returned by API
+  final String? baseAmountString;
+
+  /// Optional exact rel amount string as returned by API
+  final String? relAmountString;
 }
 
 /// Immutable snapshot of an orderbook for a trading pair.
@@ -166,13 +186,16 @@ class SwapProgress {
 
 /// Simple coin+amount pair using Decimal precision.
 class CoinAmount {
-  CoinAmount({required this.coin, required this.amount});
+  CoinAmount({required this.coin, required this.amount, this.amountString});
 
   /// Coin ticker, e.g. "BTC".
   final String coin;
 
   /// Amount in coin units using Decimal precision.
   final Decimal amount;
+
+  /// Optional exact amount string as returned/accepted by API
+  final String? amountString;
 }
 
 /// Total fee entry for a coin with required balance information.
@@ -181,6 +204,8 @@ class TotalFeeEntry {
     required this.coin,
     required this.amount,
     required this.requiredBalance,
+    this.amountString,
+    this.requiredBalanceString,
   });
 
   /// Coin ticker, e.g. "KMD".
@@ -191,6 +216,12 @@ class TotalFeeEntry {
 
   /// Total required balance to perform the trade.
   final Decimal requiredBalance;
+
+  /// Optional exact amount string as returned by API
+  final String? amountString;
+
+  /// Optional exact required balance string as returned by API
+  final String? requiredBalanceString;
 }
 
 /// High-level estimate produced by a trade preimage call.
@@ -234,6 +265,8 @@ class SwapSummary {
     required this.errorEvents,
     this.startedAt,
     this.finishedAt,
+    this.makerAmountString,
+    this.takerAmountString,
   });
 
   /// Swap UUID.
@@ -266,6 +299,12 @@ class SwapSummary {
   /// Finish time, if known.
   final DateTime? finishedAt;
 
+  /// Optional exact maker amount string
+  final String? makerAmountString;
+
+  /// Optional exact taker amount string
+  final String? takerAmountString;
+
   /// True if swap reached a terminal state.
   bool get isComplete => finishedAt != null;
 
@@ -283,6 +322,8 @@ class BestOrder {
     this.pubkey,
     this.age,
     this.address,
+    this.priceString,
+    this.maxVolumeString,
   });
 
   final String uuid;
@@ -292,6 +333,12 @@ class BestOrder {
   final String? pubkey;
   final Duration? age;
   final String? address;
+
+  /// Optional exact price string as returned by API
+  final String? priceString;
+
+  /// Optional exact max volume string as returned by API
+  final String? maxVolumeString;
 }
 
 /// Result of aggregating best orders for a taker volume query.
@@ -303,7 +350,7 @@ class BestOrdersResult {
 
 /// One level fill of a taker orderbook sweep on a specific pair.
 class LevelFill {
-  LevelFill({required this.price, required this.base, required this.rel});
+  LevelFill({required this.price, required this.base, required this.rel, this.priceString, this.baseString, this.relString});
 
   /// Price (base in rel) at this level.
   final Decimal price;
@@ -313,6 +360,15 @@ class LevelFill {
 
   /// Rel amount corresponding to [base] at [price].
   final Decimal rel;
+
+  /// Optional exact price string
+  final String? priceString;
+
+  /// Optional exact base amount string
+  final String? baseString;
+
+  /// Optional exact rel amount string
+  final String? relString;
 }
 
 /// Estimated taker fill on a pair, including average price and slippage breakdown.
@@ -322,6 +378,9 @@ class TakerFillEstimate {
     required this.totalRel,
     required this.averagePrice,
     required this.fills,
+    this.totalBaseString,
+    this.totalRelString,
+    this.averagePriceString,
   });
 
   /// Total base amount to be filled.
@@ -335,6 +394,15 @@ class TakerFillEstimate {
 
   /// Per-level fills that compose the total.
   final List<LevelFill> fills;
+
+  /// Optional exact total base string
+  final String? totalBaseString;
+
+  /// Optional exact total rel string
+  final String? totalRelString;
+
+  /// Optional exact average price string
+  final String? averagePriceString;
 }
 
 /// High-level taker quote that combines orderbook sweep with a fee preimage.
