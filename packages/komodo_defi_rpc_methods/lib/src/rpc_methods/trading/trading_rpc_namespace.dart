@@ -162,13 +162,15 @@ class TradingMethodsNamespace extends BaseRpcMethodNamespace {
     return execute(
       RecentSwapsRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
-        limit: limit,
-        pageNumber: pageNumber,
-        fromUuid: fromUuid,
-        coin: coin,
-        otherCoin: otherCoin,
-        fromTimestamp: fromTimestamp,
-        toTimestamp: toTimestamp,
+        filter: RecentSwapsFilter(
+          limit: limit,
+          pageNumber: pageNumber,
+          fromUuid: fromUuid,
+          myCoin: coin,
+          otherCoin: otherCoin,
+          fromTimestamp: fromTimestamp,
+          toTimestamp: toTimestamp,
+        ),
       ),
     );
   }
