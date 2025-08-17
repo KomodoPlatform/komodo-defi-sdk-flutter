@@ -45,7 +45,7 @@ class PlacedOrderSummary {
     required this.price,
     required this.volume,
     required this.timestamp,
-    this.isMine = true,
+    required this.isMine,
   });
 
   /// Unique identifier of the order created by the DEX.
