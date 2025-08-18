@@ -50,7 +50,7 @@ $Res call({
 });
 
 
-
+$TrezorDeviceInfoCopyWith<$Res>? get deviceInfo;
 
 }
 /// @nodoc
@@ -73,7 +73,19 @@ as String?,taskId: freezed == taskId ? _self.taskId : taskId // ignore: cast_nul
 as int?,
   ));
 }
+/// Create a copy of TrezorInitializationState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$TrezorDeviceInfoCopyWith<$Res>? get deviceInfo {
+    if (_self.deviceInfo == null) {
+    return null;
+  }
 
+  return $TrezorDeviceInfoCopyWith<$Res>(_self.deviceInfo!, (value) {
+    return _then(_self.copyWith(deviceInfo: value));
+  });
+}
 }
 
 
@@ -124,7 +136,7 @@ $Res call({
 });
 
 
-
+@override $TrezorDeviceInfoCopyWith<$Res>? get deviceInfo;
 
 }
 /// @nodoc
@@ -148,7 +160,19 @@ as int?,
   ));
 }
 
+/// Create a copy of TrezorInitializationState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$TrezorDeviceInfoCopyWith<$Res>? get deviceInfo {
+    if (_self.deviceInfo == null) {
+    return null;
+  }
 
+  return $TrezorDeviceInfoCopyWith<$Res>(_self.deviceInfo!, (value) {
+    return _then(_self.copyWith(deviceInfo: value));
+  });
+}
 }
 
 // dart format on

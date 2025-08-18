@@ -100,11 +100,8 @@ class HdCoinKeyInfo {
   const HdCoinKeyInfo({required this.coin, required this.addresses});
 
   factory HdCoinKeyInfo.fromJson(JsonMap json) {
-    final addressesJson = json.value<List<dynamic>>('addresses');
-    final addresses =
-        addressesJson
-            .map((addr) => HdAddressInfo.fromJson(addr as JsonMap))
-            .toList();
+    final addressesJson = json.value<JsonList>('addresses');
+    final addresses = addressesJson.map(HdAddressInfo.fromJson).toList();
 
     return HdCoinKeyInfo(
       coin: json.value<String>('coin'),

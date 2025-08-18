@@ -65,9 +65,7 @@ class EnableTendermintWithAssetsResponse extends BaseResponse {
               )
               : {},
       tokensTickers:
-          !hasBalances
-              ? result.value<List<dynamic>>('tokens_tickers').cast<String>()
-              : [],
+          !hasBalances ? result.value<List<String>>('tokens_tickers') : [],
     );
   }
 

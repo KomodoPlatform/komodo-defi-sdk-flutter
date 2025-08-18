@@ -168,9 +168,7 @@ class TendermintActivationResult {
               )
               : {},
       tokensTickers:
-          !hasBalances
-              ? json.value<List<dynamic>>('tokens_tickers').cast<String>()
-              : [],
+          !hasBalances ? json.value<List<String>>('tokens_tickers') : [],
     );
   }
 

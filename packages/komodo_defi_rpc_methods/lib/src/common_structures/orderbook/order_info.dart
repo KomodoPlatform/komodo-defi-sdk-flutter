@@ -1,4 +1,7 @@
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:rational/rational.dart';
+import '../primitive/mm2_rational.dart';
+import '../primitive/fraction.dart';
 
 /// Represents information about an order in the orderbook.
 /// 
@@ -28,6 +31,12 @@ class OrderInfo {
     required this.zcredits,
     required this.coin,
     required this.address,
+    this.priceFraction,
+    this.priceRat,
+    this.maxVolumeFraction,
+    this.maxVolumeRat,
+    this.minVolumeFraction,
+    this.minVolumeRat,
   });
 
   /// Creates an [OrderInfo] instance from a JSON map.
@@ -53,6 +62,30 @@ class OrderInfo {
       zcredits: json.value<int>('zcredits'),
       coin: json.value<String>('coin'),
       address: json.value<String>('address'),
+      priceFraction:
+          json.valueOrNull<JsonMap>('price_fraction') != null
+              ? Fraction.fromJson(json.value<JsonMap>('price_fraction'))
+              : null,
+      priceRat:
+          json.valueOrNull<List<dynamic>>('price_rat') != null
+              ? rationalFromMm2(json.value<List<dynamic>>('price_rat'))
+              : null,
+      maxVolumeFraction:
+          json.valueOrNull<JsonMap>('max_volume_fraction') != null
+              ? Fraction.fromJson(json.value<JsonMap>('max_volume_fraction'))
+              : null,
+      maxVolumeRat:
+          json.valueOrNull<List<dynamic>>('max_volume_rat') != null
+              ? rationalFromMm2(json.value<List<dynamic>>('max_volume_rat'))
+              : null,
+      minVolumeFraction:
+          json.valueOrNull<JsonMap>('min_volume_fraction') != null
+              ? Fraction.fromJson(json.value<JsonMap>('min_volume_fraction'))
+              : null,
+      minVolumeRat:
+          json.valueOrNull<List<dynamic>>('min_volume_rat') != null
+              ? rationalFromMm2(json.value<List<dynamic>>('min_volume_rat'))
+              : null,
     );
   }
 
@@ -110,6 +143,24 @@ class OrderInfo {
   /// involving this order.
   final String address;
 
+  /// Optional fractional representation of the price
+  final Fraction? priceFraction;
+
+  /// Optional rational representation of the price
+  final Rational? priceRat;
+
+  /// Optional fractional representation of the maximum volume
+  final Fraction? maxVolumeFraction;
+
+  /// Optional rational representation of the maximum volume
+  final Rational? maxVolumeRat;
+
+  /// Optional fractional representation of the minimum volume
+  final Fraction? minVolumeFraction;
+
+  /// Optional rational representation of the minimum volume
+  final Rational? minVolumeRat;
+
   /// Converts this [OrderInfo] instance to a JSON map.
   /// 
   /// The resulting map can be serialized to JSON and will contain all
@@ -124,5 +175,13 @@ class OrderInfo {
     'zcredits': zcredits,
     'coin': coin,
     'address': address,
+    if (priceFraction != null) 'price_fraction': priceFraction!.toJson(),
+    if (priceRat != null) 'price_rat': rationalToMm2(priceRat!),
+    if (maxVolumeFraction != null)
+      'max_volume_fraction': maxVolumeFraction!.toJson(),
+    if (maxVolumeRat != null) 'max_volume_rat': rationalToMm2(maxVolumeRat!),
+    if (minVolumeFraction != null)
+      'min_volume_fraction': minVolumeFraction!.toJson(),
+    if (minVolumeRat != null) 'min_volume_rat': rationalToMm2(minVolumeRat!),
   };
 }
