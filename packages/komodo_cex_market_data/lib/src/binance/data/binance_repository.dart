@@ -161,7 +161,7 @@ class BinanceRepository implements CexRepository {
       endAt: endAt,
       limit: 1,
     );
-    return Decimal.parse(ohlcData.ohlc.first.close.toString());
+    return ohlcData.ohlc.first.closeDecimal;
   }
 
   @override
@@ -206,10 +206,8 @@ class BinanceRepository implements CexRepository {
         map,
         ohlc,
       ) {
-        final date = DateTime.fromMillisecondsSinceEpoch(ohlc.closeTime);
-        map[DateTime(date.year, date.month, date.day)] = Decimal.parse(
-          ohlc.close.toString(),
-        );
+        final date = DateTime.fromMillisecondsSinceEpoch(ohlc.closeTimeMs);
+        map[DateTime(date.year, date.month, date.day)] = ohlc.closeDecimal;
         return map;
       });
 

@@ -135,7 +135,10 @@ class SparklineRepository with RepositoryFallbackMixin {
         startAt: startAt,
         endAt: endAt,
       );
-      final data = ohlcData.ohlc.map((e) => e.close).toList();
+      final data =
+          ohlcData.ohlc
+              .map((e) => double.parse(e.closeDecimal.toString()))
+              .toList();
       if (data.isEmpty) {
         _logger.fine('Empty OHLC data for $symbol from ${repo.runtimeType}');
         throw StateError(
@@ -182,7 +185,10 @@ class SparklineRepository with RepositoryFallbackMixin {
       endAt: endAt,
       intervalSeconds: interval,
     );
-    final constantData = ohlcData.ohlc.map((e) => e.close).toList();
+    final constantData =
+        ohlcData.ohlc
+            .map((e) => double.parse(e.closeDecimal.toString()))
+            .toList();
     await _box!.put(symbol, {
       'data': constantData,
       'timestamp': DateTime.now().toIso8601String(),

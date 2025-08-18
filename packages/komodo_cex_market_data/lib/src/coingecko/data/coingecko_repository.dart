@@ -228,10 +228,8 @@ class CoinGeckoRepository implements CexRepository {
         map,
         ohlc,
       ) {
-        final date = DateTime.fromMillisecondsSinceEpoch(ohlc.closeTime);
-        map[DateTime(date.year, date.month, date.day)] = Decimal.parse(
-          ohlc.close.toString(),
-        );
+        final date = DateTime.fromMillisecondsSinceEpoch(ohlc.closeTimeMs);
+        map[DateTime(date.year, date.month, date.day)] = ohlc.closeDecimal;
         return map;
       });
 

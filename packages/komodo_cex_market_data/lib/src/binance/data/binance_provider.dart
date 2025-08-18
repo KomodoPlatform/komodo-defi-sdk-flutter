@@ -42,10 +42,13 @@ class BinanceProvider implements IBinanceProvider {
 
     final response = await http.get(uri);
     if (response.statusCode == 200) {
-      return CoinOhlc.fromJson(jsonDecode(response.body) as List<dynamic>);
+      return CoinOhlc.fromJson(
+        jsonDecode(response.body) as List<dynamic>,
+        source: OhlcSource.binance,
+      );
     } else {
       throw Exception(
-        'Failed to load klines for \'$symbol\': '
+        "Failed to load klines for '$symbol': "
         '${response.statusCode} ${response.body}',
       );
     }
@@ -113,7 +116,7 @@ class BinanceProvider implements IBinanceProvider {
       );
     } else {
       throw Exception(
-        'Failed to load 24hr ticker for \'$symbol\': '
+        "Failed to load 24hr ticker for '$symbol': "
         '${response.statusCode} ${response.body}',
       );
     }

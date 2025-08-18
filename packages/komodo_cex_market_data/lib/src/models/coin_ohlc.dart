@@ -1,16 +1,26 @@
+import 'package:decimal/decimal.dart';
 import 'package:equatable/equatable.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:komodo_cex_market_data/src/models/json_converters.dart';
+
+part 'coin_ohlc.freezed.dart';
+part 'coin_ohlc.g.dart';
 
 /// Represents Open-High-Low-Close (OHLC) data.
 class CoinOhlc extends Equatable {
   /// Creates a new instance of [CoinOhlc].
   const CoinOhlc({required this.ohlc});
 
-  /// Creates a new instance of [CoinOhlc] from a JSON array.
-  factory CoinOhlc.fromJson(List<dynamic> json) {
+  /// Creates a new instance of [CoinOhlc] from an array of klines.
+  factory CoinOhlc.fromJson(List<dynamic> json, {OhlcSource? source}) {
     return CoinOhlc(
-      ohlc: json
-          .map((dynamic kline) => Ohlc.fromJson(kline as List<dynamic>))
-          .toList(),
+      ohlc:
+          json
+              .map(
+                (dynamic kline) =>
+                    Ohlc.fromKlineArray(kline as List<dynamic>, source: source),
+              )
+              .toList(),
     );
   }
 
@@ -26,14 +36,12 @@ class CoinOhlc extends Equatable {
       ohlc: List.generate(
         (endAt.difference(startAt).inSeconds / intervalSeconds).ceil(),
         (index) {
-          final time = startAt.add(
-            Duration(seconds: index * intervalSeconds),
-          );
-          return Ohlc(
-            high: constantValue,
-            low: constantValue,
-            open: constantValue,
-            close: constantValue,
+          final time = startAt.add(Duration(seconds: index * intervalSeconds));
+          return Ohlc.binance(
+            high: Decimal.parse(constantValue.toString()),
+            low: Decimal.parse(constantValue.toString()),
+            open: Decimal.parse(constantValue.toString()),
+            close: Decimal.parse(constantValue.toString()),
             openTime: time.millisecondsSinceEpoch,
             closeTime: time.millisecondsSinceEpoch,
           );
@@ -42,11 +50,11 @@ class CoinOhlc extends Equatable {
     );
 
     coinOhlc.ohlc.add(
-      Ohlc(
-        high: constantValue,
-        low: constantValue,
-        open: constantValue,
-        close: constantValue,
+      Ohlc.binance(
+        high: Decimal.parse(constantValue.toString()),
+        low: Decimal.parse(constantValue.toString()),
+        open: Decimal.parse(constantValue.toString()),
+        close: Decimal.parse(constantValue.toString()),
         openTime: endAt.millisecondsSinceEpoch,
         closeTime: endAt.millisecondsSinceEpoch,
       ),
@@ -77,114 +85,106 @@ extension OhlcListToCoinOhlc on List<Ohlc> {
 }
 
 /// Represents a Binance Kline (candlestick) data.
-class Ohlc extends Equatable {
-  /// Creates a new instance of [Ohlc].
-  const Ohlc({
-    required this.openTime,
-    required this.open,
-    required this.high,
-    required this.low,
-    required this.close,
-    required this.closeTime,
-    this.volume,
-    this.quoteAssetVolume,
-    this.numberOfTrades,
-    this.takerBuyBaseAssetVolume,
-    this.takerBuyQuoteAssetVolume,
-  });
+@freezed
+abstract class Ohlc with _$Ohlc {
+  @JsonSerializable(fieldRename: FieldRename.snake)
+  const factory Ohlc.coingecko({
+    required int timestamp,
+    @DecimalConverter() required Decimal open,
+    @DecimalConverter() required Decimal high,
+    @DecimalConverter() required Decimal low,
+    @DecimalConverter() required Decimal close,
+  }) = CoinGeckoOhlc;
+
+  @JsonSerializable(fieldRename: FieldRename.snake)
+  const factory Ohlc.binance({
+    required int openTime,
+    @DecimalConverter() required Decimal open,
+    @DecimalConverter() required Decimal high,
+    @DecimalConverter() required Decimal low,
+    @DecimalConverter() required Decimal close,
+    required int closeTime,
+    @DecimalConverter() Decimal? volume,
+    @DecimalConverter() Decimal? quoteAssetVolume,
+    int? numberOfTrades,
+    @DecimalConverter() Decimal? takerBuyBaseAssetVolume,
+    @DecimalConverter() Decimal? takerBuyQuoteAssetVolume,
+  }) = BinanceOhlc;
+
+  factory Ohlc.fromJson(Map<String, dynamic> json) => _$OhlcFromJson(json);
 
   /// Creates a new instance of [Ohlc] from a JSON array.
-  factory Ohlc.fromJson(List<dynamic> json) {
-    return Ohlc(
-      openTime: json[0] as int,
-      open: double.parse(json[1] as String),
-      high: double.parse(json[2] as String),
-      low: double.parse(json[3] as String),
-      close: double.parse(json[4] as String),
-      volume: double.parse(json[5] as String),
-      closeTime: json[6] as int,
-      quoteAssetVolume: double.parse(json[7] as String),
-      numberOfTrades: json[8] as int,
-      takerBuyBaseAssetVolume: double.parse(json[9] as String),
-      takerBuyQuoteAssetVolume: double.parse(json[10] as String),
+  factory Ohlc.fromKlineArray(List<dynamic> json, {OhlcSource? source}) {
+    Decimal asDecimal(dynamic value) {
+      final dec = const DecimalConverter().fromJson(value);
+      if (dec == null) {
+        throw ArgumentError('Cannot convert value "$value" to Decimal');
+      }
+      return dec;
+    }
+
+    int asInt(dynamic value) {
+      if (value is int) return value;
+      if (value is double) return value.toInt();
+      if (value is String) return int.parse(value);
+      throw ArgumentError('Cannot convert value "$value" to int');
+    }
+
+    // Prefer explicit source; fall back to heuristic by length
+    if (source == OhlcSource.coingecko ||
+        (source == null && json.length == 5)) {
+      final ts = asInt(json[0]);
+      return Ohlc.coingecko(
+        timestamp: ts,
+        open: asDecimal(json[1]),
+        high: asDecimal(json[2]),
+        low: asDecimal(json[3]),
+        close: asDecimal(json[4]),
+      );
+    }
+
+    // Binance-like arrays have >= 11 elements
+    if (source == OhlcSource.binance || json.length >= 11) {
+      return Ohlc.binance(
+        openTime: asInt(json[0]),
+        open: asDecimal(json[1]),
+        high: asDecimal(json[2]),
+        low: asDecimal(json[3]),
+        close: asDecimal(json[4]),
+        volume:
+            json.length > 5 ? const DecimalConverter().fromJson(json[5]) : null,
+        closeTime: json.length > 6 ? asInt(json[6]) : asInt(json[0]),
+        quoteAssetVolume:
+            json.length > 7 ? const DecimalConverter().fromJson(json[7]) : null,
+        numberOfTrades: json.length > 8 ? asInt(json[8]) : null,
+        takerBuyBaseAssetVolume:
+            json.length > 9 ? const DecimalConverter().fromJson(json[9]) : null,
+        takerBuyQuoteAssetVolume:
+            json.length > 10
+                ? const DecimalConverter().fromJson(json[10])
+                : null,
+      );
+    }
+
+    throw ArgumentError(
+      'Invalid OHLC array length: ${json.length}. Expected 5 (CoinGecko) or >=11 (Binance).',
     );
   }
+}
 
-  /// Converts the [Ohlc] object to a JSON array.
-  List<dynamic> toJson() {
-    return <dynamic>[
-      openTime,
-      open,
-      high,
-      low,
-      close,
-      volume,
-      closeTime,
-      quoteAssetVolume,
-      numberOfTrades,
-      takerBuyBaseAssetVolume,
-      takerBuyQuoteAssetVolume,
-    ];
-  }
+/// Source hint for parsing OHLC arrays
+enum OhlcSource { coingecko, binance }
 
-  /// Converts the kline data into a JSON object like that returned in the previously used OHLC endpoint.
-  Map<String, dynamic> toMap() {
-    return <String, dynamic>{
-      'timestamp': openTime,
-      'open': open,
-      'high': high,
-      'low': low,
-      'close': close,
-      'volume': volume,
-      'quote_volume': quoteAssetVolume,
-    };
-  }
-
-  /// The opening time of the kline as a Unix timestamp since epoch (UTC).
-  final int openTime;
-
-  /// The opening price of the kline.
-  final double open;
-
-  /// The highest price reached during the kline.
-  final double high;
-
-  /// The lowest price reached during the kline.
-  final double low;
-
-  /// The closing price of the kline.
-  final double close;
-
-  /// The trading volume during the kline.
-  final double? volume;
-
-  /// The closing time of the kline.
-  final int closeTime;
-
-  /// The quote asset volume during the kline.
-  final double? quoteAssetVolume;
-
-  /// The number of trades executed during the kline.
-  final int? numberOfTrades;
-
-  /// The volume of the asset bought by takers during the kline.
-  final double? takerBuyBaseAssetVolume;
-
-  /// The quote asset volume of the asset bought by takers during the kline.
-  final double? takerBuyQuoteAssetVolume;
-
-  @override
-  List<Object?> get props => <Object?>[
-        openTime,
-        open,
-        high,
-        low,
-        close,
-        volume,
-        closeTime,
-        quoteAssetVolume,
-        numberOfTrades,
-        takerBuyBaseAssetVolume,
-        takerBuyQuoteAssetVolume,
-      ];
+extension OhlcGetters on Ohlc {
+  int get openTimeMs =>
+      map(coingecko: (c) => c.timestamp, binance: (b) => b.openTime);
+  int get closeTimeMs =>
+      map(coingecko: (c) => c.timestamp, binance: (b) => b.closeTime);
+  Decimal get openDecimal =>
+      map(coingecko: (c) => c.open, binance: (b) => b.open);
+  Decimal get highDecimal =>
+      map(coingecko: (c) => c.high, binance: (b) => b.high);
+  Decimal get lowDecimal => map(coingecko: (c) => c.low, binance: (b) => b.low);
+  Decimal get closeDecimal =>
+      map(coingecko: (c) => c.close, binance: (b) => b.close);
 }
