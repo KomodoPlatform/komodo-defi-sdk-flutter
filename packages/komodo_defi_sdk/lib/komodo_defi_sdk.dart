@@ -30,3 +30,6 @@ export 'src/assets/legacy_asset_extensions.dart';
 export 'src/komodo_defi_sdk.dart' show KomodoDefiSdk;
 export 'src/widgets/asset_balance_text.dart';
 export 'src/merchant/merchant_invoices_manager.dart' show MerchantInvoicesManager;
+export 'src/merchant/merchant_invoice.dart' show MerchantInvoice;
+export 'src/merchant/invoice_status.dart' show InvoiceStatus;
+export 'src/merchant/invoice_events.dart' show InvoiceUpdate;
