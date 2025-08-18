@@ -223,7 +223,10 @@ class ActivationMode {
 
   JsonMap toJsonRequest() => {
     'rpc': rpc,
-    if (rpcData != null) 'rpc_data': rpcData!.toJsonRequest(),
+    if (rpcData != null)
+      'rpc_data': rpcData!.toJsonRequest(
+        forLightWallet: rpc == ActivationModeType.lightWallet.value,
+      ),
   };
 }
 
@@ -297,14 +300,13 @@ class ActivationRpcData {
   factory ActivationRpcData.fromJson(JsonMap json) {
     return ActivationRpcData(
       lightWalletDServers:
-          json
-              .valueOrNull<List<dynamic>>('light_wallet_d_servers')
-              ?.cast<String>(),
-      electrum:
-          json
-              .valueOrNull<List<dynamic>>('electrum')
-              ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
-              .toList(),
+          json.valueOrNull<List<dynamic>>('light_wallet_d_servers')?.cast<String>(),
+      // The Komodo API uses 'servers' under rpc_data for Electrum mode.
+      // For some legacy ZHTLC examples, 'electrum' may appear at top-level config.
+      electrum: (json.valueOrNull<List<dynamic>>('servers') ??
+              json.valueOrNull<List<dynamic>>('electrum'))
+          ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
+          .toList(),
       syncParams: json.valueOrNull<dynamic>('sync_params'),
     );
   }
@@ -330,12 +332,12 @@ class ActivationRpcData {
             element is Map && element.isEmpty),
   );
 
-  JsonMap toJsonRequest() => {
+  JsonMap toJsonRequest({bool forLightWallet = false}) => {
     if (lightWalletDServers != null)
       'light_wallet_d_servers': lightWalletDServers,
-    if (electrum != null) ...{
-      'servers': electrum!.map((e) => e.toJsonRequest()).toList(),
-    },
+    if (electrum != null)
+      (forLightWallet ? 'electrum_servers' : 'servers'):
+          electrum!.map((e) => e.toJsonRequest()).toList(),
     if (syncParams != null) 'sync_params': syncParams,
   };
 }

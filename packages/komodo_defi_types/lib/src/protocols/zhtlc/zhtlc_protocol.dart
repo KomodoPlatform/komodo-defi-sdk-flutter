@@ -23,22 +23,24 @@ class ZhtlcProtocol extends ProtocolClass {
 
   static void _validateZhtlcConfig(JsonMap json) {
     final requiredFields = {
-      // 'zcash_params_path': 'Zcash parameters path',
-      'electrum': 'Electrum servers',
+      // ZHTLC can operate in Light mode using lightwalletd and optionally electrum servers.
+      // We require at least one of electrum servers or light wallet d servers to be present.
+      // NOTE: We cannot assert both keys here due to varying network setups.
+      // Validation occurs below.
     };
 
-    for (final field in requiredFields.entries) {
-      if (!json.containsKey(field.key)) {
-        throw MissingProtocolFieldException(
-          field.value,
-          field.key,
-        );
-      }
+    // Backward compatibility: some configs provided 'electrum' under config used by Electrum mode
+    final hasElectrum = json.containsKey('electrum');
+    final hasLightWalletD = json.containsKey('light_wallet_d_servers');
+
+    if (!hasElectrum && !hasLightWalletD) {
+      throw MissingProtocolFieldException(
+        'Electrum or LightwalletD servers',
+        'electrum | light_wallet_d_servers',
+      );
     }
   }
 
   String get zcashParamsPath =>
-
-      //TODO! config.value<String>('zcash_params_path');
-      'PLACEHOLDER_STRING_FOR_ZCASH_PARAMS_PATH';
+      config.valueOrNull<String>('zcash_params_path') ?? '';
 }
