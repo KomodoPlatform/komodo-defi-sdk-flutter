@@ -4,18 +4,32 @@ import 'package:rational/rational.dart';
 import '../../common_structures/primitive/mm2_rational.dart';
 import '../../common_structures/primitive/fraction.dart';
 
-/// Request to get maximum taker volume for a coin
+/// Request to get the maximum taker volume for a coin/pair.
+///
+/// Calculates how much of `coin` can be traded as a taker when trading against
+/// the optional `trade_with` counter coin, taking balance, fees and dust limits
+/// into account.
 class MaxTakerVolumeRequest
     extends BaseRequest<MaxTakerVolumeResponse, GeneralErrorResponse> {
-  MaxTakerVolumeRequest({required String rpcPass, required this.coin})
-    : super(method: 'max_taker_vol', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
+  MaxTakerVolumeRequest({
+    required String rpcPass,
+    required this.coin,
+    this.tradeWith,
+  }) : super(method: 'max_taker_vol', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// Coin ticker to compute max taker volume for
   final String coin;
 
+  /// Optional counter coin to trade against (`trade_with` in the API).
+  ///
+  /// This tells the API which other coin you intend to trade `coin` with, so
+  /// the maximum volume is computed for that specific pair. If omitted, it
+  /// defaults to the same value as `coin` (API default).
+  final String? tradeWith;
+
   @override
   Map<String, dynamic> toJson() => super.toJson().deepMerge({
-    'params': {'coin': coin},
+    'params': {'coin': coin, if (tradeWith != null) 'trade_with': tradeWith},
   });
 
   @override
@@ -23,7 +37,7 @@ class MaxTakerVolumeRequest
       MaxTakerVolumeResponse.parse(json);
 }
 
-/// Response with maximum taker volume
+/// Response with maximum taker volume for the requested coin/pair.
 class MaxTakerVolumeResponse extends BaseResponse {
   MaxTakerVolumeResponse({
     required super.mmrpc,
@@ -49,7 +63,8 @@ class MaxTakerVolumeResponse extends BaseResponse {
     );
   }
 
-  /// Maximum tradeable amount as a string numeric (coin units)
+  /// Maximum tradable amount of `coin` as a string numeric, denominated in
+  /// `coin` units, computed for the (`coin`, `trade_with`) pair.
   final String amount;
 
   /// Optional fractional representation of the amount
