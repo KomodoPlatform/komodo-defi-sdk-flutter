@@ -6,6 +6,7 @@ import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/common/private_keys_display_widget.dart';
 import 'package:kdf_sdk_example/widgets/common/security_warning_dialog.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
+import 'package:kdf_sdk_example/screens/merchant_invoice_screen.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -179,6 +180,17 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
                       : 'Export Private Keys',
                 ),
                 key: const Key('export_private_keys_button'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => MerchantInvoiceScreen(sdk: widget.instance.sdk),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.receipt_long),
+                label: const Text('Merchant Invoice Demo'),
               ),
             ],
           ],
