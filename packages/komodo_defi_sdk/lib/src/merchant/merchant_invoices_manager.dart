@@ -222,6 +222,17 @@ class MerchantInvoicesManager {
     });
   }
 
+  Future<void> dispose() async {
+    for (final controller in _controllers.values) {
+      await controller.close();
+    }
+    _controllers.clear();
+    for (final timer in _expiryTimers.values) {
+      timer.cancel();
+    }
+    _expiryTimers.clear();
+  }
+
   InvoiceStatus _deriveStatus({
     required Decimal requested,
     required Decimal received,
