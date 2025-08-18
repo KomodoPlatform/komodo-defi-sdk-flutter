@@ -9,6 +9,7 @@ import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/transaction_history/transaction_history_manager.dart';
 import 'package:komodo_defi_sdk/src/utils/payment_uri_builder.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 import 'invoice_events.dart';
 import 'invoice_status.dart';
@@ -16,6 +17,7 @@ import 'invoice_storage.dart';
 import 'merchant_invoice.dart';
 
 class MerchantInvoicesManager {
+  static final Logger _logger = Logger('MerchantInvoicesManager');
   MerchantInvoicesManager({
     required MarketDataManager marketData,
     required PubkeyManager pubkeys,
@@ -38,6 +40,7 @@ class MerchantInvoicesManager {
   final InvoiceStorage _storage;
 
   final Map<String, StreamController<InvoiceUpdate>> _controllers = {};
+  final Map<String, Timer> _expiryTimers = {};
 
   Future<void> init() async {}
 
@@ -50,7 +53,10 @@ class MerchantInvoicesManager {
     String? label,
     String? message,
   }) async {
-    await _activation.activateAsset(asset);
+    final activationResult = await _activation.activateAsset(asset);
+    if (activationResult.isFailure) {
+      throw StateError('Failed to activate asset ${asset.id.name}: ${activationResult.errorMessage}');
+    }
     final pubkey = await _pubkeys.createNewPubkey(asset);
 
     final price = await _marketData.fiatPrice(asset.id, quoteCurrency: fiat);
@@ -90,6 +96,7 @@ class MerchantInvoicesManager {
 
     // Start monitoring in background
     _monitorInvoice(invoice);
+    _scheduleExpiry(invoice);
     return invoice;
   }
 
@@ -112,6 +119,7 @@ class MerchantInvoicesManager {
     );
     await _controllers[invoiceId]?.close();
     _controllers.remove(invoiceId);
+    _expiryTimers.remove(invoiceId)?.cancel();
   }
 
   Future<MerchantInvoice?> getInvoice(String invoiceId) => _storage.getById(invoiceId);
@@ -177,7 +185,40 @@ class MerchantInvoicesManager {
 
       if (status.isPaid || status.isOverpaid || status.isUnderpaid || status.isExpired) {
         await sub.cancel();
+        _expiryTimers.remove(invoice.id)?.cancel();
       }
+    });
+    sub.onError((error, stack) {
+      _logger.warning('Error monitoring invoice ${invoice.id}', error, stack);
+    });
+  }
+
+  void _scheduleExpiry(MerchantInvoice invoice) {
+    if (invoice.expiresAt == null) return;
+    final remaining = invoice.expiresAt!.difference(DateTime.now());
+    if (remaining.isNegative) {
+      _controllers[invoice.id]?.add(
+        InvoiceUpdate(
+          invoiceId: invoice.id,
+          status: const InvoiceStatus.expired(),
+          seenAt: DateTime.now(),
+        ),
+      );
+      return;
+    }
+    _expiryTimers[invoice.id]?.cancel();
+    _expiryTimers[invoice.id] = Timer(remaining, () async {
+      final current = await _storage.getById(invoice.id);
+      if (current == null) return;
+      final updated = current.copyWith(status: const InvoiceStatus.expired());
+      await _storage.upsert(updated);
+      _controllers[invoice.id]?.add(
+        InvoiceUpdate(
+          invoiceId: invoice.id,
+          status: updated.status,
+          seenAt: DateTime.now(),
+        ),
+      );
     });
   }
 
