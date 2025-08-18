@@ -3,6 +3,58 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:meta/meta.dart';
 
+/// Canonical activation steps used across strategies
+enum ActivationStep {
+  planning,
+  strategySelection,
+  initialization,
+  validation,
+  platformSetup,
+  platformActivation,
+  tokenActivation,
+  activation,
+  verification,
+  database,
+  connection,
+  electrumConnection,
+  blockchainSync,
+  txScan,
+  contracts,
+  scanning,
+  processing,
+  error,
+  complete,
+  init,
+  groupStart,
+  unknown,
+}
+
+extension ActivationStepSerialization on ActivationStep {
+  String get serializedName {
+    switch (this) {
+      case ActivationStep.platformSetup:
+        return 'platform_setup';
+      case ActivationStep.platformActivation:
+        return 'platform_activation';
+      case ActivationStep.tokenActivation:
+        return 'token_activation';
+      case ActivationStep.electrumConnection:
+        return 'electrum_connection';
+      case ActivationStep.blockchainSync:
+        return 'blockchain_sync';
+      case ActivationStep.txScan:
+        return 'tx_scan';
+      case ActivationStep.strategySelection:
+        return 'strategy_selection';
+      case ActivationStep.groupStart:
+        return 'group_start';
+      default:
+        // For other enums, the enum name matches the desired string
+        return name;
+    }
+  }
+}
+
 /// Represents the current state and progress of an activation operation
 @immutable
 class ActivationProgress extends Equatable {
@@ -21,7 +73,7 @@ class ActivationProgress extends Equatable {
       progressPercentage: 100,
       isComplete: true,
       progressDetails: details?.copyWith(
-        currentStep: 'complete',
+        currentStep: ActivationStep.complete,
         completedAt: DateTime.now(),
       ),
     );
@@ -36,7 +88,7 @@ class ActivationProgress extends Equatable {
       progressPercentage: 100,
       isComplete: true,
       progressDetails: ActivationProgressDetails(
-        currentStep: 'complete',
+        currentStep: ActivationStep.complete,
         stepCount: 1,
         additionalInfo: {
           'primaryAsset': assetName,
@@ -60,7 +112,7 @@ class ActivationProgress extends Equatable {
       errorMessage: message,
       isComplete: true,
       progressDetails: ActivationProgressDetails(
-        currentStep: 'error',
+        currentStep: ActivationStep.error,
         stepCount: 1,
         errorCode: errorCode,
         errorDetails: details,
@@ -139,7 +191,7 @@ class ActivationProgressDetails extends Equatable {
     this.completedAt,
   });
 
-  final String currentStep;
+  final ActivationStep currentStep;
   final int stepCount;
   final JsonMap additionalInfo;
   final String? errorCode;
@@ -154,7 +206,7 @@ class ActivationProgressDetails extends Equatable {
   }
 
   ActivationProgressDetails copyWith({
-    String? currentStep,
+    ActivationStep? currentStep,
     int? stepCount,
     JsonMap? additionalInfo,
     String? errorCode,
@@ -188,7 +240,7 @@ class ActivationProgressDetails extends Equatable {
       ];
 
   JsonMap toJson() => {
-        'currentStep': currentStep,
+        'currentStep': currentStep.serializedName,
         'stepCount': stepCount,
         'additionalInfo': additionalInfo,
         if (errorCode != null) 'errorCode': errorCode,
@@ -217,7 +269,7 @@ class BatchActivationProgress {
           startedAt: _startTimes[asset.id],
         ) ??
         ActivationProgressDetails(
-          currentStep: 'unknown',
+          currentStep: ActivationStep.unknown,
           stepCount: 1,
           startedAt: _startTimes[asset.id],
         );

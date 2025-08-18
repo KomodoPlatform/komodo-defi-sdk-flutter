@@ -28,7 +28,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Starting ZHTLC activation...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 6,
         additionalInfo: {
           'protocol': 'ZHTLC',
@@ -53,7 +53,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
         status: 'Validating ZHTLC parameters...',
         progressPercentage: 20,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'validation',
+          currentStep: ActivationStep.validation,
           stepCount: 6,
           additionalInfo: {
             'electrumServers': protocol.requiredServers.toJsonRequest(),
@@ -94,7 +94,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
                 status: 'Building wallet database...',
                 progressPercentage: 40,
                 progressDetails: ActivationProgressDetails(
-                  currentStep: 'database',
+                  currentStep: ActivationStep.database,
                   stepCount: 6,
                   additionalInfo: {'dbStatus': 'building'},
                 ),
@@ -107,7 +107,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
               status: 'Connecting to Lightwalletd server...',
               progressPercentage: 60,
               progressDetails: ActivationProgressDetails(
-                currentStep: 'connection',
+                currentStep: ActivationStep.connection,
                 stepCount: 6,
                 additionalInfo: {'connectionStatus': 'connecting'},
               ),
@@ -123,7 +123,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
               status: 'Scanning blockchain...',
               progressPercentage: 80,
               progressDetails: ActivationProgressDetails(
-                currentStep: 'scanning',
+                currentStep: ActivationStep.scanning,
                 stepCount: 6,
                 additionalInfo: {
                   'currentBlock': currentBlock,
@@ -139,7 +139,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
               errorMessage: status.details,
               isComplete: true,
               progressDetails: ActivationProgressDetails(
-                currentStep: 'error',
+                currentStep: ActivationStep.error,
                 stepCount: 6,
                 errorCode: 'ZHTLC_ACTIVATION_ERROR',
                 errorDetails: status.details,
@@ -153,7 +153,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
             yield ActivationProgress(
               status: status.details,
               progressDetails: ActivationProgressDetails(
-                currentStep: 'processing',
+                currentStep: ActivationStep.processing,
                 stepCount: 6,
                 additionalInfo: {
                   'status': status.details,
@@ -167,7 +167,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
         if (status.status == 'Ok') {
           yield ActivationProgress.success(
             details: ActivationProgressDetails(
-              currentStep: 'complete',
+              currentStep: ActivationStep.complete,
               stepCount: 6,
               additionalInfo: {
                 'activatedChain': asset.id.name,
@@ -187,7 +187,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
           errorMessage: lastStatus!.details,
           isComplete: true,
           progressDetails: ActivationProgressDetails(
-            currentStep: 'error',
+            currentStep: ActivationStep.error,
             stepCount: 6,
             errorCode: 'ZHTLC_ACTIVATION_ERROR',
             errorDetails: lastStatus!.details,
@@ -200,7 +200,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 6,
           errorCode: 'ZHTLC_ACTIVATION_ERROR',
           errorDetails: e.toString(),

@@ -87,7 +87,7 @@ class ActivationManager {
       yield ActivationProgress(
         status: 'Starting activation for ${group.primary.id.name}...',
         progressDetails: ActivationProgressDetails(
-          currentStep: 'group_start',
+          currentStep: ActivationStep.groupStart,
           stepCount: 1,
           additionalInfo: {
             'primaryAsset': group.primary.id.name,
@@ -155,7 +155,7 @@ class ActivationManager {
     return const ActivationProgress(
       status: 'Needs activation',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'init',
+        currentStep: ActivationStep.init,
         stepCount: 1,
       ),
     );

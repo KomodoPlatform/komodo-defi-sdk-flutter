@@ -45,7 +45,7 @@ class SmartAssetActivator extends BatchCapableActivator {
     yield ActivationProgress(
       status: 'Planning activation strategy...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'planning',
+        currentStep: ActivationStep.planning,
         stepCount: 1,
         additionalInfo: {
           'parentActivated': parentActivated,
@@ -117,7 +117,7 @@ class CompositeAssetActivator extends BatchCapableActivator {
     yield ActivationProgress(
       status: 'Finding appropriate activation strategy...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'strategy_selection',
+        currentStep: ActivationStep.strategySelection,
         stepCount: 1,
         additionalInfo: {'assetId': asset.id.id},
       ),
