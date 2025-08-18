@@ -312,31 +312,3 @@ sealed class FeeInfo with _$FeeInfo {
           },
       };
 }
-
-/// Extension methods providing Freezed-like functionality
-extension FeeInfoMaybeMap on FeeInfo {
-  /// Equivalent to Freezed's maybeMap functionality using Dart's pattern matching
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    required TResult Function() orElse,
-    TResult Function(FeeInfoUtxoFixed value)? utxoFixed,
-    TResult Function(FeeInfoUtxoPerKbyte value)? utxoPerKbyte,
-    TResult Function(FeeInfoEthGas value)? ethGas,
-    TResult Function(FeeInfoEthGasEip1559 value)? ethGasEip1559,
-    TResult Function(FeeInfoQrc20Gas value)? qrc20Gas,
-    TResult Function(FeeInfoCosmosGas value)? cosmosGas,
-    TResult Function(FeeInfoTendermint value)? tendermint,
-  }) =>
-      switch (this) {
-        final FeeInfoUtxoFixed fee when utxoFixed != null => utxoFixed(fee),
-        final FeeInfoUtxoPerKbyte fee when utxoPerKbyte != null =>
-          utxoPerKbyte(fee),
-        final FeeInfoEthGas fee when ethGas != null => ethGas(fee),
-        final FeeInfoEthGasEip1559 fee when ethGasEip1559 != null =>
-          ethGasEip1559(fee),
-        final FeeInfoQrc20Gas fee when qrc20Gas != null => qrc20Gas(fee),
-        final FeeInfoCosmosGas fee when cosmosGas != null => cosmosGas(fee),
-        final FeeInfoTendermint fee when tendermint != null => tendermint(fee),
-        _ => orElse(),
-      };
-}
