@@ -243,26 +243,36 @@ class TradingMethodsNamespace extends BaseRpcMethodNamespace {
 
   /// Calculates the maximum volume available for a taker swap.
   ///
-  /// This method determines the maximum amount of a coin that can be
-  /// traded as a taker, considering available balance and required fees.
+  /// Determines the maximum amount of `coin` that can be traded as a taker for
+  /// the pair (`coin`, `tradeWith`), after accounting for balances and all
+  /// applicable fees.
   ///
   /// - [coin]: The coin ticker to check
+  /// - [tradeWith]: Optional counter coin to trade against. Affects
+  ///   pair-dependent DEX fee calculation (e.g., some pairs like KMD have
+  ///   discounted fees) and defaults to `coin` when omitted.
   /// - [rpcPass]: Optional RPC password override
   ///
   /// Returns a [Future] that completes with a [MaxTakerVolumeResponse]
-  /// containing the maximum tradeable volume.
+  /// containing the maximum tradable volume.
   ///
   /// The calculation considers:
   /// - Available coin balance
   /// - Required transaction fees
+  /// - DEX fees which depend on the coin pair (`coin` vs `tradeWith`)
   /// - Dust limits
   /// - Protocol-specific constraints
   Future<MaxTakerVolumeResponse> maxTakerVolume({
     required String coin,
+    String? tradeWith,
     String? rpcPass,
   }) {
     return execute(
-      MaxTakerVolumeRequest(rpcPass: rpcPass ?? this.rpcPass ?? '', coin: coin),
+      MaxTakerVolumeRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
+        coin: coin,
+        tradeWith: tradeWith,
+      ),
     );
   }
 

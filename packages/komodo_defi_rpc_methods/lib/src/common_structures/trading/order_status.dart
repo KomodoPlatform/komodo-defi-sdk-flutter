@@ -1,4 +1,7 @@
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:rational/rational.dart';
+import '../primitive/mm2_rational.dart';
+import '../primitive/fraction.dart';
 
 /// Order status information
 class OrderStatus {
@@ -178,6 +181,10 @@ class MyOrderInfo {
     required this.status,
     this.matchBy,
     this.confSettings,
+    this.priceFraction,
+    this.priceRat,
+    this.volumeFraction,
+    this.volumeRat,
   });
 
   factory MyOrderInfo.fromJson(JsonMap json) {
@@ -201,6 +208,22 @@ class MyOrderInfo {
               ? OrderConfirmationSettings.fromJson(
                 json.value<JsonMap>('conf_settings'),
               )
+              : null,
+      priceFraction:
+          json.valueOrNull<JsonMap>('price_fraction') != null
+              ? Fraction.fromJson(json.value<JsonMap>('price_fraction'))
+              : null,
+      priceRat:
+          json.valueOrNull<List<dynamic>>('price_rat') != null
+              ? rationalFromMm2(json.value<List<dynamic>>('price_rat'))
+              : null,
+      volumeFraction:
+          json.valueOrNull<JsonMap>('volume_fraction') != null
+              ? Fraction.fromJson(json.value<JsonMap>('volume_fraction'))
+              : null,
+      volumeRat:
+          json.valueOrNull<List<dynamic>>('volume_rat') != null
+              ? rationalFromMm2(json.value<List<dynamic>>('volume_rat'))
               : null,
     );
   }
@@ -241,6 +264,18 @@ class MyOrderInfo {
   /// Confirmation settings applied to this order
   final OrderConfirmationSettings? confSettings;
 
+  /// Optional fractional representation of the price
+  final Fraction? priceFraction;
+
+  /// Optional rational representation of the price
+  final Rational? priceRat;
+
+  /// Optional fractional representation of the volume
+  final Fraction? volumeFraction;
+
+  /// Optional rational representation of the volume
+  final Rational? volumeRat;
+
   Map<String, dynamic> toJson() => {
     'uuid': uuid,
     'order_type': orderType,
@@ -254,5 +289,9 @@ class MyOrderInfo {
     'status': status.toJson(),
     if (matchBy != null) 'match_by': matchBy!.toJson(),
     if (confSettings != null) 'conf_settings': confSettings!.toJson(),
+    if (priceFraction != null) 'price_fraction': priceFraction!.toJson(),
+    if (priceRat != null) 'price_rat': rationalToMm2(priceRat!),
+    if (volumeFraction != null) 'volume_fraction': volumeFraction!.toJson(),
+    if (volumeRat != null) 'volume_rat': rationalToMm2(volumeRat!),
   };
 }

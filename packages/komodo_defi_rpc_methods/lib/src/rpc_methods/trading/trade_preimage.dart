@@ -1,3 +1,4 @@
+import 'package:komodo_defi_rpc_methods/src/common_structures/primitive/mm2_rational.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:rational/rational.dart';
@@ -190,10 +191,8 @@ class PreimageCoinFee {
     return PreimageCoinFee(
       coin: json.value<String>('coin'),
       amount: json.value<String>('amount'),
-      amountFraction: PreimageFraction.fromJson(
-        json.value<JsonMap>('amount_fraction'),
-      ),
-      amountRat: _rationalFromMm2(json.value<List<dynamic>>('amount_rat')),
+      amountFraction: Fraction.fromJson(json.value<JsonMap>('amount_fraction')),
+      amountRat: rationalFromMm2(json.value<List<dynamic>>('amount_rat')),
       paidFromTradingVol: json.value<bool>('paid_from_trading_vol'),
     );
   }
@@ -205,7 +204,7 @@ class PreimageCoinFee {
   final String amount;
 
   /// Fractional representation of the fee
-  final PreimageFraction amountFraction;
+  final Fraction amountFraction;
 
   /// Rational form of the amount (as returned by API)
   final Rational amountRat;
@@ -217,7 +216,7 @@ class PreimageCoinFee {
     'coin': coin,
     'amount': amount,
     'amount_fraction': amountFraction.toJson(),
-    'amount_rat': _rationalToMm2(amountRat),
+    'amount_rat': rationalToMm2(amountRat),
     'paid_from_trading_vol': paidFromTradingVol,
   };
 }
@@ -237,15 +236,13 @@ class PreimageTotalFee {
     return PreimageTotalFee(
       coin: json.value<String>('coin'),
       amount: json.value<String>('amount'),
-      amountFraction: PreimageFraction.fromJson(
-        json.value<JsonMap>('amount_fraction'),
-      ),
-      amountRat: _rationalFromMm2(json.value<List<dynamic>>('amount_rat')),
+      amountFraction: Fraction.fromJson(json.value<JsonMap>('amount_fraction')),
+      amountRat: rationalFromMm2(json.value<List<dynamic>>('amount_rat')),
       requiredBalance: json.value<String>('required_balance'),
-      requiredBalanceFraction: PreimageFraction.fromJson(
+      requiredBalanceFraction: Fraction.fromJson(
         json.value<JsonMap>('required_balance_fraction'),
       ),
-      requiredBalanceRat: _rationalFromMm2(
+      requiredBalanceRat: rationalFromMm2(
         json.value<List<dynamic>>('required_balance_rat'),
       ),
     );
@@ -258,7 +255,7 @@ class PreimageTotalFee {
   final String amount;
 
   /// Fractional representation of the amount
-  final PreimageFraction amountFraction;
+  final Fraction amountFraction;
 
   /// Rational representation of the amount (API-specific)
   final Rational amountRat;
@@ -267,7 +264,7 @@ class PreimageTotalFee {
   final String requiredBalance;
 
   /// Fractional representation of the required balance
-  final PreimageFraction requiredBalanceFraction;
+  final Fraction requiredBalanceFraction;
 
   /// Rational representation of the required balance
   final Rational requiredBalanceRat;
@@ -276,28 +273,9 @@ class PreimageTotalFee {
     'coin': coin,
     'amount': amount,
     'amount_fraction': amountFraction.toJson(),
-    'amount_rat': _rationalToMm2(amountRat),
+    'amount_rat': rationalToMm2(amountRat),
     'required_balance': requiredBalance,
     'required_balance_fraction': requiredBalanceFraction.toJson(),
-    'required_balance_rat': _rationalToMm2(requiredBalanceRat),
+    'required_balance_rat': rationalToMm2(requiredBalanceRat),
   };
-}
-
-class PreimageFraction {
-  PreimageFraction({required this.numer, required this.denom});
-
-  factory PreimageFraction.fromJson(JsonMap json) {
-    return PreimageFraction(
-      numer: json.value<String>('numer'),
-      denom: json.value<String>('denom'),
-    );
-  }
-
-  /// Numerator of the fraction
-  final String numer;
-
-  /// Denominator of the fraction
-  final String denom;
-
-  Map<String, dynamic> toJson() => {'numer': numer, 'denom': denom};
 }

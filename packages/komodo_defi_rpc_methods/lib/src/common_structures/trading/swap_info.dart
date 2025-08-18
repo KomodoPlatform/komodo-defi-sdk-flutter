@@ -1,4 +1,7 @@
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:rational/rational.dart';
+import '../primitive/mm2_rational.dart';
+import '../primitive/fraction.dart';
 
 /// Comprehensive information about an atomic swap.
 ///
@@ -51,6 +54,10 @@ class SwapInfo {
     required this.errorEvents,
     this.startedAt,
     this.finishedAt,
+    this.takerAmountFraction,
+    this.takerAmountRat,
+    this.makerAmountFraction,
+    this.makerAmountRat,
   });
 
   /// Creates a [SwapInfo] instance from a JSON map.
@@ -71,6 +78,22 @@ class SwapInfo {
       errorEvents: json.value<List<String>>('error_events'),
       startedAt: json.valueOrNull<int?>('started_at'),
       finishedAt: json.valueOrNull<int?>('finished_at'),
+      takerAmountFraction:
+          json.valueOrNull<JsonMap>('taker_amount_fraction') != null
+              ? Fraction.fromJson(json.value<JsonMap>('taker_amount_fraction'))
+              : null,
+      takerAmountRat:
+          json.valueOrNull<List<dynamic>>('taker_amount_rat') != null
+              ? rationalFromMm2(json.value<List<dynamic>>('taker_amount_rat'))
+              : null,
+      makerAmountFraction:
+          json.valueOrNull<JsonMap>('maker_amount_fraction') != null
+              ? Fraction.fromJson(json.value<JsonMap>('maker_amount_fraction'))
+              : null,
+      makerAmountRat:
+          json.valueOrNull<List<dynamic>>('maker_amount_rat') != null
+              ? rationalFromMm2(json.value<List<dynamic>>('maker_amount_rat'))
+              : null,
     );
   }
 
@@ -153,6 +176,18 @@ class SwapInfo {
   /// Recorded when the swap completes (successfully or with failure).
   final int? finishedAt;
 
+  /// Optional fractional representation of the taker amount
+  final Fraction? takerAmountFraction;
+
+  /// Optional rational representation of the taker amount
+  final Rational? takerAmountRat;
+
+  /// Optional fractional representation of the maker amount
+  final Fraction? makerAmountFraction;
+
+  /// Optional rational representation of the maker amount
+  final Rational? makerAmountRat;
+
   /// Converts this [SwapInfo] instance to a JSON map.
   ///
   /// The resulting map can be serialized to JSON and follows the
@@ -171,6 +206,14 @@ class SwapInfo {
     'error_events': errorEvents,
     if (startedAt != null) 'started_at': startedAt,
     if (finishedAt != null) 'finished_at': finishedAt,
+    if (takerAmountFraction != null)
+      'taker_amount_fraction': takerAmountFraction!.toJson(),
+    if (takerAmountRat != null)
+      'taker_amount_rat': rationalToMm2(takerAmountRat!),
+    if (makerAmountFraction != null)
+      'maker_amount_fraction': makerAmountFraction!.toJson(),
+    if (makerAmountRat != null)
+      'maker_amount_rat': rationalToMm2(makerAmountRat!),
   };
 
   /// Whether this swap has completed (successfully or with failure).
