@@ -11,6 +11,7 @@ import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart'
     show CexMarketDataManager, MarketDataManager;
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
+import 'package:komodo_defi_sdk/src/merchant/merchant_invoices_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
@@ -208,6 +209,30 @@ Future<void> bootstrap({
       SharedActivationCoordinator,
     ],
   );
+
+  // Merchant Invoices Manager
+  container.registerSingletonAsync<MerchantInvoicesManager>(() async {
+    final market = await container.getAsync<MarketDataManager>();
+    final pubkeys = await container.getAsync<PubkeyManager>();
+    final txs = await container.getAsync<TransactionHistoryManager>();
+    final activation = await container.getAsync<SharedActivationCoordinator>();
+    final assets = await container.getAsync<AssetManager>();
+    final mgr = MerchantInvoicesManager(
+      marketData: market,
+      pubkeys: pubkeys,
+      transactions: txs,
+      activation: activation,
+      assetProvider: assets,
+    );
+    await mgr.init();
+    return mgr;
+  }, dependsOn: [
+    MarketDataManager,
+    PubkeyManager,
+    TransactionHistoryManager,
+    SharedActivationCoordinator,
+    AssetManager,
+  ]);
 
   container.registerSingletonAsync<WithdrawalManager>(
     () async {

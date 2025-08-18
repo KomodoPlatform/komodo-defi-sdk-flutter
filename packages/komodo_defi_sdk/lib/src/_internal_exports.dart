@@ -6,3 +6,6 @@ library _internal_exports;
 export 'activation/_activation_index.dart';
 export 'assets/_assets_index.dart';
 export 'transaction_history/_transaction_history_index.dart';
+export 'activation/shared_activation_coordinator.dart';
+export 'assets/asset_lookup.dart';
+export 'addresses/address_operations.dart';
