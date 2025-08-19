@@ -106,8 +106,8 @@ class MyTxHistoryResponse extends BaseResponse {
       pageNumber: result.valueOrNull<int>('page_number'),
       transactions:
           result
-              .value<List<dynamic>>('transactions')
-              .map((e) => TransactionInfo.fromJson(e as JsonMap))
+              .value<JsonList>('transactions')
+              .map(TransactionInfo.fromJson)
               .toList(),
     );
   }

@@ -7,34 +7,32 @@ class OpenChannelRequest
   OpenChannelRequest({
     required String rpcPass,
     required this.coin,
-    required this.nodeId,
-    required this.amountSat,
+    required this.nodeAddress,
+    required this.amount,
+    this.pushMsat,
     this.options,
   }) : super(
-         method: 'lightning::open_channel',
+         method: 'lightning::channels::open_channel',
          rpcPass: rpcPass,
          mmrpc: RpcVersion.v2_0,
        );
 
   final String coin;
-  final String nodeId;
-  final int amountSat;
+  final String nodeAddress;
+  final LightningChannelAmount amount;
+  final int? pushMsat;
   final LightningChannelOptions? options;
 
   @override
   Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'coin': coin,
-      'node_id': nodeId,
-      'amount_sat': amountSat,
-    };
-    
-    if (options != null) {
-      params['options'] = options!.toJson();
-    }
-
     return super.toJson().deepMerge({
-      'params': params,
+      'params': {
+        'coin': coin,
+        'node_address': nodeAddress,
+        'amount': amount.toJson(),
+        if (pushMsat != null) 'push_msat': pushMsat,
+        if (options != null) 'channel_options': options!.toJson(),
+      },
     });
   }
 
@@ -67,9 +65,6 @@ class OpenChannelResponse extends BaseResponse {
   @override
   Map<String, dynamic> toJson() => {
     'mmrpc': mmrpc,
-    'result': {
-      'channel_id': channelId,
-      'funding_tx_id': fundingTxId,
-    },
+    'result': {'channel_id': channelId, 'funding_tx_id': fundingTxId},
   };
 }
