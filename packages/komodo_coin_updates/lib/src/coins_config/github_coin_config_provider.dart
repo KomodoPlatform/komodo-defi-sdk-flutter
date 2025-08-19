@@ -190,17 +190,32 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
       _contentUri(path, branchOrCommit: branchOrCommit);
 
   /// Helper to construct a content URI for a [path].
+  ///
+  /// If [branchOrCommit] is a branch name that matches a CDN mirror mapping,
+  /// uses the CDN URL directly (CDN URLs always point to master/main).
+  /// If [branchOrCommit] is a commit hash or non-CDN branch, uses GitHub raw URL.
   Uri _contentUri(String path, {String? branchOrCommit}) {
     branchOrCommit ??= branch;
     final normalizedPath = path.startsWith('/') ? path.substring(1) : path;
-    final cdnBase = cdnBranchMirrors?[branchOrCommit];
+
+    // Check if we should use CDN based on the branch name
+    // CDN URLs always map to master/main branch, so we only use them
+    // when the requested branch matches a CDN mapping AND we're requesting
+    // the actual branch (not a commit hash)
+    final isCommitHash = _isCommitHash(branchOrCommit);
+    String? cdnBase;
+    if (!isCommitHash && cdnBranchMirrors != null) {
+      cdnBase = cdnBranchMirrors![branchOrCommit];
+    }
 
     if (cdnBase != null && cdnBase.isNotEmpty) {
       final baseWithSlash = cdnBase.endsWith('/') ? cdnBase : '$cdnBase/';
       final baseUri = Uri.parse(baseWithSlash);
+      _log.fine('Using CDN URL for branch $branchOrCommit: $baseUri');
       return baseUri.resolve(normalizedPath);
     }
 
+    // Use GitHub raw URL with branch or commit hash
     final contentBaseWithSlash =
         coinsGithubContentUrl.endsWith('/')
             ? coinsGithubContentUrl
@@ -208,7 +223,15 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
     final contentBase = Uri.parse(
       contentBaseWithSlash,
     ).resolve('$branchOrCommit/');
+    _log.fine('Using GitHub raw URL for $branchOrCommit: $contentBase');
     return contentBase.resolve(normalizedPath);
+  }
+
+  /// Determines if the given string looks like a commit hash (40-character hex string)
+  bool _isCommitHash(String branchOrCommit) {
+    // Git commit hashes are 40 characters long and contain only hex characters
+    if (branchOrCommit.length != 40) return false;
+    return RegExp(r'^[a-f0-9]+$').hasMatch(branchOrCommit.toLowerCase());
   }
 
   /// Dispose HTTP resources if this provider owns the client.

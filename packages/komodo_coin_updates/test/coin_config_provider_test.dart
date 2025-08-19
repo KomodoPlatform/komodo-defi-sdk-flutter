@@ -106,6 +106,23 @@ void main() {
       );
     });
 
+    test('uses raw URL for commit hash even when CDN is available', () {
+      final provider = GithubCoinConfigProvider(
+        cdnBranchMirrors: const {
+          'master': 'https://komodoplatform.github.io/coins',
+        },
+      );
+
+      final uri = provider.buildContentUri(
+        'utils/coins_config_unfiltered.json',
+        branchOrCommit: 'f7d8e39cd11c3b6431df314fcaae5becc2814136',
+      );
+      expect(
+        uri.toString(),
+        'https://raw.githubusercontent.com/KomodoPlatform/coins/f7d8e39cd11c3b6431df314fcaae5becc2814136/utils/coins_config_unfiltered.json',
+      );
+    });
+
     test('handles null mirrors and falls back to raw', () {
       final provider = GithubCoinConfigProvider();
 
@@ -148,6 +165,295 @@ void main() {
         uri.toString(),
         'https://raw.githubusercontent.com/KomodoPlatform/coins/feature/example/utils/coins_config_unfiltered.json',
       );
+    });
+
+    group('master/main branch CDN behavior', () {
+      test('master branch uses CDN URL without appending branch name', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+        );
+        expect(
+          uri.toString(),
+          'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('main branch uses CDN URL without appending branch name', () {
+        final provider = GithubCoinConfigProvider(
+          branch: 'main',
+          cdnBranchMirrors: const {
+            'main': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+        );
+        expect(
+          uri.toString(),
+          'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('explicit master override uses CDN URL', () {
+        final provider = GithubCoinConfigProvider(
+          branch: 'dev',
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+            'main': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit: 'master',
+        );
+        expect(
+          uri.toString(),
+          'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('explicit main override uses CDN URL', () {
+        final provider = GithubCoinConfigProvider(
+          branch: 'dev',
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+            'main': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit: 'main',
+        );
+        expect(
+          uri.toString(),
+          'https://komodoplatform.github.io/coins/utils/coins_config_unfiltered.json',
+        );
+      });
+    });
+
+    group('non-master/main branch behavior', () {
+      test('development branch uses GitHub raw URL even with CDN available', () {
+        final provider = GithubCoinConfigProvider(
+          branch: 'dev',
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/dev/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('feature branch uses GitHub raw URL even with CDN available', () {
+        final provider = GithubCoinConfigProvider(
+          branch: 'feature/new-coin-support',
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+            'main': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/feature/new-coin-support/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('release branch uses GitHub raw URL even with CDN available', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit: 'release/v1.2.0',
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/release/v1.2.0/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('hotfix branch uses GitHub raw URL even with CDN available', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+            'main': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit: 'hotfix/urgent-fix',
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/hotfix/urgent-fix/utils/coins_config_unfiltered.json',
+        );
+      });
+    });
+
+    group('commit hash behavior', () {
+      test('full 40-character commit hash uses GitHub raw URL', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+            'main': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit: 'f7d8e39cd11c3b6431df314fcaae5becc2814136',
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/f7d8e39cd11c3b6431df314fcaae5becc2814136/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('different commit hash uses GitHub raw URL', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit: 'abc123def456789012345678901234567890abcd',
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/abc123def456789012345678901234567890abcd/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('commit hash with uppercase letters uses GitHub raw URL', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+            'main': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit: 'F7D8E39CD11C3B6431DF314FCAAE5BECC2814136',
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/F7D8E39CD11C3B6431DF314FCAAE5BECC2814136/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('mixed case commit hash uses GitHub raw URL', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit: 'AbC123DeF456789012345678901234567890AbCd',
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/AbC123DeF456789012345678901234567890AbCd/utils/coins_config_unfiltered.json',
+        );
+      });
+    });
+
+    group('edge cases and validation', () {
+      test('short hash-like string is treated as branch name', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'abc123': 'https://example.com/short-hash-branch',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit: 'abc123', // Only 6 characters, not a commit hash
+        );
+        expect(
+          uri.toString(),
+          'https://example.com/short-hash-branch/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('39-character string is treated as branch name', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit: 'f7d8e39cd11c3b6431df314fcaae5becc281413', // 39 chars
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/f7d8e39cd11c3b6431df314fcaae5becc281413/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('41-character string is treated as branch name', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit:
+              'f7d8e39cd11c3b6431df314fcaae5becc2814136a', // 41 chars
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/f7d8e39cd11c3b6431df314fcaae5becc2814136a/utils/coins_config_unfiltered.json',
+        );
+      });
+
+      test('40-character string with non-hex characters is treated as branch', () {
+        final provider = GithubCoinConfigProvider(
+          cdnBranchMirrors: const {
+            'master': 'https://komodoplatform.github.io/coins',
+          },
+        );
+
+        final uri = provider.buildContentUri(
+          'utils/coins_config_unfiltered.json',
+          branchOrCommit:
+              'f7d8e39cd11c3b6431df314fcaae5becc281413g', // 40 chars but contains 'g'
+        );
+        expect(
+          uri.toString(),
+          'https://raw.githubusercontent.com/KomodoPlatform/coins/f7d8e39cd11c3b6431df314fcaae5becc281413g/utils/coins_config_unfiltered.json',
+        );
+      });
     });
   });
   setUpAll(() {
