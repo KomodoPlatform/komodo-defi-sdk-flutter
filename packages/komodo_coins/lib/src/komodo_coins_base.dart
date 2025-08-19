@@ -75,7 +75,7 @@ class KomodoCoins {
   static Future<JsonList> fetchAndTransformCoinsList() async {
     return retry(
       _fetchAndTransformCoinsListInternal,
-      maxAttempts: 3,
+      maxAttempts: 2,
       onRetry: (attempt, error, delay) {
         _log.warning(
           'fetchAndTransformCoinsList attempt $attempt failed, retrying after $delay: $error',

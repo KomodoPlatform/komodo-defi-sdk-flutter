@@ -24,13 +24,11 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
   /// - [githubToken]: optional GitHub token for authenticated requests
   ///   (recommended to avoid rate limits).
   GithubCoinConfigProvider({
-    this.branch = 'master',
-    this.coinsGithubContentUrl =
-        'https://raw.githubusercontent.com/KomodoPlatform/coins',
-    this.coinsGithubApiUrl =
-        'https://api.github.com/repos/KomodoPlatform/coins',
-    this.coinsPath = 'coins',
-    this.coinsConfigPath = 'utils/coins_config_unfiltered.json',
+    required this.branch,
+    required this.coinsGithubContentUrl,
+    required this.coinsGithubApiUrl,
+    required this.coinsPath,
+    required this.coinsConfigPath,
     this.cdnBranchMirrors,
     this.githubToken,
     CoinConfigTransformer? transformer,

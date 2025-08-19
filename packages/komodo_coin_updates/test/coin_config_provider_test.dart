@@ -21,10 +21,41 @@ class _ForceWalletOnlyTransform implements CoinConfigTransform {
   bool needsTransform(JsonMap config) => true;
 }
 
+/// Helper function to create a GithubCoinConfigProvider with standard defaults
+/// based on the actual build configuration values
+GithubCoinConfigProvider createTestProvider({
+  String? branch,
+  String? coinsGithubContentUrl,
+  String? coinsGithubApiUrl,
+  String? coinsPath,
+  String? coinsConfigPath,
+  Map<String, String>? cdnBranchMirrors,
+  String? githubToken,
+  CoinConfigTransformer? transformer,
+  http.Client? httpClient,
+}) {
+  // Use the actual build config values as defaults
+  return GithubCoinConfigProvider(
+    branch: branch ?? 'master',
+    coinsGithubContentUrl:
+        coinsGithubContentUrl ??
+        'https://raw.githubusercontent.com/KomodoPlatform/coins',
+    coinsGithubApiUrl:
+        coinsGithubApiUrl ??
+        'https://api.github.com/repos/KomodoPlatform/coins',
+    coinsPath: coinsPath ?? 'coins',
+    coinsConfigPath: coinsConfigPath ?? 'utils/coins_config_unfiltered.json',
+    cdnBranchMirrors: cdnBranchMirrors,
+    githubToken: githubToken,
+    transformer: transformer,
+    httpClient: httpClient,
+  );
+}
+
 void main() {
   group('GithubCoinConfigProvider CDN mirrors', () {
     test('uses CDN base when exact branch mirror exists', () {
-      final provider = GithubCoinConfigProvider(
+      final provider = createTestProvider(
         cdnBranchMirrors: const {
           'master': 'https://komodoplatform.github.io/coins',
         },
@@ -40,7 +71,7 @@ void main() {
     });
 
     test('falls back to raw content when branch has no mirror', () {
-      final provider = GithubCoinConfigProvider(
+      final provider = createTestProvider(
         branch: 'dev',
         cdnBranchMirrors: const {
           'master': 'https://komodoplatform.github.io/coins',
@@ -57,7 +88,7 @@ void main() {
     });
 
     test('branchOrCommit override uses matching CDN when available', () {
-      final provider = GithubCoinConfigProvider(
+      final provider = createTestProvider(
         branch: 'dev',
         cdnBranchMirrors: const {
           'master': 'https://komodoplatform.github.io/coins',
@@ -75,7 +106,7 @@ void main() {
     });
 
     test('branchOrCommit override falls back to raw when not mirrored', () {
-      final provider = GithubCoinConfigProvider(
+      final provider = createTestProvider(
         cdnBranchMirrors: const {
           'master': 'https://komodoplatform.github.io/coins',
         },
@@ -92,7 +123,7 @@ void main() {
     });
 
     test('ignores empty CDN entry and falls back to raw', () {
-      final provider = GithubCoinConfigProvider(
+      final provider = createTestProvider(
         branch: 'dev',
         cdnBranchMirrors: const {'dev': ''},
       );
@@ -107,7 +138,7 @@ void main() {
     });
 
     test('uses raw URL for commit hash even when CDN is available', () {
-      final provider = GithubCoinConfigProvider(
+      final provider = createTestProvider(
         cdnBranchMirrors: const {
           'master': 'https://komodoplatform.github.io/coins',
         },
@@ -124,7 +155,7 @@ void main() {
     });
 
     test('handles null mirrors and falls back to raw', () {
-      final provider = GithubCoinConfigProvider();
+      final provider = createTestProvider();
 
       final uri = provider.buildContentUri(
         'utils/coins_config_unfiltered.json',
@@ -136,7 +167,7 @@ void main() {
     });
 
     test('CDN base with trailing slash and path with leading slash', () {
-      final provider = GithubCoinConfigProvider(
+      final provider = createTestProvider(
         cdnBranchMirrors: const {
           'master': 'https://komodoplatform.github.io/coins/',
         },
@@ -152,7 +183,7 @@ void main() {
     });
 
     test('Raw content base with trailing slash and path with leading slash', () {
-      final provider = GithubCoinConfigProvider(
+      final provider = createTestProvider(
         branch: 'feature/example',
         coinsGithubContentUrl:
             'https://raw.githubusercontent.com/KomodoPlatform/coins/',
@@ -169,7 +200,7 @@ void main() {
 
     group('master/main branch CDN behavior', () {
       test('master branch uses CDN URL without appending branch name', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
           },
@@ -185,7 +216,7 @@ void main() {
       });
 
       test('main branch uses CDN URL without appending branch name', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           branch: 'main',
           cdnBranchMirrors: const {
             'main': 'https://komodoplatform.github.io/coins',
@@ -202,7 +233,7 @@ void main() {
       });
 
       test('explicit master override uses CDN URL', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           branch: 'dev',
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
@@ -221,7 +252,7 @@ void main() {
       });
 
       test('explicit main override uses CDN URL', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           branch: 'dev',
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
@@ -242,7 +273,7 @@ void main() {
 
     group('non-master/main branch behavior', () {
       test('development branch uses GitHub raw URL even with CDN available', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           branch: 'dev',
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
@@ -259,7 +290,7 @@ void main() {
       });
 
       test('feature branch uses GitHub raw URL even with CDN available', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           branch: 'feature/new-coin-support',
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
@@ -277,7 +308,7 @@ void main() {
       });
 
       test('release branch uses GitHub raw URL even with CDN available', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
           },
@@ -294,7 +325,7 @@ void main() {
       });
 
       test('hotfix branch uses GitHub raw URL even with CDN available', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
             'main': 'https://komodoplatform.github.io/coins',
@@ -314,7 +345,7 @@ void main() {
 
     group('commit hash behavior', () {
       test('full 40-character commit hash uses GitHub raw URL', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
             'main': 'https://komodoplatform.github.io/coins',
@@ -332,7 +363,7 @@ void main() {
       });
 
       test('different commit hash uses GitHub raw URL', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
           },
@@ -349,7 +380,7 @@ void main() {
       });
 
       test('commit hash with uppercase letters uses GitHub raw URL', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
             'main': 'https://komodoplatform.github.io/coins',
@@ -367,7 +398,7 @@ void main() {
       });
 
       test('mixed case commit hash uses GitHub raw URL', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
           },
@@ -386,7 +417,7 @@ void main() {
 
     group('edge cases and validation', () {
       test('short hash-like string is treated as branch name', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'abc123': 'https://example.com/short-hash-branch',
           },
@@ -403,7 +434,7 @@ void main() {
       });
 
       test('39-character string is treated as branch name', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
           },
@@ -420,7 +451,7 @@ void main() {
       });
 
       test('41-character string is treated as branch name', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
           },
@@ -438,7 +469,7 @@ void main() {
       });
 
       test('40-character string with non-hex characters is treated as branch', () {
-        final provider = GithubCoinConfigProvider(
+        final provider = createTestProvider(
           cdnBranchMirrors: const {
             'master': 'https://komodoplatform.github.io/coins',
           },
@@ -467,7 +498,42 @@ void main() {
 
     setUp(() {
       client = _MockHttpClient();
-      provider = GithubCoinConfigProvider(httpClient: client);
+      provider = createTestProvider(httpClient: client);
+    });
+
+    test('reproduces commit hash appended to CDN URL bug', () async {
+      // This test reproduces the exact issue described in the bug report
+      final providerWithCdn = createTestProvider(
+        httpClient: client,
+        cdnBranchMirrors: const {
+          'master': 'https://komodoplatform.github.io/coins',
+        },
+      );
+
+      // This should NOT append the commit hash to the CDN URL
+      final uri = providerWithCdn.buildContentUri(
+        'utils/coins_config_unfiltered.json',
+        branchOrCommit: 'f7d8e39cd11c3b6431df314fcaae5becc2814136',
+      );
+
+      // The bug shows this URL is being generated:
+      // https://komodoplatform.github.io/coins/f7d8e39cd11c3b6431df314fcaae5becc2814136/utils/coins_config_unfiltered.json
+      // But it should be:
+      // https://raw.githubusercontent.com/KomodoPlatform/coins/f7d8e39cd11c3b6431df314fcaae5becc2814136/utils/coins_config_unfiltered.json
+
+      expect(
+        uri.toString(),
+        'https://raw.githubusercontent.com/KomodoPlatform/coins/f7d8e39cd11c3b6431df314fcaae5becc2814136/utils/coins_config_unfiltered.json',
+        reason:
+            'Commit hashes should never use CDN URLs - they should always use raw GitHub URLs',
+      );
+
+      // Verify the URL does NOT contain the CDN base
+      expect(
+        uri.toString(),
+        isNot(contains('komodoplatform.github.io')),
+        reason: 'CDN URLs should not be used for commit hashes',
+      );
     });
 
     test('getLatestCommit returns sha on 200', () async {
@@ -539,7 +605,7 @@ void main() {
     test(
       'transformation pipeline applies and filters excluded coins',
       () async {
-        final p = GithubCoinConfigProvider(
+        final p = createTestProvider(
           httpClient: client,
           transformer: const CoinConfigTransformer(
             transforms: [_ForceWalletOnlyTransform()],
@@ -581,7 +647,7 @@ void main() {
     );
 
     test('buildContentUri normalizes coinsPath entries', () {
-      final p = GithubCoinConfigProvider(
+      final p = createTestProvider(
         coinsGithubContentUrl:
             'https://raw.githubusercontent.com/KomodoPlatform/coins/',
         cdnBranchMirrors: const {
@@ -595,7 +661,7 @@ void main() {
         'https://komodoplatform.github.io/coins/coins/KMD.json',
       );
 
-      final rawP = GithubCoinConfigProvider(
+      final rawP = createTestProvider(
         coinsGithubContentUrl:
             'https://raw.githubusercontent.com/KomodoPlatform/coins/',
         cdnBranchMirrors: const {},
@@ -608,7 +674,7 @@ void main() {
     });
 
     test('getAssets with branch override uses that ref', () async {
-      final p = GithubCoinConfigProvider(httpClient: client);
+      final p = createTestProvider(httpClient: client);
       final uri = Uri.parse(
         '${p.coinsGithubContentUrl}/dev/${p.coinsConfigPath}',
       );
