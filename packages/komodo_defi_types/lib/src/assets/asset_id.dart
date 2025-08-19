@@ -72,59 +72,26 @@ class AssetId extends Equatable {
     );
   }
 
-  static const _isMultipleTypesPerAssetAllowed = false;
-
-  /// Method that parses a config object and returns a set of [AssetId] objects.
-  ///
-  /// For most coins, this will return a single [AssetId] object. However, for
-  /// coins that have `other_types` defined in the config, this will return
-  /// multiple [AssetId] objects.
-  static Set<AssetId> parseAllTypes(
-    JsonMap json, {
-    required Set<AssetId>? knownIds,
-  }) {
-    final assetIds = {AssetId.parse(json, knownIds: knownIds)};
-
-    if (!_isMultipleTypesPerAssetAllowed) {
-      return assetIds;
-    }
-
-    // Remove below if it is confirmed that we will never encounter a coin with
-    // multiple types which need to be treated as separate assets. This was
-    // possible in the past with SLP coins, but they have been deprecated.
-
-    final otherTypes = json.valueOrNull<List<String>>('other_types') ?? [];
-
-    for (final otherType in otherTypes) {
-      final jsonCopy = JsonMap.from(json);
-      final otherTypesCopy =
-          List<String>.from(otherTypes)
-            ..remove(otherType)
-            ..add(json.value('type'));
-
-      // TODO: Perhaps restructure so we can copy the protocol data from
-      // another coin with the same type
-      if (otherType == 'UTXO') {
-        // remove all fields except for protocol->type from the protocol data
-        jsonCopy['protocol'] = {'type': otherType};
-      }
-
-      jsonCopy['type'] = otherType;
-      jsonCopy['other_types'] = otherTypesCopy;
-
-      // assetIds.add(AssetId.parse(jsonCopy));
-    }
-
-    return assetIds;
-  }
-
   JsonMap toJson() => {
-    'coin': id,
-    'fname': name,
+    // Legacy nested structure inconsistent with input format expected in
+    // fromJson and as stored in coins_config.json.
+    // Kept here to avoid breaking changes.
+    // NOTE: if there are overlapping keys, the following fields will take
+    // precedence. This is the intended behavior to ensure that fromJson and
+    // toJson are interoperable.
+    // TODO: consider refactoring all models to use freezed with jsonserializable
+    // fieldrename etc.
     'symbol': symbol.toJson(),
     'chain_id': chainId.formattedChainId,
-    'derivation_path': derivationPath,
-    'type': subClass.formatted,
+    'type_formatted': subClass.formatted,
+
+    // Flat structure expected by fromJson and as stored in coins_config.json.
+    'coin': id,
+    'fname': name,
+    'type': subClass.jsonType,
+    ...symbol.toJson(),
+    ...chainId.toJson(),
+    if (derivationPath != null) 'derivation_path': derivationPath,
     if (parentId != null) 'parent_coin': parentId!.id,
   };
 
@@ -172,6 +139,9 @@ abstract class ChainId with EquatableMixin {
   String get formattedChainId;
   int? get decimals;
 
+  /// Converts this ChainId to its JSON representation for inclusion in asset JSON
+  JsonMap toJson();
+
   static ChainId? parseOrNull(ChainId? Function() fromConfig) {
     try {
       return fromConfig();
@@ -200,6 +170,15 @@ class AssetChainId extends ChainId {
 
   @override
   int? get decimals => decimalsValue;
+
+  @override
+  JsonMap toJson() {
+    final json = <String, dynamic>{'chain_id': chainId};
+    if (decimalsValue != null) {
+      json['decimals'] = decimalsValue;
+    }
+    return json;
+  }
 
   @override
   List<Object?> get props => [chainId, decimalsValue];
@@ -238,6 +217,23 @@ class TendermintChainId extends ChainId {
   int? get decimals => decimalsValue;
 
   @override
+  JsonMap toJson() {
+    final json = <String, dynamic>{
+      'protocol': {
+        'protocol_data': {
+          'account_prefix': accountPrefix,
+          'chain_id': chainId,
+          'chain_registry_name': chainRegistryName,
+        },
+      },
+    };
+    if (decimalsValue != null) {
+      json['decimals'] = decimalsValue;
+    }
+    return json;
+  }
+
+  @override
   List<Object?> get props => [
     accountPrefix,
     chainId,
@@ -267,6 +263,15 @@ class ProtocolChainId extends ChainId {
 
   @override
   int? get decimals => decimalsValue;
+
+  @override
+  JsonMap toJson() {
+    final json = <String, dynamic>{};
+    if (decimalsValue != null) {
+      json['decimals'] = decimalsValue;
+    }
+    return json;
+  }
 
   @override
   List<Object?> get props => [_protocol, decimalsValue];

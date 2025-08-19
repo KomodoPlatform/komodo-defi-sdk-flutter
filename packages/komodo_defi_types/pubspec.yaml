@@ -19,6 +19,7 @@ dependencies:
   json_annotation: ^4.9.0
   komodo_defi_rpc_methods:
     path: ../komodo_defi_rpc_methods
+  logging: ^1.3.0
   meta: ^1.15.0
 
 dev_dependencies:

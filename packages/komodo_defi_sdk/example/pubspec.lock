@@ -347,7 +347,7 @@ packages:
     source: hosted
     version: "4.9.0"
   komodo_cex_market_data:
-    dependency: "direct overridden"
+    dependency: "direct main"
     description:
       path: "../../komodo_cex_market_data"
       relative: true

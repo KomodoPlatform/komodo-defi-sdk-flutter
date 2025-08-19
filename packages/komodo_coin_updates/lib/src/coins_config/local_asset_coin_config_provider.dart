@@ -1,10 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart' show AssetBundle, rootBundle;
+import 'package:komodo_coin_updates/src/coins_config/asset_parser.dart';
 import 'package:komodo_coin_updates/src/coins_config/coin_config_provider.dart';
 import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
 import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 /// Local asset-backed implementation of [CoinConfigProvider].
 ///
@@ -45,6 +47,7 @@ class LocalAssetCoinConfigProvider implements CoinConfigProvider {
       bundle: bundle,
     );
   }
+  static final Logger _log = Logger('LocalAssetCoinConfigProvider');
 
   /// Creates a provider from a runtime configuration.
   final String packageName;
@@ -76,8 +79,10 @@ class LocalAssetCoinConfigProvider implements CoinConfigProvider {
 
   Future<List<Asset>> _loadAssets() async {
     final key = 'packages/$packageName/$coinsConfigAssetPath';
+    _log.info('Loading coins config from asset: $key');
     final content = await _bundle.loadString(key);
     final items = jsonDecode(content) as Map<String, dynamic>;
+    _log.info('Loaded ${items.length} coin configurations from asset');
 
     final transformedItems = <String, Map<String, dynamic>>{
       for (final entry in items.entries)
@@ -86,54 +91,15 @@ class LocalAssetCoinConfigProvider implements CoinConfigProvider {
         ),
     };
 
-    // First pass: Parse platform coin AssetIds (no parent relationship needed)
-    final platformIds = <AssetId>{};
-    for (final entry in transformedItems.entries) {
-      final coinData = entry.value;
-      if (_rawCoinHasNoParent(coinData)) {
-        try {
-          platformIds.addAll(
-            AssetId.parseAllTypes(coinData, knownIds: const {}),
-          );
-        } catch (_) {
-          // Ignore malformed platform entries in local bundle
-        }
-      }
-    }
+    // Use the standardized AssetParser to parse all assets
+    const parser = AssetParser(
+      loggerName: 'LocalAssetCoinConfigProvider',
+    );
 
-    // Second pass: Create assets with proper parent relationships
-    final assets = <Asset>[];
-    for (final entry in transformedItems.entries) {
-      final coinData = entry.value;
-
-      if (const CoinFilter().shouldFilter(coinData)) {
-        continue;
-      }
-
-      try {
-        final assetIds = AssetId.parseAllTypes(
-          coinData,
-          knownIds: platformIds,
-        ).map(
-          (id) =>
-              id.isChildAsset
-                  ? AssetId.parse(coinData, knownIds: platformIds)
-                  : id,
-        );
-
-        for (final assetId in assetIds) {
-          final asset = Asset.fromJsonWithId(coinData, assetId: assetId);
-          assets.add(asset);
-        }
-      } on MissingProtocolFieldException {
-        // Skip assets with missing protocol fields in local bundle
-      } catch (_) {
-        // Swallow errors for local parsing to avoid crashing the app
-      }
-    }
-    return assets;
+    return parser.parseAssetsFromConfig(
+      transformedItems,
+      shouldFilterCoin: (coinData) => const CoinFilter().shouldFilter(coinData),
+      logContext: 'from local bundle',
+    );
   }
-
-  bool _rawCoinHasNoParent(Map<String, dynamic> coinData) =>
-      coinData['parent_coin'] == null;
 }

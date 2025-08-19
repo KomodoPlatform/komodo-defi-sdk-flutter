@@ -181,6 +181,102 @@ enum CoinSubClass {
     return parent.canBeParentOf(this);
   }
 
+  /// Returns the JSON type string used in coin config files for this subclass
+  String get jsonType {
+    switch (this) {
+      case CoinSubClass.erc20:
+        return 'ERC-20';
+      case CoinSubClass.bep20:
+        return 'BEP-20';
+      case CoinSubClass.qrc20:
+        return 'QRC-20';
+      case CoinSubClass.matic:
+        return 'Matic';
+      case CoinSubClass.avx20:
+        return 'AVX-20';
+      case CoinSubClass.ftm20:
+        return 'FTM-20';
+      case CoinSubClass.arbitrum:
+        return 'Arbitrum';
+      case CoinSubClass.moonriver:
+        return 'Moonriver';
+      case CoinSubClass.moonbeam:
+        return 'Moonbeam';
+      case CoinSubClass.ethereumClassic:
+        return 'Ethereum Classic';
+      case CoinSubClass.ubiq:
+        return 'Ubiq';
+      case CoinSubClass.krc20:
+        return 'KRC-20';
+      case CoinSubClass.ewt:
+        return 'EWT';
+      case CoinSubClass.hrc20:
+        return 'HRC-20';
+      case CoinSubClass.hecoChain:
+        return 'HecoChain';
+      case CoinSubClass.rskSmartBitcoin:
+        return 'RSK Smart Bitcoin';
+      case CoinSubClass.utxo:
+        return 'UTXO';
+      case CoinSubClass.smartChain:
+        return 'Smart Chain';
+      case CoinSubClass.tendermint:
+        return 'TENDERMINT';
+      case CoinSubClass.tendermintToken:
+        return 'TENDERMINTTOKEN';
+      case CoinSubClass.zhtlc:
+        return 'ZHTLC';
+      case CoinSubClass.sia:
+        return 'SIA';
+      case CoinSubClass.slp:
+        return 'SLP';
+      case CoinSubClass.smartBch:
+        return 'SmartBCH';
+      case CoinSubClass.unknown:
+        return 'Unknown';
+    }
+  }
+
+  /// Returns the protocol type string used in the nested protocol.type field
+  String get protocolType {
+    switch (this) {
+      case CoinSubClass.erc20:
+      case CoinSubClass.bep20:
+      case CoinSubClass.matic:
+      case CoinSubClass.avx20:
+      case CoinSubClass.ftm20:
+      case CoinSubClass.arbitrum:
+      case CoinSubClass.moonriver:
+      case CoinSubClass.moonbeam:
+      case CoinSubClass.ethereumClassic:
+      case CoinSubClass.ubiq:
+      case CoinSubClass.krc20:
+      case CoinSubClass.ewt:
+      case CoinSubClass.hrc20:
+      case CoinSubClass.hecoChain:
+      case CoinSubClass.rskSmartBitcoin:
+        return 'ERC20';
+      case CoinSubClass.qrc20:
+        return 'QRC20';
+      case CoinSubClass.utxo:
+      case CoinSubClass.smartChain:
+        return 'UTXO';
+      case CoinSubClass.tendermint:
+      case CoinSubClass.tendermintToken:
+        return 'Tendermint';
+      case CoinSubClass.zhtlc:
+        return 'ZHTLC';
+      case CoinSubClass.sia:
+        return 'SIA';
+      case CoinSubClass.slp:
+        return 'SLP';
+      case CoinSubClass.smartBch:
+        return 'SmartBCH';
+      case CoinSubClass.unknown:
+        return 'Unknown';
+    }
+  }
+
   // TODO: Consider if null or an empty string should be returned for
   // subclasses where they don't have a symbol used in coin IDs.
   String get formatted {

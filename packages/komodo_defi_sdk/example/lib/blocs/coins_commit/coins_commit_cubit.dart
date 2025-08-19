@@ -15,6 +15,14 @@ class CoinsCommitState extends Equatable {
   final bool isLoading;
   final String? errorMessage;
 
+  /// Returns the current commit hash truncated to 7 characters
+  String? get currentTruncated =>
+      current?.substring(0, current!.length >= 7 ? 7 : current!.length);
+
+  /// Returns the latest commit hash truncated to 7 characters
+  String? get latestTruncated =>
+      latest?.substring(0, latest!.length >= 7 ? 7 : latest!.length);
+
   CoinsCommitState copyWith({
     String? current,
     String? latest,

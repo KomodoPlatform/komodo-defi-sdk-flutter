@@ -304,18 +304,6 @@ class _InstanceViewState extends State<InstanceView> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             InstanceStatus(instance: widget.instance),
-            const SizedBox(height: 8),
-            BlocBuilder<CoinsCommitCubit, CoinsCommitState>(
-              bloc: _coinsCommitCubit,
-              builder: (context, coinsState) {
-                final current = coinsState.current ?? '-';
-                final latest = coinsState.latest ?? '-';
-                return Text(
-                  'Coins commit: current=$current, latest=$latest',
-                  style: Theme.of(context).textTheme.bodySmall,
-                );
-              },
-            ),
             const SizedBox(height: 16),
             Text(widget.statusMessage),
             if (currentUser != null) ...[
@@ -344,6 +332,28 @@ class _InstanceViewState extends State<InstanceView> {
                   instance: widget.instance,
                 ),
               ),
+            // Footer with commit information
+            const SizedBox(height: 8),
+            BlocBuilder<CoinsCommitCubit, CoinsCommitState>(
+              bloc: _coinsCommitCubit,
+              builder: (context, coinsState) {
+                final current = coinsState.currentTruncated ?? '-';
+                final latest = coinsState.latestTruncated ?? '-';
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Current commit: $current',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Text(
+                      'Latest commit: $latest',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                );
+              },
+            ),
           ],
         );
       },

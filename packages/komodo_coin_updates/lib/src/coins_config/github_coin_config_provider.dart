@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:komodo_coin_updates/src/coins_config/asset_parser.dart';
 import 'package:komodo_coin_updates/src/coins_config/coin_config_provider.dart';
 import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
 import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
@@ -98,7 +99,8 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
 
   final http.Client _client;
 
-  /// Optional transform pipeline applied to each raw coin config JSON before parsing.
+  /// Optional transform pipeline applied to each raw coin config
+  /// JSON before parsing.
   final CoinConfigTransformer _transformer;
 
   @override
@@ -109,10 +111,12 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
       final body = response.body;
       final preview = body.length > 1024 ? '${body.substring(0, 1024)}…' : body;
       _log.warning(
-        'Failed to fetch coin configs [status: ${response.statusCode}] url: $url, ref: $commit, body: $preview',
+        'Failed to fetch coin configs [status: ${response.statusCode}] '
+        'url: $url, ref: $commit, body: $preview',
       );
       throw Exception(
-        'Failed to fetch coin configs from $url at $commit [${response.statusCode}]: $preview',
+        'Failed to fetch coin configs from $url at $commit '
+        '[${response.statusCode}]: $preview',
       );
     }
 
@@ -126,56 +130,13 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
         ),
     };
 
-    // First pass: Parse platform coin AssetIds (no parent relationship needed)
-    final platformIds = <AssetId>{};
-    for (final entry in transformedItems.entries) {
-      final coinData = entry.value;
-      if (_hasNoParent(coinData)) {
-        try {
-          platformIds.addAll(
-            AssetId.parseAllTypes(coinData, knownIds: const {}),
-          );
-        } catch (e) {
-          _log.fine('Error parsing platform coin ${entry.key}: $e');
-        }
-      }
-    }
-
-    // Second pass: Create assets with proper parent relationships
-    final assets = <Asset>[];
-    for (final entry in transformedItems.entries) {
-      final coinData = entry.value;
-
-      // Filter out excluded coins
-      if (const CoinFilter().shouldFilter(coinData)) {
-        _log.fine('[Komodo Coins] Excluding coin ${entry.key}');
-        continue;
-      }
-
-      try {
-        final assetIds = AssetId.parseAllTypes(
-          coinData,
-          knownIds: platformIds,
-        ).map(
-          (id) =>
-              id.isChildAsset
-                  ? AssetId.parse(coinData, knownIds: platformIds)
-                  : id,
-        );
-
-        for (final assetId in assetIds) {
-          final asset = Asset.fromJsonWithId(coinData, assetId: assetId);
-          assets.add(asset);
-        }
-      } on MissingProtocolFieldException catch (e) {
-        _log.fine(
-          'Skipping asset ${entry.key} due to missing protocol field: $e',
-        );
-      } catch (e) {
-        _log.warning('Error parsing asset ${entry.key}: $e');
-      }
-    }
-    return assets;
+    // Use the standardized AssetParser to parse all assets
+    const parser = AssetParser(loggerName: 'GithubCoinConfigProvider');
+    return parser.parseAssetsFromConfig(
+      transformedItems,
+      shouldFilterCoin: (coinData) => const CoinFilter().shouldFilter(coinData),
+      logContext: 'from GitHub at $commit',
+    );
   }
 
   @override
@@ -209,7 +170,8 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
 
     if (response.statusCode != 200) {
       _log.warning(
-        'GitHub API request failed [${response.statusCode} ${response.reasonPhrase}] for $effectiveBranch',
+        'GitHub API request failed [${response.statusCode} '
+        '${response.reasonPhrase}] for $effectiveBranch',
       );
       throw Exception(
         'Failed to retrieve latest commit hash: $effectiveBranch'
@@ -248,9 +210,6 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
     ).resolve('$branchOrCommit/');
     return contentBase.resolve(normalizedPath);
   }
-
-  bool _hasNoParent(Map<String, dynamic> coinData) =>
-      coinData['parent_coin'] == null;
 
   /// Dispose HTTP resources if this provider owns the client.
   void dispose() {

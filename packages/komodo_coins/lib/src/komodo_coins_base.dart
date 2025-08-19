@@ -34,41 +34,90 @@ class KomodoCoins {
   /// - Uses only read paths and does not attempt to update or persist assets.
   /// - If local storage already contains assets, returns those.
   /// - Otherwise, falls back to the bundled local asset provider.
+  /// - Includes retry logic with storage clearing between attempts.
   static Future<JsonList> fetchAndTransformCoinsList() async {
-    _log.fine('fetchAndTransformCoinsList: start');
-    // Load runtime config (from asset if available)
-    final runtimeConfig = await RuntimeUpdateConfigRepository().tryLoad() ??
-        const RuntimeUpdateConfig();
-
-    // Build repository and attempt to read stored assets only
-    const transformer = CoinConfigTransformer();
-    final repo = CoinConfigRepository.withDefaults(
-      runtimeConfig,
-      transformer: transformer,
+    return retry(
+      _fetchAndTransformCoinsListInternal,
+      maxAttempts: 3,
+      onRetry: (attempt, error, delay) {
+        _log.warning(
+          'fetchAndTransformCoinsList attempt $attempt failed, retrying after $delay: $error',
+        );
+      },
+      shouldRetry: (error) {
+        // Retry on most errors except for critical state errors
+        if (error is StateError || error is ArgumentError) {
+          return false;
+        }
+        return true;
+      },
     );
+  }
 
-    List<Asset> assets;
-    if (await repo.coinConfigExists()) {
-      _log.fine('Using stored assets from repository');
-      assets = await repo.getAssets();
-    } else {
-      // Fall back to local bundled coins (no persistence)
-      _log.info(
-        'Stored assets not found; falling back to local bundled assets',
-      );
-      final localProvider = LocalAssetCoinConfigProvider.fromConfig(
+  static Future<JsonList> _fetchAndTransformCoinsListInternal() async {
+    _log.fine('_fetchAndTransformCoinsListInternal: start');
+
+    try {
+      // Load runtime config (from asset if available)
+      final runtimeConfig = await RuntimeUpdateConfigRepository().tryLoad() ??
+          const RuntimeUpdateConfig();
+
+      // Build repository and attempt to read stored assets only
+      const transformer = CoinConfigTransformer();
+      final repo = CoinConfigRepository.withDefaults(
         runtimeConfig,
         transformer: transformer,
       );
-      assets = await localProvider.getAssets();
-    }
 
-    // Convert to raw coin config maps expected by mm2
-    final configs = <JsonMap>[
-      for (final asset in assets) asset.protocol.config,
-    ];
-    _log.fine('fetchAndTransformCoinsList: produced ${configs.length} configs');
-    return JsonList.of(configs);
+      List<Asset> assets;
+      if (await repo.coinConfigExists()) {
+        _log.fine('Using stored assets from repository');
+        assets = await repo.getAssets();
+      } else {
+        // Fall back to local bundled coins (no persistence)
+        _log.info(
+          'Stored assets not found; falling back to local bundled assets',
+        );
+        final localProvider = LocalAssetCoinConfigProvider.fromConfig(
+          runtimeConfig,
+          transformer: transformer,
+        );
+        assets = await localProvider.getAssets();
+      }
+
+      // Convert to raw coin config maps expected by mm2
+      final configs = <JsonMap>[
+        for (final asset in assets) asset.protocol.config,
+      ];
+      _log.fine(
+        '_fetchAndTransformCoinsListInternal: produced ${configs.length} configs',
+      );
+      return JsonList.of(configs);
+    } catch (e, s) {
+      _log.warning('_fetchAndTransformCoinsListInternal failed', e, s);
+
+      // Clear storage before rethrowing for retry
+      try {
+        final runtimeConfig = await RuntimeUpdateConfigRepository().tryLoad() ??
+            const RuntimeUpdateConfig();
+        const transformer = CoinConfigTransformer();
+        final repo = CoinConfigRepository.withDefaults(
+          runtimeConfig,
+          transformer: transformer,
+        );
+        await repo.deleteAllAssets();
+        _log.fine('Cleared persisted storage for static method retry');
+      } catch (clearError, clearStack) {
+        _log.warning(
+          'Failed to clear persisted storage for static method retry',
+          clearError,
+          clearStack,
+        );
+        // Don't rethrow - we still want to attempt the retry
+      }
+
+      rethrow;
+    }
   }
 
   Map<AssetId, Asset>? _assets;
@@ -113,75 +162,195 @@ class KomodoCoins {
         for (final asset in list ?? const <Asset>[]) asset.id: asset,
       };
 
-  Future<Map<AssetId, Asset>> fetchAssets() async {
-    _log.fine('fetchAssets: start');
+  /// Clears all storage and in-memory caches.
+  /// Used between retry attempts to ensure a clean state.
+  Future<void> _clearStorageAndCache() async {
+    _log.fine('Clearing storage and cache for retry attempt');
+
+    // Clear in-memory state
+    _assets = null;
+    _filterCache.clear();
+    _bootstrappedFromLocal = false;
+    _runtimeConfig = null;
+
+    // Clear persisted storage
     final runtimeConfig = await _getRuntimeConfig();
     final repo = _repoFor(runtimeConfig);
-
-    if (_assets != null) {
-      // If we previously bootstrapped from local and storage is now ready,
-      // refresh memory from storage so subsequent calls use the persisted set.
-      if (_bootstrappedFromLocal && await repo.coinConfigExists()) {
-        _log.fine(
-          'Refreshing cached assets from storage after local bootstrap',
-        );
-        _assets = _mapAssets(await repo.getAssets());
-        _bootstrappedFromLocal = false;
-      }
-      _log.finer('Returning cached assets: ${_assets!.length}');
-      return _assets!;
+    try {
+      await repo.deleteAllAssets();
+      _log.fine('Cleared persisted storage');
+    } catch (e, s) {
+      _log.warning('Failed to clear persisted storage', e, s);
+      // Don't rethrow - we still want to attempt the retry
     }
+  }
 
-    // Prefer returning cached storage if present
-    if (await repo.coinConfigExists()) {
-      _log.info('Storage exists; loading assets from repository');
-      final mapped = _mapAssets(await repo.getAssets());
-      // Trigger background update check (fire-and-forget)
-      unawaited(_maybeUpdateFromRemote(repo));
+  Future<Map<AssetId, Asset>> fetchAssets() async {
+    return retry(
+      _fetchAssetsInternal,
+      maxAttempts: 3,
+      onRetry: (attempt, error, delay) {
+        _log.warning(
+          'fetchAssets attempt $attempt failed, retrying after $delay: $error',
+        );
+      },
+      shouldRetry: (error) {
+        // Retry on most errors except for critical state errors
+        if (error is StateError || error is ArgumentError) {
+          return false;
+        }
+        return true;
+      },
+    );
+  }
+
+  Future<Map<AssetId, Asset>> _fetchAssetsInternal() async {
+    _log.fine('_fetchAssetsInternal: start');
+
+    try {
+      final runtimeConfig = await _getRuntimeConfig();
+      final repo = _repoFor(runtimeConfig);
+
+      if (_assets != null) {
+        // If we previously bootstrapped from local and storage is now ready,
+        // refresh memory from storage so subsequent calls use the persisted set.
+        if (_bootstrappedFromLocal && await repo.coinConfigExists()) {
+          _log.fine(
+            'Refreshing cached assets from storage after local bootstrap',
+          );
+          _assets = _mapAssets(await repo.getAssets());
+          _bootstrappedFromLocal = false;
+        }
+        _log.finer('Returning cached assets: ${_assets!.length}');
+        return _assets!;
+      }
+
+      // Prefer returning cached storage if present
+      if (await repo.coinConfigExists()) {
+        _log.info('Storage exists; loading assets from repository');
+        final mapped = _mapAssets(await repo.getAssets());
+        // Trigger background update check (fire-and-forget)
+        unawaited(_maybeUpdateFromRemote(repo));
+        _assets = mapped;
+        return mapped;
+      }
+
+      // Cold start: load from local asset then fetch and persist latest remote
+      _log.info('Cold start: loading assets from local asset bundle');
+      final localProvider = _localProviderFor(runtimeConfig);
+      final localAssets = await localProvider.getAssets();
+      final mapped = _mapAssets(localAssets);
       _assets = mapped;
+      _bootstrappedFromLocal = true;
+
+      // Fetch remote latest and upsert for next call (do not block first load)
+      unawaited(() async {
+        try {
+          _log.fine(
+            'Background refresh: fetching remote assets and latest commit',
+          );
+          final remoteAssets = await repo.coinConfigProvider.getAssets();
+          final latestCommit = await repo.coinConfigProvider.getLatestCommit();
+          await repo.upsertAssets(remoteAssets, latestCommit);
+          _log.info(
+            'Background refresh: updated ${remoteAssets.length} assets at commit $latestCommit',
+          );
+        } catch (e, s) {
+          _log.warning('Background refresh failed', e, s);
+        }
+      }());
+
       return mapped;
+    } catch (e, s) {
+      _log.warning('_fetchAssetsInternal failed', e, s);
+
+      // Clear storage and cache before rethrowing for retry
+      await _clearStorageAndCache();
+      rethrow;
     }
-
-    // Cold start: load from local asset then fetch and persist latest remote
-    _log.info('Cold start: loading assets from local asset bundle');
-    final localProvider = _localProviderFor(runtimeConfig);
-    final localAssets = await localProvider.getAssets();
-    final mapped = _mapAssets(localAssets);
-    _assets = mapped;
-    _bootstrappedFromLocal = true;
-
-    // Fetch remote latest and upsert for next call (do not block first load)
-    unawaited(() async {
-      try {
-        _log.fine(
-          'Background refresh: fetching remote assets and latest commit',
-        );
-        final remoteAssets = await repo.coinConfigProvider.getAssets();
-        final latestCommit = await repo.coinConfigProvider.getLatestCommit();
-        await repo.upsertAssets(remoteAssets, latestCommit);
-        _log.info(
-          'Background refresh: updated ${remoteAssets.length} assets at commit $latestCommit',
-        );
-      } catch (e, s) {
-        _log.warning('Background refresh failed', e, s);
-      }
-    }());
-
-    return mapped;
   }
 
   Future<void> _maybeUpdateFromRemote(CoinConfigRepository repo) async {
+    try {
+      await retry(
+        () => _maybeUpdateFromRemoteInternal(repo),
+        maxAttempts: 3,
+        onRetry: (attempt, error, delay) {
+          _log.warning(
+            '_maybeUpdateFromRemote attempt $attempt failed, retrying after $delay: $error',
+          );
+        },
+        shouldRetry: (error) {
+          // Retry on most errors except for critical state errors
+          if (error is StateError || error is ArgumentError) {
+            return false;
+          }
+          return true;
+        },
+      );
+    } catch (e, s) {
+      _log.warning(
+        'Failed to check/update remote coin config after retries',
+        e,
+        s,
+      );
+
+      // Fall back to local assets when remote update fails completely
+      await _fallbackToLocalAfterRemoteFailure();
+    }
+  }
+
+  Future<void> _maybeUpdateFromRemoteInternal(CoinConfigRepository repo) async {
     try {
       final isLatest = await repo.isLatestCommit();
       if (!isLatest) {
         _log.info('Remote commit is newer; updating coin config');
         await repo.updateCoinConfig();
         _log.fine('Coin config updated');
+
+        // Refresh cache with newly updated assets
+        if (_assets != null) {
+          _log.fine('Refreshing asset cache after successful remote update');
+          _assets = _mapAssets(await repo.getAssets());
+        }
       } else {
         _log.fine('Already at latest commit; no update performed');
       }
     } catch (e, s) {
-      _log.warning('Failed to check/update remote coin config', e, s);
+      _log.warning('_maybeUpdateFromRemoteInternal failed', e, s);
+
+      // Clear storage and cache before rethrowing for retry
+      await _clearStorageAndCache();
+      rethrow;
+    }
+  }
+
+  /// Fallback method called when all remote update retries have failed.
+  /// Clears storage and falls back to local bundled assets.
+  Future<void> _fallbackToLocalAfterRemoteFailure() async {
+    try {
+      _log.warning(
+        'Remote update failed after retries; falling back to local assets',
+      );
+
+      // Ensure storage is completely cleared
+      await _clearStorageAndCache();
+
+      // Load fresh local assets
+      final runtimeConfig = await _getRuntimeConfig();
+      final localProvider = _localProviderFor(runtimeConfig);
+      final localAssets = await localProvider.getAssets();
+
+      // Update cache with local assets
+      _assets = _mapAssets(localAssets);
+      _bootstrappedFromLocal = true;
+
+      _log.info(
+        'Successfully fell back to ${localAssets.length} local bundled assets',
+      );
+    } catch (e, s) {
+      _log.severe('Failed to fall back to local assets', e, s);
+      // Don't rethrow - we want to continue with whatever state we have
     }
   }
 
