@@ -91,11 +91,11 @@ void main() {
     });
 
     test('coinConfigExists returns false before write then true after', () async {
-      expect(await repo.coinConfigExists(), isFalse);
+      expect(await repo.updatedAssetStorageExists(), isFalse);
       // No need to stub getLatestCommit() here since we pass the commit explicitly.
       final kmd = buildKmdTestAsset();
       await repo.upsertAssets([kmd], 'HEAD');
-      expect(await repo.coinConfigExists(), isTrue);
+      expect(await repo.updatedAssetStorageExists(), isTrue);
     });
 
     test('respects custom box names and commit key', () async {

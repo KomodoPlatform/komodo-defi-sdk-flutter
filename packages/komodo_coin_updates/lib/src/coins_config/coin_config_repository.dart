@@ -148,13 +148,26 @@ class CoinConfigRepository implements CoinConfigStorage {
   @override
   /// Returns `true` when both the assets database and the settings
   /// database have been initialized and contain data.
-  Future<bool> coinConfigExists() async {
+  Future<bool> updatedAssetStorageExists() async {
     final assetsExists = await Hive.boxExists(assetsBoxName);
     final settingsExists = await Hive.boxExists(settingsBoxName);
     _log.fine(
-      'Box existence check: $assetsBoxName=$assetsExists $settingsBoxName=$settingsExists',
+      'Box existence check: $assetsBoxName=$assetsExists '
+      '$settingsBoxName=$settingsExists',
     );
-    return assetsExists && settingsExists;
+
+    final hiveBoxesExist = assetsExists && settingsExists;
+
+    // confirm boxes are not empty
+    final assetsBox = await _openAssetsBox();
+    final settingsBox = await _openSettingsBox();
+    final hiveBoxesNotEmpty = assetsBox.isNotEmpty && settingsBox.isNotEmpty;
+    _log.fine(
+      'Box emptiness check: $assetsBoxName=$hiveBoxesNotEmpty '
+      '$settingsBoxName=$hiveBoxesNotEmpty',
+    );
+
+    return hiveBoxesExist && hiveBoxesNotEmpty;
   }
 
   @override

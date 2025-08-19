@@ -69,7 +69,7 @@ class StrategicCoinUpdateManager implements CoinUpdateManager {
 
     // Test repository availability
     try {
-      await repository.coinConfigExists();
+      await repository.updatedAssetStorageExists();
       _logger.finer('Repository connectivity verified');
     } catch (e, s) {
       _logger.warning('Repository connectivity issue during init', e, s);

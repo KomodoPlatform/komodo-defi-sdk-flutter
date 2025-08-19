@@ -100,7 +100,7 @@ class StrategicKomodoCoins {
       );
 
       List<Asset> assets;
-      if (await repo.coinConfigExists()) {
+      if (await repo.updatedAssetStorageExists()) {
         _log.fine('Using stored assets from repository');
         assets = await repo.getAssets();
       } else {

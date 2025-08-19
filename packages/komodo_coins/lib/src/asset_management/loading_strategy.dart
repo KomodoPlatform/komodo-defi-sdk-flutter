@@ -54,7 +54,7 @@ class StorageCoinConfigSource implements CoinConfigSource {
   Future<List<Asset>> loadAssets() => repository.getAssets();
 
   @override
-  Future<bool> isAvailable() => repository.coinConfigExists();
+  Future<bool> isAvailable() => repository.updatedAssetStorageExists();
 }
 
 /// Source that loads from bundled asset files

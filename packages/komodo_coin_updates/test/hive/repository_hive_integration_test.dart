@@ -41,7 +41,7 @@ void main() {
 
         await repo.upsertAssets(assets, commit);
 
-        final exists = await repo.coinConfigExists();
+        final exists = await repo.updatedAssetStorageExists();
         expect(exists, isTrue);
 
         final all = await repo.getAssets();

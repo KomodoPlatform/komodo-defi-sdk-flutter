@@ -225,13 +225,13 @@ void main() {
       });
 
       test('checks availability from repository', () async {
-        when(() => mockRepository.coinConfigExists())
+        when(() => mockRepository.updatedAssetStorageExists())
             .thenAnswer((_) async => true);
 
         final result = await source.isAvailable();
 
         expect(result, isTrue);
-        verify(() => mockRepository.coinConfigExists()).called(1);
+        verify(() => mockRepository.updatedAssetStorageExists()).called(1);
       });
 
       test('handles repository errors gracefully', () async {
@@ -242,7 +242,7 @@ void main() {
       });
 
       test('returns false when storage is not available', () async {
-        when(() => mockRepository.coinConfigExists())
+        when(() => mockRepository.updatedAssetStorageExists())
             .thenAnswer((_) async => false);
 
         final result = await source.isAvailable();

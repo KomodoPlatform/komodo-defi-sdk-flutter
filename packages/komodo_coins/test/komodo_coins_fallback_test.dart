@@ -106,7 +106,8 @@ void main() {
 
     group('when storage does not exist', () {
       setUp(() {
-        when(() => mockRepo.coinConfigExists()).thenAnswer((_) async => false);
+        when(() => mockRepo.updatedAssetStorageExists())
+            .thenAnswer((_) async => false);
       });
 
       test(
@@ -198,7 +199,8 @@ void main() {
 
     group('when storage exists but remote update fails', () {
       setUp(() {
-        when(() => mockRepo.coinConfigExists()).thenAnswer((_) async => true);
+        when(() => mockRepo.updatedAssetStorageExists())
+            .thenAnswer((_) async => true);
         when(() => mockRepo.getAssets()).thenAnswer((_) async => [testAsset]);
         when(() => mockRepo.getCurrentCommit())
             .thenAnswer((_) async => bundledCommitHash);
@@ -267,7 +269,7 @@ void main() {
     group('static fetchAndTransformCoinsList fallback behavior', () {
       test('falls back to local assets when storage fails', () async {
         // Set up repository to fail
-        when(() => mockRepo.coinConfigExists())
+        when(() => mockRepo.updatedAssetStorageExists())
             .thenThrow(Exception('Storage error'));
         when(() => mockRepo.getAssets()).thenThrow(Exception('Storage error'));
 
@@ -300,7 +302,7 @@ void main() {
           () async {
         // Set up repository to fail initially, then succeed
         var callCount = 0;
-        when(() => mockRepo.coinConfigExists()).thenAnswer((_) async {
+        when(() => mockRepo.updatedAssetStorageExists()).thenAnswer((_) async {
           callCount++;
           if (callCount == 1) {
             throw Exception('Initial failure');
@@ -326,7 +328,8 @@ void main() {
 
     group('commit hash consistency', () {
       test('commit hash is never empty when using local assets', () async {
-        when(() => mockRepo.coinConfigExists()).thenAnswer((_) async => false);
+        when(() => mockRepo.updatedAssetStorageExists())
+            .thenAnswer((_) async => false);
         when(() => mockRemoteProvider.getAssets())
             .thenThrow(Exception('Remote error'));
         when(() => mockRemoteProvider.getLatestCommit())
@@ -354,7 +357,8 @@ void main() {
       test(
           'commit hash switches from bundled to latest after successful update',
           () async {
-        when(() => mockRepo.coinConfigExists()).thenAnswer((_) async => false);
+        when(() => mockRepo.updatedAssetStorageExists())
+            .thenAnswer((_) async => false);
         when(() => mockRemoteProvider.getAssets())
             .thenAnswer((_) async => [testAsset]);
         when(() => mockRemoteProvider.getLatestCommit())
@@ -382,7 +386,8 @@ void main() {
       });
 
       test('commit hash remains bundled when update is disabled', () async {
-        when(() => mockRepo.coinConfigExists()).thenAnswer((_) async => false);
+        when(() => mockRepo.updatedAssetStorageExists())
+            .thenAnswer((_) async => false);
 
         final coins = KomodoCoins(
           configRepository: mockConfigRepository,

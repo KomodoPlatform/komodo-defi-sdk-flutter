@@ -10,7 +10,8 @@ class _FakeStorage implements CoinConfigStorage {
   bool _latest = false;
 
   @override
-  Future<bool> coinConfigExists() async => store.isNotEmpty && commit != null;
+  Future<bool> updatedAssetStorageExists() async =>
+      store.isNotEmpty && commit != null;
 
   @override
   Future<Asset?> getAsset(AssetId assetId) async => store[assetId.id];
@@ -75,7 +76,7 @@ void main() {
         'KMD',
       );
       expect(await s.getCurrentCommit(), 'HEAD');
-      expect(await s.coinConfigExists(), isTrue);
+      expect(await s.updatedAssetStorageExists(), isTrue);
     });
 
     test('getAssets supports excludedAssets filtering', () async {
@@ -116,7 +117,7 @@ void main() {
 
       expect(await s.getAssets(), isEmpty);
       expect(await s.getCurrentCommit(), isNull);
-      expect(await s.coinConfigExists(), isFalse);
+      expect(await s.updatedAssetStorageExists(), isFalse);
     });
 
     test('isLatestCommit can assert both true and false branches', () async {

@@ -32,7 +32,7 @@ abstract class CoinConfigStorage {
   /// Returns `true` when storage boxes exist and contain data for the coin
   /// configuration. This is a lightweight readiness check, not a deep
   /// validation of contents.
-  Future<bool> coinConfigExists();
+  Future<bool> updatedAssetStorageExists();
 
   /// Creates or updates the stored assets and persists the associated
   /// repository [commit]. Implementations should upsert by `AssetId`
