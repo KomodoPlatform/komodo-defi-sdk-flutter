@@ -165,7 +165,9 @@ class SparklineRepository with RepositoryFallbackMixin {
     _inFlightRequests[symbol] = future;
 
     // Clean up the in-flight map when request completes (success or failure)
-    await future.whenComplete(() {
+    // Don't await this - let cleanup happen asynchronously so we can return
+    // the future immediately for request deduplication
+    future.whenComplete(() {
       _inFlightRequests.remove(symbol);
       _logger.fine('Cleaned up in-flight request for $symbol');
     });
