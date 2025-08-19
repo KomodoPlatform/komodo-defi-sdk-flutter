@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
-import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -26,17 +25,21 @@ class _MerchantInvoiceScreenState extends State<MerchantInvoiceScreen> {
   @override
   void initState() {
     super.initState();
-    // Pick a default asset if possible (first activated UTXO or EVM)
     _pickDefaultAsset();
   }
 
   void _pickDefaultAsset() async {
     final activated = await widget.sdk.assets.getActivatedAssets();
-    setState(() {
-      _selectedAsset = activated.firstWhere(
+    Asset? def;
+    if (activated.isNotEmpty) {
+      def = activated.firstWhere(
         (a) => a.id.subClass == CoinSubClass.utxo || evmCoinSubClasses.contains(a.id.subClass),
-        orElse: () => activated.isNotEmpty ? activated.first : null as Asset,
+        orElse: () => activated.first,
       );
+    }
+    if (!mounted) return;
+    setState(() {
+      _selectedAsset = def;
     });
   }
 
@@ -56,12 +59,14 @@ class _MerchantInvoiceScreenState extends State<MerchantInvoiceScreen> {
         expiresIn: const Duration(minutes: 15),
         minConfirmations: 1,
       );
+      if (!mounted) return;
       setState(() {
         _invoice = invoice;
         _latestStatus = invoice.status;
       });
-      _sub?.cancel();
+      await _sub?.cancel();
       _sub = widget.sdk.merchantInvoices.watchInvoice(invoice.id).listen((ev) {
+        if (!mounted) return;
         setState(() => _latestStatus = ev.status);
       });
     } catch (e) {
