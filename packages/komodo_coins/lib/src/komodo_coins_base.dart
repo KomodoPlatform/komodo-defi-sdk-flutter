@@ -8,6 +8,8 @@ import 'package:komodo_coins/src/update_management/_update_management_index.dart
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 /// A high-level library that provides a simple way to access Komodo Platform
 /// coin data and seed nodes.
@@ -23,6 +25,8 @@ class KomodoCoins {
     LoadingStrategy? loadingStrategy,
     UpdateStrategy? updateStrategy,
     this.enableAutoUpdate = true,
+    this.appStoragePath,
+    this.appName,
   })  : _configRepository = configRepository ?? RuntimeUpdateConfigRepository(),
         _transformer = transformer ?? const CoinConfigTransformer(),
         _dataFactory = dataFactory ?? const DefaultCoinConfigDataFactory(),
@@ -34,6 +38,12 @@ class KomodoCoins {
   /// Whether to automatically update coin configurations from remote sources.
   /// When false, only reads from existing storage or local asset bundle.
   final bool enableAutoUpdate;
+
+  /// Optional base path for storage (native platforms).
+  final String? appStoragePath;
+
+  /// Optional app name used as a subfolder (native) or path (web).
+  final String? appName;
 
   final RuntimeUpdateConfigRepository _configRepository;
   final CoinConfigTransformer _transformer;
@@ -161,6 +171,9 @@ class KomodoCoins {
   Future<void> init() async {
     _log.fine('Initializing KomodoCoins with strategy pattern');
 
+    // Initialize Hive storage for coin updates
+    await _initializeHiveStorage();
+
     final runtimeConfig = await _getRuntimeConfig();
 
     // Create sources for the config manager
@@ -195,6 +208,35 @@ class KomodoCoins {
     }
 
     _log.fine('KomodoCoins initialized successfully');
+  }
+
+  /// Initialize Hive storage for coin updates
+  Future<void> _initializeHiveStorage() async {
+    try {
+      final resolvedAppName = appName ?? 'komodo_coins';
+      String storagePath;
+      if (kIsWeb) {
+        // Web: appName is used as the storage path
+        storagePath = resolvedAppName;
+        _log.fine('Using web storage path: $storagePath');
+      } else {
+        // Native: join base path and app name
+        final basePath =
+            appStoragePath ?? (await getApplicationDocumentsDirectory()).path;
+        storagePath = p.join(basePath, resolvedAppName);
+        _log.fine('Using native storage path: $storagePath');
+      }
+
+      await KomodoCoinUpdater.ensureInitialized(storagePath);
+      _log.fine('Hive storage initialized successfully');
+    } catch (e, stackTrace) {
+      _log.warning(
+        'Failed to initialize Hive storage, coin updates may not work: $e',
+        e,
+        stackTrace,
+      );
+      // Don't rethrow - we want the app to continue working even if Hive fails
+    }
   }
 
   bool get isInitialized => _assetsManager != null && _updatesManager != null;
