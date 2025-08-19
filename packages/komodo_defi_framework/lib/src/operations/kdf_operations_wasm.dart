@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
@@ -138,7 +139,7 @@ class KdfOperationsWasm implements IKdfOperations {
   }
 
   Future<KdfStartupResult> _executeKdfMain(
-    js_interop.JSObject? jsConfig,
+    JSObject? jsConfig,
   ) async {
     final jsMethod = _kdfModule!.callMethod(
       'mm2_main'.toJS,
@@ -159,8 +160,8 @@ class KdfOperationsWasm implements IKdfOperations {
       _debugLog('Handling JSAny error: [${jsError.runtimeType}] $jsError');
 
       // Direct JSNumber error
-      if (isInstance<js_interop.JSNumber>(jsError, 'JSNumber')) {
-        final dynamic dartNumber = (jsError as js_interop.JSNumber).dartify();
+      if (isInstance<JSNumber>(jsError, 'JSNumber')) {
+        final dynamic dartNumber = (jsError as JSNumber).dartify();
         final code = extractNumericCodeFromDartError(dartNumber);
         if (code != null) {
           _debugLog('KdfOperationsWasm: Resolved as JSNumber code: $code');
@@ -169,8 +170,8 @@ class KdfOperationsWasm implements IKdfOperations {
       }
 
       // JSObject with useful fields
-      if (isInstance<js_interop.JSObject>(jsError, 'JSObject')) {
-        final jsObj = jsError as js_interop.JSObject;
+      if (isInstance<JSObject>(jsError, 'JSObject')) {
+        final jsObj = jsError as JSObject;
 
         // Prefer robust dartify and then inspect
         final dynamic dartified = jsObj.dartify();
@@ -184,7 +185,7 @@ class KdfOperationsWasm implements IKdfOperations {
 
         // Fallback for 'code' property directly on JS object if not covered above
         if (jsObj.hasProperty('code'.toJS).toDart) {
-          final jsAnyCode = jsObj.getProperty<js_interop.JSAny?>('code'.toJS);
+          final jsAnyCode = jsObj.getProperty<JSAny?>('code'.toJS);
           final code2 = extractNumericCodeFromDartError(jsAnyCode?.dartify());
           if (code2 != null) return KdfStartupResult.fromDefaultInt(code2);
         }
@@ -210,8 +211,8 @@ class KdfOperationsWasm implements IKdfOperations {
     return KdfStartupResult.unknownError;
   }
 
-  bool isInstance<T extends js_interop.JSAny?>(
-    js_interop.JSAny? obj, [
+  bool isInstance<T extends JSAny?>(
+    JSAny? obj, [
     String? typeString,
   ]) {
     return obj.instanceOfString(typeString ?? T.runtimeType.toString());
@@ -230,7 +231,7 @@ class KdfOperationsWasm implements IKdfOperations {
 
     try {
       // Call mm2_stop which may return a Promise or a direct value
-      final jsAny = _kdfModule!.callMethod<js_interop.JSAny?>('mm2_stop'.toJS);
+      final jsAny = _kdfModule!.callMethod<JSAny?>('mm2_stop'.toJS);
       final status =
           await parseJsInteropMaybePromise(jsAny, js_maps.mapJsStopResult);
 
@@ -269,7 +270,7 @@ class KdfOperationsWasm implements IKdfOperations {
   }
 
   /// Makes the JavaScript RPC call and returns the raw JS response
-  Future<js_interop.JSObject> _makeJsCall(JsonMap request) async {
+  Future<JSObject> _makeJsCall(JsonMap request) async {
     _debugLog('mm2Rpc request: ${request.censored()}');
     request['userpass'] = _config.rpcPassword;
 
@@ -294,7 +295,7 @@ class KdfOperationsWasm implements IKdfOperations {
           _log('Raw JS response: $jsResponse (stringify failed: $e)');
         }
       }
-      return jsResponse;
+      return jsResponse as JSObject;
     } catch (error) {
       if (error.toString().contains('RethrownDartError')) {
         final errorMessage = error.toString().split('\n')[0];
@@ -308,13 +309,6 @@ class KdfOperationsWasm implements IKdfOperations {
         '\nRequest: $request',
       );
     }
-
-    try {
-      _debugLog('Raw JS response: ${jsResponse.dartify()}');
-    } catch (e) {
-      _debugLog('Raw JS response: $jsResponse (stringify failed: $e)');
-    }
-    return jsResponse as js_interop.JSObject;
   }
 
   /// Validates the response structure
