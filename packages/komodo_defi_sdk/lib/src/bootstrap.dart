@@ -8,7 +8,8 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
-import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
+import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart'
+    show CexMarketDataManager, MarketDataManager;
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
@@ -155,31 +156,29 @@ Future<void> bootstrap({
     return validator;
   });
 
-  // TODO: Consider if more appropropriate for initialization of these
-  // dependencies to be done internally in the `cex_market_data` package.
-  container.registerSingleton<CexRepository>(
-    BinanceRepository(binanceProvider: const BinanceProvider()),
+  // Register market data dependencies using factory pattern
+  await MarketDataBootstrap.register(
+    container,
+    config: config.marketDataConfig,
   );
-
-  container.registerSingleton<KomodoPriceProvider>(KomodoPriceProvider());
 
   container.registerSingletonAsync<MessageSigningManager>(
     () async => MessageSigningManager(await container.getAsync<ApiClient>()),
     dependsOn: [ApiClient],
   );
 
-  container.registerSingleton<KomodoPriceRepository>(
-    KomodoPriceRepository(cexPriceProvider: container<KomodoPriceProvider>()),
-  );
-
   container.registerSingletonAsync<MarketDataManager>(() async {
+    final repositories = await MarketDataBootstrap.buildRepositoryList(
+      container,
+      config.marketDataConfig,
+    );
     final manager = CexMarketDataManager(
-      priceRepository: container<CexRepository>(),
-      komodoPriceRepository: container<KomodoPriceRepository>(),
+      priceRepositories: repositories,
+      selectionStrategy: container<RepositorySelectionStrategy>(),
     );
     await manager.init();
     return manager;
-  });
+  }, dependsOn: MarketDataBootstrap.buildDependencies(config.marketDataConfig));
 
   container.registerSingletonAsync<FeeManager>(() async {
     final client = await container.getAsync<ApiClient>();

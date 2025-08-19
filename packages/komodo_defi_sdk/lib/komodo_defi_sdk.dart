@@ -5,6 +5,8 @@
 /// package (komodo_defi_sdk)
 library;
 
+export 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
+    show Commodity, Cryptocurrency, FiatCurrency, QuoteCurrency, Stablecoin;
 export 'package:komodo_defi_framework/komodo_defi_framework.dart'
     show IKdfHostConfig, LocalConfig, RemoteConfig;
 export 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart'

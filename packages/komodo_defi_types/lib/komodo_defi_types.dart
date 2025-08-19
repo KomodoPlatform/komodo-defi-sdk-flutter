@@ -7,6 +7,7 @@ library;
 
 export 'src/api/api_client.dart';
 export 'src/assets/asset.dart';
+export 'src/assets/asset_cache_key.dart';
 export 'src/assets/asset_id.dart';
 export 'src/auth/auth_result.dart';
 // export 'src/auth/exceptions/incorrect_password_exception.dart';
@@ -20,6 +21,8 @@ export 'src/komodo_defi_types_base.dart';
 export 'src/public_key/balance_strategy.dart';
 export 'src/seed_node/seed_node.dart';
 export 'src/types.dart';
+// Trading and swap related high-level types used across SDKs
+export 'src/trading/swap_types.dart';
 export 'src/staking/staking_types.dart';
 
 // Export activation params types

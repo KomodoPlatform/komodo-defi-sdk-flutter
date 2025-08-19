@@ -16,7 +16,17 @@ import 'package:logging/logging.dart';
 /// handling passphrase requirements and ignoring PIN prompts. All other
 /// [IAuthService] methods are delegated to the composed auth service.
 class TrezorAuthService implements IAuthService {
-  TrezorAuthService(this._authService, this._trezor);
+  TrezorAuthService(
+    this._authService,
+    this._trezor, {
+    TrezorConnectionMonitor? connectionMonitor,
+    FlutterSecureStorage? secureStorage,
+    String Function(int length)? passwordGenerator,
+  }) : _connectionMonitor =
+           connectionMonitor ?? TrezorConnectionMonitor(_trezor),
+       _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+       _generatePassword =
+           passwordGenerator ?? SecurityUtils.generatePasswordSecure;
 
   static const String trezorWalletName = 'My Trezor';
   static const String _passwordKey = 'trezor_wallet_password';
@@ -24,7 +34,9 @@ class TrezorAuthService implements IAuthService {
 
   final IAuthService _authService;
   final TrezorRepository _trezor;
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final FlutterSecureStorage _secureStorage;
+  final TrezorConnectionMonitor _connectionMonitor;
+  final String Function(int length) _generatePassword;
 
   Future<void> provideTrezorPin(int taskId, String pin) =>
       _trezor.providePin(taskId, pin);
@@ -100,10 +112,16 @@ class TrezorAuthService implements IAuthService {
   Stream<KdfUser?> get authStateChanges => _authService.authStateChanges;
 
   @override
-  Future<void> dispose() => _authService.dispose();
+  Future<void> dispose() async {
+    _connectionMonitor.dispose();
+    await _authService.dispose();
+  }
 
   @override
-  Future<void> signOut() => _authService.signOut();
+  Future<void> signOut() async {
+    await _stopConnectionMonitoring();
+    await _authService.signOut();
+  }
 
   @override
   Future<void> deleteWallet({
@@ -126,7 +144,11 @@ class TrezorAuthService implements IAuthService {
     }
 
     try {
-      return await _initializeTrezorWithPassphrase(passphrase: password);
+      final user = await _initializeTrezorWithPassphrase(passphrase: password);
+
+      _startConnectionMonitoring();
+
+      return user;
     } catch (e) {
       await _signOutCurrentTrezorUser();
 
@@ -154,7 +176,11 @@ class TrezorAuthService implements IAuthService {
     }
 
     try {
-      return await _initializeTrezorWithPassphrase(passphrase: password);
+      final user = await _initializeTrezorWithPassphrase(passphrase: password);
+
+      _startConnectionMonitoring();
+
+      return user;
     } catch (e) {
       await _signOutCurrentTrezorUser();
 
@@ -180,7 +206,7 @@ class TrezorAuthService implements IAuthService {
 
     if (existing != null) return existing;
 
-    final newPassword = SecurityUtils.generatePasswordSecure(16);
+    final newPassword = _generatePassword(16);
     await _secureStorage.write(key: _passwordKey, value: newPassword);
     return newPassword;
   }
@@ -189,11 +215,34 @@ class TrezorAuthService implements IAuthService {
   Future<void> clearTrezorPassword() =>
       _secureStorage.delete(key: _passwordKey);
 
+  /// Start monitoring Trezor connection status after successful authentication.
+  /// This will automatically sign out if the device becomes disconnected.
+  void _startConnectionMonitoring({String? devicePubkey}) {
+    _connectionMonitor.startMonitoring(
+      devicePubkey: devicePubkey,
+      onConnectionLost: () async {
+        _log.warning('Trezor connection lost, signing out user');
+        await _signOutCurrentTrezorUser();
+      },
+      onStatusChanged: (status) {
+        _log.fine('Trezor connection status: ${status.value}');
+      },
+    );
+  }
+
+  /// Stop monitoring Trezor connection status.
+  Future<void> _stopConnectionMonitoring() async {
+    if (_connectionMonitor.isMonitoring) {
+      await _connectionMonitor.stopMonitoring();
+    }
+  }
+
   /// Signs out the current user if they are using the Trezor wallet
   Future<void> _signOutCurrentTrezorUser() async {
     final current = await _authService.getActiveUser();
     if (current?.walletId.name == trezorWalletName) {
       _log.warning("Signing out current '${current?.walletId.name}' user");
+      await _stopConnectionMonitoring();
       try {
         await _authService.signOut();
       } catch (_) {
@@ -286,6 +335,7 @@ class TrezorAuthService implements IAuthService {
         if (trezorState.status == AuthenticationStatus.completed) {
           final user = await _authService.getActiveUser();
           if (user != null) {
+            _startConnectionMonitoring();
             yield AuthenticationState.completed(user);
           } else {
             yield AuthenticationState.error(

@@ -1,5 +1,7 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart'
+    show TrezorDeviceInfo, TrezorUserActionData;
 
 /// Trezor hardware wallet methods namespace
 class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
@@ -85,10 +87,7 @@ class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
 
     return userAction(
       taskId: taskId,
-      userAction: TrezorUserActionData(
-        actionType: TrezorUserActionType.trezorPin,
-        pin: pin,
-      ),
+      userAction: TrezorUserActionData.pin(pin),
     );
   }
 
@@ -99,9 +98,18 @@ class TrezorMethodsNamespace extends BaseRpcMethodNamespace {
   }) {
     return userAction(
       taskId: taskId,
-      userAction: TrezorUserActionData(
-        actionType: TrezorUserActionType.trezorPassphrase,
-        passphrase: passphrase,
+      userAction: TrezorUserActionData.passphrase(passphrase),
+    );
+  }
+
+  /// Check if a Trezor device is connected and ready for use.
+  Future<TrezorConnectionStatusResponse> connectionStatus({
+    String? devicePubkey,
+  }) {
+    return execute(
+      TrezorConnectionStatusRequest(
+        rpcPass: rpcPass ?? '',
+        devicePubkey: devicePubkey,
       ),
     );
   }
@@ -193,44 +201,26 @@ class TaskInitTrezorUserAction
   }
 }
 
-// Response and data classes
+class TrezorConnectionStatusRequest
+    extends BaseRequest<TrezorConnectionStatusResponse, GeneralErrorResponse> {
+  TrezorConnectionStatusRequest({this.devicePubkey, super.rpcPass})
+    : super(method: 'trezor_connection_status', mmrpc: '2.0');
 
-class TrezorDeviceInfo {
-  TrezorDeviceInfo({
-    required this.deviceId,
-    required this.devicePubkey,
-    this.type,
-    this.model,
-    this.deviceName,
-  });
+  final String? devicePubkey;
 
-  factory TrezorDeviceInfo.fromJson(JsonMap json) {
-    return TrezorDeviceInfo(
-      type: json.valueOrNull<String>('type'),
-      model: json.valueOrNull<String>('model'),
-      deviceName: json.valueOrNull<String>('device_name'),
-      deviceId: json.value<String>('device_id'),
-      devicePubkey: json.value<String>('device_pubkey'),
-    );
-  }
+  @override
+  Map<String, dynamic> toJson() => {
+    ...super.toJson(),
+    'params': {if (devicePubkey != null) 'device_pubkey': devicePubkey},
+  };
 
-  final String? type;
-  final String? model;
-  final String? deviceName;
-  final String deviceId;
-  final String devicePubkey;
-
-  JsonMap toJson() {
-    return {
-      if (type != null) 'type': type,
-      if (model != null) 'model': model,
-      if (deviceName != null) 'device_name': deviceName,
-      'device_id': deviceId,
-      'device_pubkey': devicePubkey,
-    };
+  @override
+  TrezorConnectionStatusResponse parse(Map<String, dynamic> json) {
+    return TrezorConnectionStatusResponse.fromJson(json);
   }
 }
 
+// Response classes
 class TrezorStatusResponse extends BaseResponse {
   TrezorStatusResponse({
     required super.mmrpc,
@@ -305,72 +295,6 @@ class TrezorCancelResponse extends BaseResponse {
   }
 }
 
-enum TrezorUserActionType {
-  trezorPin('TrezorPin'),
-  trezorPassphrase('TrezorPassphrase');
-
-  const TrezorUserActionType(this.value);
-  final String value;
-}
-
-class TrezorUserActionData {
-  /// ⚠️ SECURITY WARNING: This class contains sensitive data (PIN and passphrase).
-  /// - DO NOT log instances of this class or its fields
-  /// - Use [clearSensitiveData] to securely overwrite sensitive fields when no longer needed
-  /// - Avoid keeping references to this object longer than necessary
-  TrezorUserActionData({required this.actionType, this.pin, this.passphrase})
-    : assert(
-        (actionType == TrezorUserActionType.trezorPin && pin != null) ||
-            (actionType == TrezorUserActionType.trezorPassphrase &&
-                passphrase != null),
-        'PIN must be provided for TrezorPin action, passphrase for '
-        'TrezorPassphrase action',
-      );
-
-  final TrezorUserActionType actionType;
-  String? pin;
-  String? passphrase;
-
-  JsonMap toJson() {
-    return {
-      'action_type': actionType.value,
-      if (pin != null) 'pin': pin,
-      if (passphrase != null) 'passphrase': passphrase,
-    };
-  }
-
-  /// Securely clears sensitive data by overwriting PIN and passphrase fields.
-  /// Call this method when the sensitive data is no longer needed to minimize
-  /// exposure in memory.
-  void clearSensitiveData() {
-    _secureClearString(pin);
-    _secureClearString(passphrase);
-    pin = null;
-    passphrase = null;
-  }
-
-  /// Securely overwrites a string by replacing its characters with zeros.
-  /// This provides a best-effort attempt to clear sensitive data from memory,
-  /// though complete removal cannot be guaranteed due to Dart's string
-  /// immutability and garbage collection behavior.
-  void _secureClearString(String? value) {
-    if (value == null) return;
-
-    // Note: Due to Dart's string immutability, we cannot directly overwrite
-    // the string content in memory. The best we can do is null the reference
-    // and rely on garbage collection. For more secure memory handling,
-    // consider using typed_data Uint8List for sensitive data in future versions.
-  }
-
-  @override
-  String toString() {
-    // Override toString to prevent accidental logging of sensitive data
-    return 'TrezorUserActionData(actionType: $actionType, '
-        'pin: ${pin != null ? '[REDACTED]' : 'null'}, '
-        'passphrase: ${passphrase != null ? '[REDACTED]' : 'null'})';
-  }
-}
-
 class TrezorUserActionResponse extends BaseResponse {
   TrezorUserActionResponse({required super.mmrpc, required this.result});
 
@@ -386,5 +310,26 @@ class TrezorUserActionResponse extends BaseResponse {
   @override
   JsonMap toJson() {
     return {'mmrpc': mmrpc, 'result': result};
+  }
+}
+
+class TrezorConnectionStatusResponse extends BaseResponse {
+  TrezorConnectionStatusResponse({required super.mmrpc, required this.status});
+
+  factory TrezorConnectionStatusResponse.fromJson(JsonMap json) {
+    return TrezorConnectionStatusResponse(
+      mmrpc: json.valueOrNull<String>('mmrpc'),
+      status: json.value<JsonMap>('result').value<String>('status'),
+    );
+  }
+
+  final String status;
+
+  @override
+  JsonMap toJson() {
+    return {
+      'mmrpc': mmrpc,
+      'result': {'status': status},
+    };
   }
 }
