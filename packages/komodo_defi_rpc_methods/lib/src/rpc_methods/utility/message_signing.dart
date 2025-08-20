@@ -9,6 +9,10 @@ class SignMessageRequest
     required String rpcPass,
     required this.coin,
     required this.message,
+    this.derivationPath,
+    this.accountId,
+    this.chain,
+    this.addressId,
   }) : super(method: 'sign_message', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// The coin to sign a message with
@@ -17,11 +21,42 @@ class SignMessageRequest
   /// The message you want to sign
   final String message;
 
+  /// Optional HD address selector: full derivation path
+  /// Example: m/84'/2'/0'/0/1
+  final String? derivationPath;
+
+  /// Optional HD address selector components
+  /// When provided together with [chain], [addressId] they form the BIP44 path
+  /// m/44'/COIN_ID'/accountId'/chain/addressId
+  final int? accountId;
+
+  /// Optional HD address selector chain. Must be "Internal" or "External" if provided.
+  final String? chain;
+
+  /// Optional HD address selector: address index within the chain
+  final int? addressId;
+
   @override
   Map<String, dynamic> toJson() {
-    return super.toJson().deepMerge({
-      'params': {'coin': coin, 'message': message},
-    });
+    final params = <String, dynamic>{
+      'coin': coin,
+      'message': message,
+    };
+
+    // HD address selection (preferred nested under 'address')
+    final address = <String, dynamic>{};
+    if (derivationPath != null && derivationPath!.isNotEmpty) {
+      address['derivation_path'] = derivationPath;
+    } else if (accountId != null && chain != null && addressId != null) {
+      address['account_id'] = accountId;
+      address['chain'] = chain;
+      address['address_id'] = addressId;
+    }
+    if (address.isNotEmpty) {
+      params['address'] = address;
+    }
+
+    return super.toJson().deepMerge({'params': params});
   }
 
   @override

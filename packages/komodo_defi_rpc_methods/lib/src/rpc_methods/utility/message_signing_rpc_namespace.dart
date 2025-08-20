@@ -9,9 +9,21 @@ class MessageSigningMethodsNamespace extends BaseRpcMethodNamespace {
   Future<SignMessageResponse> signMessage({
     required String coin,
     required String message,
+    String? derivationPath,
+    int? accountId,
+    String? chain,
+    int? addressId,
   }) {
     return execute(
-      SignMessageRequest(rpcPass: rpcPass ?? '', coin: coin, message: message),
+      SignMessageRequest(
+        rpcPass: rpcPass ?? '',
+        coin: coin,
+        message: message,
+        derivationPath: derivationPath,
+        accountId: accountId,
+        chain: chain,
+        addressId: addressId,
+      ),
     );
   }
 

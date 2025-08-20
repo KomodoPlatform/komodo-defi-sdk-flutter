@@ -185,6 +185,7 @@ class _AssetHeaderWidgetState extends State<AssetHeaderWidget> {
             coin: widget.asset.id.id,
             message: message,
             address: widget.pubkeys!.keys.first.address,
+            derivationPath: widget.pubkeys!.keys.first.derivationPath,
           );
       setState(() => _signedMessage = signature);
     } catch (e) {

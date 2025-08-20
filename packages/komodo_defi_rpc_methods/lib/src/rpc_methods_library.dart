@@ -172,9 +172,21 @@ class UtilityMethods extends BaseRpcMethodNamespace {
   Future<SignMessageResponse> signMessage({
     required String coin,
     required String message,
+    String? derivationPath,
+    int? accountId,
+    String? chain,
+    int? addressId,
     String? rpcPass,
   }) => execute(
-    SignMessageRequest(coin: coin, message: message, rpcPass: rpcPass ?? ''),
+    SignMessageRequest(
+      coin: coin,
+      message: message,
+      rpcPass: rpcPass ?? '',
+      derivationPath: derivationPath,
+      accountId: accountId,
+      chain: chain,
+      addressId: addressId,
+    ),
   );
 
   /// Verifies a message signature
