@@ -38,10 +38,9 @@ sealed class FeeInfo with _$FeeInfo {
         );
       case 'EthGas' || 'Eth':
         final totalFeeValue = json.valueOrNull<dynamic>('total_fee');
-        final totalGasFee =
-            totalFeeValue != null
-                ? Decimal.parse(totalFeeValue.toString())
-                : null;
+        final totalGasFee = totalFeeValue != null
+            ? Decimal.parse(totalFeeValue.toString())
+            : null;
         return FeeInfo.ethGas(
           coin: json.valueOrNull<String>('coin') ?? '',
           // If JSON provides e.g. "0.000000003", parse to Decimal => 3e-9
@@ -51,10 +50,9 @@ sealed class FeeInfo with _$FeeInfo {
         );
       case 'EthGasEip1559':
         final totalFeeValue = json.valueOrNull<dynamic>('total_fee');
-        final totalGasFee =
-            totalFeeValue != null
-                ? Decimal.parse(totalFeeValue.toString())
-                : null;
+        final totalGasFee = totalFeeValue != null
+            ? Decimal.parse(totalFeeValue.toString())
+            : null;
         return FeeInfo.ethGasEip1559(
           coin: json.valueOrNull<String>('coin') ?? '',
           maxFeePerGas: Decimal.parse(
@@ -68,10 +66,9 @@ sealed class FeeInfo with _$FeeInfo {
         );
       case 'Qrc20Gas':
         final totalGasFeeValue = json.valueOrNull<dynamic>('total_gas_fee');
-        final totalGasFee =
-            totalGasFeeValue != null
-                ? Decimal.parse(totalGasFeeValue.toString())
-                : null;
+        final totalGasFee = totalGasFeeValue != null
+            ? Decimal.parse(totalGasFeeValue.toString())
+            : null;
         return FeeInfo.qrc20Gas(
           coin: json.valueOrNull<String>('coin') ?? '',
           gasPrice: Decimal.parse(json.value<dynamic>('gas_price').toString()),
@@ -310,38 +307,10 @@ sealed class FeeInfo with _$FeeInfo {
     FeeInfoTendermint(:final coin, :final amount, :final gasLimit) => {
       'type': 'Cosmos',
       'coin': coin,
-      'gas_price':
-          gasLimit > 0 ? (amount / Decimal.fromInt(gasLimit)).toDouble() : 0.0,
+      'gas_price': gasLimit > 0
+          ? (amount / Decimal.fromInt(gasLimit)).toDouble()
+          : 0.0,
       'gas_limit': gasLimit,
     },
-  };
-}
-
-/// Extension methods providing Freezed-like functionality
-extension FeeInfoMaybeMap on FeeInfo {
-  /// Equivalent to Freezed's maybeMap functionality using Dart's pattern matching
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    required TResult Function() orElse,
-    TResult Function(FeeInfoUtxoFixed value)? utxoFixed,
-    TResult Function(FeeInfoUtxoPerKbyte value)? utxoPerKbyte,
-    TResult Function(FeeInfoEthGas value)? ethGas,
-    TResult Function(FeeInfoEthGasEip1559 value)? ethGasEip1559,
-    TResult Function(FeeInfoQrc20Gas value)? qrc20Gas,
-    TResult Function(FeeInfoCosmosGas value)? cosmosGas,
-    TResult Function(FeeInfoTendermint value)? tendermint,
-  }) => switch (this) {
-    final FeeInfoUtxoFixed fee when utxoFixed != null => utxoFixed(fee),
-    final FeeInfoUtxoPerKbyte fee when utxoPerKbyte != null => utxoPerKbyte(
-      fee,
-    ),
-    final FeeInfoEthGas fee when ethGas != null => ethGas(fee),
-    final FeeInfoEthGasEip1559 fee when ethGasEip1559 != null => ethGasEip1559(
-      fee,
-    ),
-    final FeeInfoQrc20Gas fee when qrc20Gas != null => qrc20Gas(fee),
-    final FeeInfoCosmosGas fee when cosmosGas != null => cosmosGas(fee),
-    final FeeInfoTendermint fee when tendermint != null => tendermint(fee),
-    _ => orElse(),
   };
 }
