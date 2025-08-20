@@ -486,42 +486,42 @@ packages:
     source: hosted
     version: "4.9.0"
   komodo_cex_market_data:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../packages/komodo_cex_market_data"
       relative: true
     source: path
     version: "0.0.1"
   komodo_coin_updates:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../packages/komodo_coin_updates"
       relative: true
     source: path
     version: "1.0.0"
   komodo_coins:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../packages/komodo_coins"
       relative: true
     source: path
     version: "0.3.0+0"
   komodo_defi_framework:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../packages/komodo_defi_framework"
       relative: true
     source: path
     version: "0.3.0+0"
   komodo_defi_local_auth:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../packages/komodo_defi_local_auth"
       relative: true
     source: path
     version: "0.3.0+0"
   komodo_defi_rpc_methods:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../packages/komodo_defi_rpc_methods"
       relative: true
@@ -542,14 +542,14 @@ packages:
     source: path
     version: "0.3.0+0"
   komodo_ui:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../packages/komodo_ui"
       relative: true
     source: path
     version: "0.3.0+0"
   komodo_wallet_build_transformer:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../packages/komodo_wallet_build_transformer"
       relative: true

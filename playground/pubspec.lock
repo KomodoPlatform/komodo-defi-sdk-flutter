@@ -377,14 +377,14 @@ packages:
     source: hosted
     version: "1.4.2"
   komodo_coin_updates:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../packages/komodo_coin_updates"
       relative: true
     source: path
     version: "1.0.0"
   komodo_coins:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../packages/komodo_coins"
       relative: true
