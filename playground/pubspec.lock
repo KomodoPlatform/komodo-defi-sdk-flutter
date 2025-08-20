@@ -390,7 +390,7 @@ packages:
     source: path
     version: "0.3.0+0"
   komodo_defi_rpc_methods:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
       path: "../packages/komodo_defi_rpc_methods"
       relative: true
@@ -404,7 +404,7 @@ packages:
     source: path
     version: "0.3.0+0"
   komodo_wallet_build_transformer:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
       path: "../packages/komodo_wallet_build_transformer"
       relative: true
@@ -776,5 +776,5 @@ packages:
     source: hosted
     version: "1.1.0"
 sdks:
-  dart: ">=3.8.1 <4.0.0"
-  flutter: ">=3.35.0"
+  dart: ">=3.9.0 <4.0.0"
+  flutter: ">=3.35.0 <3.36.0"
