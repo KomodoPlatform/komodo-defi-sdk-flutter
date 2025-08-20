@@ -1,18 +1,6 @@
-# 🚚 Repository Moved
+# Dragon Charts Flutter
 
-> **⚠️ This repository has been migrated to the Komodo DeFi SDK Flutter monorepo.**
->
-> 📍 **New location:** [packages/dragon_charts_flutter](https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/tree/main/packages/dragon_charts_flutter)
->
-> 🔄 **Active development** continues in the monorepo. Please update your forks, bookmarks, and links.
->
-> 💡 **For issues, PRs, and contributions**, please use the [main monorepo](https://github.com/KomodoPlatform/komodo-defi-sdk-flutter).
-
----
-
-# Dragon Charts Flutter (Archived)
-
-Dragon Charts Flutter is a lightweight, declarative, and highly customizable charting library for Flutter. It provides a simple yet powerful way to create various types of charts, with a focus on ease of use and flexibility.
+Lightweight, declarative, and customizable charting library for Flutter with minimal dependencies. This package now lives in the Komodo DeFi SDK monorepo.
 
 ## Features
 
@@ -31,16 +19,6 @@ Run this command:
 
 ```bash
 flutter pub add dragon_charts_flutter
-```
-
-### From GitHub
-
-```yaml
-dependencies:
-  dragon_charts_flutter:
-    git:
-      url: https://github.com/your_username/dragon_charts_flutter.git
-      ref: main # or a specific tag/branch/commit
 ```
 
 Then, run `flutter pub get` to install the package.
@@ -148,31 +126,12 @@ The main widget for displaying a line chart.
 - `rangeExtent`: `ChartExtent` - The extent of the range (y-axis).
 - `backgroundColor`: `Color` - The background color of the chart.
 
-## Roadmap
+## Roadmap (high level)
 
-### ✅ v0.1.0 (Done)
-
- - ✅ Initial release with support for line charts.
-
-### v0.2.0
-
-- Add pie charts support.
-- Improve documentation and add more examples.
-
-### v0.3.0
-
-- Add bar charts support.
-- Implement interactive legends.
-
-### v0.4.0
-
-- Add scatter plots support.
-- Enhance performance for large datasets.
-
-### v1.0.0
-
-- Full documentation and stable release.
-- Add support for exporting charts as images.
+- Additional chart types (bar, pie, scatter)
+- Legends and interactions
+- Large dataset performance
+- Export as image
 
 ## Why Dragon Charts Flutter?
 
@@ -185,8 +144,8 @@ Dragon Charts Flutter is an excellent solution for your charting needs because:
 
 ## Contributing
 
-Contributions are welcome! Please read the [contributing guidelines](CONTRIBUTING.md) first.
+Contributions are welcome! Please open issues/PRs in the monorepo.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
+MIT

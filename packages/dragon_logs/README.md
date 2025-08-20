@@ -29,17 +29,8 @@ Your feedback and contributions to help achieve these features would be much app
 
 ## Installation
 
-To use Dragon Logs, add it as a dependency in your `pubspec.yaml` file:
-
-```yaml
-dependencies:
-  dragon_logs: ^1.0.4
-```
-
-Then, run:
-
-```
-flutter pub get
+```sh
+flutter pub add dragon_logs
 ```
 
 # Dragon Logs API Documentation and Usage
