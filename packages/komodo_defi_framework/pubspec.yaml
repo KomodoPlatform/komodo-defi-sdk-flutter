@@ -6,7 +6,7 @@ homepage: https://komodoplatform.com
 publish_to: "none"
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: '>=3.9.0 <4.0.0'
   # Minimum Flutter version is set quite high for build transformer capabilities.
   # If this is too high for your project, this can be lowered by commenting out
   # the following line and running the build transformer manually via CLI.

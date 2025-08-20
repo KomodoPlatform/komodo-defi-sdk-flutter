@@ -4,7 +4,7 @@ version: 1.0.0
 publish_to: none # publishable packages can't have git dependencies
 
 environment:
-  sdk: ^3.8.1
+  sdk: ^3.9.0
   flutter: ">=3.35.0 <3.36.0"
 
 resolution: workspace
