@@ -5,7 +5,7 @@ publish_to: none # publishable packages can't have git dependencies
 
 environment:
   sdk: ^3.8.1
-  flutter: ">=3.29.0 <3.36.0"
+  flutter: ">=3.35.0 <3.36.0"
 
 # Add regular dependencies here.
 dependencies:
@@ -16,7 +16,7 @@ dependencies:
   http: ^1.4.0
   komodo_defi_types:
     path: ../komodo_defi_types
-  very_good_analysis: ^8.0.0
+  very_good_analysis: ^9.0.0
 
 dev_dependencies:
   flutter_test:

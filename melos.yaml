@@ -15,14 +15,14 @@ scripts:
   indexes:generate:
     run: dart run index_generator
     exec:
-      concurrency: 5
+      concurrency: 1
     packageFilters:
       dependsOn: index_generator
 
   runners:generate:
     run: dart run build_runner build --delete-conflicting-outputs
     exec:
-      concurrency: 5
+      concurrency: 1
     packageFilters:
       dependsOn:
         - build_runner

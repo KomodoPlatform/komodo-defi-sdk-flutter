@@ -10,7 +10,7 @@ environment:
   # Minimum Flutter version is set quite high for build transformer capabilities.
   # If this is too high for your project, this can be lowered by commenting out
   # the following line and running the build transformer manually via CLI.
-  flutter: ">=3.29.0 <3.36.0"
+  flutter: ">=3.35.0 <3.36.0"
 
 dependencies:
   # aws_client: ^0.6.0
@@ -43,7 +43,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   js: any
-  very_good_analysis: ^8.0.0
+  very_good_analysis: ^9.0.0
   yaml: ^3.1.2
 
 flutter:
