@@ -18,14 +18,13 @@ class AssetId extends Equatable {
     final subClass = CoinSubClass.parse(json.value('type'));
 
     final parentCoinTicker = json.valueOrNull<String>('parent_coin');
-    final maybeParent =
-        parentCoinTicker == null
-            ? null
-            : knownIds?.singleWhere(
-              (parent) =>
-                  parent.id == parentCoinTicker &&
-                  parent.subClass.canBeParentOf(subClass),
-            );
+    final maybeParent = parentCoinTicker == null
+        ? null
+        : knownIds?.singleWhere(
+            (parent) =>
+                parent.id == parentCoinTicker &&
+                parent.subClass.canBeParentOf(subClass),
+          );
 
     return AssetId(
       id: json.value<String>('coin'),
@@ -73,25 +72,12 @@ class AssetId extends Equatable {
   }
 
   JsonMap toJson() => {
-    // Legacy nested structure inconsistent with input format expected in
-    // fromJson and as stored in coins_config.json.
-    // Kept here to avoid breaking changes.
-    // NOTE: if there are overlapping keys, the following fields will take
-    // precedence. This is the intended behavior to ensure that fromJson and
-    // toJson are interoperable.
-    // TODO: consider refactoring all models to use freezed with jsonserializable
-    // fieldrename etc.
-    'symbol': symbol.toJson(),
-    'chain_id': chainId.formattedChainId,
-    'type_formatted': subClass.formatted,
-
-    // Flat structure expected by fromJson and as stored in coins_config.json.
     'coin': id,
     'fname': name,
-    'type': subClass.jsonType,
-    ...symbol.toJson(),
-    ...chainId.toJson(),
-    if (derivationPath != null) 'derivation_path': derivationPath,
+    'symbol': symbol.toJson(),
+    'chain_id': chainId.formattedChainId,
+    'derivation_path': derivationPath,
+    'type': subClass.formatted,
     if (parentId != null) 'parent_coin': parentId!.id,
   };
 
@@ -139,9 +125,6 @@ abstract class ChainId with EquatableMixin {
   String get formattedChainId;
   int? get decimals;
 
-  /// Converts this ChainId to its JSON representation for inclusion in asset JSON
-  JsonMap toJson();
-
   static ChainId? parseOrNull(ChainId? Function() fromConfig) {
     try {
       return fromConfig();
@@ -170,15 +153,6 @@ class AssetChainId extends ChainId {
 
   @override
   int? get decimals => decimalsValue;
-
-  @override
-  JsonMap toJson() {
-    final json = <String, dynamic>{'chain_id': chainId};
-    if (decimalsValue != null) {
-      json['decimals'] = decimalsValue;
-    }
-    return json;
-  }
 
   @override
   List<Object?> get props => [chainId, decimalsValue];
@@ -217,23 +191,6 @@ class TendermintChainId extends ChainId {
   int? get decimals => decimalsValue;
 
   @override
-  JsonMap toJson() {
-    final json = <String, dynamic>{
-      'protocol': {
-        'protocol_data': {
-          'account_prefix': accountPrefix,
-          'chain_id': chainId,
-          'chain_registry_name': chainRegistryName,
-        },
-      },
-    };
-    if (decimalsValue != null) {
-      json['decimals'] = decimalsValue;
-    }
-    return json;
-  }
-
-  @override
   List<Object?> get props => [
     accountPrefix,
     chainId,
@@ -263,15 +220,6 @@ class ProtocolChainId extends ChainId {
 
   @override
   int? get decimals => decimalsValue;
-
-  @override
-  JsonMap toJson() {
-    final json = <String, dynamic>{};
-    if (decimalsValue != null) {
-      json['decimals'] = decimalsValue;
-    }
-    return json;
-  }
 
   @override
   List<Object?> get props => [_protocol, decimalsValue];

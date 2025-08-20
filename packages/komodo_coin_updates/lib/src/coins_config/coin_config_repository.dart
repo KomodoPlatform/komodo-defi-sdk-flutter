@@ -131,11 +131,14 @@ class CoinConfigRepository implements CoinConfigStorage {
   @override
   /// Creates or updates stored assets keyed by `AssetId.id`, and records the
   /// associated repository [commit]. Also refreshes the in-memory cached
-  /// latest commit when not yet initialized.
+  /// latest commit when not yet initialized. Note: this will overwrite any
+  /// existing assets, and clear the box before putting new ones.
   Future<void> upsertAssets(List<Asset> assets, String commit) async {
     _log.fine('Upserting ${assets.length} assets for commit $commit');
     final assetsBox = await _openAssetsBox();
     final putMap = <String, Asset>{for (final a in assets) a.id.id: a};
+    // clear to avoid having removed/delisted coins remain in the box
+    await assetsBox.clear();
     await assetsBox.putAll(putMap);
 
     final settings = await _openSettingsBox();

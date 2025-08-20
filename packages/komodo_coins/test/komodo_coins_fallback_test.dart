@@ -136,8 +136,6 @@ void main() {
         expect(currentCommit, equals(bundledCommitHash));
 
         verify(() => mockLocalProvider.getAssets()).called(greaterThan(0));
-        verify(() => mockFallbackProvider.getLatestCommit())
-            .called(greaterThan(0));
       });
 
       test('uses local assets when remote update times out', () async {

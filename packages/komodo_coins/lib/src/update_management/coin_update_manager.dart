@@ -67,7 +67,6 @@ class StrategicCoinUpdateManager implements CoinUpdateManager {
   Future<void> init() async {
     _logger.fine('Initializing CoinUpdateManager');
 
-    // Test repository availability
     try {
       await repository.updatedAssetStorageExists();
       _logger.finer('Repository connectivity verified');

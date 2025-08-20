@@ -71,19 +71,8 @@ class Asset extends Equatable {
   bool get supportsMessageSigning => signMessagePrefix != null;
 
   JsonMap toJson() => {
-    // Legacy nested structure inconsistent with input format expected in
-    // fromJson and as stored in coins_config.json.
-    // Kept here to avoid breaking changes.
-    // NOTE: if there are overlapping keys, the protocol.toJson() will take
-    // precedence. This is the intended behavior to ensure that fromJson and
-    // toJson are interoperable.
-    // TODO: consider refactoring all models to use freezed with jsonserializable
-    // fieldrename etc.
     'protocol': protocol.toJson(),
     'id': id.toJson(),
-
-    ...protocol.toJson(),
-    ...id.toJson(),
     'wallet_only': isWalletOnly,
     if (signMessagePrefix != null) 'sign_message_prefix': signMessagePrefix,
   };

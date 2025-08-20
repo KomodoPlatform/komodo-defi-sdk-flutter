@@ -1,4 +1,5 @@
 import 'package:hive_ce/hive.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manual adapter for Asset. We do not use codegen here to avoid generating
@@ -14,9 +15,10 @@ class AssetAdapter extends TypeAdapter<Asset> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     final stored = (fields[0] as Map).cast<String, dynamic>();
-    // With the fixed Asset.toJson() method, the stored format now matches
-    // exactly what Asset.fromJson() expects, so no flattening is needed.
-    return Asset.fromJson(stored);
+    // Convert the stored map to ensure it's the expected Map<String, dynamic>
+    // type before passing to Asset.fromJson to avoid type casting issues
+    final convertedMap = convertToJsonMap(stored);
+    return Asset.fromJson(convertedMap);
   }
 
   @override
@@ -24,6 +26,8 @@ class AssetAdapter extends TypeAdapter<Asset> {
     writer
       ..writeByte(1)
       ..writeByte(0)
-      ..write(obj.toJson());
+      // We use the raw protocol config map to avoid issues with nested types
+      // and inconsistent toJson/fromJson behaviour with the Asset class.
+      ..write(obj.protocol.config);
   }
 }

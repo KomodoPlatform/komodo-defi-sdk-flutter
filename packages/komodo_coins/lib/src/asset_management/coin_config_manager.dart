@@ -28,6 +28,10 @@ abstract class CoinConfigManager {
   /// The map is keyed by the asset id.
   Map<AssetId, Asset> get all;
 
+  /// Gets the current commit hash for the loaded coin configuration.
+  /// This represents the commit hash of the currently active coin list.
+  Future<String?> getCurrentCommitHash();
+
   /// Refreshes assets from sources
   Future<void> refreshAssets();
 
@@ -79,11 +83,23 @@ class StrategicCoinConfigManager
   bool _isDisposed = false;
   bool _isInitialized = false;
 
+  // Cache for commit hash to prevent unnecessary queries
+  String? _cachedCommitHash;
+
   @override
   Future<void> init() async {
     _logger.fine('Initializing CoinConfigManager');
 
-    // Validate sources
+    await _validateConfigSources();
+
+    await _loadAssets();
+    // Populate commit hash cache before the manager is marked initialized
+    await _populateCommitHashCacheFromSources();
+    _isInitialized = true;
+    _logger.fine('CoinConfigManager initialized successfully');
+  }
+
+  Future<void> _validateConfigSources() async {
     for (final source in _configSources) {
       try {
         final isAvailable = await source.isAvailable();
@@ -98,11 +114,6 @@ class StrategicCoinConfigManager
         );
       }
     }
-
-    // Load initial assets
-    await _loadAssets();
-    _isInitialized = true;
-    _logger.fine('CoinConfigManager initialized successfully');
   }
 
   /// Validates that the manager hasn't been disposed
@@ -158,6 +169,39 @@ class StrategicCoinConfigManager
     _logger.info('Loaded ${assets.length} assets');
   }
 
+  /// Populates the commit hash cache by querying available sources.
+  ///
+  /// This variant is safe to call during initialization, before the manager
+  /// is marked as initialized. It does not assert initialization state.
+  Future<void> _populateCommitHashCacheFromSources() async {
+    if (_cachedCommitHash != null && _cachedCommitHash!.isNotEmpty) {
+      _logger.finer('Commit hash already cached: $_cachedCommitHash');
+      return;
+    }
+
+    for (final source in _configSources) {
+      try {
+        final commit = await source.getCurrentCommitHash();
+        if (commit != null && commit.isNotEmpty) {
+          _cachedCommitHash = commit;
+          _logger.fine(
+            'Cached commit hash from ${source.displayName}: $_cachedCommitHash',
+          );
+          return;
+        }
+      } catch (e, s) {
+        _logger.fine(
+          'Failed to get commit hash from ${source.displayName}',
+          e,
+          s,
+        );
+        continue;
+      }
+    }
+
+    _logger.fine('No commit hash available from any source during init');
+  }
+
   /// Refreshes assets from sources
   @override
   Future<void> refreshAssets() async {
@@ -176,6 +220,10 @@ class StrategicCoinConfigManager
 
     _assets = _mapAssets(assets);
     _filterCache.clear(); // Clear cache after refresh
+
+    // Refresh commit hash cache when assets are refreshed
+    _cachedCommitHash = null;
+
     _logger.info('Refreshed ${assets.length} assets');
   }
 
@@ -187,6 +235,22 @@ class StrategicCoinConfigManager
     _checkNotDisposed();
     _assertInitialized();
     return _assets!;
+  }
+
+  @override
+  Future<String?> getCurrentCommitHash() async {
+    _checkNotDisposed();
+    _assertInitialized();
+
+    // Return cached commit hash if available
+    if (_cachedCommitHash != null && _cachedCommitHash!.isNotEmpty) {
+      _logger.finer('Returning cached commit hash: $_cachedCommitHash');
+      return _cachedCommitHash;
+    }
+
+    await _populateCommitHashCacheFromSources();
+
+    return _cachedCommitHash;
   }
 
   @override
@@ -252,6 +316,7 @@ class StrategicCoinConfigManager
     _isInitialized = false;
     _assets = null;
     _filterCache.clear();
+    _cachedCommitHash = null; // Clear commit hash cache
     clearSourceHealthData(); // Clear mixin data
     _logger.fine('Disposed StrategicCoinConfigManager');
   }

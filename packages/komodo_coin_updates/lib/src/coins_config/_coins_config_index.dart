@@ -2,6 +2,7 @@
 
 library _coins_config;
 
+export 'asset_parser.dart';
 export 'coin_config_provider.dart';
 export 'coin_config_repository.dart';
 export 'coin_config_repository_factory.dart';

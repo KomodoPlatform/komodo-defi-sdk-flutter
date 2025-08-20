@@ -82,106 +82,52 @@ class KomodoCoins {
   /// - If local storage already contains assets, returns those.
   /// - Otherwise, falls back to the bundled local asset provider.
   /// - Includes retry logic with storage clearing between attempts.
-  static Future<JsonList> fetchAndTransformCoinsList() async {
-    return retry(
-      _fetchAndTransformCoinsListInternal,
-      maxAttempts: 2,
-      onRetry: (attempt, error, delay) {
-        _log.warning(
-          'fetchAndTransformCoinsList attempt $attempt failed, retrying after $delay: $error',
-        );
-      },
-      shouldRetry: (error) {
-        // Retry on most errors except for critical state errors
-        if (error is StateError || error is ArgumentError) {
-          return false;
-        }
-        return true;
-      },
-    );
-  }
-
-  static Future<JsonList> _fetchAndTransformCoinsListInternal() async {
-    _log.fine('_fetchAndTransformCoinsListInternal: start');
-
+  static Future<JsonList> fetchRawCoinsListForKdfStartup() async {
+    // Heavier init is acceptable: use instance with updates disabled.
+    final kc = KomodoCoins(enableAutoUpdate: false);
+    Object? originalError;
+    StackTrace? originalStack;
+    JsonList? result;
     try {
-      // Load runtime config (from asset if available)
-      final runtimeConfig = await RuntimeUpdateConfigRepository().tryLoad() ??
-          const RuntimeUpdateConfig();
-
-      // Build repository and attempt to read stored assets only
-      const transformer = CoinConfigTransformer();
-      final repo = CoinConfigRepository.withDefaults(
-        runtimeConfig,
-        transformer: transformer,
-      );
-
-      List<Asset> assets;
-      if (await repo.updatedAssetStorageExists()) {
-        _log.fine('Using stored assets from repository');
-        assets = await repo.getAssets();
-      } else {
-        // Fall back to local bundled coins (no persistence)
-        _log.info(
-          'Stored assets not found; falling back to local bundled assets',
-        );
-        final localProvider = LocalAssetCoinConfigProvider.fromConfig(
-          runtimeConfig,
-          transformer: transformer,
-        );
-        assets = await localProvider.getAssets();
-      }
-
-      // Convert to raw coin config maps expected by mm2
+      await kc.init();
+      final assets = await kc.fetchAssets();
       final configs = <JsonMap>[
-        for (final asset in assets) asset.protocol.config,
+        for (final asset in assets.values) asset.protocol.config,
       ];
-      _log.fine(
-        '_fetchAndTransformCoinsListInternal: produced ${configs.length} configs',
-      );
-      return JsonList.of(configs);
+      result = JsonList.of(configs);
     } catch (e, s) {
-      _log.warning('_fetchAndTransformCoinsListInternal failed', e, s);
-
-      // Clear storage before rethrowing for retry
+      originalError = e;
+      originalStack = s;
+    } finally {
       try {
-        final runtimeConfig = await RuntimeUpdateConfigRepository().tryLoad() ??
-            const RuntimeUpdateConfig();
-        const transformer = CoinConfigTransformer();
-        final repo = CoinConfigRepository.withDefaults(
-          runtimeConfig,
-          transformer: transformer,
-        );
-        await repo.deleteAllAssets();
-        _log.fine('Cleared persisted storage for static method retry');
-      } catch (clearError, clearStack) {
+        await kc.dispose();
+      } catch (disposeErr, disposeStack) {
+        // Do not mask the original error if there was one
         _log.warning(
-          'Failed to clear persisted storage for static method retry',
-          clearError,
-          clearStack,
+          'Dispose failed during startup coins fetch',
+          disposeErr,
+          disposeStack,
         );
-        // Don't rethrow - we still want to attempt the retry
       }
-
-      rethrow;
     }
+    if (originalError != null) {
+      Error.throwWithStackTrace(originalError, originalStack!);
+    }
+    return result!;
   }
 
   @mustCallSuper
   Future<void> init() async {
     _log.fine('Initializing KomodoCoins with strategy pattern');
 
-    // Initialize Hive storage for coin updates
+    // Initialize hive first before registering adapters or initialising
+    // repositories.
     await _initializeHiveStorage();
 
     final runtimeConfig = await _getRuntimeConfig();
-
-    // Create sources for the config manager
-    final sources = await _createConfigSources(runtimeConfig);
-
-    // Initialize asset manager
+    final configProviders = await _createConfigSources(runtimeConfig);
     _assetsManager = StrategicCoinConfigManager(
-      configSources: sources,
+      configSources: configProviders,
       loadingStrategy: _loadingStrategy,
       enableAutoUpdate: enableAutoUpdate,
     );
@@ -230,7 +176,7 @@ class KomodoCoins {
       await KomodoCoinUpdater.ensureInitialized(storagePath);
       _log.fine('Hive storage initialized successfully');
     } catch (e, stackTrace) {
-      _log.warning(
+      _log.shout(
         'Failed to initialize Hive storage, coin updates may not work: $e',
         e,
         stackTrace,
@@ -273,22 +219,28 @@ class KomodoCoins {
   ///
   /// This method is kept for backward compatibility but now delegates to the
   /// asset manager's functionality.
+  ///
+  /// During cold start, returns cached assets to prevent refreshing on every call.
+  /// Call [assets.refreshAssets] to manually refresh the asset list.
+  /// Background updates will update the cache without affecting the current asset list.
   Future<Map<AssetId, Asset>> fetchAssets() async {
     if (!isInitialized) {
       await init();
     }
-    await assets.refreshAssets();
+
     return assets.all;
   }
 
   /// Returns the currently active coins commit hash.
   ///
-  /// Delegates to the update manager for commit information.
+  /// Delegates to the coin config manager for commit information.
+  /// During cold start, returns cached commit hash to prevent refreshing on every call.
   Future<String?> getCurrentCommitHash() async {
     if (!isInitialized) {
       await init();
     }
-    return updates.getCurrentCommitHash();
+
+    return assets.getCurrentCommitHash();
   }
 
   /// Returns the latest commit hash available from the configured remote.

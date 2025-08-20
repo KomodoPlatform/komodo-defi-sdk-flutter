@@ -26,11 +26,10 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
         [];
 
     // If a specific type is requested, update the config
-    final configToUse =
-        requestedType != null && requestedType != primaryType
-            ? (JsonMap.of(json)
-              ..['type'] = requestedType.toString().split('.').last)
-            : json;
+    final configToUse = requestedType != null && requestedType != primaryType
+        ? (JsonMap.of(json)
+            ..['type'] = requestedType.toString().split('.').last)
+        : json;
     try {
       return switch (primaryType) {
         CoinSubClass.utxo || CoinSubClass.smartChain => UtxoProtocol.fromJson(
@@ -72,10 +71,9 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
         CoinSubClass.sia ||
         CoinSubClass.slp ||
         CoinSubClass.smartBch ||
-        CoinSubClass.unknown =>
-          throw UnsupportedProtocolException(
-            'Unsupported protocol type: ${primaryType.formatted}',
-          ),
+        CoinSubClass.unknown => throw UnsupportedProtocolException(
+          'Unsupported protocol type: ${primaryType.formatted}',
+        ),
         // _ => throw UnsupportedProtocolException(
         //     'Unsupported protocol type: ${subClass.formatted}',
         //   ),
@@ -115,28 +113,15 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
   bool get isMemoSupported;
 
   /// Convert protocol back to JSON representation
-  JsonMap toJson() {
-    final json = <String, dynamic>{
-      ...config,
-      'type': subClass.jsonType,
-      'sub_class': subClass.toString().split('.').last,
-      if (isCustomToken) 'is_custom_token': isCustomToken,
-      if (supportedProtocols.isNotEmpty)
-        'other_types':
-            supportedProtocols
-                .map((p) => p.toString().split('.').last)
-                .toList(),
-    };
-
-    // Ensure the protocol nested structure exists and has the correct type
-    if (!json.containsKey('protocol') || json['protocol'] == null) {
-      json['protocol'] = <String, dynamic>{};
-    }
-    final protocolMap = json['protocol'] as Map<String, dynamic>;
-    protocolMap['type'] = subClass.protocolType;
-
-    return json;
-  }
+  JsonMap toJson() => {
+    ...config,
+    'sub_class': subClass.toString().split('.').last,
+    'is_custom_token': isCustomToken,
+    if (supportedProtocols.isNotEmpty)
+      'other_types': supportedProtocols
+          .map((p) => p.toString().split('.').last)
+          .toList(),
+  };
 
   /// Check if this protocol supports a given protocol type
   bool supportsProtocolType(CoinSubClass type) {

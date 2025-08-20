@@ -33,6 +33,9 @@ abstract class CoinConfigSource {
 
   /// Check if this source has data available
   Future<bool> isAvailable();
+
+  /// Get the current commit hash for this source
+  Future<String?> getCurrentCommitHash();
 }
 
 /// Source that loads from local storage (Hive)
@@ -55,6 +58,9 @@ class StorageCoinConfigSource implements CoinConfigSource {
 
   @override
   Future<bool> isAvailable() => repository.updatedAssetStorageExists();
+
+  @override
+  Future<String?> getCurrentCommitHash() => repository.getCurrentCommit();
 }
 
 /// Source that loads from bundled asset files
@@ -87,6 +93,9 @@ class AssetBundleCoinConfigSource implements CoinConfigSource {
       return false;
     }
   }
+
+  @override
+  Future<String?> getCurrentCommitHash() => provider.getLatestCommit();
 }
 
 /// Default strategy that prefers storage but falls back to asset bundle

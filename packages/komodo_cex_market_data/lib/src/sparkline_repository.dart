@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:hive/hive.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -82,20 +83,9 @@ class SparklineRepository with RepositoryFallbackMixin {
     }
 
     // Check if data is cached and not expired
-    if (_box!.containsKey(symbol)) {
-      final cachedData = _box!.get(symbol)?.cast<String, dynamic>();
-      if (cachedData != null) {
-        final cachedTime = DateTime.parse(cachedData['timestamp'] as String);
-        if (DateTime.now().difference(cachedTime) < cacheExpiry) {
-          final data = cachedData['data'];
-          final result = data != null ? (data as List).cast<double>() : null;
-          _logger.fine(
-            'Cache hit for $symbol; returning ${result?.length ?? 0} points',
-          );
-          return result;
-        }
-        _logger.fine('Cache expired for $symbol; refetching');
-      }
+    final cachedResult = _getCachedSparkline(symbol);
+    if (cachedResult != null) {
+      return cachedResult;
     }
 
     // Use quote currency utilities instead of hardcoded USDT check
@@ -188,8 +178,42 @@ class SparklineRepository with RepositoryFallbackMixin {
       'timestamp': DateTime.now().toIso8601String(),
     });
     _logger.fine(
-      'Cached constant-price sparkline for $symbol with ${constantData.length} points',
+      'Cached constant-price sparkline for $symbol with '
+      '${constantData.length} points',
     );
     return constantData;
+  }
+
+  List<double>? _getCachedSparkline(String symbol) {
+    if (!_box!.containsKey(symbol)) {
+      return null;
+    }
+    try {
+      final raw = _box!.get(symbol);
+      final cachedData =
+          raw is Map ? convertToJsonMap(raw! as Map<dynamic, dynamic>) : null;
+      if (cachedData != null) {
+        final cachedTime = DateTime.parse(cachedData['timestamp'] as String);
+        if (DateTime.now().difference(cachedTime) < cacheExpiry) {
+          final data = cachedData['data'];
+          final result =
+              data is List
+                  ? data
+                      .whereType<num>()
+                      .map((e) => e.toDouble())
+                      .toList(growable: false)
+                  : null;
+          _logger.fine(
+            'Cache hit for $symbol; returning ${result?.length ?? 0} points',
+          );
+          return result;
+        }
+      }
+      _logger.fine('Cache expired for $symbol; refetching');
+    } catch (e, s) {
+      _logger.severe('Error reading cache for $symbol', e, s);
+    }
+
+    return null;
   }
 }
