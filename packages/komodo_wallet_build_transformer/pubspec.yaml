@@ -5,7 +5,7 @@ repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/
 publish_to: "none"
 
 environment:
-  sdk: ^3.7.0
+  sdk: ^3.8.1
 
 # Add regular dependencies here.
 dependencies:
