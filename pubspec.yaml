@@ -4,10 +4,63 @@ publish_to: none
 environment:
   sdk: ">=3.8.1 <4.0.0"
 
+workspace:
+  - packages/komodo_wallet_build_transformer
+  - packages/komodo_ui
+  - packages/komodo_symbol_converter
+  - packages/komodo_defi_types
+  - packages/komodo_defi_sdk
+  - packages/komodo_defi_sdk/example
+  - packages/komodo_defi_rpc_methods
+  - packages/komodo_defi_local_auth
+  - packages/komodo_defi_framework
+  - packages/komodo_coins
+  - packages/komodo_coin_updates
+  - packages/komodo_cex_market_data
+  - packages/dragon_logs
+  - packages/dragon_logs/example
+  - packages/dragon_charts_flutter
+  - packages/dragon_charts_flutter/example
+  - packages/komodo_wallet_cli
+
 dev_dependencies:
-  melos: ^6.3.0
+  melos: ^7.0.0
 
 melos:
+  ide:
+    intellij:
+      enabled: true
+  command:
+    bootstrap:
+      hooks:
+        post: melos run prepare
+  scripts:
+    prepare:
+      run: melos run indexes:generate --no-select && melos run runners:generate --no-select
+    indexes:generate:
+      run: dart run index_generator
+      exec:
+        concurrency: 1
+      packageFilters:
+        dependsOn: index_generator
+    runners:generate:
+      run: dart run build_runner build --delete-conflicting-outputs
+      exec:
+        concurrency: 1
+      packageFilters:
+        dependsOn:
+          - build_runner
+    upgrade:major:
+      run: flutter pub upgrade --major-versions
+      exec:
+        concurrency: 1
+    assets:generate:
+      run: flutter build bundle
+      exec:
+        concurrency: 1
+      packageFilters:
+        dependsOn:
+          - flutter
   categories:
     examples:
       - packages/example*

@@ -6,6 +6,8 @@ version: 0.1.0
 environment:
   sdk: ^3.8.1
 
+resolution: workspace
+
 dependencies:
   bloc: ^9.0.0
   bloc_concurrency: 0.3.0

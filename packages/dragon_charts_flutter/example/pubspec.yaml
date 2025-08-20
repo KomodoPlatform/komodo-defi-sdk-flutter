@@ -6,6 +6,8 @@ version: 0.1.0
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
+resolution: workspace
+
 dependencies:
   bloc: ^9.0.0
   equatable: ^2.0.5

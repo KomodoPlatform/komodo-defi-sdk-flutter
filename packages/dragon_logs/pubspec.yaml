@@ -8,6 +8,8 @@ homepage: https://komodoplatform.com
 environment:
   sdk: ^3.8.1
 
+resolution: workspace
+
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.16.0

@@ -17,6 +17,8 @@ repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/
 environment:
   sdk: ^3.8.1
 
+resolution: workspace
+
 # Add regular dependencies here.
 dependencies:
   args: ^2.6.0

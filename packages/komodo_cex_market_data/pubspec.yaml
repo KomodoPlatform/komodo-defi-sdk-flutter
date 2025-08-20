@@ -6,6 +6,8 @@ publish_to: none # publishable packages should not have git dependencies
 environment:
   sdk: ">=3.8.1 <4.0.0"
 
+resolution: workspace
+
 # Add regular dependencies here.
 dependencies:
   decimal: ^3.2.1
