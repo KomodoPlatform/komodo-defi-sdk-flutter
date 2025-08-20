@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
+import 'package:kdf_sdk_example/blocs/migration/migration_bloc.dart';
 import 'package:kdf_sdk_example/screens/asset_page.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_view.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_drawer.dart';
@@ -248,8 +249,15 @@ class _KomodoAppState extends State<KomodoApp> {
                   for (final instance in instances)
                     Padding(
                       padding: const EdgeInsets.all(16),
-                      child: BlocProvider(
-                        create: (context) => AuthBloc(sdk: instance.sdk),
+                      child: MultiBlocProvider(
+                        providers: [
+                          BlocProvider(
+                            create: (context) => AuthBloc(sdk: instance.sdk),
+                          ),
+                          BlocProvider(
+                            create: (context) => MigrationBloc(),
+                          ),
+                        ],
                         child: BlocListener<AuthBloc, AuthState>(
                           listener: (context, state) {
                             final user =

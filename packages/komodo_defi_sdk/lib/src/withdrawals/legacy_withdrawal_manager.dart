@@ -113,7 +113,7 @@ class LegacyWithdrawalManager implements WithdrawalManager {
         );
       }
 
-      return response.details as WithdrawResult;
+      return WithdrawalPreview.fromWithdrawResult(response.details as WithdrawResult);
     } catch (e) {
       if (e is WithdrawalException) {
         rethrow;

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
+
 import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/common/private_keys_display_widget.dart';
 import 'package:kdf_sdk_example/widgets/common/security_warning_dialog.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
+import 'package:kdf_sdk_example/widgets/migration/migration_widget.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -152,6 +154,15 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
               label: const Text('Sign Out'),
               key: const Key('sign_out_button'),
             ),
+            // Migration button - only show for legacy users
+            if (!widget.currentUser.isHd) ...[
+              FilledButton.tonalIcon(
+                onPressed: () => _showMigrationDialog(),
+                icon: const Icon(Icons.sync_alt),
+                label: const Text('Migrate to HD'),
+                key: const Key('migrate_to_hd_button'),
+              ),
+            ],
             if (_mnemonic == null && _privateKeys == null) ...[
               FilledButton.tonal(
                 onPressed: () => _getMnemonic(encrypted: false),
@@ -219,6 +230,13 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showMigrationDialog() async {
+    await MigrationDialog.show(
+      context,
+      sourceWallet: widget.currentUser,
     );
   }
 }
