@@ -1,6 +1,6 @@
 # Komodo DeFi Types
 
-Lightweight, shared domain types used across the Komodo DeFi SDK and Framework. These types are UI‑ and storage‑agnostic by design.
+Lightweight, shared domain types used across the Komodo DeFi SDK and Framework. These types are UI- and storage-agnostic by design.
 
 ## Install
 
@@ -17,10 +17,10 @@ Exports (selection):
 - Public keys: `BalanceStrategy`, `PubkeyInfo`
 - Auth: `KdfUser`, `AuthOptions`
 - Fees: `FeeInfo`, `WithdrawalFeeOptions`
-- Trading/Swaps: common high‑level types
+- Trading/Swaps: common high-level types
 - Transactions: `Transaction`, pagination helpers
 
-These types are consumed by higher‑level managers in `komodo_defi_sdk`.
+These types are consumed by higher-level managers in `komodo_defi_sdk`.
 
 ## Example
 
@@ -40,7 +40,7 @@ Future<void> printBalance(ApiClient client) async {
 ## Guidance
 
 - Keep these types free of presentation or persistence logic
-- Prefer explicit, well‑named fields and immutability
+- Prefer explicit, well-named fields and immutability
 
 ## License
 

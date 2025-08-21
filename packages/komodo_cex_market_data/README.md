@@ -1,8 +1,9 @@
 # Komodo CEX Market Data
 
-Composable repositories and strategies to fetch cryptocurrency prices from multiple sources with fallbacks and health‑aware selection.
+Composable repositories and strategies to fetch cryptocurrency prices from multiple sources with fallbacks and health-aware selection.
 
 Sources supported:
+
 - Komodo price service
 - Binance
 - CoinGecko

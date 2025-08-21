@@ -45,7 +45,7 @@ Notes:
 
 ### 2) Update API config (`update_api_config` executable)
 
-Fetches the latest commit from a branch (GitHub or mirror), locates matching artifacts, computes their SHA‑256 checksums, and updates the build config JSON in place. Use when bumping the KDF artifact version/checksums.
+Fetches the latest commit from a branch (GitHub or mirror), locates matching artifacts, computes their SHA-256 checksums, and updates the build config JSON in place. Use when bumping the KDF artifact version/checksums.
 
 Run (direct):
 

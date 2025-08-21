@@ -1,6 +1,6 @@
 # Komodo Wallet Build Transformer
 
-Flutter asset transformer and CLI to fetch KDF artifacts (binaries/WASM), coins config, seed nodes, and icons at build time, and to copy platform‑specific assets.
+Flutter asset transformer and CLI to fetch KDF artifacts (binaries/WASM), coins config, seed nodes, and icons at build time, and to copy platform-specific assets.
 
 This package powers the build hooks used by `komodo_defi_framework` and the SDK to make local (FFI/WASM) usage seamless.
 
@@ -25,13 +25,14 @@ flutter:
     - path: assets/.transformer_invoker
       transformers:
         - package: komodo_wallet_build_transformer
-          args: [
-            --fetch_defi_api,
-            --fetch_coin_assets,
-            --copy_platform_assets,
-            --artifact_output_package=komodo_defi_framework,
-            --config_output_path=app_build/build_config.json,
-          ]
+          args:
+            [
+              --fetch_defi_api,
+              --fetch_coin_assets,
+              --copy_platform_assets,
+              --artifact_output_package=komodo_defi_framework,
+              --config_output_path=app_build/build_config.json,
+            ]
 ```
 
 Artifacts and checksums are configured in `packages/komodo_defi_framework/app_build/build_config.json`.
@@ -49,6 +50,7 @@ dart run packages/komodo_wallet_build_transformer/bin/komodo_wallet_build_transf
 ```
 
 Flags:
+
 - `--all` to run all steps, or select specific steps with:
   - `--fetch_defi_api`
   - `--fetch_coin_assets`
@@ -61,6 +63,7 @@ Flags:
 - `--concurrent` Run steps concurrently when safe
 
 Environment:
+
 - `GITHUB_API_PUBLIC_READONLY_TOKEN` Optional; increases rate limits
 - `OVERRIDE_DEFI_API_DOWNLOAD` Force `true` (always fetch) or `false` (always skip) regardless of state
 

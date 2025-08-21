@@ -1,6 +1,6 @@
 # Komodo DeFi RPC Methods
 
-Typed RPC request/response models and method namespaces for the Komodo DeFi Framework API. This package is consumed by the framework (`ApiClient`) and the high‑level SDK.
+Typed RPC request/response models and method namespaces for the Komodo DeFi Framework API. This package is consumed by the framework (`ApiClient`) and the high-level SDK.
 
 [![License: MIT][license_badge]][license_link]
 

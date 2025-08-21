@@ -6,7 +6,7 @@
 
 # Komodo DeFi SDK for Flutter
 
-Komodo’s Flutter SDK lets you build cross‑platform DeFi apps on top of the Komodo DeFi Framework (KDF) with a few lines of code. The SDK provides a high‑level, batteries‑included developer experience while still exposing the low‑level framework and RPC methods when you need them.
+Komodo’s Flutter SDK lets you build cross-platform DeFi apps on top of the Komodo DeFi Framework (KDF) with a few lines of code. The SDK provides a high-level, batteries-included developer experience while still exposing the low-level framework and RPC methods when you need them.
 
 - Primary entry point: see `packages/komodo_defi_sdk`.
 - Full KDF access: see `packages/komodo_defi_framework`.
@@ -56,32 +56,32 @@ void main() async {
 
 ## Architecture overview
 
-- `komodo_defi_sdk`: High‑level orchestration (auth, assets, balances, tx history, withdrawals, signing, market data).
+- `komodo_defi_sdk`: High-level orchestration (auth, assets, balances, tx history, withdrawals, signing, market data).
 - `komodo_defi_framework`: Platform client for KDF with multiple backends (native/WASM/local process, remote). Provides the `ApiClient` used by the SDK.
 - `komodo_defi_rpc_methods`: Typed RPC request/response models and method namespaces available via `client.rpc.*`.
 - `komodo_defi_types`: Shared, lightweight domain types (e.g., `Asset`, `AssetId`, `BalanceInfo`, `WalletId`).
-- `komodo_coins`: Fetch/transform Komodo coins metadata, filtering strategies, seed‑node utilities.
+- `komodo_coins`: Fetch/transform Komodo coins metadata, filtering strategies, seed-node utilities.
 - `komodo_cex_market_data`: Price providers (Komodo, Binance, CoinGecko) with repository selection and fallbacks.
-- `komodo_ui`: Reusable, SDK‑friendly Flutter UI components.
-- `komodo_wallet_build_transformer`: Build‑time artifact & assets fetcher (KDF binaries, coins, icons) integrated via Flutter’s asset transformers.
+- `komodo_ui`: Reusable, SDK-friendly Flutter UI components.
+- `komodo_wallet_build_transformer`: Build-time artifact & assets fetcher (KDF binaries, coins, icons) integrated via Flutter’s asset transformers.
 
 ## Remote vs Local
 
 - Local (default): Uses native FFI on desktop/mobile and WASM in Web builds. The SDK handles artifact provisioning via the build transformer.
 - Remote: Connect with `RemoteConfig(ipAddress: 'host', port: 7783, rpcPassword: '...', https: true/false)`. You manage the remote KDF lifecycle.
 
-Seed nodes: From KDF v2.5.0‑beta, `seednodes` are required unless `disable_p2p` is `true`. The framework includes a validator and helpers. See `packages/komodo_defi_framework/README.md`.
+Seed nodes: From KDF v2.5.0-beta, `seednodes` are required unless `disable_p2p` is `true`. The framework includes a validator and helpers. See `packages/komodo_defi_framework/README.md`.
 
 ## Packages in this monorepo
 
-- `packages/komodo_defi_sdk` – High‑level SDK (start here)
-- `packages/komodo_defi_framework` – Low‑level KDF client + lifecycle
+- `packages/komodo_defi_sdk` – High-level SDK (start here)
+- `packages/komodo_defi_framework` – Low-level KDF client + lifecycle
 - `packages/komodo_defi_rpc_methods` – Typed RPC surfaces
 - `packages/komodo_defi_types` – Shared domain types
 - `packages/komodo_coins` – Coins metadata + filters
 - `packages/komodo_cex_market_data` – CEX price data
 - `packages/komodo_ui` – UI widgets
-- `packages/dragon_logs` – Cross‑platform logging
+- `packages/dragon_logs` – Cross-platform logging
 - `packages/komodo_wallet_build_transformer` – Build artifacts/hooks
 - `packages/dragon_charts_flutter` – Lightweight charts (moved here)
 

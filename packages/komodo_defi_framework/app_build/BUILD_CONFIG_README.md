@@ -12,7 +12,7 @@ This directory contains the artifact configuration used by `komodo_wallet_build_
 - `api.api_commit_hash` – commit hash of the KDF artifacts to fetch
 - `api.source_urls` – list of base URLs to download from (GitHub API, CDN)
 - `api.platforms.*.matching_pattern` – regex to match artifact names per platform
-- `api.platforms.*.valid_zip_sha256_checksums` – allow‑list of artifact checksums
+- `api.platforms.*.valid_zip_sha256_checksums` – allow-list of artifact checksums
 - `api.platforms.*.path` – destination relative to artifact output package
 - `coins.bundled_coins_repo_commit` – commit of Komodo coins registry
 - `coins.mapped_files` – mapping of output paths to source files in coins repo

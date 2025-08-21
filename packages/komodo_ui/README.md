@@ -1,6 +1,6 @@
 # Komodo UI
 
-Reusable Flutter widgets for DeFi apps built on the Komodo DeFi SDK and Framework. Focused, production‑ready components that pair naturally with the SDK’s managers.
+Reusable Flutter widgets for DeFi apps built on the Komodo DeFi SDK and Framework. Focused, production-ready components that pair naturally with the SDK’s managers.
 
 [![License: MIT][license_badge]][license_link]
 
@@ -18,7 +18,7 @@ flutter pub add komodo_ui
 
 ## Usage
 
-Widgets are framework‑agnostic and can be used directly. When used with the SDK, adapter widgets are available from `komodo_defi_sdk` to bind to SDK streams, e.g.:
+Widgets are framework-agnostic and can be used directly. When used with the SDK, adapter widgets are available from `komodo_defi_sdk` to bind to SDK streams, e.g.:
 
 ```dart
 // From komodo_defi_sdk: live balance text bound to BalanceManager

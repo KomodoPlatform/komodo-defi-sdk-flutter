@@ -1,6 +1,6 @@
 # Komodo DeFi Framework (Flutter)
 
-Low‑level Flutter client for the Komodo DeFi Framework (KDF). This package powers the high‑level SDK and can also be used directly for custom integrations or infrastructure tooling.
+Low-level Flutter client for the Komodo DeFi Framework (KDF). This package powers the high-level SDK and can also be used directly for custom integrations or infrastructure tooling.
 
 It supports multiple backends:
 
@@ -76,7 +76,7 @@ final check = await client.rpc.address.validateAddress(
 
 ## Seed nodes and P2P
 
-From KDF v2.5.0‑beta, seed nodes are required unless P2P is disabled. Use `SeedNodeService.fetchSeedNodes()` to fetch defaults and `SeedNodeValidator.validate(...)` to validate your config. Errors are thrown for invalid combinations (e.g., bootstrap without seed, disable P2P with seed nodes, etc.).
+From KDF v2.5.0-beta, seed nodes are required unless P2P is disabled. Use `SeedNodeService.fetchSeedNodes()` to fetch defaults and `SeedNodeValidator.validate(...)` to validate your config. Errors are thrown for invalid combinations (e.g., bootstrap without seed, disable P2P with seed nodes, etc.).
 
 ## Build artifacts and coins at build time
 
@@ -91,13 +91,14 @@ flutter:
     - path: assets/.transformer_invoker
       transformers:
         - package: komodo_wallet_build_transformer
-          args: [
-            --fetch_defi_api,
-            --fetch_coin_assets,
-            --copy_platform_assets,
-            --artifact_output_package=komodo_defi_framework,
-            --config_output_path=app_build/build_config.json,
-          ]
+          args:
+            [
+              --fetch_defi_api,
+              --fetch_coin_assets,
+              --copy_platform_assets,
+              --artifact_output_package=komodo_defi_framework,
+              --config_output_path=app_build/build_config.json,
+            ]
 ```
 
 You can customize sources and checksums via `app_build/build_config.json` in this package. See `packages/komodo_wallet_build_transformer/README.md` for CLI flags, environment variables, and troubleshooting.
@@ -116,4 +117,3 @@ On Web, the plugin registers a WASM implementation automatically (see `lib/web/k
 ## License
 
 MIT
-

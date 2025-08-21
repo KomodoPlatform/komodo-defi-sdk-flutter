@@ -1,14 +1,14 @@
 # Komodo DeFi SDK (Flutter)
 
-High‑level, opinionated SDK for building cross‑platform Komodo DeFi wallets and apps. The SDK orchestrates authentication, asset activation, balances, transaction history, withdrawals, message signing, and price data while exposing a typed RPC client for advanced use.
+High-level, opinionated SDK for building cross-platform Komodo DeFi wallets and apps. The SDK orchestrates authentication, asset activation, balances, transaction history, withdrawals, message signing, and price data while exposing a typed RPC client for advanced use.
 
 [![License: MIT][license_badge]][license_link] [![style: very good analysis][very_good_analysis_badge]][very_good_analysis_link]
 
 ## Features
 
 - Authentication and wallet lifecycle (HD by default, hardware wallets supported)
-- Asset discovery and activation (with historical/custom token pre‑activation)
-- Balances and pubkeys (watch/stream and on‑demand)
+- Asset discovery and activation (with historical/custom token pre-activation)
+- Balances and pubkeys (watch/stream and on-demand)
 - Transaction history (paged + streaming sync)
 - Withdrawals with progress and cancellation
 - Message signing and verification
@@ -76,12 +76,14 @@ const config = KomodoDefiSdkConfig(
 ## Common tasks
 
 ### Authentication
+
 ```dart
 await sdk.auth.signIn(walletName: 'my_wallet', password: 'pass');
 // Streams for progress/2FA/hardware interactions are also available
 ```
 
 ### Assets
+
 ```dart
 final eth = sdk.assets.findAssetsByConfigId('ETH').first;
 await for (final p in sdk.assets.activateAsset(eth)) {
@@ -91,6 +93,7 @@ final activated = await sdk.assets.getActivatedAssets();
 ```
 
 ### Pubkeys and addresses
+
 ```dart
 final asset = sdk.assets.findAssetsByConfigId('BTC').first;
 final pubkeys = await sdk.pubkeys.getPubkeys(asset);
@@ -98,6 +101,7 @@ final newAddr = await sdk.pubkeys.createNewPubkey(asset);
 ```
 
 ### Balances
+
 ```dart
 final info = await sdk.balances.getBalance(asset.id);
 final sub = sdk.balances.watchBalance(asset.id).listen((b) {
@@ -106,6 +110,7 @@ final sub = sdk.balances.watchBalance(asset.id).listen((b) {
 ```
 
 ### Transaction history
+
 ```dart
 final page = await sdk.transactions.getTransactionHistory(asset);
 await for (final batch in sdk.transactions.getTransactionsStreamed(asset)) {
@@ -114,6 +119,7 @@ await for (final batch in sdk.transactions.getTransactionsStreamed(asset)) {
 ```
 
 ### Withdrawals
+
 ```dart
 final stream = sdk.withdrawals.withdraw(
   WithdrawParameters(
@@ -129,6 +135,7 @@ await for (final progress in stream) {
 ```
 
 ### Message signing
+
 ```dart
 final signature = await sdk.messageSigning.signMessage(
   coin: 'BTC',
@@ -144,6 +151,7 @@ final ok = await sdk.messageSigning.verifyMessage(
 ```
 
 ### Market data
+
 ```dart
 final price = await sdk.marketData.fiatPrice(
   asset.id,
@@ -156,7 +164,7 @@ final price = await sdk.marketData.fiatPrice(
 This package includes lightweight adapters for `komodo_ui`. For example:
 
 ```dart
-// Displays and live‑updates an asset balance using the SDK
+// Displays and live-updates an asset balance using the SDK
 AssetBalanceText(asset.id)
 ```
 
@@ -179,7 +187,7 @@ Call `await sdk.dispose()` when you’re done to free resources and stop backgro
 
 - Web uses the WASM build of KDF automatically via the framework plugin.
 - Remote mode connects to an external KDF node you run and manage.
-- From KDF v2.5.0‑beta, seed nodes are required unless P2P is disabled. The framework handles validation and defaults; see its README for details.
+- From KDF v2.5.0-beta, seed nodes are required unless P2P is disabled. The framework handles validation and defaults; see its README for details.
 
 ## License
 
