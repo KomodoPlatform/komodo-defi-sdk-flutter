@@ -1,3 +1,14 @@
+## 1.2.1
+
+> Note: This release has breaking changes.
+
+ - **FIX**(deps): misc deps fixes.
+ - **FIX**: unify+upgrade Dart/Flutter versions.
+ - **FEAT**(rpc): trading-related RPCs/types (#191).
+ - **BREAKING** **FEAT**: add Flutter Web WASM support with OPFS interop extensions (#176).
+ - **BREAKING** **FEAT**: add dragon_logs package with Wasm-compatible logging.
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
 ## 1.2.0
 
 - **BREAKING**: Add WASM web support with OPFS-only storage

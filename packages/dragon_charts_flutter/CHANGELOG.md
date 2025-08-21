@@ -1,3 +1,13 @@
+## 0.1.1-dev.2
+
+> Note: This release has breaking changes.
+
+ - cd /Users/charl/Code/UTXO/komodo_defi_sdk && yes "" | CI=true melos version --yes -c -d -D -m "chore(release): patch bump across workspace after dependency constraints update" -V "dragon_charts_flutter:patch" -V "dragon_logs:patch" -V "komodo_cex_market_data:patch" -V "komodo_coin_updates:patch" -V "komodo_coins:patch" -V "komodo_defi_framework:patch" -V "komodo_defi_local_auth:patch" -V "komodo_defi_rpc_methods:patch" -V "komodo_defi_sdk:patch" -V "komodo_defi_types:patch" -V "komodo_symbol_converter:patch" -V "komodo_ui:patch" -V "komodo_wallet_build_transformer:patch" -V "komodo_wallet_cli:patch" | cat
+
+ - **FEAT**(rpc): trading-related RPCs/types (#191).
+ - **FEAT**(auth): poll trezor connection status and sign out when disconnected (#126).
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
 ## 0.0.1-pre1 (2024-05-26)
 
 * First stable MVP PoC with line graphs implemented.
