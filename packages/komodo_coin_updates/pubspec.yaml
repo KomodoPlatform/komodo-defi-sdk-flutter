@@ -18,7 +18,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   http: ^1.4.0
-  komodo_defi_types: any
+  komodo_defi_types: ^0.3.0
   very_good_analysis: ^9.0.0
 
 dev_dependencies:

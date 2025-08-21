@@ -18,7 +18,7 @@ dependencies:
   # meta:
   meta: ^1.15.0
 
-  komodo_defi_types: any
+  komodo_defi_types: ^0.3.0
 
 dev_dependencies:
   flutter_test:
