@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:kdf_sdk_example/blocs/migration/migration_bloc.dart';
+import 'package:kdf_sdk_example/migrations/bloc/migration_bloc_exports.dart';
 
 class ScanningBalancesScreen extends StatelessWidget {
   const ScanningBalancesScreen({super.key});

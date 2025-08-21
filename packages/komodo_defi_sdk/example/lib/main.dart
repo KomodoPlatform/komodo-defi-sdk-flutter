@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
-import 'package:kdf_sdk_example/blocs/migration/migration_bloc.dart';
+import 'package:kdf_sdk_example/migrations/bloc/migration_bloc.dart';
 import 'package:kdf_sdk_example/screens/asset_page.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_view.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_drawer.dart';
@@ -255,7 +255,7 @@ class _KomodoAppState extends State<KomodoApp> {
                             create: (context) => AuthBloc(sdk: instance.sdk),
                           ),
                           BlocProvider(
-                            create: (context) => MigrationBloc(),
+                            create: (context) => MigrationBloc(sdk: instance.sdk),
                           ),
                         ],
                         child: BlocListener<AuthBloc, AuthState>(

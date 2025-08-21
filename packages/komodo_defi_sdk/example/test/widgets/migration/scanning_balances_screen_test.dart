@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kdf_sdk_example/blocs/migration/migration_bloc.dart';
-import 'package:kdf_sdk_example/blocs/migration/migration_models.dart';
+import 'package:kdf_sdk_example/migrations/migrations.dart';
 import 'package:kdf_sdk_example/widgets/migration/scanning_balances_screen.dart';
 import 'package:mocktail/mocktail.dart';
 

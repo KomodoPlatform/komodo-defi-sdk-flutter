@@ -64,7 +64,7 @@ Future<void> _showMigrationDialog() async {
 
 ### BLoC Provider Setup
 
-Ensure the MigrationBloc is provided in your widget tree:
+The MigrationBloc is automatically provided in the main app's widget tree:
 
 ```dart
 MultiBlocProvider(
@@ -111,6 +111,21 @@ The system handles various error scenarios:
 - **Transaction Failures** - When blockchain transactions fail
 - **SDK Errors** - When the underlying SDK encounters issues
 
+## BLoC Events and States
+
+### Events
+- `MigrationInitiated` - Start the migration process
+- `MigrationConfirmed` - User confirms after preview
+- `MigrationCancelled` - Cancel migration
+- `MigrationRetryFailed` - Retry all failed coins
+- `MigrationRetryCoin` - Retry specific coin
+- `MigrationReset` - Reset to initial state
+- `MigrationErrorCleared` - Clear error state
+
+### States
+- `MigrationFlowStatus` - idle, scanning, preview, transferring, completed, error
+- `CoinMigrationStatus` - ready, feeTooLow, notSupported, transferring, transferred, failed, skipped
+
 ## Testing
 
 ### Widget Tests
@@ -136,14 +151,15 @@ flutter test integration_test/migration_test.dart
 flutter test
 ```
 
-## Mock Implementation
+## Current Implementation
 
-The current implementation includes mock data for demonstration purposes:
+The current implementation includes:
 
-- Mock coin scanning (returns KMD, BTC, RFOX examples)
-- Mock transfer delays (3 seconds per coin)
-- Mock transaction IDs
-- Mock explorer URLs
+- **Real SDK Integration** - Uses actual KomodoDefiSdk services
+- **Mock Transfer Simulation** - Simulates transfers with 3-second delays for demonstration
+- **Real Asset Discovery** - Fetches actual assets from the SDK
+- **Mock Transaction IDs** - Generates realistic-looking transaction hashes
+- **Configurable Success Rates** - 90% success rate for main flow, 80% for retries
 
 ## Customization
 
@@ -161,8 +177,9 @@ ThemeData(
 Migration behavior can be customized by:
 
 - Modifying coin scanning logic in `MigrationBloc._scanForCoinsWithBalance()`
-- Customizing transfer logic in `MigrationBloc._performCoinTransfer()`
+- Customizing transfer logic in `MigrationBloc._performMigration()`
 - Adjusting UI flow in the individual screen widgets
+- Configuring success rates and timing in the BLoC
 
 ## Dependencies
 
@@ -176,13 +193,14 @@ Migration behavior can be customized by:
 
 Potential improvements for production use:
 
-1. **Batch Transfers** - Option to transfer multiple coins simultaneously
-2. **Fee Estimation** - More accurate fee calculation before migration
-3. **Wallet Selection** - Support for multiple source/destination wallets
-4. **Progress Persistence** - Resume interrupted migrations
-5. **Advanced Filtering** - User selection of specific coins to migrate
-6. **Analytics** - Migration success/failure tracking
-7. **Notifications** - Background notifications for long migrations
+1. **Real Transfer Implementation** - Replace mock transfers with actual SDK calls
+2. **Batch Transfers** - Option to transfer multiple coins simultaneously
+3. **Fee Estimation** - More accurate fee calculation before migration
+4. **Wallet Selection** - Support for multiple source/destination wallets
+5. **Progress Persistence** - Resume interrupted migrations
+6. **Advanced Filtering** - User selection of specific coins to migrate
+7. **Analytics** - Migration success/failure tracking
+8. **Notifications** - Background notifications for long migrations
 
 ## Security Considerations
 
@@ -201,3 +219,17 @@ The migration UI follows accessibility best practices:
 - Keyboard navigation support
 - Clear visual indicators for status changes
 - Descriptive error messages
+
+## Recent Updates
+
+**Migration Feature Now Enabled (Current Version)**
+
+- Migration feature is now fully integrated and enabled
+- BLoC is properly configured with the KomodoDefiSdk
+- All UI components are connected and functional
+- Migration dialog appears when clicking "Migrate to HD" button
+- Real asset discovery and mock transfer simulation working
+- Error handling and retry functionality implemented
+- Comprehensive state management with reactive UI updates
+
+The migration feature is ready for testing and further development!
