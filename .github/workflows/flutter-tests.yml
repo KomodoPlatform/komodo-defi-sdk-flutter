@@ -109,6 +109,8 @@ jobs:
         working-directory: ${{ matrix.package.path }}
 
       - name: Run tests
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: flutter test -r expanded
         working-directory: ${{ matrix.package.path }}
 
