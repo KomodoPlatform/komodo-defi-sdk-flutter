@@ -1,3 +1,24 @@
+/// Unit tests for the DefaultCoinConfigDataFactory class.
+///
+/// **Purpose**: Tests the factory pattern implementation that creates coin configuration
+/// repositories and local providers with proper dependency injection and configuration.
+///
+/// **Test Cases**:
+/// - Factory creates CoinConfigRepository with correct wiring and transformer
+/// - Factory creates LocalAssetCoinConfigProvider from runtime configuration
+///
+/// **Functionality Tested**:
+/// - Dependency injection and object creation
+/// - Factory pattern implementation
+/// - Configuration passing between components
+/// - Repository and provider instantiation
+///
+/// **Edge Cases**: None specific - focuses on happy path factory creation
+///
+/// **Dependencies**: Tests the factory's ability to wire together CoinConfigRepository,
+/// RuntimeUpdateConfig, and CoinConfigTransformer components.
+library;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_coin_updates/src/coins_config/coin_config_repository.dart';
 import 'package:komodo_coin_updates/src/coins_config/coin_config_repository_factory.dart';

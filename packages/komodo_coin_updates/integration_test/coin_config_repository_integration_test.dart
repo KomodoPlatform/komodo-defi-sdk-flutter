@@ -1,13 +1,50 @@
+/// Integration tests for CoinConfigRepository with Hive database persistence.
+///
+/// **Purpose**: Tests the full integration between CoinConfigRepository and Hive
+/// database storage, ensuring that repository operations properly persist data
+/// and maintain consistency across database restarts and operations.
+///
+/// **Test Cases**:
+/// - Full CRUD operations with Hive persistence
+/// - Database restart and data recovery scenarios
+/// - Raw asset JSON parsing and storage
+/// - Asset filtering with exclusion lists
+/// - Commit tracking and persistence
+/// - Cross-restart data consistency
+///
+/// **Functionality Tested**:
+/// - Hive database integration and persistence
+/// - Repository operation persistence
+/// - Data recovery after database restarts
+/// - Asset parsing and storage workflows
+/// - Commit hash tracking and persistence
+/// - Database state consistency
+///
+/// **Edge Cases**:
+/// - Database restart scenarios
+/// - Data persistence across operations
+/// - Asset filtering edge cases
+/// - Commit tracking consistency
+/// - Cross-restart data integrity
+///
+/// **Dependencies**: Tests the full integration between CoinConfigRepository and
+/// Hive database storage, using HiveTestEnv for isolated database testing and
+/// validating that repository operations properly persist and recover data.
+///
+/// **Note**: This is an integration test that requires actual Hive database
+/// operations and should be run separately from unit tests.
+library;
+
 import 'package:komodo_coin_updates/src/coins_config/coin_config_repository.dart';
 import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
 
-import '../helpers/asset_test_helpers.dart';
-import 'test_harness.dart';
+import '../test/helpers/asset_test_helpers.dart';
+import '../test/hive/test_harness.dart';
 
 void main() {
-  group('CoinConfigRepository + Hive integration', () {
+  group('CoinConfigRepository + Hive Integration', () {
     final env = HiveTestEnv();
 
     setUp(() async {
@@ -102,6 +139,43 @@ void main() {
 
       final all = await repo.getAssets(excludedAssets: const ['BTC']);
       expect(all.map((a) => a.id.id).toSet(), equals({'KMD'}));
+    });
+
+    test('deleteAsset removes asset and maintains commit', () async {
+      final repo = CoinConfigRepository.withDefaults(config());
+      final assets = <Asset>[
+        AssetTestHelpers.utxoAsset(),
+        AssetTestHelpers.utxoAsset(coin: 'BTC', fname: 'Bitcoin', chainId: 0),
+      ];
+      await repo.upsertAssets(assets, 'jkl012');
+
+      await repo.deleteAsset(AssetTestHelpers.utxoAsset(coin: 'BTC').id);
+
+      final remaining = await repo.getAssets();
+      expect(remaining.map((a) => a.id.id).toSet(), equals({'KMD'}));
+
+      final commit = await repo.getCurrentCommit();
+      expect(commit, equals('jkl012'));
+    });
+
+    test('deleteAllAssets clears all assets and resets commit', () async {
+      final repo = CoinConfigRepository.withDefaults(config());
+      final assets = <Asset>[
+        AssetTestHelpers.utxoAsset(),
+        AssetTestHelpers.utxoAsset(coin: 'BTC', fname: 'Bitcoin', chainId: 0),
+      ];
+      await repo.upsertAssets(assets, 'mno345');
+
+      await repo.deleteAllAssets();
+
+      final remaining = await repo.getAssets();
+      expect(remaining, isEmpty);
+
+      final commit = await repo.getCurrentCommit();
+      expect(commit, isNull);
+
+      final exists = await repo.updatedAssetStorageExists();
+      expect(exists, isFalse);
     });
   });
 }

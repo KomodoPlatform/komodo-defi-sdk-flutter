@@ -1,3 +1,36 @@
+/// Unit tests for the RuntimeUpdateConfigRepository class.
+///
+/// **Purpose**: Tests the repository that loads runtime configuration from Flutter asset
+/// bundles, handling JSON parsing, validation, and error scenarios for build-time
+/// configuration loading.
+///
+/// **Test Cases**:
+/// - Missing asset handling and graceful fallbacks
+/// - Malformed JSON error handling
+/// - Invalid configuration structure validation
+/// - Successful configuration loading and parsing
+/// - Error propagation for invalid configurations
+///
+/// **Functionality Tested**:
+/// - Asset bundle integration and loading
+/// - JSON parsing and validation
+/// - Configuration structure validation
+/// - Error handling and graceful degradation
+/// - Configuration loading workflows
+/// - Asset path resolution and loading
+///
+/// **Edge Cases**:
+/// - Missing asset files
+/// - Invalid JSON content
+/// - Malformed configuration structures
+/// - Missing required configuration nodes
+/// - Asset loading failures
+///
+/// **Dependencies**: Tests the configuration loading mechanism that reads build-time
+/// configuration from Flutter assets, ensuring proper error handling and validation
+/// for runtime coin update configuration.
+library;
+
 import 'package:flutter/services.dart' show AssetBundle, ByteData;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config_repository.dart';

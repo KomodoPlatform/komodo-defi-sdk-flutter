@@ -1,8 +1,43 @@
+/// Unit tests for the CoinConfigStorage interface contract and implementations.
+///
+/// **Purpose**: Tests the storage interface contract that defines the core operations
+/// for coin configuration persistence, ensuring consistent behavior across different
+/// storage implementations and proper contract compliance.
+///
+/// **Test Cases**:
+/// - Basic save and read operations flow
+/// - Asset filtering with exclusion lists
+/// - Single asset deletion and cleanup
+/// - Bulk asset deletion and storage reset
+/// - Latest commit validation and checking
+/// - Storage existence and state validation
+///
+/// **Functionality Tested**:
+/// - CRUD operations contract compliance
+/// - Asset filtering and querying
+/// - Commit tracking and validation
+/// - Storage state management
+/// - Cleanup and reset operations
+/// - Interface contract validation
+///
+/// **Edge Cases**:
+/// - Empty storage states
+/// - Asset exclusion filtering
+/// - Commit state transitions
+/// - Storage cleanup scenarios
+/// - Interface contract edge cases
+///
+/// **Dependencies**: Tests the storage interface contract that defines how coin
+/// configurations are persisted and retrieved, using a fake implementation to
+/// validate contract compliance and behavior consistency.
+library;
+
 import 'package:komodo_coin_updates/src/coins_config/coin_config_storage.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
 
 import 'helpers/asset_test_extensions.dart';
+import 'helpers/asset_test_helpers.dart';
 
 class _FakeStorage implements CoinConfigStorage {
   Map<String, Asset> store = {};
@@ -30,8 +65,6 @@ class _FakeStorage implements CoinConfigStorage {
 
   // Helper for tests to toggle latest commit state
   void setIsLatest(bool value) => _latest = value;
-
-  // Deprecated methods removed from interface; using new API below
 
   @override
   Future<void> upsertAssets(List<Asset> assets, String commit) async {
@@ -64,7 +97,7 @@ class _FakeStorage implements CoinConfigStorage {
 }
 
 void main() {
-  group('CoinConfigStorage (contract)', () {
+  group('CoinConfigStorage Contract Tests', () {
     test('basic save and read flow', () async {
       final s = _FakeStorage();
       final asset = buildKmdTestAsset();
@@ -128,6 +161,51 @@ void main() {
 
       s.setIsLatest(true);
       expect(await s.isLatestCommit(latestCommit: 'HEAD'), isTrue);
+    });
+
+    test('upsertRawAssets updates commit without affecting assets', () async {
+      final s = _FakeStorage();
+      final kmd = buildKmdTestAsset();
+      await s.upsertAssets([kmd], 'HEAD1');
+
+      await s.upsertRawAssets({'BTC': AssetTestHelpers.utxoJson()}, 'HEAD2');
+
+      // Assets should remain unchanged
+      expect(await s.getAssets(), hasLength(1));
+      expect(await s.getCurrentCommit(), 'HEAD2');
+    });
+
+    test('storage existence check works correctly', () async {
+      final s = _FakeStorage();
+
+      // Initially false
+      expect(await s.updatedAssetStorageExists(), isFalse);
+
+      // After adding assets
+      await s.upsertAssets([buildKmdTestAsset()], 'HEAD');
+      expect(await s.updatedAssetStorageExists(), isTrue);
+
+      // After clearing assets but keeping commit
+      await s.deleteAllAssets();
+      expect(await s.updatedAssetStorageExists(), isFalse);
+    });
+
+    test('getAsset returns null for non-existent asset', () async {
+      final s = _FakeStorage();
+      final nonExistentId = 'BTC'.toTestAssetId(name: 'Bitcoin');
+
+      expect(await s.getAsset(nonExistentId), isNull);
+    });
+
+    test('getAssets with empty exclusion list returns all assets', () async {
+      final s = _FakeStorage();
+      final kmd = buildKmdTestAsset();
+      final btc = buildBtcTestAsset();
+      await s.upsertAssets([kmd, btc], 'HEAD');
+
+      final all = await s.getAssets(excludedAssets: []);
+      expect(all, hasLength(2));
+      expect(all.map((a) => a.id.id).toSet(), containsAll(['KMD', 'BTC']));
     });
   });
 }

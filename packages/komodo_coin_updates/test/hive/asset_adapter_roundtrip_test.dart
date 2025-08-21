@@ -1,3 +1,36 @@
+/// Unit tests for AssetAdapter serialization/deserialization roundtrip operations in Hive database.
+///
+/// **Purpose**: Tests the serialization and deserialization capabilities of the AssetAdapter
+/// when working with Hive databases, ensuring that assets can be stored and retrieved
+/// with complete data integrity and persistence across database restarts.
+///
+/// **Test Cases**:
+/// - Asset serialization and deserialization accuracy
+/// - Data integrity validation across put/get operations
+/// - Database persistence across restart scenarios
+/// - Asset property preservation and validation
+/// - Roundtrip data consistency verification
+///
+/// **Functionality Tested**:
+/// - Asset serialization workflows
+/// - Asset deserialization workflows
+/// - Database persistence mechanisms
+/// - Data integrity validation
+/// - Cross-restart data recovery
+/// - Asset property preservation
+///
+/// **Edge Cases**:
+/// - Database restart scenarios
+/// - Data persistence edge cases
+/// - Asset property validation
+/// - Serialization edge cases
+/// - Cross-restart data integrity
+///
+/// **Dependencies**: Tests the AssetAdapter's serialization/deserialization capabilities
+/// in Hive databases, using HiveTestEnv for isolated testing and validating that
+/// assets maintain complete data integrity across storage and retrieval operations.
+library;
+
 import 'package:hive_ce/hive.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';

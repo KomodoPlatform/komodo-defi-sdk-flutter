@@ -1,3 +1,36 @@
+/// Unit tests for AssetAdapter bulk deletion operations in Hive database.
+///
+/// **Purpose**: Tests the bulk deletion functionality of the AssetAdapter when
+/// working with Hive databases, ensuring that multiple assets can be deleted
+/// efficiently while preserving other assets in the database.
+///
+/// **Test Cases**:
+/// - Bulk deletion of multiple assets by key
+/// - Preservation of non-deleted assets
+/// - Database state consistency after deletion
+/// - Key validation and deletion verification
+/// - Database length and key tracking
+///
+/// **Functionality Tested**:
+/// - Bulk asset deletion operations
+/// - Database state management
+/// - Asset key tracking and validation
+/// - Hive lazy box operations
+/// - Database consistency maintenance
+/// - Key set management
+///
+/// **Edge Cases**:
+/// - Partial deletion scenarios
+/// - Database state transitions
+/// - Key validation edge cases
+/// - Database length consistency
+/// - Asset preservation verification
+///
+/// **Dependencies**: Tests the AssetAdapter's bulk deletion capabilities in Hive
+/// databases, using HiveTestEnv for isolated testing and validating that bulk
+/// operations maintain database consistency and state.
+library;
+
 import 'package:hive_ce/hive.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';

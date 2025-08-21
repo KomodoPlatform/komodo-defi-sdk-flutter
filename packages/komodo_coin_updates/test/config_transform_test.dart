@@ -1,3 +1,36 @@
+/// Unit tests for coin configuration transformation pipeline and individual transforms.
+///
+/// **Purpose**: Tests the configuration transformation system that modifies coin
+/// configurations based on platform requirements, business rules, and runtime
+/// conditions, ensuring consistent and correct transformation behavior.
+///
+/// **Test Cases**:
+/// - Transformation idempotency (applying twice yields same result)
+/// - Platform-specific filtering (WSS vs TCP protocols)
+/// - Parent coin remapping and transformation
+/// - Transform pipeline consistency and ordering
+/// - Platform detection and conditional logic
+///
+/// **Functionality Tested**:
+/// - Configuration transformation pipeline
+/// - Platform-specific protocol filtering
+/// - Parent coin relationship mapping
+/// - Transform application and validation
+/// - Platform detection and conditional transforms
+/// - Configuration modification workflows
+///
+/// **Edge Cases**:
+/// - Platform-specific behavior differences
+/// - Transform idempotency validation
+/// - Parent coin mapping edge cases
+/// - Protocol filtering edge cases
+/// - Configuration modification consistency
+///
+/// **Dependencies**: Tests the transformation system that adapts coin configurations
+/// for different platforms and requirements, including WSS filtering for web platforms
+/// and parent coin relationship mapping.
+library;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';

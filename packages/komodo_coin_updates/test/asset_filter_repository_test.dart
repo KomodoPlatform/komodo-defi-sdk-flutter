@@ -1,3 +1,33 @@
+/// Unit tests for repository-driven asset filtering functionality.
+///
+/// **Purpose**: Tests the integration between CoinConfigRepository and asset filtering
+/// mechanisms, ensuring that repository-stored assets can be properly filtered by
+/// protocol subclasses and other criteria.
+///
+/// **Test Cases**:
+/// - UTXO and smart chain asset filtering from repository storage
+/// - Protocol subclass-based filtering (UTXO, smart chain, etc.)
+/// - Repository integration with filtering logic
+/// - Asset type validation and filtering accuracy
+///
+/// **Functionality Tested**:
+/// - Repository asset retrieval and filtering
+/// - Protocol subclass filtering (UTXO, smart chain)
+/// - Asset type validation and classification
+/// - Repository-driven filtering workflows
+/// - Asset data integrity during filtering operations
+///
+/// **Edge Cases**:
+/// - Empty asset lists
+/// - Mixed asset types in repository
+/// - Protocol subclass edge cases
+/// - Repository state consistency during filtering
+///
+/// **Dependencies**: Tests the integration between CoinConfigRepository and asset
+/// filtering logic, uses HiveTestEnv for isolated database testing, and validates
+/// that repository-stored assets maintain proper protocol classification for filtering.
+library;
+
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';

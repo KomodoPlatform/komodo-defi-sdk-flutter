@@ -1,3 +1,36 @@
+/// Unit tests for the LocalAssetCoinConfigProvider class.
+///
+/// **Purpose**: Tests the provider that loads coin configurations from local Flutter
+/// assets, including configuration transformation, filtering, and error handling
+/// for bundled coin configurations.
+///
+/// **Test Cases**:
+/// - Missing asset error handling and propagation
+/// - Configuration transformation application
+/// - Excluded coin filtering and removal
+/// - Asset bundle integration and loading
+/// - Configuration processing pipeline
+///
+/// **Functionality Tested**:
+/// - Local asset loading from Flutter bundles
+/// - Configuration transformation and modification
+/// - Coin exclusion and filtering mechanisms
+/// - Error handling for missing assets
+/// - Configuration processing workflows
+/// - Asset bundle integration
+///
+/// **Edge Cases**:
+/// - Missing asset files
+/// - Configuration transformation failures
+/// - Excluded coin handling
+/// - Asset bundle loading errors
+/// - Configuration validation edge cases
+///
+/// **Dependencies**: Tests the local asset loading mechanism that provides coin
+/// configurations from bundled Flutter assets, including transformation pipelines
+/// and filtering mechanisms for runtime configuration.
+library;
+
 import 'dart:convert';
 
 import 'package:flutter/services.dart' show AssetBundle, ByteData;

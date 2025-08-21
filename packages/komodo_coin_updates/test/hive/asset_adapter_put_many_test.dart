@@ -1,3 +1,36 @@
+/// Unit tests for AssetAdapter concurrent bulk insertion operations in Hive database.
+///
+/// **Purpose**: Tests the concurrent bulk insertion capabilities of the AssetAdapter
+/// when working with Hive databases, ensuring that multiple assets can be inserted
+/// efficiently and consistently under concurrent load conditions.
+///
+/// **Test Cases**:
+/// - Concurrent insertion of multiple assets
+/// - Database state consistency during bulk operations
+/// - Random sampling and validation of inserted assets
+/// - Database length and key tracking accuracy
+/// - Concurrent operation performance and reliability
+///
+/// **Functionality Tested**:
+/// - Concurrent asset insertion operations
+/// - Bulk database operations
+/// - Database state consistency
+/// - Asset key generation and tracking
+/// - Random sampling and validation
+/// - Hive lazy box concurrent operations
+///
+/// **Edge Cases**:
+/// - High-volume concurrent insertions
+/// - Database state transitions under load
+/// - Random sampling edge cases
+/// - Database length consistency
+/// - Concurrent operation reliability
+///
+/// **Dependencies**: Tests the AssetAdapter's concurrent bulk insertion capabilities
+/// in Hive databases, using HiveTestEnv for isolated testing and validating that
+/// concurrent operations maintain database consistency and performance.
+library;
+
 import 'dart:math';
 
 import 'package:hive_ce/hive.dart';
