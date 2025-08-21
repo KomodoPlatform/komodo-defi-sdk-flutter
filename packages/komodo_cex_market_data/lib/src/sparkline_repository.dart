@@ -1,8 +1,10 @@
 import 'dart:async';
 
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_cex_market_data/src/hive_adapters.dart';
+import 'package:komodo_cex_market_data/src/models/sparkline_data.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -35,7 +37,7 @@ class SparklineRepository with RepositoryFallbackMixin {
   final RepositorySelectionStrategy _selectionStrategy;
   bool isInitialized = false;
   final Duration cacheExpiry = const Duration(hours: 1);
-  Box<Map<String, dynamic>>? _box;
+  Box<SparklineData>? _box;
 
   @override
   List<CexRepository> get priceRepositories => _repositories;
@@ -50,18 +52,71 @@ class SparklineRepository with RepositoryFallbackMixin {
       return;
     }
 
-    // Check if the Hive box is already open
-    if (!Hive.isBoxOpen('sparkline_data')) {
-      try {
-        _box = await Hive.openBox<Map<String, dynamic>>('sparkline_data');
-        _logger.info('SparklineRepository initialized and Hive box opened');
-      } catch (e, st) {
-        _box = null;
-        _logger.severe('Failed to open Hive box sparkline_data', e, st);
-        throw Exception('Failed to open Hive box: $e');
-      }
+    await _initializeHiveBox();
+    isInitialized = true;
+  }
 
-      isInitialized = true;
+  /// Initializes the Hive box with error recovery
+  Future<void> _initializeHiveBox() async {
+    const boxName = 'sparkline_data';
+
+    if (Hive.isBoxOpen(boxName)) {
+      _box = Hive.box<SparklineData>(boxName);
+      _logger.fine('Hive box $boxName was already open');
+      return;
+    }
+
+    // Register adapters before opening box
+    registerHiveAdapters();
+
+    try {
+      _box = await _openHiveBox(boxName);
+      _logger.info(
+        'SparklineRepository initialized and Hive box opened successfully',
+      );
+    } catch (e, st) {
+      _logger.warning(
+        'Initial attempt to open Hive box failed, attempting recovery',
+        e,
+        st,
+      );
+      await _recoverCorruptedHiveBox(boxName);
+      _box = await _openHiveBox(boxName);
+      _logger.info('SparklineRepository initialized after Hive box recovery');
+    }
+  }
+
+  /// Opens the Hive box
+  Future<Box<SparklineData>> _openHiveBox(String boxName) async {
+    try {
+      return await Hive.openBox<SparklineData>(boxName);
+    } catch (e, st) {
+      _logger.severe('Failed to open Hive box $boxName', e, st);
+      rethrow;
+    }
+  }
+
+  /// Recovers from a corrupted Hive box by deleting and recreating it
+  Future<void> _recoverCorruptedHiveBox(String boxName) async {
+    try {
+      _logger.info('Attempting to recover corrupted Hive box: $boxName');
+
+      // Try to delete the corrupted box
+      await Hive.deleteBoxFromDisk(boxName);
+      _logger.info('Successfully deleted corrupted Hive box: $boxName');
+    } catch (deleteError, deleteSt) {
+      _logger.severe(
+        'Failed to delete corrupted Hive box $boxName during recovery',
+        deleteError,
+        deleteSt,
+      );
+
+      // If deletion fails, we still want to try opening a new box
+      // The error will be handled by the caller
+      throw Exception(
+        'Failed to recover corrupted Hive box $boxName. '
+        'Manual intervention may be required. Error: $deleteError',
+      );
     }
   }
 
@@ -139,10 +194,8 @@ class SparklineRepository with RepositoryFallbackMixin {
     }, 'sparklineFetch');
 
     if (sparklineData != null && sparklineData.isNotEmpty) {
-      await _box!.put(symbol, {
-        'data': sparklineData,
-        'timestamp': DateTime.now().toIso8601String(),
-      });
+      final cacheData = SparklineData.success(sparklineData);
+      await _box!.put(symbol, cacheData);
       _logger.fine(
         'Cached sparkline for $symbol with ${sparklineData.length} points',
       );
@@ -150,10 +203,8 @@ class SparklineRepository with RepositoryFallbackMixin {
     }
 
     // If all repositories failed, cache null result to avoid repeated attempts
-    await _box!.put(symbol, {
-      'data': null,
-      'timestamp': DateTime.now().toIso8601String(),
-    });
+    final failedCacheData = SparklineData.failed();
+    await _box!.put(symbol, failedCacheData);
     _logger.warning(
       'All repositories failed fetching sparkline for $symbol; cached null',
     );
@@ -173,10 +224,8 @@ class SparklineRepository with RepositoryFallbackMixin {
       intervalSeconds: interval,
     );
     final constantData = ohlcData.ohlc.map((e) => e.close).toList();
-    await _box!.put(symbol, {
-      'data': constantData,
-      'timestamp': DateTime.now().toIso8601String(),
-    });
+    final cacheData = SparklineData.success(constantData);
+    await _box!.put(symbol, cacheData);
     _logger.fine(
       'Cached constant-price sparkline for $symbol with '
       '${constantData.length} points',
