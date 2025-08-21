@@ -97,7 +97,7 @@ void main() {
         });
 
         final provider = LocalAssetCoinConfigProvider.fromConfig(
-          const RuntimeUpdateConfig(),
+          const AssetRuntimeUpdateConfig(),
           bundle: bundle,
         );
 
@@ -110,7 +110,7 @@ void main() {
 
       test('handles missing asset gracefully', () async {
         final provider = LocalAssetCoinConfigProvider.fromConfig(
-          const RuntimeUpdateConfig(),
+          const AssetRuntimeUpdateConfig(),
           bundle: _FakeAssetBundle({}),
         );
 
@@ -136,7 +136,7 @@ void main() {
         });
 
         final provider = LocalAssetCoinConfigProvider.fromConfig(
-          const RuntimeUpdateConfig(),
+          const AssetRuntimeUpdateConfig(),
           transformer: const CoinConfigTransformer(
             transforms: [WssWebsocketTransform()],
           ),
@@ -288,7 +288,7 @@ void main() {
         });
 
         final provider = LocalAssetCoinConfigProvider.fromConfig(
-          const RuntimeUpdateConfig(),
+          const AssetRuntimeUpdateConfig(),
           transformer: const CoinConfigTransformer(
             transforms: [WssWebsocketTransform(), ParentCoinTransform()],
           ),

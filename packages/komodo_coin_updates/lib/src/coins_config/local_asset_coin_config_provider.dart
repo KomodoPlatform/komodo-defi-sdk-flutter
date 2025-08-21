@@ -4,7 +4,6 @@ import 'package:flutter/services.dart' show AssetBundle, rootBundle;
 import 'package:komodo_coin_updates/src/coins_config/asset_parser.dart';
 import 'package:komodo_coin_updates/src/coins_config/coin_config_provider.dart';
 import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
-import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -29,9 +28,9 @@ class LocalAssetCoinConfigProvider implements CoinConfigProvider {
   }) : _transformer = transformer ?? const CoinConfigTransformer(),
        _bundle = bundle ?? rootBundle;
 
-  /// Convenience ctor deriving the asset path from [RuntimeUpdateConfig].
+  /// Convenience ctor deriving the asset path from [AssetRuntimeUpdateConfig].
   factory LocalAssetCoinConfigProvider.fromConfig(
-    RuntimeUpdateConfig config, {
+    AssetRuntimeUpdateConfig config, {
     String packageName = 'komodo_defi_framework',
     CoinConfigTransformer? transformer,
     AssetBundle? bundle,
@@ -92,9 +91,7 @@ class LocalAssetCoinConfigProvider implements CoinConfigProvider {
     };
 
     // Use the standardized AssetParser to parse all assets
-    const parser = AssetParser(
-      loggerName: 'LocalAssetCoinConfigProvider',
-    );
+    const parser = AssetParser(loggerName: 'LocalAssetCoinConfigProvider');
 
     return parser.parseAssetsFromConfig(
       transformedItems,

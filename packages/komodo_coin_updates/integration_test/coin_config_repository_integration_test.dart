@@ -36,7 +36,6 @@
 library;
 
 import 'package:komodo_coin_updates/src/coins_config/coin_config_repository.dart';
-import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
 
@@ -55,7 +54,7 @@ void main() {
       await env.dispose();
     });
 
-    RuntimeUpdateConfig config() => const RuntimeUpdateConfig(
+    AssetRuntimeUpdateConfig config() => const AssetRuntimeUpdateConfig(
       fetchAtBuildEnabled: false,
       updateCommitOnBuild: false,
       bundledCoinsRepoCommit: 'local',

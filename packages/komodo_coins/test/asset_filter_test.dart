@@ -37,7 +37,7 @@ void main() {
         Hive.registerAdapters();
       } catch (_) {}
       repo = CoinConfigRepository.withDefaults(
-        const RuntimeUpdateConfig(
+        const AssetRuntimeUpdateConfig(
           fetchAtBuildEnabled: false,
           updateCommitOnBuild: false,
           bundledCoinsRepoCommit: 'local',

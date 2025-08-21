@@ -60,7 +60,7 @@ abstract class AssetsUpdateManager {
 /// coin data and seed nodes.
 class KomodoAssetsUpdateManager implements AssetsUpdateManager {
   KomodoAssetsUpdateManager({
-    RuntimeUpdateConfigRepository? configRepository,
+    AssetRuntimeUpdateConfigRepository? configRepository,
     CoinConfigTransformer? transformer,
     CoinConfigDataFactory? dataFactory,
     LoadingStrategy? loadingStrategy,
@@ -68,7 +68,8 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
     this.enableAutoUpdate = true,
     this.appStoragePath,
     this.appName,
-  })  : _configRepository = configRepository ?? RuntimeUpdateConfigRepository(),
+  })  : _configRepository =
+            configRepository ?? AssetRuntimeUpdateConfigRepository(),
         _transformer = transformer ?? const CoinConfigTransformer(),
         _dataFactory = dataFactory ?? const DefaultCoinConfigDataFactory(),
         _loadingStrategy = loadingStrategy ?? StorageFirstLoadingStrategy(),
@@ -86,7 +87,7 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
   /// Optional app name used as a subfolder (native) or path (web).
   final String? appName;
 
-  final RuntimeUpdateConfigRepository _configRepository;
+  final AssetRuntimeUpdateConfigRepository _configRepository;
   final CoinConfigTransformer _transformer;
   final CoinConfigDataFactory _dataFactory;
   final LoadingStrategy _loadingStrategy;
@@ -95,7 +96,7 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
   // Internal managers using strategy pattern
   CoinConfigManager? _assetsManager;
   CoinUpdateManager? _updatesManager;
-  RuntimeUpdateConfig? _runtimeConfig;
+  AssetRuntimeUpdateConfig? _runtimeConfig;
 
   /// Provides access to asset management operations
   CoinConfigManager get assets {
@@ -193,17 +194,17 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
   @override
   Map<AssetId, Asset> get all => assets.all;
 
-  Future<RuntimeUpdateConfig> _getRuntimeConfig() async {
+  Future<AssetRuntimeUpdateConfig> _getRuntimeConfig() async {
     if (_runtimeConfig != null) return _runtimeConfig!;
     _log.fine('Loading runtime update config');
     _runtimeConfig =
-        await _configRepository.tryLoad() ?? const RuntimeUpdateConfig();
+        await _configRepository.tryLoad() ?? const AssetRuntimeUpdateConfig();
     return _runtimeConfig!;
   }
 
   /// Creates configuration sources based on the runtime config
   Future<List<CoinConfigSource>> _createConfigSources(
-    RuntimeUpdateConfig config,
+    AssetRuntimeUpdateConfig config,
   ) async {
     final sources = <CoinConfigSource>[];
 

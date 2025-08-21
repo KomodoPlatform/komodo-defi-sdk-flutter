@@ -1,18 +1,19 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart' show AssetBundle, rootBundle;
-import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart'
+    show AssetRuntimeUpdateConfig;
 import 'package:logging/logging.dart';
 
 /// Loads the coins runtime update configuration from a build_config.json
 /// bundled in a dependency package (defaults to `komodo_defi_framework`).
-class RuntimeUpdateConfigRepository {
+class AssetRuntimeUpdateConfigRepository {
   /// Creates a runtime update config repository.
   ///
   /// - [packageName]: the name of the package containing the runtime update config asset.
   /// - [assetPath]: the path to the runtime update config asset.
   /// - [bundle]: the asset bundle to load the runtime update config from.
-  RuntimeUpdateConfigRepository({
+  AssetRuntimeUpdateConfigRepository({
     this.packageName = 'komodo_defi_framework',
     this.assetPath = 'app_build/build_config.json',
     AssetBundle? bundle,
@@ -30,7 +31,7 @@ class RuntimeUpdateConfigRepository {
 
   /// Loads the coins runtime configuration from the `build_config.json` asset.
   /// Returns `null` if loading or parsing fails.
-  Future<RuntimeUpdateConfig?> tryLoad() async {
+  Future<AssetRuntimeUpdateConfig?> tryLoad() async {
     try {
       return await load();
     } catch (e, s) {
@@ -42,7 +43,7 @@ class RuntimeUpdateConfigRepository {
   /// Loads the coins runtime configuration from the `build_config.json` asset.
   /// Throws on any failure. Prefer this for fail-fast flows; use [tryLoad]
   /// when a silent fallback behavior is desired.
-  Future<RuntimeUpdateConfig> load() async {
+  Future<AssetRuntimeUpdateConfig> load() async {
     final assetUri = 'packages/$packageName/$assetPath';
     _log.fine('Loading RuntimeUpdateConfig from asset: $assetUri');
 
@@ -64,7 +65,7 @@ class RuntimeUpdateConfigRepository {
     }
     final coins = Map<String, dynamic>.from(coinsNode);
 
-    final config = RuntimeUpdateConfig.fromJson(coins);
+    final config = AssetRuntimeUpdateConfig.fromJson(coins);
     _log.fine('Loaded RuntimeUpdateConfig successfully');
     return config;
   }

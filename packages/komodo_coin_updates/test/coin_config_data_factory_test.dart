@@ -23,7 +23,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_coin_updates/src/coins_config/coin_config_repository.dart';
 import 'package:komodo_coin_updates/src/coins_config/coin_config_repository_factory.dart';
 import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
-import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart' show AssetRuntimeUpdateConfig;
 
 void main() {
   group('DefaultCoinConfigDataFactory', () {
@@ -31,7 +31,7 @@ void main() {
       const transformer = CoinConfigTransformer();
       const factory = DefaultCoinConfigDataFactory();
       final repo = factory.createRepository(
-        const RuntimeUpdateConfig(),
+        const AssetRuntimeUpdateConfig(),
         transformer,
       );
       expect(repo, isA<CoinConfigRepository>());
@@ -42,7 +42,7 @@ void main() {
       () {
         const factory = DefaultCoinConfigDataFactory();
         final provider = factory.createLocalProvider(
-          const RuntimeUpdateConfig(),
+          const AssetRuntimeUpdateConfig(),
         );
         // We don\'t import the concrete type here; verifying an instance is returned is enough
         expect(provider, isNotNull);

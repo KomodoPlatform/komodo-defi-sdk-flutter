@@ -1,15 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:komodo_coin_updates/komodo_coin_updates.dart'
-    show
-        CoinConfigDataFactory,
-        CoinConfigTransformer,
-        DefaultCoinConfigDataFactory,
-        KomodoCoinUpdater,
-        RuntimeUpdateConfig,
-        RuntimeUpdateConfigRepository;
+import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coins/src/asset_management/_asset_management_index.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart'
     show JsonList, JsonMap;
+import 'package:komodo_defi_types/komodo_defi_types.dart'
+    show AssetRuntimeUpdateConfig;
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -29,7 +24,7 @@ class StartupCoinsProvider {
   /// - Initializes Hive storage minimally to enable storage reads.
   static Future<JsonList> fetchRawCoinsForStartup({
     // Optional overrides, primarily for testing/advanced wiring
-    RuntimeUpdateConfigRepository? configRepository,
+    AssetRuntimeUpdateConfigRepository? configRepository,
     CoinConfigTransformer? transformer,
     CoinConfigDataFactory? dataFactory,
     LoadingStrategy? loadingStrategy,
@@ -58,8 +53,9 @@ class StartupCoinsProvider {
     CoinConfigManager? manager;
     try {
       // Runtime config and data sources
-      final repo = configRepository ?? RuntimeUpdateConfigRepository();
-      final runtimeConfig = await repo.tryLoad() ?? const RuntimeUpdateConfig();
+      final repo = configRepository ?? AssetRuntimeUpdateConfigRepository();
+      final runtimeConfig =
+          await repo.tryLoad() ?? const AssetRuntimeUpdateConfig();
 
       final factory = dataFactory ?? const DefaultCoinConfigDataFactory();
       final xform = transformer ?? const CoinConfigTransformer();

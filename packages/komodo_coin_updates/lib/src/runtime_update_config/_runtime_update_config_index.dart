@@ -2,5 +2,4 @@
 
 library _runtime_update_config;
 
-export 'runtime_update_config.dart';
-export 'runtime_update_config_repository.dart';
+export 'asset_runtime_update_config_repository.dart';

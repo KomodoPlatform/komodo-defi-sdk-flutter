@@ -37,8 +37,9 @@ import 'package:flutter/services.dart' show AssetBundle, ByteData;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
 import 'package:komodo_coin_updates/src/coins_config/local_asset_coin_config_provider.dart';
-import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart'
+    show AssetRuntimeUpdateConfig;
 
 class _FakeBundle extends AssetBundle {
   _FakeBundle(this.map);
@@ -69,7 +70,7 @@ void main() {
   group('LocalAssetCoinConfigProvider', () {
     test('throws when asset is missing', () async {
       final provider = LocalAssetCoinConfigProvider.fromConfig(
-        const RuntimeUpdateConfig(),
+        const AssetRuntimeUpdateConfig(),
         bundle: _FakeBundle({}),
       );
       expect(provider.getAssets(), throwsA(isA<StateError>()));
@@ -102,7 +103,7 @@ void main() {
       });
 
       final provider = LocalAssetCoinConfigProvider.fromConfig(
-        const RuntimeUpdateConfig(),
+        const AssetRuntimeUpdateConfig(),
         transformer: const CoinConfigTransformer(
           transforms: [_ForceWalletOnlyTransform()],
         ),

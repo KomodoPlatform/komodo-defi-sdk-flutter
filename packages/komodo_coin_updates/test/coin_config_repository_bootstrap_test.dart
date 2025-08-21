@@ -63,7 +63,7 @@ void main() {
       await env.dispose();
     });
 
-    RuntimeUpdateConfig config() => const RuntimeUpdateConfig(
+    AssetRuntimeUpdateConfig config() => const AssetRuntimeUpdateConfig(
       fetchAtBuildEnabled: false,
       updateCommitOnBuild: false,
       bundledCoinsRepoCommit: 'local-commit',

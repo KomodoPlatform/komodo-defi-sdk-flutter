@@ -27,12 +27,13 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart'
+    show AssetRuntimeUpdateConfig;
 
 void main() {
   group('RuntimeUpdateConfig model', () {
     test('fromJson applies defaults', () {
-      final cfg = RuntimeUpdateConfig.fromJson({});
+      final cfg = AssetRuntimeUpdateConfig.fromJson({});
       expect(cfg.coinsRepoBranch, isNotEmpty);
       expect(cfg.mappedFiles.isNotEmpty, isTrue);
       expect(cfg.mappedFolders.isNotEmpty, isTrue);
@@ -40,11 +41,11 @@ void main() {
     });
 
     test('round-trip toJson/fromJson', () {
-      const original = RuntimeUpdateConfig(
+      const original = AssetRuntimeUpdateConfig(
         coinsRepoBranch: 'dev',
         concurrentDownloadsEnabled: true,
       );
-      final cloned = RuntimeUpdateConfig.fromJson(original.toJson());
+      final cloned = AssetRuntimeUpdateConfig.fromJson(original.toJson());
       expect(cloned.coinsRepoBranch, 'dev');
       expect(cloned.concurrentDownloadsEnabled, isTrue);
     });

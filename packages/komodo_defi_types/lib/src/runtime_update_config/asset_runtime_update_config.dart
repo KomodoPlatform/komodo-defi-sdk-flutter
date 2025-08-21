@@ -1,18 +1,18 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'runtime_update_config.freezed.dart';
-part 'runtime_update_config.g.dart';
+part 'asset_runtime_update_config.freezed.dart';
+part 'asset_runtime_update_config.g.dart';
 
 /// Configuration for the runtime update process.
 ///
 /// Mirrors the `coins` section in build_config.json.
 @freezed
-abstract class RuntimeUpdateConfig with _$RuntimeUpdateConfig {
+abstract class AssetRuntimeUpdateConfig with _$AssetRuntimeUpdateConfig {
   /// Configuration for the runtime update process.
   ///
   /// Mirrors the `coins` section in build_config.json.
   @JsonSerializable(explicitToJson: true, fieldRename: FieldRename.snake)
-  const factory RuntimeUpdateConfig({
+  const factory AssetRuntimeUpdateConfig({
     // Mirrors `coins` section in build_config.json
     @Default(true) bool fetchAtBuildEnabled,
     @Default(true) bool updateCommitOnBuild,
@@ -37,9 +37,9 @@ abstract class RuntimeUpdateConfig with _$RuntimeUpdateConfig {
       'main': 'https://komodoplatform.github.io/coins',
     })
     Map<String, String> cdnBranchMirrors,
-  }) = _RuntimeUpdateConfig;
+  }) = _AssetRuntimeUpdateConfig;
 
-  /// Creates a [RuntimeUpdateConfig] from a JSON map.
-  factory RuntimeUpdateConfig.fromJson(Map<String, dynamic> json) =>
-      _$RuntimeUpdateConfigFromJson(json);
+  /// Creates a [AssetRuntimeUpdateConfig] from a JSON map.
+  factory AssetRuntimeUpdateConfig.fromJson(Map<String, dynamic> json) =>
+      _$AssetRuntimeUpdateConfigFromJson(json);
 }

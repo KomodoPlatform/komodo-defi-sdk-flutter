@@ -48,7 +48,9 @@ void main() {
       Hive
         ..init(hivePath)
         ..registerAdapters();
-      repo = CoinConfigRepository.withDefaults(const RuntimeUpdateConfig());
+      repo = CoinConfigRepository.withDefaults(
+        const AssetRuntimeUpdateConfig(),
+      );
       await repo.upsertRawAssets({'KMD': AssetTestHelpers.utxoJson()}, 'test');
     });
 

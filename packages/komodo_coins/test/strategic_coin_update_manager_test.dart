@@ -15,7 +15,8 @@ class MockCoinConfigProvider extends Mock implements CoinConfigProvider {}
 class MockUpdateStrategy extends Mock implements UpdateStrategy {}
 
 // Fake classes for mocktail fallback values
-class FakeRuntimeUpdateConfig extends Fake implements RuntimeUpdateConfig {}
+class FakeRuntimeUpdateConfig extends Fake
+    implements AssetRuntimeUpdateConfig {}
 
 class FakeCoinConfigTransformer extends Fake implements CoinConfigTransformer {}
 

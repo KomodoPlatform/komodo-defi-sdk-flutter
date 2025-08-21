@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'package:komodo_coin_updates/src/coins_config/asset_parser.dart';
 import 'package:komodo_coin_updates/src/coins_config/coin_config_provider.dart';
 import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
-import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -41,7 +40,7 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
   /// Derives provider settings from the given [config]. Optionally provide
   /// a [githubToken] for authenticated GitHub API requests.
   factory GithubCoinConfigProvider.fromConfig(
-    RuntimeUpdateConfig config, {
+    AssetRuntimeUpdateConfig config, {
     String? githubToken,
     http.Client? httpClient,
     CoinConfigTransformer? transformer,

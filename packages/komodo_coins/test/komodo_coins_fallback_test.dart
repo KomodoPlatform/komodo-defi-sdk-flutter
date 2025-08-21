@@ -8,7 +8,7 @@ import 'test_utils/asset_config_builders.dart';
 
 // Mock classes
 class MockRuntimeUpdateConfigRepository extends Mock
-    implements RuntimeUpdateConfigRepository {}
+    implements AssetRuntimeUpdateConfigRepository {}
 
 class MockCoinConfigRepository extends Mock implements CoinConfigRepository {}
 
@@ -26,7 +26,8 @@ class MockGithubCoinConfigProvider extends Mock
     implements GithubCoinConfigProvider {}
 
 // Fake classes for mocktail fallback values
-class FakeRuntimeUpdateConfig extends Fake implements RuntimeUpdateConfig {}
+class FakeRuntimeUpdateConfig extends Fake
+    implements AssetRuntimeUpdateConfig {}
 
 class FakeCoinConfigTransformer extends Fake implements CoinConfigTransformer {}
 
@@ -65,7 +66,7 @@ void main() {
       mockRemoteProvider = MockGithubCoinConfigProvider();
 
       // Set up runtime config
-      const runtimeConfig = RuntimeUpdateConfig(
+      const runtimeConfig = AssetRuntimeUpdateConfig(
         bundledCoinsRepoCommit: bundledCommitHash,
       );
 
@@ -273,7 +274,7 @@ void main() {
 
         // Mock the static method dependencies
         when(() => mockConfigRepository.tryLoad()).thenAnswer(
-          (_) async => const RuntimeUpdateConfig(
+          (_) async => const AssetRuntimeUpdateConfig(
             bundledCoinsRepoCommit: bundledCommitHash,
           ),
         );

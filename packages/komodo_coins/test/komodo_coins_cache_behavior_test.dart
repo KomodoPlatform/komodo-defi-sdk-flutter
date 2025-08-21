@@ -29,7 +29,7 @@ import 'package:mocktail/mocktail.dart';
 
 // Mocks
 class MockRuntimeUpdateConfigRepository extends Mock
-    implements RuntimeUpdateConfigRepository {}
+    implements AssetRuntimeUpdateConfigRepository {}
 
 class MockCoinConfigRepository extends Mock implements CoinConfigRepository {}
 
@@ -47,7 +47,8 @@ class MockGithubCoinConfigProvider extends Mock
     implements GithubCoinConfigProvider {}
 
 // Fakes for mocktail
-class FakeRuntimeUpdateConfig extends Fake implements RuntimeUpdateConfig {}
+class FakeRuntimeUpdateConfig extends Fake
+    implements AssetRuntimeUpdateConfig {}
 
 class FakeCoinConfigTransformer extends Fake implements CoinConfigTransformer {}
 
@@ -103,7 +104,7 @@ void main() {
 
       // runtime config
       when(() => mockConfigRepository.tryLoad()).thenAnswer(
-        (_) async => const RuntimeUpdateConfig(
+        (_) async => const AssetRuntimeUpdateConfig(
           bundledCoinsRepoCommit: bundledCommit,
         ),
       );

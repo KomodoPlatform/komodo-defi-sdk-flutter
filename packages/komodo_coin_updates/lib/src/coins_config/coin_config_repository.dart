@@ -3,7 +3,6 @@ import 'package:komodo_coin_updates/src/coins_config/coin_config_provider.dart';
 import 'package:komodo_coin_updates/src/coins_config/coin_config_storage.dart';
 import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
 import 'package:komodo_coin_updates/src/coins_config/github_coin_config_provider.dart';
-import 'package:komodo_coin_updates/src/runtime_update_config/runtime_update_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -25,7 +24,7 @@ class CoinConfigRepository implements CoinConfigStorage {
   /// Convenience factory that derives a provider from a runtime config and
   /// uses default Hive boxes (`assets`, `coins_settings`).
   CoinConfigRepository.withDefaults(
-    RuntimeUpdateConfig config, {
+    AssetRuntimeUpdateConfig config, {
     String? githubToken,
     CoinConfigTransformer? transformer,
     this.assetsBoxName = 'assets',
