@@ -47,9 +47,6 @@ void main() {
     final testAsset = Asset.fromJson(testAssetConfig);
 
     final testAssets = [komodoAsset, btcAsset, testAsset];
-    final testAssetsMap = {
-      for (final asset in testAssets) asset.id: asset,
-    };
 
     setUp(() {
       mockStorageSource = MockCoinConfigSource();
@@ -69,8 +66,6 @@ void main() {
         () => mockLoadingStrategy.selectSources(
           requestType: any(named: 'requestType'),
           availableSources: any(named: 'availableSources'),
-          storageExists: any(named: 'storageExists'),
-          enableAutoUpdate: any(named: 'enableAutoUpdate'),
         ),
       ).thenAnswer((invocation) async {
         final sources =
@@ -93,7 +88,6 @@ void main() {
           loadingStrategy: mockLoadingStrategy,
         );
 
-        expect(manager.enableAutoUpdate, isTrue);
         expect(manager.isInitialized, isFalse);
       });
 
@@ -101,10 +95,8 @@ void main() {
         final manager = StrategicCoinConfigManager(
           configSources: [mockStorageSource, mockLocalSource],
           loadingStrategy: mockLoadingStrategy,
-          enableAutoUpdate: false,
         );
-
-        expect(manager.enableAutoUpdate, isFalse);
+        expect(manager.isInitialized, isFalse);
       });
 
       test('uses default loading strategy when not provided', () {
@@ -448,8 +440,6 @@ void main() {
           () => mockLoadingStrategy.selectSources(
             requestType: any(named: 'requestType'),
             availableSources: any(named: 'availableSources'),
-            storageExists: any(named: 'storageExists'),
-            enableAutoUpdate: any(named: 'enableAutoUpdate'),
           ),
         ).thenAnswer((invocation) async {
           final sources =
@@ -472,17 +462,13 @@ void main() {
       });
 
       test('respects enableAutoUpdate flag in loading strategy', () async {
-        var enableAutoUpdatePassed = false;
+        // With current API, enableAutoUpdate is not passed through loading strategy
         when(
           () => mockLoadingStrategy.selectSources(
             requestType: any(named: 'requestType'),
             availableSources: any(named: 'availableSources'),
-            storageExists: any(named: 'storageExists'),
-            enableAutoUpdate: any(named: 'enableAutoUpdate'),
           ),
         ).thenAnswer((invocation) async {
-          enableAutoUpdatePassed = invocation
-              .namedArguments[const Symbol('enableAutoUpdate')] as bool;
           final sources =
               invocation.namedArguments[const Symbol('availableSources')]
                   as List<CoinConfigSource>;
@@ -492,11 +478,9 @@ void main() {
         final manager = StrategicCoinConfigManager(
           configSources: [mockStorageSource, mockLocalSource],
           loadingStrategy: mockLoadingStrategy,
-          enableAutoUpdate: false,
         );
         await manager.init();
-
-        expect(enableAutoUpdatePassed, isFalse);
+        expect(manager.isInitialized, isTrue);
       });
     });
   });

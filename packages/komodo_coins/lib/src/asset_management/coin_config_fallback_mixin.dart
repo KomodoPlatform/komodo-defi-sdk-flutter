@@ -75,8 +75,6 @@ mixin CoinConfigFallbackMixin {
   /// Gets healthy sources in order based on the loading strategy
   Future<List<CoinConfigSource>> _getHealthySourcesInOrder(
     LoadingRequestType requestType,
-    bool storageExists,
-    bool enableAutoUpdate,
   ) async {
     // Filter healthy sources
     final healthySources = configSources.where(_isSourceHealthy).toList();
@@ -107,8 +105,6 @@ mixin CoinConfigFallbackMixin {
     final orderedSources = await loadingStrategy.selectSources(
       requestType: requestType,
       availableSources: healthySources,
-      storageExists: storageExists,
-      enableAutoUpdate: enableAutoUpdate,
     );
 
     return orderedSources;
@@ -118,15 +114,11 @@ mixin CoinConfigFallbackMixin {
   Future<T> trySourcesInOrder<T>(
     LoadingRequestType requestType,
     Future<T> Function(CoinConfigSource source) operation, {
-    required bool storageExists,
-    required bool enableAutoUpdate,
     String? operationName,
     int maxTotalAttempts = 3,
   }) async {
     final sources = await _getHealthySourcesInOrder(
       requestType,
-      storageExists,
-      enableAutoUpdate,
     );
 
     if (sources.isEmpty) {
@@ -191,8 +183,6 @@ mixin CoinConfigFallbackMixin {
     LoadingRequestType requestType,
     Future<T> Function(CoinConfigSource source) operation,
     String operationName, {
-    required bool storageExists,
-    required bool enableAutoUpdate,
     int maxTotalAttempts = 3,
   }) async {
     try {
@@ -200,8 +190,6 @@ mixin CoinConfigFallbackMixin {
         requestType,
         operation,
         maxTotalAttempts: maxTotalAttempts,
-        storageExists: storageExists,
-        enableAutoUpdate: enableAutoUpdate,
         operationName: operationName,
       );
     } catch (e, s) {

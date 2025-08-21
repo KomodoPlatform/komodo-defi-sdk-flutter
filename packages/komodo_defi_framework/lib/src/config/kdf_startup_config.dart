@@ -233,6 +233,7 @@ class KdfStartupConfig {
   static Future<JsonList> _fetchCoinsData() async {
     if (_memoizedCoins != null) return _memoizedCoins!;
 
-    return _memoizedCoins = await KomodoCoins.fetchRawCoinsListForKdfStartup();
+    return _memoizedCoins =
+        await StartupCoinsProvider.fetchRawCoinsForStartup();
   }
 }

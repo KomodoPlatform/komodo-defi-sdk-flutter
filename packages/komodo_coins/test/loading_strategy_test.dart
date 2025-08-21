@@ -22,10 +22,6 @@ void main() {
     late MockCoinConfigRepository mockRepository;
     late MockLocalAssetCoinConfigProvider mockLocalProvider;
 
-    // Test data
-    final testAssetConfig = StandardAssetConfigs.komodo();
-    final testAsset = Asset.fromJson(testAssetConfig);
-
     setUp(() {
       mockRepository = MockCoinConfigRepository();
       mockLocalProvider = MockLocalAssetCoinConfigProvider();
@@ -46,11 +42,12 @@ void main() {
             AssetBundleCoinConfigSource(provider: mockLocalProvider);
         final availableSources = [storageSource, localSource];
 
+        when(() => mockRepository.updatedAssetStorageExists())
+            .thenAnswer((_) async => true);
+
         final result = await strategy.selectSources(
           requestType: LoadingRequestType.initialLoad,
           availableSources: availableSources,
-          storageExists: true,
-          enableAutoUpdate: false,
         );
 
         expect(result.length, 2);
@@ -66,11 +63,12 @@ void main() {
             AssetBundleCoinConfigSource(provider: mockLocalProvider);
         final availableSources = [storageSource, localSource];
 
+        when(() => mockRepository.updatedAssetStorageExists())
+            .thenAnswer((_) async => true);
+
         final result = await strategy.selectSources(
           requestType: LoadingRequestType.initialLoad,
           availableSources: availableSources,
-          storageExists: true,
-          enableAutoUpdate: true,
         );
 
         expect(result.length, 2);
@@ -85,11 +83,12 @@ void main() {
             AssetBundleCoinConfigSource(provider: mockLocalProvider);
         final availableSources = [storageSource, localSource];
 
+        when(() => mockRepository.updatedAssetStorageExists())
+            .thenAnswer((_) async => false);
+
         final result = await strategy.selectSources(
           requestType: LoadingRequestType.initialLoad,
           availableSources: availableSources,
-          storageExists: false,
-          enableAutoUpdate: true,
         );
 
         // When storage doesn't exist, only asset bundle should be returned
@@ -104,11 +103,12 @@ void main() {
             AssetBundleCoinConfigSource(provider: mockLocalProvider);
         final availableSources = [storageSource, localSource];
 
+        when(() => mockRepository.updatedAssetStorageExists())
+            .thenAnswer((_) async => true);
+
         final result = await strategy.selectSources(
           requestType: LoadingRequestType.refreshLoad,
           availableSources: availableSources,
-          storageExists: true,
-          enableAutoUpdate: true,
         );
 
         expect(result.length, 2);
@@ -122,11 +122,12 @@ void main() {
             AssetBundleCoinConfigSource(provider: mockLocalProvider);
         final availableSources = [storageSource, localSource];
 
+        when(() => mockRepository.updatedAssetStorageExists())
+            .thenAnswer((_) async => true);
+
         final result = await strategy.selectSources(
           requestType: LoadingRequestType.fallbackLoad,
           availableSources: availableSources,
-          storageExists: true,
-          enableAutoUpdate: true,
         );
 
         expect(result.length, 2);
@@ -149,11 +150,12 @@ void main() {
             AssetBundleCoinConfigSource(provider: mockLocalProvider);
         final availableSources = [storageSource, localSource];
 
+        when(() => mockRepository.updatedAssetStorageExists())
+            .thenAnswer((_) async => true);
+
         final result = await strategy.selectSources(
           requestType: LoadingRequestType.initialLoad,
           availableSources: availableSources,
-          storageExists: true,
-          enableAutoUpdate: true,
         );
 
         expect(result.length, 2);
@@ -168,16 +170,16 @@ void main() {
             AssetBundleCoinConfigSource(provider: mockLocalProvider);
         final availableSources = [storageSource, localSource];
 
+        when(() => mockRepository.updatedAssetStorageExists())
+            .thenAnswer((_) async => false);
+
         final result = await strategy.selectSources(
           requestType: LoadingRequestType.initialLoad,
           availableSources: availableSources,
-          storageExists: false,
-          enableAutoUpdate: false,
         );
 
-        expect(result.length, 2);
+        expect(result.length, 1);
         expect(result[0], isA<AssetBundleCoinConfigSource>());
-        expect(result[1], isA<StorageCoinConfigSource>());
       });
     });
   });
@@ -185,10 +187,8 @@ void main() {
   group('CoinConfigSource', () {
     late MockCoinConfigRepository mockRepository;
     late MockLocalAssetCoinConfigProvider mockLocalProvider;
-
     // Test data
-    final testAssetConfig = StandardAssetConfigs.komodo();
-    final testAsset = Asset.fromJson(testAssetConfig);
+    final testAsset = Asset.fromJson(StandardAssetConfigs.komodo());
 
     setUp(() {
       mockRepository = MockCoinConfigRepository();

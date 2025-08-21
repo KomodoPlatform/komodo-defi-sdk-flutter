@@ -166,7 +166,7 @@ class CoinConfigRepository implements CoinConfigStorage {
     final settingsBox = await _openSettingsBox();
     final hiveBoxesNotEmpty = assetsBox.isNotEmpty && settingsBox.isNotEmpty;
     _log.fine(
-      'Box emptiness check: $assetsBoxName=$hiveBoxesNotEmpty '
+      'Box is not empty: $assetsBoxName=$hiveBoxesNotEmpty '
       '$settingsBoxName=$hiveBoxesNotEmpty',
     );
 
@@ -215,8 +215,6 @@ class CoinConfigRepository implements CoinConfigStorage {
     final settings = await _openSettingsBox();
     await settings.delete(coinsCommitKey);
   }
-
-  // ---- end CRUD ----
 
   Future<LazyBox<Asset>> _openAssetsBox() async {
     if (_assetsBox == null) {

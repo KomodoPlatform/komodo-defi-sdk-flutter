@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
-import 'package:komodo_coins/src/komodo_coins_base.dart';
+import 'package:komodo_coins/komodo_coins.dart' show KomodoAssetsUpdateManager;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -119,7 +119,7 @@ void main() {
         when(() => mockRemoteProvider.getLatestCommit())
             .thenThrow(Exception('Network error'));
 
-        final coins = KomodoCoins(
+        final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
@@ -149,7 +149,7 @@ void main() {
               .then((_) => latestCommitHash),
         );
 
-        final coins = KomodoCoins(
+        final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
@@ -175,7 +175,7 @@ void main() {
         when(() => mockRemoteProvider.getLatestCommit())
             .thenAnswer((_) async => '');
 
-        final coins = KomodoCoins(
+        final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
@@ -215,7 +215,7 @@ void main() {
         when(() => mockRepo.getCurrentCommit())
             .thenAnswer((_) async => latestCommitHash);
 
-        final coins = KomodoCoins(
+        final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
@@ -244,7 +244,7 @@ void main() {
         // Mock the fallback scenario - storage gets cleared, then local provider is used
         when(() => mockRepo.deleteAllAssets()).thenAnswer((_) async {});
 
-        final coins = KomodoCoins(
+        final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
@@ -280,7 +280,7 @@ void main() {
 
         // This test would require mocking static dependencies, which is complex
         // Instead, let's test the integration through the instance method
-        final coins = KomodoCoins(
+        final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
@@ -310,7 +310,7 @@ void main() {
 
         when(() => mockRepo.deleteAllAssets()).thenAnswer((_) async {});
 
-        final coins = KomodoCoins(
+        final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
@@ -333,7 +333,7 @@ void main() {
         when(() => mockRemoteProvider.getLatestCommit())
             .thenThrow(Exception('Remote error'));
 
-        final coins = KomodoCoins(
+        final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
@@ -364,7 +364,7 @@ void main() {
         when(() => mockRepo.upsertAssets(any(), any()))
             .thenAnswer((_) async {});
 
-        final coins = KomodoCoins(
+        final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
@@ -387,7 +387,7 @@ void main() {
         when(() => mockRepo.updatedAssetStorageExists())
             .thenAnswer((_) async => false);
 
-        final coins = KomodoCoins(
+        final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,

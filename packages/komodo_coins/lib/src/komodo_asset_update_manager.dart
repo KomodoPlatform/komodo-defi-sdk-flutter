@@ -5,20 +5,61 @@ import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coins/src/asset_filter.dart';
 import 'package:komodo_coins/src/asset_management/_asset_management_index.dart';
 import 'package:komodo_coins/src/update_management/_update_management_index.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+/// Contract for interacting with Komodo coins configuration and updates.
+abstract class AssetsUpdateManager {
+  /// Initializes internal managers and storage.
+  @mustCallSuper
+  Future<void> init({Set<String> defaultPriorityTickers = const {}});
+
+  /// Whether this instance has been initialized.
+  bool get isInitialized;
+
+  /// All available assets keyed by [AssetId].
+  Map<AssetId, Asset> get all;
+
+  /// Fetches assets (same as [all], maintained for backward compatibility).
+  Future<Map<AssetId, Asset>> fetchAssets();
+
+  /// Returns the currently active coins commit hash (cached on cold start).
+  Future<String?> getCurrentCommitHash();
+
+  /// Returns the latest commit hash from the configured remote.
+  Future<String?> getLatestCommitHash();
+
+  /// Checks if an update is available.
+  Future<bool> isUpdateAvailable();
+
+  /// Performs an immediate update using the configured [UpdateStrategy].
+  Future<UpdateResult> updateNow();
+
+  /// Stream of update results for monitoring.
+  Stream<UpdateResult> get updateStream;
+
+  /// Returns the assets filtered using the provided [strategy].
+  Map<AssetId, Asset> filteredAssets(AssetFilterStrategy strategy);
+
+  /// Finds an asset by ticker and subclass.
+  Asset? findByTicker(String ticker, CoinSubClass subClass);
+
+  /// Finds all variants of a coin by ticker.
+  Set<Asset> findVariantsOfCoin(String ticker);
+
+  /// Finds child assets of a parent asset.
+  Set<Asset> findChildAssets(AssetId parentId);
+
+  /// Disposes resources and stops background updates.
+  Future<void> dispose();
+}
+
 /// A high-level library that provides a simple way to access Komodo Platform
 /// coin data and seed nodes.
-///
-/// This is the legacy implementation that maintains backward compatibility.
-/// For new code, consider using `StrategicKomodoCoins` which provides better
-/// separation of concerns and more flexible configuration options.
-class KomodoCoins {
-  KomodoCoins({
+class KomodoAssetsUpdateManager implements AssetsUpdateManager {
+  KomodoAssetsUpdateManager({
     RuntimeUpdateConfigRepository? configRepository,
     CoinConfigTransformer? transformer,
     CoinConfigDataFactory? dataFactory,
@@ -33,7 +74,7 @@ class KomodoCoins {
         _loadingStrategy = loadingStrategy ?? StorageFirstLoadingStrategy(),
         _updateStrategy = updateStrategy ?? const BackgroundUpdateStrategy();
 
-  static final Logger _log = Logger('KomodoCoins');
+  static final Logger _log = Logger('KomodoAssetsUpdateManager');
 
   /// Whether to automatically update coin configurations from remote sources.
   /// When false, only reads from existing storage or local asset bundle.
@@ -60,7 +101,7 @@ class KomodoCoins {
   CoinConfigManager get assets {
     if (_assetsManager == null) {
       throw StateError(
-        'KomodoCoins has not been initialized. Call init() first.',
+        'KomodoAssetsUpdateManager has not been initialized. Call init() first',
       );
     }
     return _assetsManager!;
@@ -70,55 +111,15 @@ class KomodoCoins {
   CoinUpdateManager get updates {
     if (_updatesManager == null) {
       throw StateError(
-        'KomodoCoins has not been initialized. Call init() first.',
+        'KomodoAssetsUpdateManager has not been initialized. Call init() first',
       );
     }
     return _updatesManager!;
   }
 
-  /// Fetches the list of coin configuration maps to be passed to mm2 on start.
-  ///
-  /// - Uses only read paths and does not attempt to update or persist assets.
-  /// - If local storage already contains assets, returns those.
-  /// - Otherwise, falls back to the bundled local asset provider.
-  /// - Includes retry logic with storage clearing between attempts.
-  static Future<JsonList> fetchRawCoinsListForKdfStartup() async {
-    // Heavier init is acceptable: use instance with updates disabled.
-    final kc = KomodoCoins(enableAutoUpdate: false);
-    Object? originalError;
-    StackTrace? originalStack;
-    JsonList? result;
-    try {
-      await kc.init();
-      final assets = await kc.fetchAssets();
-      final configs = <JsonMap>[
-        for (final asset in assets.values) asset.protocol.config,
-      ];
-      result = JsonList.of(configs);
-    } catch (e, s) {
-      originalError = e;
-      originalStack = s;
-    } finally {
-      try {
-        await kc.dispose();
-      } catch (disposeErr, disposeStack) {
-        // Do not mask the original error if there was one
-        _log.warning(
-          'Dispose failed during startup coins fetch',
-          disposeErr,
-          disposeStack,
-        );
-      }
-    }
-    if (originalError != null) {
-      Error.throwWithStackTrace(originalError, originalStack!);
-    }
-    return result!;
-  }
-
-  @mustCallSuper
-  Future<void> init() async {
-    _log.fine('Initializing KomodoCoins with strategy pattern');
+  @override
+  Future<void> init({Set<String> defaultPriorityTickers = const {}}) async {
+    _log.fine('Initializing KomodoAssetsUpdateManager with strategy pattern');
 
     // Initialize hive first before registering adapters or initialising
     // repositories.
@@ -129,7 +130,7 @@ class KomodoCoins {
     _assetsManager = StrategicCoinConfigManager(
       configSources: configProviders,
       loadingStrategy: _loadingStrategy,
-      enableAutoUpdate: enableAutoUpdate,
+      defaultPriorityTickers: defaultPriorityTickers,
     );
 
     // Initialize update manager
@@ -153,7 +154,7 @@ class KomodoCoins {
       _updatesManager!.startBackgroundUpdates();
     }
 
-    _log.fine('KomodoCoins initialized successfully');
+    _log.fine('KomodoAssetsUpdateManager initialized successfully');
   }
 
   /// Initialize Hive storage for coin updates
@@ -185,9 +186,11 @@ class KomodoCoins {
     }
   }
 
+  @override
   bool get isInitialized => _assetsManager != null && _updatesManager != null;
 
   /// Convenience getter for backward compatibility
+  @override
   Map<AssetId, Asset> get all => assets.all;
 
   Future<RuntimeUpdateConfig> _getRuntimeConfig() async {
@@ -220,9 +223,12 @@ class KomodoCoins {
   /// This method is kept for backward compatibility but now delegates to the
   /// asset manager's functionality.
   ///
-  /// During cold start, returns cached assets to prevent refreshing on every call.
-  /// Call [assets.refreshAssets] to manually refresh the asset list.
-  /// Background updates will update the cache without affecting the current asset list.
+  /// During cold start, returns cached assets to prevent refreshing on
+  /// every call.
+  /// Call assets.refreshAssets to manually refresh the asset list.
+  /// Background updates will update the cache without affecting the
+  /// current asset list.
+  @override
   Future<Map<AssetId, Asset>> fetchAssets() async {
     if (!isInitialized) {
       await init();
@@ -234,7 +240,9 @@ class KomodoCoins {
   /// Returns the currently active coins commit hash.
   ///
   /// Delegates to the coin config manager for commit information.
-  /// During cold start, returns cached commit hash to prevent refreshing on every call.
+  /// During cold start, returns cached commit hash to prevent refreshing
+  /// on every call.
+  @override
   Future<String?> getCurrentCommitHash() async {
     if (!isInitialized) {
       await init();
@@ -246,6 +254,7 @@ class KomodoCoins {
   /// Returns the latest commit hash available from the configured remote.
   ///
   /// Delegates to the update manager for remote commit information.
+  @override
   Future<String?> getLatestCommitHash() async {
     if (!isInitialized) {
       await init();
@@ -256,6 +265,7 @@ class KomodoCoins {
   /// Checks if an update is available
   ///
   /// Delegates to the update manager for update checking.
+  @override
   Future<bool> isUpdateAvailable() async {
     if (!isInitialized) {
       await init();
@@ -266,6 +276,7 @@ class KomodoCoins {
   /// Performs an immediate update
   ///
   /// Delegates to the update manager for update operations.
+  @override
   Future<UpdateResult> updateNow() async {
     if (!isInitialized) {
       await init();
@@ -276,10 +287,11 @@ class KomodoCoins {
   /// Stream of update results for monitoring
   ///
   /// Delegates to the update manager for update monitoring.
+  @override
   Stream<UpdateResult> get updateStream {
     if (!isInitialized) {
       throw StateError(
-        'KomodoCoins has not been initialized. Call init() first.',
+        'KomodoAssetsUpdateManager has not been initialized. Call init() first',
       );
     }
     return updates.updateStream;
@@ -288,28 +300,33 @@ class KomodoCoins {
   /// Returns the assets filtered using the provided [strategy].
   ///
   /// Delegates to the asset manager for filtering operations.
+  @override
   Map<AssetId, Asset> filteredAssets(AssetFilterStrategy strategy) =>
       assets.filteredAssets(strategy);
 
   /// Finds an asset by ticker and subclass
   ///
   /// Delegates to the asset manager for asset lookup.
+  @override
   Asset? findByTicker(String ticker, CoinSubClass subClass) =>
       assets.findByTicker(ticker, subClass);
 
   /// Finds all variants of a coin by ticker
   ///
   /// Delegates to the asset manager for variant lookup.
+  @override
   Set<Asset> findVariantsOfCoin(String ticker) =>
       assets.findVariantsOfCoin(ticker);
 
   /// Finds child assets of a parent asset
   ///
   /// Delegates to the asset manager for child asset lookup.
+  @override
   Set<Asset> findChildAssets(AssetId parentId) =>
       assets.findChildAssets(parentId);
 
   /// Disposes of all resources
+  @override
   Future<void> dispose() async {
     await Future.wait([
       if (_assetsManager != null) _assetsManager!.dispose(),
@@ -320,6 +337,6 @@ class KomodoCoins {
     _updatesManager = null;
     _runtimeConfig = null;
 
-    _log.fine('Disposed KomodoCoins');
+    _log.fine('Disposed KomodoAssetsUpdateManager');
   }
 }

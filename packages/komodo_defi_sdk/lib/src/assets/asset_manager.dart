@@ -53,6 +53,7 @@ class AssetManager implements IAssetProvider {
     this._config,
     this._customAssetHistory,
     this._activationManager,
+    this._coins,
   ) {
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChange);
   }
@@ -61,7 +62,7 @@ class AssetManager implements IAssetProvider {
   final KomodoDefiLocalAuth _auth;
   final KomodoDefiSdkConfig _config;
   final CustomAssetHistoryStorage _customAssetHistory;
-  final KomodoCoins _coins = KomodoCoins();
+  final AssetsUpdateManager _coins;
   late final AssetIdMap _orderedCoins;
   StreamSubscription<KdfUser?>? _authSubscription;
   bool _isDisposed = false;
@@ -77,7 +78,7 @@ class AssetManager implements IAssetProvider {
   /// This is called automatically by the SDK and shouldn't need to be called
   /// manually.
   Future<void> init() async {
-    await _coins.init();
+    await _coins.init(defaultPriorityTickers: _config.defaultAssets);
 
     _orderedCoins = AssetIdMap((keyA, keyB) {
       final isDefaultA = _config.defaultAssets.contains(keyA.id);

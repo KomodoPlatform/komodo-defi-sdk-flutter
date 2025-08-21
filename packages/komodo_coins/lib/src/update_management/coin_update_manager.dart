@@ -63,6 +63,17 @@ class StrategicCoinUpdateManager implements CoinUpdateManager {
   @override
   Stream<UpdateResult> get updateStream => _updateStreamController.stream;
 
+  void _emitUpdateResult(UpdateResult result) {
+    if (_isDisposed || _updateStreamController.isClosed) {
+      return;
+    }
+    try {
+      _updateStreamController.add(result);
+    } catch (_) {
+      // Ignore if the stream is already closed or cannot accept more events
+    }
+  }
+
   @override
   Future<void> init() async {
     _logger.fine('Initializing CoinUpdateManager');
@@ -205,7 +216,7 @@ class StrategicCoinUpdateManager implements CoinUpdateManager {
       },
     );
 
-    _updateStreamController.add(result);
+    _emitUpdateResult(result);
     return result;
   }
 
@@ -292,7 +303,7 @@ class StrategicCoinUpdateManager implements CoinUpdateManager {
         );
       }
 
-      _updateStreamController.add(result);
+      _emitUpdateResult(result);
     } catch (e, s) {
       _logger.fine('Background update check failed', e, s);
 
@@ -302,14 +313,13 @@ class StrategicCoinUpdateManager implements CoinUpdateManager {
         error: e is Exception ? e : Exception(e.toString()),
       );
 
-      _updateStreamController.add(result);
+      _emitUpdateResult(result);
     }
   }
 
   @override
   void stopBackgroundUpdates() {
-    _checkNotDisposed();
-
+    // Allow calling stop even after dispose; just ensure timer is stopped.
     if (!_backgroundUpdatesActive) {
       _logger.fine('Background updates not active');
       return;
@@ -326,12 +336,19 @@ class StrategicCoinUpdateManager implements CoinUpdateManager {
 
   @override
   Future<void> dispose() async {
+    // Make dispose idempotent and safe to call multiple times.
+    if (_isDisposed) {
+      return;
+    }
+    // Stop background updates before marking as disposed to avoid race issues.
+    stopBackgroundUpdates();
+
     _isDisposed = true;
     _isInitialized = false;
 
-    stopBackgroundUpdates();
-
-    await _updateStreamController.close();
+    if (!_updateStreamController.isClosed) {
+      await _updateStreamController.close();
+    }
 
     _logger.fine('Disposed StrategicCoinUpdateManager');
   }

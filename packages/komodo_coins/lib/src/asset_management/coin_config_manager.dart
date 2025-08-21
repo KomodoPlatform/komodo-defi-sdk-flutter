@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:komodo_coins/src/asset_filter.dart';
 import 'package:komodo_coins/src/asset_management/coin_config_fallback_mixin.dart';
@@ -58,18 +59,31 @@ abstract class CoinConfigManager {
 class StrategicCoinConfigManager
     with CoinConfigFallbackMixin
     implements CoinConfigManager {
-  StrategicCoinConfigManager({
+  factory StrategicCoinConfigManager({
     required List<CoinConfigSource> configSources,
     LoadingStrategy? loadingStrategy,
-    this.enableAutoUpdate = true,
+    Set<String> defaultPriorityTickers = const {},
+  }) {
+    return StrategicCoinConfigManager._internal(
+      configSources: configSources,
+      loadingStrategy: loadingStrategy ?? StorageFirstLoadingStrategy(),
+      defaultPriorityTickers: defaultPriorityTickers,
+    );
+  }
+
+  StrategicCoinConfigManager._internal({
+    required List<CoinConfigSource> configSources,
+    required LoadingStrategy loadingStrategy,
+    required Set<String> defaultPriorityTickers,
   })  : _configSources = configSources,
-        _loadingStrategy = loadingStrategy ?? StorageFirstLoadingStrategy();
+        _loadingStrategy = loadingStrategy,
+        _defaultPriorityTickers = Set.unmodifiable(defaultPriorityTickers);
 
   static final _logger = Logger('StrategicCoinConfigManager');
 
   final List<CoinConfigSource> _configSources;
   final LoadingStrategy _loadingStrategy;
-  final bool enableAutoUpdate;
+  final Set<String> _defaultPriorityTickers;
 
   // Required by CoinConfigFallbackMixin
   @override
@@ -78,8 +92,8 @@ class StrategicCoinConfigManager
   @override
   LoadingStrategy get loadingStrategy => _loadingStrategy;
 
-  Map<AssetId, Asset>? _assets;
-  final Map<String, Map<AssetId, Asset>> _filterCache = {};
+  SplayTreeMap<AssetId, Asset>? _assets;
+  final Map<String, SplayTreeMap<AssetId, Asset>> _filterCache = {};
   bool _isDisposed = false;
   bool _isInitialized = false;
 
@@ -132,37 +146,34 @@ class StrategicCoinConfigManager
     }
   }
 
-  /// Maps a list of assets to a map keyed by AssetId
-  Map<AssetId, Asset> _mapAssets(List<Asset> assets) => <AssetId, Asset>{
-        for (final asset in assets) asset.id: asset,
-      };
-
-  /// Determines if storage exists by checking storage sources
-  Future<bool> _storageExists() async {
-    for (final source in _configSources) {
-      if (source is StorageCoinConfigSource) {
-        try {
-          return await source.isAvailable();
-        } catch (_) {
-          continue;
-        }
-      }
+  /// Comparator for ordering assets deterministically by their key.
+  int _assetIdComparator(AssetId a, AssetId b) {
+    final aIsDefault = _defaultPriorityTickers.contains(a.id);
+    final bIsDefault = _defaultPriorityTickers.contains(b.id);
+    if (aIsDefault != bIsDefault) {
+      // Default-priority assets come first
+      return aIsDefault ? -1 : 1;
     }
-    return false;
+    return a.toString().compareTo(b.toString());
+  }
+
+  /// Maps a list of assets to an ordered SplayTreeMap keyed by AssetId
+  SplayTreeMap<AssetId, Asset> _mapAssets(List<Asset> assets) {
+    final map = SplayTreeMap<AssetId, Asset>(_assetIdComparator);
+    for (final asset in assets) {
+      map[asset.id] = asset;
+    }
+    return map;
   }
 
   /// Loads assets using the fallback mechanism
   Future<void> _loadAssets() async {
     _checkNotDisposed();
 
-    final storageExists = await _storageExists();
-
     final assets = await trySourcesInOrder(
       LoadingRequestType.initialLoad,
       (source) => source.loadAssets(),
       operationName: 'loadAssets',
-      storageExists: storageExists,
-      enableAutoUpdate: enableAutoUpdate,
     );
 
     _assets = _mapAssets(assets);
@@ -208,14 +219,10 @@ class StrategicCoinConfigManager
     _checkNotDisposed();
     _assertInitialized();
 
-    final storageExists = await _storageExists();
-
     final assets = await trySourcesInOrder(
       LoadingRequestType.refreshLoad,
       (source) => source.loadAssets(),
       operationName: 'refreshAssets',
-      storageExists: storageExists,
-      enableAutoUpdate: enableAutoUpdate,
     );
 
     _assets = _mapAssets(assets);
@@ -262,7 +269,7 @@ class StrategicCoinConfigManager
     final cached = _filterCache[cacheKey];
     if (cached != null) return cached;
 
-    final result = <AssetId, Asset>{};
+    final result = SplayTreeMap<AssetId, Asset>(_assetIdComparator);
     for (final entry in _assets!.entries) {
       final config = entry.value.protocol.config;
       if (strategy.shouldInclude(entry.value, config)) {

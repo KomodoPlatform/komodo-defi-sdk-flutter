@@ -1,5 +1,6 @@
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 /// Enum for the type of loading request
 enum LoadingRequestType { initialLoad, refreshLoad, fallbackLoad }
@@ -12,8 +13,6 @@ abstract class LoadingStrategy {
   Future<List<CoinConfigSource>> selectSources({
     required LoadingRequestType requestType,
     required List<CoinConfigSource> availableSources,
-    required bool storageExists,
-    required bool enableAutoUpdate,
   });
 }
 
@@ -44,6 +43,8 @@ class StorageCoinConfigSource implements CoinConfigSource {
 
   final CoinConfigRepository repository;
 
+  static final _logger = Logger('StorageCoinConfigSource');
+
   @override
   String get sourceId => 'storage';
 
@@ -57,7 +58,14 @@ class StorageCoinConfigSource implements CoinConfigSource {
   Future<List<Asset>> loadAssets() => repository.getAssets();
 
   @override
-  Future<bool> isAvailable() => repository.updatedAssetStorageExists();
+  Future<bool> isAvailable() async {
+    try {
+      return await repository.updatedAssetStorageExists();
+    } catch (e, s) {
+      _logger.fine('isAvailable() failed for storage repository', e, s);
+      return false;
+    }
+  }
 
   @override
   Future<String?> getCurrentCommitHash() => repository.getCurrentCommit();
@@ -68,6 +76,8 @@ class AssetBundleCoinConfigSource implements CoinConfigSource {
   AssetBundleCoinConfigSource({required this.provider});
 
   final CoinConfigProvider provider;
+
+  static final _logger = Logger('AssetBundleCoinConfigSource');
 
   @override
   String get sourceId => 'asset_bundle';
@@ -89,7 +99,8 @@ class AssetBundleCoinConfigSource implements CoinConfigSource {
     try {
       await provider.getAssets();
       return true;
-    } catch (_) {
+    } catch (e, s) {
+      _logger.fine('isAvailable() failed for asset bundle provider', e, s);
       return false;
     }
   }
@@ -104,8 +115,6 @@ class StorageFirstLoadingStrategy implements LoadingStrategy {
   Future<List<CoinConfigSource>> selectSources({
     required LoadingRequestType requestType,
     required List<CoinConfigSource> availableSources,
-    required bool storageExists,
-    required bool enableAutoUpdate,
   }) async {
     final sources = <CoinConfigSource>[];
 
@@ -117,8 +126,8 @@ class StorageFirstLoadingStrategy implements LoadingStrategy {
 
     switch (requestType) {
       case LoadingRequestType.initialLoad:
-        // Prefer storage if it exists, otherwise use asset bundle
-        if (storageExists && storageSource != null) {
+        // Prefer storage if it's available, otherwise use asset bundle
+        if (storageSource != null && await storageSource.isAvailable()) {
           sources.add(storageSource);
         }
         if (assetBundleSource != null) {
@@ -127,7 +136,7 @@ class StorageFirstLoadingStrategy implements LoadingStrategy {
 
       case LoadingRequestType.refreshLoad:
         // For refresh, always try storage first if available
-        if (storageSource != null) {
+        if (storageSource != null && await storageSource.isAvailable()) {
           sources.add(storageSource);
         }
         if (assetBundleSource != null) {
@@ -139,7 +148,7 @@ class StorageFirstLoadingStrategy implements LoadingStrategy {
         if (assetBundleSource != null) {
           sources.add(assetBundleSource);
         }
-        if (storageSource != null) {
+        if (storageSource != null && await storageSource.isAvailable()) {
           sources.add(storageSource);
         }
     }
@@ -154,8 +163,6 @@ class AssetBundleFirstLoadingStrategy implements LoadingStrategy {
   Future<List<CoinConfigSource>> selectSources({
     required LoadingRequestType requestType,
     required List<CoinConfigSource> availableSources,
-    required bool storageExists,
-    required bool enableAutoUpdate,
   }) async {
     final sources = <CoinConfigSource>[];
 
@@ -169,7 +176,7 @@ class AssetBundleFirstLoadingStrategy implements LoadingStrategy {
     if (assetBundleSource != null) {
       sources.add(assetBundleSource);
     }
-    if (storageSource != null) {
+    if (storageSource != null && await storageSource.isAvailable()) {
       sources.add(storageSource);
     }
 

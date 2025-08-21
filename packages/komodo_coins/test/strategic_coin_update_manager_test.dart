@@ -8,8 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'test_utils/asset_config_builders.dart';
 
 // Mock classes
-class MockCoinConfigRepository extends Mock
-    implements CoinConfigRepository {}
+class MockCoinConfigRepository extends Mock implements CoinConfigRepository {}
 
 class MockCoinConfigProvider extends Mock implements CoinConfigProvider {}
 
@@ -490,24 +489,23 @@ void main() {
         expect(streamEvents.length, equals(2));
 
         await subscription.cancel();
-        // Dispose will throw due to the bug, but that's expected
-        expect(freshManager.dispose, throwsStateError);
+        // Dispose should complete cleanly
+        await expectLater(freshManager.dispose(), completes);
       });
     });
 
     group('Error handling', () {
-      test('throws StateError when using disposed manager', () async {
+      test('methods throw StateError when using disposed manager', () async {
         final manager = StrategicCoinUpdateManager(
           repository: mockRepository,
           updateStrategy: mockUpdateStrategy,
         );
         await manager.init();
 
-        // Note: dispose() has a bug where it sets _isDisposed=true then calls stopBackgroundUpdates()
-        // which throws because _checkNotDisposed() fails. This test verifies the behavior.
-        expect(manager.dispose, throwsStateError);
+        // Dispose completes without throwing
+        await expectLater(manager.dispose(), completes);
 
-        // After dispose throws, the manager should still be in a disposed state
+        // After dispose, methods should throw due to disposed state
         expect(manager.isUpdateAvailable, throwsStateError);
         expect(manager.getCurrentCommitHash, throwsStateError);
         expect(manager.getLatestCommitHash, throwsStateError);
@@ -543,13 +541,9 @@ void main() {
         manager.startBackgroundUpdates();
         expect(manager.isBackgroundUpdatesActive, isTrue);
 
-        // Note: dispose() has a bug where it throws due to stopBackgroundUpdates() being called after _isDisposed=true
-        expect(manager.dispose, throwsStateError);
-
-        // After dispose throws, the manager is in an inconsistent state
-        // The background updates might still be active due to the bug
-        // This test documents the current behavior
-        expect(manager.isBackgroundUpdatesActive, isTrue);
+        // Dispose should complete and stop background updates
+        await expectLater(manager.dispose(), completes);
+        expect(manager.isBackgroundUpdatesActive, isFalse);
       });
 
       test('multiple dispose calls are safe', () async {
@@ -559,10 +553,9 @@ void main() {
         );
         await manager.init();
 
-        // First dispose throws due to the bug, but sets _isDisposed=true
-        expect(manager.dispose, throwsStateError);
-        // Second dispose should also throw due to the same bug
-        expect(manager.dispose, throwsStateError);
+        // Multiple dispose calls should complete without throwing
+        await expectLater(manager.dispose(), completes);
+        await expectLater(manager.dispose(), completes);
       });
 
       test('dispose works on uninitialized manager', () async {
@@ -571,8 +564,8 @@ void main() {
           updateStrategy: mockUpdateStrategy,
         );
 
-        // Dispose should work even on uninitialized manager, but it will throw due to the bug
-        expect(manager.dispose, throwsStateError);
+        // Dispose should work even on uninitialized manager
+        await expectLater(manager.dispose(), completes);
       });
     });
 
