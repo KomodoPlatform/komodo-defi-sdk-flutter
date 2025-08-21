@@ -1,30 +1,47 @@
 # Komodo DeFi Types
 
-A shared library for common types/entities used in the Komodo DeFi Framework. **NB: They should be kept lightweight and agnostic to the context in which they are used.** E.g. A `Coin` type should not contain the balance or contract address information.
+Lightweight, shared domain types used across the Komodo DeFi SDK and Framework. These types are UI- and storage-agnostic by design.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+## Install
 
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
-
-```dart
-const like = 'sample';
+```sh
+dart pub add komodo_defi_types
 ```
 
-## Additional information
+## What’s inside
 
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+Exports (selection):
+
+- API: `ApiClient` (+ `client.rpc` extension)
+- Assets: `Asset`, `AssetId`, `AssetPubkeys`, `AssetValidation`
+- Public keys: `BalanceStrategy`, `PubkeyInfo`
+- Auth: `KdfUser`, `AuthOptions`
+- Fees: `FeeInfo`, `WithdrawalFeeOptions`
+- Trading/Swaps: common high-level types
+- Transactions: `Transaction`, pagination helpers
+
+These types are consumed by higher-level managers in `komodo_defi_sdk`.
+
+## Example
+
+```dart
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+
+// Create an AssetId (normally parsed/built by coins package/SDK)
+final id = AssetId.parse({'coin': 'KMD', 'protocol': {'type': 'UTXO'}});
+
+// Work with typed RPC via ApiClient extension
+Future<void> printBalance(ApiClient client) async {
+  final resp = await client.rpc.wallet.myBalance(coin: id.id);
+  print(resp.balance);
+}
+```
+
+## Guidance
+
+- Keep these types free of presentation or persistence logic
+- Prefer explicit, well-named fields and immutability
+
+## License
+
+MIT

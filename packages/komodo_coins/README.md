@@ -1,44 +1,52 @@
-This package was init'd with the following command:
-```bash
-flutter create komodo_coins -t package --org com.komodoplatform --description 'A package for fetching managing Komodo Platform coin configuration data storage, runtime updates, and queries.'
+# Komodo Coins
+
+Fetch and transform the Komodo coins registry for use across Komodo SDK packages and apps. Provides filtering strategies and helpers to work with coin/asset metadata.
+
+## Install
+
+```sh
+flutter pub add komodo_coins
 ```
 
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
-
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
-
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+## Quick start
 
 ```dart
-const like = 'sample';
+import 'package:komodo_coins/komodo_coins.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+
+final coins = KomodoCoins();
+await coins.init();
+
+// All assets, keyed by AssetId
+final all = coins.all;
+
+// Find a specific ticker variant
+final btcVariants = coins.findVariantsOfCoin('BTC');
+
+// Get child assets for a platform id (e.g. tokens on a chain)
+final erc20 = coins.findChildAssets(
+  AssetId.parse({'coin': 'ETH', 'protocol': {'type': 'ETH'}}),
+);
 ```
 
-## Additional information
+## Filtering strategies
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+Use strategies to filter the visible set of assets for a given context (e.g., hardware wallet support):
+
+```dart
+final filtered = coins.filteredAssets(const TrezorAssetFilterStrategy());
+```
+
+Included strategies:
+- `NoAssetFilterStrategy` (default)
+- `TrezorAssetFilterStrategy`
+- `UtxoAssetFilterStrategy`
+- `EvmAssetFilterStrategy`
+
+## With the SDK
+
+`KomodoDefiSdk` uses this package under the hood for asset discovery, ordering, and historical/custom tokens.
+
+## License
+
+MIT

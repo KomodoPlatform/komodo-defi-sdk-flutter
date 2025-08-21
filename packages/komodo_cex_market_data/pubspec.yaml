@@ -1,6 +1,6 @@
 name: komodo_cex_market_data
-description: A starting point for Dart libraries or applications.
-version: 0.0.1
+description: CEX market data repositories and strategies with fallbacks for Komodo SDK apps.
+version: 0.0.2
 publish_to: none # publishable packages should not have git dependencies
 
 environment:
