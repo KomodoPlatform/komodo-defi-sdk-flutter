@@ -4,7 +4,7 @@ version: 0.3.0+1
 repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter
 
 environment:
-  sdk: ^3.9.0
+  sdk: ">=3.9.0 <4.0.0"
 
 resolution: workspace
 
