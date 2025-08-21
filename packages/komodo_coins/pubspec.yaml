@@ -5,8 +5,8 @@ homepage: "komodoplatform.com"
 publish_to: none
 
 environment:
-  sdk: ^3.5.3
-  flutter: ">=1.17.0"
+  sdk: ^3.8.1
+  flutter: ">=3.29.0 <3.36.0"
 
 dependencies:
   equatable: ^2.0.7

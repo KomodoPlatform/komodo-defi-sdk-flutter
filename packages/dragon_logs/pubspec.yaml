@@ -6,7 +6,7 @@ repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/tree/main/
 homepage: https://komodoplatform.com
 
 environment:
-  sdk: ^3.7.0
+  sdk: ^3.8.1
 
 dev_dependencies:
   lints: ^5.1.1
