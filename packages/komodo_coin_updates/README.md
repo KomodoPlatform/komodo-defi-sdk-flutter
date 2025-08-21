@@ -17,6 +17,12 @@ This package fetches the unified coins configuration JSON from the `KomodoPlatfo
 
 Add the dependency and import the library:
 
+```sh
+dart pub add komodo_coin_updates
+```
+
+or in your `pubspec.yaml`:
+
 ```yaml
 dependencies:
   komodo_coin_updates: ^1.0.0
@@ -95,4 +101,4 @@ final latestAssets = await provider.getLatestAssets();
 
 ## License
 
-See the repository's license for details.
+MIT

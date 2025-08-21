@@ -1,67 +1,59 @@
-# Komodo Defi Local Auth
+# Komodo DeFi Local Auth
 
-[![style: very good analysis][very_good_analysis_badge]][very_good_analysis_link]
-[![Powered by Mason](https://img.shields.io/endpoint?url=https%3A%2F%2Ftinyurl.com%2Fmason-badge)](https://github.com/felangel/mason)
+Authentication and wallet management on top of the Komodo DeFi Framework. This package powers the `KomodoDefiSdk.auth` surface and can be used directly for custom flows.
+
 [![License: MIT][license_badge]][license_link]
 
-A package responsible for managing and abstracting out an authentication service on top of the API's methods
-
-## Installation 💻
-
-**❗ In order to start using Komodo Defi Local Auth you must have the [Flutter SDK][flutter_install_link] installed on your machine.**
-
-Install via `flutter pub add`:
+## Install
 
 ```sh
 dart pub add komodo_defi_local_auth
 ```
 
----
+## Getting started
 
-## Continuous Integration 🤖
+```dart
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
+import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 
-Komodo Defi Local Auth comes with a built-in [GitHub Actions workflow][github_actions_link] powered by [Very Good Workflows][very_good_workflows_link] but you can also add your preferred CI/CD solution.
+final framework = KomodoDefiFramework.create(
+  hostConfig: LocalConfig(https: false, rpcPassword: 'your-secure-password'),
+);
 
-Out of the box, on each pull request and push, the CI `formats`, `lints`, and `tests` the code. This ensures the code remains consistent and behaves correctly as you add functionality or make changes. The project uses [Very Good Analysis][very_good_analysis_link] for a strict set of analysis options used by our team. Code coverage is enforced using the [Very Good Workflows][very_good_coverage_link].
+final auth = KomodoDefiLocalAuth(
+  kdf: framework,
+  hostConfig: LocalConfig(https: false, rpcPassword: 'your-secure-password'),
+);
+await auth.ensureInitialized();
 
----
-
-## Running Tests 🧪
-
-For first time users, install the [very_good_cli][very_good_cli_link]:
-
-```sh
-dart pub global activate very_good_cli
+// Register or sign in (HD wallet by default)
+await auth.register(walletName: 'my_wallet', password: 'strong-pass');
 ```
 
-To run all unit tests:
+## API highlights
 
-```sh
-very_good test --coverage
+- `signIn` / `register` (+ `signInStream` / `registerStream` for progress and HW flows)
+- `authStateChanges` and `watchCurrentUser()`
+- `currentUser`, `getUsers()`, `signOut()`
+- Mnemonic management: `getMnemonicEncrypted()`, `getMnemonicPlainText()`, `updatePassword()`
+- Wallet admin: `deleteWallet(...)`
+- Trezor flows (PIN entry etc.) via streaming API
+
+HD is enabled by default via `AuthOptions(derivationMethod: DerivationMethod.hdWallet)`. Override if you need legacy (Iguana) mode.
+
+## With the SDK
+
+Prefer using `KomodoDefiSdk` which wires and scopes auth, assets, balances, and the rest for you:
+
+```dart
+final sdk = KomodoDefiSdk();
+await sdk.initialize();
+await sdk.auth.signIn(walletName: 'my_wallet', password: 'pass');
 ```
 
-To view the generated coverage report you can use [lcov](https://github.com/linux-test-project/lcov).
+## License
 
-```sh
-# Generate Coverage Report
-genhtml coverage/lcov.info -o coverage/
+MIT
 
-# Open Coverage Report
-open coverage/index.html
-```
-
-[flutter_install_link]: https://docs.flutter.dev/get-started/install
-[github_actions_link]: https://docs.github.com/en/actions/learn-github-actions
 [license_badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [license_link]: https://opensource.org/licenses/MIT
-[logo_black]: https://raw.githubusercontent.com/VGVentures/very_good_brand/main/styles/README/vgv_logo_black.png#gh-light-mode-only
-[logo_white]: https://raw.githubusercontent.com/VGVentures/very_good_brand/main/styles/README/vgv_logo_white.png#gh-dark-mode-only
-[mason_link]: https://github.com/felangel/mason
-[very_good_analysis_badge]: https://img.shields.io/badge/style-very_good_analysis-B22C89.svg
-[very_good_analysis_link]: https://pub.dev/packages/very_good_analysis
-[very_good_cli_link]: https://pub.dev/packages/very_good_cli
-[very_good_coverage_link]: https://github.com/marketplace/actions/very-good-coverage
-[very_good_ventures_link]: https://verygood.ventures
-[very_good_ventures_link_light]: https://verygood.ventures#gh-light-mode-only
-[very_good_ventures_link_dark]: https://verygood.ventures#gh-dark-mode-only
-[very_good_workflows_link]: https://github.com/VeryGoodOpenSource/very_good_workflows
