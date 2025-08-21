@@ -483,7 +483,7 @@ packages:
       path: "../../packages/komodo_cex_market_data"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "0.0.2"
   komodo_coin_updates:
     dependency: transitive
     description:
