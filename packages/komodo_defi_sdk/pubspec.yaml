@@ -4,10 +4,11 @@ description: A high-level opinionated library that provides a simple way to
   wallets). This package seves as the entry point for the packages in this
   repository.
 version: 0.3.0+0
+repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter
 
 environment:
   sdk: ^3.9.0
-  flutter: ">=3.35.0 <3.36.0"
+  flutter: ">=3.35.0"
 
 resolution: workspace
 
@@ -19,26 +20,19 @@ dependencies:
   flutter_secure_storage: ^10.0.0-beta.4
   get_it: ^8.0.3
   http: ^1.4.0
-  komodo_cex_market_data:
-    path: ../komodo_cex_market_data
-  komodo_coins:
-    path: ../komodo_coins
-  komodo_defi_framework:
-    path: ../komodo_defi_framework
-  komodo_defi_local_auth:
-    path: ../komodo_defi_local_auth
-  komodo_defi_rpc_methods:
-    path: ../komodo_defi_rpc_methods
-  komodo_defi_types:
-    path: ../komodo_defi_types
-  komodo_ui:
-    path: ../komodo_ui
+  komodo_cex_market_data: any
+  komodo_coins: any
+  komodo_defi_framework: any
+  komodo_defi_local_auth: any
+  komodo_defi_rpc_methods: any
+  komodo_defi_types: any
+  komodo_ui: any
 
   mutex: ^3.1.0
   provider: ^6.1.2
   shared_preferences: ^2.3.2
 
-  logging: any
+  logging: ^1.3.0
 dev_dependencies:
   index_generator: ^4.0.1
   fake_async: ^1.3.3

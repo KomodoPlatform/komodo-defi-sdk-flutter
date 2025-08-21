@@ -1,7 +1,3 @@
-# 0.1.0+1
+## 0.3.0+0
 
-- feat: initial commit 🎉
-
-## 0.1.1
-
-- docs: README with usage examples for client.rpc namespaces
+- chore: update dependencies; replace path deps with hosted; add LICENSE

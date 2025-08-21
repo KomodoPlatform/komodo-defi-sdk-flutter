@@ -1,6 +1,6 @@
 name: komodo_defi_rpc_methods
 description: A package containing the RPC methods and responses for the Komodo DeFi Framework API
-homepage: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter
+repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter
 version: 0.3.0+0
 
 environment:
@@ -15,10 +15,9 @@ dependencies:
   equatable: ^2.0.7
   freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
-  komodo_defi_types:
-    path: ../komodo_defi_types
+  komodo_defi_types: any
   meta: ^1.15.0
-  path: any
+  path: ^1.9.1
 
 dev_dependencies:
   build_runner: ^2.4.14

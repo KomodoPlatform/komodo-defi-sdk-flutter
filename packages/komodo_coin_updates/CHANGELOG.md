@@ -1,5 +1,3 @@
-# Changelog
+## 1.0.0
 
-## 0.0.1
-
-- Initial version.
+- chore: add LICENSE; loosen hive constraints; hosted komodo_defi_types

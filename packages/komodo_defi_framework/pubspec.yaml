@@ -4,12 +4,14 @@ description: "A Flutter plugin for the Komodo DeFi Framework, supporting both
 version: 0.3.0+0
 homepage: https://komodoplatform.com
 
+repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter
+
 environment:
   sdk: '>=3.9.0 <4.0.0'
   # Minimum Flutter version is set quite high for build transformer capabilities.
   # If this is too high for your project, this can be lowered by commenting out
   # the following line and running the build transformer manually via CLI.
-  flutter: ">=3.35.0 <3.36.0"
+  flutter: ">=3.35.0"
 
 resolution: workspace
 
@@ -21,17 +23,13 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
   http: ^1.4.0
-  komodo_coin_updates:
-    path: ../komodo_coin_updates
-  komodo_coins:
-    path: ../komodo_coins
-  komodo_defi_types:
-    path: ../komodo_defi_types
-  komodo_wallet_build_transformer:
-    path: ../komodo_wallet_build_transformer
+  komodo_coin_updates: any
+  komodo_coins: any
+  komodo_defi_types: any
+  komodo_wallet_build_transformer: any
   logging: ^1.3.0
   mutex: ^3.1.0
-  path: any
+  path: ^1.9.1
   path_provider: ^2.1.4
   plugin_platform_interface: ^2.0.2
   web: ^1.1.0

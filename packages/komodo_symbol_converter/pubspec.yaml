@@ -1,6 +1,7 @@
 name: komodo_symbol_converter
 description: A lightweight package to convert fiat/crypto prices and charts
 version: 0.3.0+0
+repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter
 
 environment:
   sdk: ^3.9.0

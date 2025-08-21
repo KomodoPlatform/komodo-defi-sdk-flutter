@@ -1,7 +1,3 @@
-# 0.1.0+1
+## 0.3.0+0
 
-- feat: initial commit 🎉
-
-## 0.1.1
-
-- docs: comprehensive README with quick start, config, tasks, and advanced RPC
+- chore: switch internal deps to hosted; add LICENSE; pin logging constraint

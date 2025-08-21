@@ -1,3 +1,3 @@
-## 0.0.1
+## 0.3.0+0
 
-* TODO: Describe initial release.
+- chore: set homepage to https URL; switch to hosted deps; add LICENSE

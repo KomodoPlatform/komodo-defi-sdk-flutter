@@ -1,3 +1,3 @@
-## 0.0.1
+## 0.3.0+0
 
-- Init.
+- chore: add LICENSE, repository; add characters dep; loosen flutter bound
