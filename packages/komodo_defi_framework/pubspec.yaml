@@ -3,7 +3,6 @@ description: "A Flutter plugin for the Komodo DeFi Framework, supporting both
   native (FFI) and web (WASM) platforms."
 version: 0.3.0+0
 homepage: https://komodoplatform.com
-publish_to: "none"
 
 environment:
   sdk: '>=3.9.0 <4.0.0'

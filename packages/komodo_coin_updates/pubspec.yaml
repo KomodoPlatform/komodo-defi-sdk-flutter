@@ -1,7 +1,6 @@
 name: komodo_coin_updates
 description: Runtime coin config update coin updates.
 version: 1.0.0
-publish_to: none # publishable packages can't have git dependencies
 
 environment:
   sdk: ^3.9.0

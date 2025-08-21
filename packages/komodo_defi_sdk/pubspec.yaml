@@ -5,12 +5,6 @@ description: A high-level opinionated library that provides a simple way to
   repository.
 version: 0.3.0+0
 
-# Temporarily set since published packages can't have path dependencies.
-# When this package is stable, the child packages will be published to pub.dev
-# and this package will depend on pub.dev hosted versions so that it can be
-# published to pub.dev as well.
-publish_to: "none"
-
 environment:
   sdk: ^3.9.0
   flutter: ">=3.35.0 <3.36.0"
