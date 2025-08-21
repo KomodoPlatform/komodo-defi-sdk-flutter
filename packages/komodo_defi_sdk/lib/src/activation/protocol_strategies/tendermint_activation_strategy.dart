@@ -27,7 +27,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Starting Tendermint activation...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 4,
         additionalInfo: {
           'assetType': isPlatformAsset ? 'platform' : 'token',
@@ -43,7 +43,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
         status: 'Validating RPC endpoints...',
         progressPercentage: 25,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'validation',
+          currentStep: ActivationStep.validation,
           stepCount: 4,
           additionalInfo: {
             'rpcEndpoints': protocol.rpcUrlsMap.length,
@@ -57,7 +57,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
           status: 'Activating platform chain...',
           progressPercentage: 50,
           progressDetails: ActivationProgressDetails(
-            currentStep: 'platform_activation',
+            currentStep: ActivationStep.platformActivation,
             stepCount: 4,
           ),
         );
@@ -80,7 +80,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
           status: 'Activating Tendermint token...',
           progressPercentage: 75,
           progressDetails: ActivationProgressDetails(
-            currentStep: 'token_activation',
+            currentStep: ActivationStep.tokenActivation,
             stepCount: 4,
           ),
         );
@@ -93,7 +93,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
 
       yield ActivationProgress.success(
         details: ActivationProgressDetails(
-          currentStep: 'complete',
+          currentStep: ActivationStep.complete,
           stepCount: 4,
           additionalInfo: {
             'activatedChain': asset.id.name,
@@ -109,7 +109,7 @@ class TendermintActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 4,
           errorCode: 'TENDERMINT_ACTIVATION_ERROR',
           errorDetails: e.toString(),
