@@ -1,3 +1,3 @@
-## 1.0.0
+## 0.3.0+0
 
-- Initial version.
+- chore: align with monorepo versioning; add LICENSE and repository
