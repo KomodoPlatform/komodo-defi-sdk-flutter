@@ -1,65 +1,199 @@
-# Komodo Defi Sdk
+# Komodo DeFi SDK (Flutter)
 
+High-level, opinionated SDK for building cross-platform Komodo DeFi wallets and apps. The SDK orchestrates authentication, asset activation, balances, transaction history, withdrawals, message signing, and price data while exposing a typed RPC client for advanced use.
 
-TODO: Replace auto-generated content below with a comprehensive README.
+[![License: MIT][license_badge]][license_link] [![style: very good analysis][very_good_analysis_badge]][very_good_analysis_link]
 
-[![style: very good analysis][very_good_analysis_badge]][very_good_analysis_link]
-[![Powered by Mason](https://img.shields.io/endpoint?url=https%3A%2F%2Ftinyurl.com%2Fmason-badge)](https://github.com/felangel/mason)
-[![License: MIT][license_badge]][license_link]
+## Features
 
-A high-level opinionated library that provides a simple way to build cross-platform Komodo Defi Framework applications (primarily focused on wallets). This package consists of multiple sub-packages in the packages folder which are orchestrated by this package (komodo_defi_sdk)
+- Authentication and wallet lifecycle (HD by default, hardware wallets supported)
+- Asset discovery and activation (with historical/custom token pre-activation)
+- Balances and pubkeys (watch/stream and on-demand)
+- Transaction history (paged + streaming sync)
+- Withdrawals with progress and cancellation
+- Message signing and verification
+- CEX market data integration (Komodo, Binance, CoinGecko) with fallbacks
+- Typed RPC namespaces via `client.rpc.*`
 
-## Installation 💻
-
-**❗ In order to start using Komodo Defi Sdk you must have the [Dart SDK][dart_install_link] installed on your machine.**
-
-Install via `dart pub add`:
+## Install
 
 ```sh
 dart pub add komodo_defi_sdk
 ```
 
----
+## Quick start
 
-## Continuous Integration 🤖
+```dart
+import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 
-Komodo Defi Sdk comes with a built-in [GitHub Actions workflow][github_actions_link] powered by [Very Good Workflows][very_good_workflows_link] but you can also add your preferred CI/CD solution.
+final sdk = KomodoDefiSdk(
+  host: LocalConfig(https: false, rpcPassword: 'your-secure-password'),
+  config: const KomodoDefiSdkConfig(
+    defaultAssets: {'KMD', 'BTC', 'ETH'},
+  ),
+);
 
-Out of the box, on each pull request and push, the CI `formats`, `lints`, and `tests` the code. This ensures the code remains consistent and behaves correctly as you add functionality or make changes. The project uses [Very Good Analysis][very_good_analysis_link] for a strict set of analysis options used by our team. Code coverage is enforced using the [Very Good Workflows][very_good_coverage_link].
+await sdk.initialize();
 
----
+// Register or sign in
+await sdk.auth.register(walletName: 'my_wallet', password: 'strong-pass');
 
-## Running Tests 🧪
+// Activate an asset and read a balance
+final btc = sdk.assets.findAssetsByConfigId('BTC').first;
+await sdk.assets.activateAsset(btc).last;
+final balance = await sdk.balances.getBalance(btc.id);
 
-To run all unit tests:
-
-```sh
-dart pub global activate coverage 1.2.0
-dart test --coverage=coverage
-dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info
+// Direct RPC when needed
+final kmd = await sdk.client.rpc.wallet.myBalance(coin: 'KMD');
 ```
 
-To view the generated coverage report you can use [lcov](https://github.com/linux-test-project/lcov).
+## Configuration
 
-```sh
-# Generate Coverage Report
-genhtml coverage/lcov.info -o coverage/
+```dart
+// Host selection: local (default) or remote
+final local = LocalConfig(https: false, rpcPassword: '...');
+final remote = RemoteConfig(
+  ipAddress: 'example.org',
+  port: 7783,
+  rpcPassword: '...',
+  https: true,
+);
 
-# Open Coverage Report
-open coverage/index.html
+// SDK behavior
+const config = KomodoDefiSdkConfig(
+  defaultAssets: {'KMD', 'BTC', 'ETH', 'DOC'},
+  preActivateDefaultAssets: true,
+  preActivateHistoricalAssets: true,
+  preActivateCustomTokenAssets: true,
+  marketDataConfig: MarketDataConfig(
+    enableKomodoPrice: true,
+    enableBinance: true,
+    enableCoinGecko: true,
+  ),
+);
 ```
 
-[dart_install_link]: https://dart.dev/get-dart
-[github_actions_link]: https://docs.github.com/en/actions/learn-github-actions
+## Common tasks
+
+### Authentication
+
+```dart
+await sdk.auth.signIn(walletName: 'my_wallet', password: 'pass');
+// Streams for progress/2FA/hardware interactions are also available
+```
+
+### Assets
+
+```dart
+final eth = sdk.assets.findAssetsByConfigId('ETH').first;
+await for (final p in sdk.assets.activateAsset(eth)) {
+  // p: ActivationProgress
+}
+final activated = await sdk.assets.getActivatedAssets();
+```
+
+### Pubkeys and addresses
+
+```dart
+final asset = sdk.assets.findAssetsByConfigId('BTC').first;
+final pubkeys = await sdk.pubkeys.getPubkeys(asset);
+final newAddr = await sdk.pubkeys.createNewPubkey(asset);
+```
+
+### Balances
+
+```dart
+final info = await sdk.balances.getBalance(asset.id);
+final sub = sdk.balances.watchBalance(asset.id).listen((b) {
+  // update UI
+});
+```
+
+### Transaction history
+
+```dart
+final page = await sdk.transactions.getTransactionHistory(asset);
+await for (final batch in sdk.transactions.getTransactionsStreamed(asset)) {
+  // append to list
+}
+```
+
+### Withdrawals
+
+```dart
+final stream = sdk.withdrawals.withdraw(
+  WithdrawParameters(
+    asset: 'BTC',
+    toAddress: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
+    amount: Decimal.parse('0.001'),
+    // feePriority optional until fee estimation endpoints are available
+  ),
+);
+await for (final progress in stream) {
+  // status / tx hash
+}
+```
+
+### Message signing
+
+```dart
+final signature = await sdk.messageSigning.signMessage(
+  coin: 'BTC',
+  message: 'Hello, Komodo!',
+  address: 'bc1q...',
+);
+final ok = await sdk.messageSigning.verifyMessage(
+  coin: 'BTC',
+  message: 'Hello, Komodo!',
+  signature: signature,
+  address: 'bc1q...',
+);
+```
+
+### Market data
+
+```dart
+final price = await sdk.marketData.fiatPrice(
+  asset.id,
+  quoteCurrency: Stablecoin.usdt,
+);
+```
+
+## UI helpers
+
+This package includes lightweight adapters for `komodo_ui`. For example:
+
+```dart
+// Displays and live-updates an asset balance using the SDK
+AssetBalanceText(asset.id)
+```
+
+## Advanced: direct RPC
+
+The underlying `ApiClient` exposes typed RPC namespaces:
+
+```dart
+final resp = await sdk.client.rpc.address.validateAddress(
+  coin: 'BTC',
+  address: 'bc1q...',
+);
+```
+
+## Lifecycle and disposal
+
+Call `await sdk.dispose()` when you’re done to free resources and stop background timers.
+
+## Platform notes
+
+- Web uses the WASM build of KDF automatically via the framework plugin.
+- Remote mode connects to an external KDF node you run and manage.
+- From KDF v2.5.0-beta, seed nodes are required unless P2P is disabled. The framework handles validation and defaults; see its README for details.
+
+## License
+
+MIT
+
 [license_badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [license_link]: https://opensource.org/licenses/MIT
-[logo_black]: https://raw.githubusercontent.com/VGVentures/very_good_brand/main/styles/README/vgv_logo_black.png#gh-light-mode-only
-[logo_white]: https://raw.githubusercontent.com/VGVentures/very_good_brand/main/styles/README/vgv_logo_white.png#gh-dark-mode-only
-[mason_link]: https://github.com/felangel/mason
 [very_good_analysis_badge]: https://img.shields.io/badge/style-very_good_analysis-B22C89.svg
 [very_good_analysis_link]: https://pub.dev/packages/very_good_analysis
-[very_good_coverage_link]: https://github.com/marketplace/actions/very-good-coverage
-[very_good_ventures_link]: https://verygood.ventures
-[very_good_ventures_link_light]: https://verygood.ventures#gh-light-mode-only
-[very_good_ventures_link_dark]: https://verygood.ventures#gh-dark-mode-only
-[very_good_workflows_link]: https://github.com/VeryGoodOpenSource/very_good_workflows
