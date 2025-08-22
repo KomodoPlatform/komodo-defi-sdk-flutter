@@ -142,13 +142,17 @@ void main() {
 
     test('deleteAsset removes asset and maintains commit', () async {
       final repo = CoinConfigRepository.withDefaults(config());
-      final assets = <Asset>[
-        AssetTestHelpers.utxoAsset(),
-        AssetTestHelpers.utxoAsset(coin: 'BTC', fname: 'Bitcoin', chainId: 0),
-      ];
+      final kmdAsset = AssetTestHelpers.utxoAsset();
+      final btcAsset = AssetTestHelpers.utxoAsset(
+        coin: 'BTC',
+        fname: 'Bitcoin',
+        chainId: 0,
+      );
+      final assets = [kmdAsset, btcAsset];
       await repo.upsertAssets(assets, 'jkl012');
 
-      await repo.deleteAsset(AssetTestHelpers.utxoAsset(coin: 'BTC').id);
+      // Use the same instance we upserted, so its chainId/subclass matches!
+      await repo.deleteAsset(btcAsset.id);
 
       final remaining = await repo.getAssets();
       expect(remaining.map((a) => a.id.id).toSet(), equals({'KMD'}));

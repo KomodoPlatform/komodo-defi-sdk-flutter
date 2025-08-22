@@ -1,42 +1,3 @@
-/// Comprehensive unit tests for the GithubCoinConfigProvider class and CDN mirror functionality.
-///
-/// **Purpose**: Tests the GitHub-based coin configuration provider that fetches coin
-/// configurations from GitHub repositories, including CDN mirror support, HTTP client
-/// integration, and configuration transformation pipelines.
-///
-/// **Test Cases**:
-/// - CDN mirror URL construction and fallback behavior
-/// - Branch-specific CDN mirror usage (master/main vs development branches)
-/// - Commit hash handling and URL construction
-/// - HTTP client integration and error handling
-/// - Configuration transformation and filtering
-/// - Asset loading and parsing workflows
-/// - Error scenarios and exception handling
-///
-/// **Functionality Tested**:
-/// - CDN mirror URL resolution and fallback
-/// - GitHub API integration for commit information
-/// - Raw content loading and parsing
-/// - Configuration transformation pipelines
-/// - Asset filtering and exclusion
-/// - HTTP client integration and mocking
-/// - Error handling and propagation
-/// - URL construction and normalization
-///
-/// **Edge Cases**:
-/// - CDN mirror availability and fallbacks
-/// - Branch vs commit hash URL construction
-/// - HTTP error responses and status codes
-/// - Configuration parsing failures
-/// - Network timeout and connection issues
-/// - CDN vs raw GitHub URL selection logic
-/// - Commit hash validation and URL construction
-///
-/// **Dependencies**: Tests the GitHub-based configuration provider that serves as
-/// the primary source for coin configurations, including CDN optimization, HTTP
-/// client integration, and configuration processing pipelines.
-library;
-
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -91,6 +52,45 @@ GithubCoinConfigProvider createTestProvider({
   );
 }
 
+/// Comprehensive unit tests for the GithubCoinConfigProvider class and
+/// CDN mirror functionality.
+///
+/// **Purpose**: Tests the GitHub-based coin configuration provider that
+/// fetches coin configurations from GitHub repositories, including CDN
+/// mirror support, HTTP client integration, and configuration
+/// transformation pipelines.
+///
+/// **Test Cases**:
+/// - CDN mirror URL construction and fallback behavior
+/// - Branch-specific CDN mirror usage (master/main vs development branches)
+/// - Commit hash handling and URL construction
+/// - HTTP client integration and error handling
+/// - Configuration transformation and filtering
+/// - Asset loading and parsing workflows
+/// - Error scenarios and exception handling
+///
+/// **Functionality Tested**:
+/// - CDN mirror URL resolution and fallback
+/// - GitHub API integration for commit information
+/// - Raw content loading and parsing
+/// - Configuration transformation pipelines
+/// - Asset filtering and exclusion
+/// - HTTP client integration and mocking
+/// - Error handling and propagation
+/// - URL construction and normalization
+///
+/// **Edge Cases**:
+/// - CDN mirror availability and fallbacks
+/// - Branch vs commit hash URL construction
+/// - HTTP error responses and status codes
+/// - Configuration parsing failures
+/// - Network timeout and connection issues
+/// - CDN vs raw GitHub URL selection logic
+/// - Commit hash validation and URL construction
+///
+/// **Dependencies**: Tests the GitHub-based configuration provider that serves
+/// the primary source for coin configurations, including CDN optimization, HTTP
+/// client integration, and configuration processing pipelines.
 void main() {
   group('GithubCoinConfigProvider CDN mirrors', () {
     test('uses CDN base when exact branch mirror exists', () {

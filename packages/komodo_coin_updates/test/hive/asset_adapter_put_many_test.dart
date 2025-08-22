@@ -1,3 +1,12 @@
+import 'dart:math';
+
+import 'package:hive_ce/hive.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:test/test.dart';
+
+import '../helpers/asset_test_helpers.dart';
+import 'test_harness.dart';
+
 /// Unit tests for AssetAdapter concurrent bulk insertion operations in Hive database.
 ///
 /// **Purpose**: Tests the concurrent bulk insertion capabilities of the AssetAdapter
@@ -29,17 +38,6 @@
 /// **Dependencies**: Tests the AssetAdapter's concurrent bulk insertion capabilities
 /// in Hive databases, using HiveTestEnv for isolated testing and validating that
 /// concurrent operations maintain database consistency and performance.
-library;
-
-import 'dart:math';
-
-import 'package:hive_ce/hive.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:test/test.dart';
-
-import '../helpers/asset_test_helpers.dart';
-import 'test_harness.dart';
-
 void main() {
   group('AssetAdapter put many (concurrent)', () {
     final env = HiveTestEnv();

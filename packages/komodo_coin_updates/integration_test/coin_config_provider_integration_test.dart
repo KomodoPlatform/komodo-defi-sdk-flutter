@@ -58,21 +58,29 @@ class _FakeAssetBundle extends AssetBundle {
   void evict(String key) {}
 }
 
-class _FakeHttpClient implements http.Client {
+class _FakeHttpClient extends http.BaseClient {
   _FakeHttpClient(this.responses);
   final Map<String, http.Response> responses;
 
   @override
-  Future<http.Response> get(Uri url, {Map<String, String>? headers}) async {
-    final key = url.toString();
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final key = request.url.toString();
     if (responses.containsKey(key)) {
-      return responses[key]!;
+      final response = responses[key]!;
+      final stream = Stream.fromIterable([response.bodyBytes]);
+      return http.StreamedResponse(
+        stream,
+        response.statusCode,
+        headers: response.headers,
+      );
     }
     throw Exception('No response configured for: $key');
   }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  void close() {
+    // No-op implementation
+  }
 }
 
 void main() {

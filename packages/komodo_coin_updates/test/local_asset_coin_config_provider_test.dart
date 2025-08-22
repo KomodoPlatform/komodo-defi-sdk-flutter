@@ -1,36 +1,3 @@
-/// Unit tests for the LocalAssetCoinConfigProvider class.
-///
-/// **Purpose**: Tests the provider that loads coin configurations from local Flutter
-/// assets, including configuration transformation, filtering, and error handling
-/// for bundled coin configurations.
-///
-/// **Test Cases**:
-/// - Missing asset error handling and propagation
-/// - Configuration transformation application
-/// - Excluded coin filtering and removal
-/// - Asset bundle integration and loading
-/// - Configuration processing pipeline
-///
-/// **Functionality Tested**:
-/// - Local asset loading from Flutter bundles
-/// - Configuration transformation and modification
-/// - Coin exclusion and filtering mechanisms
-/// - Error handling for missing assets
-/// - Configuration processing workflows
-/// - Asset bundle integration
-///
-/// **Edge Cases**:
-/// - Missing asset files
-/// - Configuration transformation failures
-/// - Excluded coin handling
-/// - Asset bundle loading errors
-/// - Configuration validation edge cases
-///
-/// **Dependencies**: Tests the local asset loading mechanism that provides coin
-/// configurations from bundled Flutter assets, including transformation pipelines
-/// and filtering mechanisms for runtime configuration.
-library;
-
 import 'dart:convert';
 
 import 'package:flutter/services.dart' show AssetBundle, ByteData;
@@ -66,6 +33,37 @@ class _ForceWalletOnlyTransform implements CoinConfigTransform {
   bool needsTransform(JsonMap config) => true;
 }
 
+/// Unit tests for the LocalAssetCoinConfigProvider class.
+///
+/// **Purpose**: Tests the provider that loads coin configurations from local Flutter
+/// assets, including configuration transformation, filtering, and error handling
+/// for bundled coin configurations.
+///
+/// **Test Cases**:
+/// - Missing asset error handling and propagation
+/// - Configuration transformation application
+/// - Excluded coin filtering and removal
+/// - Asset bundle integration and loading
+/// - Configuration processing pipeline
+///
+/// **Functionality Tested**:
+/// - Local asset loading from Flutter bundles
+/// - Configuration transformation and modification
+/// - Coin exclusion and filtering mechanisms
+/// - Error handling for missing assets
+/// - Configuration processing workflows
+/// - Asset bundle integration
+///
+/// **Edge Cases**:
+/// - Missing asset files
+/// - Configuration transformation failures
+/// - Excluded coin handling
+/// - Asset bundle loading errors
+/// - Configuration validation edge cases
+///
+/// **Dependencies**: Tests the local asset loading mechanism that provides coin
+/// configurations from bundled Flutter assets, including transformation pipelines
+/// and filtering mechanisms for runtime configuration.
 void main() {
   group('LocalAssetCoinConfigProvider', () {
     test('throws when asset is missing', () async {
@@ -77,6 +75,8 @@ void main() {
     });
 
     test('applies transform and filters excluded coins', () async {
+      // Test verifies that coins marked with 'excluded: true' are filtered out
+      // This makes the exclusion behavior explicit and future-proof
       const jsonMap = {
         'KMD': {
           'coin': 'KMD',
@@ -95,6 +95,7 @@ void main() {
           'fname': 'SLP Token',
           'chain_id': 0,
           'is_testnet': false,
+          'excluded': true,
         },
       };
       final bundle = _FakeBundle({

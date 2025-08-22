@@ -1,3 +1,10 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:komodo_coin_updates/src/coins_config/coin_config_repository.dart';
+import 'package:komodo_coin_updates/src/coins_config/coin_config_repository_factory.dart';
+import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart'
+    show AssetRuntimeUpdateConfig;
+
 /// Unit tests for the DefaultCoinConfigDataFactory class.
 ///
 /// **Purpose**: Tests the factory pattern implementation that creates coin configuration
@@ -16,15 +23,7 @@
 /// **Edge Cases**: None specific - focuses on happy path factory creation
 ///
 /// **Dependencies**: Tests the factory's ability to wire together CoinConfigRepository,
-/// RuntimeUpdateConfig, and CoinConfigTransformer components.
-library;
-
-import 'package:flutter_test/flutter_test.dart';
-import 'package:komodo_coin_updates/src/coins_config/coin_config_repository.dart';
-import 'package:komodo_coin_updates/src/coins_config/coin_config_repository_factory.dart';
-import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart' show AssetRuntimeUpdateConfig;
-
+/// AssetRuntimeUpdateConfigRepository, and CoinConfigTransformer components.
 void main() {
   group('DefaultCoinConfigDataFactory', () {
     test('createRepository wires defaults and passes transformer', () {

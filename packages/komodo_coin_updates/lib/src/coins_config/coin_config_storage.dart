@@ -22,7 +22,6 @@ abstract class CoinConfigStorage {
   Future<Asset?> getAsset(AssetId assetId);
 
   /// Returns `true` if the locally stored commit matches [latestCommit].
-  /// Storage should not query remote providers.
   Future<bool> isLatestCommit({String? latestCommit});
 
   /// Returns the commit hash currently stored alongside the assets, or `null`

@@ -35,7 +35,11 @@ class AssetRuntimeUpdateConfigRepository {
     try {
       return await load();
     } catch (e, s) {
-      _log.fine('Failed to load RuntimeUpdateConfig (tryLoad)', e, s);
+      _log.fine(
+        'Failed to load AssetRuntimeUpdateConfigRepository (tryLoad)',
+        e,
+        s,
+      );
       return null;
     }
   }
@@ -45,7 +49,9 @@ class AssetRuntimeUpdateConfigRepository {
   /// when a silent fallback behavior is desired.
   Future<AssetRuntimeUpdateConfig> load() async {
     final assetUri = 'packages/$packageName/$assetPath';
-    _log.fine('Loading RuntimeUpdateConfig from asset: $assetUri');
+    _log.fine(
+      'Loading AssetRuntimeUpdateConfigRepository from asset: $assetUri',
+    );
 
     // Load asset content (propagates errors)
     final content = await _bundle.loadString(assetUri);
@@ -66,7 +72,7 @@ class AssetRuntimeUpdateConfigRepository {
     final coins = Map<String, dynamic>.from(coinsNode);
 
     final config = AssetRuntimeUpdateConfig.fromJson(coins);
-    _log.fine('Loaded RuntimeUpdateConfig successfully');
+    _log.fine('Loaded AssetRuntimeUpdateConfigRepository successfully');
     return config;
   }
 }

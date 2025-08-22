@@ -63,9 +63,21 @@ class CoinConfigRepository implements CoinConfigStorage {
     _log.fine('Fetched latest commit: $latestCommit; fetching assets');
     final assets = await coinConfigProvider.getAssetsForCommit(latestCommit);
     _log.fine(
-      'Fetched ${assets.length} assets for commit $latestCommit; upserting',
+      'Fetched ${assets.length} assets for commit $latestCommit; '
+      'filtering excluded assets',
     );
-    await upsertAssets(assets, latestCommit);
+
+    // Filter out excluded assets before persisting
+    final filteredAssets = assets
+        .where((asset) => !excludedAssets.contains(asset.id.id))
+        .toList();
+    final excludedCount = assets.length - filteredAssets.length;
+
+    _log.fine(
+      'Filtered ${filteredAssets.length} assets (excluded $excludedCount) for '
+      'commit $latestCommit; upserting',
+    );
+    await upsertAssets(filteredAssets, latestCommit);
     _log.fine('Update complete for commit $latestCommit');
   }
 
@@ -100,11 +112,10 @@ class CoinConfigRepository implements CoinConfigStorage {
     final values = await Future.wait(
       keys.map((dynamic key) => box.get(key as String)),
     );
-    final result =
-        values
-            .whereType<Asset>()
-            .where((a) => !excludedAssets.contains(a.id.id))
-            .toList();
+    final result = values
+        .whereType<Asset>()
+        .where((a) => !excludedAssets.contains(a.id.id))
+        .toList();
     _log.fine('Retrieved ${result.length} assets');
     return result;
   }
@@ -158,18 +169,22 @@ class CoinConfigRepository implements CoinConfigStorage {
       '$settingsBoxName=$settingsExists',
     );
 
-    final hiveBoxesExist = assetsExists && settingsExists;
+    if (!assetsExists || !settingsExists) {
+      return false;
+    }
 
-    // confirm boxes are not empty
-    final assetsBox = await _openAssetsBox();
-    final settingsBox = await _openSettingsBox();
-    final hiveBoxesNotEmpty = assetsBox.isNotEmpty && settingsBox.isNotEmpty;
+    // Open only after confirming existence to avoid side effects
+    final assetsBox = await Hive.openLazyBox<Asset>(assetsBoxName);
+    final settingsBox = await Hive.openBox<String>(settingsBoxName);
+    final hasAssets = assetsBox.isNotEmpty;
+    final commit = settingsBox.get(coinsCommitKey);
+    final hasCommit = commit != null && commit.isNotEmpty;
     _log.fine(
-      'Box is not empty: $assetsBoxName=$hiveBoxesNotEmpty '
-      '$settingsBoxName=$hiveBoxesNotEmpty',
+      'Non-empty: $assetsBoxName=$hasAssets '
+      '$settingsBoxName(hasCommit)=$hasCommit',
     );
 
-    return hiveBoxesExist && hiveBoxesNotEmpty;
+    return hasAssets && hasCommit;
   }
 
   @override

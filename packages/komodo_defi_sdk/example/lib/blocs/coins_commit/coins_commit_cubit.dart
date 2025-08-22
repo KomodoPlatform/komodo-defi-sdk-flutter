@@ -49,12 +49,31 @@ class CoinsCommitCubit extends Cubit<CoinsCommitState> {
   final KomodoDefiSdk _sdk;
 
   Future<void> load() async {
+    // Clear any prior error and set loading state
+    emit(state.copyWith(isLoading: true));
+
     try {
-      emit(state.copyWith(isLoading: true));
-      final current = await _sdk.assets.currentCoinsCommit;
-      final latest = await _sdk.assets.latestCoinsCommit;
-      emit(CoinsCommitState(current: current, latest: latest));
+      // Fetch current and latest commits concurrently to reduce latency
+      final results = await Future.wait([
+        _sdk.assets.currentCoinsCommit,
+        _sdk.assets.latestCoinsCommit,
+      ]);
+
+      // Guard against emitting when cubit is closed
+      if (isClosed) return;
+
+      final current = results[0];
+      final latest = results[1];
+
+      // Only emit if not closed
+      if (!isClosed) {
+        emit(CoinsCommitState(current: current, latest: latest));
+      }
     } catch (e) {
+      // Guard against emitting when cubit is closed
+      if (isClosed) return;
+
+      // Emit error state with loading set to false
       emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
     }
   }

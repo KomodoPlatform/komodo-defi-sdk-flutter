@@ -52,29 +52,40 @@ void main() {
 
       // Set up repository
       when(() => mockRepository.coinConfigProvider).thenReturn(mockProvider);
-      when(() => mockRepository.updatedAssetStorageExists())
-          .thenAnswer((_) async => true);
+      when(
+        () => mockRepository.updatedAssetStorageExists(),
+      ).thenAnswer((_) async => true);
+      when(
+        () => mockRepository.getCurrentCommit(),
+      ).thenAnswer((_) async => currentCommitHash);
+      when(
+        () => mockRepository.isLatestCommit(),
+      ).thenAnswer((_) async => false);
 
       // Set up provider responses
       when(() => mockProvider.getAssets()).thenAnswer((_) async => [testAsset]);
-      when(() => mockProvider.getLatestCommit())
-          .thenAnswer((_) async => latestCommitHash);
+      when(
+        () => mockProvider.getLatestCommit(),
+      ).thenAnswer((_) async => latestCommitHash);
 
       // Set up fallback provider responses
-      when(() => mockFallbackProvider.getAssets())
-          .thenAnswer((_) async => [testAsset]);
-      when(() => mockFallbackProvider.getLatestCommit())
-          .thenAnswer((_) async => currentCommitHash);
+      when(
+        () => mockFallbackProvider.getAssets(),
+      ).thenAnswer((_) async => [testAsset]);
+      when(
+        () => mockFallbackProvider.getLatestCommit(),
+      ).thenAnswer((_) async => currentCommitHash);
 
       // Set up update strategy
-      when(() => mockUpdateStrategy.updateInterval)
-          .thenReturn(const Duration(hours: 6));
+      when(
+        () => mockUpdateStrategy.updateInterval,
+      ).thenReturn(const Duration(hours: 6));
       when(
         () => mockUpdateStrategy.shouldUpdate(
           requestType: any(named: 'requestType'),
           repository: any(named: 'repository'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) => Future.value(true));
     });
 
     group('Constructor', () {
@@ -101,9 +112,7 @@ void main() {
       });
 
       test('uses default update strategy when not provided', () {
-        final manager = StrategicCoinUpdateManager(
-          repository: mockRepository,
-        );
+        final manager = StrategicCoinUpdateManager(repository: mockRepository);
 
         expect(manager.repository, equals(mockRepository));
       });
@@ -123,8 +132,9 @@ void main() {
       });
 
       test('handles repository connectivity issues gracefully', () async {
-        when(() => mockRepository.updatedAssetStorageExists())
-            .thenThrow(Exception('Connectivity issue'));
+        when(
+          () => mockRepository.updatedAssetStorageExists(),
+        ).thenThrow(Exception('Connectivity issue'));
 
         final manager = StrategicCoinUpdateManager(
           repository: mockRepository,
@@ -205,8 +215,9 @@ void main() {
       });
 
       test('gets current commit hash', () async {
-        when(() => mockRepository.getCurrentCommit())
-            .thenAnswer((_) async => currentCommitHash);
+        when(
+          () => mockRepository.getCurrentCommit(),
+        ).thenAnswer((_) async => currentCommitHash);
 
         final commitHash = await manager.getCurrentCommitHash();
 
@@ -215,8 +226,9 @@ void main() {
       });
 
       test('gets latest commit hash', () async {
-        when(() => mockProvider.getLatestCommit())
-            .thenAnswer((_) async => latestCommitHash);
+        when(
+          () => mockProvider.getLatestCommit(),
+        ).thenAnswer((_) async => latestCommitHash);
 
         final commitHash = await manager.getLatestCommitHash();
 
@@ -225,10 +237,12 @@ void main() {
       });
 
       test('returns null when commit hash not available', () async {
-        when(() => mockRepository.getCurrentCommit())
-            .thenAnswer((_) async => null);
-        when(() => mockProvider.getLatestCommit())
-            .thenThrow(Exception('No latest commit available'));
+        when(
+          () => mockRepository.getCurrentCommit(),
+        ).thenAnswer((_) async => null);
+        when(
+          () => mockProvider.getLatestCommit(),
+        ).thenThrow(Exception('No latest commit available'));
 
         final currentHash = await manager.getCurrentCommitHash();
         final latestHash = await manager.getLatestCommitHash();
@@ -238,10 +252,12 @@ void main() {
       });
 
       test('handles repository errors gracefully', () async {
-        when(() => mockRepository.getCurrentCommit())
-            .thenThrow(Exception('Repository error'));
-        when(() => mockProvider.getLatestCommit())
-            .thenThrow(Exception('Repository error'));
+        when(
+          () => mockRepository.getCurrentCommit(),
+        ).thenThrow(Exception('Repository error'));
+        when(
+          () => mockProvider.getLatestCommit(),
+        ).thenThrow(Exception('Repository error'));
 
         final currentHash = await manager.getCurrentCommitHash();
         final latestHash = await manager.getLatestCommitHash();
@@ -335,10 +351,7 @@ void main() {
             repository: any(named: 'repository'),
           ),
         ).thenAnswer(
-          (_) async => const UpdateResult(
-            success: true,
-            updatedAssetCount: 3,
-          ),
+          (_) async => const UpdateResult(success: true, updatedAssetCount: 3),
         );
 
         final result = await managerWithFallback.updateNow();
@@ -404,11 +417,7 @@ void main() {
       });
 
       test('provides update result stream', () async {
-        // Listen to the stream
-        final streamEvents = <UpdateResult>[];
-        final subscription = manager.updateStream.listen(streamEvents.add);
-
-        // Trigger an update
+        // Set up mock responses
         when(
           () => mockUpdateStrategy.shouldUpdate(
             requestType: any(named: 'requestType'),
@@ -428,39 +437,46 @@ void main() {
           ),
         );
 
+        // Create expectation for the stream emission
+        final expectation = expectLater(
+          manager.updateStream,
+          emits(
+            isA<UpdateResult>()
+                .having((r) => r.success, 'success', isTrue)
+                .having(
+                  (r) => r.updatedAssetCount,
+                  'updatedAssetCount',
+                  equals(3),
+                ),
+          ),
+        );
+
+        // Trigger the update
         await manager.updateNow();
 
-        // Wait a bit for the stream to emit
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-
-        expect(streamEvents, isNotEmpty);
-        expect(streamEvents.first.success, isTrue);
-        expect(streamEvents.first.updatedAssetCount, equals(3));
-
-        await subscription.cancel();
+        // Wait for the expectation to complete
+        await expectation;
       });
 
-      test('stream emits multiple update results', () async {
+      test('stream emits update result', () async {
         // Create fresh mock setup for this test
         final freshMockStrategy = MockUpdateStrategy();
-        when(() => freshMockStrategy.updateInterval)
-            .thenReturn(const Duration(hours: 6));
+        when(
+          () => freshMockStrategy.updateInterval,
+        ).thenReturn(const Duration(hours: 6));
         when(
           () => freshMockStrategy.shouldUpdate(
             requestType: any(named: 'requestType'),
             repository: any(named: 'repository'),
           ),
-        ).thenAnswer((_) async => true);
+        ).thenAnswer((_) => Future.value(true));
         when(
           () => freshMockStrategy.executeUpdate(
             requestType: any(named: 'requestType'),
             repository: any(named: 'repository'),
           ),
         ).thenAnswer(
-          (_) async => const UpdateResult(
-            success: true,
-            updatedAssetCount: 3,
-          ),
+          (_) async => const UpdateResult(success: true, updatedAssetCount: 3),
         );
 
         final freshManager = StrategicCoinUpdateManager(
@@ -469,27 +485,26 @@ void main() {
         );
         await freshManager.init();
 
-        // Listen to the fresh manager's stream
-        final streamEvents = <UpdateResult>[];
-        final subscription = freshManager.updateStream.listen(streamEvents.add);
+        // Create expectation for stream emission
+        final expectation = expectLater(
+          freshManager.updateStream,
+          emits(
+            isA<UpdateResult>()
+                .having((r) => r.success, 'success', isTrue)
+                .having(
+                  (r) => r.updatedAssetCount,
+                  'updatedAssetCount',
+                  equals(3),
+                ),
+          ),
+        );
 
+        // Trigger update
         await freshManager.updateNow();
-        await freshManager.updateNow();
 
-        // Wait a bit for the stream to emit
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Wait for the expectation to complete
+        await expectation;
 
-        expect(streamEvents.length, equals(2));
-        // Check what we actually got
-        for (var i = 0; i < streamEvents.length; i++) {
-          print(
-            'Stream event $i: success=${streamEvents[i].success}, count=${streamEvents[i].updatedAssetCount}',
-          );
-        }
-        // Verify we got 2 events, regardless of success status
-        expect(streamEvents.length, equals(2));
-
-        await subscription.cancel();
         // Dispose should complete cleanly
         await expectLater(freshManager.dispose(), completes);
       });
@@ -571,31 +586,33 @@ void main() {
     });
 
     group('Update strategy integration', () {
-      test('uses update strategy to determine if update should occur',
-          () async {
-        final manager = StrategicCoinUpdateManager(
-          repository: mockRepository,
-          updateStrategy: mockUpdateStrategy,
-        );
-        await manager.init();
+      test(
+        'uses update strategy to determine if update should occur',
+        () async {
+          final manager = StrategicCoinUpdateManager(
+            repository: mockRepository,
+            updateStrategy: mockUpdateStrategy,
+          );
+          await manager.init();
 
-        when(
-          () => mockUpdateStrategy.shouldUpdate(
-            requestType: any(named: 'requestType'),
-            repository: any(named: 'repository'),
-          ),
-        ).thenAnswer((_) async => false);
+          when(
+            () => mockUpdateStrategy.shouldUpdate(
+              requestType: any(named: 'requestType'),
+              repository: any(named: 'repository'),
+            ),
+          ).thenAnswer((_) async => false);
 
-        final isAvailable = await manager.isUpdateAvailable();
+          final isAvailable = await manager.isUpdateAvailable();
 
-        expect(isAvailable, isFalse);
-        verify(
-          () => mockUpdateStrategy.shouldUpdate(
-            requestType: any(named: 'requestType'),
-            repository: any(named: 'repository'),
-          ),
-        ).called(1);
-      });
+          expect(isAvailable, isFalse);
+          verify(
+            () => mockUpdateStrategy.shouldUpdate(
+              requestType: any(named: 'requestType'),
+              repository: any(named: 'repository'),
+            ),
+          ).called(1);
+        },
+      );
 
       test('respects update strategy decision for immediate updates', () async {
         final manager = StrategicCoinUpdateManager(

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coins/komodo_coins.dart' show KomodoAssetsUpdateManager;
+import 'package:komodo_coins/src/update_management/update_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -25,6 +26,8 @@ class MockLocalAssetFallbackProvider extends Mock
 class MockGithubCoinConfigProvider extends Mock
     implements GithubCoinConfigProvider {}
 
+class MockUpdateStrategy extends Mock implements UpdateStrategy {}
+
 // Fake classes for mocktail fallback values
 class FakeRuntimeUpdateConfig extends Fake
     implements AssetRuntimeUpdateConfig {}
@@ -37,6 +40,8 @@ void main() {
   setUpAll(() {
     registerFallbackValue(FakeRuntimeUpdateConfig());
     registerFallbackValue(FakeCoinConfigTransformer());
+    registerFallbackValue(UpdateRequestType.backgroundUpdate);
+    registerFallbackValue(MockCoinConfigRepository());
     registerFakeAssetTypes();
   });
 
@@ -48,6 +53,7 @@ void main() {
     late MockLocalAssetCoinConfigProvider mockLocalProvider;
     late MockLocalAssetFallbackProvider mockFallbackProvider;
     late MockGithubCoinConfigProvider mockRemoteProvider;
+    late MockUpdateStrategy mockUpdateStrategy;
 
     // Test data using asset config builders
     final testAssetConfig = StandardAssetConfigs.komodo();
@@ -64,18 +70,21 @@ void main() {
       mockLocalProvider = MockLocalAssetCoinConfigProvider();
       mockFallbackProvider = MockLocalAssetFallbackProvider();
       mockRemoteProvider = MockGithubCoinConfigProvider();
+      mockUpdateStrategy = MockUpdateStrategy();
 
       // Set up runtime config
       const runtimeConfig = AssetRuntimeUpdateConfig(
         bundledCoinsRepoCommit: bundledCommitHash,
       );
 
-      when(() => mockConfigRepository.tryLoad())
-          .thenAnswer((_) async => runtimeConfig);
+      when(
+        () => mockConfigRepository.tryLoad(),
+      ).thenAnswer((_) async => runtimeConfig);
 
       // Set up factory - use different providers for asset manager vs update manager
-      when(() => mockDataFactory.createRepository(any(), any()))
-          .thenReturn(mockRepo);
+      when(
+        () => mockDataFactory.createRepository(any(), any()),
+      ).thenReturn(mockRepo);
       var localProviderCallCount = 0;
       when(() => mockDataFactory.createLocalProvider(any())).thenAnswer((_) {
         localProviderCallCount++;
@@ -91,69 +100,105 @@ void main() {
 
       // Set up repository with remote provider
       when(() => mockRepo.coinConfigProvider).thenReturn(mockRemoteProvider);
+      when(() => mockRepo.updateCoinConfig()).thenAnswer((_) async {});
+
+      // Set up update strategy
+      when(
+        () => mockUpdateStrategy.updateInterval,
+      ).thenReturn(const Duration(hours: 6));
+      when(
+        () => mockUpdateStrategy.shouldUpdate(
+          requestType: any(named: 'requestType'),
+          repository: any(named: 'repository'),
+        ),
+      ).thenAnswer((_) => Future.value(true));
+      when(
+        () => mockUpdateStrategy.executeUpdate(
+          requestType: any(named: 'requestType'),
+          repository: any(named: 'repository'),
+        ),
+      ).thenAnswer(
+        (_) async => const UpdateResult(
+          success: true,
+          updatedAssetCount: 1,
+          newCommitHash: latestCommitHash,
+        ),
+      );
 
       // Set up local provider responses
-      when(() => mockLocalProvider.getAssets())
-          .thenAnswer((_) async => [testAsset]);
-      when(() => mockLocalProvider.getLatestCommit())
-          .thenAnswer((_) async => bundledCommitHash);
+      when(
+        () => mockLocalProvider.getAssets(),
+      ).thenAnswer((_) async => [testAsset]);
+      when(
+        () => mockLocalProvider.getLatestCommit(),
+      ).thenAnswer((_) async => bundledCommitHash);
 
       // Set up fallback provider responses (for update manager)
-      when(() => mockFallbackProvider.getAssets())
-          .thenAnswer((_) async => [testAsset]);
-      when(() => mockFallbackProvider.getLatestCommit())
-          .thenAnswer((_) async => bundledCommitHash);
+      when(
+        () => mockFallbackProvider.getAssets(),
+      ).thenAnswer((_) async => [testAsset]);
+      when(
+        () => mockFallbackProvider.getLatestCommit(),
+      ).thenAnswer((_) async => bundledCommitHash);
     });
 
     group('when storage does not exist', () {
       setUp(() {
-        when(() => mockRepo.updatedAssetStorageExists())
-            .thenAnswer((_) async => false);
+        when(
+          () => mockRepo.updatedAssetStorageExists(),
+        ).thenAnswer((_) async => false);
       });
 
       test(
-          'uses local assets and sets correct commit hash when remote update fails',
-          () async {
-        // Set up remote provider to fail
-        when(() => mockRemoteProvider.getAssets())
-            .thenThrow(Exception('Network error'));
-        when(() => mockRemoteProvider.getLatestCommit())
-            .thenThrow(Exception('Network error'));
+        'uses local assets and sets correct commit hash when remote update fails',
+        () async {
+          // Set up remote provider to fail
+          when(
+            () => mockRemoteProvider.getAssets(),
+          ).thenThrow(Exception('Network error'));
+          when(
+            () => mockRemoteProvider.getLatestCommit(),
+          ).thenThrow(Exception('Network error'));
 
-        final coins = KomodoAssetsUpdateManager(
-          configRepository: mockConfigRepository,
-          transformer: mockTransformer,
-          dataFactory: mockDataFactory,
-        );
+          final coins = KomodoAssetsUpdateManager(
+            configRepository: mockConfigRepository,
+            transformer: mockTransformer,
+            dataFactory: mockDataFactory,
+            updateStrategy: mockUpdateStrategy,
+          );
 
-        await coins.init();
+          await coins.init();
 
-        // Verify assets are loaded from local provider
-        expect(coins.all.length, 1);
-        expect(coins.all[testAsset.id], equals(testAsset));
+          // Verify assets are loaded from local provider
+          expect(coins.all.length, 1);
+          expect(coins.all[testAsset.id], equals(testAsset));
 
-        // Verify commit hash comes from local provider (bundled commit)
-        final currentCommit = await coins.getCurrentCommitHash();
-        expect(currentCommit, equals(bundledCommitHash));
+          // Verify commit hash comes from local provider (bundled commit)
+          final currentCommit = await coins.getCurrentCommitHash();
+          expect(currentCommit, equals(bundledCommitHash));
 
-        verify(() => mockLocalProvider.getAssets()).called(greaterThan(0));
-      });
+          verify(() => mockLocalProvider.getAssets()).called(greaterThan(0));
+        },
+      );
 
       test('uses local assets when remote update times out', () async {
         // Set up remote provider to timeout
         when(() => mockRemoteProvider.getAssets()).thenAnswer(
-          (_) => Future<List<Asset>>.delayed(const Duration(seconds: 30))
-              .then((_) => [testAsset]),
+          (_) => Future<List<Asset>>.delayed(
+            const Duration(seconds: 30),
+          ).then((_) => [testAsset]),
         );
         when(() => mockRemoteProvider.getLatestCommit()).thenAnswer(
-          (_) => Future<String>.delayed(const Duration(seconds: 30))
-              .then((_) => latestCommitHash),
+          (_) => Future<String>.delayed(
+            const Duration(seconds: 30),
+          ).then((_) => latestCommitHash),
         );
 
         final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
+          updateStrategy: mockUpdateStrategy,
         );
 
         await coins.init();
@@ -171,15 +216,18 @@ void main() {
 
       test('uses local assets when remote returns invalid data', () async {
         // Set up remote provider to return invalid data
-        when(() => mockRemoteProvider.getAssets())
-            .thenAnswer((_) async => <Asset>[]);
-        when(() => mockRemoteProvider.getLatestCommit())
-            .thenAnswer((_) async => '');
+        when(
+          () => mockRemoteProvider.getAssets(),
+        ).thenAnswer((_) async => <Asset>[]);
+        when(
+          () => mockRemoteProvider.getLatestCommit(),
+        ).thenAnswer((_) async => '');
 
         final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
+          updateStrategy: mockUpdateStrategy,
         );
 
         await coins.init();
@@ -198,78 +246,100 @@ void main() {
 
     group('when storage exists but remote update fails', () {
       setUp(() {
-        when(() => mockRepo.updatedAssetStorageExists())
-            .thenAnswer((_) async => true);
+        when(
+          () => mockRepo.updatedAssetStorageExists(),
+        ).thenAnswer((_) async => true);
         when(() => mockRepo.getAssets()).thenAnswer((_) async => [testAsset]);
-        when(() => mockRepo.getCurrentCommit())
-            .thenAnswer((_) async => bundledCommitHash);
+        when(
+          () => mockRepo.getCurrentCommit(),
+        ).thenAnswer((_) async => bundledCommitHash);
         when(() => mockRepo.isLatestCommit()).thenAnswer((_) async => false);
       });
 
       test('updates stored assets when remote succeeds', () async {
         // Set up successful remote update
-        when(() => mockRemoteProvider.getAssets())
-            .thenAnswer((_) async => [testAsset]);
-        when(() => mockRemoteProvider.getLatestCommit())
-            .thenAnswer((_) async => latestCommitHash);
+        when(
+          () => mockRemoteProvider.getAssets(),
+        ).thenAnswer((_) async => [testAsset]);
+        when(
+          () => mockRemoteProvider.getLatestCommit(),
+        ).thenAnswer((_) async => latestCommitHash);
         when(() => mockRepo.updateCoinConfig()).thenAnswer((_) async {});
-        when(() => mockRepo.getCurrentCommit())
-            .thenAnswer((_) async => latestCommitHash);
+        when(
+          () => mockRepo.getCurrentCommit(),
+        ).thenAnswer((_) async => latestCommitHash);
 
         final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
           transformer: mockTransformer,
           dataFactory: mockDataFactory,
+          updateStrategy: mockUpdateStrategy,
         );
 
         await coins.init();
 
-        // Give time for background update
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Trigger update manually and wait for completion via stream
+        final expectation = expectLater(
+          coins.updateStream,
+          emits(
+            isA<UpdateResult>().having((r) => r.success, 'success', isTrue),
+          ),
+        );
+
+        // Trigger the update manually
+        await coins.updateNow();
+
+        await expectation;
 
         expect(coins.all.length, 1);
         verify(() => mockRepo.getAssets()).called(greaterThan(0));
       });
 
       test(
-          'falls back to local assets when remote update fails after storage load',
-          () async {
-        // Set up remote provider to fail during update
-        when(() => mockRemoteProvider.getAssets())
-            .thenThrow(Exception('Update failed'));
-        when(() => mockRemoteProvider.getLatestCommit())
-            .thenThrow(Exception('Update failed'));
-        when(() => mockRepo.updateCoinConfig())
-            .thenThrow(Exception('Update failed'));
+        'falls back to local assets when remote update fails after storage load',
+        () async {
+          // Set up remote provider to fail during update
+          when(
+            () => mockRemoteProvider.getAssets(),
+          ).thenThrow(Exception('Update failed'));
+          when(
+            () => mockRemoteProvider.getLatestCommit(),
+          ).thenThrow(Exception('Update failed'));
+          when(
+            () => mockRepo.updateCoinConfig(),
+          ).thenThrow(Exception('Update failed'));
 
-        // Mock the fallback scenario - storage gets cleared, then local provider is used
-        when(() => mockRepo.deleteAllAssets()).thenAnswer((_) async {});
+          // Mock the fallback scenario - storage gets cleared, then local provider is used
+          when(() => mockRepo.deleteAllAssets()).thenAnswer((_) async {});
 
-        final coins = KomodoAssetsUpdateManager(
-          configRepository: mockConfigRepository,
-          transformer: mockTransformer,
-          dataFactory: mockDataFactory,
-        );
+          final coins = KomodoAssetsUpdateManager(
+            configRepository: mockConfigRepository,
+            transformer: mockTransformer,
+            dataFactory: mockDataFactory,
+            updateStrategy: mockUpdateStrategy,
+          );
 
-        await coins.init();
+          await coins.init();
 
-        // Should still have assets loaded from storage initially
-        expect(coins.all.length, 1);
-        expect(coins.all[testAsset.id], equals(testAsset));
+          // Should still have assets loaded from storage initially
+          expect(coins.all.length, 1);
+          expect(coins.all[testAsset.id], equals(testAsset));
 
-        // Current commit should be available
-        final currentCommit = await coins.getCurrentCommitHash();
-        expect(currentCommit, equals(bundledCommitHash));
+          // Current commit should be available
+          final currentCommit = await coins.getCurrentCommitHash();
+          expect(currentCommit, equals(bundledCommitHash));
 
-        verify(() => mockRepo.getAssets()).called(1);
-      });
+          verify(() => mockRepo.getAssets()).called(1);
+        },
+      );
     });
 
     group('static fetchAndTransformCoinsList fallback behavior', () {
       test('falls back to local assets when storage fails', () async {
         // Set up repository to fail
-        when(() => mockRepo.updatedAssetStorageExists())
-            .thenThrow(Exception('Storage error'));
+        when(
+          () => mockRepo.updatedAssetStorageExists(),
+        ).thenThrow(Exception('Storage error'));
         when(() => mockRepo.getAssets()).thenThrow(Exception('Storage error'));
 
         // Mock the static method dependencies
@@ -291,48 +361,56 @@ void main() {
 
         await coins.init();
 
-        final configs =
-            coins.all.values.map((asset) => asset.protocol.config).toList();
+        final configs = coins.all.values
+            .map((asset) => asset.protocol.config)
+            .toList();
         expect(configs.length, 1);
         expect(configs.first['coin'], 'KMD');
       });
 
-      test('clears storage and retries when fetchAndTransformCoinsList fails',
-          () async {
-        // Set up repository to fail initially, then succeed
-        var callCount = 0;
-        when(() => mockRepo.updatedAssetStorageExists()).thenAnswer((_) async {
-          callCount++;
-          if (callCount == 1) {
-            throw Exception('Initial failure');
-          }
-          return false; // No storage, use local assets
-        });
+      test(
+        'clears storage and retries when fetchAndTransformCoinsList fails',
+        () async {
+          // Set up repository to fail initially, then succeed
+          var callCount = 0;
+          when(() => mockRepo.updatedAssetStorageExists()).thenAnswer((
+            _,
+          ) async {
+            callCount++;
+            if (callCount == 1) {
+              throw Exception('Initial failure');
+            }
+            return false; // No storage, use local assets
+          });
 
-        when(() => mockRepo.deleteAllAssets()).thenAnswer((_) async {});
+          when(() => mockRepo.deleteAllAssets()).thenAnswer((_) async {});
 
-        final coins = KomodoAssetsUpdateManager(
-          configRepository: mockConfigRepository,
-          transformer: mockTransformer,
-          dataFactory: mockDataFactory,
-          enableAutoUpdate: false,
-        );
+          final coins = KomodoAssetsUpdateManager(
+            configRepository: mockConfigRepository,
+            transformer: mockTransformer,
+            dataFactory: mockDataFactory,
+            enableAutoUpdate: false,
+          );
 
-        await coins.init();
+          await coins.init();
 
-        expect(coins.all.length, 1);
-        verify(() => mockLocalProvider.getAssets()).called(greaterThan(0));
-      });
+          expect(coins.all.length, 1);
+          verify(() => mockLocalProvider.getAssets()).called(greaterThan(0));
+        },
+      );
     });
 
     group('commit hash consistency', () {
       test('commit hash is never empty when using local assets', () async {
-        when(() => mockRepo.updatedAssetStorageExists())
-            .thenAnswer((_) async => false);
-        when(() => mockRemoteProvider.getAssets())
-            .thenThrow(Exception('Remote error'));
-        when(() => mockRemoteProvider.getLatestCommit())
-            .thenThrow(Exception('Remote error'));
+        when(
+          () => mockRepo.updatedAssetStorageExists(),
+        ).thenAnswer((_) async => false);
+        when(
+          () => mockRemoteProvider.getAssets(),
+        ).thenThrow(Exception('Remote error'));
+        when(
+          () => mockRemoteProvider.getLatestCommit(),
+        ).thenThrow(Exception('Remote error'));
 
         final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,
@@ -354,39 +432,56 @@ void main() {
       });
 
       test(
-          'commit hash switches from bundled to latest after successful update',
-          () async {
-        when(() => mockRepo.updatedAssetStorageExists())
-            .thenAnswer((_) async => false);
-        when(() => mockRemoteProvider.getAssets())
-            .thenAnswer((_) async => [testAsset]);
-        when(() => mockRemoteProvider.getLatestCommit())
-            .thenAnswer((_) async => latestCommitHash);
-        when(() => mockRepo.upsertAssets(any(), any()))
-            .thenAnswer((_) async {});
+        'commit hash switches from bundled to latest after successful update',
+        () async {
+          when(
+            () => mockRepo.updatedAssetStorageExists(),
+          ).thenAnswer((_) async => false);
+          when(
+            () => mockRemoteProvider.getAssets(),
+          ).thenAnswer((_) async => [testAsset]);
+          when(
+            () => mockRemoteProvider.getLatestCommit(),
+          ).thenAnswer((_) async => latestCommitHash);
+          when(
+            () => mockRepo.upsertAssets(any(), any()),
+          ).thenAnswer((_) async {});
 
-        final coins = KomodoAssetsUpdateManager(
-          configRepository: mockConfigRepository,
-          transformer: mockTransformer,
-          dataFactory: mockDataFactory,
-        );
+          final coins = KomodoAssetsUpdateManager(
+            configRepository: mockConfigRepository,
+            transformer: mockTransformer,
+            dataFactory: mockDataFactory,
+            updateStrategy: mockUpdateStrategy,
+          );
 
-        await coins.init();
+          await coins.init();
 
-        // Initially should use bundled commit
-        final currentCommit = await coins.getCurrentCommitHash();
-        expect(currentCommit, equals(bundledCommitHash));
+          // Initially should use bundled commit
+          final currentCommit = await coins.getCurrentCommitHash();
+          expect(currentCommit, equals(bundledCommitHash));
 
-        // After background update, latest commit should be available
-        await Future<void>.delayed(const Duration(milliseconds: 200));
+          // Trigger update manually and wait for completion via stream
+          final expectation = expectLater(
+            coins.updateStream,
+            emits(
+              isA<UpdateResult>().having((r) => r.success, 'success', isTrue),
+            ),
+          );
 
-        final latestCommit = await coins.getLatestCommitHash();
-        expect(latestCommit, equals(latestCommitHash));
-      });
+          // Trigger the update manually
+          await coins.updateNow();
+
+          await expectation;
+
+          final latestCommit = await coins.getLatestCommitHash();
+          expect(latestCommit, equals(latestCommitHash));
+        },
+      );
 
       test('commit hash remains bundled when update is disabled', () async {
-        when(() => mockRepo.updatedAssetStorageExists())
-            .thenAnswer((_) async => false);
+        when(
+          () => mockRepo.updatedAssetStorageExists(),
+        ).thenAnswer((_) async => false);
 
         final coins = KomodoAssetsUpdateManager(
           configRepository: mockConfigRepository,

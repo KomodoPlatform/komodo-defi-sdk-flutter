@@ -68,12 +68,12 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
     this.enableAutoUpdate = true,
     this.appStoragePath,
     this.appName,
-  })  : _configRepository =
-            configRepository ?? AssetRuntimeUpdateConfigRepository(),
-        _transformer = transformer ?? const CoinConfigTransformer(),
-        _dataFactory = dataFactory ?? const DefaultCoinConfigDataFactory(),
-        _loadingStrategy = loadingStrategy ?? StorageFirstLoadingStrategy(),
-        _updateStrategy = updateStrategy ?? const BackgroundUpdateStrategy();
+  }) : _configRepository =
+           configRepository ?? AssetRuntimeUpdateConfigRepository(),
+       _transformer = transformer ?? const CoinConfigTransformer(),
+       _dataFactory = dataFactory ?? const DefaultCoinConfigDataFactory(),
+       _loadingStrategy = loadingStrategy ?? StorageFirstLoadingStrategy(),
+       _updateStrategy = updateStrategy ?? const BackgroundUpdateStrategy();
 
   static final Logger _log = Logger('KomodoAssetsUpdateManager');
 
@@ -97,6 +97,9 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
   CoinConfigManager? _assetsManager;
   CoinUpdateManager? _updatesManager;
   AssetRuntimeUpdateConfig? _runtimeConfig;
+  // Init coordination
+  Future<void>? _initFuture;
+  bool _initialized = false;
 
   /// Provides access to asset management operations
   CoinConfigManager get assets {
@@ -120,42 +123,57 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
 
   @override
   Future<void> init({Set<String> defaultPriorityTickers = const {}}) async {
-    _log.fine('Initializing KomodoAssetsUpdateManager with strategy pattern');
-
-    // Initialize hive first before registering adapters or initialising
-    // repositories.
-    await _initializeHiveStorage();
-
-    final runtimeConfig = await _getRuntimeConfig();
-    final configProviders = await _createConfigSources(runtimeConfig);
-    _assetsManager = StrategicCoinConfigManager(
-      configSources: configProviders,
-      loadingStrategy: _loadingStrategy,
-      defaultPriorityTickers: defaultPriorityTickers,
-    );
-
-    // Initialize update manager
-    final repository =
-        _dataFactory.createRepository(runtimeConfig, _transformer);
-    final localProvider = _dataFactory.createLocalProvider(runtimeConfig);
-    _updatesManager = StrategicCoinUpdateManager(
-      repository: repository,
-      updateStrategy: enableAutoUpdate ? _updateStrategy : NoUpdateStrategy(),
-      fallbackProvider: localProvider,
-    );
-
-    // Initialize both managers
-    await Future.wait([
-      _assetsManager!.init(),
-      _updatesManager!.init(),
-    ]);
-
-    // Start background updates if enabled
-    if (enableAutoUpdate) {
-      _updatesManager!.startBackgroundUpdates();
+    if (_initialized) return;
+    if (_initFuture != null) {
+      return _initFuture!;
     }
+    _log.fine('Initializing KomodoAssetsUpdateManager with strategy pattern');
+    final completer = Completer<void>();
+    _initFuture = completer.future;
+    try {
+      // Initialize hive first before registering adapters or repositories.
+      await _initializeHiveStorage();
 
-    _log.fine('KomodoAssetsUpdateManager initialized successfully');
+      final runtimeConfig = await _getRuntimeConfig();
+      final configProviders = await _createConfigSources(runtimeConfig);
+      final newAssetsManager = StrategicCoinConfigManager(
+        configSources: configProviders,
+        loadingStrategy: _loadingStrategy,
+        defaultPriorityTickers: defaultPriorityTickers,
+      );
+
+      // Initialize update manager
+      final repository = _dataFactory.createRepository(
+        runtimeConfig,
+        _transformer,
+      );
+      final localProvider = _dataFactory.createLocalProvider(runtimeConfig);
+      final newUpdatesManager = StrategicCoinUpdateManager(
+        repository: repository,
+        updateStrategy: enableAutoUpdate ? _updateStrategy : NoUpdateStrategy(),
+        fallbackProvider: localProvider,
+      );
+
+      // Initialize both managers
+      await Future.wait([newAssetsManager.init(), newUpdatesManager.init()]);
+
+      // Publish only after successful initialization to avoid half-ready state
+      _assetsManager = newAssetsManager;
+      _updatesManager = newUpdatesManager;
+      _initialized = true;
+
+      // Start background updates if enabled
+      if (enableAutoUpdate) {
+        _updatesManager!.startBackgroundUpdates();
+      }
+      _log.fine('KomodoAssetsUpdateManager initialized successfully');
+      completer.complete();
+    } catch (e, st) {
+      completer.completeError(e, st);
+      rethrow;
+    } finally {
+      _initFuture = null;
+    }
   }
 
   /// Initialize Hive storage for coin updates
@@ -188,7 +206,7 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
   }
 
   @override
-  bool get isInitialized => _assetsManager != null && _updatesManager != null;
+  bool get isInitialized => _initialized;
 
   /// Convenience getter for backward compatibility
   @override
@@ -337,6 +355,7 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
     _assetsManager = null;
     _updatesManager = null;
     _runtimeConfig = null;
+    _initialized = false;
 
     _log.fine('Disposed KomodoAssetsUpdateManager');
   }

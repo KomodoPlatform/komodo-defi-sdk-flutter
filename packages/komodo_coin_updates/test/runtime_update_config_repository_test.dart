@@ -1,4 +1,20 @@
-/// Unit tests for the RuntimeUpdateConfigRepository class.
+import 'package:flutter/services.dart' show AssetBundle, ByteData;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:komodo_coin_updates/src/runtime_update_config/asset_runtime_update_config_repository.dart';
+
+class _FakeBundle extends AssetBundle {
+  _FakeBundle(this.map);
+  final Map<String, String> map;
+  @override
+  Future<ByteData> load(String key) => throw UnimplementedError();
+  @override
+  Future<String> loadString(String key, {bool cache = true}) async =>
+      map[key] ?? (throw StateError('Asset not found: $key'));
+  @override
+  void evict(String key) {}
+}
+
+/// Unit tests for the AssetRuntimeUpdateConfigRepository class.
 ///
 /// **Purpose**: Tests the repository that loads runtime configuration from Flutter asset
 /// bundles, handling JSON parsing, validation, and error scenarios for build-time
@@ -29,24 +45,6 @@
 /// **Dependencies**: Tests the configuration loading mechanism that reads build-time
 /// configuration from Flutter assets, ensuring proper error handling and validation
 /// for runtime coin update configuration.
-library;
-
-import 'package:flutter/services.dart' show AssetBundle, ByteData;
-import 'package:flutter_test/flutter_test.dart';
-import 'package:komodo_coin_updates/src/runtime_update_config/asset_runtime_update_config_repository.dart';
-
-class _FakeBundle extends AssetBundle {
-  _FakeBundle(this.map);
-  final Map<String, String> map;
-  @override
-  Future<ByteData> load(String key) => throw UnimplementedError();
-  @override
-  Future<String> loadString(String key, {bool cache = true}) async =>
-      map[key] ?? (throw StateError('Asset not found: $key'));
-  @override
-  void evict(String key) {}
-}
-
 void main() {
   group('RuntimeUpdateConfigRepository', () {
     test('tryLoad returns null on missing asset', () async {

@@ -1,3 +1,25 @@
+import 'dart:convert';
+
+import 'package:flutter/services.dart' show AssetBundle, ByteData;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:komodo_coin_updates/komodo_coin_updates.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart'
+    show AssetRuntimeUpdateConfig;
+
+import 'hive/test_harness.dart';
+
+class _FakeBundle extends AssetBundle {
+  _FakeBundle(this.map);
+  final Map<String, String> map;
+  @override
+  Future<ByteData> load(String key) => throw UnimplementedError();
+  @override
+  Future<String> loadString(String key, {bool cache = true}) async =>
+      map[key] ?? (throw StateError('Asset not found: $key'));
+  @override
+  void evict(String key) {}
+}
+
 /// Unit tests for coin configuration repository bootstrap and initialization sequence.
 ///
 /// **Purpose**: Tests the bootstrap process that initializes coin configuration
@@ -29,28 +51,6 @@
 /// **Dependencies**: Tests the bootstrap sequence that initializes coin configuration
 /// repositories from local assets, ensuring proper startup configuration and
 /// provider setup for the coin update system.
-library;
-
-import 'dart:convert';
-
-import 'package:flutter/services.dart' show AssetBundle, ByteData;
-import 'package:flutter_test/flutter_test.dart';
-import 'package:komodo_coin_updates/komodo_coin_updates.dart';
-
-import 'hive/test_harness.dart';
-
-class _FakeBundle extends AssetBundle {
-  _FakeBundle(this.map);
-  final Map<String, String> map;
-  @override
-  Future<ByteData> load(String key) => throw UnimplementedError();
-  @override
-  Future<String> loadString(String key, {bool cache = true}) async =>
-      map[key] ?? (throw StateError('Asset not found: $key'));
-  @override
-  void evict(String key) {}
-}
-
 void main() {
   group('Bootstrap sequence', () {
     final env = HiveTestEnv();

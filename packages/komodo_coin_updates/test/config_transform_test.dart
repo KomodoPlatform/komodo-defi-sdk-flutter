@@ -1,3 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+
 /// Unit tests for coin configuration transformation pipeline and individual transforms.
 ///
 /// **Purpose**: Tests the configuration transformation system that modifies coin
@@ -29,13 +34,6 @@
 /// **Dependencies**: Tests the transformation system that adapts coin configurations
 /// for different platforms and requirements, including WSS filtering for web platforms
 /// and parent coin relationship mapping.
-library;
-
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_test/flutter_test.dart';
-import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-
 void main() {
   group('CoinConfigTransformer', () {
     test('idempotency: applying twice yields same result', () {

@@ -1,3 +1,10 @@
+import 'package:hive_ce/hive.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:test/test.dart';
+
+import '../helpers/asset_test_helpers.dart';
+import 'test_harness.dart';
+
 /// Unit tests for AssetAdapter bulk deletion operations in Hive database.
 ///
 /// **Purpose**: Tests the bulk deletion functionality of the AssetAdapter when
@@ -29,15 +36,6 @@
 /// **Dependencies**: Tests the AssetAdapter's bulk deletion capabilities in Hive
 /// databases, using HiveTestEnv for isolated testing and validating that bulk
 /// operations maintain database consistency and state.
-library;
-
-import 'package:hive_ce/hive.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:test/test.dart';
-
-import '../helpers/asset_test_helpers.dart';
-import 'test_harness.dart';
-
 void main() {
   group('AssetAdapter delete many', () {
     final env = HiveTestEnv();

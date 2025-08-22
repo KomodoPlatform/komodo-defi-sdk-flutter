@@ -1,4 +1,8 @@
-/// Unit tests for the RuntimeUpdateConfig model class.
+import 'package:flutter_test/flutter_test.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart'
+    show AssetRuntimeUpdateConfig;
+
+/// Unit tests for the AssetRuntimeUpdateConfigRepository model class.
 ///
 /// **Purpose**: Tests the configuration model that defines runtime behavior for coin
 /// updates, including repository branches, file mappings, and feature flags.
@@ -24,11 +28,6 @@
 ///
 /// **Dependencies**: Tests the core configuration model that drives runtime behavior
 /// for coin updates, ensuring proper defaults and configuration persistence.
-library;
-
-import 'package:flutter_test/flutter_test.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart'
-    show AssetRuntimeUpdateConfig;
 
 void main() {
   group('RuntimeUpdateConfig model', () {

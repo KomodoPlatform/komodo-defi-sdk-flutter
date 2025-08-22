@@ -1,37 +1,3 @@
-/// Unit tests for the CoinConfigStorage interface contract and implementations.
-///
-/// **Purpose**: Tests the storage interface contract that defines the core operations
-/// for coin configuration persistence, ensuring consistent behavior across different
-/// storage implementations and proper contract compliance.
-///
-/// **Test Cases**:
-/// - Basic save and read operations flow
-/// - Asset filtering with exclusion lists
-/// - Single asset deletion and cleanup
-/// - Bulk asset deletion and storage reset
-/// - Latest commit validation and checking
-/// - Storage existence and state validation
-///
-/// **Functionality Tested**:
-/// - CRUD operations contract compliance
-/// - Asset filtering and querying
-/// - Commit tracking and validation
-/// - Storage state management
-/// - Cleanup and reset operations
-/// - Interface contract validation
-///
-/// **Edge Cases**:
-/// - Empty storage states
-/// - Asset exclusion filtering
-/// - Commit state transitions
-/// - Storage cleanup scenarios
-/// - Interface contract edge cases
-///
-/// **Dependencies**: Tests the storage interface contract that defines how coin
-/// configurations are persisted and retrieved, using a fake implementation to
-/// validate contract compliance and behavior consistency.
-library;
-
 import 'package:komodo_coin_updates/src/coins_config/coin_config_storage.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
@@ -96,6 +62,38 @@ class _FakeStorage implements CoinConfigStorage {
   }
 }
 
+/// Unit tests for the CoinConfigStorage interface contract and implementations.
+///
+/// **Purpose**: Tests the storage interface contract that defines the core operations
+/// for coin configuration persistence, ensuring consistent behavior across different
+/// storage implementations and proper contract compliance.
+///
+/// **Test Cases**:
+/// - Basic save and read operations flow
+/// - Asset filtering with exclusion lists
+/// - Single asset deletion and cleanup
+/// - Bulk asset deletion and storage reset
+/// - Latest commit validation and checking
+/// - Storage existence and state validation
+///
+/// **Functionality Tested**:
+/// - CRUD operations contract compliance
+/// - Asset filtering and querying
+/// - Commit tracking and validation
+/// - Storage state management
+/// - Cleanup and reset operations
+/// - Interface contract validation
+///
+/// **Edge Cases**:
+/// - Empty storage states
+/// - Asset exclusion filtering
+/// - Commit state transitions
+/// - Storage cleanup scenarios
+/// - Interface contract edge cases
+///
+/// **Dependencies**: Tests the storage interface contract that defines how coin
+/// configurations are persisted and retrieved, using a fake implementation to
+/// validate contract compliance and behavior consistency.
 void main() {
   group('CoinConfigStorage Contract Tests', () {
     test('basic save and read flow', () async {

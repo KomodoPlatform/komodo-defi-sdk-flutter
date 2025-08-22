@@ -231,10 +231,7 @@ class StrategicCoinUpdateManager implements CoinUpdateManager {
 
       if (!shouldUpdate) {
         _logger.fine('Strategy determined no update is needed');
-        return const UpdateResult(
-          success: true,
-          updatedAssetCount: 0,
-        );
+        return const UpdateResult(success: true, updatedAssetCount: 0);
       }
 
       final result = await _updateStrategy.executeUpdate(
@@ -277,15 +274,15 @@ class StrategicCoinUpdateManager implements CoinUpdateManager {
       'Starting background updates with interval ${_updateStrategy.updateInterval}',
     );
 
+    // Perform initial background check
+    unawaited(_performBackgroundUpdate());
+
     _backgroundTimer = Timer.periodic(
       _updateStrategy.updateInterval,
       (_) => _performBackgroundUpdate(),
     );
 
     _backgroundUpdatesActive = true;
-
-    // Perform initial background check
-    unawaited(_performBackgroundUpdate());
   }
 
   /// Performs a background update check

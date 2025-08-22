@@ -128,6 +128,11 @@ class CoinFilter {
 
   /// Returns true if the given coin should be filtered out.
   bool shouldFilter(JsonMap config) {
+    // Honor an explicit exclusion marker
+    if (config.valueOrNull<bool>('excluded') ?? false) {
+      return true;
+    }
+
     final coin = config.value<String>('coin');
     final protocolSubClass = config.valueOrNull<String>('type');
     final protocolClass = config.valueOrNull<String>('protocol', 'type');
@@ -162,8 +167,9 @@ class WssWebsocketTransform implements CoinConfigTransform {
     // are supported.
     final filteredElectrums = filterElectrums(
       electrum,
-      serverType:
-          kIsWeb ? ElectrumServerType.wssOnly : ElectrumServerType.nonWssOnly,
+      serverType: kIsWeb
+          ? ElectrumServerType.wssOnly
+          : ElectrumServerType.nonWssOnly,
     );
 
     return config..['electrum'] = filteredElectrums;
@@ -184,10 +190,9 @@ class WssWebsocketTransform implements CoinConfigTransform {
     }
 
     return electrumsCopy..removeWhere(
-      (JsonMap e) =>
-          serverType == ElectrumServerType.wssOnly
-              ? e['ws_url'] == null
-              : e['ws_url'] != null,
+      (JsonMap e) => serverType == ElectrumServerType.wssOnly
+          ? e['ws_url'] == null
+          : e['ws_url'] != null,
     );
   }
 }

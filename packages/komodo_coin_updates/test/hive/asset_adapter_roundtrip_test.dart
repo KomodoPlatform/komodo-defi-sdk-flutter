@@ -1,3 +1,10 @@
+import 'package:hive_ce/hive.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:test/test.dart';
+
+import '../helpers/asset_test_helpers.dart';
+import 'test_harness.dart';
+
 /// Unit tests for AssetAdapter serialization/deserialization roundtrip operations in Hive database.
 ///
 /// **Purpose**: Tests the serialization and deserialization capabilities of the AssetAdapter
@@ -29,15 +36,6 @@
 /// **Dependencies**: Tests the AssetAdapter's serialization/deserialization capabilities
 /// in Hive databases, using HiveTestEnv for isolated testing and validating that
 /// assets maintain complete data integrity across storage and retrieval operations.
-library;
-
-import 'package:hive_ce/hive.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:test/test.dart';
-
-import '../helpers/asset_test_helpers.dart';
-import 'test_harness.dart';
-
 void main() {
   group('AssetAdapter roundtrip', () {
     final env = HiveTestEnv();

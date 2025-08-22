@@ -20,7 +20,7 @@ abstract class CoinConfigManager {
   /// 2. Loads the initial assets
   /// 3. Sets the manager to initialized
   ///
-  /// Throws a [StateError] if the manager is already initialized.
+  /// Subsequent calls are ignored if already initialized.
   Future<void> init();
 
   /// Gets all available assets.
@@ -75,9 +75,9 @@ class StrategicCoinConfigManager
     required List<CoinConfigSource> configSources,
     required LoadingStrategy loadingStrategy,
     required Set<String> defaultPriorityTickers,
-  })  : _configSources = configSources,
-        _loadingStrategy = loadingStrategy,
-        _defaultPriorityTickers = Set.unmodifiable(defaultPriorityTickers);
+  }) : _configSources = configSources,
+       _loadingStrategy = loadingStrategy,
+       _defaultPriorityTickers = Set.unmodifiable(defaultPriorityTickers);
 
   static final _logger = Logger('StrategicCoinConfigManager');
 
