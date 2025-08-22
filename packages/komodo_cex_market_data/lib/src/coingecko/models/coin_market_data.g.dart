@@ -42,23 +42,20 @@ _CoinMarketData _$CoinMarketDataFromJson(Map<String, dynamic> json) =>
       athChangePercentage: const DecimalConverter().fromJson(
         json['ath_change_percentage'],
       ),
-      athDate:
-          json['ath_date'] == null
-              ? null
-              : DateTime.parse(json['ath_date'] as String),
+      athDate: json['ath_date'] == null
+          ? null
+          : DateTime.parse(json['ath_date'] as String),
       atl: const DecimalConverter().fromJson(json['atl']),
       atlChangePercentage: const DecimalConverter().fromJson(
         json['atl_change_percentage'],
       ),
-      atlDate:
-          json['atl_date'] == null
-              ? null
-              : DateTime.parse(json['atl_date'] as String),
+      atlDate: json['atl_date'] == null
+          ? null
+          : DateTime.parse(json['atl_date'] as String),
       roi: json['roi'],
-      lastUpdated:
-          json['last_updated'] == null
-              ? null
-              : DateTime.parse(json['last_updated'] as String),
+      lastUpdated: json['last_updated'] == null
+          ? null
+          : DateTime.parse(json['last_updated'] as String),
     );
 
 Map<String, dynamic> _$CoinMarketDataToJson(

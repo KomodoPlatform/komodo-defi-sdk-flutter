@@ -1,22 +1,25 @@
 name: komodo_coin_updates
 description: Runtime coin config update coin updates.
-version: 1.0.0
-publish_to: none # publishable packages can't have git dependencies
+version: 1.0.1
+repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter
 
 environment:
-  sdk: ^3.8.1
-  flutter: ">=3.29.0 <3.36.0"
+  sdk: ">=3.9.0 <4.0.0"
+  flutter: ">=3.35.0"
+
+resolution: workspace
 
 # Add regular dependencies here.
 dependencies:
+  flutter:
+    sdk: flutter
   equatable: ^2.0.7
   flutter_bloc: ^9.1.1
-  hive: 2.2.3
-  hive_flutter: 1.1.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
   http: ^1.4.0
-  komodo_defi_types:
-    path: ../komodo_defi_types
-  very_good_analysis: ^8.0.0
+  komodo_defi_types: ^0.3.0+2
+  very_good_analysis: ^9.0.0
 
 dev_dependencies:
   flutter_test:

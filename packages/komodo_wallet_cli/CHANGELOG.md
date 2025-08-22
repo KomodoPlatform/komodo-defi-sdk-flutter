@@ -1,3 +1,19 @@
-## 1.0.0
+## 0.3.0+1
 
-- Initial version.
+> Note: This release has breaking changes.
+
+ - **PERF**: migrate packages to Dart workspace".
+ - **PERF**: migrate packages to Dart workspace.
+ - **FIX**(pub): add non-generic description.
+ - **FIX**: unify+upgrade Dart/Flutter versions.
+ - **FIX**(cli): Fix encoding for KDF config updater script.
+ - **FEAT**: offline private key export (#160).
+ - **FEAT**(dev): Install `melos`.
+ - **BUG**(auth): Fix registration failing on Windows and Windows web builds  (#34).
+ - **BREAKING** **FEAT**: add Flutter Web WASM support with OPFS interop extensions (#176).
+ - **BREAKING** **FEAT**(sdk): Multi-SDK instance support.
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
+## 0.3.0+0
+
+- fix: add missing dependencies; add LICENSE
