@@ -1,6 +1,6 @@
 # First-party related
 # As per Dart guidelines, we should ignore pubspec.lock files for packages.
-packages/**/pubspec.lock # TODO: Get this to work.
+packages/**/pubspec.lock
 
 # Miscellaneous
 *.class
@@ -118,4 +118,3 @@ firebase.json
 # /packages/komodo_defi_framework/web/kdf
 
 *.a
-.transformer_invoker
