@@ -4,7 +4,6 @@ import 'package:hive_ce/hive.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_cex_market_data/src/hive_adapters.dart';
 import 'package:komodo_cex_market_data/src/models/sparkline_data.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -20,6 +19,7 @@ final BinanceRepository _binanceRepository = BinanceRepository(
 
 SparklineRepository sparklineRepository = SparklineRepository();
 
+/// Repository for fetching sparkline data
 class SparklineRepository with RepositoryFallbackMixin {
   /// Creates a new SparklineRepository with the given repositories.
   ///
@@ -35,9 +35,16 @@ class SparklineRepository with RepositoryFallbackMixin {
 
   final List<CexRepository> _repositories;
   final RepositorySelectionStrategy _selectionStrategy;
+
+  /// Indicates whether the repository has been initialized
   bool isInitialized = false;
+
+  /// Duration for which the cache is valid
   final Duration cacheExpiry = const Duration(hours: 1);
   Box<SparklineData>? _box;
+
+  /// Map to track ongoing requests and prevent duplicate requests for the same symbol
+  final Map<String, Future<List<double>?>> _inFlightRequests = {};
 
   @override
   List<CexRepository> get priceRepositories => _repositories;
@@ -120,11 +127,11 @@ class SparklineRepository with RepositoryFallbackMixin {
     }
   }
 
-  /// Fetches sparkline data for the given symbol with fallback support
+  /// Fetches sparkline data for the given symbol with request deduplication
   ///
   /// Uses RepositoryFallbackMixin to select a supporting repository and
   /// automatically retry with backoff. Returns cached data if available and
-  /// not expired.
+  /// not expired. Prevents duplicate concurrent requests for the same symbol.
   Future<List<double>?> fetchSparkline(AssetId assetId) async {
     final symbol = assetId.symbol.configSymbol;
 
@@ -142,6 +149,35 @@ class SparklineRepository with RepositoryFallbackMixin {
     if (cachedResult != null) {
       return cachedResult;
     }
+
+    // Check if a request is already in flight for this symbol
+    final existingRequest = _inFlightRequests[symbol];
+    if (existingRequest != null) {
+      _logger.fine(
+        'Request already in flight for $symbol, returning existing future',
+      );
+      return existingRequest;
+    }
+
+    // Start new request and track it
+    _logger.fine('Starting new request for $symbol');
+    final future = _performSparklineFetch(assetId);
+    _inFlightRequests[symbol] = future;
+
+    // Clean up the in-flight map when request completes (success or failure)
+    await future.whenComplete(() {
+      _inFlightRequests.remove(symbol);
+      _logger.fine('Cleaned up in-flight request for $symbol');
+    });
+
+    return future;
+  }
+
+  /// Internal method to perform the actual sparkline fetch
+  ///
+  /// This is separated from fetchSparkline to enable proper request deduplication
+  Future<List<double>?> _performSparklineFetch(AssetId assetId) async {
+    final symbol = assetId.symbol.configSymbol;
 
     // Use quote currency utilities instead of hardcoded USDT check
     const quoteCurrency = Stablecoin.usdt;

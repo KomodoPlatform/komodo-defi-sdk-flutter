@@ -275,14 +275,13 @@ class StrategicCoinUpdateManager implements CoinUpdateManager {
     );
 
     // Perform initial background check
+    _backgroundUpdatesActive = true;
     unawaited(_performBackgroundUpdate());
 
     _backgroundTimer = Timer.periodic(
       _updateStrategy.updateInterval,
       (_) => _performBackgroundUpdate(),
     );
-
-    _backgroundUpdatesActive = true;
   }
 
   /// Performs a background update check
