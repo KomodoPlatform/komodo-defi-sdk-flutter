@@ -28,7 +28,7 @@ controls where and how coin data is fetched at runtime.
 ## Examples
 
 ```dart
-final config = RuntimeUpdateConfig(
+final config = AssetRuntimeUpdateConfig(
   coinsRepoBranch: 'master',
   mappedFiles: {
     'assets/config/coins_config.json': 'utils/coins_config_unfiltered.json',

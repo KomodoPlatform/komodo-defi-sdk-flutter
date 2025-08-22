@@ -2,8 +2,14 @@
 
 ## Why do I get rate limited by GitHub?
 
-Provide a GitHub token when constructing the repository/provider to
-authenticate requests to `getLatestCommit`.
+If you hit GitHub rate limits, prefer authenticating server-side (proxy the request) rather than embedding a token in the client.
+For development or CI-only use, inject a token via environment or secure runtime configuration (never hardcode).  
+Use least privilege:  
+
+- Fine‑grained token with read‑only access to repository contents.  
+- Restrict to the specific repo if possible.  
+Rotate and revoke tokens regularly.  
+Note: Public repositories do not require a token for read access, but authentication raises rate limits.
 
 ## The app crashes due to Hive adapter registration
 

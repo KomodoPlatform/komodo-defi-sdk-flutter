@@ -29,6 +29,6 @@ A developer-focused guide to building with and contributing to
 
 ## Requirements
 
-- Dart SDK ^3.7, Flutter >=3.29.0 <3.36.0
+- Dart SDK ^3.8.1, Flutter >=3.29.0 <3.36.0
 - Optional GitHub token to avoid API rate limits when calling GitHub REST API
 - Hive storage path for runtime persistence

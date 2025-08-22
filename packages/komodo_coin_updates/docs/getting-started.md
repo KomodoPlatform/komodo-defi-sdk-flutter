@@ -5,7 +5,7 @@ SDK and load the latest Komodo coins configuration at runtime.
 
 ## Prerequisites
 
-- Dart SDK ^3.7
+- Dart SDK ^3.8.1
 - Flutter >=3.29.0 <3.36.0
 - Access to a writable app data folder for Hive
 - Optional: GitHub token to reduce API rate limiting
@@ -38,7 +38,7 @@ Use `ensureInitializedIsolate(fullPath)` inside background isolates.
 ## Provide runtime configuration
 
 ```dart
-final config = RuntimeUpdateConfig(
+final config = AssetRuntimeUpdateConfig(
   fetchAtBuildEnabled: false,
   updateCommitOnBuild: false,
   bundledCoinsRepoCommit: 'abcdef123456',

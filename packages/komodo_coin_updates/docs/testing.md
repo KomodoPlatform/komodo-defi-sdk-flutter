@@ -24,8 +24,7 @@ flutter test --coverage
 
 ## Test utilities
 
-- `test/hive/test_harness.dart`: temp directory setup for Hive; ensures isolated
-  and repeatable tests.
+- `test/hive/test_harness.dart`: sets up a temporary directory for Hive to ensure isolated and repeatable tests.
 - `test/helpers/*`: asset factories and helpers.
 
 ## Mocking and fakes
