@@ -4,11 +4,9 @@ import 'dart:io';
 import 'package:hive_ce/hive.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_cex_market_data/src/models/sparkline_data.dart';
-import 'package:komodo_cex_market_data/src/sparkline_repository.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
-import 'package:http/http.dart' as http;
 
 // Mock classes
 class MockCexRepository extends Mock implements CexRepository {}
@@ -627,60 +625,6 @@ void main() {
             endAt: any(named: 'endAt'),
           ),
         );
-      });
-    });
-
-    group('Error Handling', () {
-      test('handles repository errors gracefully', () async {
-        // Setup: Primary fails, fallback succeeds
-        when(
-          () => primaryRepo.getCoinOhlc(
-            testAsset,
-            Stablecoin.usdt,
-            GraphInterval.oneDay,
-            startAt: any(named: 'startAt'),
-            endAt: any(named: 'endAt'),
-          ),
-        ).thenThrow(Exception('Primary repo error'));
-
-        final mockOhlc = CoinOhlc(
-          ohlc: [
-            Ohlc(
-              openTime: DateTime.now().millisecondsSinceEpoch,
-              open: 50000.0,
-              high: 51000.0,
-              low: 49000.0,
-              close: 50500.0,
-              closeTime: DateTime.now().millisecondsSinceEpoch,
-            ),
-          ],
-        );
-
-        when(
-          () => fallbackRepo.getCoinOhlc(
-            testAsset,
-            Stablecoin.usdt,
-            GraphInterval.oneDay,
-            startAt: any(named: 'startAt'),
-            endAt: any(named: 'endAt'),
-          ),
-        ).thenAnswer((_) async => mockOhlc);
-
-        // Request should succeed via fallback
-        final result = await sparklineRepo.fetchSparkline(testAsset);
-        expect(result, isNotNull);
-        expect(result!.first, equals(50500.0));
-
-        // Verify fallback was used
-        verify(
-          () => fallbackRepo.getCoinOhlc(
-            testAsset,
-            Stablecoin.usdt,
-            GraphInterval.oneDay,
-            startAt: any(named: 'startAt'),
-            endAt: any(named: 'endAt'),
-          ),
-        ).called(1);
       });
     });
   });

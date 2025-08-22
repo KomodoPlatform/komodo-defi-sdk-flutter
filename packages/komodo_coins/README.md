@@ -10,13 +10,6 @@ Preferred (adds latest version to your pubspec):
 dart pub add komodo_coins
 ```
 
-Or manually add to `pubspec.yaml`:
-
-```yaml
-dependencies:
-  komodo_coins: ^latest
-```
-
 ## Quick start (standalone usage)
 
 If you just need to parse the bundled coins configuration without the full SDK orchestration:
@@ -37,10 +30,10 @@ Future<void> main() async {
 
   // Get child assets (e.g. ERC‑20 tokens on Ethereum)
   final erc20 = coins.findChildAssets(
-    AssetId.parse({'coin': 'ETH', 'protocol': {'type': 'ETH'}}),
+    Asset.fromJson({'coin': 'ETH', 'protocol': {'type': 'ETH'}}).id,
   );
 
-  print('Loaded \\${all.length} assets; BTC variants: \\${btcVariants.length}; ERC20 children: \\${erc20.length}');
+  print('Loaded ${all.length} assets; BTC variants: ${btcVariants.length}; ERC20 children: ${erc20.length}');
 }
 ```
 
@@ -60,11 +53,12 @@ Future<void> main() async {
 
   // Filtered examples (depends on actual SDK API names)
   final trezorSupported = assets.filteredAssets(const TrezorAssetFilterStrategy());
-  print('Trezor supported assets: \\${trezorSupported.length}');
+  print('Trezor supported assets: ${trezorSupported.length}');
 }
 ```
 
 Using the SDK ensures:
+
 - Automatic initialization ordering
 - Runtime configuration & update checks (via `komodo_coin_updates`)
 - Unified caching and persistence strategy
@@ -81,6 +75,7 @@ final filtered = coins.filteredAssets(const TrezorAssetFilterStrategy());
 ```
 
 Included strategies:
+
 - `NoAssetFilterStrategy` (default)
 - `TrezorAssetFilterStrategy`
 - `UtxoAssetFilterStrategy`
@@ -89,6 +84,7 @@ Included strategies:
 ## With the SDK
 
 `KomodoDefiSdk.init()` automatically:
+
 1. Initializes Hive / storage (if required by higher-level features)
 2. Initializes `komodo_coins` (parses bundled configuration)
 3. Optionally initializes `komodo_coin_updates` (if runtime updates are enabled in your SDK configuration)

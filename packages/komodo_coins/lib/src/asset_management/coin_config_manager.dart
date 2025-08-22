@@ -102,6 +102,14 @@ class StrategicCoinConfigManager
 
   @override
   Future<void> init() async {
+    if (_isDisposed) {
+      _logger.warning('Attempted to init after dispose');
+      throw StateError('Cannot re-initialize a disposed CoinConfigManager');
+    }
+    if (_isInitialized) {
+      _logger.finer('init() called more than once; skipping');
+      return;
+    }
     _logger.fine('Initializing CoinConfigManager');
 
     await _validateConfigSources();
@@ -319,6 +327,10 @@ class StrategicCoinConfigManager
 
   @override
   Future<void> dispose() async {
+    if (_isDisposed) {
+      _logger.finer('dispose() called more than once; skipping');
+      return;
+    }
     _isDisposed = true;
     _isInitialized = false;
     _assets = null;

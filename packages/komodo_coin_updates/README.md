@@ -137,7 +137,7 @@ final latestAssets = await provider.getLatestAssets();
 - The repository persists `Asset` models in a lazy box (default name `assets`) and tracks the upstream commit in `coins_settings`.
 - Enable concurrency via `concurrentDownloadsEnabled: true` for faster large updates (ensure acceptable for your platform & network conditions).
 
-- The package reads from `utils/coins_config_unfiltered.json` by default. You can override this via `RuntimeUpdateConfig.mappedFiles['assets/config/coins_config.json']`.
+- The package reads from `utils/coins_config_unfiltered.json` by default. You can override this via `AssetRuntimeUpdateConfig.mappedFiles['assets/config/coins_config.json']`.
 - Assets are stored in a Hive lazy box named `assets`; the current commit hash is stored in a box named `coins_settings` with key `coins_commit`.
 - Provide a GitHub token to reduce the likelihood of rate limiting when calling the GitHub API for commit information.
 

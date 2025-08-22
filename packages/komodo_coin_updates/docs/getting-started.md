@@ -16,9 +16,8 @@ Add the dependency. If you are using this package inside this monorepo, it's
 already referenced via a relative path. For external usage, add a Git
 dependency or path dependency as appropriate.
 
-```yaml
-dependencies:
-  komodo_coin_updates: ^1.0.0 # or a git/path dependency
+```bash
+dart pub add komodo_coin_updates
 ```
 
 Import the library:
