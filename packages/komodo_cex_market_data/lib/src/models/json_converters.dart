@@ -1,10 +1,22 @@
 import 'package:decimal/decimal.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-/// Custom converter for Decimal type
+/// Custom JSON converter for [Decimal] type with null-safe handling.
+///
+/// This converter handles various input formats including strings, numbers,
+/// integers, and doubles, converting them to [Decimal] for high-precision
+/// arithmetic operations. Returns null for invalid or null inputs.
 class DecimalConverter implements JsonConverter<Decimal?, dynamic> {
   const DecimalConverter();
 
+  /// Converts JSON value to [Decimal].
+  ///
+  /// Supports conversion from:
+  /// - String: parsed directly as [Decimal]
+  /// - num, int, double: converted to string then parsed as [Decimal]
+  /// - Other types: converted to string then parsed
+  ///
+  /// Returns null for null inputs, empty strings, or parsing failures.
   @override
   Decimal? fromJson(dynamic json) {
     if (json == null) return null;
@@ -31,24 +43,43 @@ class DecimalConverter implements JsonConverter<Decimal?, dynamic> {
     }
   }
 
+  /// Converts [Decimal] to JSON string representation.
+  ///
+  /// Returns null if the input [decimal] is null.
   @override
   String? toJson(Decimal? decimal) {
     return decimal?.toString();
   }
 }
 
-/// Custom converter for timestamp (Unix epoch in seconds)
+/// Custom JSON converter for Unix timestamps in seconds to UTC [DateTime].
+///
+/// This converter handles Unix epoch timestamps (seconds since 1970-01-01 UTC)
+/// and converts them to UTC [DateTime] objects. All converted dates are
+/// explicitly set to UTC timezone to ensure consistency across different
+/// system timezones.
 class TimestampConverter implements JsonConverter<DateTime?, int?> {
   const TimestampConverter();
 
-  /// Converts Unix timestamp in seconds to DateTime
+  /// Converts Unix timestamp in seconds to UTC [DateTime].
+  ///
+  /// Takes a Unix epoch timestamp (seconds since 1970-01-01 UTC) and
+  /// returns a [DateTime] object explicitly set to UTC timezone.
+  ///
+  /// Returns null if the input timestamp is null.
   @override
   DateTime? fromJson(int? json) {
     if (json == null) return null;
     return DateTime.fromMillisecondsSinceEpoch(json * 1000, isUtc: true);
   }
 
-  /// Converts DateTime to Unix timestamp in seconds
+  /// Converts [DateTime] to Unix timestamp in seconds.
+  ///
+  /// Takes a [DateTime] object and returns the Unix epoch timestamp
+  /// in seconds since 1970-01-01 UTC. The input [DateTime] timezone
+  /// is automatically handled by the conversion.
+  ///
+  /// Returns null if the input [dateTime] is null.
   @override
   int? toJson(DateTime? dateTime) {
     if (dateTime == null) return null;

@@ -84,36 +84,70 @@ extension OhlcListToCoinOhlc on List<Ohlc> {
   }
 }
 
-/// Represents a Binance Kline (candlestick) data.
+/// Represents OHLC (Open-High-Low-Close) candlestick data from various sources.
+///
+/// This is a union type that can represent data from different sources:
+/// - [CoinGeckoOhlc]: OHLC data from CoinGecko API
+/// - [BinanceOhlc]: Kline data from Binance API with additional trading information
 @freezed
 abstract class Ohlc with _$Ohlc {
+  /// Creates an OHLC data point from CoinGecko API format.
+  ///
+  /// CoinGecko provides basic OHLC data with a single timestamp.
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory Ohlc.coingecko({
+    /// Unix timestamp in milliseconds for this data point
     required int timestamp,
+    /// Opening price as a [Decimal] for precision
     @DecimalConverter() required Decimal open,
+    /// Highest price reached during this period as a [Decimal]
     @DecimalConverter() required Decimal high,
+    /// Lowest price reached during this period as a [Decimal]
     @DecimalConverter() required Decimal low,
+    /// Closing price as a [Decimal] for precision
     @DecimalConverter() required Decimal close,
   }) = CoinGeckoOhlc;
 
+  /// Creates a kline (candlestick) data point from Binance API format.
+  ///
+  /// Binance provides comprehensive trading data including volume and trade counts.
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory Ohlc.binance({
+    /// Unix timestamp in milliseconds when this kline opened
     required int openTime,
+    /// Opening price as a [Decimal] for precision
     @DecimalConverter() required Decimal open,
+    /// Highest price reached during this kline as a [Decimal]
     @DecimalConverter() required Decimal high,
+    /// Lowest price reached during this kline as a [Decimal]
     @DecimalConverter() required Decimal low,
+    /// Closing price as a [Decimal] for precision
     @DecimalConverter() required Decimal close,
+    /// Unix timestamp in milliseconds when this kline closed
     required int closeTime,
+    /// Trading volume during this kline as a [Decimal]
     @DecimalConverter() Decimal? volume,
+    /// Quote asset volume during this kline as a [Decimal]
     @DecimalConverter() Decimal? quoteAssetVolume,
+    /// Number of trades executed during this kline
     int? numberOfTrades,
+    /// Volume of the asset bought by takers during this kline as a [Decimal]
     @DecimalConverter() Decimal? takerBuyBaseAssetVolume,
+    /// Quote asset volume of the asset bought by takers during this kline as a [Decimal]
     @DecimalConverter() Decimal? takerBuyQuoteAssetVolume,
   }) = BinanceOhlc;
 
+  /// Creates an [Ohlc] instance from a JSON map.
   factory Ohlc.fromJson(Map<String, dynamic> json) => _$OhlcFromJson(json);
 
   /// Creates a new instance of [Ohlc] from a JSON array.
+  ///
+  /// The array format varies by source:
+  /// - CoinGecko: [timestamp, open, high, low, close] (5 elements)
+  /// - Binance: [openTime, open, high, low, close, volume, closeTime, quoteAssetVolume, numberOfTrades, takerBuyBaseAssetVolume, takerBuyQuoteAssetVolume] (11+ elements)
+  ///
+  /// If [source] is provided, it forces parsing in that format.
+  /// If [source] is null, the parser uses array length heuristics.
   factory Ohlc.fromKlineArray(List<dynamic> json, {OhlcSource? source}) {
     Decimal asDecimal(dynamic value) {
       final dec = const DecimalConverter().fromJson(value);
@@ -172,19 +206,48 @@ abstract class Ohlc with _$Ohlc {
   }
 }
 
-/// Source hint for parsing OHLC arrays
-enum OhlcSource { coingecko, binance }
+/// Source hint for parsing OHLC arrays.
+///
+/// Used to disambiguate between different API response formats when parsing
+/// raw array data into [Ohlc] objects.
+enum OhlcSource {
+  /// CoinGecko API format: 5-element arrays
+  coingecko,
+  /// Binance API format: 11+ element arrays
+  binance
+}
 
+/// Extension providing unified accessors for [Ohlc] data regardless of source.
+///
+/// This extension normalizes the different field names and structures between
+/// CoinGecko and Binance formats, providing consistent access patterns.
 extension OhlcGetters on Ohlc {
+  /// Gets the opening time in milliseconds since epoch.
+  ///
+  /// For CoinGecko data, this returns the timestamp.
+  /// For Binance data, this returns the openTime.
   int get openTimeMs =>
       map(coingecko: (c) => c.timestamp, binance: (b) => b.openTime);
+
+  /// Gets the closing time in milliseconds since epoch.
+  ///
+  /// For CoinGecko data, this returns the timestamp (same as open time).
+  /// For Binance data, this returns the closeTime.
   int get closeTimeMs =>
       map(coingecko: (c) => c.timestamp, binance: (b) => b.closeTime);
+
+  /// Gets the opening price as a [Decimal] for precision.
   Decimal get openDecimal =>
       map(coingecko: (c) => c.open, binance: (b) => b.open);
+
+  /// Gets the highest price as a [Decimal] for precision.
   Decimal get highDecimal =>
       map(coingecko: (c) => c.high, binance: (b) => b.high);
+
+  /// Gets the lowest price as a [Decimal] for precision.
   Decimal get lowDecimal => map(coingecko: (c) => c.low, binance: (b) => b.low);
+
+  /// Gets the closing price as a [Decimal] for precision.
   Decimal get closeDecimal =>
       map(coingecko: (c) => c.close, binance: (b) => b.close);
 }
