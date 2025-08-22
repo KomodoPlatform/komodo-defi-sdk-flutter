@@ -10,16 +10,22 @@
 # Then re-activate the package with the same as the first command.
 
 name: komodo_wallet_cli
-description: A sample command-line application with basic argument parsing.
-version: 0.3.0+0
+description: Developer CLI package for Komodo Wallet tooling.
+version: 0.3.0+1
 repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter/
 
 environment:
   sdk: ^3.8.1
 
+resolution: workspace
+
 # Add regular dependencies here.
 dependencies:
   args: ^2.6.0
+  crypto: ^3.0.3
+  html: ^0.15.4
+  http: ^1.4.0
+  logging: ^1.3.0
   path: ^1.9.1
   yaml: ^3.1.3
 
@@ -27,9 +33,6 @@ dependencies:
 dev_dependencies:
   flutter_lints: ^6.0.0
   test: ^1.25.7
-
-  komodo_wallet_build_transformer:
-    path: ../komodo_wallet_build_transformer
 
 assets:
   - path: assets/transformer_invoker.txt

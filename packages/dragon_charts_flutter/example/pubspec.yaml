@@ -1,17 +1,19 @@
 name: dragon_charts_flutter_example
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 version: 0.1.0
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.9.0 <4.0.0"
+
+resolution: workspace
 
 dependencies:
-  bloc: ^8.1.4
+  bloc: ^9.0.0
   equatable: ^2.0.5
   flutter:
     sdk: flutter
-  flutter_bloc: ^8.1.5
+  flutter_bloc: ^9.1.1
 
   dragon_charts_flutter:
     path: ../
@@ -19,4 +21,4 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
