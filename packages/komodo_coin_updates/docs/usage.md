@@ -62,7 +62,8 @@ final assets = await provider.getAssets();
 ## Seed nodes
 
 ```dart
-final result = await SeedNodeUpdater.fetchSeedNodes();
+const config = AssetRuntimeUpdateConfig();
+final result = await SeedNodeUpdater.fetchSeedNodes(config: config);
 final seedNodes = result.seedNodes;
 final netId = result.netId;
 final asStrings = SeedNodeUpdater.seedNodesToStringList(seedNodes);

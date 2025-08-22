@@ -191,44 +191,27 @@ class GithubCoinConfigProvider implements CoinConfigProvider {
   /// If [branchOrCommit] is a branch name that matches a CDN mirror mapping,
   /// uses the CDN URL directly (CDN URLs always point to master/main).
   /// If [branchOrCommit] is a commit hash or non-CDN branch, uses GitHub raw URL.
+  ///
+  /// Uses the centralized URL building logic from [AssetRuntimeUpdateConfig.buildContentUrl].
   Uri _contentUri(String path, {String? branchOrCommit}) {
     branchOrCommit ??= branch;
-    final normalizedPath = path.startsWith('/') ? path.substring(1) : path;
 
-    // Check if we should use CDN based on the branch name
-    // CDN URLs always map to master/main branch, so we only use them
-    // when the requested branch matches a CDN mapping AND we're requesting
-    // the actual branch (not a commit hash)
-    final isCommitHash = _isCommitHash(branchOrCommit);
-    String? cdnBase;
-    if (!isCommitHash && cdnBranchMirrors != null) {
-      cdnBase = cdnBranchMirrors![branchOrCommit];
+    // Use the centralized helper for URL generation
+    final uri = AssetRuntimeUpdateConfig.buildContentUrl(
+      path: path,
+      coinsRepoContentUrl: coinsGithubContentUrl,
+      coinsRepoBranch: branchOrCommit,
+      cdnBranchMirrors: cdnBranchMirrors ?? <String, String>{},
+    );
+
+    // Log the URL choice for debugging
+    if (cdnBranchMirrors?.containsKey(branchOrCommit) ?? false) {
+      _log.fine('Using CDN URL for branch $branchOrCommit: $uri');
+    } else {
+      _log.fine('Using GitHub raw URL for $branchOrCommit: $uri');
     }
 
-    if (cdnBase != null && cdnBase.isNotEmpty) {
-      final baseWithSlash = cdnBase.endsWith('/') ? cdnBase : '$cdnBase/';
-      final baseUri = Uri.parse(baseWithSlash);
-      _log.fine('Using CDN URL for branch $branchOrCommit: $baseUri');
-      return baseUri.resolve(normalizedPath);
-    }
-
-    // Use GitHub raw URL with branch or commit hash
-    final contentBaseWithSlash =
-        coinsGithubContentUrl.endsWith('/')
-            ? coinsGithubContentUrl
-            : '$coinsGithubContentUrl/';
-    final contentBase = Uri.parse(
-      contentBaseWithSlash,
-    ).resolve('$branchOrCommit/');
-    _log.fine('Using GitHub raw URL for $branchOrCommit: $contentBase');
-    return contentBase.resolve(normalizedPath);
-  }
-
-  /// Determines if the given string looks like a commit hash (40-character hex string)
-  bool _isCommitHash(String branchOrCommit) {
-    // Git commit hashes are 40 characters long and contain only hex characters
-    if (branchOrCommit.length != 40) return false;
-    return RegExp(r'^[a-f0-9]+$').hasMatch(branchOrCommit.toLowerCase());
+    return uri;
   }
 
   /// Dispose HTTP resources if this provider owns the client.

@@ -1,12 +1,16 @@
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Example demonstrating how to use the new seed nodes functionality
 void main() async {
   try {
+    // Create a default config for the example
+    const config = AssetRuntimeUpdateConfig();
+
     // Fetch seed nodes from the remote source
     print('Fetching seed nodes from remote source...');
     final (seedNodes: seedNodes, netId: netId) =
-        await SeedNodeUpdater.fetchSeedNodes();
+        await SeedNodeUpdater.fetchSeedNodes(config: config);
 
     print('Found ${seedNodes.length} seed nodes on netid $netId:');
     for (final node in seedNodes) {
