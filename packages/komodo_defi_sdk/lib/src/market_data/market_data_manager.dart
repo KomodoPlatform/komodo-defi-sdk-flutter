@@ -139,10 +139,15 @@ class CexMarketDataManager
     QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
     final basePrefix = assetId.baseCacheKeyPrefix;
+    // Normalize input dates to UTC midnight before lookups to avoid timezone issues
+    final normalizedDate =
+        priceDate != null
+            ? DateTime.utc(priceDate.year, priceDate.month, priceDate.day)
+            : null;
     return canonicalCacheKeyFromBasePrefix(basePrefix, {
       'quote': quoteCurrency.symbol,
       'kind': 'price',
-      if (priceDate != null) 'ts': priceDate.millisecondsSinceEpoch,
+      if (normalizedDate != null) 'ts': normalizedDate.millisecondsSinceEpoch,
     });
   }
 
@@ -339,11 +344,17 @@ class CexMarketDataManager
     _checkNotDisposed();
     _assertInitialized();
 
+    // Normalize input dates to UTC midnight to avoid timezone issues
+    final normalizedDates =
+        dates
+            .map((date) => DateTime.utc(date.year, date.month, date.day))
+            .toList();
+
     final cached = <DateTime, Decimal>{};
     final missingDates = <DateTime>[];
 
-    // Check cache for each date
-    for (final date in dates) {
+    // Check cache for each normalized date
+    for (final date in normalizedDates) {
       final cacheKey = _getCacheKey(
         assetId,
         priceDate: date,
@@ -377,13 +388,15 @@ class CexMarketDataManager
     // Convert to Decimal, cache, and merge with cached
     final priceMap = priceDoubleMap.map((date, value) {
       final dec = Decimal.parse(value.toString());
+      // Normalize the date from the repository response to UTC midnight
+      final normalizedDate = DateTime.utc(date.year, date.month, date.day);
       final cacheKey = _getCacheKey(
         assetId,
-        priceDate: date,
+        priceDate: normalizedDate,
         quoteCurrency: quoteCurrency,
       );
       _priceCache[cacheKey] = dec;
-      return MapEntry(date, dec);
+      return MapEntry(normalizedDate, dec);
     });
 
     return {...cached, ...priceMap};

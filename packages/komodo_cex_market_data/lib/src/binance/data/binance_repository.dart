@@ -206,8 +206,12 @@ class BinanceRepository implements CexRepository {
         map,
         ohlc,
       ) {
-        final date = DateTime.fromMillisecondsSinceEpoch(ohlc.closeTimeMs);
-        map[DateTime(date.year, date.month, date.day)] = ohlc.closeDecimal;
+        final dateUtc = DateTime.fromMillisecondsSinceEpoch(
+          ohlc.closeTimeMs,
+          isUtc: true,
+        );
+        map[DateTime.utc(dateUtc.year, dateUtc.month, dateUtc.day)] =
+            ohlc.closeDecimal;
         return map;
       });
 

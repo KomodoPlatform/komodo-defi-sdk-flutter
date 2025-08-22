@@ -45,7 +45,7 @@ class TimestampConverter implements JsonConverter<DateTime?, int?> {
   @override
   DateTime? fromJson(int? json) {
     if (json == null) return null;
-    return DateTime.fromMillisecondsSinceEpoch(json * 1000);
+    return DateTime.fromMillisecondsSinceEpoch(json * 1000, isUtc: true);
   }
 
   /// Converts DateTime to Unix timestamp in seconds

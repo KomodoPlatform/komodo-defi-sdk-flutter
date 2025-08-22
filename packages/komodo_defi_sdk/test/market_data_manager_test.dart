@@ -316,7 +316,7 @@ void main() {
         () => fallbackRepo.supports(any(), any(), any()),
       ).thenAnswer((_) async => true);
 
-      final testDates = [DateTime(2023), DateTime(2023, 1, 2)];
+      final testDates = [DateTime.utc(2023), DateTime.utc(2023, 1, 2)];
 
       // Setup strategy to return primary repo first
       when(
