@@ -24,5 +24,14 @@ export 'src/types.dart';
 // Trading and swap related high-level types used across SDKs
 export 'src/trading/swap_types.dart';
 
+// Export migration types
+export 'src/migration/migration_config.dart';
+export 'src/migration/migration_errors.dart';
+export 'src/migration/migration_operation_preview.dart';
+export 'src/migration/migration_preview.dart';
+export 'src/migration/migration_progress.dart';
+export 'src/migration/migration_request.dart';
+export 'src/migration/migration_result.dart';
+
 // Export activation params types
 // export 'packages:komodo_defi_rpc_methods/lib/src/common_structures/activation/activation_params/activation_params_index.dart
