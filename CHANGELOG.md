@@ -11,6 +11,27 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 Packages with breaking changes:
 
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`komodo_defi_sdk` - `v0.4.0+1`](#komodo_defi_sdk---v0401)
+
+---
+
+#### `komodo_defi_sdk` - `v0.4.0+1`
+
+ - **FIX**: add missing dependency.
+
+
+## 2025-08-25
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
  - [`dragon_charts_flutter` - `v0.1.1-dev.3`](#dragon_charts_flutter---v011-dev3)
  - [`dragon_logs` - `v2.0.0`](#dragon_logs---v200)
  - [`komodo_defi_sdk` - `v0.4.0`](#komodo_defi_sdk---v040)
