@@ -78,6 +78,44 @@ const cfg = MarketDataConfig(
 );
 ```
 
+## Rate Limit Handling
+
+The package includes intelligent rate limit handling to prevent API quota exhaustion and service disruption:
+
+### Automatic 429 Detection
+
+When a repository returns a 429 (Too Many Requests) response, it is immediately marked as unhealthy and excluded from requests for 5 minutes. The system detects rate limiting errors by checking for:
+
+- HTTP status code 429 in exception messages
+- Text patterns like "too many requests" or "rate limit"
+
+### Fallback Behavior
+
+```dart
+// If CoinGecko hits rate limit, automatically falls back to Binance
+final price = await manager.fiatPrice(assetId);
+// No manual intervention required - fallback is transparent
+```
+
+### Repository Health Recovery
+
+Rate-limited repositories automatically recover after the backoff period:
+
+```dart
+// After 5 minutes, CoinGecko becomes available again
+// Next request will include it in the selection pool
+final newPrice = await manager.fiatPrice(assetId);
+```
+
+### Monitoring Rate Limits
+
+You can check repository health status (mainly useful for testing):
+
+```dart
+// Check if a repository is healthy (not rate-limited)
+final isHealthy = manager.isRepositoryHealthyForTest(repository);
+```
+
 ## License
 
 MIT

@@ -8,12 +8,33 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
 /// Mixin that provides repository fallback functionality for market data managers
+///
+/// This mixin handles intelligent fallback between multiple CEX repositories when
+/// one becomes unavailable or returns errors. It includes special handling for
+/// HTTP 429 (Too Many Requests) responses to prevent rate limiting issues.
+///
+/// Key features:
+/// - Health tracking for repositories with automatic backoff periods
+/// - Special 429 rate limit detection and immediate backoff (5 minutes)
+/// - Smart retry logic across multiple repositories
+/// - Repository prioritization based on health status
+///
+/// Rate Limit Handling:
+/// When a repository returns a 429 response (or similar rate limiting error),
+/// it is immediately marked as unhealthy and excluded from requests for the
+/// configured backoff period. This prevents cascading rate limit violations
+/// and allows the repository time to recover.
+///
+/// The mixin detects rate limiting errors by checking for:
+/// - HTTP status code 429 in exception messages
+/// - Text patterns like "too many requests" or "rate limit"
 mixin RepositoryFallbackMixin {
   static final _logger = Logger('RepositoryFallbackMixin');
 
   // Repository health tracking
   final Map<Type, DateTime> _repositoryFailures = {};
   final Map<Type, int> _repositoryFailureCounts = {};
+  final Map<Type, DateTime> _rateLimitedRepositories = {};
   static const _repositoryBackoffDuration = Duration(minutes: 5);
   static const _maxFailureCount = 3;
 
@@ -32,6 +53,19 @@ mixin RepositoryFallbackMixin {
   /// Checks if a repository is healthy (not in backoff period)
   bool _isRepositoryHealthy(CexRepository repo) {
     final repoType = repo.runtimeType;
+
+    // Check if repository is rate limited
+    final rateLimitEnd = _rateLimitedRepositories[repoType];
+    if (rateLimitEnd != null) {
+      final isRateLimitExpired = DateTime.now().isAfter(rateLimitEnd);
+      if (!isRateLimitExpired) {
+        return false;
+      } else {
+        // Rate limit period expired, remove from rate limited list
+        _rateLimitedRepositories.remove(repoType);
+      }
+    }
+
     final lastFailure = _repositoryFailures[repoType];
     final failureCount = _repositoryFailureCounts[repoType] ?? 0;
 
@@ -51,9 +85,26 @@ mixin RepositoryFallbackMixin {
     return isHealthy;
   }
 
+  /// Checks if an exception indicates a 429 (Too Many Requests) response
+  bool _isRateLimitError(Exception exception) {
+    final exceptionString = exception.toString().toLowerCase();
+
+    // Check for HTTP 429 status code in various exception formats
+    return exceptionString.contains('429') ||
+        exceptionString.contains('too many requests') ||
+        exceptionString.contains('rate limit');
+  }
+
   /// Records a repository failure
-  void _recordRepositoryFailure(CexRepository repo) {
+  void _recordRepositoryFailure(CexRepository repo, Exception exception) {
     final repoType = repo.runtimeType;
+
+    // Check if this is a rate limiting error
+    if (_isRateLimitError(exception)) {
+      _recordRateLimitFailure(repo);
+      return;
+    }
+
     _repositoryFailures[repoType] = DateTime.now();
     _repositoryFailureCounts[repoType] =
         (_repositoryFailureCounts[repoType] ?? 0) + 1;
@@ -64,6 +115,20 @@ mixin RepositoryFallbackMixin {
     );
   }
 
+  /// Records a rate limit failure and immediately applies backoff
+  void _recordRateLimitFailure(CexRepository repo) {
+    final repoType = repo.runtimeType;
+    final backoffEnd = DateTime.now().add(_repositoryBackoffDuration);
+
+    _rateLimitedRepositories[repoType] = backoffEnd;
+
+    _logger.warning(
+      'Repository ${repo.runtimeType} hit rate limit (429). '
+      'Applying immediate ${_repositoryBackoffDuration.inMinutes}-minute backoff '
+      'until ${backoffEnd.toIso8601String()}',
+    );
+  }
+
   /// Records a repository success
   void _recordRepositorySuccess(CexRepository repo) {
     final repoType = repo.runtimeType;
@@ -71,6 +136,8 @@ mixin RepositoryFallbackMixin {
       _repositoryFailureCounts[repoType] = 0;
       _repositoryFailures.remove(repoType);
     }
+    // Also clear any rate limit status on success
+    _rateLimitedRepositories.remove(repoType);
   }
 
   /// Gets repositories ordered by health and preference
@@ -173,7 +240,7 @@ mixin RepositoryFallbackMixin {
     String operationName, {
     int maxTotalAttempts = 3,
   }) async {
-    final repositories = await _getHealthyRepositoriesInOrder(
+    var repositories = await _getHealthyRepositoriesInOrder(
       assetId,
       quoteCurrency,
       requestType,
@@ -190,11 +257,30 @@ mixin RepositoryFallbackMixin {
     var attemptCount = 0;
 
     // Smart retry logic: try each repository in order first, then retry
-    // if needed
-    // Example with 3 attempts and 2 repos: repo1, repo2, repo1
+    // if needed, but re-evaluate health after rate limit errors
     for (var attempt = 0; attempt < maxTotalAttempts; attempt++) {
+      // Re-evaluate repository health if we've had failures
+      if (attempt > 0) {
+        repositories = await _getHealthyRepositoriesInOrder(
+          assetId,
+          quoteCurrency,
+          requestType,
+        );
+        if (repositories.isEmpty) {
+          break; // No healthy repositories left
+        }
+      }
+
       final repositoryIndex = attempt % repositories.length;
       final repo = repositories[repositoryIndex];
+
+      // Double-check repository health before attempting
+      if (!_isRepositoryHealthy(repo)) {
+        _logger.fine(
+          'Skipping unhealthy repository ${repo.runtimeType} for $operationName',
+        );
+        continue;
+      }
 
       try {
         attemptCount++;
@@ -223,7 +309,21 @@ mixin RepositoryFallbackMixin {
         return result;
       } catch (e, s) {
         lastException = e is Exception ? e : Exception(e.toString());
-        _recordRepositoryFailure(repo);
+        _recordRepositoryFailure(repo, lastException);
+
+        // If this was a rate limit error, immediately refresh the repository list
+        // to exclude the now-unhealthy repository from future attempts
+        if (_isRateLimitError(lastException)) {
+          _logger.fine(
+            'Rate limit detected for ${repo.runtimeType}, refreshing repository list',
+          );
+          repositories = await _getHealthyRepositoriesInOrder(
+            assetId,
+            quoteCurrency,
+            requestType,
+          );
+        }
+
         _logger
           ..fine(
             'Repository ${repo.runtimeType} failed for $operationName '
@@ -276,18 +376,6 @@ mixin RepositoryFallbackMixin {
   void clearRepositoryHealthData() {
     _repositoryFailures.clear();
     _repositoryFailureCounts.clear();
+    _rateLimitedRepositories.clear();
   }
-
-  // Expose health tracking methods for testing
-  // ignore: public_member_api_docs
-  bool isRepositoryHealthyForTest(CexRepository repo) =>
-      _isRepositoryHealthy(repo);
-
-  // ignore: public_member_api_docs
-  void recordRepositoryFailureForTest(CexRepository repo) =>
-      _recordRepositoryFailure(repo);
-
-  // ignore: public_member_api_docs
-  void recordRepositorySuccessForTest(CexRepository repo) =>
-      _recordRepositorySuccess(repo);
 }

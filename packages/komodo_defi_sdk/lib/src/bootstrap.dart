@@ -3,6 +3,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
+import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
@@ -59,6 +60,7 @@ Future<void> bootstrap({
   // Asset history storage singletons
   container.registerLazySingleton(AssetHistoryStorage.new);
   container.registerLazySingleton(CustomAssetHistoryStorage.new);
+  container.registerLazySingleton(KomodoAssetsUpdateManager.new);
 
   // Register asset manager first since it's a core dependency
   container.registerSingletonAsync<AssetManager>(() async {
@@ -70,6 +72,7 @@ Future<void> bootstrap({
       config,
       container<CustomAssetHistoryStorage>(),
       () => container<ActivationManager>(),
+      container<KomodoAssetsUpdateManager>(),
     );
     await assetManager.init();
     // Will be removed in near future after KW is fully migrated to KDF

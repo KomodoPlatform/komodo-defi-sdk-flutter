@@ -13,7 +13,7 @@ void main() {
       final json = request.toJson();
 
       expect(json['method'], 'unban_pubkeys');
-      expect(json['userpass'], 'RPC_UserP@SSW0RD');
+      expect(json['rpc_pass'], 'RPC_UserP@SSW0RD');
       expect(json['unban_by'], {'type': 'All'});
     });
 
@@ -31,7 +31,7 @@ void main() {
       final json = request.toJson();
 
       expect(json['method'], 'unban_pubkeys');
-      expect(json['userpass'], 'RPC_UserP@SSW0RD');
+      expect(json['rpc_pass'], 'RPC_UserP@SSW0RD');
       expect(json['unban_by'], {'type': 'Few', 'data': pubkeys});
     });
   });
@@ -249,7 +249,7 @@ void main() {
       final json = request.toJson();
 
       // Should match: {"userpass": "RPC_UserP@SSW0RD", "method": "unban_pubkeys", "unban_by": {"type": "All"}}
-      expect(json['userpass'], 'RPC_UserP@SSW0RD');
+      expect(json['rpc_pass'], 'RPC_UserP@SSW0RD');
       expect(json['method'], 'unban_pubkeys');
       expect(json['unban_by']['type'], 'All');
       expect(json['unban_by'].containsKey('data'), false);
@@ -269,7 +269,7 @@ void main() {
       final json = request.toJson();
 
       // Should match API documentation structure
-      expect(json['userpass'], 'RPC_UserP@SSW0RD');
+      expect(json['rpc_pass'], 'RPC_UserP@SSW0RD');
       expect(json['method'], 'unban_pubkeys');
       expect(json['unban_by']['type'], 'Few');
       expect(json['unban_by']['data'], pubkeys);

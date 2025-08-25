@@ -1,0 +1,198 @@
+name: Flutter package tests (consolidated)
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, dev, feat/**, bugfix/**, hotfix/**]
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Optional package path to test (e.g., packages/komodo_coin_updates or komodo_coin_updates)"
+        required: false
+      package_regex:
+        description: "Optional regex to filter packages (applied to full path under packages/*)"
+        required: false
+
+jobs:
+  test-all:
+    name: Flutter tests (all packages)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.35.1"
+          architecture: x64
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            **/.dart_tool
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: Discover packages
+        id: discover
+        shell: bash
+        run: |
+          set -euo pipefail
+          input_pkg="${{ github.event.inputs.package || '' }}"
+          input_re="${{ github.event.inputs.package_regex || '' }}"
+
+          # Discover all packages with pubspec.yaml
+          mapfile -t all_pkgs < <(find packages -mindepth 1 -maxdepth 1 -type d -exec test -e '{}/pubspec.yaml' ';' -print | sort)
+
+          filter_pkgs=()
+          if [ -n "$input_pkg" ]; then
+            # Normalize to packages/<name>
+            if [[ "$input_pkg" != packages/* ]]; then
+              input_pkg="packages/$input_pkg"
+            fi
+            if [ -e "$input_pkg/pubspec.yaml" ]; then
+              filter_pkgs+=("$input_pkg")
+            else
+              echo "No pubspec.yaml found at $input_pkg; no packages to test" >&2
+              echo "packages=" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          elif [ -n "$input_re" ]; then
+            while IFS= read -r p; do
+              if echo "$p" | grep -Eq "$input_re"; then
+                filter_pkgs+=("$p")
+              fi
+            done < <(printf '%s\n' "${all_pkgs[@]}")
+          else
+            filter_pkgs=("${all_pkgs[@]}")
+          fi
+
+          # Keep only packages that contain a test/ directory
+          with_tests=()
+          for p in "${filter_pkgs[@]}"; do
+            if [ -d "$p/test" ]; then
+              with_tests+=("$p")
+            fi
+          done
+
+          if [ ${#with_tests[@]} -eq 0 ]; then
+            echo "packages=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Output space-separated list of packages
+          echo "packages=${with_tests[*]}" >> "$GITHUB_OUTPUT"
+          echo "Found packages with tests: ${with_tests[*]}"
+
+      - name: Install dependencies for all packages
+        if: steps.discover.outputs.packages != ''
+        shell: bash
+        run: |
+          packages="${{ steps.discover.outputs.packages }}"
+          if [ -n "$packages" ]; then
+            for pkg in $packages; do
+              echo "Installing dependencies for $pkg..."
+              cd "$pkg"
+              flutter pub get
+              cd - > /dev/null
+            done
+          fi
+
+      - name: Run dry web build to generate assets (expected to fail)
+        if: steps.discover.outputs.packages != ''
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: packages/komodo_defi_sdk/example
+        run: flutter build web --release || echo "Dry build completed (failure expected)"
+
+      - name: Run tests for all packages
+        if: steps.discover.outputs.packages != ''
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          packages="${{ steps.discover.outputs.packages }}"
+
+          # Initialize results tracking
+          declare -A test_results
+          declare -A test_outputs
+          overall_success=true
+
+          echo "# Test Results" > test_summary.md
+          echo "" >> test_summary.md
+          echo "| Package | Status | Details |" >> test_summary.md
+          echo "|---------|--------|---------|" >> test_summary.md
+
+          # Run tests for each package
+          for pkg in $packages; do
+            echo ""
+            echo "========================================="
+            echo "Testing package: $pkg"
+            echo "========================================="
+
+            cd "$pkg"
+
+            # Run flutter test and capture output and exit code
+            if flutter_output=$(flutter test -r expanded 2>&1); then
+              test_results["$pkg"]="✅ PASS"
+              test_outputs["$pkg"]="Tests passed successfully"
+              echo "✅ $pkg: PASSED"
+            else
+              test_results["$pkg"]="❌ FAIL"
+              test_outputs["$pkg"]=$(echo "$flutter_output" | tail -n 10)  # Last 10 lines for brevity
+              echo "❌ $pkg: FAILED"
+              overall_success=false
+            fi
+
+            cd - > /dev/null
+          done
+
+          echo ""
+          echo "========================================="
+          echo "TEST SUMMARY"
+          echo "========================================="
+
+          # Generate summary table
+          for pkg in $packages; do
+            status="${test_results[$pkg]}"
+            details="${test_outputs[$pkg]}"
+            # Escape pipe characters in details for markdown table
+            details=$(echo "$details" | sed 's/|/\\|/g' | tr '\n' ' ' | sed 's/  */ /g' | cut -c1-100)
+            if [ ${#details} -eq 100 ]; then
+              details="${details}..."
+            fi
+            echo "| \`$pkg\` | $status | $details |" >> test_summary.md
+            echo "$status $pkg"
+          done
+
+          echo ""
+          cat test_summary.md
+
+          # Set step summary for GitHub Actions
+          cat test_summary.md >> "$GITHUB_STEP_SUMMARY"
+
+          # Fail the job if any tests failed
+          if [ "$overall_success" = false ]; then
+            echo ""
+            echo "❌ One or more test suites failed!"
+            exit 1
+          else
+            echo ""
+            echo "✅ All test suites passed!"
+          fi
+
+      - name: Upload test summary
+        if: always() && steps.discover.outputs.packages != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-summary
+          path: test_summary.md
+          retention-days: 30

@@ -46,7 +46,8 @@ class TrezorAssetFilterStrategy extends AssetFilterStrategy {
         subClass == CoinSubClass.smartChain ||
         subClass == CoinSubClass.qrc20;
 
-    final hasTrezorCoinField = coinConfig.containsKey('trezor_coin');
+    final hasTrezorCoinField = coinConfig['trezor_coin'] is String &&
+        (coinConfig['trezor_coin'] as String).isNotEmpty;
     final isExcludedAsset = hiddenAssets.contains(asset.id.id);
 
     return isProtocolSupported && hasTrezorCoinField && !isExcludedAsset;

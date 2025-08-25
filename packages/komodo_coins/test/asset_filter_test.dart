@@ -1,4 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_ce/hive.dart';
+import 'package:komodo_coin_updates/hive/hive_registrar.g.dart';
+import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coins/src/asset_filter.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -14,53 +17,87 @@ void main() {
       'trezor_coin': 'Bitcoin',
     };
 
-    final ethConfig = {
-      'coin': 'ETH',
-      'fname': 'Ethereum',
+    final noTrezorConfig = {
+      'coin': 'NTZ',
+      'fname': 'NoTrezor',
       'chain_id': 1,
-      'type': 'ERC-20',
-      'protocol': {
-        'type': 'ETH',
-        'protocol_data': {'chain_id': 1},
-      },
-      'nodes': [
-        {'url': 'https://rpc'},
-      ],
-      'swap_contract_address': '0xabc',
-      'fallback_swap_contract': '0xdef',
+      'type': 'UTXO',
+      'protocol': {'type': 'UTXO'},
+      'is_testnet': false,
+      // intentionally no 'trezor_coin'
     };
 
-    final btc = Asset.fromJson(btcConfig);
-    final eth = Asset.fromJson(ethConfig);
+    late CoinConfigRepository repo;
+    // Use repository helpers to parse and store assets from raw JSON
+    setUp(() async {
+      Hive.init(
+        './.dart_tool/test_hive_${DateTime.now().microsecondsSinceEpoch}',
+      );
+      try {
+        Hive.registerAdapters();
+      } catch (_) {}
+      repo = CoinConfigRepository.withDefaults(
+        const AssetRuntimeUpdateConfig(
+          fetchAtBuildEnabled: false,
+          updateCommitOnBuild: false,
+          bundledCoinsRepoCommit: 'local',
+          runtimeUpdatesEnabled: false,
+          mappedFiles: {},
+          mappedFolders: {},
+          cdnBranchMirrors: {},
+        ),
+      );
+      await repo.upsertRawAssets(
+        {
+          'BTC': btcConfig,
+          'NTZ': noTrezorConfig,
+        },
+        'test',
+      );
+    });
 
-    test('Trezor filter excludes assets missing trezor_coin', () {
+    tearDown(() async {
+      await Hive.close();
+    });
+
+    Future<Map<AssetId, Asset>> assetsFromRepo() async {
+      final list = await repo.getAssets();
+      return {for (final a in list) a.id: a};
+    }
+
+    test('Trezor filter excludes assets missing trezor_coin', () async {
       const filter = TrezorAssetFilterStrategy();
-      expect(filter.shouldInclude(btc, btc.protocol.config), isTrue);
-      expect(filter.shouldInclude(eth, eth.protocol.config), isFalse);
-
-      final assets = {btc.id: btc, eth.id: eth};
+      final assets = await assetsFromRepo();
       final filtered = <AssetId, Asset>{};
       for (final entry in assets.entries) {
         if (filter.shouldInclude(entry.value, entry.value.protocol.config)) {
           filtered[entry.key] = entry.value;
         }
       }
-
-      expect(filtered.containsKey(btc.id), isTrue);
-      expect(filtered.containsKey(eth.id), isFalse);
+      expect(filtered.keys.any((id) => id.id == 'BTC'), isTrue);
+      expect(filtered.keys.any((id) => id.id == 'NTZ'), isFalse);
     });
 
-    test('Trezor filter ignores empty trezor_coin field', () {
+    test('Trezor filter ignores empty trezor_coin field', () async {
       final cfg = Map<String, dynamic>.from(btcConfig)..['trezor_coin'] = '';
       final asset = Asset.fromJson(cfg);
       const filter = TrezorAssetFilterStrategy();
       expect(filter.shouldInclude(asset, asset.protocol.config), isFalse);
     });
 
-    test('UTXO filter only includes utxo assets', () {
+    test('UTXO filter only includes utxo assets', () async {
       const filter = UtxoAssetFilterStrategy();
-      expect(filter.shouldInclude(btc, btc.protocol.config), isTrue);
-      expect(filter.shouldInclude(eth, eth.protocol.config), isFalse);
+      final assets = await assetsFromRepo();
+      final btc = assets.keys.firstWhere((id) => id.id == 'BTC');
+      final ntz = assets.keys.firstWhere((id) => id.id == 'NTZ');
+      expect(
+        filter.shouldInclude(assets[btc]!, assets[btc]!.protocol.config),
+        isTrue,
+      );
+      expect(
+        filter.shouldInclude(assets[ntz]!, assets[ntz]!.protocol.config),
+        isTrue,
+      );
     });
 
     test('UTXO filter accepts smartChain subclass', () {

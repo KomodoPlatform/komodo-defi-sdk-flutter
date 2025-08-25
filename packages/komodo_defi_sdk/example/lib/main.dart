@@ -1,7 +1,9 @@
 // lib/main.dart
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:dragon_logs/dragon_logs.dart' as dragon;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
@@ -13,6 +15,7 @@ import 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
     show sparklineRepository;
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 final GlobalKey<ScaffoldMessengerState> _scaffoldKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -20,6 +23,20 @@ final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Setup logging package listener to output to dart:developer log
+  Logger.root.level = kDebugMode ? Level.ALL : Level.INFO;
+  Logger.root.onRecord.listen((record) {
+    developer.log(
+      record.message,
+      time: record.time,
+      level: record.level.value,
+      name: record.loggerName,
+      error: record.error,
+      stackTrace: record.stackTrace,
+    );
+  });
+
   await dragon.DragonLogs.init();
 
   // Create instance manager

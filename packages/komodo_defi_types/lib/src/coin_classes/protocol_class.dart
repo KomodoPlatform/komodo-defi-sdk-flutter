@@ -18,7 +18,8 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
   factory ProtocolClass.fromJson(JsonMap json, {CoinSubClass? requestedType}) {
     final primaryType =
         requestedType ?? CoinSubClass.parse(json.value<String>('type'));
-    final otherTypes = json
+    final otherTypes =
+        json
             .valueOrNull<List<dynamic>>('other_types')
             ?.map((type) => CoinSubClass.parse(type as String))
             .toList() ??
@@ -27,14 +28,14 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
     // If a specific type is requested, update the config
     final configToUse = requestedType != null && requestedType != primaryType
         ? (JsonMap.of(json)
-          ..['type'] = requestedType.toString().split('.').last)
+            ..['type'] = requestedType.toString().split('.').last)
         : json;
     try {
       return switch (primaryType) {
         CoinSubClass.utxo || CoinSubClass.smartChain => UtxoProtocol.fromJson(
-            configToUse,
-            supportedProtocols: otherTypes,
-          ),
+          configToUse,
+          supportedProtocols: otherTypes,
+        ),
         // SLP is no longer supported by its own protocol (BCH)
         // CoinSubClass.slp => SlpProtocol.fromJson(
         //     configToUse,
@@ -54,28 +55,25 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
         CoinSubClass.ewt ||
         CoinSubClass.hecoChain ||
         CoinSubClass.rskSmartBitcoin ||
-        CoinSubClass.erc20 =>
-          Erc20Protocol.fromJson(json),
+        CoinSubClass.erc20 => Erc20Protocol.fromJson(json),
         CoinSubClass.qrc20 => QtumProtocol.fromJson(json),
         CoinSubClass.zhtlc => ZhtlcProtocol.fromJson(json),
         CoinSubClass.tendermintToken ||
-        CoinSubClass.tendermint =>
-          TendermintProtocol.fromJson(
-            configToUse,
-            supportedProtocols: otherTypes,
-          ),
+        CoinSubClass.tendermint => TendermintProtocol.fromJson(
+          configToUse,
+          supportedProtocols: otherTypes,
+        ),
         CoinSubClass.sia when kDebugMode => SiaProtocol.fromJson(
-            configToUse,
-            supportedProtocols: otherTypes,
-          ),
+          configToUse,
+          supportedProtocols: otherTypes,
+        ),
         // ignore: deprecated_member_use_from_same_package
         CoinSubClass.sia ||
         CoinSubClass.slp ||
         CoinSubClass.smartBch ||
-        CoinSubClass.unknown =>
-          throw UnsupportedProtocolException(
-            'Unsupported protocol type: ${primaryType.formatted}',
-          ),
+        CoinSubClass.unknown => throw UnsupportedProtocolException(
+          'Unsupported protocol type: ${primaryType.formatted}',
+        ),
         // _ => throw UnsupportedProtocolException(
         //     'Unsupported protocol type: ${subClass.formatted}',
         //   ),
@@ -116,14 +114,14 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
 
   /// Convert protocol back to JSON representation
   JsonMap toJson() => {
-        ...config,
-        'sub_class': subClass.toString().split('.').last,
-        'is_custom_token': isCustomToken,
-        if (supportedProtocols.isNotEmpty)
-          'other_types': supportedProtocols
-              .map((p) => p.toString().split('.').last)
-              .toList(),
-      };
+    ...config,
+    'sub_class': subClass.toString().split('.').last,
+    'is_custom_token': isCustomToken,
+    if (supportedProtocols.isNotEmpty)
+      'other_types': supportedProtocols
+          .map((p) => p.toString().split('.').last)
+          .toList(),
+  };
 
   /// Check if this protocol supports a given protocol type
   bool supportsProtocolType(CoinSubClass type) {
@@ -142,22 +140,21 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
 
   ActivationParams defaultActivationParams({
     PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
-  }) =>
-      ActivationParams.fromConfigJson(config).genericCopyWith(
-        privKeyPolicy: privKeyPolicy,
-      );
+  }) => ActivationParams.fromConfigJson(
+    config,
+  ).genericCopyWith(privKeyPolicy: privKeyPolicy);
 
   String? get contractAddress => config.valueOrNull<String>('contract_address');
 
   @override
   List<Object?> get props => [
-        subClass,
-        supportedProtocols,
-        isCustomToken,
-        requiresHdWallet,
-        derivationPath,
-        isTestnet,
-      ];
+    subClass,
+    supportedProtocols,
+    isCustomToken,
+    requiresHdWallet,
+    derivationPath,
+    isTestnet,
+  ];
 
   @override
   bool? get stringify => false;

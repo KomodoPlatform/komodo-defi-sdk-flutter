@@ -1,7 +1,7 @@
 import 'package:komodo_cex_market_data/src/binance/binance.dart';
+import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
 import 'package:komodo_cex_market_data/src/komodo/komodo.dart';
-import 'package:komodo_cex_market_data/src/cex_repository.dart';
 
 /// Utility class for managing repository priorities using a map-based approach.
 ///

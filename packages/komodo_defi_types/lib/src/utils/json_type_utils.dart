@@ -5,6 +5,25 @@ import 'package:decimal/decimal.dart';
 typedef JsonMap = Map<String, dynamic>;
 typedef JsonList = List<JsonMap>;
 
+/// Converts a map-like structure to a JSON-compatible [Map<String, dynamic>].
+///
+/// This function recursively converts all keys to strings and all nested maps/lists
+/// to JSON-compatible types. It is safe to use with Hive-returned Map types and
+/// will handle deeply nested structures.
+///
+/// Parameters:
+/// - [map]: The input map of type [Map<dynamic, dynamic>] to be converted.
+///
+/// Returns:
+/// - A [JsonMap] ([Map<String, dynamic>]) containing the converted data.
+///
+/// Exceptions:
+/// - This function does not throw exceptions directly, but if the input map contains
+///   values that cannot be converted to JSON-compatible types, the behavior is undefined.
+JsonMap convertToJsonMap(Map<dynamic, dynamic> map) {
+  return _convertMap<JsonMap>(map);
+}
+
 JsonMap jsonFromString(String json) {
   final decode = jsonDecode(json);
 

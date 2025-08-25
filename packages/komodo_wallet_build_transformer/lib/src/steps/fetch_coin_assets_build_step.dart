@@ -37,10 +37,8 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     ReceivePort? receivePort,
     String? githubToken,
   }) {
-    final config = buildConfig.coinCIConfig.copyWith(
-      // Use the effective content URL which checks CDN mirrors
-      coinsRepoContentUrl: buildConfig.coinCIConfig.effectiveContentUrl,
-    );
+    // Use the original config unchanged to preserve user configuration
+    final config = buildConfig.coinCIConfig;
 
     final provider = GithubApiProvider.withBaseUrl(
       baseUrl: config.coinsRepoApiUrl,
@@ -50,7 +48,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
 
     final downloader = GitHubFileDownloader(
       apiProvider: provider,
-      repoContentUrl: config.coinsRepoContentUrl,
+      repoContentUrl: config.effectiveContentUrl,
     );
 
     return FetchCoinAssetsBuildStep(
@@ -82,8 +80,9 @@ class FetchCoinAssetsBuildStep extends BuildStep {
   @override
   Future<void> build() async {
     // Check if the coin assets already exist in the artifact directory
-    final alreadyHadCoinAssets =
-        File('$artifactOutputDirectory/assets/config/coins.json').existsSync();
+    final alreadyHadCoinAssets = File(
+      '$artifactOutputDirectory/assets/config/coins.json',
+    ).existsSync();
 
     final isDebugBuild =
         (Platform.environment['FLUTTER_BUILD_MODE'] ?? '').toLowerCase() ==
@@ -105,10 +104,9 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       );
     }
 
-    final downloadMethod =
-        config.concurrentDownloadsEnabled
-            ? downloader.download
-            : downloader.downloadSync;
+    final downloadMethod = config.concurrentDownloadsEnabled
+        ? downloader.download
+        : downloader.downloadSync;
     await downloadMethod(
       configWithUpdatedCommit.bundledCoinsRepoCommit,
       _adjustPaths(configWithUpdatedCommit.mappedFiles),
@@ -120,13 +118,14 @@ class FetchCoinAssetsBuildStep extends BuildStep {
         configWithUpdatedCommit.bundledCoinsRepoCommit;
 
     if (wasCommitHashUpdated || !alreadyHadCoinAssets) {
-      final errorMessage = '''
+      final errorMessage =
+          '''
         \n
         ${'=-' * 20}
         BUILD FAILED
 
         What: Coin assets were updated.
-        
+
         How to fix: Re-run the build process for the changes to take effect.
 
         Why: This is due to a limitation in Flutter's build system. We're
