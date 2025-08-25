@@ -15,7 +15,7 @@ void main() {
 
     setUp(() {
       mockMigrationBloc = MockMigrationBloc();
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.initial());
+      when(() => mockMigrationBloc.state).thenReturn(const MigrationState());
     });
 
     final testUser = KdfUser(
@@ -67,7 +67,7 @@ void main() {
     });
 
     testWidgets('shows close button when not in progress', (tester) async {
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.initial());
+      when(() => mockMigrationBloc.state).thenReturn(const MigrationState());
 
       await tester.pumpWidget(createWidgetUnderTest());
 
@@ -76,7 +76,9 @@ void main() {
     });
 
     testWidgets('hides close button when migration is in progress', (tester) async {
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.scanning());
+      when(() => mockMigrationBloc.state).thenReturn(
+        const MigrationState(status: MigrationFlowStatus.scanning),
+      );
 
       await tester.pumpWidget(createWidgetUnderTest());
 
@@ -114,7 +116,7 @@ void main() {
     });
 
     testWidgets('displays InitiateMigrationScreen for idle state', (tester) async {
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.initial());
+      when(() => mockMigrationBloc.state).thenReturn(const MigrationState());
 
       await tester.pumpWidget(createWidgetUnderTest(sourceWallet: testUser));
 
@@ -123,7 +125,9 @@ void main() {
     });
 
     testWidgets('displays ScanningBalancesScreen for scanning state', (tester) async {
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.scanning());
+      when(() => mockMigrationBloc.state).thenReturn(
+        const MigrationState(status: MigrationFlowStatus.scanning),
+      );
 
       await tester.pumpWidget(createWidgetUnderTest());
 
@@ -146,7 +150,10 @@ void main() {
       ];
 
       when(() => mockMigrationBloc.state).thenReturn(
-        MigrationState.preview(coins: coins),
+        MigrationState(
+          status: MigrationFlowStatus.preview,
+          coins: coins,
+        ),
       );
 
       await tester.pumpWidget(createWidgetUnderTest());
@@ -171,7 +178,11 @@ void main() {
       ];
 
       when(() => mockMigrationBloc.state).thenReturn(
-        MigrationState.transferring(coins: coins, currentCoinIndex: 0),
+        MigrationState(
+          status: MigrationFlowStatus.transferring,
+          coins: coins,
+          currentCoinIndex: 0,
+        ),
       );
 
       await tester.pumpWidget(createWidgetUnderTest());
@@ -207,7 +218,10 @@ void main() {
 
     testWidgets('displays error screen for error state', (tester) async {
       when(() => mockMigrationBloc.state).thenReturn(
-        MigrationState.error(errorMessage: 'Test error occurred'),
+        const MigrationState(
+          status: MigrationFlowStatus.error,
+          errorMessage: 'Test error occurred',
+        ),
       );
 
       await tester.pumpWidget(createWidgetUnderTest());
@@ -219,7 +233,8 @@ void main() {
 
     testWidgets('error screen has Close and Try Again buttons', (tester) async {
       when(() => mockMigrationBloc.state).thenReturn(
-        MigrationState.error(
+        const MigrationState(
+          status: MigrationFlowStatus.error,
           errorMessage: 'Test error',
           sourceWalletName: 'Source',
           destinationWalletName: 'Dest',
@@ -236,7 +251,8 @@ void main() {
 
     testWidgets('Try Again button clears error and restarts migration', (tester) async {
       when(() => mockMigrationBloc.state).thenReturn(
-        MigrationState.error(
+        const MigrationState(
+          status: MigrationFlowStatus.error,
           errorMessage: 'Test error',
           sourceWalletName: 'Source',
           destinationWalletName: 'Dest',
@@ -258,14 +274,17 @@ void main() {
     });
 
     testWidgets('shows snackbar on error state', (tester) async {
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.initial());
+      when(() => mockMigrationBloc.state).thenReturn(const MigrationState());
 
       await tester.pumpWidget(createWidgetUnderTest());
       await tester.pump();
 
       // Simulate error state change
       when(() => mockMigrationBloc.state).thenReturn(
-        MigrationState.error(errorMessage: 'Network error'),
+        const MigrationState(
+          status: MigrationFlowStatus.error,
+          errorMessage: 'Network error',
+        ),
       );
 
       // Rebuild with error state
@@ -277,7 +296,10 @@ void main() {
 
     testWidgets('error screen shows help text', (tester) async {
       when(() => mockMigrationBloc.state).thenReturn(
-        MigrationState.error(errorMessage: 'Test error'),
+        const MigrationState(
+          status: MigrationFlowStatus.error,
+          errorMessage: 'Test error',
+        ),
       );
 
       await tester.pumpWidget(createWidgetUnderTest());
@@ -306,7 +328,11 @@ void main() {
       ];
 
       when(() => mockMigrationBloc.state).thenReturn(
-        MigrationState.error(errorMessage: 'Test error', coins: coins),
+        MigrationState(
+          status: MigrationFlowStatus.error,
+          errorMessage: 'Test error',
+          coins: coins,
+        ),
       );
 
       await tester.pumpWidget(createWidgetUnderTest());
@@ -350,7 +376,7 @@ void main() {
 
     setUp(() {
       mockMigrationBloc = MockMigrationBloc();
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.initial());
+      when(() => mockMigrationBloc.state).thenReturn(const MigrationState());
     });
 
     Widget createPageUnderTest() {
@@ -371,7 +397,7 @@ void main() {
     });
 
     testWidgets('shows back arrow when not in progress', (tester) async {
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.initial());
+      when(() => mockMigrationBloc.state).thenReturn(const MigrationState());
 
       await tester.pumpWidget(createPageUnderTest());
 
@@ -379,7 +405,9 @@ void main() {
     });
 
     testWidgets('hides back button when migration is in progress', (tester) async {
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.scanning());
+      when(() => mockMigrationBloc.state).thenReturn(
+        const MigrationState(status: MigrationFlowStatus.scanning),
+      );
 
       await tester.pumpWidget(createPageUnderTest());
 

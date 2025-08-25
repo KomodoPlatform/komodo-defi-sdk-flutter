@@ -14,7 +14,7 @@ void main() {
 
     setUp(() {
       mockMigrationBloc = MockMigrationBloc();
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.scanning());
+      when(() => mockMigrationBloc.state).thenReturn(const MigrationState(status: MigrationFlowStatus.scanning));
     });
 
     Widget createWidgetUnderTest() {

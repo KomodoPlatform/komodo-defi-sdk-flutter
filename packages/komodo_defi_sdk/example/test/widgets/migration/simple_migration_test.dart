@@ -3,13 +3,28 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kdf_sdk_example/migrations/migrations.dart';
 import 'package:kdf_sdk_example/widgets/migration/initiate_migration_screen.dart';
+import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
+import 'package:mocktail/mocktail.dart';
+
+/// Mocks
+class MockKomodoDefiSdk extends Mock implements KomodoDefiSdk {}
+class MockAssetManager extends Mock implements AssetManager {}
 
 void main() {
   group('Simple Migration Test', () {
     late MigrationBloc migrationBloc;
+    late MockKomodoDefiSdk mockSdk;
+    late MockAssetManager mockAssetManager;
 
     setUp(() {
-      migrationBloc = MigrationBloc();
+      mockSdk = MockKomodoDefiSdk();
+      mockAssetManager = MockAssetManager();
+
+      // Provide minimal expectations for properties used during initial scanning
+      when(() => mockSdk.assets).thenReturn(mockAssetManager);
+      when(() => mockAssetManager.available).thenReturn(<AssetId, Asset>{});
+
+      migrationBloc = MigrationBloc(sdk: mockSdk);
     });
 
     tearDown(() {
@@ -62,15 +77,17 @@ void main() {
       );
     });
 
-    testWidgets('start migration button triggers event', (tester) async {
+    testWidgets('start migration button triggers scanning state', (tester) async {
       await tester.pumpWidget(createTestWidget());
 
       final button = find.byKey(const Key('start_migration_button'));
       await tester.tap(button);
+      // Let bloc process the event (no need to advance time to after delay)
       await tester.pump();
 
-      // Verify the bloc state changed to scanning
+      // State should have transitioned to scanning immediately
       expect(migrationBloc.state.status, equals(MigrationFlowStatus.scanning));
+      verify(() => mockSdk.assets).called(0); // Not yet accessed (delay not elapsed)
     });
 
     testWidgets('shows proper icons', (tester) async {

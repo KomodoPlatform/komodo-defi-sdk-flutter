@@ -115,7 +115,7 @@ void main() {
       ).thenAnswer((_) async => true);
       when(
         () => activation.activateAsset(asset),
-      ).thenAnswer((_) async => ActivationResult.success(asset.id));
+      ).thenAnswer((_) => Future.value(ActivationResult.success(asset.id)));
     }
 
     void stubWalletMyBalance({
@@ -329,7 +329,7 @@ void main() {
         // Pre-cache with initial address
         when(
           () => activation.activateAsset(tendermintAsset),
-        ).thenAnswer((_) async => ActivationResult.success(tendermintAsset.id));
+        ).thenAnswer((_) => Future.value(ActivationResult.success(tendermintAsset.id)));
         when(
           () => activation.isAssetActive(tendermintAsset.id),
         ).thenAnswer((_) async => true);
@@ -365,7 +365,7 @@ void main() {
         ).thenAnswer((_) async => true);
         when(
           () => activation.activateAsset(tendermintAsset),
-        ).thenAnswer((_) async => ActivationResult.success(tendermintAsset.id));
+        ).thenAnswer((_) => Future.value(ActivationResult.success(tendermintAsset.id)));
 
         expect(manager.lastKnown(tendermintAsset.id), isNull);
 
@@ -386,7 +386,7 @@ void main() {
       ).thenAnswer((_) async => true);
       when(
         () => activation.activateAsset(tendermintAsset),
-      ).thenAnswer((_) async => ActivationResult.success(tendermintAsset.id));
+      ).thenAnswer((_) => Future.value(ActivationResult.success(tendermintAsset.id)));
 
       stubWalletMyBalance(address: 'cosmos1pre', coin: tendermintAsset.id.id);
       await manager.precachePubkeys(tendermintAsset);
@@ -528,7 +528,7 @@ void main() {
         ).thenAnswer((_) async => false);
         when(
           () => activation.activateAsset(tendermintAsset),
-        ).thenAnswer((_) async => ActivationResult.success(tendermintAsset.id));
+        ).thenAnswer((_) => Future.value(ActivationResult.success(tendermintAsset.id)));
 
         // Do NOT pre-cache; we want to ensure no activation occurs and no emissions happen
 
@@ -632,9 +632,9 @@ void main() {
         ).thenAnswer((_) async => true);
         when(() => activation.activateAsset(any())).thenAnswer((
           invocation,
-        ) async {
+        ) {
           final assetArg = invocation.positionalArguments.first as Asset;
-          return ActivationResult.success(assetArg.id);
+          return Future.value(ActivationResult.success(assetArg.id));
         });
 
         // Provide a minimal single-address asset and RPC stub

@@ -17,7 +17,7 @@ void main() {
 
     setUp(() {
       mockMigrationBloc = MockMigrationBloc();
-      when(() => mockMigrationBloc.state).thenReturn(MigrationState.initial());
+      when(() => mockMigrationBloc.state).thenReturn(const MigrationState());
     });
 
     final testCoins = [
