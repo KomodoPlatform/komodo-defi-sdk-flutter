@@ -7,49 +7,49 @@ void main() {
       test('handles "ContextPrivKey" (PascalCase legacy)', () {
         final result = PrivateKeyPolicy.fromLegacyJson('ContextPrivKey');
         expect(result, const PrivateKeyPolicy.contextPrivKey());
-        expect(result.toJson()['type'], 'context_priv_key');
+        expect(result.toJson()['type'], 'ContextPrivKey');
       });
 
       test('handles "context_priv_key" (snake_case)', () {
         final result = PrivateKeyPolicy.fromLegacyJson('context_priv_key');
         expect(result, const PrivateKeyPolicy.contextPrivKey());
-        expect(result.toJson()['type'], 'context_priv_key');
+        expect(result.toJson()['type'], 'ContextPrivKey');
       });
 
       test('handles "Trezor" (PascalCase legacy)', () {
         final result = PrivateKeyPolicy.fromLegacyJson('Trezor');
         expect(result, const PrivateKeyPolicy.trezor());
-        expect(result.toJson()['type'], 'trezor');
+        expect(result.toJson()['type'], 'Trezor');
       });
 
       test('handles "trezor" (snake_case)', () {
         final result = PrivateKeyPolicy.fromLegacyJson('trezor');
         expect(result, const PrivateKeyPolicy.trezor());
-        expect(result.toJson()['type'], 'trezor');
+        expect(result.toJson()['type'], 'Trezor');
       });
 
       test('handles "WalletConnect" (PascalCase legacy)', () {
         final result = PrivateKeyPolicy.fromLegacyJson('WalletConnect');
         expect(result.toString(), contains('walletConnect'));
-        expect(result.toJson()['type'], 'wallet_connect');
+        expect(result.toJson()['type'], 'WalletConnect');
         expect(result.toJson()['session_topic'], '');
       });
     });
 
     group('Modern JSON Format', () {
-      test('handles modern JSON with context_priv_key', () {
-        final json = {'type': 'context_priv_key'};
+      test('handles modern JSON with ContextPrivKey', () {
+        final json = {'type': 'ContextPrivKey'};
         final result = PrivateKeyPolicy.fromLegacyJson(json);
         expect(result, const PrivateKeyPolicy.contextPrivKey());
       });
 
-      test('handles modern JSON with wallet_connect and session_topic', () {
+      test('handles modern JSON with WalletConnect and session_topic', () {
         final json = {
-          'type': 'wallet_connect',
+          'type': 'WalletConnect',
           'session_topic': 'my_session_123',
         };
         final result = PrivateKeyPolicy.fromLegacyJson(json);
-        expect(result.toJson()['type'], 'wallet_connect');
+        expect(result.toJson()['type'], 'WalletConnect');
         expect(result.toJson()['session_topic'], 'my_session_123');
       });
     });
@@ -75,14 +75,14 @@ void main() {
     group('Backward Compatibility Matrix', () {
       final testCases = [
         // Legacy string format -> Expected modern type
-        {'input': 'ContextPrivKey', 'expectedType': 'context_priv_key'},
-        {'input': 'context_priv_key', 'expectedType': 'context_priv_key'},
-        {'input': 'Trezor', 'expectedType': 'trezor'},
-        {'input': 'trezor', 'expectedType': 'trezor'},
-        {'input': 'Metamask', 'expectedType': 'metamask'},
-        {'input': 'metamask', 'expectedType': 'metamask'},
-        {'input': 'WalletConnect', 'expectedType': 'wallet_connect'},
-        {'input': 'wallet_connect', 'expectedType': 'wallet_connect'},
+        {'input': 'ContextPrivKey', 'expectedType': 'ContextPrivKey'},
+        {'input': 'context_priv_key', 'expectedType': 'ContextPrivKey'},
+        {'input': 'Trezor', 'expectedType': 'Trezor'},
+        {'input': 'trezor', 'expectedType': 'Trezor'},
+        {'input': 'Metamask', 'expectedType': 'Metamask'},
+        {'input': 'metamask', 'expectedType': 'Metamask'},
+        {'input': 'WalletConnect', 'expectedType': 'WalletConnect'},
+        {'input': 'wallet_connect', 'expectedType': 'WalletConnect'},
       ];
 
       for (final testCase in testCases) {
@@ -107,7 +107,7 @@ void main() {
       });
 
       test('modern JSON -> legacy equivalent produces same result', () {
-        final modernJson = {'type': 'context_priv_key'};
+        final modernJson = {'type': 'ContextPrivKey'};
         final modernResult = PrivateKeyPolicy.fromLegacyJson(modernJson);
         final legacyResult = PrivateKeyPolicy.fromLegacyJson('ContextPrivKey');
 
@@ -135,7 +135,7 @@ void main() {
         () {
           final legacyPolicy = PrivateKeyPolicy.fromLegacyJson('Trezor');
           final modernPolicy = PrivateKeyPolicy.fromLegacyJson({
-            'type': 'trezor',
+            'type': 'Trezor',
           });
 
           expect(legacyPolicy.pascalCaseName, modernPolicy.pascalCaseName);
@@ -147,7 +147,7 @@ void main() {
         final policies = [
           PrivateKeyPolicy.fromLegacyJson('ContextPrivKey'),
           PrivateKeyPolicy.fromLegacyJson('context_priv_key'),
-          PrivateKeyPolicy.fromLegacyJson({'type': 'context_priv_key'}),
+          PrivateKeyPolicy.fromLegacyJson({'type': 'ContextPrivKey'}),
         ];
 
         for (final policy in policies) {
