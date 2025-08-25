@@ -504,7 +504,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     return http.get(uri).then((http.Response response) {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List<dynamic>;
-        return CoinOhlc.fromJson(data);
+        return CoinOhlc.fromJson(data, source: OhlcSource.coingecko);
       } else {
         throw Exception(
           'Failed to load coin ohlc data: ${response.statusCode} ${response.body}',

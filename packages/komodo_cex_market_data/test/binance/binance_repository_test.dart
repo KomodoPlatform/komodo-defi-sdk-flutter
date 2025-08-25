@@ -255,11 +255,11 @@ void main() {
       test('should use mapped currency in getCoinFiatPrice', () async {
         final mockOhlc = CoinOhlc(
           ohlc: [
-            Ohlc(
-              open: 50000,
-              high: 51000,
-              low: 49000,
-              close: 50500,
+            Ohlc.binance(
+              open: Decimal.fromInt(50000),
+              high: Decimal.fromInt(51000),
+              low: Decimal.fromInt(49000),
+              close: Decimal.fromInt(50500),
               openTime:
                   DateTime.now()
                       .subtract(const Duration(days: 1))

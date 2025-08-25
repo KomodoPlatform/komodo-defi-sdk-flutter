@@ -27,11 +27,11 @@ void main() {
         final endAt = DateTime(2023, 12, 31); // 364 days
         final mockOhlc = CoinOhlc(
           ohlc: [
-            Ohlc(
-              open: 100,
-              high: 110,
-              low: 90,
-              close: 105,
+            Ohlc.binance(
+              open: Decimal.fromInt(100),
+              high: Decimal.fromInt(110),
+              low: Decimal.fromInt(90),
+              close: Decimal.fromInt(105),
               openTime: startAt.millisecondsSinceEpoch,
               closeTime: endAt.millisecondsSinceEpoch,
             ),
@@ -71,11 +71,11 @@ void main() {
         final endAt = DateTime(2024); // More than 365 days
         final mockOhlc = CoinOhlc(
           ohlc: [
-            Ohlc(
-              open: 100,
-              high: 110,
-              low: 90,
-              close: 105,
+            Ohlc.binance(
+              open: Decimal.fromInt(100),
+              high: Decimal.fromInt(110),
+              low: Decimal.fromInt(90),
+              close: Decimal.fromInt(105),
               openTime: startAt.millisecondsSinceEpoch,
               closeTime: endAt.millisecondsSinceEpoch,
             ),
@@ -117,11 +117,11 @@ void main() {
         final endAt = DateTime(2024); // Exactly 365 days
         final mockOhlc = CoinOhlc(
           ohlc: [
-            Ohlc(
-              open: 100,
-              high: 110,
-              low: 90,
-              close: 105,
+            Ohlc.binance(
+              open: Decimal.fromInt(100),
+              high: Decimal.fromInt(110),
+              low: Decimal.fromInt(90),
+              close: Decimal.fromInt(105),
               openTime: startAt.millisecondsSinceEpoch,
               closeTime: endAt.millisecondsSinceEpoch,
             ),
@@ -502,17 +502,11 @@ void main() {
           );
 
           // Call method with USDT - should use USD as vs_currency, not USDT
-          await repository.getCoin24hrPriceChange(
-            assetId,
-            fiatCurrency: Stablecoin.usdt,
-          );
+          await repository.getCoin24hrPriceChange(assetId);
 
           // Verify that USD was used, not USDT
           verify(
-            () => mockProvider.fetchCoinMarketData(
-              ids: ['bitcoin'],
-              vsCurrency: 'usd', // Should be 'usd', not 'usdt'
-            ),
+            () => mockProvider.fetchCoinMarketData(ids: ['bitcoin']),
           ).called(1);
         },
       );
@@ -580,17 +574,11 @@ void main() {
           );
 
           // Call method with USDT - should fall back to USD (final fallback), not USDT
-          await repository.getCoin24hrPriceChange(
-            assetId,
-            fiatCurrency: Stablecoin.usdt,
-          );
+          await repository.getCoin24hrPriceChange(assetId);
 
           // Verify that USD was used as final fallback, not USDT
           verify(
-            () => mockProvider.fetchCoinMarketData(
-              ids: ['bitcoin'],
-              vsCurrency: 'usd', // Should fall back to 'usd', never 'usdt'
-            ),
+            () => mockProvider.fetchCoinMarketData(ids: ['bitcoin']),
           ).called(1);
         },
       );

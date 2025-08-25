@@ -167,10 +167,12 @@ class SparklineRepository with RepositoryFallbackMixin {
     // Clean up the in-flight map when request completes (success or failure)
     // Don't await this - let cleanup happen asynchronously so we can return
     // the future immediately for request deduplication
-    unawaited(future.whenComplete(() {
-      _inFlightRequests.remove(symbol);
-      _logger.fine('Cleaned up in-flight request for $symbol');
-    }));
+    unawaited(
+      future.whenComplete(() {
+        _inFlightRequests.remove(symbol);
+        _logger.fine('Cleaned up in-flight request for $symbol');
+      }),
+    );
 
     return future;
   }
@@ -195,41 +197,47 @@ class SparklineRepository with RepositoryFallbackMixin {
 
     // Use fallback mixin to pick a supporting repo and retry if needed
     _logger.fine('Fetching OHLC for $symbol with fallback across repositories');
-    final sparklineData = await tryRepositoriesInOrderMaybe<
-      List<double>
-    >(assetId, quoteCurrency, PriceRequestType.priceHistory, (repo) async {
-      // Preflight support check to avoid making unsupported requests
-      if (!await repo.supports(
-        assetId,
-        quoteCurrency,
-        PriceRequestType.priceHistory,
-      )) {
+    final sparklineData = await tryRepositoriesInOrderMaybe<List<double>>(
+      assetId,
+      quoteCurrency,
+      PriceRequestType.priceHistory,
+      (repo) async {
+        // Preflight support check to avoid making unsupported requests
+        if (!await repo.supports(
+          assetId,
+          quoteCurrency,
+          PriceRequestType.priceHistory,
+        )) {
+          _logger.fine(
+            'Repository ${repo.runtimeType} does not support $symbol/$quoteCurrency',
+          );
+          throw StateError(
+            'Repository ${repo.runtimeType} does not support $symbol/$quoteCurrency',
+          );
+        }
+        final ohlcData = await repo.getCoinOhlc(
+          assetId,
+          quoteCurrency,
+          GraphInterval.oneDay,
+          startAt: startAt,
+          endAt: endAt,
+        );
+        final data = ohlcData.ohlc
+            .map((e) => e.closeDecimal.toDouble())
+            .toList();
+        if (data.isEmpty) {
+          _logger.fine('Empty OHLC data for $symbol from ${repo.runtimeType}');
+          throw StateError(
+            'Empty OHLC data for $symbol from ${repo.runtimeType}',
+          );
+        }
         _logger.fine(
-          'Repository ${repo.runtimeType} does not support $symbol/$quoteCurrency',
+          'Fetched ${data.length} close prices for $symbol from ${repo.runtimeType}',
         );
-        throw StateError(
-          'Repository ${repo.runtimeType} does not support $symbol/$quoteCurrency',
-        );
-      }
-      final ohlcData = await repo.getCoinOhlc(
-        assetId,
-        quoteCurrency,
-        GraphInterval.oneDay,
-        startAt: startAt,
-        endAt: endAt,
-      );
-      final data = ohlcData.ohlc.map((e) => e.close).toList();
-      if (data.isEmpty) {
-        _logger.fine('Empty OHLC data for $symbol from ${repo.runtimeType}');
-        throw StateError(
-          'Empty OHLC data for $symbol from ${repo.runtimeType}',
-        );
-      }
-      _logger.fine(
-        'Fetched ${data.length} close prices for $symbol from ${repo.runtimeType}',
-      );
-      return data;
-    }, 'sparklineFetch');
+        return data;
+      },
+      'sparklineFetch',
+    );
 
     if (sparklineData != null && sparklineData.isNotEmpty) {
       final cacheData = SparklineData.success(sparklineData);
@@ -261,7 +269,9 @@ class SparklineRepository with RepositoryFallbackMixin {
       endAt: endAt,
       intervalSeconds: interval,
     );
-    final constantData = ohlcData.ohlc.map((e) => e.close).toList();
+    final constantData = ohlcData.ohlc
+        .map((e) => e.closeDecimal.toDouble())
+        .toList();
     final cacheData = SparklineData.success(constantData);
     await _box!.put(symbol, cacheData);
     _logger.fine(
