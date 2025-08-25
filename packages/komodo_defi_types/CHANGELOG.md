@@ -1,3 +1,7 @@
+## 0.3.2
+
+ - **FIX**: pub submission errors.
+
 ## 0.3.1
 
  - **FIX**: pub submission errors.
