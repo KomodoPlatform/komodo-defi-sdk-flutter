@@ -38,7 +38,11 @@ Ohlc _$OhlcFromJson(
 /// @nodoc
 mixin _$Ohlc {
 
-@DecimalConverter() Decimal get open;@DecimalConverter() Decimal get high;@DecimalConverter() Decimal get low;@DecimalConverter() Decimal get close;
+/// Opening price as a [Decimal] for precision
+@DecimalConverter() Decimal get open;/// Highest price reached during this period as a [Decimal]
+@DecimalConverter() Decimal get high;/// Lowest price reached during this period as a [Decimal]
+@DecimalConverter() Decimal get low;/// Closing price as a [Decimal] for precision
+@DecimalConverter() Decimal get close;
 /// Create a copy of Ohlc
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -244,10 +248,15 @@ class CoinGeckoOhlc implements Ohlc {
   const CoinGeckoOhlc({required this.timestamp, @DecimalConverter() required this.open, @DecimalConverter() required this.high, @DecimalConverter() required this.low, @DecimalConverter() required this.close, final  String? $type}): $type = $type ?? 'coingecko';
   factory CoinGeckoOhlc.fromJson(Map<String, dynamic> json) => _$CoinGeckoOhlcFromJson(json);
 
+/// Unix timestamp in milliseconds for this data point
  final  int timestamp;
+/// Opening price as a [Decimal] for precision
 @override@DecimalConverter() final  Decimal open;
+/// Highest price reached during this period as a [Decimal]
 @override@DecimalConverter() final  Decimal high;
+/// Lowest price reached during this period as a [Decimal]
 @override@DecimalConverter() final  Decimal low;
+/// Closing price as a [Decimal] for precision
 @override@DecimalConverter() final  Decimal close;
 
 @JsonKey(name: 'runtimeType')
@@ -325,16 +334,27 @@ class BinanceOhlc implements Ohlc {
   const BinanceOhlc({required this.openTime, @DecimalConverter() required this.open, @DecimalConverter() required this.high, @DecimalConverter() required this.low, @DecimalConverter() required this.close, required this.closeTime, @DecimalConverter() this.volume, @DecimalConverter() this.quoteAssetVolume, this.numberOfTrades, @DecimalConverter() this.takerBuyBaseAssetVolume, @DecimalConverter() this.takerBuyQuoteAssetVolume, final  String? $type}): $type = $type ?? 'binance';
   factory BinanceOhlc.fromJson(Map<String, dynamic> json) => _$BinanceOhlcFromJson(json);
 
+/// Unix timestamp in milliseconds when this kline opened
  final  int openTime;
+/// Opening price as a [Decimal] for precision
 @override@DecimalConverter() final  Decimal open;
+/// Highest price reached during this kline as a [Decimal]
 @override@DecimalConverter() final  Decimal high;
+/// Lowest price reached during this kline as a [Decimal]
 @override@DecimalConverter() final  Decimal low;
+/// Closing price as a [Decimal] for precision
 @override@DecimalConverter() final  Decimal close;
+/// Unix timestamp in milliseconds when this kline closed
  final  int closeTime;
+/// Trading volume during this kline as a [Decimal]
 @DecimalConverter() final  Decimal? volume;
+/// Quote asset volume during this kline as a [Decimal]
 @DecimalConverter() final  Decimal? quoteAssetVolume;
+/// Number of trades executed during this kline
  final  int? numberOfTrades;
+/// Volume of the asset bought by takers during this kline as a [Decimal]
 @DecimalConverter() final  Decimal? takerBuyBaseAssetVolume;
+/// Quote asset volume of the asset bought by takers during this kline as a [Decimal]
 @DecimalConverter() final  Decimal? takerBuyQuoteAssetVolume;
 
 @JsonKey(name: 'runtimeType')
