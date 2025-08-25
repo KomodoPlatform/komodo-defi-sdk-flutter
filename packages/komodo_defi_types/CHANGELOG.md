@@ -1,3 +1,7 @@
+## 0.3.2+1
+
+ - **DOCS**(komodo_defi_types): update CHANGELOG for 0.3.2 with pub submission fix.
+
 ## 0.3.2
 
  - **FIX**: pub submission errors.

@@ -15,6 +15,53 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`komodo_defi_types` - `v0.3.2+1`](#komodo_defi_types---v0321)
+ - [`komodo_wallet_cli` - `v0.4.0+1`](#komodo_wallet_cli---v0401)
+ - [`komodo_ui` - `v0.3.0+3`](#komodo_ui---v0303)
+ - [`komodo_defi_sdk` - `v0.4.0+3`](#komodo_defi_sdk---v0403)
+ - [`komodo_defi_rpc_methods` - `v0.3.1+1`](#komodo_defi_rpc_methods---v0311)
+ - [`komodo_defi_local_auth` - `v0.3.1+2`](#komodo_defi_local_auth---v0312)
+ - [`komodo_defi_framework` - `v0.3.1+2`](#komodo_defi_framework---v0312)
+ - [`komodo_coins` - `v0.3.1+2`](#komodo_coins---v0312)
+ - [`komodo_coin_updates` - `v1.1.1`](#komodo_coin_updates---v111)
+ - [`komodo_cex_market_data` - `v0.0.3+1`](#komodo_cex_market_data---v0031)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `komodo_ui` - `v0.3.0+3`
+ - `komodo_defi_sdk` - `v0.4.0+3`
+ - `komodo_defi_rpc_methods` - `v0.3.1+1`
+ - `komodo_defi_local_auth` - `v0.3.1+2`
+ - `komodo_defi_framework` - `v0.3.1+2`
+ - `komodo_coins` - `v0.3.1+2`
+ - `komodo_coin_updates` - `v1.1.1`
+ - `komodo_cex_market_data` - `v0.0.3+1`
+
+---
+
+#### `komodo_defi_types` - `v0.3.2+1`
+
+ - **DOCS**(komodo_defi_types): update CHANGELOG for 0.3.2 with pub submission fix.
+
+#### `komodo_wallet_cli` - `v0.4.0+1`
+
+ - **REFACTOR**(komodo_wallet_cli): replace print() with stdout/stderr and improve logging.
+
+
+## 2025-08-25
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`komodo_coins` - `v0.3.1+1`](#komodo_coins---v0311)
  - [`komodo_defi_sdk` - `v0.4.0+2`](#komodo_defi_sdk---v0402)
  - [`komodo_defi_framework` - `v0.3.1+1`](#komodo_defi_framework---v0311)
