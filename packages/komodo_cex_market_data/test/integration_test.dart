@@ -1,13 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:decimal/decimal.dart' show Decimal;
 import 'package:hive_ce/hive.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-import 'package:komodo_cex_market_data/src/sparkline_repository.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
-import 'package:http/http.dart' as http;
 
 // Mock classes
 class MockCexRepository extends Mock implements CexRepository {}
@@ -121,19 +120,17 @@ void main() {
       final mockOhlc = CoinOhlc(
         ohlc: List.generate(
           5,
-          (i) => Ohlc(
-            openTime:
-                DateTime.now()
-                    .subtract(Duration(days: 4 - i))
-                    .millisecondsSinceEpoch,
-            open: 50000.0 + i,
-            high: 51000.0 + i,
-            low: 49000.0 + i,
-            close: 50500.0 + i,
-            closeTime:
-                DateTime.now()
-                    .subtract(Duration(days: 4 - i))
-                    .millisecondsSinceEpoch,
+          (i) => Ohlc.binance(
+            openTime: DateTime.now()
+                .subtract(Duration(days: 4 - i))
+                .millisecondsSinceEpoch,
+            open: Decimal.fromInt(50000 + i),
+            high: Decimal.fromInt(51000 + i),
+            low: Decimal.fromInt(49000 + i),
+            close: Decimal.fromInt(50500 + i),
+            closeTime: DateTime.now()
+                .subtract(Duration(days: 4 - i))
+                .millisecondsSinceEpoch,
           ),
         ),
       );
@@ -177,12 +174,12 @@ void main() {
 
       final mockOhlc = CoinOhlc(
         ohlc: [
-          Ohlc(
+          Ohlc.binance(
             openTime: DateTime.now().millisecondsSinceEpoch,
-            open: 45000.0,
-            high: 46000.0,
-            low: 44000.0,
-            close: 45500.0,
+            open: Decimal.fromInt(45000),
+            high: Decimal.fromInt(46000),
+            low: Decimal.fromInt(44000),
+            close: Decimal.fromInt(45500),
             closeTime: DateTime.now().millisecondsSinceEpoch,
           ),
         ],
@@ -219,12 +216,12 @@ void main() {
       // Setup successful response
       final mockOhlc = CoinOhlc(
         ohlc: [
-          Ohlc(
+          Ohlc.binance(
             openTime: DateTime.now().millisecondsSinceEpoch,
-            open: 52000.0,
-            high: 53000.0,
-            low: 51000.0,
-            close: 52500.0,
+            open: Decimal.fromInt(52000),
+            high: Decimal.fromInt(53000),
+            low: Decimal.fromInt(51000),
+            close: Decimal.fromInt(52500),
             closeTime: DateTime.now().millisecondsSinceEpoch,
           ),
         ],

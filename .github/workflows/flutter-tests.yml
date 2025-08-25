@@ -4,16 +4,16 @@ permissions:
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main, dev, feat/**, bugfix/**, hotfix/** ]
+    branches: [main, dev, feat/**, bugfix/**, hotfix/**]
   workflow_dispatch:
     inputs:
       package:
-        description: 'Optional package path to test (e.g., packages/komodo_coin_updates or komodo_coin_updates)'
+        description: "Optional package path to test (e.g., packages/komodo_coin_updates or komodo_coin_updates)"
         required: false
       package_regex:
-        description: 'Optional regex to filter packages (applied to full path under packages/*)'
+        description: "Optional regex to filter packages (applied to full path under packages/*)"
         required: false
 
 jobs:
@@ -91,7 +91,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: '3.35.1'
+          flutter-version: "3.35.1"
           architecture: x64
 
       - name: Cache pub dependencies
@@ -108,9 +108,14 @@ jobs:
         run: flutter pub get
         working-directory: ${{ matrix.package.path }}
 
+      - name: Run dry web build to generate assets (expected to fail)
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: packages/komodo_defi_sdk/example
+        run: flutter build web --release || echo "Dry build completed (failure expected)"
+
       - name: Run tests
         env:
           GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: flutter test -r expanded
         working-directory: ${{ matrix.package.path }}
-

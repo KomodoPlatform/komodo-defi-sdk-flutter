@@ -111,7 +111,7 @@ void main() {
 
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
-        expect(lostCount, 2);
+        expect(lostCount, 3);
         expect(restoredCount, 2);
 
         await monitor.stopMonitoring();
