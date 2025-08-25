@@ -2,7 +2,7 @@ import 'dart:io';
 
 void main(List<String> arguments) {
   if (arguments.isEmpty) {
-    print('Usage: dart classify_library.dart <file_path>');
+    stderr.writeln('Usage: dart classify_library.dart <file_path>');
     exit(1);
   }
 
@@ -10,12 +10,12 @@ void main(List<String> arguments) {
   File file = File(filePath);
 
   if (!file.existsSync()) {
-    print('Error: File not found.');
+    stderr.writeln('Error: File not found.');
     exit(1);
   }
 
   String fileType = classifyFile(file);
-  print('File type: $fileType');
+  stdout.writeln('File type: $fileType');
 }
 
 String classifyFile(File file) {
