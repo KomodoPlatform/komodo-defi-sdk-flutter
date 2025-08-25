@@ -15,6 +15,38 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`komodo_coins` - `v0.3.1+1`](#komodo_coins---v0311)
+ - [`komodo_defi_sdk` - `v0.4.0+2`](#komodo_defi_sdk---v0402)
+ - [`komodo_defi_framework` - `v0.3.1+1`](#komodo_defi_framework---v0311)
+ - [`komodo_defi_local_auth` - `v0.3.1+1`](#komodo_defi_local_auth---v0311)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `komodo_defi_sdk` - `v0.4.0+2`
+ - `komodo_defi_framework` - `v0.3.1+1`
+ - `komodo_defi_local_auth` - `v0.3.1+1`
+
+---
+
+#### `komodo_coins` - `v0.3.1+1`
+
+ - **FIX**: add missing deps.
+
+
+## 2025-08-25
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`komodo_defi_sdk` - `v0.4.0+1`](#komodo_defi_sdk---v0401)
 
 ---

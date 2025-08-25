@@ -1,3 +1,7 @@
+## 0.3.1+1
+
+ - **FIX**: add missing deps.
+
 ## 0.3.1
 
  - **FIX**: pub submission errors.
