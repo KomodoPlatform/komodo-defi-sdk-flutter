@@ -1,6 +1,6 @@
 name: komodo_coins
 description: "A package for fetching managing Komodo Platform coin configuration data storage, runtime updates, and queries."
-version: 0.3.0+1
+version: 0.3.1
 homepage: "https://komodoplatform.com"
 repository: "https://github.com/KomodoPlatform/komodo-defi-sdk-flutter"
 
@@ -15,8 +15,8 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.4.0
-  komodo_coin_updates: ^1.0.1
-  komodo_defi_types: ^0.3.0+2
+  komodo_coin_updates: ^1.1.0
+  komodo_defi_types: ^0.3.1
   logging: ^1.3.0
   path_provider: ^2.1.4
 

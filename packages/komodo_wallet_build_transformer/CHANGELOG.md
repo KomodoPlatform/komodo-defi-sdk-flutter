@@ -1,3 +1,10 @@
+## 0.4.0
+
+> Note: This release has breaking changes.
+
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
 ## 0.3.0+1
 
 > Note: This release has breaking changes.

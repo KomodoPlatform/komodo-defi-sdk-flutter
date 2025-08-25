@@ -1,3 +1,10 @@
+## 2.0.0
+
+> Note: This release has breaking changes.
+
+ - **FIX**(deps): misc deps fixes.
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
 ## 1.2.1
 
 > Note: This release has breaking changes.

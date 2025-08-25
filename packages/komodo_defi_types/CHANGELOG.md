@@ -1,3 +1,9 @@
+## 0.3.1
+
+ - **FIX**: pub submission errors.
+ - **FIX**(deps): resolve deps error.
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
 ## 0.3.0+2
 
 > Note: This release has breaking changes.

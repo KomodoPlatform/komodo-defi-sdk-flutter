@@ -1,3 +1,8 @@
+## 1.1.0
+
+ - **FIX**(deps): misc deps fixes.
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
 ## 1.0.1
 
 > Note: This release has breaking changes.
