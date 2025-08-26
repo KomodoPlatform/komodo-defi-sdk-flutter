@@ -7,7 +7,7 @@ class TaskStatusRequest
     required this.taskId,
     required super.rpcPass,
     required super.method,
-  }) : super(mmrpc: '2.0');
+  }) : super(mmrpc: RpcVersion.v2_0);
 
   final int taskId;
 
@@ -21,12 +21,7 @@ class TaskStatusRequest
       });
 
   @override
-  TaskStatusResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  TaskStatusResponse parse(Map<String, dynamic> json) {
     return TaskStatusResponse.parse(json);
   }
 }

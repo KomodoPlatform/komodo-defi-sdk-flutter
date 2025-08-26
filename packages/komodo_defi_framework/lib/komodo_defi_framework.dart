@@ -11,6 +11,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
+export 'package:komodo_defi_framework/src/services/seed_node_service.dart';
 
 export 'src/operations/kdf_operations_interface.dart';
 
@@ -124,13 +125,13 @@ class KomodoDefiFramework implements ApiClient {
     _log('Stopping KDF...');
     final result = await _kdfOperations.kdfStop();
     _log('KDF stop result: $result');
-    // Await a max of 5 seconds for KDF to stop. Check every 100ms.
-    for (var i = 0; i < 50; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+    // Await a max of 5 seconds for KDF to stop. Check every 500ms.
+    for (var i = 0; i < 10; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
       if (!await isRunning()) {
         break;
       }
-      if (i == 49) {
+      if (i == 9) {
         throw Exception('Error stopping KDF: KDF did not stop in time.');
       }
     }
@@ -190,6 +191,9 @@ class KomodoDefiFramework implements ApiClient {
     }
   }
 
+  /// Closes the log stream and cancels the logger subscription.
+  ///
+  /// NB! This does not stop the KDF operations or the KDF process.
   Future<void> dispose() async {
     await _logStream.close();
 

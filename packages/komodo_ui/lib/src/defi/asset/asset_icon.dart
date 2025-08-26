@@ -13,6 +13,7 @@ class AssetIcon extends StatelessWidget {
     this.assetId, {
     this.size = 20,
     this.suspended = false,
+    this.heroTag,
     super.key,
   }) : _legacyTicker = null;
 
@@ -27,6 +28,7 @@ class AssetIcon extends StatelessWidget {
     String ticker, {
     this.size = 20,
     this.suspended = false,
+    this.heroTag,
     super.key,
   }) : _legacyTicker = ticker.toLowerCase(),
        assetId = null;
@@ -35,22 +37,31 @@ class AssetIcon extends StatelessWidget {
   final String? _legacyTicker;
   final double size;
   final bool suspended;
+  final Object? heroTag;
 
   String get _effectiveId => assetId?.id ?? _legacyTicker!;
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: suspended ? 0.4 : 1,
-      child: SizedBox.square(
-        dimension: size,
-        child: _AssetIconResolver(
-          key: ValueKey(_effectiveId),
-          assetId: _effectiveId,
-          size: size,
-        ),
+    final disabledTheme = Theme.of(context).disabledColor;
+    Widget icon = SizedBox.square(
+      dimension: size,
+      child: _AssetIconResolver(
+        key: ValueKey(_effectiveId),
+        assetId: _effectiveId,
+        size: size,
       ),
     );
+    
+    // Apply opacity first for disabled state
+    icon = Opacity(opacity: suspended ? disabledTheme.a : 1.0, child: icon);
+    
+    // Then wrap with Hero widget if provided (Hero should be outermost)
+    if (heroTag != null) {
+      icon = Hero(tag: heroTag!, child: icon);
+    }
+    
+    return icon;
   }
 
   /// Clears all caches used by [AssetIcon]
@@ -97,6 +108,24 @@ class AssetIcon extends StatelessWidget {
       asset,
       throwExceptions: throwExceptions,
     );
+  }
+
+  /// Checks if the asset icon exists in the local assets or CDN **based solely
+  /// on the internal cache**.
+  ///
+  /// This method does **not** perform a live check. It only returns `true` if
+  /// the icon has previously been loaded or pre-cached
+  /// and its existence has been recorded in the internal `_assetExistenceCache`
+  /// If the icon has not yet been loaded or pre-cached,
+  /// this method will return `false` even if the icon actually exists.
+  ///
+  /// **Note:** The result depends entirely on prior caching or loading attempts
+  /// To ensure up-to-date results, call [precacheAssetIcon]
+  /// before using this method.
+  ///
+  /// Returns true if the icon is known to exist (per cache), false otherwise.
+  static bool assetIconExists(String assetIconId) {
+    return _AssetIconResolver.assetIconExists(assetIconId);
   }
 }
 
@@ -201,6 +230,11 @@ class _AssetIconResolver extends StatelessWidget {
       debugPrint('Error in precacheAssetIcon for ${asset.id}: $e');
       if (throwExceptions) rethrow;
     }
+  }
+
+  static bool assetIconExists(String assetIconId) {
+    final resolver = _AssetIconResolver(assetId: assetIconId, size: 20);
+    return _assetExistenceCache[resolver._imagePath] ?? false;
   }
 
   @override

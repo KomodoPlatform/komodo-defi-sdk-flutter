@@ -1,63 +1,79 @@
 // Using relative imports in this "package" to make it easier to track external
 // dependencies when moving or copying this "package" to another project.
-import 'package:komodo_cex_market_data/src/binance/data/binance_provider.dart';
-import 'package:komodo_cex_market_data/src/binance/data/binance_provider_interface.dart';
+
+// TODO: look into custom exception types or justifying the current approach.
+// ignore_for_file: avoid_catches_without_on_clauses
+
+import 'package:async/async.dart';
+import 'package:decimal/decimal.dart';
+import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
-import 'package:komodo_cex_market_data/src/cex_repository.dart';
-import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 // Declaring constants here to make this easier to copy & move around
 /// The base URL for the Binance API.
-List<String> get binanceApiEndpoint =>
-    ['https://api.binance.com/api/v3', 'https://api.binance.us/api/v3'];
-
-BinanceRepository binanceRepository = BinanceRepository(
-  binanceProvider: const BinanceProvider(),
-);
+List<String> get binanceApiEndpoint => [
+  'https://api.binance.com/api/v3',
+  'https://api.binance.us/api/v3',
+];
 
 /// A repository class for interacting with the Binance API.
 /// This class provides methods to fetch legacy tickers and OHLC candle data.
 class BinanceRepository implements CexRepository {
   /// Creates a new [BinanceRepository] instance.
-  BinanceRepository({required IBinanceProvider binanceProvider})
-      : _binanceProvider = binanceProvider;
+  BinanceRepository({
+    required IBinanceProvider binanceProvider,
+    bool enableMemoization = true,
+  }) : _binanceProvider = binanceProvider,
+       _idResolutionStrategy = BinanceIdResolutionStrategy(),
+       _enableMemoization = enableMemoization;
 
   final IBinanceProvider _binanceProvider;
+  final IdResolutionStrategy _idResolutionStrategy;
+  final bool _enableMemoization;
 
-  List<CexCoin>? _cachedCoinsList;
+  static final Logger _logger = Logger('BinanceRepository');
+
+  final AsyncMemoizer<List<CexCoin>> _coinListMemoizer = AsyncMemoizer();
+  Set<String>? _cachedFiatCurrencies;
 
   @override
   Future<List<CexCoin>> getCoinList() async {
-    if (_cachedCoinsList != null) {
-      return _cachedCoinsList!;
+    if (_enableMemoization) {
+      return _coinListMemoizer.runOnce(_fetchCoinListInternal);
+    } else {
+      // Warning: Direct API calls without memoization can lead to API
+      // rate limiting and unnecessary network requests. Use this mode sparingly
+      return _fetchCoinListInternal();
     }
-
-    try {
-      return await _executeWithRetry((String baseUrl) async {
-        final exchangeInfo =
-            await _binanceProvider.fetchExchangeInfoReduced(baseUrl: baseUrl);
-        _cachedCoinsList = _convertSymbolsToCoins(exchangeInfo);
-        return _cachedCoinsList!;
-      });
-    } catch (e) {
-      _cachedCoinsList = List.empty();
-    }
-
-    return _cachedCoinsList!;
   }
 
-  Future<T> _executeWithRetry<T>(Future<T> Function(String) callback) async {
-    for (int i = 0; i < binanceApiEndpoint.length; i++) {
-      try {
-        return await callback(binanceApiEndpoint.elementAt(i));
-      } catch (e) {
-        if (i >= (binanceApiEndpoint.length - 1)) {
-          rethrow;
+  /// Internal method to fetch coin list data from the API.
+  Future<List<CexCoin>> _fetchCoinListInternal() async {
+    try {
+      // Try primary endpoint first, fallback to secondary on failure
+      Exception? lastException;
+      for (final baseUrl in binanceApiEndpoint) {
+        try {
+          final exchangeInfo = await _binanceProvider.fetchExchangeInfoReduced(
+            baseUrl: baseUrl,
+          );
+          final coinsList = _convertSymbolsToCoins(exchangeInfo);
+          _cachedFiatCurrencies =
+              exchangeInfo.symbols
+                  .map((s) => s.quoteAsset.toUpperCase())
+                  .toSet();
+          return coinsList;
+        } catch (e) {
+          lastException = e is Exception ? e : Exception(e.toString());
         }
       }
+      throw lastException ?? Exception('All endpoints failed');
+    } catch (e, s) {
+      _logger.severe('Failed to fetch coin list from Binance API: $e', e, s);
+      rethrow;
     }
-
-    throw Exception('Invalid state');
   }
 
   CexCoin _binanceCoin(String baseCoinAbbr, String quoteCoinAbbr) {
@@ -72,14 +88,17 @@ class BinanceRepository implements CexRepository {
 
   @override
   Future<CoinOhlc> getCoinOhlc(
-    CexCoinPair symbol,
+    AssetId assetId,
+    QuoteCurrency quoteCurrency,
     GraphInterval interval, {
     DateTime? startAt,
     DateTime? endAt,
     int? limit,
   }) async {
-    if (symbol.baseCoinTicker.toUpperCase() ==
-        symbol.relCoinTicker.toUpperCase()) {
+    final baseTicker = resolveTradingSymbol(assetId);
+    final relTicker = quoteCurrency.binanceId;
+
+    if (baseTicker.toUpperCase() == relTicker.toUpperCase()) {
       throw ArgumentError('Base and rel coin tickers cannot be the same');
     }
 
@@ -87,55 +106,78 @@ class BinanceRepository implements CexRepository {
     final endUnixTimestamp = endAt?.millisecondsSinceEpoch;
     final intervalAbbreviation = interval.toAbbreviation();
 
-    return await _executeWithRetry((String baseUrl) async {
-      return await _binanceProvider.fetchKlines(
-        symbol.toString(),
-        intervalAbbreviation,
-        startUnixTimestampMilliseconds: startUnixTimestamp,
-        endUnixTimestampMilliseconds: endUnixTimestamp,
-        limit: limit,
-        baseUrl: baseUrl,
-      );
-    });
+    // Try primary endpoint first, fallback to secondary on failure
+    Exception? lastException;
+    for (final baseUrl in binanceApiEndpoint) {
+      try {
+        final symbolString =
+            '${baseTicker.toUpperCase()}${relTicker.toUpperCase()}';
+        return await _binanceProvider.fetchKlines(
+          symbolString,
+          intervalAbbreviation,
+          startUnixTimestampMilliseconds: startUnixTimestamp,
+          endUnixTimestampMilliseconds: endUnixTimestamp,
+          limit: limit,
+          baseUrl: baseUrl,
+        );
+      } catch (e) {
+        lastException = e is Exception ? e : Exception(e.toString());
+      }
+    }
+    throw lastException ?? Exception('All endpoints failed');
   }
 
   @override
-  Future<double> getCoinFiatPrice(
-    String coinId, {
+  String resolveTradingSymbol(AssetId assetId) {
+    return _idResolutionStrategy.resolveTradingSymbol(assetId);
+  }
+
+  @override
+  bool canHandleAsset(AssetId assetId) {
+    return _idResolutionStrategy.canResolve(assetId);
+  }
+
+  @override
+  Future<Decimal> getCoinFiatPrice(
+    AssetId assetId, {
     DateTime? priceDate,
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
-    if (coinId.toUpperCase() == fiatCoinId.toUpperCase()) {
+    final tradingSymbol = resolveTradingSymbol(assetId);
+    final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
+
+    if (tradingSymbol.toUpperCase() == fiatCurrencyId.toUpperCase()) {
       throw ArgumentError('Coin and fiat coin cannot be the same');
     }
-
-    final trimmedCoinId = coinId.replaceAll(RegExp('-segwit'), '');
 
     final endAt = priceDate ?? DateTime.now();
     final startAt = endAt.subtract(const Duration(days: 1));
 
     final ohlcData = await getCoinOhlc(
-      CexCoinPair(baseCoinTicker: trimmedCoinId, relCoinTicker: fiatCoinId),
+      assetId,
+      fiatCurrency,
       GraphInterval.oneDay,
       startAt: startAt,
       endAt: endAt,
       limit: 1,
     );
-    return ohlcData.ohlc.first.close;
+    return ohlcData.ohlc.first.closeDecimal;
   }
 
   @override
-  Future<Map<DateTime, double>> getCoinFiatPrices(
-    String coinId,
+  Future<Map<DateTime, Decimal>> getCoinFiatPrices(
+    AssetId assetId,
     List<DateTime> dates, {
-    String fiatCoinId = 'usdt',
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
-    if (coinId.toUpperCase() == fiatCoinId.toUpperCase()) {
+    final tradingSymbol = resolveTradingSymbol(assetId).toLowerCase();
+    final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
+
+    if (tradingSymbol == fiatCurrencyId) {
       throw ArgumentError('Coin and fiat coin cannot be the same');
     }
 
     dates.sort();
-    final trimmedCoinId = coinId.replaceAll(RegExp('-segwit'), '');
 
     if (dates.isEmpty) {
       return {};
@@ -145,7 +187,7 @@ class BinanceRepository implements CexRepository {
     final endDate = dates.last.add(const Duration(days: 2));
     final daysDiff = endDate.difference(startDate).inDays;
 
-    final result = <DateTime, double>{};
+    final result = <DateTime, Decimal>{};
 
     for (var i = 0; i <= daysDiff; i += 500) {
       final batchStartDate = startDate.add(Duration(days: i));
@@ -153,18 +195,23 @@ class BinanceRepository implements CexRepository {
           i + 500 > daysDiff ? endDate : startDate.add(Duration(days: i + 500));
 
       final ohlcData = await getCoinOhlc(
-        CexCoinPair(baseCoinTicker: trimmedCoinId, relCoinTicker: fiatCoinId),
+        assetId,
+        fiatCurrency,
         GraphInterval.oneDay,
         startAt: batchStartDate,
         endAt: batchEndDate,
       );
 
-      final batchResult =
-          ohlcData.ohlc.fold<Map<DateTime, double>>({}, (map, ohlc) {
-        final date = DateTime.fromMillisecondsSinceEpoch(
-          ohlc.closeTime,
+      final batchResult = ohlcData.ohlc.fold<Map<DateTime, Decimal>>({}, (
+        map,
+        ohlc,
+      ) {
+        final dateUtc = DateTime.fromMillisecondsSinceEpoch(
+          ohlc.closeTimeMs,
+          isUtc: true,
         );
-        map[DateTime(date.year, date.month, date.day)] = ohlc.close;
+        map[DateTime.utc(dateUtc.year, dateUtc.month, dateUtc.day)] =
+            ohlc.closeDecimal;
         return map;
       });
 
@@ -172,6 +219,38 @@ class BinanceRepository implements CexRepository {
     }
 
     return result;
+  }
+
+  @override
+  Future<Decimal> getCoin24hrPriceChange(
+    AssetId assetId, {
+    QuoteCurrency fiatCurrency = Stablecoin.usdt,
+  }) async {
+    final tradingSymbol = resolveTradingSymbol(assetId);
+    final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
+
+    if (tradingSymbol.toUpperCase() == fiatCurrencyId.toUpperCase()) {
+      throw ArgumentError('Coin and fiat coin cannot be the same');
+    }
+
+    final trimmedCoinId = tradingSymbol.replaceAll(RegExp('-segwit'), '');
+    final symbol =
+        '${trimmedCoinId.toUpperCase()}${fiatCurrencyId.toUpperCase()}';
+
+    // Try primary endpoint first, fallback to secondary on failure
+    Exception? lastException;
+    for (final baseUrl in binanceApiEndpoint) {
+      try {
+        final tickerData = await _binanceProvider.fetch24hrTicker(
+          symbol,
+          baseUrl: baseUrl,
+        );
+        return tickerData.priceChangePercent;
+      } catch (e) {
+        lastException = e is Exception ? e : Exception(e.toString());
+      }
+    }
+    throw lastException ?? Exception('All endpoints failed');
   }
 
   List<CexCoin> _convertSymbolsToCoins(
@@ -198,5 +277,27 @@ class BinanceRepository implements CexRepository {
       }
     }
     return coins.values.toList();
+  }
+
+  @override
+  Future<bool> supports(
+    AssetId assetId,
+    QuoteCurrency fiatCurrency,
+    PriceRequestType requestType,
+  ) async {
+    try {
+      final coins = await getCoinList();
+      final fiat = fiatCurrency.binanceId;
+      // If resolveTradingSymbol throws, treat as unsupported
+      final tradingSymbol = resolveTradingSymbol(assetId);
+      final supportsAsset = coins.any(
+        (c) => c.id.toUpperCase() == tradingSymbol.toUpperCase(),
+      );
+      final supportsFiat =
+          _cachedFiatCurrencies?.contains(fiat.toUpperCase()) ?? false;
+      return supportsAsset && supportsFiat;
+    } on ArgumentError {
+      return false;
+    }
   }
 }

@@ -3,13 +3,12 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class EnableTendermintWithAssetsRequest
     extends
-        BaseRequest<EnableTendermintWithAssetsResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+        BaseRequest<EnableTendermintWithAssetsResponse, GeneralErrorResponse> {
   EnableTendermintWithAssetsRequest({
     required super.rpcPass,
     required this.ticker,
     required this.params,
-  }) : super(method: 'enable_tendermint_with_assets', mmrpc: '2.0');
+  }) : super(method: 'enable_tendermint_with_assets', mmrpc: RpcVersion.v2_0);
 
   final String ticker;
   @override
@@ -66,9 +65,7 @@ class EnableTendermintWithAssetsResponse extends BaseResponse {
               )
               : {},
       tokensTickers:
-          !hasBalances
-              ? result.value<List<dynamic>>('tokens_tickers').cast<String>()
-              : [],
+          !hasBalances ? result.value<List<String>>('tokens_tickers') : [],
     );
   }
 

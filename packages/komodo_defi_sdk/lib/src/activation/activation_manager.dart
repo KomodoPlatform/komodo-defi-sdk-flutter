@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/balances/balance_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -10,6 +11,7 @@ import 'package:mutex/mutex.dart';
 
 /// Manager responsible for handling asset activation lifecycle
 class ActivationManager {
+  /// Manager responsible for handling asset activation lifecycle
   ActivationManager(
     this._client,
     this._auth,
@@ -17,13 +19,12 @@ class ActivationManager {
     this._customTokenHistory,
     this._assetLookup,
     this._balanceManager,
-  ) : _activator = ActivationStrategyFactory.createStrategy(_client);
+  );
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final AssetHistoryStorage _assetHistory;
   final CustomAssetHistoryStorage _customTokenHistory;
-  final SmartAssetActivator _activator;
   final IAssetLookup _assetLookup;
   final IBalanceManager _balanceManager;
   final _activationMutex = Mutex();
@@ -97,7 +98,19 @@ class ActivationManager {
       );
 
       try {
-        await for (final progress in _activator.activate(
+        // Get the current user's auth options to retrieve privKeyPolicy
+        final currentUser = await _auth.currentUser;
+        final privKeyPolicy =
+            currentUser?.walletId.authOptions.privKeyPolicy ??
+            const PrivateKeyPolicy.contextPrivKey();
+
+        // Create activator with the user's privKeyPolicy
+        final activator = ActivationStrategyFactory.createStrategy(
+          _client,
+          privKeyPolicy,
+        );
+
+        await for (final progress in activator.activate(
           parentAsset ?? group.primary,
           group.children?.toList(),
         )) {
@@ -196,7 +209,7 @@ class ActivationManager {
             await _customTokenHistory.addAssetToWallet(user.walletId, asset);
           }
           // Pre-cache balance for the activated asset
-          await _balanceManager.preCacheBalance(asset);
+          await _balanceManager.precacheBalance(asset);
         }
       }
 
@@ -258,11 +271,17 @@ class ActivationManager {
 
     await _protectedOperation(() async {
       _isDisposed = true;
-      for (final completer in _activationCompleters.values) {
+
+      // Complete any pending completers with errors
+      final completers = List<Completer<void>>.from(
+        _activationCompleters.values,
+      );
+      for (final completer in completers) {
         if (!completer.isCompleted) {
           completer.completeError('ActivationManager disposed');
         }
       }
+
       _activationCompleters.clear();
     });
   }

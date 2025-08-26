@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:kdf_sdk_example/widgets/auth/seed_dialog.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class AuthWidget extends StatefulWidget {
@@ -27,7 +26,6 @@ class _AuthWidgetState extends State<AuthWidget> {
   bool _isHdMode = true;
   bool _obscurePassword = true;
   String? _error;
-  String? _mnemonic;
 
   @override
   void dispose() {
@@ -63,47 +61,6 @@ class _AuthWidgetState extends State<AuthWidget> {
     }
   }
 
-  Future<void> _handleRegistration(String input, bool isEncrypted) async {
-    Mnemonic? mnemonic;
-
-    if (input.isNotEmpty) {
-      if (isEncrypted) {
-        final parsedMnemonic = EncryptedMnemonicData.tryParse(
-          tryParseJson(input) ?? {},
-        );
-        if (parsedMnemonic != null) {
-          mnemonic = Mnemonic.encrypted(parsedMnemonic);
-        } else {
-          setState(() => _error = 'Invalid encrypted mnemonic data.');
-          return;
-        }
-      } else {
-        mnemonic = Mnemonic.plaintext(input);
-      }
-    }
-
-    try {
-      final user = await widget.sdk.auth.register(
-        walletName: _walletNameController.text,
-        password: _passwordController.text,
-        options: AuthOptions(
-          derivationMethod:
-              _isHdMode ? DerivationMethod.hdWallet : DerivationMethod.iguana,
-        ),
-        mnemonic: mnemonic,
-      );
-
-      widget.onUserChanged(user);
-    } on AuthException catch (e) {
-      setState(() {
-        _error =
-            e.type == AuthExceptionType.incorrectPassword
-                ? 'HD mode requires a valid BIP39 seed phrase. The imported encrypted seed is not compatible.'
-                : 'Registration failed: ${e.message}';
-      });
-    }
-  }
-
   void _onSelectKnownUser(KdfUser user) {
     setState(() {
       _walletNameController.text = user.walletId.name;
@@ -116,14 +73,7 @@ class _AuthWidgetState extends State<AuthWidget> {
   Future<void> _showSeedDialog() async {
     final result = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => SeedDialog(
-            isHdMode: _isHdMode,
-            onRegister: _handleRegistration,
-            sdk: widget.sdk,
-            walletName: _walletNameController.text,
-            password: _passwordController.text,
-          ),
+      builder: (context) => const SeedDialog(),
     );
 
     if (result != true) return;

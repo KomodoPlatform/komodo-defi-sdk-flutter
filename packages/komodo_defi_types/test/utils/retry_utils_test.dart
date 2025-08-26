@@ -44,7 +44,7 @@ void main() {
           maxAttempts: 10,
           retryTimeout: const Duration(milliseconds: 100),
           backoffStrategy:
-              ConstantBackoff(delay: const Duration(milliseconds: 10)),
+              const ConstantBackoff(delay: Duration(milliseconds: 10)),
         ),
         throwsA(isA<TimeoutException>()),
       );
@@ -64,7 +64,7 @@ void main() {
           maxAttempts: 3,
           shouldRetry: (e) => e.toString() == retryError.toString(),
           backoffStrategy:
-              ConstantBackoff(delay: const Duration(milliseconds: 10)),
+              const ConstantBackoff(delay: Duration(milliseconds: 10)),
         );
       } catch (e) {
         expect(e.toString(), equals(retryError.toString()));
@@ -81,7 +81,7 @@ void main() {
           maxAttempts: 3,
           shouldRetry: (e) => e.toString() == retryError.toString(),
           backoffStrategy:
-              ConstantBackoff(delay: const Duration(milliseconds: 10)),
+              const ConstantBackoff(delay: Duration(milliseconds: 10)),
         );
       } catch (e) {
         expect(e.toString(), equals(nonRetryError.toString()));
@@ -107,7 +107,7 @@ void main() {
           maxAttempts: 2,
           shouldRetryNoIncrement: (e) => e.toString().contains('No increment'),
           backoffStrategy:
-              ConstantBackoff(delay: const Duration(milliseconds: 10)),
+              const ConstantBackoff(delay: Duration(milliseconds: 10)),
           onRetry: (attempt, error, delay) {
             attempts.add(attempt);
           },
@@ -134,7 +134,7 @@ void main() {
           },
           maxAttempts: 3,
           backoffStrategy:
-              ConstantBackoff(delay: const Duration(milliseconds: 15)),
+              const ConstantBackoff(delay: Duration(milliseconds: 15)),
           onRetry: (attempt, error, delay) {
             attempts.add(attempt);
             errors.add(error.toString());
@@ -164,7 +164,7 @@ void main() {
             },
             maxAttempts: 2,
             backoffStrategy:
-                ConstantBackoff(delay: const Duration(milliseconds: 10)),
+                const ConstantBackoff(delay: Duration(milliseconds: 10)),
           );
         },
         throwsA(same(originalError)),
@@ -184,7 +184,7 @@ void main() {
             },
             maxAttempts: 2,
             backoffStrategy:
-                ConstantBackoff(delay: const Duration(milliseconds: 10)),
+                const ConstantBackoff(delay: Duration(milliseconds: 10)),
           );
         },
         throwsA(

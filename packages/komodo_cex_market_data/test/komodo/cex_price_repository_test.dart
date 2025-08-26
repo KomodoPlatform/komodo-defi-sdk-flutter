@@ -5,20 +5,21 @@ import 'package:test/test.dart';
 void main() {
   late KomodoPriceRepository cexPriceRepository;
   setUp(() {
-    cexPriceRepository =
-        KomodoPriceRepository(cexPriceProvider: KomodoPriceProvider());
+    cexPriceRepository = KomodoPriceRepository(
+      cexPriceProvider: KomodoPriceProvider(),
+    );
   });
 
-  group('getPrices', () {
-    test('should return Komodo fiat rates list', () async {
+  group('getCoinList', () {
+    test('should return coin list', () async {
       // Arrange
 
       // Act
-      final result = await cexPriceRepository.getKomodoPrices();
+      final result = await cexPriceRepository.getCoinList();
 
       // Assert
       expect(result.length, greaterThan(0));
-      expect(result.keys, contains('KMD'));
+      expect(result.any((coin) => coin.id == 'KMD'), isTrue);
     });
   });
 }

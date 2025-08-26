@@ -10,11 +10,14 @@ library komodo_ui.defi;
 export 'package:decimal/decimal.dart' show Decimal;
 
 export 'asset/asset_icon.dart';
+export 'asset/asset_logo.dart';
 export 'asset/crypto_asset_card.dart';
 export 'asset/metric_selector.dart';
 export 'asset/trend_percentage_text.dart';
 export 'transaction/withdrawal_priority.dart';
+export 'withdraw/fee_estimation_disabled.dart';
 export 'withdraw/recipient_address_field.dart';
 export 'withdraw/source_address_field.dart';
 export 'withdraw/withdraw_amount_field.dart';
 export 'withdraw/withdraw_error_display.dart';
+export 'withdraw/withdrawal_form_example.dart';

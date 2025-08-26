@@ -1,15 +1,20 @@
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class UtxoActivationStrategy extends ProtocolActivationStrategy {
-  const UtxoActivationStrategy(super.client);
+  const UtxoActivationStrategy(super.client, this.privKeyPolicy);
+
+  /// The private key management policy to use for this strategy.
+  /// Used for external wallet support.
+  final PrivateKeyPolicy privKeyPolicy;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {
-        CoinSubClass.utxo,
-        CoinSubClass.smartChain,
-        // CoinSubClass.smartBch,
-      };
+    CoinSubClass.utxo,
+    CoinSubClass.smartChain,
+    // CoinSubClass.smartBch,
+  };
 
   @override
   bool get supportsBatchActivation => false;
@@ -32,7 +37,11 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         stepCount: 5,
         additionalInfo: {
           'chainType': protocol.subClass.formatted,
-          'mode': protocol.defaultActivationParams().mode?.rpc,
+          'mode':
+              protocol
+                  .defaultActivationParams(privKeyPolicy: privKeyPolicy)
+                  .mode
+                  ?.rpc,
           'txVersion': protocol.txVersion,
           'pubtype': protocol.pubtype,
         },
@@ -51,7 +60,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
 
       final taskResponse = await client.rpc.utxo.enableUtxoInit(
         ticker: asset.id.id,
-        params: protocol.defaultActivationParams(),
+        params: protocol.defaultActivationParams(privKeyPolicy: privKeyPolicy),
       );
 
       yield ActivationProgress(
@@ -62,6 +71,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
           stepCount: 5,
           additionalInfo: {
             'electrumServers': protocol.requiredServers.toJsonRequest(),
+            'protocolType': protocol.subClass.formatted,
           },
         ),
       );

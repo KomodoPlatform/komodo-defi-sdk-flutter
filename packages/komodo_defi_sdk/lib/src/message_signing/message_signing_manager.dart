@@ -17,9 +17,9 @@ class MessageSigningManager {
   /// This method creates a cryptographic signature that can be used to prove
   /// ownership of an address.
   ///
-  /// The `address` parameter is not used in the signing process and will be
-  /// ignored. This is in preparation for the near future when KDF will add HD
-  /// wallet support.
+  /// For HD wallets, you can optionally pass a specific derivation to sign
+  /// from using either a full `derivationPath` (preferred) or the
+  /// `accountId`/`chain`/`addressId` components.
   ///
   /// Parameters:
   /// - [coin]: The ticker of the coin to use for signing (e.g., "BTC").
@@ -39,10 +39,18 @@ class MessageSigningManager {
     required String coin,
     required String message,
     required String address,
+    String? derivationPath,
+    int? accountId,
+    String? chain,
+    int? addressId,
   }) async {
     final response = await _client.rpc.utility.signMessage(
       coin: coin,
       message: message,
+      derivationPath: derivationPath,
+      accountId: accountId,
+      chain: chain,
+      addressId: addressId,
     );
     return response.signature;
   }

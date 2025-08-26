@@ -22,6 +22,9 @@ class QtumProtocol extends ProtocolClass {
   @override
   bool get requiresHdWallet => false;
 
+  @override
+  bool get isMemoSupported => false;
+
   static void _validateQtumConfig(JsonMap json) {
     final requiredFields = {
       'pubtype': 'Public key type',
@@ -55,7 +58,7 @@ class QtumProtocol extends ProtocolClass {
     ScanPolicy? scanPolicy,
     int? gapLimit,
     // TODO! Cater for Trezor
-    PrivateKeyPolicy privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
     List<ActivationServers>? electrum,
   }) {
     return QtumActivationParams.fromConfigJson(config).genericCopyWith(

@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:collection';
 
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 // TODO: Add streaming support for price updates. The challenges share a lot
 // of similarities with the balance manager. Investigate if we can create a
@@ -20,21 +20,21 @@ abstract class MarketDataManager {
   Future<Decimal> fiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   });
 
   /// Gets the current fiat price for an asset if the CEX data is available
   Future<Decimal?> maybeFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   });
 
   /// Gets the price for an asset if it's cached, returns null otherwise
   Decimal? priceIfKnown(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   });
 
   /// Gets historical fiat prices for an asset at specified dates
@@ -43,7 +43,7 @@ abstract class MarketDataManager {
   Future<Map<DateTime, Decimal>> fiatPriceHistory(
     AssetId assetId,
     List<DateTime> dates, {
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   });
 
   /// Gets the 24-hour price change percentage for an asset
@@ -58,7 +58,7 @@ abstract class MarketDataManager {
   /// May throw [TimeoutException] if price fetch times out
   Future<Decimal?> priceChange24h(
     AssetId assetId, {
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   });
 
   /// Disposes of all resources
@@ -66,33 +66,57 @@ abstract class MarketDataManager {
 }
 
 /// Implementation of the [MarketDataManager] interface for managing asset prices
-class CexMarketDataManager implements MarketDataManager {
+class CexMarketDataManager
+    with RepositoryFallbackMixin
+    implements MarketDataManager {
   /// Creates a new instance of [CexMarketDataManager]
   CexMarketDataManager({
-    required CexRepository priceRepository,
-    required KomodoPriceRepository komodoPriceRepository,
-  }) : _priceRepository = priceRepository,
-       _komodoPriceRepository = komodoPriceRepository;
+    required List<CexRepository> priceRepositories,
+    RepositorySelectionStrategy? selectionStrategy,
+  }) : _priceRepositories = priceRepositories,
+       _selectionStrategy =
+           selectionStrategy ?? DefaultRepositorySelectionStrategy();
 
+  static final _logger = Logger('CexMarketDataManager');
   static const _cacheClearInterval = Duration(minutes: 5);
   Timer? _cacheTimer;
 
   @override
   Future<void> init() async {
-    // Initialize any resources if needed
-    _knownTickers = UnmodifiableSetView(
-      (await _priceRepository.getCoinList()).map((e) => e.symbol).toSet(),
-    );
+    for (final repo in _priceRepositories) {
+      try {
+        final coins = await repo.getCoinList();
+        _logger.finer(
+          'Loaded ${coins.length} coins from repository: ${repo.runtimeType}',
+        );
+      } catch (e, s) {
+        // Log error but continue with other repositories
+        _logger
+          ..info('Failed to get coin list from repository: $e')
+          ..finest('Stack trace: $s');
+      }
+    }
 
     // Start cache clearing timer
     _cacheTimer = Timer.periodic(_cacheClearInterval, (_) => _clearCaches());
+    _logger.finer(
+      'Started cache clearing timer with interval $_cacheClearInterval',
+    );
+
+    _isInitialized = true;
   }
 
-  Set<String>? _knownTickers;
-
-  final CexRepository _priceRepository;
-  final KomodoPriceRepository _komodoPriceRepository;
+  final List<CexRepository> _priceRepositories;
+  final RepositorySelectionStrategy _selectionStrategy;
   bool _isDisposed = false;
+  bool _isInitialized = false;
+
+  // Required by RepositoryFallbackMixin
+  @override
+  List<CexRepository> get priceRepositories => _priceRepositories;
+
+  @override
+  RepositorySelectionStrategy get selectionStrategy => _selectionStrategy;
 
   // Cache to store asset prices
   final Map<String, Decimal> _priceCache = {};
@@ -103,226 +127,290 @@ class CexMarketDataManager implements MarketDataManager {
   /// Clears all cached data to ensure fresh values are fetched
   void _clearCaches() {
     if (_isDisposed) return;
+    _logger.finer('Clearing price and price change caches');
     _priceCache.clear();
     _priceChangeCache.clear();
   }
 
-  // Helper method to generate cache keys
+  // Helper method to generate canonical string cache keys
   String _getCacheKey(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
-    return '${assetId.symbol.configSymbol}_${fiatCurrency}_${priceDate?.millisecondsSinceEpoch ?? 'current'}';
+    final basePrefix = assetId.baseCacheKeyPrefix;
+    // Normalize input dates to UTC midnight before lookups to avoid timezone issues
+    final normalizedDate =
+        priceDate != null
+            ? DateTime.utc(priceDate.year, priceDate.month, priceDate.day)
+            : null;
+    return canonicalCacheKeyFromBasePrefix(basePrefix, {
+      'quote': quoteCurrency.symbol,
+      'kind': 'price',
+      if (normalizedDate != null) 'ts': normalizedDate.millisecondsSinceEpoch,
+    });
   }
 
   // Helper method to generate change cache keys
-  String _getChangeCacheKey(AssetId assetId, {String fiatCurrency = 'usdt'}) {
-    return '${assetId.symbol.configSymbol}_${fiatCurrency}_change24h';
+  String _getChangeCacheKey(
+    AssetId assetId, {
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
+  }) {
+    final basePrefix = assetId.baseCacheKeyPrefix;
+    return canonicalCacheKeyFromBasePrefix(basePrefix, {
+      'quote': quoteCurrency.symbol,
+      'kind': 'change24h',
+    });
   }
 
-  /// Gets the trading symbol to use for price lookups.
-  /// Prefers the binanceId if available, falls back to configSymbol
-  String _getTradingSymbol(AssetId assetId) {
-    return assetId.symbol.configSymbol;
+  /// Validates that the manager hasn't been disposed
+  void _checkNotDisposed() {
+    if (_isDisposed) {
+      _logger.warning('Attempted to use manager after dispose');
+      throw StateError('PriceManager has been disposed');
+    }
+  }
+
+  /// Validates that the manager has been initialized
+  void _assertInitialized() {
+    if (!_isInitialized) {
+      _logger.warning('Attempted to use manager before initialization');
+      throw StateError('MarketDataManager must be initialized before use');
+    }
+  }
+
+  /// Gets cached price if available, returns null otherwise
+  Decimal? _getCachedPrice(String cacheKey) {
+    final cachedPrice = _priceCache[cacheKey];
+    if (cachedPrice != null) {
+      _logger.finer('Cache hit for $cacheKey');
+    }
+    return cachedPrice;
+  }
+
+  /// Fetches price from repository and caches the result
+  Future<Decimal> _fetchAndCachePrice(
+    CexRepository repo,
+    AssetId assetId,
+    String cacheKey, {
+    DateTime? priceDate,
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
+  }) async {
+    final price = await repo.getCoinFiatPrice(
+      assetId,
+      priceDate: priceDate,
+      fiatCurrency: quoteCurrency,
+    );
+    _priceCache[cacheKey] = price;
+    _logger.finer(
+      'Fetched price from ${repo.runtimeType} for '
+      '${assetId.symbol.assetConfigId}: $price',
+    );
+    return price;
   }
 
   @override
   Decimal? priceIfKnown(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) {
-    if (_isDisposed) {
-      throw StateError('PriceManager has been disposed');
-    }
+    _checkNotDisposed();
 
     final cacheKey = _getCacheKey(
       assetId,
       priceDate: priceDate,
-      fiatCurrency: fiatCurrency,
+      quoteCurrency: quoteCurrency,
     );
 
-    return _priceCache[cacheKey];
+    return _getCachedPrice(cacheKey);
   }
 
   @override
   Future<Decimal> fiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) async {
-    if (_isDisposed) {
-      throw StateError('PriceManager has been disposed');
-    }
+    _checkNotDisposed();
     _assertInitialized();
 
     final cacheKey = _getCacheKey(
       assetId,
       priceDate: priceDate,
-      fiatCurrency: fiatCurrency,
+      quoteCurrency: quoteCurrency,
     );
 
     // Check cache first
-    final cachedPrice = _priceCache[cacheKey];
+    final cachedPrice = _getCachedPrice(cacheKey);
     if (cachedPrice != null) {
       return cachedPrice;
     }
 
-    try {
-      final priceDouble = await _priceRepository.getCoinFiatPrice(
-        _getTradingSymbol(assetId),
+    // Use mixin method with minimal changes
+    return tryRepositoriesInOrder(
+      assetId,
+      quoteCurrency,
+      PriceRequestType.currentPrice,
+      (repo) => _fetchAndCachePrice(
+        repo,
+        assetId,
+        cacheKey,
         priceDate: priceDate,
-        fiatCoinId: fiatCurrency,
-      );
-
-      // Convert double to Decimal via string
-      final price = Decimal.parse(priceDouble.toString());
-
-      // Cache the result
-      _priceCache[cacheKey] = price;
-
-      return price;
-    } catch (e) {
-      throw StateError('Failed to get price for ${assetId.name}: $e');
-    }
+        quoteCurrency: quoteCurrency,
+      ),
+      'fiatPrice',
+    );
   }
 
   @override
   Future<Decimal?> maybeFiatPrice(
     AssetId assetId, {
     DateTime? priceDate,
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) async {
     _assertInitialized();
 
     final cacheKey = _getCacheKey(
       assetId,
       priceDate: priceDate,
-      fiatCurrency: fiatCurrency,
+      quoteCurrency: quoteCurrency,
     );
 
     // Check cache first
-    final cachedPrice = _priceCache[cacheKey];
+    final cachedPrice = _getCachedPrice(cacheKey);
     if (cachedPrice != null) {
       return cachedPrice;
     }
 
-    final tradingSymbol = _getTradingSymbol(assetId);
-    final isKnownTicker = _knownTickers?.contains(tradingSymbol) ?? false;
-
-    if (!isKnownTicker) {
-      return null;
-    }
-
-    try {
-      final price = await fiatPrice(
+    // Use mixin method - returns null on failure
+    return tryRepositoriesInOrderMaybe(
+      assetId,
+      quoteCurrency,
+      PriceRequestType.currentPrice,
+      (repo) => _fetchAndCachePrice(
+        repo,
         assetId,
+        cacheKey,
         priceDate: priceDate,
-        fiatCurrency: fiatCurrency,
-      );
-      return price;
-    } catch (_) {
-      return null;
-    }
+        quoteCurrency: quoteCurrency,
+      ),
+      'maybeFiatPrice',
+    );
   }
 
   @override
   Future<Decimal?> priceChange24h(
     AssetId assetId, {
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) async {
-    if (_isDisposed) {
-      throw StateError('PriceManager has been disposed');
-    }
+    _checkNotDisposed();
     _assertInitialized();
 
-    final cacheKey = _getChangeCacheKey(assetId, fiatCurrency: fiatCurrency);
-
-    // Check cache first
-    final cachedChange = _priceChangeCache[cacheKey];
-    if (cachedChange != null) {
-      return cachedChange;
+    final cacheKey = _getChangeCacheKey(assetId, quoteCurrency: quoteCurrency);
+    final cached = _priceChangeCache[cacheKey];
+    if (cached != null) {
+      _logger.finer('Cache hit for $cacheKey');
+      return cached;
     }
 
-    try {
-      // Get Komodo prices data which contains 24h change info
-      final prices = await _komodoPriceRepository.getKomodoPrices();
-
-      // Find the price for the requested asset
-      final priceData = prices[assetId.symbol.configSymbol];
-
-      if (priceData == null || priceData.change24h == null) {
-        return null;
-      }
-
-      // Convert to Decimal
-      final change = Decimal.parse(priceData.change24h.toString());
-
-      // Cache the result
-      _priceChangeCache[cacheKey] = change;
-
-      return change;
-    } catch (e) {
-      // If there's an error, return null instead of throwing
-      return null;
-    }
+    // Use mixin method
+    return tryRepositoriesInOrderMaybe(
+      assetId,
+      quoteCurrency,
+      PriceRequestType.priceChange,
+      (repo) async {
+        final priceChange = await repo.getCoin24hrPriceChange(
+          assetId,
+          fiatCurrency: quoteCurrency,
+        );
+        _priceChangeCache[cacheKey] = priceChange;
+        _logger.finer(
+          'Fetched 24h price change from ${repo.runtimeType} for '
+          '${assetId.symbol.assetConfigId}: $priceChange',
+        );
+        return priceChange;
+      },
+      'priceChange24h',
+    );
   }
 
   @override
   Future<Map<DateTime, Decimal>> fiatPriceHistory(
     AssetId assetId,
     List<DateTime> dates, {
-    String fiatCurrency = 'usdt',
+    QuoteCurrency quoteCurrency = Stablecoin.usdt,
   }) async {
-    if (_isDisposed) {
-      throw StateError('PriceManager has been disposed');
-    }
-
+    _checkNotDisposed();
     _assertInitialized();
 
-    try {
-      final priceDoubleMap = await _priceRepository.getCoinFiatPrices(
-        assetId.symbol.configSymbol,
-        dates,
-        fiatCoinId: fiatCurrency,
-      );
+    // Normalize input dates to UTC midnight to avoid timezone issues
+    final normalizedDates =
+        dates
+            .map((date) => DateTime.utc(date.year, date.month, date.day))
+            .toList();
 
-      // Convert double values to Decimal via string
-      final priceMap = priceDoubleMap.map(
-        (key, value) => MapEntry(key, Decimal.parse(value.toString())),
-      );
+    final cached = <DateTime, Decimal>{};
+    final missingDates = <DateTime>[];
 
-      // Cache the historical prices
-      for (final entry in priceMap.entries) {
-        final cacheKey = _getCacheKey(
-          assetId,
-          priceDate: entry.key,
-          fiatCurrency: fiatCurrency,
-        );
-        _priceCache[cacheKey] = entry.value;
+    // Check cache for each normalized date
+    for (final date in normalizedDates) {
+      final cacheKey = _getCacheKey(
+        assetId,
+        priceDate: date,
+        quoteCurrency: quoteCurrency,
+      );
+      final cachedPrice = _getCachedPrice(cacheKey);
+      if (cachedPrice != null) {
+        cached[date] = cachedPrice;
+      } else {
+        missingDates.add(date);
       }
+    }
 
-      return priceMap;
-    } catch (e) {
-      throw StateError(
-        'Failed to get historical prices for ${assetId.name}: $e',
+    if (missingDates.isEmpty) {
+      return cached;
+    }
+
+    // Use mixin method for fetching missing prices
+    final priceDoubleMap = await tryRepositoriesInOrder(
+      assetId,
+      quoteCurrency,
+      PriceRequestType.priceHistory,
+      (repo) => repo.getCoinFiatPrices(
+        assetId,
+        missingDates,
+        fiatCurrency: quoteCurrency,
+      ),
+      'fiatPriceHistory',
+    );
+
+    // Convert to Decimal, cache, and merge with cached
+    final priceMap = priceDoubleMap.map((date, value) {
+      final dec = Decimal.parse(value.toString());
+      // Normalize the date from the repository response to UTC midnight
+      final normalizedDate = DateTime.utc(date.year, date.month, date.day);
+      final cacheKey = _getCacheKey(
+        assetId,
+        priceDate: normalizedDate,
+        quoteCurrency: quoteCurrency,
       );
-    }
-  }
+      _priceCache[cacheKey] = dec;
+      return MapEntry(normalizedDate, dec);
+    });
 
-  void _assertInitialized() {
-    if (_knownTickers == null) {
-      throw StateError('PriceManager has not been initialized');
-    }
+    return {...cached, ...priceMap};
   }
 
   @override
   Future<void> dispose() async {
     _isDisposed = true;
+    _isInitialized = false;
     _cacheTimer?.cancel();
     _cacheTimer = null;
     _priceCache.clear();
     _priceChangeCache.clear();
+    clearRepositoryHealthData(); // Clear mixin data
+    _logger.fine('Disposed CexMarketDataManager');
   }
 }

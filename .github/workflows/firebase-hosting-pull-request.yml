@@ -16,21 +16,25 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
-      - name: Cache dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.pub-cache
-            **/.dart_tool
-            **/.flutter-plugins
-            **/.flutter-plugins-dependencies
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
+      # Disabled melos generation due to circular dependency issues caused by komodo_defi_rpc_methods
+      # and komodo_defi_types packages. This will be revisited in the future.
+      # The app should already have the necessary generated files committed to the repository. If
+      # this is not the case, we have bigger issues.
+      # - name: Install Melos
+      #   run: dart pub global activate melos
+      # - name: Bootstrap workspace
+      #   run: melos bootstrap
+      # - name: Cache dependencies
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: |
+      #       ~/.pub-cache
+      #       **/.dart_tool
+      #       **/.flutter-plugins
+      #       **/.flutter-plugins-dependencies
+      #     key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-pub-
 
   build_and_preview_playground_preview:
     needs: setup
@@ -41,13 +45,18 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
+      # See Melos comment above
+      # - name: Install Melos
+      #   run: dart pub global activate melos
+      # - name: Bootstrap workspace
+      #   run: melos bootstrap
       - name: Run dry web build to generate assets (expected to fail)
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd playground && flutter build web --release || echo "Dry build completed (failure expected)"
       - name: Build playground web
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd playground && flutter build web --release
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -67,13 +76,18 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-      - name: Install Melos
-        run: dart pub global activate melos
-      - name: Bootstrap workspace
-        run: melos bootstrap
+      # See Melos comment above
+      # - name: Install Melos
+      #   run: dart pub global activate melos
+      # - name: Bootstrap workspace
+      #   run: melos bootstrap
       - name: Run dry web build to generate assets (expected to fail)
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd packages/komodo_defi_sdk/example && flutter build web --release || echo "Dry build completed (failure expected)"
       - name: Build SDK example web
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd packages/komodo_defi_sdk/example && flutter build web --release
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

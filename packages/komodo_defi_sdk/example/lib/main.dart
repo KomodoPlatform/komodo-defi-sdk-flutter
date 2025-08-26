@@ -1,14 +1,21 @@
 // lib/main.dart
 import 'dart:async';
+import 'dart:developer' as developer;
 
+import 'package:dragon_logs/dragon_logs.dart' as dragon;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:kdf_sdk_example/blocs/auth/auth_bloc.dart';
 import 'package:kdf_sdk_example/screens/asset_page.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/instance_view.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_drawer.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
+import 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
+    show sparklineRepository;
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 final GlobalKey<ScaffoldMessengerState> _scaffoldKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -17,15 +24,42 @@ final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Setup logging package listener to output to dart:developer log
+  Logger.root.level = kDebugMode ? Level.ALL : Level.INFO;
+  Logger.root.onRecord.listen((record) {
+    developer.log(
+      record.message,
+      time: record.time,
+      level: record.level.value,
+      name: record.loggerName,
+      error: record.error,
+      stackTrace: record.stackTrace,
+    );
+  });
+
+  await dragon.DragonLogs.init();
+
   // Create instance manager
   final instanceManager = KdfInstanceManager();
 
   // Create default SDK instance with config
   final defaultSdk = KomodoDefiSdk(config: _config);
   await defaultSdk.initialize();
+  dragon.log('Default SDK instance initialized');
+
+  unawaited(
+    sparklineRepository.init().catchError((
+      Object? error,
+      StackTrace? stackTrace,
+    ) {
+      dragon.log('Error during sparklineRepository initialization: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }),
+  );
 
   // Register default instance
   await instanceManager.registerInstance('Local Instance', _config, defaultSdk);
+  dragon.log('Registered default instance');
 
   runApp(
     MultiRepositoryProvider(
@@ -114,6 +148,7 @@ class _KomodoAppState extends State<KomodoApp> {
 
     // Load known users
     await _fetchKnownUsers(instance);
+    dragon.log('Initialized instance ${instance.name}');
   }
 
   void _updateInstanceUser(String instanceName, KdfUser? user) {
@@ -124,6 +159,15 @@ class _KomodoAppState extends State<KomodoApp> {
               ? 'Current wallet: ${user.walletId.name}'
               : 'Not signed in';
     });
+    dragon.DragonLogs.setSessionMetadata({
+      'instance': instanceName,
+      if (user != null) 'user': user.walletId.compoundId,
+    });
+    dragon.log(
+      user != null
+          ? 'User ${user.walletId.compoundId} authenticated in $instanceName'
+          : 'User signed out of $instanceName',
+    );
   }
 
   Future<void> _fetchKnownUsers(KdfInstanceState instance) async {
@@ -134,7 +178,7 @@ class _KomodoAppState extends State<KomodoApp> {
       state.knownUsers = users;
       setState(() {});
     } catch (e, s) {
-      print('Error fetching known users: $e');
+      dragon.log('Error fetching known users: $e', 'ERROR');
       debugPrintStack(stackTrace: s);
     }
   }
@@ -181,6 +225,16 @@ class _KomodoAppState extends State<KomodoApp> {
                       : Colors.red,
               child: const Icon(Icons.cloud),
             ),
+            IconButton(
+              icon: const Icon(Icons.download),
+              tooltip: 'Export Logs',
+              onPressed: () async {
+                await dragon.DragonLogs.exportLogsToDownload();
+                _scaffoldKey.currentState?.showSnackBar(
+                  const SnackBar(content: Text('Logs exported')),
+                );
+              },
+            ),
             const SizedBox(width: 16),
           ],
         ],
@@ -194,23 +248,31 @@ class _KomodoAppState extends State<KomodoApp> {
                   for (final instance in instances)
                     Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Form(
-                        key: _formKey,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        child: InstanceView(
-                          instance: instance,
-                          state: _getOrCreateInstanceState(instance.name),
-                          currentUser: _currentUsers[instance.name],
-                          statusMessage:
-                              _statusMessages[instance.name] ??
-                              'Not initialized',
-                          onUserChanged:
-                              (user) =>
-                                  _updateInstanceUser(instance.name, user),
-                          searchController: _searchController,
-                          filteredAssets: _filteredAssets,
-                          onNavigateToAsset:
-                              (asset) => _onNavigateToAsset(instance, asset),
+                      child: BlocProvider(
+                        create: (context) => AuthBloc(sdk: instance.sdk),
+                        child: BlocListener<AuthBloc, AuthState>(
+                          listener: (context, state) {
+                            final user =
+                                state.isAuthenticated ? state.user : null;
+                            _updateInstanceUser(instance.name, user);
+                          },
+                          child: Form(
+                            key: _formKey,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            child: InstanceView(
+                              instance: instance,
+                              state: 'active',
+                              statusMessage:
+                                  _statusMessages[instance.name] ??
+                                  'Not initialized',
+                              searchController: _searchController,
+                              filteredAssets: _filteredAssets,
+                              onNavigateToAsset:
+                                  (asset) =>
+                                      _onNavigateToAsset(instance, asset),
+                            ),
+                          ),
                         ),
                       ),
                     ),

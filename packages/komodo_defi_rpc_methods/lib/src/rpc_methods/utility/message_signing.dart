@@ -3,14 +3,17 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to sign a message with a coin's signing key
 class SignMessageRequest
-    extends BaseRequest<SignMessageResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<SignMessageResponse, GeneralErrorResponse> {
   /// Creates a new request to sign a message
   SignMessageRequest({
     required String rpcPass,
     required this.coin,
     required this.message,
-  }) : super(method: 'sign_message', rpcPass: rpcPass, mmrpc: '2.0');
+    this.derivationPath,
+    this.accountId,
+    this.chain,
+    this.addressId,
+  }) : super(method: 'sign_message', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// The coin to sign a message with
   final String coin;
@@ -18,11 +21,42 @@ class SignMessageRequest
   /// The message you want to sign
   final String message;
 
+  /// Optional HD address selector: full derivation path
+  /// Example: m/84'/2'/0'/0/1
+  final String? derivationPath;
+
+  /// Optional HD address selector components
+  /// When provided together with [chain], [addressId] they form the BIP44 path
+  /// m/44'/COIN_ID'/accountId'/chain/addressId
+  final int? accountId;
+
+  /// Optional HD address selector chain. Must be "Internal" or "External" if provided.
+  final String? chain;
+
+  /// Optional HD address selector: address index within the chain
+  final int? addressId;
+
   @override
   Map<String, dynamic> toJson() {
-    return super.toJson().deepMerge({
-      'params': {'coin': coin, 'message': message},
-    });
+    final params = <String, dynamic>{
+      'coin': coin,
+      'message': message,
+    };
+
+    // HD address selection (preferred nested under 'address')
+    final address = <String, dynamic>{};
+    if (derivationPath != null && derivationPath!.isNotEmpty) {
+      address['derivation_path'] = derivationPath;
+    } else if (accountId != null && chain != null && addressId != null) {
+      address['account_id'] = accountId;
+      address['chain'] = chain;
+      address['address_id'] = addressId;
+    }
+    if (address.isNotEmpty) {
+      params['address'] = address;
+    }
+
+    return super.toJson().deepMerge({'params': params});
   }
 
   @override
@@ -57,8 +91,7 @@ class SignMessageResponse extends BaseResponse {
 
 /// Request to verify a message signature
 class VerifyMessageRequest
-    extends BaseRequest<VerifyMessageResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<VerifyMessageResponse, GeneralErrorResponse> {
   /// Creates a new request to verify a message
   VerifyMessageRequest({
     required String rpcPass,
@@ -66,7 +99,11 @@ class VerifyMessageRequest
     required this.message,
     required this.signature,
     required this.address,
-  }) : super(method: 'verify_message', rpcPass: rpcPass, mmrpc: '2.0');
+  }) : super(
+         method: 'verify_message',
+         rpcPass: rpcPass,
+         mmrpc: RpcVersion.v2_0,
+       );
 
   /// The coin to verify a message with
   final String coin;

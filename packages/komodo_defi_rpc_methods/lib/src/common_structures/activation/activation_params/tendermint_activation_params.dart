@@ -3,40 +3,50 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class TendermintActivationParams extends ActivationParams {
   TendermintActivationParams({
+    required super.mode,
     required this.rpcUrls,
     required List<TokensRequest> tokensParams,
     required this.getBalances,
     required this.nodes,
     required this.txHistory,
-    super.requiredConfirmations = 3,
-    super.requiresNotarization = false,
-    super.privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    super.requiredConfirmations,
+    super.requiresNotarization,
+    super.privKeyPolicy,
   }) : _tokensParams = tokensParams;
 
   factory TendermintActivationParams.fromJson(JsonMap json) {
     final base = ActivationParams.fromConfigJson(json);
 
+    final rpcUrls =
+        json
+            .value<JsonList>('rpc_urls')
+            .map((e) => EvmNode.fromJson(e).url)
+            .toList();
+    final tokensParams =
+        json
+            .valueOrNull<JsonList>('tokens_params')
+            ?.map(TokensRequest.fromJson)
+            .toList() ??
+        [];
+    final getBalances = json.valueOrNull<bool>('get_balances') ?? true;
+    final txHistory = json.valueOrNull<bool>('tx_history') ?? false;
+    final nodes =
+        json.value<JsonList>('rpc_urls').map(EvmNode.fromJson).toList();
+
     return TendermintActivationParams(
-      rpcUrls:
-          json
-              .value<JsonList>('rpc_urls')
-              .map((e) => EvmNode.fromJson(e).url)
-              .toList(),
-      tokensParams:
-          json
-              .valueOrNull<List<dynamic>>('tokens_params')
-              ?.map((e) => TokensRequest.fromJson(e as JsonMap))
-              .toList() ??
-          [],
-      txHistory: json.valueOrNull<bool>('tx_history') ?? false,
+      mode:
+          base.mode ??
+          (throw const FormatException(
+            'Tendermint activation requires mode parameter',
+          )),
+      rpcUrls: rpcUrls,
+      tokensParams: tokensParams,
+      txHistory: txHistory,
       requiredConfirmations: base.requiredConfirmations,
       requiresNotarization: base.requiresNotarization,
-      getBalances: json.valueOrNull<bool>('get_balances') ?? true,
-      privKeyPolicy:
-          json.valueOrNull<String>('priv_key_policy') == 'Trezor'
-              ? PrivateKeyPolicy.trezor
-              : PrivateKeyPolicy.contextPrivKey,
-      nodes: json.value<JsonList>('rpc_urls').map(EvmNode.fromJson).toList(),
+      getBalances: getBalances,
+      privKeyPolicy: base.privKeyPolicy,
+      nodes: nodes,
     );
   }
 
@@ -59,14 +69,18 @@ class TendermintActivationParams extends ActivationParams {
     List<EvmNode>? nodes,
   }) {
     return TendermintActivationParams(
+      mode: mode,
       rpcUrls: rpcUrls ?? this.rpcUrls,
       tokensParams: tokensParams ?? _tokensParams,
       txHistory: txHistory ?? this.txHistory,
       requiredConfirmations:
-          requiredConfirmations ?? super.requiredConfirmations,
-      requiresNotarization: requiresNotarization ?? super.requiresNotarization,
+          requiredConfirmations ?? this.requiredConfirmations,
+      requiresNotarization: requiresNotarization ?? this.requiresNotarization,
       getBalances: getBalances ?? this.getBalances,
-      privKeyPolicy: privKeyPolicy ?? super.privKeyPolicy,
+      privKeyPolicy:
+          privKeyPolicy ??
+          this.privKeyPolicy ??
+          const PrivateKeyPolicy.contextPrivKey(),
       nodes: nodes ?? this.nodes,
     );
   }
@@ -84,20 +98,37 @@ class TendermintActivationParams extends ActivationParams {
   }
 }
 
-// tendermint_token_activation_params.dart
+/// Simple activation params for Tendermint tokens - single address only
 class TendermintTokenActivationParams extends ActivationParams {
-  TendermintTokenActivationParams({super.requiredConfirmations = 3});
+  TendermintTokenActivationParams({
+    required super.mode,
+    super.requiredConfirmations,
+    super.privKeyPolicy,
+  });
 
   factory TendermintTokenActivationParams.fromJson(JsonMap json) {
     final base = ActivationParams.fromConfigJson(json);
 
     return TendermintTokenActivationParams(
+      mode:
+          base.mode ??
+          (throw const FormatException(
+            'Tendermint token activation requires mode parameter',
+          )),
       requiredConfirmations: base.requiredConfirmations ?? 3,
+      privKeyPolicy: base.privKeyPolicy,
     );
   }
 
-  @override
-  JsonMap toRpcParams() {
-    return {...super.toRpcParams()};
+  TendermintTokenActivationParams copyWith({
+    int? requiredConfirmations,
+    PrivateKeyPolicy? privKeyPolicy,
+  }) {
+    return TendermintTokenActivationParams(
+      mode: mode,
+      requiredConfirmations:
+          requiredConfirmations ?? this.requiredConfirmations,
+      privKeyPolicy: privKeyPolicy ?? this.privKeyPolicy,
+    );
   }
 }

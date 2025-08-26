@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// V2 Transaction History Request
 class MyTxHistoryRequest
-    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse> {
   MyTxHistoryRequest({
     required this.coin,
     this.limit = 10,
@@ -13,7 +12,7 @@ class MyTxHistoryRequest
     this.historyTarget,
     this.pagingOptions,
     super.rpcPass,
-  }) : super(method: 'my_tx_history', mmrpc: '2.0');
+  }) : super(method: 'my_tx_history', mmrpc: RpcVersion.v2_0);
 
   final String coin;
   final int limit;
@@ -44,8 +43,7 @@ class MyTxHistoryRequest
 
 /// Legacy Transaction History Request
 class MyTxHistoryLegacyRequest
-    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse> {
   MyTxHistoryLegacyRequest({
     required this.coin,
     this.limit = 10,
@@ -108,14 +106,14 @@ class MyTxHistoryResponse extends BaseResponse {
       pageNumber: result.valueOrNull<int>('page_number'),
       transactions:
           result
-              .value<List<dynamic>>('transactions')
-              .map((e) => TransactionInfo.fromJson(e as JsonMap))
+              .value<JsonList>('transactions')
+              .map(TransactionInfo.fromJson)
               .toList(),
     );
   }
 
   factory MyTxHistoryResponse.empty() => MyTxHistoryResponse(
-    mmrpc: '2.0',
+    mmrpc: RpcVersion.v2_0,
     currentBlock: 0,
     fromId: null,
     limit: 0,

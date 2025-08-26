@@ -22,6 +22,7 @@ class CoinBuildConfig {
     required this.mappedFiles,
     required this.mappedFolders,
     required this.concurrentDownloadsEnabled,
+    this.cdnBranchMirrors = const {},
   });
 
   /// Creates a new instance of [CoinBuildConfig] from a JSON object.
@@ -42,17 +43,17 @@ class CoinBuildConfig {
       mappedFolders: Map<String, String>.from(
         json['mapped_folders'] as Map<String, dynamic>? ?? {},
       ),
+      cdnBranchMirrors: Map<String, String>.from(
+        json['cdn_branch_mirrors'] as Map<String, dynamic>? ?? {},
+      ),
     );
   }
 
-  bool get isMainBranch =>
-      coinsRepoBranch == 'master' || coinsRepoBranch == 'main';
-
-  String get rawContentUrl =>
-      'https://raw.githubusercontent.com/KomodoPlatform/coins/refs/heads/$coinsRepoBranch';
-
-  static const String cdnContentUrl =
-      'https://api.github.com/repos/KomodoPlatform/coins';
+  /// Gets the appropriate content URL for the current branch.
+  /// If a CDN mirror is configured for the branch, it uses that.
+  /// Otherwise, it falls back to the configured coinsRepoContentUrl.
+  String get effectiveContentUrl =>
+      cdnBranchMirrors[coinsRepoBranch] ?? coinsRepoContentUrl;
 
   /// Indicates whether fetching updates of the coins assets are enabled.
   final bool fetchAtBuildEnabled;
@@ -97,6 +98,12 @@ class CoinBuildConfig {
   /// corresponding paths in the GitHub repository.
   final Map<String, String> mappedFolders;
 
+  /// A map of branch names to CDN mirror URLs.
+  /// When downloading assets, if the current branch has a CDN mirror configured,
+  /// it will be used instead of the default content URL.
+  /// This helps avoid rate limiting for commonly used branches.
+  final Map<String, String> cdnBranchMirrors;
+
   CoinBuildConfig copyWith({
     String? bundledCoinsRepoCommit,
     bool? fetchAtBuildEnabled,
@@ -108,6 +115,7 @@ class CoinBuildConfig {
     bool? concurrentDownloadsEnabled,
     Map<String, String>? mappedFiles,
     Map<String, String>? mappedFolders,
+    Map<String, String>? cdnBranchMirrors,
   }) {
     return CoinBuildConfig(
       fetchAtBuildEnabled: fetchAtBuildEnabled ?? this.fetchAtBuildEnabled,
@@ -123,6 +131,7 @@ class CoinBuildConfig {
           concurrentDownloadsEnabled ?? this.concurrentDownloadsEnabled,
       mappedFiles: mappedFiles ?? this.mappedFiles,
       mappedFolders: mappedFolders ?? this.mappedFolders,
+      cdnBranchMirrors: cdnBranchMirrors ?? this.cdnBranchMirrors,
     );
   }
 
@@ -138,6 +147,7 @@ class CoinBuildConfig {
     'mapped_files': mappedFiles,
     'mapped_folders': mappedFolders,
     'concurrent_downloads_enabled': concurrentDownloadsEnabled,
+    'cdn_branch_mirrors': cdnBranchMirrors,
   };
 
   /// Loads the coins runtime update configuration synchronously from the

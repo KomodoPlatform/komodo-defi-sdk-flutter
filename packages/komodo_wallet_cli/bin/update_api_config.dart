@@ -18,74 +18,70 @@ void main(List<String> arguments) async {
   // Setup logging
   Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((record) {
-    // ignore: avoid_print
-    print('${record.level.name}: ${record.time}: ${record.message}');
+    stdout.writeln('${record.level.name}: ${record.time}: ${record.message}');
     if (record.error != null) {
-      // ignore: avoid_print
-      print(record.error);
+      stderr.writeln(record.error);
     }
     if (record.stackTrace != null) {
-      // ignore: avoid_print
-      print(record.stackTrace);
+      stderr.writeln(record.stackTrace);
     }
   });
 
   // Parse arguments
-  final parser =
-      ArgParser()
-        ..addOption(
-          'branch',
-          abbr: 'b',
-          help: 'Branch to fetch commit from',
-          defaultsTo: 'master',
-        )
-        ..addOption(
-          'repo',
-          help: 'GitHub repository in format owner/repo',
-          defaultsTo: 'KomodoPlatform/komodo-defi-framework',
-        )
-        ..addOption(
-          'config',
-          abbr: 'c',
-          help: 'Path to build config file',
-          defaultsTo: 'build_config.json',
-        )
-        ..addOption(
-          'output-dir',
-          abbr: 'o',
-          help: 'Output directory for temporary downloads',
-          defaultsTo: 'temp_downloads',
-        )
-        ..addOption('token', abbr: 't', help: 'GitHub token for API access')
-        ..addOption(
-          'platform',
-          abbr: 'p',
-          help: 'Platform to update (e.g., web, macos, windows, linux)',
-          defaultsTo: 'all',
-        )
-        ..addOption(
-          'source',
-          abbr: 's',
-          help: 'Source to fetch from (github or mirror)',
-          defaultsTo: 'github',
-        )
-        ..addOption(
-          'mirror-url',
-          help: 'Mirror URL if using mirror source',
-          defaultsTo: 'https://sdk.devbuilds.komodo.earth',
-        )
-        ..addFlag(
-          'help',
-          abbr: 'h',
-          negatable: false,
-          help: 'Show usage information',
-        )
-        ..addFlag(
-          'verbose',
-          abbr: 'v',
-          negatable: false,
-          help: 'Enable verbose logging',
-        );
+  final parser = ArgParser()
+    ..addOption(
+      'branch',
+      abbr: 'b',
+      help: 'Branch to fetch commit from',
+      defaultsTo: 'master',
+    )
+    ..addOption(
+      'repo',
+      help: 'GitHub repository in format owner/repo',
+      defaultsTo: 'KomodoPlatform/komodo-defi-framework',
+    )
+    ..addOption(
+      'config',
+      abbr: 'c',
+      help: 'Path to build config file',
+      defaultsTo: 'build_config.json',
+    )
+    ..addOption(
+      'output-dir',
+      abbr: 'o',
+      help: 'Output directory for temporary downloads',
+      defaultsTo: 'temp_downloads',
+    )
+    ..addOption('token', abbr: 't', help: 'GitHub token for API access')
+    ..addOption(
+      'platform',
+      abbr: 'p',
+      help: 'Platform to update (e.g., web, macos, windows, linux)',
+      defaultsTo: 'all',
+    )
+    ..addOption(
+      'source',
+      abbr: 's',
+      help: 'Source to fetch from (github or mirror)',
+      defaultsTo: 'github',
+    )
+    ..addOption(
+      'mirror-url',
+      help: 'Mirror URL if using mirror source',
+      defaultsTo: 'https://sdk.devbuilds.komodo.earth',
+    )
+    ..addFlag(
+      'help',
+      abbr: 'h',
+      negatable: false,
+      help: 'Show usage information',
+    )
+    ..addFlag(
+      'verbose',
+      abbr: 'v',
+      negatable: false,
+      help: 'Enable verbose logging',
+    );
 
   ArgResults args;
   try {
@@ -110,7 +106,9 @@ void main(List<String> arguments) async {
   final repo = args['repo'] as String;
   final configPath = args['config'] as String;
   final outputDir = args['output-dir'] as String;
-  final token = args['token'] as String?;
+  final token =
+      args['token'] as String? ??
+      Platform.environment['GITHUB_API_PUBLIC_READONLY_TOKEN'];
   final platform = args['platform'] as String;
   final source = args['source'] as String;
   final mirrorUrl = args['mirror-url'] as String;
@@ -164,8 +162,7 @@ void main(List<String> arguments) async {
 }
 
 void printUsage(ArgParser parser) {
-  // ignore: avoid_print
-  print('''
+  stdout.writeln('''
 KDF Fetch CLI Tool
 
 This script fetches the latest commit for a specified branch, locates available binaries,
@@ -667,4 +664,5 @@ bool listEquals<T>(List<T>? a, List<T>? b) {
   }
   return true;
 }
+
 // =========================================

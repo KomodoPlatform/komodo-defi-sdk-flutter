@@ -1,8 +1,13 @@
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class QtumActivationStrategy extends ProtocolActivationStrategy {
-  const QtumActivationStrategy(super.client);
+  const QtumActivationStrategy(super.client, this.privKeyPolicy);
+
+  /// The private key management policy to use for this strategy.
+  /// Used for external wallet support.
+  final PrivateKeyPolicy privKeyPolicy;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {CoinSubClass.qrc20};
@@ -34,7 +39,9 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
     try {
       final taskResponse = await client.rpc.qtum.enableQtumInit(
         ticker: asset.id.id,
-        params: asset.protocol.defaultActivationParams(),
+        params: asset.protocol.defaultActivationParams(
+          privKeyPolicy: privKeyPolicy,
+        ),
       );
 
       var isComplete = false;
@@ -99,8 +106,13 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
     }
   }
 
-  ({String status, double percentage, ActivationStep step, Map<String, dynamic> info})
-      _parseQtumStatus(String status) {
+  ({
+    String status,
+    double percentage,
+    ActivationStep step,
+    Map<String, dynamic> info,
+  })
+  _parseQtumStatus(String status) {
     switch (status) {
       case 'ConnectingNodes':
         return (

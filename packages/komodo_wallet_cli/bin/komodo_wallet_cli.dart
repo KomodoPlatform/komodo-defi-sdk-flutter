@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 
 // TODO: Reference as a package.
@@ -20,16 +22,12 @@ ArgParser buildParser() {
       negatable: false,
       help: 'Show additional command output.',
     )
-    ..addFlag(
-      'version',
-      negatable: false,
-      help: 'Print the tool version.',
-    );
+    ..addFlag('version', negatable: false, help: 'Print the tool version.');
 }
 
 void printUsage(ArgParser argParser) {
-  print('Usage: dart komodo_wallet_cli.dart <flags> [arguments]');
-  print(argParser.usage);
+  stdout.writeln('Usage: dart komodo_wallet_cli.dart <flags> [arguments]');
+  stdout.writeln(argParser.usage);
 }
 
 void main(List<String> arguments) {
@@ -61,7 +59,7 @@ void main(List<String> arguments) {
       return;
     }
     if (results.wasParsed('version')) {
-      print('komodo_wallet_cli version: $version');
+      stdout.writeln('komodo_wallet_cli version: $version');
       return;
     }
     if (results.wasParsed('verbose')) {
@@ -69,14 +67,14 @@ void main(List<String> arguments) {
     }
 
     // Act on the arguments provided.
-    print('Positional arguments: ${results.rest}');
+    stdout.writeln('Positional arguments: ${results.rest}');
     if (verbose) {
-      print('[VERBOSE] All arguments: ${results.arguments}');
+      stdout.writeln('[VERBOSE] All arguments: ${results.arguments}');
     }
   } on FormatException catch (e) {
     // Print usage information if an invalid argument was provided.
-    print(e.message);
-    print('');
+    stderr.writeln(e.message);
+    stderr.writeln('');
     printUsage(argParser);
   }
 }

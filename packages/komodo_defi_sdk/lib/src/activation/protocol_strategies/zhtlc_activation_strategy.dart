@@ -6,7 +6,9 @@ import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
-  const ZhtlcActivationStrategy(super.client);
+  const ZhtlcActivationStrategy(super.client, this.privKeyPolicy);
+
+  final PrivateKeyPolicy privKeyPolicy;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {CoinSubClass.zhtlc};
@@ -40,12 +42,13 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
 
     try {
       final protocol = asset.protocol as ZhtlcProtocol;
-      final params = ZhtlcActivationParams.fromConfigJson(protocol.config)
-          .copyWith(
-        scanBlocksPerIteration: 200,
-        scanIntervalMs: 200,
-        zcashParamsPath: protocol.zcashParamsPath,
-      );
+      final params = ActivationParams.fromConfigJson(protocol.config)
+          .genericCopyWith(
+            scanBlocksPerIteration: 200,
+            scanIntervalMs: 200,
+            zcashParamsPath: protocol.zcashParamsPath,
+            privKeyPolicy: privKeyPolicy,
+          );
 
       // Setup parameters
 
@@ -64,13 +67,12 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
 
       // Initialize task and watch via TaskShepherd
       final stream = client.rpc.zhtlc
-          .enableZhtlcInit(
-            ticker: asset.id.id,
-            params: params,
-          )
+          .enableZhtlcInit(ticker: asset.id.id, params: params)
           .watch<TaskStatusResponse>(
-            getTaskStatus: (int taskId) => client.rpc.zhtlc
-                .enableZhtlcStatus(taskId, forgetIfFinished: false),
+            getTaskStatus: (int taskId) => client.rpc.zhtlc.enableZhtlcStatus(
+              taskId,
+              forgetIfFinished: false,
+            ),
             isTaskComplete: (TaskStatusResponse s) =>
                 s.status == 'Ok' || s.status == 'Error',
             cancelTask: (int taskId) async {

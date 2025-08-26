@@ -41,38 +41,6 @@ class AssetBalanceText extends StatelessWidget {
   Widget build(BuildContext context) {
     final balanceManager = context.read<KomodoDefiSdk>().balances;
 
-    final bal = balanceManager.lastKnown(assetId);
-
-    final firstBalance =
-        true
-            ? Future<BalanceInfo?>.value(bal)
-            : balanceManager.getBalance(assetId);
-
-    return StreamBuilder<BalanceInfo?>(
-      stream: Stream.fromFuture(firstBalance),
-      // balanceManager.watchBalance(
-      //   assetId,
-      //   activateIfNeeded: activateIfNeeded,
-      // ),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting ||
-            (snapshot.data == null)) {
-          return loadingWidget ?? const SizedBox.shrink();
-        }
-
-        if (snapshot.hasError) {
-          return errorBuilder?.call(context, snapshot.error!) ??
-              const Text('Error loading balance');
-        }
-
-        final balance = snapshot.data;
-        final formattedBalance =
-            formatBalance?.call(balance) ?? _defaultFormatBalance(balance);
-
-        return Text(formattedBalance, style: style);
-      },
-    );
-
     return TextStreamBuilder<BalanceInfo>(
       stream: balanceManager.watchBalance(
         assetId,

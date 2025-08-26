@@ -486,10 +486,10 @@ void main() {
           r'456789!@#$%^&*()';
 
       for (int i = 0; i < 10; i++) {
-        final int length = random.nextInt(15) + 1;
-        final StringBuffer passwordBuffer = StringBuffer();
+        final length = random.nextInt(15) + 1;
+        final passwordBuffer = StringBuffer();
 
-        for (int j = 0; j < length; j++) {
+        for (var j = 0; j < length; j++) {
           passwordBuffer.write(chars[random.nextInt(chars.length)]);
         }
 
@@ -498,7 +498,7 @@ void main() {
         SecurityUtils.checkPasswordRequirements(passwordBuffer.toString());
       }
 
-      final List<String> problematicInputs = [
+      final problematicInputs = <String>[
         // Password too short
         'a',
         // Repeated characters
@@ -516,7 +516,7 @@ void main() {
         '!PASSWORDabc1',
       ];
 
-      for (final String input in problematicInputs) {
+      for (final input in problematicInputs) {
         SecurityUtils.checkPasswordRequirements(input);
       }
     });
@@ -552,16 +552,16 @@ void main() {
       final password = SecurityUtils.generatePasswordSecure(12);
 
       // Check for at least one uppercase letter
-      expect(RegExp(r'[A-Z]').hasMatch(password), isTrue);
+      expect(RegExp('[A-Z]').hasMatch(password), isTrue);
 
       // Check for at least one lowercase letter
-      expect(RegExp(r'[a-z]').hasMatch(password), isTrue);
+      expect(RegExp('[a-z]').hasMatch(password), isTrue);
 
       // Check for at least one digit
-      expect(RegExp(r'[0-9]').hasMatch(password), isTrue);
+      expect(RegExp('[0-9]').hasMatch(password), isTrue);
 
       // Check for at least one special character
-      expect(RegExp(r'[@]').hasMatch(password), isTrue);
+      expect(RegExp('[@]').hasMatch(password), isTrue);
     });
 
     test('Should include extended special characters when flag is set', () {

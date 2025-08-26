@@ -5,13 +5,19 @@
 /// package (komodo_defi_sdk)
 library;
 
+export 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
+    show Commodity, Cryptocurrency, FiatCurrency, QuoteCurrency, Stablecoin;
 export 'package:komodo_defi_framework/komodo_defi_framework.dart'
     show IKdfHostConfig, LocalConfig, RemoteConfig;
+export 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart'
+    show AuthenticationState, AuthenticationStatus;
 export 'package:komodo_defi_sdk/src/addresses/address_operations.dart'
     show AddressOperations;
 export 'package:komodo_defi_sdk/src/balances/balance_manager.dart'
     show BalanceManager;
 export 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
+export 'package:komodo_defi_sdk/src/security/security_manager.dart'
+    show SecurityManager;
 
 export 'src/assets/_assets_index.dart' show AssetHdWalletAddressesExtension;
 export 'src/assets/asset_extensions.dart'

@@ -1,70 +1,146 @@
-# Komodo Coin Updater
+# Komodo Coin Updates
 
-This package provides the functionality to update the coins list and configuration files for the Komodo Platform at runtime.
-## Usage
+Utilities for retrieving, storing, and updating the Komodo coins configuration at runtime.
 
-To use this package, you need to add `komodo_coin_updater` to your `pubspec.yaml` file.
+This package fetches the unified coins configuration JSON from the `KomodoPlatform/coins` repository (`utils/coins_config_unfiltered.json` by default), converts entries into `Asset` models (from `komodo_defi_types`), persists them to Hive, and tracks the source commit so you can decide when to refresh.
+
+## Features
+
+- Fetch latest commit from the `KomodoPlatform/coins` repo
+- Retrieve the latest coins_config JSON and parse to strongly-typed `Asset` models
+- Persist assets in Hive (`assets` lazy box) and store the current commit hash in `coins_settings`
+- Check whether the stored commit is up to date and update when needed
+- Configurable repo URLs, branch/commit, CDN mirrors, and optional GitHub token
+- Initialize in the main isolate or a background isolate
+
+## Installation
+
+Preferred (adds the latest compatible version):
+
+```sh
+dart pub add komodo_coin_updates
+```
+
+Or manually in `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  komodo_coin_updater: ^1.0.0
+  komodo_coin_updates: ^latest
 ```
 
-### Initialize the package
-
-Then you can use the `KomodoCoinUpdater` class to initialize the package.
+Then import:
 
 ```dart
-import 'package:komodo_coin_updater/komodo_coin_updater.dart';
+import 'package:komodo_coin_updates/komodo_coin_updates.dart';
+```
 
-void main() async {
-  await KomodoCoinUpdater.ensureInitialized("path/to/komodo/coin/files");
+## Quick start (standalone)
+
+1. Initialize Hive storage (only once, early in app startup):
+
+```dart
+await KomodoCoinUpdater.ensureInitialized(appSupportDirPath);
+```
+
+1. Provide runtime update configuration (derive from build / environment):
+
+```dart
+final config = AssetRuntimeUpdateConfig(
+  fetchAtBuildEnabled: false,
+  updateCommitOnBuild: false,
+  bundledCoinsRepoCommit: 'abcdef123456',
+  coinsRepoApiUrl: 'https://api.github.com/repos/KomodoPlatform/coins',
+  coinsRepoContentUrl: 'https://raw.githubusercontent.com/KomodoPlatform/coins',
+  coinsRepoBranch: 'master',
+  runtimeUpdatesEnabled: true,
+  mappedFiles: {
+    // App asset → Repo path (used to locate coins_config in the repo)
+    'assets/config/coins_config.json': 'utils/coins_config_unfiltered.json',
+    'assets/config/coins.json': 'coins',
+  },
+  mappedFolders: {},
+  concurrentDownloadsEnabled: true,
+  cdnBranchMirrors: {},
+);
+```
+
+1. Create a repository with sensible defaults and use it to load/update data:
+
+```dart
+final repo = CoinConfigRepository.withDefaults(
+  config,
+  githubToken: String.fromEnvironment('GITHUB_TOKEN', defaultValue: ''),
+);
+
+// First-run or app start logic
+if (await repo.coinConfigExists()) {
+  final isUpToDate = await repo.isLatestCommit();
+  if (!isUpToDate) {
+    await repo.updateCoinConfig();
+  }
+} else {
+  await repo.updateCoinConfig();
 }
+
+final assets = await repo.getAssets(); // List<Asset>
 ```
 
-### Provider
+## Using via the SDK (recommended)
 
-The coins provider is responsible for fetching the coins list and configuration files from GitHub.
+In most apps you shouldn't call `KomodoCoinUpdater.ensureInitialized` directly. Instead use the high-level SDK which initializes both `komodo_coins` (parses bundled config) and `komodo_coin_updates` (runtime updates) for you.
 
 ```dart
-import 'package:komodo_coin_updater/komodo_coin_updater.dart';
+import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 
 Future<void> main() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await KomodoCoinUpdater.ensureInitialized("path/to/komodo/coin/files");
+  final sdk = await KomodoDefiSdk.init(
+    // optional: pass configuration enabling runtime updates; otherwise defaults used
+  );
 
-    final provider = const CoinConfigProvider();
-    final coins = await provider.getLatestCoins();
-    final coinsConfigs = await provider.getLatestCoinConfigs();
+  // Access unified assets view (naming subject to SDK API)
+  final assets = sdk.assets; // e.g., List<Asset> or repository wrapper
+
+  // If runtime updates are enabled, assets may refresh automatically or via explicit call:
+  // await sdk.assetsRepository.checkForUpdates(); // (example – confirm actual method name)
 }
 ```
 
-### Repository
+Benefits of using the SDK layer:
 
-The repository is responsible for managing the coins list and configuration files, fetching from GitHub and persisting to storage.
+- Single initialization call (`KomodoDefiSdk.init()`) sets up storage, coins, and updates
+- Consistent filtering / ordering across packages
+- Centralized error handling, logging, and update strategies
+- Future-proof: interface adjustments propagate through the SDK
+
+Use the standalone package only if you have a very narrow need (e.g., a CLI or build script) and don't want the full SDK dependency.
+
+## Provider-only usage
+
+If you only need to fetch from the repo without persistence:
 
 ```dart
-import 'package:komodo_coin_updater/komodo_coin_updater.dart';
+// Direct provider construction
+final provider = LocalAssetCoinConfigProvider.fromConfig(config);
+final latestCommit = await provider.getLatestCommit();
+final latestAssets = await provider.getLatestAssets();
 
-Future<void> main() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await KomodoCoinUpdater.ensureInitialized("path/to/komodo/coin/files");
-
-    final repository = CoinConfigRepository(
-        api: const CoinConfigProvider(),
-        storageProvider: CoinConfigStorageProvider.withDefaults(),
-    ); 
-    
-    // Load the coin configuration if it is saved, otherwise update it 
-    if(await repository.coinConfigExists()) {
-        if (await repository.isLatestCommit()) {
-            await repository.loadCoinConfigs();
-        } else {
-            await repository.updateCoinConfig();
-        }
-    }
-    else {
-        await repository.updateCoinConfig();
-    }
-}
+// Or using the factory pattern
+final factory = const DefaultCoinConfigDataFactory();
+final provider = factory.createLocalProvider(config);
+final latestCommit = await provider.getLatestCommit();
+final latestAssets = await provider.getLatestAssets();
 ```
+
+## Notes
+
+- `KomodoCoinUpdater.ensureInitializedIsolate(fullPath)` is available for background isolates; call it before accessing Hive boxes there.
+- The repository persists `Asset` models in a lazy box (default name `assets`) and tracks the upstream commit in `coins_settings`.
+- Enable concurrency via `concurrentDownloadsEnabled: true` for faster large updates (ensure acceptable for your platform & network conditions).
+
+- The package reads from `utils/coins_config_unfiltered.json` by default. You can override this via `AssetRuntimeUpdateConfig.mappedFiles['assets/config/coins_config.json']`.
+- Assets are stored in a Hive lazy box named `assets`; the current commit hash is stored in a box named `coins_settings` with key `coins_commit`.
+- Provide a GitHub token to reduce the likelihood of rate limiting when calling the GitHub API for commit information.
+
+## License
+
+MIT

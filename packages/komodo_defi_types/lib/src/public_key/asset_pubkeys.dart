@@ -1,8 +1,9 @@
+import 'package:equatable/equatable.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-class AssetPubkeys {
+class AssetPubkeys extends Equatable {
   const AssetPubkeys({
     required this.assetId,
     required this.keys,
@@ -34,6 +35,14 @@ class AssetPubkeys {
   String toString() {
     return 'AssetPubkeys${toJson().toJsonString()}';
   }
+
+  @override
+  List<Object?> get props => [
+    assetId,
+    keys,
+    availableAddressesCount,
+    syncStatus,
+  ];
 }
 
 /// Public type for the pubkeys info. Note that this is a separate type from the
@@ -42,12 +51,18 @@ class AssetPubkeys {
 
 class PubkeyInfo extends NewAddressInfo {
   PubkeyInfo({
-    required super.address,
-    required super.derivationPath,
-    required super.chain,
-    required super.balance,
+    required String address,
+    required String? derivationPath,
+    required String? chain,
+    required BalanceInfo balance,
+    required String coinTicker,
     this.name,
-  });
+  }) : super(
+         address: address,
+         derivationPath: derivationPath,
+         chain: chain,
+         balances: {coinTicker: balance},
+       );
 
   final String? name;
 
@@ -81,6 +96,9 @@ class PubkeyInfo extends NewAddressInfo {
   String toString() {
     return 'PubkeyInfo{${toJson().toJsonString()}}';
   }
+
+  @override
+  List<Object?> get props => [...super.props, name];
 }
 
 typedef Balance = BalanceInfo;

@@ -5,6 +5,25 @@ import 'package:decimal/decimal.dart';
 typedef JsonMap = Map<String, dynamic>;
 typedef JsonList = List<JsonMap>;
 
+/// Converts a map-like structure to a JSON-compatible [Map<String, dynamic>].
+///
+/// This function recursively converts all keys to strings and all nested maps/lists
+/// to JSON-compatible types. It is safe to use with Hive-returned Map types and
+/// will handle deeply nested structures.
+///
+/// Parameters:
+/// - [map]: The input map of type [Map<dynamic, dynamic>] to be converted.
+///
+/// Returns:
+/// - A [JsonMap] ([Map<String, dynamic>]) containing the converted data.
+///
+/// Exceptions:
+/// - This function does not throw exceptions directly, but if the input map contains
+///   values that cannot be converted to JSON-compatible types, the behavior is undefined.
+JsonMap convertToJsonMap(Map<dynamic, dynamic> map) {
+  return _convertMap<JsonMap>(map);
+}
+
 JsonMap jsonFromString(String json) {
   final decode = jsonDecode(json);
 
@@ -120,8 +139,9 @@ T? _traverseJson<T>(
           return jsonFromString(value) as T;
         } catch (e) {
           throw ArgumentError(
-              'Expected a JSON string to parse, but got an invalid type: '
-              '${value.runtimeType}');
+            'Failed to parse string as JsonMap. Expected valid JSON string, '
+            'but parsing failed for value of type: ${value.runtimeType}',
+          );
         }
       }
 
@@ -129,14 +149,14 @@ T? _traverseJson<T>(
         return jsonToString(value) as T;
       }
 
-// In the list handling section:
+      // In the list handling section:
       if (T == JsonList && value is String) {
         try {
           return jsonListFromString(value) as T;
         } catch (e) {
           throw ArgumentError(
-            'Expected a JSON string representing a List, '
-            'but got an invalid type: ${value.runtimeType}',
+            'Failed to parse string as JsonList. Expected valid JSON array string, '
+            'but parsing failed for value of type: ${value.runtimeType}',
           );
         }
       }
@@ -152,6 +172,14 @@ T? _traverseJson<T>(
       // Cast 0 to false and 1 to true for boolean types
       if (T == bool && value is int && (value == 0 || value == 1)) {
         return (value == 1) as T;
+      }
+
+      // Normalize numeric types between int/double for WASM interop
+      if (T == int && value is num) {
+        return value.toInt() as T;
+      }
+      if (T == double && value is num) {
+        return value.toDouble() as T;
       }
 
       // Final type check
@@ -214,9 +242,7 @@ T _convertMap<T>(Map<dynamic, dynamic> sourceMap) {
   try {
     return sanitizedMap as T;
   } catch (e) {
-    throw ArgumentError(
-      'Failed to convert map to expected type $T: $e',
-    );
+    throw ArgumentError('Failed to convert map to expected type $T: $e');
   }
 }
 
@@ -373,9 +399,7 @@ extension MapCensoring<K, V> on Map<K, V> {
     }
 
     final censoredMap = <K, V>{};
-    final stack = <_CensorTask<K, V>>[
-      _CensorTask(targetMap, censoredMap),
-    ];
+    final stack = <_CensorTask<K, V>>[_CensorTask(targetMap, censoredMap)];
 
     while (stack.isNotEmpty) {
       final currentTask = stack.removeLast();
