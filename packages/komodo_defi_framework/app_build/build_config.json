@@ -1,6 +1,6 @@
 {
     "api": {
-        "api_commit_hash": "6172ba8d1df0541dd319d4193cad1cb26df50eee",
+        "api_commit_hash": "80766b0056062797c3c385b9d1497bb31ac00139",
         "branch": "dev",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
@@ -12,49 +12,49 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "abde4d74279850004445df3f1a6ecd095dbd5b12f4821c4bb2a14c1aa94ab770"
+                    "e2b5bf4487e042998148325d5d4c72f32b14acd341bab074c438933d7b7a56fd"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "8661a477437563e8978f47baf1486f9b6ed900e3f0fb030dedee60843ecfc882"
+                    "e2f9a09a19950ca4a04bbe39f07b70b13c9a23216b27f42ffb0fed21d047b000"
                 ],
                 "path": "ios"
             },
             "macos": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "142782fd8689c3106614f73065c6848192873f83f853eb357156f5d7c053fc92"
+                    "dc0f26790eca7b9e0b7eb77ec17c518e2364f9f1c08864922e06d583f3e735bf"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "8697178c85cd047a7f0a9331fd8f91dc256a6732dc311ad81b1fe7eba55baab9"
+                    "d9e223a0261c59356554f6776f04e53e89ce5b24f7b1517655f47e7ed6bb10a6"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "b3226bced064770a09eb556d411538d5d41e4c4513deb3feb05b5b3c04896c27"
+                    "b758f647b1e322a2c04e765041097ddf65ea603e2200ec66230fbf720848b314"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "e4111bbce3fa991430d632f8c0bf5d3ff55e505c34bde87f454db474f27eaa29"
+                    "440eb83207dbc0e67e048185a254af4a08a617a935fef3f199d26ce9aec27198"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "cfe775cd2b4215bb2e5cb3516adb040ec8df64f8de9dc50e154f0ee863051e72"
+                    "69cf929fbcba8f36ba7ab6e1dce37c3d5b15ef86de7e11e3146ee9e80ffb5cf4"
                 ],
                 "path": "linux/bin"
             }
@@ -63,7 +63,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "4dfaadc41c499cfbca630a93fa85e7e054005089",
+        "bundled_coins_repo_commit": "89730c278a89253e99352b5dfef9226e3043699c",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://raw.githubusercontent.com/KomodoPlatform/coins",
         "coins_repo_branch": "master",
