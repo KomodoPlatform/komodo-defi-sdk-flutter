@@ -91,7 +91,7 @@ class TendermintWithTokensActivationStrategy
         status: 'Initializing task-based activation...',
         progressPercentage: 40,
         progressDetails: ActivationProgressDetails(
-          currentStep: ActivationStep.taskInitialization,
+          currentStep: ActivationStep.initialization,
           stepCount: 5,
         ),
       );
@@ -110,7 +110,7 @@ class TendermintWithTokensActivationStrategy
         status: 'Monitoring activation progress...',
         progressPercentage: 60,
         progressDetails: ActivationProgressDetails(
-          currentStep: ActivationStep.progressMonitoring,
+          currentStep: ActivationStep.processing,
           stepCount: 5,
           additionalInfo: {
             'taskId': taskResponse.taskId,
@@ -186,28 +186,33 @@ class TendermintWithTokensActivationStrategy
     }
   }
 
-  ({String status, double percentage, ActivationStep step, Map<String, dynamic> info})
+  ({
+    String status,
+    double percentage,
+    ActivationStep step,
+    Map<String, dynamic> info,
+  })
   _parseTendermintStatus(SyncStatusEnum status) {
     switch (status) {
+      case SyncStatusEnum.notStarted:
+        return (
+          status: 'Initializing Tendermint activation...',
+          percentage: 50,
+          step: ActivationStep.initialization,
+          info: {'stage': 'init', 'type': 'tendermint'},
+        );
       case SyncStatusEnum.inProgress:
         return (
           status: 'Synchronizing with Tendermint network...',
-          percentage: 80,
-          step: ActivationStep.synchronization,
+          percentage: 75,
+          step: ActivationStep.blockchainSync,
           info: {'stage': 'sync', 'type': 'tendermint'},
         );
-      case SyncStatusEnum.notStarted:
-        return (
-          status: 'Preparing Tendermint activation...',
-          percentage: 70,
-          step: ActivationStep.preparation,
-          info: {'stage': 'init', 'type': 'tendermint'},
-        );
-      case SyncStatusEnum.success:
-      case SyncStatusEnum.error:
+      // Success and error cases are handled in the main loop
+      default:
         return (
           status: 'Processing Tendermint activation...',
-          percentage: 85,
+          percentage: 60,
           step: ActivationStep.processing,
           info: {'status': status.toString(), 'type': 'tendermint'},
         );

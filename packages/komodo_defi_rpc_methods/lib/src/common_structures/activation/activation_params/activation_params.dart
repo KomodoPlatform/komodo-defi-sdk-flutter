@@ -50,10 +50,9 @@ class ActivationParams implements RpcRequestParams {
         json.valueOrNull<dynamic>('priv_key_policy'),
       ),
       minAddressesNumber: json.valueOrNull<int>('min_addresses_number'),
-      scanPolicy:
-          json.valueOrNull<String>('scan_policy') == null
-              ? null
-              : ScanPolicy.parse(json.value<String>('scan_policy')),
+      scanPolicy: json.valueOrNull<String>('scan_policy') == null
+          ? null
+          : ScanPolicy.parse(json.value<String>('scan_policy')),
       gapLimit: json.valueOrNull<int>('gap_limit'),
       mode: mode,
       zcashParamsPath: json.valueOrNull<String>('zcash_params_path'),
@@ -293,10 +292,9 @@ class ActivationMode {
   }) {
     return ActivationMode(
       rpc: type.value,
-      rpcData:
-          type == ActivationModeType.native
-              ? null
-              : ActivationRpcData.fromJson(json),
+      rpcData: type == ActivationModeType.native
+          ? null
+          : ActivationRpcData.fromJson(json),
     );
   }
 
@@ -385,15 +383,19 @@ class ActivationRpcData {
   /// Creates [ActivationRpcData] from JSON configuration
   factory ActivationRpcData.fromJson(JsonMap json) {
     return ActivationRpcData(
-      lightWalletDServers:
-          json.valueOrNull<List<dynamic>>('light_wallet_d_servers')?.cast<String>(),
+      lightWalletDServers: json
+          .valueOrNull<List<dynamic>>('light_wallet_d_servers')
+          ?.cast<String>(),
       // The Komodo API uses 'servers' under rpc_data for Electrum mode.
       // For some legacy ZHTLC examples, 'electrum' may appear at top-level config.
-      electrum: (json.valueOrNull<List<dynamic>>('servers') ??
-              json.valueOrNull<List<dynamic>>('electrum'))
-          ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
-          .toList(),
-      syncParams: json.valueOrNull<dynamic>('sync_params'),
+      electrum:
+          (json.valueOrNull<List<dynamic>>('servers') ??
+                  json.valueOrNull<List<dynamic>>('electrum'))
+              ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
+              .toList(),
+      syncParams: ZhtlcSyncParams.tryParse(
+        json.valueOrNull<dynamic>('sync_params'),
+      ),
     );
   }
 
@@ -405,27 +407,111 @@ class ActivationRpcData {
 
   /// ZHTLC coins only. Optional, defaults to two days ago. Defines where to start
   /// scanning blockchain data upon initial activation.
-  /// Options:
-  /// - "earliest" (the coin's sapling_activation_height)
-  /// - height (a specific block height)
-  /// - date (a unix timestamp)
-  final dynamic syncParams;
+  ///
+  /// Supported values:
+  /// - Earliest: start from the coin's `sapling_activation_height`
+  /// - Height: start from a specific block height
+  /// - Date: start from a specific unix timestamp
+  final ZhtlcSyncParams? syncParams;
 
-  bool get isEmpty => [lightWalletDServers, electrum, syncParams].every(
-    (element) =>
-        element == null &&
-        (element is List && element.isEmpty ||
-            element is Map && element.isEmpty),
-  );
+  bool get isEmpty =>
+      (lightWalletDServers == null || lightWalletDServers!.isEmpty) &&
+      (electrum == null || electrum!.isEmpty) &&
+      syncParams == null;
 
   JsonMap toJsonRequest({bool forLightWallet = false}) => {
     if (lightWalletDServers != null)
       'light_wallet_d_servers': lightWalletDServers,
     if (electrum != null)
-      (forLightWallet ? 'electrum_servers' : 'servers'):
-          electrum!.map((e) => e.toJsonRequest()).toList(),
-    if (syncParams != null) 'sync_params': syncParams,
+      (forLightWallet ? 'electrum_servers' : 'servers'): electrum!
+          .map((e) => e.toJsonRequest())
+          .toList(),
+    if (syncParams != null) 'sync_params': syncParams!.toJsonRequest(),
   };
+}
+
+/// ZHTLC sync parameters shape for KDF API
+class ZhtlcSyncParams {
+  ZhtlcSyncParams._internal({this.height, this.date, this.isEarliest = false})
+    : assert(
+        (isEarliest ? 1 : 0) +
+                (height != null ? 1 : 0) +
+                (date != null ? 1 : 0) ==
+            1,
+        'Exactly one of earliest, height or date must be provided',
+      );
+
+  /// Start from coin's `sapling_activation_height`
+  factory ZhtlcSyncParams.earliest() =>
+      ZhtlcSyncParams._internal(isEarliest: true);
+
+  /// Start from a specific block height
+  factory ZhtlcSyncParams.height(int height) =>
+      ZhtlcSyncParams._internal(height: height);
+
+  /// Start from a specific unix timestamp
+  factory ZhtlcSyncParams.date(int unixTimestamp) =>
+      ZhtlcSyncParams._internal(date: unixTimestamp);
+
+  final int? height;
+  final int? date;
+  final bool isEarliest;
+
+  /// Best-effort parser supporting all documented and legacy shapes:
+  /// - "earliest"
+  /// - { "height": <int> }
+  /// - { "date": <int> }
+  /// - <int> (heuristic: < 1e9 => height, otherwise date)
+  static ZhtlcSyncParams? tryParse(dynamic value) {
+    if (value == null) return null;
+
+    if (value is String) {
+      if (value.toLowerCase() == 'earliest') {
+        return ZhtlcSyncParams.earliest();
+      }
+      // Unknown string value
+      return null;
+    }
+
+    if (value is int) {
+      // Heuristic: timestamps are typically >= 1,000,000,000 (10-digit seconds)
+      if (value >= 1000000000) {
+        return ZhtlcSyncParams.date(value);
+      }
+      return ZhtlcSyncParams.height(value);
+    }
+
+    if (value is Map) {
+      final map = value as Map;
+      final dynamic heightVal = map['height'];
+      final dynamic dateVal = map['date'];
+
+      if (heightVal is int) {
+        return ZhtlcSyncParams.height(heightVal);
+      }
+      if (dateVal is int) {
+        return ZhtlcSyncParams.date(dateVal);
+      }
+      if ((map['earliest'] == true) ||
+          (map['type'] == 'earliest') ||
+          (map['type'] == 'Earliest')) {
+        return ZhtlcSyncParams.earliest();
+      }
+      return null;
+    }
+
+    return null;
+  }
+
+  /// JSON suitable for KDF API
+  /// - "earliest" | { "height": int } | { "date": int }
+  dynamic toJsonRequest() {
+    if (isEarliest) return 'earliest';
+    if (height != null) return {'height': height};
+    if (date != null) return {'date': date};
+    // Should not reach here due to constructor assert, but return null to be safe
+    return null;
+  }
 }
 
 /// Contains information about electrum servers for coins being used in 'Electrum'

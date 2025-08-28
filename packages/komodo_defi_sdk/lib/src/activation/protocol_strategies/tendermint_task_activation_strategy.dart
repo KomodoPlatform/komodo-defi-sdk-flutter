@@ -38,7 +38,7 @@ class TendermintTaskActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Starting ${asset.id.name} activation...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 5,
         additionalInfo: {
           'chainType': protocol.subClass.formatted,
@@ -54,7 +54,7 @@ class TendermintTaskActivationStrategy extends ProtocolActivationStrategy {
         status: 'Validating protocol configuration...',
         progressPercentage: 20,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'validation',
+          currentStep: ActivationStep.validation,
           stepCount: 5,
         ),
       );
@@ -73,7 +73,7 @@ class TendermintTaskActivationStrategy extends ProtocolActivationStrategy {
         status: 'Establishing network connections...',
         progressPercentage: 40,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'connection',
+          currentStep: ActivationStep.connection,
           stepCount: 5,
           additionalInfo: {
             'nodes': protocol.rpcUrlsMap.length,
@@ -95,7 +95,7 @@ class TendermintTaskActivationStrategy extends ProtocolActivationStrategy {
         if (status.status == SyncStatusEnum.success) {
           yield ActivationProgress.success(
             details: ActivationProgressDetails(
-              currentStep: 'complete',
+              currentStep: ActivationStep.complete,
               stepCount: 5,
               additionalInfo: {
                 'activatedChain': asset.id.name,
@@ -114,7 +114,7 @@ class TendermintTaskActivationStrategy extends ProtocolActivationStrategy {
             errorMessage: status.details.error ?? 'Unknown error',
             isComplete: true,
             progressDetails: ActivationProgressDetails(
-              currentStep: 'error',
+              currentStep: ActivationStep.error,
               stepCount: 5,
               errorCode: 'TENDERMINT_TASK_ACTIVATION_ERROR',
               errorDetails: status.details.error,
@@ -141,7 +141,7 @@ class TendermintTaskActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 5,
           errorCode: 'TENDERMINT_TASK_ACTIVATION_ERROR',
           errorDetails: e.toString(),
@@ -151,30 +151,35 @@ class TendermintTaskActivationStrategy extends ProtocolActivationStrategy {
     }
   }
 
-  ({String status, double percentage, String step, Map<String, dynamic> info})
+  ({
+    String status,
+    double percentage,
+    ActivationStep step,
+    Map<String, dynamic> info,
+  })
   _parseTendermintStatus(SyncStatusEnum status) {
     switch (status) {
+      case SyncStatusEnum.notStarted:
+        return (
+          status: 'Initializing Tendermint activation...',
+          percentage: 50,
+          step: ActivationStep.initialization,
+          info: {'stage': 'init', 'type': 'tendermint'},
+        );
       case SyncStatusEnum.inProgress:
         return (
           status: 'Synchronizing with Tendermint network...',
-          percentage: 80,
-          step: 'synchronization',
+          percentage: 75,
+          step: ActivationStep.blockchainSync,
           info: {'stage': 'sync', 'type': 'tendermint'},
-        );
-      case SyncStatusEnum.notStarted:
-        return (
-          status: 'Preparing Tendermint activation...',
-          percentage: 70,
-          step: 'preparation',
-          info: {'stage': 'init', 'type': 'tendermint'},
         );
       case SyncStatusEnum.success:
       case SyncStatusEnum.error:
-        return (
-          status: 'Processing Tendermint activation...',
-          percentage: 85,
-          step: 'processing',
-          info: {'status': status.toString(), 'type': 'tendermint'},
+        // These cases should never be reached as they are handled in the main loop
+        // before calling this method. Including them for exhaustive enumeration.
+        throw StateError(
+          'Unexpected status $status in _parseTendermintStatus. '
+          'Success and error cases should be handled in the main activation loop.',
         );
     }
   }

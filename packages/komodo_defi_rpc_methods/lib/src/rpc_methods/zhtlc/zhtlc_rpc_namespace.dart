@@ -47,15 +47,8 @@ class ZhtlcMethodsNamespace extends BaseRpcMethodNamespace {
     );
   }
 
-  Future<ZhtlcCancelResponse> enableZhtlcCancel({
-    required int taskId,
-  }) {
-    return execute(
-      TaskEnableZhtlcCancel(
-        taskId: taskId,
-        rpcPass: rpcPass,
-      ),
-    );
+  Future<ZhtlcCancelResponse> enableZhtlcCancel({required int taskId}) {
+    return execute(TaskEnableZhtlcCancel(taskId: taskId, rpcPass: rpcPass));
   }
 }
 
@@ -119,21 +112,15 @@ class TaskEnableZhtlcUserAction
   };
 
   @override
-  UserActionResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  UserActionResponse parse(JsonMap json) {
     return UserActionResponse.parse(json);
   }
 }
 
 class TaskEnableZhtlcCancel
     extends BaseRequest<ZhtlcCancelResponse, GeneralErrorResponse> {
-  TaskEnableZhtlcCancel({
-    required this.taskId,
-    super.rpcPass,
-  }) : super(method: 'task::enable_z_coin::cancel', mmrpc: '2.0');
+  TaskEnableZhtlcCancel({required this.taskId, super.rpcPass})
+    : super(method: 'task::enable_z_coin::cancel', mmrpc: '2.0');
 
   final int taskId;
 
@@ -147,11 +134,7 @@ class TaskEnableZhtlcCancel
   };
 
   @override
-  ZhtlcCancelResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  ZhtlcCancelResponse parse(Map<String, dynamic> json) {
     return ZhtlcCancelResponse.parse(json);
   }
 }

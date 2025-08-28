@@ -183,16 +183,16 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
 
       // If the task ended with an error status but without emitting a specific
       // error detail case, emit a failure result now.
-      if (lastStatus != null && lastStatus!.status == 'Error') {
+      if (lastStatus != null && lastStatus.status == 'Error') {
         yield ActivationProgress(
           status: 'Activation failed',
-          errorMessage: lastStatus!.details,
+          errorMessage: lastStatus.details,
           isComplete: true,
           progressDetails: ActivationProgressDetails(
             currentStep: ActivationStep.error,
             stepCount: 6,
             errorCode: 'ZHTLC_ACTIVATION_ERROR',
-            errorDetails: lastStatus!.details,
+            errorDetails: lastStatus.details,
           ),
         );
       }
