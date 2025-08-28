@@ -42,8 +42,8 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
 
     try {
       final protocol = asset.protocol as ZhtlcProtocol;
-      final params = ActivationParams.fromConfigJson(protocol.config)
-          .genericCopyWith(
+      final params = ZhtlcActivationParams.fromConfigJson(protocol.config)
+          .copyWith(
             scanBlocksPerIteration: 200,
             scanIntervalMs: 200,
             zcashParamsPath: protocol.zcashParamsPath,
