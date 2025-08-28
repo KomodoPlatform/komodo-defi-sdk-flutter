@@ -7,32 +7,30 @@ import 'package:komodo_cex_market_data/src/models/sparkline_data.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
-// TODO: create higher-level abstraction and move to SDK to avoid duplicating
-// repositories and creating global variables like these
-// Global CoinGecko repository instance for backward compatibility
-final CoinGeckoRepository _coinGeckoRepository = CoinGeckoRepository(
-  coinGeckoProvider: CoinGeckoCexProvider(),
-);
-final BinanceRepository _binanceRepository = BinanceRepository(
-  binanceProvider: const BinanceProvider(),
-);
-
-SparklineRepository sparklineRepository = SparklineRepository();
-
 /// Repository for fetching sparkline data
+// TODO: create higher-level abstraction and move to SDK
 class SparklineRepository with RepositoryFallbackMixin {
   /// Creates a new SparklineRepository with the given repositories.
   ///
   /// If repositories are not provided, defaults to Binance and CoinGecko.
-  SparklineRepository({
-    List<CexRepository>? repositories,
+  SparklineRepository(
+    this._repositories, {
     RepositorySelectionStrategy? selectionStrategy,
-  }) : _repositories =
-           repositories ?? [_binanceRepository, _coinGeckoRepository],
-       _selectionStrategy =
+  }) : _selectionStrategy =
            selectionStrategy ?? DefaultRepositorySelectionStrategy();
-  static final Logger _logger = Logger('SparklineRepository');
 
+  /// Creates a new SparklineRepository with the default repositories.
+  ///
+  /// Default repositories are Binance, CoinGecko, and CoinPaprika.
+  factory SparklineRepository.defaultInstance() {
+    return SparklineRepository([
+      BinanceRepository(binanceProvider: const BinanceProvider()),
+      CoinGeckoRepository(coinGeckoProvider: CoinGeckoCexProvider()),
+      CoinPaprikaRepository(coinPaprikaProvider: CoinPaprikaProvider()),
+    ], selectionStrategy: DefaultRepositorySelectionStrategy());
+  }
+
+  static final Logger _logger = Logger('SparklineRepository');
   final List<CexRepository> _repositories;
   final RepositorySelectionStrategy _selectionStrategy;
 

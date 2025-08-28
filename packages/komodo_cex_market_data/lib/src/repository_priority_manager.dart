@@ -1,6 +1,7 @@
 import 'package:komodo_cex_market_data/src/binance/binance.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
+import 'package:komodo_cex_market_data/src/coinpaprika/coinpaprika.dart';
 import 'package:komodo_cex_market_data/src/komodo/komodo.dart';
 
 /// Utility class for managing repository priorities using a map-based approach.
@@ -14,6 +15,7 @@ class RepositoryPriorityManager {
     KomodoPriceRepository: 1,
     BinanceRepository: 2,
     CoinGeckoRepository: 3,
+    CoinPaprikaRepository: 4,
   };
 
   /// Priority map optimized for sparkline data fetching.
@@ -21,6 +23,7 @@ class RepositoryPriorityManager {
   static const Map<Type, int> sparklinePriorities = {
     BinanceRepository: 1,
     CoinGeckoRepository: 2,
+    CoinPaprikaRepository: 3,
   };
 
   /// Gets the priority of a repository using the default priority scheme.

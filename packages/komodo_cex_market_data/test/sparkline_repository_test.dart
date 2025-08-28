@@ -55,7 +55,7 @@ void main() {
       mockStrategy = MockRepositorySelectionStrategy();
 
       sparklineRepo = SparklineRepository(
-        repositories: [primaryRepo, fallbackRepo],
+        [primaryRepo, fallbackRepo],
         selectionStrategy: mockStrategy,
       );
 
@@ -573,7 +573,7 @@ void main() {
       });
 
       test('throws exception when not initialized', () async {
-        final uninitializedRepo = SparklineRepository();
+        final uninitializedRepo = SparklineRepository.defaultInstance();
 
         expect(
           () => uninitializedRepo.fetchSparkline(testAsset),

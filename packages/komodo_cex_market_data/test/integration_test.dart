@@ -50,7 +50,7 @@ void main() {
       mockStrategy = MockRepositorySelectionStrategy();
 
       sparklineRepo = SparklineRepository(
-        repositories: [primaryRepo, fallbackRepo],
+        [primaryRepo, fallbackRepo],
         selectionStrategy: mockStrategy,
       );
 

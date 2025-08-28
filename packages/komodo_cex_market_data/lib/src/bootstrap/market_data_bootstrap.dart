@@ -15,28 +15,28 @@ class MarketDataConfig {
   /// const config = MarketDataConfig(
   ///   enableBinance: true,
   ///   enableCoinGecko: false,
+  ///   enableCoinPaprika: true,
   ///   enableKomodoPrice: true,
   ///   customRepositories: [myCustomRepo],
   ///   selectionStrategy: MyCustomStrategy(),
-  ///   // Optional: inject test providers for better testability
-  ///   // binanceProvider: MyMockBinanceProvider(),
-  ///   // coinGeckoProvider: MyMockCoinGeckoProvider(),
-  ///   // komodoPriceProvider: MyMockKomodoPriceProvider(),
   /// );
   /// ```
   const MarketDataConfig({
     this.enableBinance = true,
     this.enableCoinGecko = true,
+    this.enableCoinPaprika = true,
     this.enableKomodoPrice = true,
     this.customRepositories = const [],
     this.selectionStrategy,
     this.binanceProvider,
     this.coinGeckoProvider,
+    this.coinPaprikaProvider,
     this.komodoPriceProvider,
     this.repositoryPriority = const [
       RepositoryType.komodoPrice,
       RepositoryType.binance,
       RepositoryType.coinGecko,
+      RepositoryType.coinPaprika,
     ],
   });
 
@@ -45,6 +45,9 @@ class MarketDataConfig {
 
   /// Whether to enable CoinGecko repository
   final bool enableCoinGecko;
+
+  /// Whether to enable CoinPaprika repository
+  final bool enableCoinPaprika;
 
   /// Whether to enable Komodo price repository
   final bool enableKomodoPrice;
@@ -61,6 +64,9 @@ class MarketDataConfig {
   /// Optional custom CoinGecko provider (uses default if null)
   final ICoinGeckoProvider? coinGeckoProvider;
 
+  /// Optional custom CoinPaprika provider (uses default if null)
+  final ICoinPaprikaProvider? coinPaprikaProvider;
+
   /// Optional custom Komodo price provider (uses default if null)
   final IKomodoPriceProvider? komodoPriceProvider;
 
@@ -69,7 +75,7 @@ class MarketDataConfig {
 }
 
 /// Enum representing available repository types
-enum RepositoryType { komodoPrice, binance, coinGecko }
+enum RepositoryType { komodoPrice, binance, coinGecko, coinPaprika }
 
 /// Bootstrap factory for market data dependencies
 class MarketDataBootstrap {
@@ -101,6 +107,12 @@ class MarketDataBootstrap {
       );
     }
 
+    if (config.enableCoinPaprika) {
+      container.registerSingletonAsync<ICoinPaprikaProvider>(
+        () async => config.coinPaprikaProvider ?? CoinPaprikaProvider(),
+      );
+    }
+
     if (config.enableKomodoPrice) {
       container.registerSingletonAsync<IKomodoPriceProvider>(
         () async => config.komodoPriceProvider ?? KomodoPriceProvider(),
@@ -127,6 +139,15 @@ class MarketDataBootstrap {
           coinGeckoProvider: await container.getAsync<ICoinGeckoProvider>(),
         ),
         dependsOn: [ICoinGeckoProvider],
+      );
+    }
+
+    if (config.enableCoinPaprika) {
+      container.registerSingletonAsync<CoinPaprikaRepository>(
+        () async => CoinPaprikaRepository(
+          coinPaprikaProvider: await container.getAsync<ICoinPaprikaProvider>(),
+        ),
+        dependsOn: [ICoinPaprikaProvider],
       );
     }
 
@@ -176,6 +197,11 @@ class MarketDataBootstrap {
           await container.getAsync<CoinGeckoRepository>();
     }
 
+    if (config.enableCoinPaprika) {
+      availableRepos[RepositoryType.coinPaprika] =
+          await container.getAsync<CoinPaprikaRepository>();
+    }
+
     // Add repositories in configured priority order
     for (final type in config.repositoryPriority) {
       final repo = availableRepos[type];
@@ -200,6 +226,10 @@ class MarketDataBootstrap {
 
     if (config.enableCoinGecko) {
       dependencies.add(CoinGeckoRepository);
+    }
+
+    if (config.enableCoinPaprika) {
+      dependencies.add(CoinPaprikaRepository);
     }
 
     if (config.enableKomodoPrice) {
