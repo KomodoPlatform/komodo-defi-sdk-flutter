@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_config.dart';
 import 'package:komodo_defi_sdk/src/balances/balance_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mutex/mutex.dart';
@@ -18,8 +19,9 @@ class ActivationManager {
     this._assetHistory,
     this._customTokenHistory,
     this._assetLookup,
-    this._balanceManager,
-  );
+    this._balanceManager, {
+    this.config = ActivationConfig.modern,
+  });
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
@@ -27,6 +29,7 @@ class ActivationManager {
   final CustomAssetHistoryStorage _customTokenHistory;
   final IAssetLookup _assetLookup;
   final IBalanceManager _balanceManager;
+  final ActivationConfig config;
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
 
@@ -108,6 +111,7 @@ class ActivationManager {
         final activator = ActivationStrategyFactory.createStrategy(
           _client,
           privKeyPolicy,
+          config: config,
         );
 
         await for (final progress in activator.activate(

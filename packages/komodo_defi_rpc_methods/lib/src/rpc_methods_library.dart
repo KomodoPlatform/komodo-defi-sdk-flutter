@@ -23,6 +23,9 @@ class KomodoDefiRpcMethods {
   GeneralActivationMethods get generalActivation =>
       GeneralActivationMethods(_client);
 
+  LegacyActivationMethodsNamespace get legacyActivation =>
+      LegacyActivationMethodsNamespace(_client);
+
   HdWalletMethods get hdWallet => HdWalletMethods(_client);
 
   TransactionHistoryMethods get transactionHistory =>

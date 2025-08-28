@@ -6,6 +6,8 @@ library rpc_methods;
 export 'activation/enable_asset_requests.dart';
 export 'activation/get_enabled_coins.dart';
 export 'activation/legacy_get_enabled_coins.dart';
+export 'activation/legacy_enable_electrum.dart';
+export 'activation/legacy_activation_namespace.dart';
 export 'address/address_rpc_namespace.dart';
 export 'address/convert_utxo_address.dart';
 export 'address/convertaddress.dart';
