@@ -10,7 +10,7 @@ class ZhtlcActivationParams extends ActivationParams {
     required super.mode,
     super.requiredConfirmations,
     super.requiresNotarization = false,
-    super.privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    super.privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
     super.minAddressesNumber,
     super.scanPolicy,
     super.gapLimit,
