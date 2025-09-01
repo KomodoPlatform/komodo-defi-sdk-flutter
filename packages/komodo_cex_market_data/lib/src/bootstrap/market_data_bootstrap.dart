@@ -35,8 +35,8 @@ class MarketDataConfig {
     this.repositoryPriority = const [
       RepositoryType.komodoPrice,
       RepositoryType.binance,
-      RepositoryType.coinGecko,
       RepositoryType.coinPaprika,
+      RepositoryType.coinGecko,
     ],
   });
 
@@ -75,7 +75,25 @@ class MarketDataConfig {
 }
 
 /// Enum representing available repository types
-enum RepositoryType { komodoPrice, binance, coinGecko, coinPaprika }
+/// Enum representing the types of available repositories for market data.
+///
+/// - [komodoPrice]: Komodo's own price repository.
+/// - [binance]: Binance exchange repository.
+/// - [coinGecko]: CoinGecko data provider repository.
+/// - [coinPaprika]: CoinPaprika data provider repository.
+enum RepositoryType {
+  /// Komodo's own price repository.
+  komodoPrice,
+
+  /// Binance exchange repository.
+  binance,
+
+  /// CoinGecko data provider repository.
+  coinGecko,
+
+  /// CoinPaprika data provider repository.
+  coinPaprika,
+}
 
 /// Bootstrap factory for market data dependencies
 class MarketDataBootstrap {

@@ -1,8 +1,6 @@
 /// Verification helpers for common test assertions and patterns
 library;
 
-import 'package:http/http.dart' as http;
-import 'package:komodo_cex_market_data/src/coinpaprika/_coinpaprika_index.dart';
 import 'package:komodo_cex_market_data/src/models/_models_index.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -19,8 +17,8 @@ class VerificationHelpers {
     MockHttpClient mockHttpClient,
     String expectedUrl,
   ) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
     expect(capturedUri.toString(), equals(expectedUrl));
   }
 
@@ -31,8 +29,8 @@ class VerificationHelpers {
     String? expectedPath,
     Map<String, String>? expectedQueryParams,
   }) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
 
     if (expectedHost != null) {
       expect(capturedUri.host, equals(expectedHost));
@@ -54,8 +52,8 @@ class VerificationHelpers {
     String? pathContains,
     String? queryContains,
   }) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
 
     if (hostContains != null) {
       expect(capturedUri.host, contains(hostContains));
@@ -83,8 +81,8 @@ class VerificationHelpers {
     String? pathContains,
     String? queryContains,
   }) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
 
     if (expectedUrl != null) {
       expect(capturedUri.toString(), equals(expectedUrl));
@@ -145,21 +143,11 @@ class VerificationHelpers {
   }) {
     final verification = verify(
       () => mockProvider.fetchHistoricalOhlc(
-        coinId: expectedCoinId != null
-            ? expectedCoinId
-            : any(named: 'coinId'),
-        startDate: expectedStartDate != null
-            ? expectedStartDate
-            : any(named: 'startDate'),
-        endDate: expectedEndDate != null
-            ? expectedEndDate
-            : any(named: 'endDate'),
-        quote: expectedQuote != null
-            ? expectedQuote
-            : any(named: 'quote'),
-        interval: expectedInterval != null
-            ? expectedInterval
-            : any(named: 'interval'),
+        coinId: expectedCoinId ?? any(named: 'coinId'),
+        startDate: expectedStartDate ?? any(named: 'startDate'),
+        endDate: expectedEndDate ?? any(named: 'endDate'),
+        quote: expectedQuote ?? any(named: 'quote'),
+        interval: expectedInterval ?? any(named: 'interval'),
       ),
     );
 
@@ -179,12 +167,8 @@ class VerificationHelpers {
   }) {
     final verification = verify(
       () => mockProvider.fetchCoinTicker(
-        coinId: expectedCoinId != null
-            ? expectedCoinId
-            : any(named: 'coinId'),
-        quotes: expectedQuotes != null
-            ? expectedQuotes
-            : any(named: 'quotes'),
+        coinId: expectedCoinId ?? any(named: 'coinId'),
+        quotes: expectedQuotes ?? any(named: 'quotes'),
       ),
     );
 
@@ -204,12 +188,8 @@ class VerificationHelpers {
   }) {
     final verification = verify(
       () => mockProvider.fetchCoinMarkets(
-        coinId: expectedCoinId != null
-            ? expectedCoinId
-            : any(named: 'coinId'),
-        quotes: expectedQuotes != null
-            ? expectedQuotes
-            : any(named: 'quotes'),
+        coinId: expectedCoinId ?? any(named: 'coinId'),
+        quotes: expectedQuotes ?? any(named: 'quotes'),
       ),
     );
 
@@ -257,8 +237,8 @@ class VerificationHelpers {
     String? expectedInterval,
     List<String>? excludedParams,
   }) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
 
     // Verify URL structure
     expect(capturedUri.host, equals(TestConstants.baseUrl));
@@ -294,8 +274,8 @@ class VerificationHelpers {
     String expectedCoinId, {
     String? expectedQuotes,
   }) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
 
     // Verify URL structure
     expect(capturedUri.host, equals(TestConstants.baseUrl));
@@ -316,8 +296,8 @@ class VerificationHelpers {
     String expectedCoinId, {
     String? expectedQuotes,
   }) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
 
     // Verify URL structure
     expect(capturedUri.host, equals(TestConstants.baseUrl));
@@ -420,13 +400,14 @@ class VerificationHelpers {
     String inputInterval,
     String expectedApiInterval,
   ) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
 
     expect(
       capturedUri.queryParameters['interval'],
       equals(expectedApiInterval),
-      reason: 'Interval $inputInterval should be converted to $expectedApiInterval',
+      reason:
+          'Interval $inputInterval should be converted to $expectedApiInterval',
     );
   }
 
@@ -450,8 +431,8 @@ class VerificationHelpers {
     DateTime inputDate,
     String expectedFormattedDate,
   ) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
 
     expect(
       capturedUri.queryParameters['start'],
@@ -462,13 +443,14 @@ class VerificationHelpers {
 
   /// Verifies that no quote parameter is included in URL (for historical OHLC)
   static void verifyNoQuoteParameter(MockHttpClient mockHttpClient) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
 
     expect(
       capturedUri.queryParameters.containsKey('quote'),
       isFalse,
-      reason: 'Quote parameter should not be included in historical OHLC requests',
+      reason:
+          'Quote parameter should not be included in historical OHLC requests',
     );
   }
 
@@ -477,8 +459,8 @@ class VerificationHelpers {
     MockHttpClient mockHttpClient,
     List<String> expectedParams,
   ) {
-    final capturedUri = verify(() => mockHttpClient.get(captureAny()))
-        .captured.single as Uri;
+    final capturedUri =
+        verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
 
     expect(
       capturedUri.queryParameters.keys.toSet(),
@@ -504,9 +486,7 @@ class VerificationHelpers {
   }
 
   /// Verifies that UTC time was used in date calculations
-  static void verifyUtcTimeUsage(
-    MockCoinPaprikaProvider mockProvider,
-  ) {
+  static void verifyUtcTimeUsage(MockCoinPaprikaProvider mockProvider) {
     final capturedCalls = verify(
       () => mockProvider.fetchHistoricalOhlc(
         coinId: any(named: 'coinId'),
@@ -522,16 +502,8 @@ class VerificationHelpers {
       final startDate = capturedCalls[i] as DateTime;
       final endDate = capturedCalls[i + 1] as DateTime;
 
-      expect(
-        startDate.isUtc,
-        isTrue,
-        reason: 'Start date should be in UTC',
-      );
-      expect(
-        endDate.isUtc,
-        isTrue,
-        reason: 'End date should be in UTC',
-      );
+      expect(startDate.isUtc, isTrue, reason: 'Start date should be in UTC');
+      expect(endDate.isUtc, isTrue, reason: 'End date should be in UTC');
     }
   }
 }

@@ -3,6 +3,7 @@
 /// Internal/private classes related to CoinPaprika market data provider functionality.
 library _coinpaprika;
 
+export 'constants/coinpaprika_intervals.dart';
 export 'data/coinpaprika_cex_provider.dart';
 export 'data/coinpaprika_repository.dart';
 export 'models/coinpaprika_api_plan.dart';

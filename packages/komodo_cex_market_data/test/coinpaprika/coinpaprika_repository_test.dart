@@ -61,8 +61,10 @@ void main() {
         );
 
         // Act & Assert
-        expect(() => repository.getCoinList(), throwsA(isA<Exception>()));
-
+        await expectLater(
+          () => repository.getCoinList(),
+          throwsA(isA<Exception>()),
+        );
         VerificationHelpers.verifyFetchCoinList(mockProvider);
       });
     });
@@ -76,9 +78,9 @@ void main() {
         expect(result, equals(TestConstants.bitcoinCoinId));
       });
 
-      test('throws ArgumentError when coinPaprikaId is missing', () {
+      test('throws ArgumentError when coinPaprikaId is missing', () async {
         // Act & Assert
-        expect(
+        await expectLater(
           () => repository.resolveTradingSymbol(TestData.unsupportedAsset),
           throwsA(isA<ArgumentError>()),
         );

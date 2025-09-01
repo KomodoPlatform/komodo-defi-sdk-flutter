@@ -8,6 +8,12 @@ part of 'coinpaprika_ticker.dart';
 
 _CoinPaprikaTicker _$CoinPaprikaTickerFromJson(Map<String, dynamic> json) =>
     _CoinPaprikaTicker(
+      quotes: (json['quotes'] as Map<String, dynamic>).map(
+        (k, e) => MapEntry(
+          k,
+          CoinPaprikaTickerQuote.fromJson(e as Map<String, dynamic>),
+        ),
+      ),
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
       symbol: json['symbol'] as String? ?? '',
@@ -22,16 +28,11 @@ _CoinPaprikaTicker _$CoinPaprikaTickerFromJson(Map<String, dynamic> json) =>
       lastUpdated: json['last_updated'] == null
           ? null
           : DateTime.parse(json['last_updated'] as String),
-      quotes: (json['quotes'] as Map<String, dynamic>).map(
-        (k, e) => MapEntry(
-          k,
-          CoinPaprikaTickerQuote.fromJson(e as Map<String, dynamic>),
-        ),
-      ),
     );
 
 Map<String, dynamic> _$CoinPaprikaTickerToJson(_CoinPaprikaTicker instance) =>
     <String, dynamic>{
+      'quotes': instance.quotes,
       'id': instance.id,
       'name': instance.name,
       'symbol': instance.symbol,
@@ -42,5 +43,4 @@ Map<String, dynamic> _$CoinPaprikaTickerToJson(_CoinPaprikaTicker instance) =>
       'beta_value': instance.betaValue,
       'first_data_at': instance.firstDataAt?.toIso8601String(),
       'last_updated': instance.lastUpdated?.toIso8601String(),
-      'quotes': instance.quotes,
     };

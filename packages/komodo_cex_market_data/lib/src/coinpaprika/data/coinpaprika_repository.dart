@@ -102,13 +102,12 @@ class CoinPaprikaRepository implements CexRepository {
       final tradingSymbol = resolveTradingSymbol(assetId);
       final apiPlan = coinPaprikaProvider.apiPlan;
 
-      // All plans now use batching for efficiency with the historical ticks endpoint
-
       // Determine the actual fetchable date range (using UTC)
       var effectiveStartAt = startAt;
       final effectiveEndAt = endAt ?? DateTime.now().toUtc();
 
-      // If no startAt provided, use default based on plan limit or reasonable default
+      // If no startAt provided, use default based on plan limit or
+      // reasonable default
       if (effectiveStartAt == null) {
         if (apiPlan.hasUnlimitedOhlcHistory) {
           effectiveStartAt = effectiveEndAt.subtract(
@@ -121,7 +120,8 @@ class CoinPaprikaRepository implements CexRepository {
         }
       }
 
-      // Check if the requested range is entirely before the cutoff date (only for limited plans)
+      // Check if the requested range is entirely before the cutoff date
+      // (only for limited plans)
       if (!apiPlan.hasUnlimitedOhlcHistory) {
         final cutoffDate = apiPlan.getHistoricalDataCutoff();
         if (cutoffDate != null) {
@@ -238,7 +238,9 @@ class CoinPaprikaRepository implements CexRepository {
       final actualEnd = batchEnd.isAfter(endAt) ? endAt : batchEnd;
 
       final actualBatchDuration = actualEnd.difference(currentStart);
-      if (actualBatchDuration.inDays <= 0) break;
+      // Smallest interval is 5 minutes, so we can't have a resolution of
+      // smaller than a minute
+      if (actualBatchDuration.inMinutes <= 0) break;
 
       // Ensure batch duration doesn't exceed our chosen batch size
       if (actualBatchDuration > batchDuration) {
@@ -293,7 +295,8 @@ class CoinPaprikaRepository implements CexRepository {
       return const Duration(days: 90); // Reasonable default for unlimited plans
     } else {
       final planLimit = apiPlan.ohlcHistoricalDataLimit!;
-      // Use smaller batches: max 90 days or plan limit minus buffer, whichever is smaller
+      // Use smaller batches: max 90 days or plan limit minus buffer,
+      // whichever is smaller
       const bufferDuration = Duration(minutes: 1);
       final maxPlanBatch = planLimit - bufferDuration;
       return maxPlanBatch.inDays > 90 ? const Duration(days: 90) : maxPlanBatch;
@@ -397,19 +400,21 @@ class CoinPaprikaRepository implements CexRepository {
 
       // Match OHLC data to requested dates
       for (final date in dates) {
-        final dayStart = DateTime(date.year, date.month, date.day);
-        final dayEnd = dayStart.add(const Duration(days: 1));
+        final dayStart = DateTime.utc(date.year, date.month, date.day);
+        final dayEnd = dayStart.add(const Duration(days: 1)).toUtc();
 
         // Find the closest OHLC data point
-        final closestOhlc = ohlcData.ohlc
-            .where((ohlc) {
-              final ohlcDate = DateTime.fromMillisecondsSinceEpoch(
-                ohlc.closeTimeMs,
-              );
-              return ohlcDate.isAfter(dayStart) && ohlcDate.isBefore(dayEnd);
-            })
-            .cast<Ohlc?>()
-            .firstWhere((ohlc) => ohlc != null, orElse: () => null);
+        Ohlc? closestOhlc;
+        for (final ohlc in ohlcData.ohlc) {
+          final ohlcDate = DateTime.fromMillisecondsSinceEpoch(
+            ohlc.closeTimeMs,
+            isUtc: true,
+          );
+          if (!ohlcDate.isBefore(dayStart) && ohlcDate.isBefore(dayEnd)) {
+            closestOhlc = ohlc;
+            break;
+          }
+        }
 
         if (closestOhlc != null) {
           result[date] = closestOhlc.closeDecimal;

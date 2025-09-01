@@ -176,10 +176,10 @@ abstract class CoingeckoApiPlan with _$CoingeckoApiPlan {
     return when(
       demo: (_, __, ___) =>
           DateTime.now().toUtc().subtract(const Duration(days: 365)),
-      analyst: (_, __, ___) => DateTime(2013, 1, 1),
-      lite: (_, __, ___) => DateTime(2013, 1, 1),
-      pro: (_, __, ___) => DateTime(2013, 1, 1),
-      enterprise: (_, __, ___, ____) => DateTime(2013, 1, 1),
+      analyst: (_, __, ___) => DateTime.utc(2013),
+      lite: (_, __, ___) => DateTime.utc(2013),
+      pro: (_, __, ___) => DateTime.utc(2013),
+      enterprise: (_, __, ___, ____) => DateTime.utc(2013),
     );
   }
 
@@ -189,10 +189,10 @@ abstract class CoingeckoApiPlan with _$CoingeckoApiPlan {
     return when(
       demo: (_, __, ___) =>
           DateTime.now().toUtc().subtract(const Duration(days: 365)),
-      analyst: (_, __, ___) => DateTime(2018, 1, 1),
-      lite: (_, __, ___) => DateTime(2018, 1, 1),
-      pro: (_, __, ___) => DateTime(2018, 1, 1),
-      enterprise: (_, __, ___, ____) => DateTime(2018, 1, 1),
+      analyst: (_, __, ___) => DateTime.utc(2018),
+      lite: (_, __, ___) => DateTime.utc(2018),
+      pro: (_, __, ___) => DateTime.utc(2018),
+      enterprise: (_, __, ___, ____) => DateTime.utc(2018),
     );
   }
 
@@ -208,7 +208,7 @@ abstract class CoingeckoApiPlan with _$CoingeckoApiPlan {
           DateTime.now().toUtc().subtract(const Duration(days: 1)),
       pro: (_, __, ___) =>
           DateTime.now().toUtc().subtract(const Duration(days: 1)),
-      enterprise: (_, __, ___, ____) => DateTime(2018, 1, 1),
+      enterprise: (_, __, ___, ____) => DateTime.utc(2018),
     );
   }
 
@@ -224,18 +224,18 @@ abstract class CoingeckoApiPlan with _$CoingeckoApiPlan {
   /// Validates if the given timestamp is within the plan's daily historical data limits.
   bool isWithinDailyHistoricalLimit(DateTime timestamp) {
     final cutoff = getDailyHistoricalDataCutoff();
-    return cutoff == null || timestamp.isAfter(cutoff);
+    return cutoff == null || !timestamp.isBefore(cutoff);
   }
 
   /// Validates if the given timestamp is within the plan's hourly historical data limits.
   bool isWithinHourlyHistoricalLimit(DateTime timestamp) {
     final cutoff = getHourlyHistoricalDataCutoff();
-    return cutoff == null || timestamp.isAfter(cutoff);
+    return cutoff == null || !timestamp.isBefore(cutoff);
   }
 
   /// Validates if the given timestamp is within the plan's 5-minutely historical data limits.
   bool isWithin5MinutelyHistoricalLimit(DateTime timestamp) {
     final cutoff = get5MinutelyHistoricalDataCutoff();
-    return cutoff == null || timestamp.isAfter(cutoff);
+    return cutoff == null || !timestamp.isBefore(cutoff);
   }
 }

@@ -63,27 +63,28 @@ class DefaultRepositorySelectionStrategy
     required List<CexRepository> availableRepositories,
   }) async {
     final candidates = <CexRepository>[];
+    const timeout = Duration(seconds: 2);
 
-    for (final repo in availableRepositories) {
-      try {
-        final isSupported = await repo.supports(
-          assetId,
-          fiatCurrency,
-          requestType,
-        );
-        if (isSupported) {
-          candidates.add(repo);
+    await Future.wait(
+      availableRepositories.map((repo) async {
+        try {
+          final isSupported = await repo
+              .supports(assetId, fiatCurrency, requestType)
+              .timeout(timeout, onTimeout: () => false);
+          if (isSupported) {
+            candidates.add(repo);
+          }
+        } catch (e, st) {
+          // Log errors but continue with other repositories
+          _logger.warning(
+            'Failed to check support for ${repo.runtimeType} with asset '
+            '${assetId.id} and fiat ${fiatCurrency.symbol} (requestType: $requestType)',
+            e,
+            st,
+          );
         }
-      } catch (e, st) {
-        // Log errors but continue with other repositories
-        _logger.warning(
-          'Failed to check support for ${repo.runtimeType} with asset '
-          '${assetId.id} and fiat ${fiatCurrency.symbol}',
-          e,
-          st,
-        );
-      }
-    }
+      }),
+    );
 
     // Sort by priority
     candidates.sort(

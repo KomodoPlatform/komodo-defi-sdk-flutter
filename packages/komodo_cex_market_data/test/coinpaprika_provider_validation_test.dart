@@ -382,10 +382,7 @@ void main() {
       test('should allow supported daily intervals for free plan', () {
         final freePlanProvider = TestCoinPaprikaProvider();
 
-        expect(
-          () => freePlanProvider.testValidation(interval: '24h'),
-          returnsNormally,
-        );
+        expect(freePlanProvider.testValidation, returnsNormally);
         expect(
           () => freePlanProvider.testValidation(interval: '1d'),
           returnsNormally,

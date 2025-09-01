@@ -3,17 +3,51 @@ import 'dart:convert';
 import 'package:decimal/decimal.dart' show Decimal;
 import 'package:http/http.dart' as http;
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-import 'package:komodo_cex_market_data/src/coingecko/models/coin_historical_data/coin_historical_data.dart';
-
-import 'package:komodo_cex_market_data/src/common/api_error_parser.dart';
 import 'package:logging/logging.dart';
 
 /// Interface for fetching data from CoinGecko API.
+///
+/// This interface provides methods to interact with the CoinGecko cryptocurrency
+/// data API, including fetching coin lists, market data, charts, and historical data.
+/// All methods are asynchronous and return Future objects.
 abstract class ICoinGeckoProvider {
+  /// Fetches a list of available coins from CoinGecko.
+  ///
+  /// [includePlatforms] - Whether to include platform information for each coin.
+  ///                       When true, returns additional blockchain platform details.
+  ///
+  /// Returns a list of [CexCoin] objects representing available cryptocurrencies.
+  ///
+  /// Throws an exception if the API request fails or the response cannot be parsed.
   Future<List<CexCoin>> fetchCoinList({bool includePlatforms = false});
 
+  /// Fetches the list of supported vs (versus) currencies.
+  ///
+  /// Returns a list of currency codes (e.g., 'usd', 'eur', 'btc') that can be
+  /// used as the base currency for price comparisons and market data.
+  ///
+  /// Throws an exception if the API request fails or the response cannot be parsed.
   Future<List<String>> fetchSupportedVsCurrencies();
 
+  /// Fetches market data for coins with various filtering and pagination options.
+  ///
+  /// [vsCurrency] - The target currency for price data (default: 'usd').
+  /// [ids] - Optional list of coin IDs to filter results. If null, returns all coins.
+  /// [category] - Optional category filter (e.g., 'decentralized_finance_defi').
+  /// [order] - Sort order for results (default: 'market_cap_asc').
+  ///           Options: 'market_cap_asc', 'market_cap_desc', 'volume_asc', 'volume_desc',
+  ///                    'id_asc', 'id_desc', 'gecko_asc', 'gecko_desc'.
+  /// [perPage] - Number of results per page (default: 100, max: 250).
+  /// [page] - Page number for pagination (default: 1).
+  /// [sparkline] - Whether to include sparkline data (default: false).
+  /// [priceChangePercentage] - Optional time period for price change percentage.
+  ///                           Options: '1h', '24h', '7d', '14d', '30d', '200d', '1y'.
+  /// [locale] - Language for localization (default: 'en').
+  /// [precision] - Optional precision for price data.
+  ///
+  /// Returns a list of [CoinMarketData] objects containing market information.
+  ///
+  /// Throws an exception if the API request fails or the response cannot be parsed.
   Future<List<CoinMarketData>> fetchCoinMarketData({
     String vsCurrency = 'usd',
     List<String>? ids,
@@ -27,6 +61,18 @@ abstract class ICoinGeckoProvider {
     String? precision,
   });
 
+  /// Fetches historical market chart data for a specific coin.
+  ///
+  /// [id] - The CoinGecko ID of the coin (e.g., 'bitcoin').
+  /// [vsCurrency] - The target currency for price data (e.g., 'usd').
+  /// [fromUnixTimestamp] - Start time as Unix timestamp (seconds since epoch).
+  /// [toUnixTimestamp] - End time as Unix timestamp (seconds since epoch).
+  /// [precision] - Optional precision for price data.
+  ///
+  /// Returns a [CoinMarketChart] object containing price, market cap, and volume data
+  /// for the specified time period.
+  ///
+  /// Throws an exception if the API request fails or the response cannot be parsed.
   Future<CoinMarketChart> fetchCoinMarketChart({
     required String id,
     required String vsCurrency,
@@ -35,6 +81,16 @@ abstract class ICoinGeckoProvider {
     String? precision,
   });
 
+  /// Fetches OHLC (Open, High, Low, Close) price data for a specific coin.
+  ///
+  /// [id] - The CoinGecko ID of the coin (e.g., 'bitcoin').
+  /// [vsCurrency] - The target currency for price data (e.g., 'usd').
+  /// [days] - Number of days of data to retrieve.
+  /// [precision] - Optional precision for price data.
+  ///
+  /// Returns a [CoinOhlc] object containing OHLC price data for the specified period.
+  ///
+  /// Throws an exception if the API request fails or the response cannot be parsed.
   Future<CoinOhlc> fetchCoinOhlc(
     String id,
     String vsCurrency,
@@ -42,6 +98,17 @@ abstract class ICoinGeckoProvider {
     int? precision,
   });
 
+  /// Fetches historical market data for a specific coin on a specific date.
+  ///
+  /// [id] - The CoinGecko ID of the coin (e.g., 'bitcoin').
+  /// [date] - The specific date for which to retrieve historical data.
+  /// [vsCurrency] - The target currency for price data (default: 'usd').
+  /// [localization] - Whether to include localized data (default: false).
+  ///
+  /// Returns a [CoinHistoricalData] object containing historical market information
+  /// for the specified coin and date.
+  ///
+  /// Throws an exception if the API request fails or the response cannot be parsed.
   Future<CoinHistoricalData> fetchCoinHistoricalMarketData({
     required String id,
     required DateTime date,
@@ -49,6 +116,15 @@ abstract class ICoinGeckoProvider {
     bool localization = false,
   });
 
+  /// Fetches current prices for multiple coins in specified currencies.
+  ///
+  /// [coinGeckoIds] - List of CoinGecko IDs for the coins to fetch prices for.
+  /// [vsCurrencies] - List of target currencies for price data (default: ['usd']).
+  ///
+  /// Returns a map where keys are coin IDs and values are [AssetMarketInformation]
+  /// objects containing current price data in the specified currencies.
+  ///
+  /// Throws an exception if the API request fails or the response cannot be parsed.
   Future<Map<String, AssetMarketInformation>> fetchCoinPrices(
     List<String> coinGeckoIds, {
     List<String> vsCurrencies = const <String>['usd'],
@@ -61,7 +137,6 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
   CoinGeckoCexProvider({
     this.baseUrl = 'api.coingecko.com',
     this.apiVersion = '/api/v3',
-    this.apiPlan = const CoingeckoApiPlan.demo(),
   });
 
   /// The base URL for the CoinGecko API.
@@ -69,9 +144,6 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
 
   /// The API version for the CoinGecko API.
   final String apiVersion;
-
-  /// The CoinGecko API plan defining rate limits and historical data access.
-  final CoingeckoApiPlan apiPlan;
 
   static final Logger _logger = Logger('CoinGeckoCexProvider');
 
@@ -86,28 +158,17 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     final uri = Uri.https(baseUrl, '$apiVersion/coins/list', queryParameters);
 
     final response = await http.get(uri);
-    if (response.statusCode == 200) {
-      final coins = jsonDecode(response.body) as List<dynamic>;
-      return coins
-          .map(
-            (dynamic element) =>
-                CexCoin.fromJson(element as Map<String, dynamic>),
-          )
-          .toList();
-    } else {
-      final apiError = ApiErrorParser.parseCoinGeckoError(
-        response.statusCode,
-        response.body,
-      );
-      _logger.warning(
-        ApiErrorParser.createSafeErrorMessage(
-          operation: 'coin list fetch',
-          service: 'CoinGecko',
-          statusCode: response.statusCode,
-        ),
-      );
-      throw Exception(apiError.message);
+    if (response.statusCode != 200) {
+      _throwApiErrorOrException(response, 'coin list fetch');
     }
+
+    final coins = jsonDecode(response.body) as List<dynamic>;
+    return coins
+        .map(
+          (dynamic element) =>
+              CexCoin.fromJson(element as Map<String, dynamic>),
+        )
+        .toList();
   }
 
   /// Fetches the list of supported vs currencies.
@@ -119,23 +180,12 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     );
 
     final response = await http.get(uri);
-    if (response.statusCode == 200) {
-      final currencies = jsonDecode(response.body) as List<dynamic>;
-      return currencies.map((dynamic currency) => currency as String).toList();
-    } else {
-      final apiError = ApiErrorParser.parseCoinGeckoError(
-        response.statusCode,
-        response.body,
-      );
-      _logger.warning(
-        ApiErrorParser.createSafeErrorMessage(
-          operation: 'supported currencies fetch',
-          service: 'CoinGecko',
-          statusCode: response.statusCode,
-        ),
-      );
-      throw Exception(apiError.message);
+    if (response.statusCode != 200) {
+      _throwApiErrorOrException(response, 'supported currencies fetch');
     }
+
+    final currencies = jsonDecode(response.body) as List<dynamic>;
+    return currencies.map((dynamic currency) => currency as String).toList();
   }
 
   /// Fetches the market data for a specific currency.
@@ -183,28 +233,16 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     );
 
     return http.get(uri).then((http.Response response) {
-      if (response.statusCode == 200) {
-        final coins = jsonDecode(response.body) as List<dynamic>;
-        return coins
-            .map(
-              (dynamic element) =>
-                  CoinMarketData.fromJson(element as Map<String, dynamic>),
-            )
-            .toList();
-      } else {
-        final apiError = ApiErrorParser.parseCoinGeckoError(
-          response.statusCode,
-          response.body,
-        );
-        _logger.warning(
-          ApiErrorParser.createSafeErrorMessage(
-            operation: 'market data fetch',
-            service: 'CoinGecko',
-            statusCode: response.statusCode,
-          ),
-        );
-        throw Exception(apiError.message);
+      if (response.statusCode != 200) {
+        _throwApiErrorOrException(response, 'market data fetch');
       }
+      final coins = jsonDecode(response.body) as List<dynamic>;
+      return coins
+          .map(
+            (dynamic element) =>
+                CoinMarketData.fromJson(element as Map<String, dynamic>),
+          )
+          .toList();
     });
   }
 
@@ -289,24 +327,12 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     );
 
     return http.get(uri).then((http.Response response) {
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return CoinMarketChart.fromJson(data);
-      } else {
-        final apiError = ApiErrorParser.parseCoinGeckoError(
-          response.statusCode,
-          response.body,
-        );
-        _logger.warning(
-          ApiErrorParser.createSafeErrorMessage(
-            operation: 'market chart fetch',
-            service: 'CoinGecko',
-            statusCode: response.statusCode,
-            coinId: id,
-          ),
-        );
-        throw Exception(apiError.message);
+      if (response.statusCode != 200) {
+        _throwApiErrorOrException(response, 'market chart fetch', coinId: id);
       }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return CoinMarketChart.fromJson(data);
     });
   }
 
@@ -358,8 +384,10 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     return sortedKeys.map((key) => uniquePoints[key]!).toList();
   }
 
-  /// Validates that the requested time range is within CoinGecko's historical data limits.
-  /// Public API users are limited to querying historical data within the past 365 days.
+  /// Validates that the requested time range is within CoinGecko's historical
+  /// data limits.
+  /// Public API users are limited to querying historical data within the
+  /// past 365 days.
   void _validateHistoricalDataAccess(
     int fromUnixTimestamp,
     int toUnixTimestamp,
@@ -367,7 +395,6 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     const maxDaysBack = 365;
     const secondsPerDay = 86400;
-    const maxSecondsBack = maxDaysBack * secondsPerDay;
 
     // Check if the from date is more than 365 days in the past
     final daysFromNow = (now - fromUnixTimestamp) / secondsPerDay;
@@ -412,24 +439,16 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     );
 
     return http.get(uri).then((http.Response response) {
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return CoinHistoricalData.fromJson(data);
-      } else {
-        final apiError = ApiErrorParser.parseCoinGeckoError(
-          response.statusCode,
-          response.body,
+      if (response.statusCode != 200) {
+        _throwApiErrorOrException(
+          response,
+          'historical market data fetch',
+          coinId: id,
         );
-        _logger.warning(
-          ApiErrorParser.createSafeErrorMessage(
-            operation: 'historical market data fetch',
-            service: 'CoinGecko',
-            statusCode: response.statusCode,
-            coinId: id,
-          ),
-        );
-        throw Exception(apiError.message);
       }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return CoinHistoricalData.fromJson(data);
     });
   }
 
@@ -474,15 +493,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
 
     // Check for HTTP errors first
     if (res.statusCode != 200) {
-      final apiError = ApiErrorParser.parseCoinGeckoError(res.statusCode, body);
-      _logger.warning(
-        ApiErrorParser.createSafeErrorMessage(
-          operation: 'price data fetch',
-          service: 'CoinGecko',
-          statusCode: res.statusCode,
-        ),
-      );
-      throw Exception(apiError.message);
+      _throwApiErrorOrException(res, 'price data fetch');
     }
 
     final json = jsonDecode(body) as Map<String, dynamic>?;
@@ -518,7 +529,8 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
           'Failed to parse price "$priceString" for $coingeckoId as Decimal',
         );
         throw Exception(
-          'Invalid price data for $coingeckoId: could not parse "$priceString" as decimal',
+          'Invalid price data for $coingeckoId: could not parse '
+          '"$priceString" as decimal',
         );
       }
 
@@ -567,24 +579,43 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     );
 
     return http.get(uri).then((http.Response response) {
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as List<dynamic>;
-        return CoinOhlc.fromJson(data, source: OhlcSource.coingecko);
-      } else {
-        final apiError = ApiErrorParser.parseCoinGeckoError(
-          response.statusCode,
-          response.body,
-        );
-        _logger.warning(
-          ApiErrorParser.createSafeErrorMessage(
-            operation: 'OHLC data fetch',
-            service: 'CoinGecko',
-            statusCode: response.statusCode,
-            coinId: id,
-          ),
-        );
-        throw Exception(apiError.message);
+      if (response.statusCode != 200) {
+        _throwApiErrorOrException(response, 'OHLC data fetch', coinId: id);
       }
+
+      final data = jsonDecode(response.body) as List<dynamic>;
+      return CoinOhlc.fromJson(data, source: OhlcSource.coingecko);
     });
+  }
+
+  /// Throws an [Exception] with a properly formatted error message.
+  ///
+  /// This method consolidates the error handling logic that was repeated
+  /// throughout the class. It parses the API error, logs a warning, and
+  /// throws an appropriate exception.
+  ///
+  /// [response]: The HTTP response containing the error
+  /// [operation]: The operation that was performed (e.g., "OHLC data fetch")
+  /// [coinId]: Optional coin identifier for more specific error context
+  void _throwApiErrorOrException(
+    http.Response response,
+    String operation, {
+    String? coinId,
+  }) {
+    final apiError = ApiErrorParser.parseCoinGeckoError(
+      response.statusCode,
+      response.body,
+    );
+
+    _logger.warning(
+      ApiErrorParser.createSafeErrorMessage(
+        operation: operation,
+        service: 'CoinGecko',
+        statusCode: response.statusCode,
+        coinId: coinId,
+      ),
+    );
+
+    throw Exception(apiError.message);
   }
 }

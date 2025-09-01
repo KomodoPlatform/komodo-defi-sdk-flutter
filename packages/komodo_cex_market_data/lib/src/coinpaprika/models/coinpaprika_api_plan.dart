@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:komodo_cex_market_data/src/coinpaprika/constants/coinpaprika_intervals.dart';
 
 part 'coinpaprika_api_plan.freezed.dart';
 part 'coinpaprika_api_plan.g.dart';
@@ -16,8 +17,7 @@ abstract class CoinPaprikaApiPlan with _$CoinPaprikaApiPlan {
   /// - Daily intervals: 24h, 1d, 7d, 14d, 30d, 90d, 365d
   const factory CoinPaprikaApiPlan.free({
     @Default(Duration(days: 365)) Duration ohlcHistoricalDataLimit,
-    @Default(['24h', '1d', '7d', '14d', '30d', '90d', '365d'])
-    List<String> availableIntervals,
+    @Default(CoinPaprikaIntervals.freeDefaults) List<String> availableIntervals,
     @Default(20000) int monthlyCallLimit,
   }) = _FreePlan;
 
@@ -29,25 +29,7 @@ abstract class CoinPaprikaApiPlan with _$CoinPaprikaApiPlan {
   /// - 5-minute intervals: 5m, 10m, 15m, 30m, 45m (last 7 days)
   const factory CoinPaprikaApiPlan.starter({
     @Default(Duration(days: 1825)) Duration ohlcHistoricalDataLimit, // 5 years
-    @Default([
-      '24h',
-      '1d',
-      '7d',
-      '14d',
-      '30d',
-      '90d',
-      '365d',
-      '1h',
-      '2h',
-      '3h',
-      '6h',
-      '12h',
-      '5m',
-      '10m',
-      '15m',
-      '30m',
-      '45m',
-    ])
+    @Default(CoinPaprikaIntervals.premiumDefaults)
     List<String> availableIntervals,
     @Default(400000) int monthlyCallLimit,
   }) = _StarterPlan;
@@ -60,25 +42,7 @@ abstract class CoinPaprikaApiPlan with _$CoinPaprikaApiPlan {
   /// - 5-minute intervals: 5m, 10m, 15m, 30m, 45m (last 30 days)
   const factory CoinPaprikaApiPlan.pro({
     Duration? ohlcHistoricalDataLimit, // null means unlimited
-    @Default([
-      '24h',
-      '1d',
-      '7d',
-      '14d',
-      '30d',
-      '90d',
-      '365d',
-      '1h',
-      '2h',
-      '3h',
-      '6h',
-      '12h',
-      '5m',
-      '10m',
-      '15m',
-      '30m',
-      '45m',
-    ])
+    @Default(CoinPaprikaIntervals.premiumDefaults)
     List<String> availableIntervals,
     @Default(1000000) int monthlyCallLimit,
   }) = _ProPlan;
@@ -91,25 +55,7 @@ abstract class CoinPaprikaApiPlan with _$CoinPaprikaApiPlan {
   /// - 5-minute intervals: 5m, 10m, 15m, 30m, 45m (last 365 days)
   const factory CoinPaprikaApiPlan.business({
     Duration? ohlcHistoricalDataLimit, // null means unlimited
-    @Default([
-      '24h',
-      '1d',
-      '7d',
-      '14d',
-      '30d',
-      '90d',
-      '365d',
-      '1h',
-      '2h',
-      '3h',
-      '6h',
-      '12h',
-      '5m',
-      '10m',
-      '15m',
-      '30m',
-      '45m',
-    ])
+    @Default(CoinPaprikaIntervals.premiumDefaults)
     List<String> availableIntervals,
     @Default(5000000) int monthlyCallLimit,
   }) = _BusinessPlan;
@@ -121,25 +67,7 @@ abstract class CoinPaprikaApiPlan with _$CoinPaprikaApiPlan {
   /// - All intervals: 24h, 1d, 7d, 14d, 30d, 90d, 365d, 1h, 2h, 3h, 6h, 12h, 5m, 10m, 15m, 30m, 45m
   const factory CoinPaprikaApiPlan.ultimate({
     Duration? ohlcHistoricalDataLimit, // null means no limit
-    @Default([
-      '24h',
-      '1d',
-      '7d',
-      '14d',
-      '30d',
-      '90d',
-      '365d',
-      '1h',
-      '2h',
-      '3h',
-      '6h',
-      '12h',
-      '5m',
-      '10m',
-      '15m',
-      '30m',
-      '45m',
-    ])
+    @Default(CoinPaprikaIntervals.premiumDefaults)
     List<String> availableIntervals,
     @Default(10000000) int monthlyCallLimit,
   }) = _UltimatePlan;
@@ -151,25 +79,7 @@ abstract class CoinPaprikaApiPlan with _$CoinPaprikaApiPlan {
   /// - All intervals: 24h, 1d, 7d, 14d, 30d, 90d, 365d, 1h, 2h, 3h, 6h, 12h, 5m, 10m, 15m, 30m, 45m
   const factory CoinPaprikaApiPlan.enterprise({
     Duration? ohlcHistoricalDataLimit, // null means no limit
-    @Default([
-      '24h',
-      '1d',
-      '7d',
-      '14d',
-      '30d',
-      '90d',
-      '365d',
-      '1h',
-      '2h',
-      '3h',
-      '6h',
-      '12h',
-      '5m',
-      '10m',
-      '15m',
-      '30m',
-      '45m',
-    ])
+    @Default(CoinPaprikaIntervals.premiumDefaults)
     List<String> availableIntervals,
     int? monthlyCallLimit, // null means no limit,
   }) = _EnterprisePlan;
@@ -191,10 +101,10 @@ abstract class CoinPaprikaApiPlan with _$CoinPaprikaApiPlan {
     if (hasUnlimitedOhlcHistory) return null;
 
     // Use UTC time and apply 1-minute buffer to be more conservative
-    const bufferDuration = Duration(minutes: 1);
-    return DateTime.now().toUtc().subtract(
-      ohlcHistoricalDataLimit! - bufferDuration,
-    );
+    const buffer = Duration(minutes: 1);
+    final limit = ohlcHistoricalDataLimit!;
+    final safeWindow = limit > buffer ? (limit - buffer) : Duration.zero;
+    return DateTime.now().toUtc().subtract(safeWindow);
   }
 
   /// Validates if the given interval is supported by this plan.

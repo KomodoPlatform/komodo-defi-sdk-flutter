@@ -253,7 +253,7 @@ class TestFixtures {
     String? baseName,
     String? quoteId,
     String? quoteName,
-    Map<String, Map<String, dynamic>>? quotes,
+    Map<String, CoinPaprikaQuote>? quotes,
   }) {
     return CoinPaprikaMarket(
       exchangeId: exchangeId ?? 'binance',
@@ -269,7 +269,7 @@ class TestFixtures {
       outlier: false,
       adjustedVolume24hShare: 12.5,
       lastUpdated: TestData.testDate.toIso8601String(),
-      quotes: <String, CoinPaprikaQuote>{},
+      quotes: quotes ?? <String, CoinPaprikaQuote>{},
     );
   }
 

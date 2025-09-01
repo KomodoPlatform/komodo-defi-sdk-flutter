@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CoinPaprikaTicker {
 
-/// Unique identifier for the coin (e.g., "btc-bitcoin")
+/// Map of quotes for different currencies (BTC, USD, etc.)
+ Map<String, CoinPaprikaTickerQuote> get quotes;/// Unique identifier for the coin (e.g., "btc-bitcoin")
  String get id;/// Full name of the coin (e.g., "Bitcoin")
  String get name;/// Symbol/ticker of the coin (e.g., "BTC")
  String get symbol;/// Market ranking of the coin
@@ -25,8 +26,7 @@ mixin _$CoinPaprikaTicker {
  int? get maxSupply;/// Beta value (volatility measure)
  double get betaValue;/// Date of first data point
  DateTime? get firstDataAt;/// Last updated timestamp
- DateTime? get lastUpdated;/// Map of quotes for different currencies (BTC, USD, etc.)
- Map<String, CoinPaprikaTickerQuote> get quotes;
+ DateTime? get lastUpdated;
 /// Create a copy of CoinPaprikaTicker
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -39,16 +39,16 @@ $CoinPaprikaTickerCopyWith<CoinPaprikaTicker> get copyWith => _$CoinPaprikaTicke
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CoinPaprikaTicker&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.symbol, symbol) || other.symbol == symbol)&&(identical(other.rank, rank) || other.rank == rank)&&(identical(other.circulatingSupply, circulatingSupply) || other.circulatingSupply == circulatingSupply)&&(identical(other.totalSupply, totalSupply) || other.totalSupply == totalSupply)&&(identical(other.maxSupply, maxSupply) || other.maxSupply == maxSupply)&&(identical(other.betaValue, betaValue) || other.betaValue == betaValue)&&(identical(other.firstDataAt, firstDataAt) || other.firstDataAt == firstDataAt)&&(identical(other.lastUpdated, lastUpdated) || other.lastUpdated == lastUpdated)&&const DeepCollectionEquality().equals(other.quotes, quotes));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CoinPaprikaTicker&&const DeepCollectionEquality().equals(other.quotes, quotes)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.symbol, symbol) || other.symbol == symbol)&&(identical(other.rank, rank) || other.rank == rank)&&(identical(other.circulatingSupply, circulatingSupply) || other.circulatingSupply == circulatingSupply)&&(identical(other.totalSupply, totalSupply) || other.totalSupply == totalSupply)&&(identical(other.maxSupply, maxSupply) || other.maxSupply == maxSupply)&&(identical(other.betaValue, betaValue) || other.betaValue == betaValue)&&(identical(other.firstDataAt, firstDataAt) || other.firstDataAt == firstDataAt)&&(identical(other.lastUpdated, lastUpdated) || other.lastUpdated == lastUpdated));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,symbol,rank,circulatingSupply,totalSupply,maxSupply,betaValue,firstDataAt,lastUpdated,const DeepCollectionEquality().hash(quotes));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(quotes),id,name,symbol,rank,circulatingSupply,totalSupply,maxSupply,betaValue,firstDataAt,lastUpdated);
 
 @override
 String toString() {
-  return 'CoinPaprikaTicker(id: $id, name: $name, symbol: $symbol, rank: $rank, circulatingSupply: $circulatingSupply, totalSupply: $totalSupply, maxSupply: $maxSupply, betaValue: $betaValue, firstDataAt: $firstDataAt, lastUpdated: $lastUpdated, quotes: $quotes)';
+  return 'CoinPaprikaTicker(quotes: $quotes, id: $id, name: $name, symbol: $symbol, rank: $rank, circulatingSupply: $circulatingSupply, totalSupply: $totalSupply, maxSupply: $maxSupply, betaValue: $betaValue, firstDataAt: $firstDataAt, lastUpdated: $lastUpdated)';
 }
 
 
@@ -59,7 +59,7 @@ abstract mixin class $CoinPaprikaTickerCopyWith<$Res>  {
   factory $CoinPaprikaTickerCopyWith(CoinPaprikaTicker value, $Res Function(CoinPaprikaTicker) _then) = _$CoinPaprikaTickerCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String symbol, int rank, int circulatingSupply, int totalSupply, int? maxSupply, double betaValue, DateTime? firstDataAt, DateTime? lastUpdated, Map<String, CoinPaprikaTickerQuote> quotes
+ Map<String, CoinPaprikaTickerQuote> quotes, String id, String name, String symbol, int rank, int circulatingSupply, int totalSupply, int? maxSupply, double betaValue, DateTime? firstDataAt, DateTime? lastUpdated
 });
 
 
@@ -76,9 +76,10 @@ class _$CoinPaprikaTickerCopyWithImpl<$Res>
 
 /// Create a copy of CoinPaprikaTicker
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? symbol = null,Object? rank = null,Object? circulatingSupply = null,Object? totalSupply = null,Object? maxSupply = freezed,Object? betaValue = null,Object? firstDataAt = freezed,Object? lastUpdated = freezed,Object? quotes = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? quotes = null,Object? id = null,Object? name = null,Object? symbol = null,Object? rank = null,Object? circulatingSupply = null,Object? totalSupply = null,Object? maxSupply = freezed,Object? betaValue = null,Object? firstDataAt = freezed,Object? lastUpdated = freezed,}) {
   return _then(_self.copyWith(
-id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+quotes: null == quotes ? _self.quotes : quotes // ignore: cast_nullable_to_non_nullable
+as Map<String, CoinPaprikaTickerQuote>,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,symbol: null == symbol ? _self.symbol : symbol // ignore: cast_nullable_to_non_nullable
 as String,rank: null == rank ? _self.rank : rank // ignore: cast_nullable_to_non_nullable
@@ -88,8 +89,7 @@ as int,maxSupply: freezed == maxSupply ? _self.maxSupply : maxSupply // ignore: 
 as int?,betaValue: null == betaValue ? _self.betaValue : betaValue // ignore: cast_nullable_to_non_nullable
 as double,firstDataAt: freezed == firstDataAt ? _self.firstDataAt : firstDataAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,lastUpdated: freezed == lastUpdated ? _self.lastUpdated : lastUpdated // ignore: cast_nullable_to_non_nullable
-as DateTime?,quotes: null == quotes ? _self.quotes : quotes // ignore: cast_nullable_to_non_nullable
-as Map<String, CoinPaprikaTickerQuote>,
+as DateTime?,
   ));
 }
 
@@ -174,10 +174,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String symbol,  int rank,  int circulatingSupply,  int totalSupply,  int? maxSupply,  double betaValue,  DateTime? firstDataAt,  DateTime? lastUpdated,  Map<String, CoinPaprikaTickerQuote> quotes)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Map<String, CoinPaprikaTickerQuote> quotes,  String id,  String name,  String symbol,  int rank,  int circulatingSupply,  int totalSupply,  int? maxSupply,  double betaValue,  DateTime? firstDataAt,  DateTime? lastUpdated)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CoinPaprikaTicker() when $default != null:
-return $default(_that.id,_that.name,_that.symbol,_that.rank,_that.circulatingSupply,_that.totalSupply,_that.maxSupply,_that.betaValue,_that.firstDataAt,_that.lastUpdated,_that.quotes);case _:
+return $default(_that.quotes,_that.id,_that.name,_that.symbol,_that.rank,_that.circulatingSupply,_that.totalSupply,_that.maxSupply,_that.betaValue,_that.firstDataAt,_that.lastUpdated);case _:
   return orElse();
 
 }
@@ -195,10 +195,10 @@ return $default(_that.id,_that.name,_that.symbol,_that.rank,_that.circulatingSup
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String symbol,  int rank,  int circulatingSupply,  int totalSupply,  int? maxSupply,  double betaValue,  DateTime? firstDataAt,  DateTime? lastUpdated,  Map<String, CoinPaprikaTickerQuote> quotes)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Map<String, CoinPaprikaTickerQuote> quotes,  String id,  String name,  String symbol,  int rank,  int circulatingSupply,  int totalSupply,  int? maxSupply,  double betaValue,  DateTime? firstDataAt,  DateTime? lastUpdated)  $default,) {final _that = this;
 switch (_that) {
 case _CoinPaprikaTicker():
-return $default(_that.id,_that.name,_that.symbol,_that.rank,_that.circulatingSupply,_that.totalSupply,_that.maxSupply,_that.betaValue,_that.firstDataAt,_that.lastUpdated,_that.quotes);case _:
+return $default(_that.quotes,_that.id,_that.name,_that.symbol,_that.rank,_that.circulatingSupply,_that.totalSupply,_that.maxSupply,_that.betaValue,_that.firstDataAt,_that.lastUpdated);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -215,10 +215,10 @@ return $default(_that.id,_that.name,_that.symbol,_that.rank,_that.circulatingSup
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String symbol,  int rank,  int circulatingSupply,  int totalSupply,  int? maxSupply,  double betaValue,  DateTime? firstDataAt,  DateTime? lastUpdated,  Map<String, CoinPaprikaTickerQuote> quotes)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Map<String, CoinPaprikaTickerQuote> quotes,  String id,  String name,  String symbol,  int rank,  int circulatingSupply,  int totalSupply,  int? maxSupply,  double betaValue,  DateTime? firstDataAt,  DateTime? lastUpdated)?  $default,) {final _that = this;
 switch (_that) {
 case _CoinPaprikaTicker() when $default != null:
-return $default(_that.id,_that.name,_that.symbol,_that.rank,_that.circulatingSupply,_that.totalSupply,_that.maxSupply,_that.betaValue,_that.firstDataAt,_that.lastUpdated,_that.quotes);case _:
+return $default(_that.quotes,_that.id,_that.name,_that.symbol,_that.rank,_that.circulatingSupply,_that.totalSupply,_that.maxSupply,_that.betaValue,_that.firstDataAt,_that.lastUpdated);case _:
   return null;
 
 }
@@ -230,8 +230,17 @@ return $default(_that.id,_that.name,_that.symbol,_that.rank,_that.circulatingSup
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class _CoinPaprikaTicker implements CoinPaprikaTicker {
-  const _CoinPaprikaTicker({this.id = '', this.name = '', this.symbol = '', this.rank = 0, this.circulatingSupply = 0, this.totalSupply = 0, this.maxSupply, this.betaValue = 0.0, this.firstDataAt, this.lastUpdated, required final  Map<String, CoinPaprikaTickerQuote> quotes}): _quotes = quotes;
+  const _CoinPaprikaTicker({required final  Map<String, CoinPaprikaTickerQuote> quotes, this.id = '', this.name = '', this.symbol = '', this.rank = 0, this.circulatingSupply = 0, this.totalSupply = 0, this.maxSupply, this.betaValue = 0.0, this.firstDataAt, this.lastUpdated}): _quotes = quotes;
   factory _CoinPaprikaTicker.fromJson(Map<String, dynamic> json) => _$CoinPaprikaTickerFromJson(json);
+
+/// Map of quotes for different currencies (BTC, USD, etc.)
+ final  Map<String, CoinPaprikaTickerQuote> _quotes;
+/// Map of quotes for different currencies (BTC, USD, etc.)
+@override Map<String, CoinPaprikaTickerQuote> get quotes {
+  if (_quotes is EqualUnmodifiableMapView) return _quotes;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_quotes);
+}
 
 /// Unique identifier for the coin (e.g., "btc-bitcoin")
 @override@JsonKey() final  String id;
@@ -253,15 +262,6 @@ class _CoinPaprikaTicker implements CoinPaprikaTicker {
 @override final  DateTime? firstDataAt;
 /// Last updated timestamp
 @override final  DateTime? lastUpdated;
-/// Map of quotes for different currencies (BTC, USD, etc.)
- final  Map<String, CoinPaprikaTickerQuote> _quotes;
-/// Map of quotes for different currencies (BTC, USD, etc.)
-@override Map<String, CoinPaprikaTickerQuote> get quotes {
-  if (_quotes is EqualUnmodifiableMapView) return _quotes;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(_quotes);
-}
-
 
 /// Create a copy of CoinPaprikaTicker
 /// with the given fields replaced by the non-null parameter values.
@@ -276,16 +276,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CoinPaprikaTicker&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.symbol, symbol) || other.symbol == symbol)&&(identical(other.rank, rank) || other.rank == rank)&&(identical(other.circulatingSupply, circulatingSupply) || other.circulatingSupply == circulatingSupply)&&(identical(other.totalSupply, totalSupply) || other.totalSupply == totalSupply)&&(identical(other.maxSupply, maxSupply) || other.maxSupply == maxSupply)&&(identical(other.betaValue, betaValue) || other.betaValue == betaValue)&&(identical(other.firstDataAt, firstDataAt) || other.firstDataAt == firstDataAt)&&(identical(other.lastUpdated, lastUpdated) || other.lastUpdated == lastUpdated)&&const DeepCollectionEquality().equals(other._quotes, _quotes));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CoinPaprikaTicker&&const DeepCollectionEquality().equals(other._quotes, _quotes)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.symbol, symbol) || other.symbol == symbol)&&(identical(other.rank, rank) || other.rank == rank)&&(identical(other.circulatingSupply, circulatingSupply) || other.circulatingSupply == circulatingSupply)&&(identical(other.totalSupply, totalSupply) || other.totalSupply == totalSupply)&&(identical(other.maxSupply, maxSupply) || other.maxSupply == maxSupply)&&(identical(other.betaValue, betaValue) || other.betaValue == betaValue)&&(identical(other.firstDataAt, firstDataAt) || other.firstDataAt == firstDataAt)&&(identical(other.lastUpdated, lastUpdated) || other.lastUpdated == lastUpdated));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,symbol,rank,circulatingSupply,totalSupply,maxSupply,betaValue,firstDataAt,lastUpdated,const DeepCollectionEquality().hash(_quotes));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_quotes),id,name,symbol,rank,circulatingSupply,totalSupply,maxSupply,betaValue,firstDataAt,lastUpdated);
 
 @override
 String toString() {
-  return 'CoinPaprikaTicker(id: $id, name: $name, symbol: $symbol, rank: $rank, circulatingSupply: $circulatingSupply, totalSupply: $totalSupply, maxSupply: $maxSupply, betaValue: $betaValue, firstDataAt: $firstDataAt, lastUpdated: $lastUpdated, quotes: $quotes)';
+  return 'CoinPaprikaTicker(quotes: $quotes, id: $id, name: $name, symbol: $symbol, rank: $rank, circulatingSupply: $circulatingSupply, totalSupply: $totalSupply, maxSupply: $maxSupply, betaValue: $betaValue, firstDataAt: $firstDataAt, lastUpdated: $lastUpdated)';
 }
 
 
@@ -296,7 +296,7 @@ abstract mixin class _$CoinPaprikaTickerCopyWith<$Res> implements $CoinPaprikaTi
   factory _$CoinPaprikaTickerCopyWith(_CoinPaprikaTicker value, $Res Function(_CoinPaprikaTicker) _then) = __$CoinPaprikaTickerCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String symbol, int rank, int circulatingSupply, int totalSupply, int? maxSupply, double betaValue, DateTime? firstDataAt, DateTime? lastUpdated, Map<String, CoinPaprikaTickerQuote> quotes
+ Map<String, CoinPaprikaTickerQuote> quotes, String id, String name, String symbol, int rank, int circulatingSupply, int totalSupply, int? maxSupply, double betaValue, DateTime? firstDataAt, DateTime? lastUpdated
 });
 
 
@@ -313,9 +313,10 @@ class __$CoinPaprikaTickerCopyWithImpl<$Res>
 
 /// Create a copy of CoinPaprikaTicker
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? symbol = null,Object? rank = null,Object? circulatingSupply = null,Object? totalSupply = null,Object? maxSupply = freezed,Object? betaValue = null,Object? firstDataAt = freezed,Object? lastUpdated = freezed,Object? quotes = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? quotes = null,Object? id = null,Object? name = null,Object? symbol = null,Object? rank = null,Object? circulatingSupply = null,Object? totalSupply = null,Object? maxSupply = freezed,Object? betaValue = null,Object? firstDataAt = freezed,Object? lastUpdated = freezed,}) {
   return _then(_CoinPaprikaTicker(
-id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+quotes: null == quotes ? _self._quotes : quotes // ignore: cast_nullable_to_non_nullable
+as Map<String, CoinPaprikaTickerQuote>,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,symbol: null == symbol ? _self.symbol : symbol // ignore: cast_nullable_to_non_nullable
 as String,rank: null == rank ? _self.rank : rank // ignore: cast_nullable_to_non_nullable
@@ -325,8 +326,7 @@ as int,maxSupply: freezed == maxSupply ? _self.maxSupply : maxSupply // ignore: 
 as int?,betaValue: null == betaValue ? _self.betaValue : betaValue // ignore: cast_nullable_to_non_nullable
 as double,firstDataAt: freezed == firstDataAt ? _self.firstDataAt : firstDataAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,lastUpdated: freezed == lastUpdated ? _self.lastUpdated : lastUpdated // ignore: cast_nullable_to_non_nullable
-as DateTime?,quotes: null == quotes ? _self._quotes : quotes // ignore: cast_nullable_to_non_nullable
-as Map<String, CoinPaprikaTickerQuote>,
+as DateTime?,
   ));
 }
 

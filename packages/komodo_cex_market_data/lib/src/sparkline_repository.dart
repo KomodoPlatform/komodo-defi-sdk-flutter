@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:hive_ce/hive.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-import 'package:komodo_cex_market_data/src/hive_adapters.dart';
-import 'package:komodo_cex_market_data/src/models/sparkline_data.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 

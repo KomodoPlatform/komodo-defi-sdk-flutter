@@ -10,6 +10,9 @@ abstract class CoinPaprikaTicker with _$CoinPaprikaTicker {
   /// Creates a CoinPaprika ticker instance.
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory CoinPaprikaTicker({
+    /// Map of quotes for different currencies (BTC, USD, etc.)
+    required Map<String, CoinPaprikaTickerQuote> quotes,
+
     /// Unique identifier for the coin (e.g., "btc-bitcoin")
     @Default('') String id,
 
@@ -39,9 +42,6 @@ abstract class CoinPaprikaTicker with _$CoinPaprikaTicker {
 
     /// Last updated timestamp
     DateTime? lastUpdated,
-
-    /// Map of quotes for different currencies (BTC, USD, etc.)
-    required Map<String, CoinPaprikaTickerQuote> quotes,
   }) = _CoinPaprikaTicker;
 
   /// Creates a CoinPaprika ticker instance from JSON.

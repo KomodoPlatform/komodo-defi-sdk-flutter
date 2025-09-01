@@ -102,7 +102,7 @@ class ApiErrorParser {
           message: 'Rate limit exceeded. Please reduce request frequency.',
           errorType: 'rate_limit',
           isRateLimitError: true,
-          retryAfter: _parseRetryAfter(responseBody),
+          retryAfter: _parseRetryAfter(responseBody) ?? 60,
         );
 
       case 402:
@@ -191,7 +191,7 @@ class ApiErrorParser {
           message: 'Rate limit exceeded. Please reduce request frequency.',
           errorType: 'rate_limit',
           isRateLimitError: true,
-          retryAfter: _parseRetryAfter(responseBody),
+          retryAfter: _parseRetryAfter(responseBody) ?? 60,
         );
 
       case 402:
@@ -281,7 +281,7 @@ class ApiErrorParser {
     }
 
     // Default retry suggestion for rate limits
-    return 60; // 1 minute default
+    return null;
   }
 
   /// Creates a safe error message for logging purposes.
@@ -303,25 +303,19 @@ class ApiErrorParser {
     switch (statusCode) {
       case 429:
         buffer.write(' - Rate limit exceeded');
-        break;
       case 402:
         buffer.write(' - Payment/upgrade required');
-        break;
       case 401:
         buffer.write(' - Authentication failed');
-        break;
       case 403:
         buffer.write(' - Access forbidden');
-        break;
       case 404:
         buffer.write(' - Resource not found');
-        break;
       case 500:
       case 502:
       case 503:
       case 504:
         buffer.write(' - Server error');
-        break;
     }
 
     return buffer.toString();

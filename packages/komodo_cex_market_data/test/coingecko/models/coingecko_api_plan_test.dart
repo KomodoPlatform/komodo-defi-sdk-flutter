@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_cex_market_data/src/coingecko/models/coingecko_api_plan.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('CoingeckoApiPlan', () {
@@ -148,8 +148,8 @@ void main() {
         final dailyCutoff = analystPlan.getDailyHistoricalDataCutoff();
         final hourlyCutoff = analystPlan.getHourlyHistoricalDataCutoff();
 
-        expect(dailyCutoff, equals(DateTime(2013, 1, 1)));
-        expect(hourlyCutoff, equals(DateTime(2018, 1, 1)));
+        expect(dailyCutoff, equals(DateTime.utc(2013)));
+        expect(hourlyCutoff, equals(DateTime.utc(2018)));
       });
     });
 
@@ -190,9 +190,9 @@ void main() {
       });
 
       test('should allow custom call limits', () {
-        final pro8M = const CoingeckoApiPlan.pro(monthlyCallLimit: 8000000);
-        final pro10M = const CoingeckoApiPlan.pro(monthlyCallLimit: 10000000);
-        final pro15M = const CoingeckoApiPlan.pro(monthlyCallLimit: 15000000);
+        const pro8M = CoingeckoApiPlan.pro(monthlyCallLimit: 8000000);
+        const pro10M = CoingeckoApiPlan.pro(monthlyCallLimit: 10000000);
+        const pro15M = CoingeckoApiPlan.pro(monthlyCallLimit: 15000000);
 
         expect(pro8M.monthlyCallLimit, equals(8000000));
         expect(pro10M.monthlyCallLimit, equals(10000000));
@@ -228,7 +228,7 @@ void main() {
       });
 
       test('should support custom limits', () {
-        final customEnterprise = const CoingeckoApiPlan.enterprise(
+        const customEnterprise = CoingeckoApiPlan.enterprise(
           monthlyCallLimit: 50000000,
           rateLimitPerMinute: 5000,
         );
@@ -244,9 +244,7 @@ void main() {
       });
 
       test('should allow disabling SLA', () {
-        final noSlaEnterprise = const CoingeckoApiPlan.enterprise(
-          hasSla: false,
-        );
+        const noSlaEnterprise = CoingeckoApiPlan.enterprise(hasSla: false);
         expect(noSlaEnterprise.hasSlaSupport, isFalse);
       });
 
@@ -274,7 +272,90 @@ void main() {
 
         final fiveMinutelyCutoff = enterprisePlan
             .get5MinutelyHistoricalDataCutoff();
-        expect(fiveMinutelyCutoff, equals(DateTime(2018, 1, 1)));
+        expect(fiveMinutelyCutoff, equals(DateTime.utc(2018)));
+      });
+    });
+
+    group('Historical Limit Checks (Inclusive Behavior)', () {
+      test(
+        'timestamps exactly at cutoff dates should be considered within limit',
+        () {
+          const analystPlan = CoingeckoApiPlan.analyst();
+
+          // Test daily cutoff (2013-01-01 UTC)
+          final dailyCutoff = DateTime.utc(2013);
+          expect(
+            analystPlan.isWithinDailyHistoricalLimit(dailyCutoff),
+            isTrue,
+            reason: 'Timestamp exactly at daily cutoff should be within limit',
+          );
+
+          // Test hourly cutoff (2018-01-01 UTC)
+          final hourlyCutoff = DateTime.utc(2018);
+          expect(
+            analystPlan.isWithinHourlyHistoricalLimit(hourlyCutoff),
+            isTrue,
+            reason: 'Timestamp exactly at hourly cutoff should be within limit',
+          );
+
+          // Test timestamps before cutoffs
+          final beforeDaily = DateTime.utc(2012, 12, 31);
+          final beforeHourly = DateTime.utc(2017, 12, 31);
+          expect(
+            analystPlan.isWithinDailyHistoricalLimit(beforeDaily),
+            isFalse,
+            reason: 'Timestamp before daily cutoff should not be within limit',
+          );
+          expect(
+            analystPlan.isWithinHourlyHistoricalLimit(beforeHourly),
+            isFalse,
+            reason: 'Timestamp before hourly cutoff should not be within limit',
+          );
+
+          // Test timestamps after cutoffs
+          final afterDaily = DateTime.utc(2013, 1, 2);
+          final afterHourly = DateTime.utc(2018, 1, 2);
+          expect(
+            analystPlan.isWithinDailyHistoricalLimit(afterDaily),
+            isTrue,
+            reason: 'Timestamp after daily cutoff should be within limit',
+          );
+          expect(
+            analystPlan.isWithinHourlyHistoricalLimit(afterHourly),
+            isTrue,
+            reason: 'Timestamp after hourly cutoff should be within limit',
+          );
+        },
+      );
+
+      test('enterprise plan 5-minutely cutoff should be inclusive', () {
+        const enterprisePlan = CoingeckoApiPlan.enterprise();
+
+        // Test 5-minutely cutoff (2018-01-01 UTC)
+        final fiveMinutelyCutoff = DateTime.utc(2018);
+        expect(
+          enterprisePlan.isWithin5MinutelyHistoricalLimit(fiveMinutelyCutoff),
+          isTrue,
+          reason:
+              'Timestamp exactly at 5-minutely cutoff should be within limit',
+        );
+
+        // Test timestamp before cutoff
+        final beforeCutoff = DateTime.utc(2017, 12, 31);
+        expect(
+          enterprisePlan.isWithin5MinutelyHistoricalLimit(beforeCutoff),
+          isFalse,
+          reason:
+              'Timestamp before 5-minutely cutoff should not be within limit',
+        );
+
+        // Test timestamp after cutoff
+        final afterCutoff = DateTime.utc(2018, 1, 2);
+        expect(
+          enterprisePlan.isWithin5MinutelyHistoricalLimit(afterCutoff),
+          isTrue,
+          reason: 'Timestamp after 5-minutely cutoff should be within limit',
+        );
       });
     });
 
@@ -352,7 +433,7 @@ void main() {
         const enterprise = CoingeckoApiPlan.enterprise();
 
         final now = DateTime.now().toUtc();
-        final oldDate = DateTime(2010, 1, 1);
+        final oldDate = DateTime(2010);
         final sixMonthsAgo = now.subtract(const Duration(days: 180));
         final twoYearsAgo = now.subtract(const Duration(days: 730));
 
@@ -363,16 +444,10 @@ void main() {
 
         // Analyst plan should accept dates from 2013
         expect(analyst.isWithinDailyHistoricalLimit(oldDate), isFalse);
-        expect(
-          analyst.isWithinDailyHistoricalLimit(DateTime(2014, 1, 1)),
-          isTrue,
-        );
+        expect(analyst.isWithinDailyHistoricalLimit(DateTime(2014)), isTrue);
 
         // Enterprise plan should accept dates from 2013
-        expect(
-          enterprise.isWithinDailyHistoricalLimit(DateTime(2014, 1, 1)),
-          isTrue,
-        );
+        expect(enterprise.isWithinDailyHistoricalLimit(DateTime(2014)), isTrue);
       });
     });
 
