@@ -183,23 +183,23 @@ class MarketDataBootstrap {
     final availableRepos = <RepositoryType, CexRepository>{};
 
     if (config.enableKomodoPrice) {
-      availableRepos[RepositoryType.komodoPrice] =
-          await container.getAsync<KomodoPriceRepository>();
+      availableRepos[RepositoryType.komodoPrice] = await container
+          .getAsync<KomodoPriceRepository>();
     }
 
     if (config.enableBinance) {
-      availableRepos[RepositoryType.binance] =
-          await container.getAsync<BinanceRepository>();
+      availableRepos[RepositoryType.binance] = await container
+          .getAsync<BinanceRepository>();
     }
 
     if (config.enableCoinGecko) {
-      availableRepos[RepositoryType.coinGecko] =
-          await container.getAsync<CoinGeckoRepository>();
+      availableRepos[RepositoryType.coinGecko] = await container
+          .getAsync<CoinGeckoRepository>();
     }
 
     if (config.enableCoinPaprika) {
-      availableRepos[RepositoryType.coinPaprika] =
-          await container.getAsync<CoinPaprikaRepository>();
+      availableRepos[RepositoryType.coinPaprika] = await container
+          .getAsync<CoinPaprikaRepository>();
     }
 
     // Add repositories in configured priority order

@@ -60,10 +60,9 @@ class BinanceRepository implements CexRepository {
             baseUrl: baseUrl,
           );
           final coinsList = _convertSymbolsToCoins(exchangeInfo);
-          _cachedFiatCurrencies =
-              exchangeInfo.symbols
-                  .map((s) => s.quoteAsset.toUpperCase())
-                  .toSet();
+          _cachedFiatCurrencies = exchangeInfo.symbols
+              .map((s) => s.quoteAsset.toUpperCase())
+              .toSet();
           return coinsList;
         } catch (e) {
           lastException = e is Exception ? e : Exception(e.toString());
@@ -191,8 +190,9 @@ class BinanceRepository implements CexRepository {
 
     for (var i = 0; i <= daysDiff; i += 500) {
       final batchStartDate = startDate.add(Duration(days: i));
-      final batchEndDate =
-          i + 500 > daysDiff ? endDate : startDate.add(Duration(days: i + 500));
+      final batchEndDate = i + 500 > daysDiff
+          ? endDate
+          : startDate.add(Duration(days: i + 500));
 
       final ohlcData = await getCoinOhlc(
         assetId,

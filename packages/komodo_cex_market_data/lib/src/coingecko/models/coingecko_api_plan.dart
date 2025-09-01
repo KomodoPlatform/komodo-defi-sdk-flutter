@@ -174,7 +174,8 @@ abstract class CoingeckoApiPlan with _$CoingeckoApiPlan {
   /// Returns null for plans with full historical access.
   DateTime? getDailyHistoricalDataCutoff() {
     return when(
-      demo: (_, __, ___) => DateTime.now().toUtc().subtract(const Duration(days: 365)),
+      demo: (_, __, ___) =>
+          DateTime.now().toUtc().subtract(const Duration(days: 365)),
       analyst: (_, __, ___) => DateTime(2013, 1, 1),
       lite: (_, __, ___) => DateTime(2013, 1, 1),
       pro: (_, __, ___) => DateTime(2013, 1, 1),
@@ -186,7 +187,8 @@ abstract class CoingeckoApiPlan with _$CoingeckoApiPlan {
   /// Returns null for plans with full historical access.
   DateTime? getHourlyHistoricalDataCutoff() {
     return when(
-      demo: (_, __, ___) => DateTime.now().toUtc().subtract(const Duration(days: 365)),
+      demo: (_, __, ___) =>
+          DateTime.now().toUtc().subtract(const Duration(days: 365)),
       analyst: (_, __, ___) => DateTime(2018, 1, 1),
       lite: (_, __, ___) => DateTime(2018, 1, 1),
       pro: (_, __, ___) => DateTime(2018, 1, 1),
@@ -198,10 +200,14 @@ abstract class CoingeckoApiPlan with _$CoingeckoApiPlan {
   /// Returns null for plans with unlimited access.
   DateTime? get5MinutelyHistoricalDataCutoff() {
     return when(
-      demo: (_, __, ___) => DateTime.now().toUtc().subtract(const Duration(days: 1)),
-      analyst: (_, __, ___) => DateTime.now().toUtc().subtract(const Duration(days: 1)),
-      lite: (_, __, ___) => DateTime.now().toUtc().subtract(const Duration(days: 1)),
-      pro: (_, __, ___) => DateTime.now().toUtc().subtract(const Duration(days: 1)),
+      demo: (_, __, ___) =>
+          DateTime.now().toUtc().subtract(const Duration(days: 1)),
+      analyst: (_, __, ___) =>
+          DateTime.now().toUtc().subtract(const Duration(days: 1)),
+      lite: (_, __, ___) =>
+          DateTime.now().toUtc().subtract(const Duration(days: 1)),
+      pro: (_, __, ___) =>
+          DateTime.now().toUtc().subtract(const Duration(days: 1)),
       enterprise: (_, __, ___, ____) => DateTime(2018, 1, 1),
     );
   }

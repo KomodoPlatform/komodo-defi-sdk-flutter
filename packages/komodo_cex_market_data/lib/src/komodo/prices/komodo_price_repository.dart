@@ -1,7 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/komodo/prices/komodo_price_provider.dart';
-import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/models/_models_index.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -95,18 +95,17 @@ class KomodoPriceRepository extends CexRepository {
   }
 
   void _updateCoinListCache(Map<String, AssetMarketInformation> prices) {
-    _cachedCoinsList =
-        prices.values
-            .map(
-              (e) => CexCoin(
-                id: e.ticker,
-                symbol: e.ticker,
-                name: e.ticker,
-                currencies: const <String>{'USD', 'USDT'},
-                source: 'komodo',
-              ),
-            )
-            .toList();
+    _cachedCoinsList = prices.values
+        .map(
+          (e) => CexCoin(
+            id: e.ticker,
+            symbol: e.ticker,
+            name: e.ticker,
+            currencies: const <String>{'USD', 'USDT'},
+            source: 'komodo',
+          ),
+        )
+        .toList();
     _cachedFiatCurrencies = {'USD', 'USDT'};
   }
 
