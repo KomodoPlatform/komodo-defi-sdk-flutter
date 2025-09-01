@@ -93,6 +93,22 @@ class AssetId extends Equatable {
         subClass == other.subClass &&
         chainId.formattedChainId == other.chainId.formattedChainId;
   }
+
+  /// A display-friendly name that disambiguates networks using the token
+  /// standard suffix from the asset `id` when present.
+  ///
+  /// Examples:
+  /// - id: `ETH-ARB20`, name: `Ethereum` -> `Ethereum (ARB20)`
+  /// - id: `USDT-ERC20`, name: `Tether USD` -> `Tether USD (ERC20)`
+  /// - id: `BTC`, name: `Bitcoin` -> `Bitcoin`
+  String get displayName {
+    // Only append suffix for top-level (parent) assets. Child assets already
+    // convey their network via parent linkage and UI badges.
+    if (isChildAsset) return name;
+    final String? suffix = subClass.tokenStandardSuffix;
+    if (suffix == null) return name;
+    return '$name ($suffix)';
+  }
 }
 
 extension AssetIdCacheKeyPrefix on AssetId {
