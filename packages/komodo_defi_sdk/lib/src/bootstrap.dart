@@ -8,6 +8,9 @@ import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/activation/config/activation_config_repository.dart';
+import 'package:komodo_defi_sdk/src/activation/config/activation_config_service.dart';
+import 'package:komodo_defi_sdk/src/activation/config/key_value_store.dart';
 import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart'
     show CexMarketDataManager, MarketDataManager;
@@ -109,10 +112,20 @@ Future<void> bootstrap({
       container<CustomAssetHistoryStorage>(),
       assetManager,
       balanceManager,
+      container<ActivationConfigService>(),
     );
 
     return activationManager;
   }, dependsOn: [ApiClient, KomodoDefiLocalAuth, AssetManager, BalanceManager]);
+
+  // Activation Config Service and store
+  container.registerSingleton<KeyValueStore>(InMemoryKeyValueStore());
+  container.registerSingleton<ActivationConfigRepository>(
+    JsonActivationConfigRepository(container<KeyValueStore>()),
+  );
+  container.registerSingleton<ActivationConfigService>(
+    ActivationConfigService(container<ActivationConfigRepository>()),
+  );
 
   // Register shared activation coordinator
   container.registerSingletonAsync<SharedActivationCoordinator>(() async {

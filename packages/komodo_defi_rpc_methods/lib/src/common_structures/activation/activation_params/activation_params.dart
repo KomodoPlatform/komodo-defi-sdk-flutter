@@ -16,11 +16,6 @@ part 'activation_params.g.dart';
 /// - [scanPolicy]: HD wallet address scanning behavior
 /// - [gapLimit]: Maximum number of empty addresses in a row for HD wallets
 /// - [mode]: Activation mode configuration for QTUM, UTXO & ZHTLC coins
-///
-/// For ZHTLC coins:
-/// - [zcashParamsPath]: Path to Zcash parameters folder
-/// - [scanBlocksPerIteration]: Number of blocks scanned per iteration (default: 1000)
-/// - [scanIntervalMs]: Interval between scan iterations in ms (default: 0)
 class ActivationParams implements RpcRequestParams {
   const ActivationParams({
     this.requiredConfirmations,
@@ -30,9 +25,6 @@ class ActivationParams implements RpcRequestParams {
     this.scanPolicy,
     this.gapLimit,
     this.mode,
-    this.zcashParamsPath,
-    this.scanBlocksPerIteration,
-    this.scanIntervalMs,
   });
 
   /// Creates [ActivationParams] from configuration JSON
@@ -55,11 +47,6 @@ class ActivationParams implements RpcRequestParams {
           : ScanPolicy.parse(json.value<String>('scan_policy')),
       gapLimit: json.valueOrNull<int>('gap_limit'),
       mode: mode,
-      zcashParamsPath: json.valueOrNull<String>('zcash_params_path'),
-      scanBlocksPerIteration: json.valueOrNull<int>(
-        'scan_blocks_per_iteration',
-      ),
-      scanIntervalMs: json.valueOrNull<int>('scan_interval_ms'),
     );
   }
 
@@ -90,18 +77,6 @@ class ActivationParams implements RpcRequestParams {
   /// they will not be identified when scanning.
   final int? gapLimit;
 
-  /// ZHTLC coins only. Path to folder containing Zcash parameters.
-  /// Optional, defaults to standard location.
-  final String? zcashParamsPath;
-
-  /// ZHTLC coins only. Sets the number of scanned blocks per iteration during
-  /// BuildingWalletDb state. Optional, default value is 1000.
-  final int? scanBlocksPerIteration;
-
-  /// ZHTLC coins only. Sets the interval in milliseconds between iterations of
-  /// BuildingWalletDb state. Optional, default value is 0.
-  final int? scanIntervalMs;
-
   @override
   @mustCallSuper
   JsonMap toRpcParams() {
@@ -109,10 +84,7 @@ class ActivationParams implements RpcRequestParams {
       if (requiredConfirmations != null)
         'required_confirmations': requiredConfirmations,
       'requires_notarization': requiresNotarization,
-      // IMPORTANT: Serialization format varies by coin type:
-      // - ETH/ERC20: Uses full JSON object format with type discrimination
-      // - Other coins: Uses legacy PascalCase string format for backward compatibility
-      // This difference is maintained for API compatibility reasons.
+      // Default to legacy PascalCase string; subclasses may override if needed (e.g., ETH/ERC20)
       'priv_key_policy':
           (privKeyPolicy ?? const PrivateKeyPolicy.contextPrivKey())
               .pascalCaseName,
@@ -121,10 +93,6 @@ class ActivationParams implements RpcRequestParams {
       if (scanPolicy != null) 'scan_policy': scanPolicy!.value,
       if (gapLimit != null) 'gap_limit': gapLimit,
       if (mode != null) 'mode': mode!.toJsonRequest(),
-      if (zcashParamsPath != null) 'zcash_params_path': zcashParamsPath,
-      if (scanBlocksPerIteration != null)
-        'scan_blocks_per_iteration': scanBlocksPerIteration,
-      if (scanIntervalMs != null) 'scan_interval_ms': scanIntervalMs,
     };
   }
 
@@ -136,9 +104,6 @@ class ActivationParams implements RpcRequestParams {
     ScanPolicy? scanPolicy,
     int? gapLimit,
     ActivationMode? mode,
-    String? zcashParamsPath,
-    int? scanBlocksPerIteration,
-    int? scanIntervalMs,
   }) {
     return ActivationParams(
       requiredConfirmations:
@@ -152,11 +117,35 @@ class ActivationParams implements RpcRequestParams {
       scanPolicy: scanPolicy ?? this.scanPolicy,
       gapLimit: gapLimit ?? this.gapLimit,
       mode: mode ?? this.mode,
-      zcashParamsPath: zcashParamsPath ?? this.zcashParamsPath,
-      scanBlocksPerIteration:
-          scanBlocksPerIteration ?? this.scanBlocksPerIteration,
-      scanIntervalMs: scanIntervalMs ?? this.scanIntervalMs,
     );
+  }
+}
+
+/// Serializer helper for priv_key_policy per protocol
+class PrivKeyPolicySerializer {
+  static dynamic toRpc(PrivateKeyPolicy policy, {required CoinSubClass protocol}) {
+    switch (protocol) {
+      case CoinSubClass.erc20:
+      case CoinSubClass.moonbeam:
+      case CoinSubClass.ftm20:
+      case CoinSubClass.arbitrum:
+      case CoinSubClass.avx20:
+      case CoinSubClass.smartChain:
+      case CoinSubClass.moonriver:
+      case CoinSubClass.ethereumClassic:
+      case CoinSubClass.ubiq:
+      case CoinSubClass.bep20:
+      case CoinSubClass.matic:
+      case CoinSubClass.smartBch:
+      case CoinSubClass.krc20:
+      case CoinSubClass.ewt:
+      case CoinSubClass.hrc20:
+      case CoinSubClass.hecoChain:
+      case CoinSubClass.rskSmartBitcoin:
+        return policy.toJson();
+      default:
+        return policy.pascalCaseName;
+    }
   }
 }
 

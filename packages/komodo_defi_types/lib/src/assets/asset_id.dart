@@ -104,6 +104,55 @@ extension AssetIdCacheKeyPrefix on AssetId {
   }
 }
 
+class ActivationSettingDescriptor {
+  ActivationSettingDescriptor({
+    required this.key,
+    required this.label,
+    required this.type,
+    this.required = false,
+    this.defaultValue,
+    this.helpText,
+  });
+
+  final String key;
+  final String label;
+  final String type; // 'path' | 'number' | 'string' | 'boolean' | 'select'
+  final bool required;
+  final Object? defaultValue;
+  final String? helpText;
+}
+
+extension AssetIdActivationSettings on AssetId {
+  List<ActivationSettingDescriptor> activationSettings() {
+    switch (subClass) {
+      case CoinSubClass.zhtlc:
+        return [
+          ActivationSettingDescriptor(
+            key: 'zcashParamsPath',
+            label: 'Zcash parameters path',
+            type: 'path',
+            required: true,
+            helpText: 'Folder containing Zcash parameters',
+          ),
+          ActivationSettingDescriptor(
+            key: 'scanBlocksPerIteration',
+            label: 'Blocks per scan iteration',
+            type: 'number',
+            defaultValue: 1000,
+          ),
+          ActivationSettingDescriptor(
+            key: 'scanIntervalMs',
+            label: 'Scan interval (ms)',
+            type: 'number',
+            defaultValue: 0,
+          ),
+        ];
+      default:
+        return const [];
+    }
+  }
+}
+
 abstract class ChainId with EquatableMixin {
   static ChainId parse(JsonMap json) {
     final chainParseAttempts = [

@@ -2,13 +2,16 @@
 // hard-coded to sync from the time of activation.
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_sdk/src/activation/config/activation_config_models.dart';
+import 'package:komodo_defi_sdk/src/activation/config/activation_config_service.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
-  const ZhtlcActivationStrategy(super.client, this.privKeyPolicy);
+  const ZhtlcActivationStrategy(super.client, this.privKeyPolicy, [this._configService]);
 
   final PrivateKeyPolicy privKeyPolicy;
+  final ActivationConfigService? _configService;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {CoinSubClass.zhtlc};
@@ -42,11 +45,38 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
 
     try {
       final protocol = asset.protocol as ZhtlcProtocol;
+
+      String? zcashParamsPath = protocol.zcashParamsPath;
+      int scanBlocksPerIteration = 200;
+      int scanIntervalMs = 200;
+
+      if (_configService != null) {
+        final config = await _configService!.getZhtlcOrRequest(asset.id);
+        if (config != null) {
+          zcashParamsPath = config.zcashParamsPath;
+          scanBlocksPerIteration = config.scanBlocksPerIteration;
+          scanIntervalMs = config.scanIntervalMs;
+        }
+      }
+
+      if (zcashParamsPath == null || zcashParamsPath.trim().isEmpty) {
+        yield ActivationProgress(
+          status: 'Zcash params path required',
+          errorMessage: 'Zcash params path required',
+          isComplete: true,
+          progressDetails: const ActivationProgressDetails(
+            currentStep: ActivationStep.error,
+            stepCount: 1,
+          ),
+        );
+        return;
+      }
+
       final params = ZhtlcActivationParams.fromConfigJson(protocol.config)
           .copyWith(
-            scanBlocksPerIteration: 200,
-            scanIntervalMs: 200,
-            zcashParamsPath: protocol.zcashParamsPath,
+            scanBlocksPerIteration: scanBlocksPerIteration,
+            scanIntervalMs: scanIntervalMs,
+            zcashParamsPath: zcashParamsPath,
             privKeyPolicy: privKeyPolicy,
           );
 

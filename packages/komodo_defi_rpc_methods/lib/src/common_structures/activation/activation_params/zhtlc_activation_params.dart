@@ -14,9 +14,9 @@ class ZhtlcActivationParams extends ActivationParams {
     super.minAddressesNumber,
     super.scanPolicy,
     super.gapLimit,
-    super.zcashParamsPath,
-    super.scanBlocksPerIteration,
-    super.scanIntervalMs,
+    this.zcashParamsPath,
+    this.scanBlocksPerIteration,
+    this.scanIntervalMs,
   });
 
   factory ZhtlcActivationParams.fromConfigJson(JsonMap json) {
@@ -36,14 +36,23 @@ class ZhtlcActivationParams extends ActivationParams {
       minAddressesNumber: base.minAddressesNumber,
       scanPolicy: base.scanPolicy,
       gapLimit: base.gapLimit,
-      zcashParamsPath: base.zcashParamsPath,
-      scanBlocksPerIteration: base.scanBlocksPerIteration,
-      scanIntervalMs: base.scanIntervalMs,
+      zcashParamsPath: json.valueOrNull<String>('zcash_params_path'),
+      scanBlocksPerIteration: json.valueOrNull<int>('scan_blocks_per_iteration'),
+      scanIntervalMs: json.valueOrNull<int>('scan_interval_ms'),
     );
   }
 
+  final String? zcashParamsPath;
+  final int? scanBlocksPerIteration;
+  final int? scanIntervalMs;
+
   @override
-  JsonMap toRpcParams() => super.toRpcParams();
+  JsonMap toRpcParams() => super.toRpcParams().deepMerge({
+        if (zcashParamsPath != null) 'zcash_params_path': zcashParamsPath,
+        if (scanBlocksPerIteration != null)
+          'scan_blocks_per_iteration': scanBlocksPerIteration,
+        if (scanIntervalMs != null) 'scan_interval_ms': scanIntervalMs,
+      });
 
   ZhtlcActivationParams copyWith({
     ActivationMode? mode,

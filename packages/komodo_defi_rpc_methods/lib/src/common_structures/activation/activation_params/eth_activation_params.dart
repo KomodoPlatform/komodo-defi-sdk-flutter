@@ -72,7 +72,7 @@ class EthWithTokensActivationParams extends ActivationParams {
       'fallback_swap_contract': fallbackSwapContract,
       'erc20_tokens_requests': erc20Tokens.map((e) => e.toJson()).toList(),
       if (txHistory != null) 'tx_history': txHistory,
-      // override privKeyPolicy to ensure it is in the expected enum format
+      // override privKeyPolicy to ensure it is in the expected object format for EVM
       'priv_key_policy': privKeyPolicy?.toJson(),
     };
   }

@@ -19,6 +19,7 @@ class ActivationManager {
     this._customTokenHistory,
     this._assetLookup,
     this._balanceManager,
+    [this._activationConfigService],
   );
 
   final ApiClient _client;
@@ -27,6 +28,7 @@ class ActivationManager {
   final CustomAssetHistoryStorage _customTokenHistory;
   final IAssetLookup _assetLookup;
   final IBalanceManager _balanceManager;
+  final dynamic _activationConfigService; // avoid tight coupling in signature
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
 
@@ -108,6 +110,7 @@ class ActivationManager {
         final activator = ActivationStrategyFactory.createStrategy(
           _client,
           privKeyPolicy,
+          activationConfigService: _activationConfigService,
         );
 
         await for (final progress in activator.activate(
