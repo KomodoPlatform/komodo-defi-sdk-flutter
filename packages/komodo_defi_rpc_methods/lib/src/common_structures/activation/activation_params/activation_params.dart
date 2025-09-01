@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 part 'activation_params.freezed.dart';
 part 'activation_params.g.dart';
@@ -17,10 +18,6 @@ part 'activation_params.g.dart';
 /// - [gapLimit]: Maximum number of empty addresses in a row for HD wallets
 /// - [mode]: Activation mode configuration for QTUM, UTXO & ZHTLC coins
 ///
-/// For ZHTLC coins:
-/// - [zcashParamsPath]: Path to Zcash parameters folder
-/// - [scanBlocksPerIteration]: Number of blocks scanned per iteration (default: 1000)
-/// - [scanIntervalMs]: Interval between scan iterations in ms (default: 0)
 class ActivationParams implements RpcRequestParams {
   const ActivationParams({
     this.requiredConfirmations,
@@ -30,9 +27,6 @@ class ActivationParams implements RpcRequestParams {
     this.scanPolicy,
     this.gapLimit,
     this.mode,
-    this.zcashParamsPath,
-    this.scanBlocksPerIteration,
-    this.scanIntervalMs,
   });
 
   /// Creates [ActivationParams] from configuration JSON
@@ -55,11 +49,6 @@ class ActivationParams implements RpcRequestParams {
           : ScanPolicy.parse(json.value<String>('scan_policy')),
       gapLimit: json.valueOrNull<int>('gap_limit'),
       mode: mode,
-      zcashParamsPath: json.valueOrNull<String>('zcash_params_path'),
-      scanBlocksPerIteration: json.valueOrNull<int>(
-        'scan_blocks_per_iteration',
-      ),
-      scanIntervalMs: json.valueOrNull<int>('scan_interval_ms'),
     );
   }
 
@@ -90,18 +79,6 @@ class ActivationParams implements RpcRequestParams {
   /// they will not be identified when scanning.
   final int? gapLimit;
 
-  /// ZHTLC coins only. Path to folder containing Zcash parameters.
-  /// Optional, defaults to standard location.
-  final String? zcashParamsPath;
-
-  /// ZHTLC coins only. Sets the number of scanned blocks per iteration during
-  /// BuildingWalletDb state. Optional, default value is 1000.
-  final int? scanBlocksPerIteration;
-
-  /// ZHTLC coins only. Sets the interval in milliseconds between iterations of
-  /// BuildingWalletDb state. Optional, default value is 0.
-  final int? scanIntervalMs;
-
   @override
   @mustCallSuper
   JsonMap toRpcParams() {
@@ -121,10 +98,6 @@ class ActivationParams implements RpcRequestParams {
       if (scanPolicy != null) 'scan_policy': scanPolicy!.value,
       if (gapLimit != null) 'gap_limit': gapLimit,
       if (mode != null) 'mode': mode!.toJsonRequest(),
-      if (zcashParamsPath != null) 'zcash_params_path': zcashParamsPath,
-      if (scanBlocksPerIteration != null)
-        'scan_blocks_per_iteration': scanBlocksPerIteration,
-      if (scanIntervalMs != null) 'scan_interval_ms': scanIntervalMs,
     };
   }
 
@@ -136,9 +109,6 @@ class ActivationParams implements RpcRequestParams {
     ScanPolicy? scanPolicy,
     int? gapLimit,
     ActivationMode? mode,
-    String? zcashParamsPath,
-    int? scanBlocksPerIteration,
-    int? scanIntervalMs,
   }) {
     return ActivationParams(
       requiredConfirmations:
@@ -152,10 +122,6 @@ class ActivationParams implements RpcRequestParams {
       scanPolicy: scanPolicy ?? this.scanPolicy,
       gapLimit: gapLimit ?? this.gapLimit,
       mode: mode ?? this.mode,
-      zcashParamsPath: zcashParamsPath ?? this.zcashParamsPath,
-      scanBlocksPerIteration:
-          scanBlocksPerIteration ?? this.scanBlocksPerIteration,
-      scanIntervalMs: scanIntervalMs ?? this.scanIntervalMs,
     );
   }
 }
@@ -250,6 +216,22 @@ abstract class PrivateKeyPolicy with _$PrivateKeyPolicy {
             .map((word) => word[0].toUpperCase() + word.substring(1))
             .join();
     }
+  }
+}
+
+/// Utility to normalize PrivateKeyPolicy RPC serialization across protocols.
+///
+/// - For ETH/ERC20 protocols, the API expects a JSON object form.
+/// - For other protocols, the legacy PascalCase string is used.
+class PrivKeyPolicySerializer {
+  static dynamic toRpc(
+    PrivateKeyPolicy policy, {
+    required CoinSubClass protocol,
+  }) {
+    if (evmCoinSubClasses.contains(protocol)) {
+      return policy.toJson();
+    }
+    return policy.pascalCaseName;
   }
 }
 

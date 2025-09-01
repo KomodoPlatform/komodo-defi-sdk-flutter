@@ -72,8 +72,9 @@ class EthWithTokensActivationParams extends ActivationParams {
       'fallback_swap_contract': fallbackSwapContract,
       'erc20_tokens_requests': erc20Tokens.map((e) => e.toJson()).toList(),
       if (txHistory != null) 'tx_history': txHistory,
-      // override privKeyPolicy to ensure it is in the expected enum format
-      'priv_key_policy': privKeyPolicy?.toJson(),
+      // Override priv_key_policy with object form for ETH/ERC20
+      'priv_key_policy':
+          (privKeyPolicy ?? const PrivateKeyPolicy.contextPrivKey()).toJson(),
     };
   }
 }

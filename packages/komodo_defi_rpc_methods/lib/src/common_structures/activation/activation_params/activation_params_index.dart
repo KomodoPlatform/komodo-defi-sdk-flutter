@@ -16,3 +16,5 @@ export 'slp_activation_params.dart';
 export 'tendermint_activation_params.dart';
 export 'utxo_activation_params.dart';
 export 'zhtlc_activation_params.dart';
+export 'package:komodo_defi_rpc_methods/src/common_structures/activation/activation_params/activation_params.dart'
+    show PrivKeyPolicySerializer;

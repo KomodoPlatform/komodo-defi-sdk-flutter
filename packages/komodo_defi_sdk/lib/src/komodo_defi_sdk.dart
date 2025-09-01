@@ -14,6 +14,7 @@ import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 
 /// A high-level SDK that provides a simple way to build cross-platform applications
 /// using the Komodo DeFi Framework, with a primary focus on wallet functionality.
@@ -178,6 +179,10 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   AddressOperations get addresses =>
       _assertSdkInitialized(_container<AddressOperations>());
 
+  /// Service for resolving/persisting activation configuration.
+  ActivationConfigService get activationConfigService =>
+      _assertSdkInitialized(_container<ActivationConfigService>());
+
   /// The asset manager instance.
   ///
   /// Handles coin/token activation and configuration.
@@ -306,6 +311,13 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       kdfFramework: _kdfFramework,
       container: _container,
     );
+    if (!_container.isRegistered<ActivationConfigService>()) {
+      _container.registerSingleton<ActivationConfigService>(
+        ActivationConfigService(
+          JsonActivationConfigRepository(InMemoryKeyValueStore()),
+        ),
+      );
+    }
     _isInitialized = true;
   }
 
