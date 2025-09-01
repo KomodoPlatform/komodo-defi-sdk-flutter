@@ -55,6 +55,14 @@ extension ActivationStepSerialization on ActivationStep {
   }
 }
 
+/// Typed UI/control signals that may be emitted alongside progress for
+/// semantic intent (avoid using additionalInfo for control flow).
+enum ActivationUiSignal { awaitingUserInput }
+
+extension ActivationUiSignalSerialization on ActivationUiSignal {
+  String get serializedName => name;
+}
+
 /// Represents the current state and progress of an activation operation
 @immutable
 class ActivationProgress extends Equatable {
@@ -160,21 +168,20 @@ class ActivationProgress extends Equatable {
 
   @override
   List<Object?> get props => [
-        status,
-        progressPercentage,
-        isComplete,
-        errorMessage,
-        progressDetails,
-      ];
+    status,
+    progressPercentage,
+    isComplete,
+    errorMessage,
+    progressDetails,
+  ];
 
   JsonMap toJson() => {
-        'status': status,
-        if (progressPercentage != null)
-          'progressPercentage': progressPercentage,
-        'isComplete': isComplete,
-        if (errorMessage != null) 'errorMessage': errorMessage,
-        if (progressDetails != null) 'details': progressDetails!.toJson(),
-      };
+    'status': status,
+    if (progressPercentage != null) 'progressPercentage': progressPercentage,
+    'isComplete': isComplete,
+    if (errorMessage != null) 'errorMessage': errorMessage,
+    if (progressDetails != null) 'details': progressDetails!.toJson(),
+  };
 }
 
 /// Detailed information about the activation progress
@@ -184,6 +191,8 @@ class ActivationProgressDetails extends Equatable {
     required this.currentStep,
     required this.stepCount,
     this.additionalInfo = const {},
+    this.uiSignal,
+    this.deadlineAt,
     this.errorCode,
     this.errorDetails,
     this.stackTrace,
@@ -194,6 +203,8 @@ class ActivationProgressDetails extends Equatable {
   final ActivationStep currentStep;
   final int stepCount;
   final JsonMap additionalInfo;
+  final ActivationUiSignal? uiSignal;
+  final DateTime? deadlineAt;
   final String? errorCode;
   final String? errorDetails;
   final String? stackTrace;
@@ -209,6 +220,8 @@ class ActivationProgressDetails extends Equatable {
     ActivationStep? currentStep,
     int? stepCount,
     JsonMap? additionalInfo,
+    ActivationUiSignal? uiSignal,
+    DateTime? deadlineAt,
     String? errorCode,
     String? errorDetails,
     String? stackTrace,
@@ -219,6 +232,8 @@ class ActivationProgressDetails extends Equatable {
       currentStep: currentStep ?? this.currentStep,
       stepCount: stepCount ?? this.stepCount,
       additionalInfo: additionalInfo ?? this.additionalInfo,
+      uiSignal: uiSignal ?? this.uiSignal,
+      deadlineAt: deadlineAt ?? this.deadlineAt,
       errorCode: errorCode ?? this.errorCode,
       errorDetails: errorDetails ?? this.errorDetails,
       stackTrace: stackTrace ?? this.stackTrace,
@@ -229,27 +244,31 @@ class ActivationProgressDetails extends Equatable {
 
   @override
   List<Object?> get props => [
-        currentStep,
-        stepCount,
-        additionalInfo,
-        errorCode,
-        errorDetails,
-        stackTrace,
-        startedAt,
-        completedAt,
-      ];
+    currentStep,
+    stepCount,
+    additionalInfo,
+    uiSignal,
+    deadlineAt,
+    errorCode,
+    errorDetails,
+    stackTrace,
+    startedAt,
+    completedAt,
+  ];
 
   JsonMap toJson() => {
-        'currentStep': currentStep.serializedName,
-        'stepCount': stepCount,
-        'additionalInfo': additionalInfo,
-        if (errorCode != null) 'errorCode': errorCode,
-        if (errorDetails != null) 'errorDetails': errorDetails,
-        if (stackTrace != null) 'stackTrace': stackTrace,
-        if (startedAt != null) 'startedAt': startedAt!.toIso8601String(),
-        if (completedAt != null) 'completedAt': completedAt!.toIso8601String(),
-        if (duration != null) 'duration': duration!.inMilliseconds,
-      };
+    'currentStep': currentStep.serializedName,
+    'stepCount': stepCount,
+    'additionalInfo': additionalInfo,
+    'uiSignal': ?uiSignal?.serializedName,
+    'deadlineAt': ?deadlineAt?.toIso8601String(),
+    'errorCode': ?errorCode,
+    'errorDetails': ?errorDetails,
+    'stackTrace': ?stackTrace,
+    'startedAt': ?startedAt?.toIso8601String(),
+    'completedAt': ?completedAt?.toIso8601String(),
+    if (duration != null) 'duration': duration!.inMilliseconds,
+  };
 }
 
 /// Helper for tracking multi-asset activation progress
@@ -265,25 +284,23 @@ class BatchActivationProgress {
       _startTimes[asset.id] = DateTime.now();
     }
 
-    final details = progress.progressDetails?.copyWith(
-          startedAt: _startTimes[asset.id],
-        ) ??
+    final details =
+        progress.progressDetails?.copyWith(startedAt: _startTimes[asset.id]) ??
         ActivationProgressDetails(
           currentStep: ActivationStep.unknown,
           stepCount: 1,
           startedAt: _startTimes[asset.id],
         );
 
-    _progress[asset.id] = progress.copyWith(
-      progressDetails: details,
-    );
+    _progress[asset.id] = progress.copyWith(progressDetails: details);
   }
 
   double get overallProgress {
     if (_progress.isEmpty) return 0;
 
-    final progressValues =
-        _progress.values.map((p) => p.progressPercentage ?? 0).toList();
+    final progressValues = _progress.values
+        .map((p) => p.progressPercentage ?? 0)
+        .toList();
 
     return progressValues.reduce((a, b) => a + b) / assets.length;
   }
@@ -305,12 +322,12 @@ class BatchActivationProgress {
       .toList();
 
   JsonMap toJson() => {
-        'overallProgress': overallProgress,
-        'isComplete': isComplete,
-        'pendingAssets': pendingAssets,
-        'failedAssets': failedAssets,
-        'details': _progress.map(
-          (id, progress) => MapEntry(id.toString(), progress.toJson()),
-        ),
-      };
+    'overallProgress': overallProgress,
+    'isComplete': isComplete,
+    'pendingAssets': pendingAssets,
+    'failedAssets': failedAssets,
+    'details': _progress.map(
+      (id, progress) => MapEntry(id.toString(), progress.toJson()),
+    ),
+  };
 }
