@@ -137,11 +137,10 @@ void main() {
       // underlying issues are resolved.
     },
     tags: ['live', 'integration'],
-    skip:
-        _runLiveApiTests
-            ? false
-            : 'Live API tests are skipped by default. Enable with -DRUN_LIVE_API_TESTS=true (dart test) '
-                'or --dart-define=RUN_LIVE_API_TESTS=true (flutter test).',
+    skip: _runLiveApiTests
+        ? false
+        : 'Live API tests are skipped by default. Enable with -DRUN_LIVE_API_TESTS=true (dart test) '
+              'or --dart-define=RUN_LIVE_API_TESTS=true (flutter test).',
   );
 
   // test('fetchCoinHistoricalData test', () async {

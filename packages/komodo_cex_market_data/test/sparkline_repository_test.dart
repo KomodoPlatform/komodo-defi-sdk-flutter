@@ -54,10 +54,10 @@ void main() {
       fallbackRepo = MockCexRepository();
       mockStrategy = MockRepositorySelectionStrategy();
 
-      sparklineRepo = SparklineRepository(
-        [primaryRepo, fallbackRepo],
-        selectionStrategy: mockStrategy,
-      );
+      sparklineRepo = SparklineRepository([
+        primaryRepo,
+        fallbackRepo,
+      ], selectionStrategy: mockStrategy);
 
       // Setup default supports behavior
       when(

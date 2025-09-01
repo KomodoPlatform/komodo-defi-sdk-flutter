@@ -4,6 +4,8 @@ import 'package:decimal/decimal.dart' show Decimal;
 import 'package:http/http.dart' as http;
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_cex_market_data/src/coingecko/models/coin_historical_data/coin_historical_data.dart';
+
+import 'package:komodo_cex_market_data/src/common/api_error_parser.dart';
 import 'package:logging/logging.dart';
 
 /// Interface for fetching data from CoinGecko API.
@@ -59,6 +61,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
   CoinGeckoCexProvider({
     this.baseUrl = 'api.coingecko.com',
     this.apiVersion = '/api/v3',
+    this.apiPlan = const CoingeckoApiPlan.demo(),
   });
 
   /// The base URL for the CoinGecko API.
@@ -66,6 +69,9 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
 
   /// The API version for the CoinGecko API.
   final String apiVersion;
+
+  /// The CoinGecko API plan defining rate limits and historical data access.
+  final CoingeckoApiPlan apiPlan;
 
   static final Logger _logger = Logger('CoinGeckoCexProvider');
 
@@ -89,9 +95,18 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
           )
           .toList();
     } else {
-      throw Exception(
-        'Failed to load coin list: ${response.statusCode} ${response.body}',
+      final apiError = ApiErrorParser.parseCoinGeckoError(
+        response.statusCode,
+        response.body,
       );
+      _logger.warning(
+        ApiErrorParser.createSafeErrorMessage(
+          operation: 'coin list fetch',
+          service: 'CoinGecko',
+          statusCode: response.statusCode,
+        ),
+      );
+      throw Exception(apiError.message);
     }
   }
 
@@ -108,9 +123,18 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
       final currencies = jsonDecode(response.body) as List<dynamic>;
       return currencies.map((dynamic currency) => currency as String).toList();
     } else {
-      throw Exception(
-        'Failed to load supported vs currencies: ${response.statusCode} ${response.body}',
+      final apiError = ApiErrorParser.parseCoinGeckoError(
+        response.statusCode,
+        response.body,
       );
+      _logger.warning(
+        ApiErrorParser.createSafeErrorMessage(
+          operation: 'supported currencies fetch',
+          service: 'CoinGecko',
+          statusCode: response.statusCode,
+        ),
+      );
+      throw Exception(apiError.message);
     }
   }
 
@@ -168,9 +192,18 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
             )
             .toList();
       } else {
-        throw Exception(
-          'Failed to load coin market data: ${response.statusCode} ${response.body}',
+        final apiError = ApiErrorParser.parseCoinGeckoError(
+          response.statusCode,
+          response.body,
         );
+        _logger.warning(
+          ApiErrorParser.createSafeErrorMessage(
+            operation: 'market data fetch',
+            service: 'CoinGecko',
+            statusCode: response.statusCode,
+          ),
+        );
+        throw Exception(apiError.message);
       }
     });
   }
@@ -215,10 +248,9 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     int currentFrom = fromUnixTimestamp;
 
     while (currentFrom < toUnixTimestamp) {
-      final currentTo =
-          (currentFrom + maxSecondsPerRequest) > toUnixTimestamp
-              ? toUnixTimestamp
-              : currentFrom + maxSecondsPerRequest;
+      final currentTo = (currentFrom + maxSecondsPerRequest) > toUnixTimestamp
+          ? toUnixTimestamp
+          : currentFrom + maxSecondsPerRequest;
 
       final chart = await _fetchCoinMarketChartSingle(
         id: id,
@@ -261,9 +293,19 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return CoinMarketChart.fromJson(data);
       } else {
-        throw Exception(
-          'Failed to load coin market chart: ${response.statusCode} ${response.body}',
+        final apiError = ApiErrorParser.parseCoinGeckoError(
+          response.statusCode,
+          response.body,
         );
+        _logger.warning(
+          ApiErrorParser.createSafeErrorMessage(
+            operation: 'market chart fetch',
+            service: 'CoinGecko',
+            statusCode: response.statusCode,
+            coinId: id,
+          ),
+        );
+        throw Exception(apiError.message);
       }
     });
   }
@@ -374,9 +416,19 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return CoinHistoricalData.fromJson(data);
       } else {
-        throw Exception(
-          'Failed to load coin market chart: ${response.statusCode} ${response.body}',
+        final apiError = ApiErrorParser.parseCoinGeckoError(
+          response.statusCode,
+          response.body,
         );
+        _logger.warning(
+          ApiErrorParser.createSafeErrorMessage(
+            operation: 'historical market data fetch',
+            service: 'CoinGecko',
+            statusCode: response.statusCode,
+            coinId: id,
+          ),
+        );
+        throw Exception(apiError.message);
       }
     });
   }
@@ -386,7 +438,7 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     final month = date.month.toString().padLeft(2, '0');
     final year = date.year.toString();
 
-    return '$day-$month-$year';
+    return '$year-$month-$day';
   }
 
   /// Fetches prices from CoinGecko API.
@@ -420,9 +472,22 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
     final res = await http.get(tickersUrl);
     final body = res.body;
 
+    // Check for HTTP errors first
+    if (res.statusCode != 200) {
+      final apiError = ApiErrorParser.parseCoinGeckoError(res.statusCode, body);
+      _logger.warning(
+        ApiErrorParser.createSafeErrorMessage(
+          operation: 'price data fetch',
+          service: 'CoinGecko',
+          statusCode: res.statusCode,
+        ),
+      );
+      throw Exception(apiError.message);
+    }
+
     final json = jsonDecode(body) as Map<String, dynamic>?;
     if (json == null) {
-      throw Exception('Invalid response from CoinGecko API: empty JSON');
+      throw Exception('Invalid response from CoinGecko API: empty response');
     }
 
     final prices = <String, AssetMarketInformation>{};
@@ -506,9 +571,19 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
         final data = jsonDecode(response.body) as List<dynamic>;
         return CoinOhlc.fromJson(data, source: OhlcSource.coingecko);
       } else {
-        throw Exception(
-          'Failed to load coin ohlc data: ${response.statusCode} ${response.body}',
+        final apiError = ApiErrorParser.parseCoinGeckoError(
+          response.statusCode,
+          response.body,
         );
+        _logger.warning(
+          ApiErrorParser.createSafeErrorMessage(
+            operation: 'OHLC data fetch',
+            service: 'CoinGecko',
+            statusCode: response.statusCode,
+            coinId: id,
+          ),
+        );
+        throw Exception(apiError.message);
       }
     });
   }

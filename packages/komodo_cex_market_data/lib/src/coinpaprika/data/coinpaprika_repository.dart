@@ -2,16 +2,26 @@ import 'package:async/async.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/coinpaprika/data/coinpaprika_cex_provider.dart';
+import 'package:komodo_cex_market_data/src/coinpaprika/models/coinpaprika_api_plan.dart';
 import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
-import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/models/_models_index.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
-/// The maximum number of hours that CoinPaprika free tier supports for historical data.
-const int maxCoinPaprikaFreeHours = 24;
-
 /// A repository class for interacting with the CoinPaprika API.
+///
+/// ## API Plan Limitations
+/// CoinPaprika has different API plans with varying limitations:
+/// - Free: 1 day of OHLC historical data
+/// - Starter: 1 month of OHLC historical data
+/// - Pro: 3 months of OHLC historical data
+/// - Business: 1 year of OHLC historical data
+/// - Ultimate/Enterprise: No OHLC historical data limitations
+///
+/// The provider layer handles validation and will throw appropriate errors
+/// for requests that exceed the current plan's limitations.
+/// For older historical data or higher limits, upgrade to a higher plan.
 class CoinPaprikaRepository implements CexRepository {
   /// Creates a new instance of [CoinPaprikaRepository].
   CoinPaprikaRepository({
@@ -44,21 +54,10 @@ class CoinPaprikaRepository implements CexRepository {
     try {
       final coins = await coinPaprikaProvider.fetchCoinList();
 
-      // CoinPaprika supports a standard set of quote currencies
-      final supportedCurrencies = {
-        'usd',
-        'eur',
-        'gbp',
-        'jpy',
-        'krw',
-        'pln',
-        'cad',
-        'aud',
-        'nzd',
-        'chf',
-        'btc',
-        'eth',
-      };
+      // Build supported quote currencies from provider (hard-coded in provider)
+      final supportedCurrencies = coinPaprikaProvider.supportedQuoteCurrencies
+          .map((q) => q.coinPaprikaId)
+          .toSet();
 
       final result = coins
           .where((coin) => coin.isActive) // Only include active coins
@@ -101,38 +100,83 @@ class CoinPaprikaRepository implements CexRepository {
   }) async {
     try {
       final tradingSymbol = resolveTradingSymbol(assetId);
-      final quoteCurrencyId = quoteCurrency.coinPaprikaId;
+      final apiPlan = coinPaprikaProvider.apiPlan;
 
-      // Calculate the time span
-      var hours = maxCoinPaprikaFreeHours;
-      if (startAt != null && endAt != null) {
-        final timeDelta = endAt.difference(startAt);
-        hours = (timeDelta.inSeconds.toDouble() / 3600).ceil();
+      // All plans now use batching for efficiency with the historical ticks endpoint
+
+      // Determine the actual fetchable date range (using UTC)
+      var effectiveStartAt = startAt;
+      final effectiveEndAt = endAt ?? DateTime.now().toUtc();
+
+      // If no startAt provided, use default based on plan limit or reasonable default
+      if (effectiveStartAt == null) {
+        if (apiPlan.hasUnlimitedOhlcHistory) {
+          effectiveStartAt = effectiveEndAt.subtract(
+            const Duration(days: 365),
+          ); // Default 1 year for unlimited
+        } else {
+          effectiveStartAt = effectiveEndAt.subtract(
+            apiPlan.ohlcHistoricalDataLimit!,
+          );
+        }
       }
 
-      // If the request is within the free tier limit, make a single request
-      if (hours <= maxCoinPaprikaFreeHours) {
+      // Check if the requested range is entirely before the cutoff date (only for limited plans)
+      if (!apiPlan.hasUnlimitedOhlcHistory) {
+        final cutoffDate = apiPlan.getHistoricalDataCutoff();
+        if (cutoffDate != null) {
+          // If both start and end dates are before cutoff, return empty data
+          if (effectiveEndAt.isBefore(cutoffDate)) {
+            _logger.info(
+              'Requested date range is entirely before cutoff '
+              '(${_formatDateForApi(cutoffDate)}) - no data available for '
+              '${apiPlan.planName} plan',
+            );
+            return const CoinOhlc(ohlc: []);
+          }
+
+          // If start date is before cutoff, adjust it to cutoff date
+          if (effectiveStartAt.isBefore(cutoffDate)) {
+            _logger.info(
+              'Adjusting start date from ${_formatDateForApi(effectiveStartAt)} '
+              'to cutoff date ${_formatDateForApi(cutoffDate)} for '
+              '${apiPlan.planName} plan',
+            );
+            effectiveStartAt = cutoffDate;
+          }
+        }
+      }
+
+      // If effective start is after end, return empty data
+      if (effectiveStartAt.isAfter(effectiveEndAt)) {
+        _logger.info(
+          'Effective startAt is after endAt - no data available for requested '
+          'period due to ${apiPlan.planName} plan limitations',
+        );
+        return const CoinOhlc(ohlc: []);
+      }
+
+      // Determine reasonable batch size based on API plan
+      final batchDuration = _getBatchDuration(apiPlan);
+      final totalDuration = effectiveEndAt.difference(effectiveStartAt);
+
+      // If the request is within the batch size, make a single request
+      if (totalDuration <= batchDuration) {
         return _fetchSingleOhlcRequest(
           tradingSymbol,
-          quoteCurrencyId,
-          startAt,
-          endAt,
-        );
-      }
-
-      // If the request exceeds the limit, we need startAt and endAt to split requests
-      if (startAt == null || endAt == null) {
-        throw ArgumentError(
-          'startAt and endAt must be provided for requests exceeding $maxCoinPaprikaFreeHours hours',
+          quoteCurrency,
+          effectiveStartAt,
+          effectiveEndAt,
         );
       }
 
       // Split the request into multiple sequential requests
       return _fetchMultipleOhlcRequests(
         tradingSymbol,
-        quoteCurrencyId,
-        startAt,
-        endAt,
+        quoteCurrency,
+        effectiveStartAt,
+        effectiveEndAt,
+        batchDuration,
       );
     } catch (e, stackTrace) {
       _logger.severe(
@@ -144,74 +188,123 @@ class CoinPaprikaRepository implements CexRepository {
     }
   }
 
-  /// Fetches OHLC data in a single request (within free tier limits).
+  /// Fetches OHLC data in a single request (within plan limits).
   Future<CoinOhlc> _fetchSingleOhlcRequest(
     String tradingSymbol,
-    String quoteCurrencyId,
+    QuoteCurrency quoteCurrency,
     DateTime? startAt,
     DateTime? endAt,
   ) async {
+    final apiPlan = coinPaprikaProvider.apiPlan;
+
     final ohlcData = await coinPaprikaProvider.fetchHistoricalOhlc(
       coinId: tradingSymbol,
       startDate:
           startAt ??
-          DateTime.now().subtract(
-            const Duration(hours: maxCoinPaprikaFreeHours),
+          DateTime.now().toUtc().subtract(
+            apiPlan.hasUnlimitedOhlcHistory
+                ? const Duration(days: 1)
+                // "!" is safe because we checked hasUnlimitedOhlcHistory above
+                : apiPlan.ohlcHistoricalDataLimit!,
           ),
       endDate: endAt,
-      quote: quoteCurrencyId,
+      quote: quoteCurrency,
     );
 
     return CoinOhlc(ohlc: ohlcData);
   }
 
-  /// Fetches OHLC data in multiple requests to handle free tier limitations.
+  /// Fetches OHLC data in multiple requests to handle API plan limitations.
   Future<CoinOhlc> _fetchMultipleOhlcRequests(
     String tradingSymbol,
-    String quoteCurrencyId,
+    QuoteCurrency quoteCurrency,
     DateTime startAt,
     DateTime endAt,
+    Duration batchDuration,
   ) async {
+    final apiPlan = coinPaprikaProvider.apiPlan;
     final allOhlcData = <Ohlc>[];
     var currentStart = startAt;
 
     _logger.info(
-      'Splitting OHLC request for $tradingSymbol into multiple ${maxCoinPaprikaFreeHours}h batches',
+      'Splitting OHLC request for $tradingSymbol into multiple batches '
+      '(${apiPlan.planName} plan: ${apiPlan.ohlcLimitDescription}) '
+      'with ${batchDuration.inDays}-day batches '
+      'from ${startAt.toIso8601String()} to ${endAt.toIso8601String()}',
     );
 
     while (currentStart.isBefore(endAt)) {
-      final batchEnd = currentStart.add(
-        const Duration(hours: maxCoinPaprikaFreeHours),
-      );
+      final batchEnd = currentStart.add(batchDuration);
       final actualEnd = batchEnd.isAfter(endAt) ? endAt : batchEnd;
 
-      final batchHours = actualEnd.difference(currentStart).inHours;
-      if (batchHours <= 0) break;
+      final actualBatchDuration = actualEnd.difference(currentStart);
+      if (actualBatchDuration.inDays <= 0) break;
+
+      // Ensure batch duration doesn't exceed our chosen batch size
+      if (actualBatchDuration > batchDuration) {
+        throw ArgumentError(
+          'Batch duration ${actualBatchDuration.inDays} days '
+          'exceeds safe limit of ${batchDuration.inDays} days',
+        );
+      }
 
       _logger.fine(
-        'Fetching batch: ${currentStart.toIso8601String()} to ${actualEnd.toIso8601String()}',
+        'Fetching batch: ${currentStart.toIso8601String()} to '
+        '${actualEnd.toIso8601String()} '
+        '(duration: ${actualBatchDuration.inDays} days)',
       );
 
-      final batchOhlc = await _fetchSingleOhlcRequest(
-        tradingSymbol,
-        quoteCurrencyId,
-        currentStart,
-        actualEnd,
-      );
+      try {
+        final batchOhlc = await _fetchSingleOhlcRequest(
+          tradingSymbol,
+          quoteCurrency,
+          currentStart,
+          actualEnd,
+        );
 
-      allOhlcData.addAll(batchOhlc.ohlc);
+        allOhlcData.addAll(batchOhlc.ohlc);
+        _logger.fine('Batch successful: ${batchOhlc.ohlc.length} data points');
+      } catch (e) {
+        _logger.warning(
+          'Failed to fetch batch ${currentStart.toIso8601String()} to '
+          '${actualEnd.toIso8601String()}: $e',
+        );
+        // Continue with next batch instead of failing completely
+      }
+
       currentStart = actualEnd;
 
       // Add delay between requests to avoid rate limiting
       if (currentStart.isBefore(endAt)) {
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
       }
     }
 
     _logger.info(
-      'Successfully fetched ${allOhlcData.length} OHLC data points across multiple batches',
+      'Successfully fetched ${allOhlcData.length} OHLC data points across '
+      'multiple batches for $tradingSymbol',
     );
     return CoinOhlc(ohlc: allOhlcData);
+  }
+
+  /// Determines reasonable batch size based on API plan.
+  Duration _getBatchDuration(CoinPaprikaApiPlan apiPlan) {
+    if (apiPlan.hasUnlimitedOhlcHistory) {
+      return const Duration(days: 90); // Reasonable default for unlimited plans
+    } else {
+      final planLimit = apiPlan.ohlcHistoricalDataLimit!;
+      // Use smaller batches: max 90 days or plan limit minus buffer, whichever is smaller
+      const bufferDuration = Duration(minutes: 1);
+      final maxPlanBatch = planLimit - bufferDuration;
+      return maxPlanBatch.inDays > 90 ? const Duration(days: 90) : maxPlanBatch;
+    }
+  }
+
+  /// Formats a DateTime to the format expected by logging and error messages.
+  String _formatDateForApi(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -257,29 +350,17 @@ class CoinPaprikaRepository implements CexRepository {
       // For current prices, use ticker endpoint
       final ticker = await coinPaprikaProvider.fetchCoinTicker(
         coinId: tradingSymbol,
-        quotes: quoteCurrencyId,
+        quotes: [fiatCurrency],
       );
 
-      final quotes = ticker['quotes'] as Map<String, dynamic>?;
-      if (quotes == null) {
-        throw Exception('No quotes data available for ${assetId.id}');
-      }
-
-      final quoteData = quotes[quoteCurrencyId] as Map<String, dynamic>?;
+      final quoteData = ticker.quotes[quoteCurrencyId];
       if (quoteData == null) {
         throw Exception(
           'No price data found for ${assetId.id} in $quoteCurrencyId',
         );
       }
 
-      final price = quoteData['price'];
-      if (price == null) {
-        throw Exception(
-          'Price field not found for ${assetId.id} in $quoteCurrencyId',
-        );
-      }
-
-      return Decimal.parse(price.toString());
+      return Decimal.parse(quoteData.price.toString());
     } catch (e, stackTrace) {
       _logger.severe('Failed to get price for ${assetId.id}', e, stackTrace);
       rethrow;
@@ -294,6 +375,9 @@ class CoinPaprikaRepository implements CexRepository {
   }) async {
     try {
       if (dates.isEmpty) {
+        _logger.warning(
+          'No dates provided for price retrieval of ${assetId.id}',
+        );
         return {};
       }
 
@@ -351,29 +435,17 @@ class CoinPaprikaRepository implements CexRepository {
       // Use ticker endpoint for 24hr price change
       final ticker = await coinPaprikaProvider.fetchCoinTicker(
         coinId: tradingSymbol,
-        quotes: quoteCurrencyId,
+        quotes: [fiatCurrency],
       );
 
-      final quotes = ticker['quotes'] as Map<String, dynamic>?;
-      if (quotes == null) {
-        throw Exception('No quotes data available for ${assetId.id}');
-      }
-
-      final quoteData = quotes[quoteCurrencyId] as Map<String, dynamic>?;
+      final quoteData = ticker.quotes[quoteCurrencyId];
       if (quoteData == null) {
         throw Exception(
           'No price change data found for ${assetId.id} in $quoteCurrencyId',
         );
       }
 
-      final percentChange24h = quoteData['percent_change_24h'];
-      if (percentChange24h == null) {
-        throw Exception(
-          '24h percent change field not found for ${assetId.id} in $quoteCurrencyId',
-        );
-      }
-
-      return Decimal.parse(percentChange24h.toString());
+      return Decimal.parse(quoteData.percentChange24h.toString());
     } catch (e, stackTrace) {
       _logger.severe(
         'Failed to get 24hr price change for ${assetId.id}',
@@ -397,25 +469,25 @@ class CoinPaprikaRepository implements CexRepository {
       }
 
       // Check if quote currency is supported
-      final quoteCurrencyId = fiatCurrency.coinPaprikaId.toLowerCase();
+      // For stablecoins, we need to check if their underlying fiat currency is
+      // supported since CoinPaprika treats stablecoins as their underlying
+      // fiat currencies
+      final currencyToCheck = fiatCurrency.when(
+        fiat: (_, __) => fiatCurrency,
+        stablecoin: (_, __, underlyingFiat) => underlyingFiat,
+        crypto: (_, __) => fiatCurrency, // Use as-is for crypto
+        commodity: (_, __) => fiatCurrency, // Use as-is for commodity
+      );
+
       final supportedQuotes =
           _cachedQuoteCurrencies ??
-          {
-            'USD',
-            'EUR',
-            'GBP',
-            'JPY',
-            'KRW',
-            'PLN',
-            'CAD',
-            'AUD',
-            'NZD',
-            'CHF',
-            'BTC',
-            'ETH',
-          };
+          coinPaprikaProvider.supportedQuoteCurrencies
+              .map((q) => q.coinPaprikaId.toUpperCase())
+              .toSet();
 
-      if (!supportedQuotes.contains(quoteCurrencyId.toUpperCase())) {
+      if (!supportedQuotes.contains(
+        currencyToCheck.coinPaprikaId.toUpperCase(),
+      )) {
         return false;
       }
 

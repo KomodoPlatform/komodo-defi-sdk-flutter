@@ -260,10 +260,9 @@ void main() {
               high: Decimal.fromInt(51000),
               low: Decimal.fromInt(49000),
               close: Decimal.fromInt(50500),
-              openTime:
-                  DateTime.now()
-                      .subtract(const Duration(days: 1))
-                      .millisecondsSinceEpoch,
+              openTime: DateTime.now()
+                  .subtract(const Duration(days: 1))
+                  .millisecondsSinceEpoch,
               closeTime: DateTime.now().millisecondsSinceEpoch,
             ),
           ],
@@ -336,10 +335,9 @@ void main() {
           lowPrice: Decimal.parse('49000'),
           volume: Decimal.parse('1000'),
           quoteVolume: Decimal.parse('50500000'),
-          openTime:
-              DateTime.now()
-                  .subtract(const Duration(hours: 24))
-                  .millisecondsSinceEpoch,
+          openTime: DateTime.now()
+              .subtract(const Duration(hours: 24))
+              .millisecondsSinceEpoch,
           closeTime: DateTime.now().millisecondsSinceEpoch,
           firstId: 1,
           lastId: 10000,

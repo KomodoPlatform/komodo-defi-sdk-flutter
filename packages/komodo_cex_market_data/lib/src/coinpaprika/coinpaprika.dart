@@ -12,6 +12,7 @@ library coinpaprika;
 export 'data/coinpaprika_cex_provider.dart';
 export 'data/coinpaprika_repository.dart';
 // Model exports
+export 'models/coinpaprika_api_plan.dart';
 export 'models/coinpaprika_coin.dart';
 export 'models/coinpaprika_market.dart';
 

@@ -374,6 +374,22 @@ class FiatCurrency {
     symbol: 'ZAR',
     displayName: 'South African Rand',
   );
+  static const bob = QuoteCurrency.fiat(
+    symbol: 'BOB',
+    displayName: 'Bolivian Boliviano',
+  );
+  static const cop = QuoteCurrency.fiat(
+    symbol: 'COP',
+    displayName: 'Colombian Peso',
+  );
+  static const pen = QuoteCurrency.fiat(
+    symbol: 'PEN',
+    displayName: 'Peruvian Sol',
+  );
+  static const isk = QuoteCurrency.fiat(
+    symbol: 'ISK',
+    displayName: 'Icelandic Krona',
+  );
 
   /// List of all available fiat currencies.
   ///
@@ -436,6 +452,10 @@ class FiatCurrency {
     vef,
     vnd,
     zar,
+    bob,
+    cop,
+    pen,
+    isk,
   ];
 
   /// Optimized lookup map for fast symbol-to-currency resolution.

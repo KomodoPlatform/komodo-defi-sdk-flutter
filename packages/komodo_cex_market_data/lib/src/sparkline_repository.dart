@@ -25,8 +25,8 @@ class SparklineRepository with RepositoryFallbackMixin {
   factory SparklineRepository.defaultInstance() {
     return SparklineRepository([
       BinanceRepository(binanceProvider: const BinanceProvider()),
-      CoinGeckoRepository(coinGeckoProvider: CoinGeckoCexProvider()),
       CoinPaprikaRepository(coinPaprikaProvider: CoinPaprikaProvider()),
+      CoinGeckoRepository(coinGeckoProvider: CoinGeckoCexProvider()),
     ], selectionStrategy: DefaultRepositorySelectionStrategy());
   }
 
@@ -41,7 +41,8 @@ class SparklineRepository with RepositoryFallbackMixin {
   final Duration cacheExpiry = const Duration(hours: 1);
   Box<SparklineData>? _box;
 
-  /// Map to track ongoing requests and prevent duplicate requests for the same symbol
+  /// Map to track ongoing requests and prevent duplicate requests for the
+  /// same symbol
   final Map<String, Future<List<double>?>> _inFlightRequests = {};
 
   @override
@@ -177,7 +178,8 @@ class SparklineRepository with RepositoryFallbackMixin {
 
   /// Internal method to perform the actual sparkline fetch
   ///
-  /// This is separated from fetchSparkline to enable proper request deduplication
+  /// This is separated from fetchSparkline to enable proper request
+  /// deduplication
   Future<List<double>?> _performSparklineFetch(AssetId assetId) async {
     final symbol = assetId.symbol.configSymbol;
 
@@ -230,7 +232,8 @@ class SparklineRepository with RepositoryFallbackMixin {
           );
         }
         _logger.fine(
-          'Fetched ${data.length} close prices for $symbol from ${repo.runtimeType}',
+          'Fetched ${data.length} close prices for $symbol from '
+          '${repo.runtimeType}',
         );
         return data;
       },

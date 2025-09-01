@@ -74,7 +74,7 @@ class _AssetItemTrailing extends StatelessWidget {
           const Icon(Icons.lock, color: Colors.grey),
           const SizedBox(width: 8),
         ],
-        CoinSparkline(assetId: asset.id),
+        if (!asset.protocol.isTestnet) CoinSparkline(assetId: asset.id),
         const SizedBox(width: 8),
         AssetMarketInfo(asset),
         const SizedBox(width: 8),
