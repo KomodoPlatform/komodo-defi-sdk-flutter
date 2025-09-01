@@ -295,6 +295,54 @@ enum CoinSubClass {
   }
 }
 
+extension CoinSubClassTokenStandard on CoinSubClass {
+  /// Canonical short token/network standard suffix used for parent asset
+  /// disambiguation in display names. Returns null when no suffix should
+  /// be appended for the given subclass.
+  String? get tokenStandardSuffix {
+    switch (this) {
+      case CoinSubClass.erc20:
+        return 'ERC20';
+      case CoinSubClass.bep20:
+        return 'BEP20';
+      case CoinSubClass.qrc20:
+        return 'QRC20';
+      case CoinSubClass.ftm20:
+        return 'FTM20';
+      case CoinSubClass.arbitrum:
+        return 'ARB20';
+      case CoinSubClass.avx20:
+        return 'AVX20';
+      case CoinSubClass.matic:
+        return 'PLG20';
+      case CoinSubClass.moonriver:
+        return 'MVR20';
+      case CoinSubClass.krc20:
+        return 'KRC20';
+      case CoinSubClass.hrc20:
+        return 'HRC20';
+      case CoinSubClass.hecoChain:
+        return 'HCO20';
+      // Subclasses without a canonical short token/network standard suffix
+      case CoinSubClass.moonbeam:
+      case CoinSubClass.slp: // ignore: deprecated_member_use_from_same_package
+      case CoinSubClass.sia:
+      case CoinSubClass.smartChain:
+      case CoinSubClass.ethereumClassic:
+      case CoinSubClass.ubiq:
+      case CoinSubClass.utxo:
+      case CoinSubClass.smartBch:
+      case CoinSubClass.tendermint:
+      case CoinSubClass.tendermintToken:
+      case CoinSubClass.ewt:
+      case CoinSubClass.rskSmartBitcoin:
+      case CoinSubClass.zhtlc:
+      case CoinSubClass.unknown:
+        return null;
+    }
+  }
+}
+
 const Set<CoinSubClass> evmCoinSubClasses = {
   CoinSubClass.avx20,
   CoinSubClass.bep20,
