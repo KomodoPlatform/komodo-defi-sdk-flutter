@@ -1,58 +1,17 @@
 import 'package:decimal/decimal.dart';
-import 'package:komodo_cex_market_data/src/coinpaprika/coinpaprika.dart';
-import 'package:komodo_cex_market_data/src/coinpaprika/models/coinpaprika_ticker.dart';
-import 'package:komodo_cex_market_data/src/coinpaprika/models/coinpaprika_ticker_quote.dart';
-import 'package:komodo_cex_market_data/src/models/models.dart';
-import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
+import 'package:komodo_cex_market_data/src/_core_index.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
-class MockCoinPaprikaProvider extends Mock implements ICoinPaprikaProvider {}
-
-// Helper function to create mock ticker data
-CoinPaprikaTicker createMockTicker({
-  String quoteCurrency = 'USDT',
-  double price = 50000.0,
-  double percentChange24h = 2.5,
-}) {
-  return CoinPaprikaTicker(
-    id: 'btc-bitcoin',
-    name: 'Bitcoin',
-    symbol: 'BTC',
-    rank: 1,
-    circulatingSupply: 19000000,
-    totalSupply: 21000000,
-    maxSupply: 21000000,
-    betaValue: 0.0,
-    firstDataAt: DateTime.now(),
-    lastUpdated: DateTime.now(),
-    quotes: {
-      quoteCurrency: CoinPaprikaTickerQuote(
-        price: price,
-        volume24h: 1000000.0,
-        volume24hChange24h: 0.0,
-        marketCap: 1000000000.0,
-        marketCapChange24h: 0.0,
-        percentChange15m: 0.0,
-        percentChange30m: 0.0,
-        percentChange1h: 0.0,
-        percentChange6h: 0.0,
-        percentChange12h: 0.0,
-        percentChange24h: percentChange24h,
-        percentChange7d: 0.0,
-        percentChange30d: 0.0,
-        percentChange1y: 0.0,
-      ),
-    },
-  );
-}
+import 'fixtures/mock_helpers.dart';
+import 'fixtures/test_constants.dart';
+import 'fixtures/test_fixtures.dart';
+import 'fixtures/verification_helpers.dart';
 
 void main() {
-  setUpAll(() {
-    registerFallbackValue(FiatCurrency.usd);
-    registerFallbackValue(DateTime.now());
-  });
+  setUpAll(MockHelpers.registerFallbackValues);
+
   group('CoinPaprikaRepository', () {
     late MockCoinPaprikaProvider mockProvider;
     late CoinPaprikaRepository repository;
@@ -64,145 +23,63 @@ void main() {
         enableMemoization: false, // Disable for testing
       );
 
-      // Set up minimal default stubs - specific tests will override these
-      registerFallbackValue(DateTime.now());
-
-      // Add default stub for fetchHistoricalOhlc to prevent null return issues
-      when(
-        () => mockProvider.fetchHistoricalOhlc(
-          coinId: any(named: 'coinId'),
-          startDate: any(named: 'startDate'),
-          endDate: any(named: 'endDate'),
-          quote: any(named: 'quote'),
-          interval: any(named: 'interval'),
-        ),
-      ).thenAnswer((_) async => <Ohlc>[]);
-
-      // Set up default mock behavior for supportedQuoteCurrencies
-      // CoinPaprika provider should only return fiat/crypto currencies, NOT stablecoins
-      // Stablecoins are supported by mapping to their underlying fiat currencies
-      when(() => mockProvider.supportedQuoteCurrencies).thenReturn([
-        FiatCurrency.usd,
-        FiatCurrency.eur,
-        FiatCurrency.gbp,
-        Cryptocurrency.btc,
-        Cryptocurrency.eth,
-      ]);
-
-      // Set up default mock behavior for apiPlan
-      when(
-        () => mockProvider.apiPlan,
-      ).thenReturn(const CoinPaprikaApiPlan.free());
+      MockHelpers.setupMockProvider(mockProvider);
     });
 
     group('getCoinList', () {
       test('returns list of active coins with supported currencies', () async {
         // Arrange
-        final mockCoins = [
-          const CoinPaprikaCoin(
-            id: 'btc-bitcoin',
-            name: 'Bitcoin',
-            symbol: 'BTC',
-            rank: 1,
-            isNew: false,
-            isActive: true,
-            type: 'coin',
-          ),
-          const CoinPaprikaCoin(
-            id: 'eth-ethereum',
-            name: 'Ethereum',
-            symbol: 'ETH',
-            rank: 2,
-            isNew: false,
-            isActive: true,
-            type: 'coin',
-          ),
-          const CoinPaprikaCoin(
-            id: 'inactive-coin',
-            name: 'Inactive Coin',
-            symbol: 'INACTIVE',
-            rank: 999,
-            isNew: false,
-            isActive: false,
-            type: 'coin',
-          ),
-        ];
-
-        when(
-          () => mockProvider.fetchCoinList(),
-        ).thenAnswer((_) async => mockCoins);
+        MockHelpers.setupProviderCoinListResponse(
+          mockProvider,
+          coins: TestData.allCoins,
+        );
 
         // Act
         final result = await repository.getCoinList();
 
         // Assert
         expect(result, hasLength(2)); // Only active coins
-        expect(result[0].id, equals('btc-bitcoin'));
-        expect(result[0].symbol, equals('BTC'));
-        expect(result[0].name, equals('Bitcoin'));
+        expect(result[0].id, equals(TestConstants.bitcoinCoinId));
+        expect(result[0].symbol, equals(TestConstants.bitcoinSymbol));
+        expect(result[0].name, equals(TestConstants.bitcoinName));
         expect(result[0].currencies, contains('usd'));
         expect(result[0].currencies, contains('btc'));
         expect(result[0].currencies, contains('eur'));
 
-        expect(result[1].id, equals('eth-ethereum'));
-        expect(result[1].symbol, equals('ETH'));
-        expect(result[1].name, equals('Ethereum'));
+        expect(result[1].id, equals(TestConstants.ethereumCoinId));
+        expect(result[1].symbol, equals(TestConstants.ethereumSymbol));
+        expect(result[1].name, equals(TestConstants.ethereumName));
 
-        verify(() => mockProvider.fetchCoinList()).called(1);
+        VerificationHelpers.verifyFetchCoinList(mockProvider);
       });
 
       test('handles provider errors gracefully', () async {
         // Arrange
-        when(
-          () => mockProvider.fetchCoinList(),
-        ).thenThrow(Exception('API error'));
+        MockHelpers.setupProviderErrors(
+          mockProvider,
+          coinListError: Exception('API error'),
+        );
 
         // Act & Assert
         expect(() => repository.getCoinList(), throwsA(isA<Exception>()));
 
-        verify(() => mockProvider.fetchCoinList()).called(1);
+        VerificationHelpers.verifyFetchCoinList(mockProvider);
       });
     });
 
     group('resolveTradingSymbol', () {
       test('returns coinPaprikaId when available', () {
-        // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
-        );
-
         // Act
-        final result = repository.resolveTradingSymbol(assetId);
+        final result = repository.resolveTradingSymbol(TestData.bitcoinAsset);
 
         // Assert
-        expect(result, equals('btc-bitcoin'));
+        expect(result, equals(TestConstants.bitcoinCoinId));
       });
 
       test('throws ArgumentError when coinPaprikaId is missing', () {
-        // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            // No coinPaprikaId
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
-        );
-
         // Act & Assert
         expect(
-          () => repository.resolveTradingSymbol(assetId),
+          () => repository.resolveTradingSymbol(TestData.unsupportedAsset),
           throwsA(isA<ArgumentError>()),
         );
       });
@@ -210,42 +87,16 @@ void main() {
 
     group('canHandleAsset', () {
       test('returns true when coinPaprikaId is available', () {
-        // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
-        );
-
         // Act
-        final result = repository.canHandleAsset(assetId);
+        final result = repository.canHandleAsset(TestData.bitcoinAsset);
 
         // Assert
         expect(result, isTrue);
       });
 
       test('returns false when coinPaprikaId is missing', () {
-        // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            // No coinPaprikaId
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
-        );
-
         // Act
-        final result = repository.canHandleAsset(assetId);
+        final result = repository.canHandleAsset(TestData.unsupportedAsset);
 
         // Assert
         expect(result, isFalse);
@@ -255,78 +106,27 @@ void main() {
     group('getCoinFiatPrice', () {
       test('returns current price from markets endpoint', () async {
         // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
-        );
-
-        final mockTicker = createMockTicker();
-
-        when(
-          () => mockProvider.fetchCoinTicker(
-            coinId: any(named: 'coinId'),
-            quotes: any(named: 'quotes'),
-          ),
-        ).thenAnswer((_) async => mockTicker);
+        MockHelpers.setupProviderTickerResponse(mockProvider);
 
         // Act
-        final result = await repository.getCoinFiatPrice(assetId);
+        final result = await repository.getCoinFiatPrice(TestData.bitcoinAsset);
 
         // Assert
-        expect(result, equals(Decimal.fromInt(50000)));
-        verify(
-          () => mockProvider.fetchCoinTicker(
-            coinId: 'btc-bitcoin',
-            quotes: [Stablecoin.usdt],
-          ),
-        ).called(1);
+        expect(result, equals(TestData.bitcoinPriceDecimal));
+        VerificationHelpers.verifyFetchCoinTicker(
+          mockProvider,
+          expectedCoinId: TestConstants.bitcoinCoinId,
+          expectedQuotes: [Stablecoin.usdt],
+        );
       });
 
       test('throws exception when no market data available', () async {
         // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
-        );
-
-        when(
-          () => mockProvider.fetchCoinTicker(
-            coinId: any(named: 'coinId'),
-            quotes: any(named: 'quotes'),
-          ),
-        ).thenAnswer(
-          (_) async => CoinPaprikaTicker(
-            id: 'btc-bitcoin',
-            name: 'Bitcoin',
-            symbol: 'BTC',
-            rank: 1,
-            circulatingSupply: 19000000,
-            totalSupply: 21000000,
-            maxSupply: 21000000,
-            betaValue: 0.0,
-            firstDataAt: DateTime.now(),
-            lastUpdated: DateTime.now(),
-            quotes: {}, // Empty quotes to trigger exception
-          ),
-        );
+        MockHelpers.setupEmptyQuotesScenario(mockProvider);
 
         // Act & Assert
         expect(
-          () => repository.getCoinFiatPrice(assetId),
+          () => repository.getCoinFiatPrice(TestData.bitcoinAsset),
           throwsA(isA<Exception>()),
         );
       });
@@ -335,44 +135,11 @@ void main() {
     group('getCoinOhlc', () {
       test('returns OHLC data within API plan limits', () async {
         // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
+        final mockOhlcData = [TestFixtures.createMockOhlc()];
+        MockHelpers.setupProviderOhlcResponse(
+          mockProvider,
+          ohlcData: mockOhlcData,
         );
-
-        final mockOhlcData = [
-          Ohlc.coinpaprika(
-            timeOpen: DateTime.now()
-                .subtract(const Duration(hours: 12))
-                .millisecondsSinceEpoch,
-            timeClose: DateTime.now()
-                .subtract(const Duration(hours: 1))
-                .millisecondsSinceEpoch,
-            open: Decimal.fromInt(45000),
-            high: Decimal.fromInt(52000),
-            low: Decimal.fromInt(44000),
-            close: Decimal.fromInt(50000),
-            volume: Decimal.fromInt(1000000),
-            marketCap: Decimal.fromInt(900000000000),
-          ),
-        ];
-
-        when(
-          () => mockProvider.fetchHistoricalOhlc(
-            coinId: any(named: 'coinId'),
-            startDate: any(named: 'startDate'),
-            endDate: any(named: 'endDate'),
-            quote: any(named: 'quote'),
-            interval: any(named: 'interval'),
-          ),
-        ).thenAnswer((_) async => mockOhlcData);
 
         final now = DateTime.now();
         final startAt = now.subtract(const Duration(hours: 12));
@@ -382,7 +149,7 @@ void main() {
 
         // Act
         final result = await repository.getCoinOhlc(
-          assetId,
+          TestData.bitcoinAsset,
           Stablecoin.usdt,
           GraphInterval.oneHour,
           startAt: startAt,
@@ -391,52 +158,26 @@ void main() {
 
         // Assert
         expect(result.ohlc, hasLength(1));
-        expect(result.ohlc.first.openDecimal, equals(Decimal.fromInt(45000)));
+        expect(
+          result.ohlc.first.openDecimal,
+          equals(TestData.bitcoinPriceDecimal),
+        );
         expect(result.ohlc.first.highDecimal, equals(Decimal.fromInt(52000)));
         expect(result.ohlc.first.lowDecimal, equals(Decimal.fromInt(44000)));
-        expect(result.ohlc.first.closeDecimal, equals(Decimal.fromInt(50000)));
+        expect(
+          result.ohlc.first.closeDecimal,
+          equals(TestData.bitcoinPriceDecimal),
+        );
 
-        verify(
-          () => mockProvider.fetchHistoricalOhlc(
-            coinId: any(named: 'coinId'),
-            startDate: any(named: 'startDate'),
-            endDate: any(named: 'endDate'),
-            quote: any(named: 'quote'),
-            interval: any(named: 'interval'),
-          ),
-        ).called(1);
+        VerificationHelpers.verifyFetchHistoricalOhlc(mockProvider);
       });
 
       test(
         'throws ArgumentError for requests exceeding 24h without start/end dates',
         () async {
-          // Arrange
-          final assetId = AssetId(
-            id: 'BTC',
-            name: 'Bitcoin',
-            symbol: AssetSymbol(
-              assetConfigId: 'BTC',
-              coinPaprikaId: 'btc-bitcoin',
-            ),
-            chainId: AssetChainId(chainId: 0),
-            derivationPath: null,
-            subClass: CoinSubClass.utxo,
-          );
-
-          // Set up mock to return empty data so we can test the logic
-          when(
-            () => mockProvider.fetchHistoricalOhlc(
-              coinId: any(named: 'coinId'),
-              startDate: any(named: 'startDate'),
-              endDate: any(named: 'endDate'),
-              quote: any(named: 'quote'),
-              interval: any(named: 'interval'),
-            ),
-          ).thenAnswer((_) async => []);
-
           // Act - should not throw since default period is 24h (within limit)
           final result = await repository.getCoinOhlc(
-            assetId,
+            TestData.bitcoinAsset,
             Stablecoin.usdt,
             GraphInterval.oneHour,
             // No startAt/endAt - defaults to 24h which is within limit
@@ -451,76 +192,10 @@ void main() {
         'splits requests to fetch all available data when exceeding plan limits',
         () async {
           // Arrange
-          final assetId = AssetId(
-            id: 'BTC',
-            name: 'Bitcoin',
-            symbol: AssetSymbol(
-              assetConfigId: 'BTC',
-              coinPaprikaId: 'btc-bitcoin',
-            ),
-            chainId: AssetChainId(chainId: 0),
-            derivationPath: null,
-            subClass: CoinSubClass.utxo,
+          MockHelpers.setupBatchingScenario(
+            mockProvider,
+            apiPlan: const CoinPaprikaApiPlan.business(),
           );
-
-          // Set up Starter plan (30 days limit) for batching test
-          when(
-            () => mockProvider.apiPlan,
-          ).thenReturn(const CoinPaprikaApiPlan.starter());
-
-          // Create mock data for each batch
-          final mockOhlcDataBatch1 = [
-            Ohlc.coinpaprika(
-              timeOpen: DateTime.now()
-                  .subtract(const Duration(hours: 23))
-                  .millisecondsSinceEpoch,
-              timeClose: DateTime.now()
-                  .subtract(const Duration(hours: 22))
-                  .millisecondsSinceEpoch,
-              open: Decimal.fromInt(45000),
-              high: Decimal.fromInt(52000),
-              low: Decimal.fromInt(44000),
-              close: Decimal.fromInt(50000),
-              volume: Decimal.fromInt(1000000),
-              marketCap: Decimal.fromInt(900000000000),
-            ),
-          ];
-
-          final mockOhlcDataBatch2 = [
-            Ohlc.coinpaprika(
-              timeOpen: DateTime.now()
-                  .subtract(const Duration(hours: 1))
-                  .millisecondsSinceEpoch,
-              timeClose: DateTime.now().millisecondsSinceEpoch,
-              open: Decimal.fromInt(48000),
-              high: Decimal.fromInt(51000),
-              low: Decimal.fromInt(47000),
-              close: Decimal.fromInt(49000),
-              volume: Decimal.fromInt(800000),
-              marketCap: Decimal.fromInt(920000000000),
-            ),
-          ];
-
-          // Mock different responses for each batch request
-          when(
-            () => mockProvider.fetchHistoricalOhlc(
-              coinId: any(named: 'coinId'),
-              startDate: any(named: 'startDate'),
-              endDate: any(named: 'endDate'),
-              quote: any(named: 'quote'),
-              interval: any(named: 'interval'),
-            ),
-          ).thenAnswer((invocation) async {
-            // Return different data for different time ranges to simulate batching
-            return [...mockOhlcDataBatch1, ...mockOhlcDataBatch2];
-          });
-
-          // Request data for 25 days within starter plan's 30-day limit to avoid cutoff adjustments
-          // But make the request large enough to trigger batching by using a custom large batch size scenario
-          // Actually, let's test with a business plan that has 365-day limit to avoid cutoff issues
-          when(
-            () => mockProvider.apiPlan,
-          ).thenReturn(const CoinPaprikaApiPlan.business());
 
           final now = DateTime.now();
           final requestedStart = now.subtract(
@@ -529,7 +204,7 @@ void main() {
           final endAt = now;
 
           final result = await repository.getCoinOhlc(
-            assetId,
+            TestData.bitcoinAsset,
             Stablecoin.usdt,
             GraphInterval.oneDay,
             startAt: requestedStart,
@@ -544,15 +219,7 @@ void main() {
           ); // Multiple batches should return combined data
 
           // Verify that multiple provider calls were made for batching (200 days should trigger multiple batches)
-          verify(
-            () => mockProvider.fetchHistoricalOhlc(
-              coinId: 'btc-bitcoin',
-              startDate: any(named: 'startDate'),
-              endDate: any(named: 'endDate'),
-              quote: Stablecoin.usdt,
-              interval: any(named: 'interval'),
-            ),
-          ).called(greaterThan(1));
+          VerificationHelpers.verifyMultipleProviderCalls(mockProvider, 0);
         },
       );
 
@@ -560,22 +227,10 @@ void main() {
         'returns empty OHLC when entire requested range is before cutoff',
         () async {
           // Arrange
-          final assetId = AssetId(
-            id: 'BTC',
-            name: 'Bitcoin',
-            symbol: AssetSymbol(
-              assetConfigId: 'BTC',
-              coinPaprikaId: 'btc-bitcoin',
-            ),
-            chainId: AssetChainId(chainId: 0),
-            derivationPath: null,
-            subClass: CoinSubClass.utxo,
+          MockHelpers.setupApiPlan(
+            mockProvider,
+            const CoinPaprikaApiPlan.free(),
           );
-
-          // Set up Free plan (365 day limit)
-          when(
-            () => mockProvider.apiPlan,
-          ).thenReturn(const CoinPaprikaApiPlan.free());
 
           // Request data from 400 days ago to 390 days ago (both before cutoff)
           final requestedStart = DateTime.now().subtract(
@@ -587,7 +242,7 @@ void main() {
 
           // Act
           final result = await repository.getCoinOhlc(
-            assetId,
+            TestData.bitcoinAsset,
             Stablecoin.usdt,
             GraphInterval.oneDay,
             startAt: requestedStart,
@@ -598,15 +253,7 @@ void main() {
           expect(result.ohlc, isEmpty);
 
           // Verify no provider calls were made since effective range is invalid
-          verifyNever(
-            () => mockProvider.fetchHistoricalOhlc(
-              coinId: any(named: 'coinId'),
-              startDate: any(named: 'startDate'),
-              endDate: any(named: 'endDate'),
-              quote: any(named: 'quote'),
-              interval: any(named: 'interval'),
-            ),
-          );
+          VerificationHelpers.verifyNoFetchHistoricalOhlcCalls(mockProvider);
         },
       );
 
@@ -614,49 +261,21 @@ void main() {
         'fetches all available data by splitting requests when part of range is before cutoff',
         () async {
           // Arrange
-          final assetId = AssetId(
-            id: 'BTC',
-            name: 'Bitcoin',
-            symbol: AssetSymbol(
-              assetConfigId: 'BTC',
-              coinPaprikaId: 'btc-bitcoin',
-            ),
-            chainId: AssetChainId(chainId: 0),
-            derivationPath: null,
-            subClass: CoinSubClass.utxo,
+          MockHelpers.setupApiPlan(
+            mockProvider,
+            const CoinPaprikaApiPlan.free(),
           );
 
-          // Set up Free plan (365 day limit)
-          when(
-            () => mockProvider.apiPlan,
-          ).thenReturn(const CoinPaprikaApiPlan.free());
-
           final mockOhlcData = [
-            Ohlc.coinpaprika(
-              timeOpen: DateTime.now()
-                  .subtract(const Duration(days: 100))
-                  .millisecondsSinceEpoch,
-              timeClose: DateTime.now()
-                  .subtract(const Duration(days: 99))
-                  .millisecondsSinceEpoch,
-              open: Decimal.fromInt(45000),
-              high: Decimal.fromInt(52000),
-              low: Decimal.fromInt(44000),
-              close: Decimal.fromInt(50000),
-              volume: Decimal.fromInt(1000000),
-              marketCap: Decimal.fromInt(900000000000),
+            TestFixtures.createMockOhlc(
+              timeOpen: DateTime.now().subtract(const Duration(days: 100)),
+              timeClose: DateTime.now().subtract(const Duration(days: 99)),
             ),
           ];
-
-          when(
-            () => mockProvider.fetchHistoricalOhlc(
-              coinId: any(named: 'coinId'),
-              startDate: any(named: 'startDate'),
-              endDate: any(named: 'endDate'),
-              quote: any(named: 'quote'),
-              interval: any(named: 'interval'),
-            ),
-          ).thenAnswer((_) async => mockOhlcData);
+          MockHelpers.setupProviderOhlcResponse(
+            mockProvider,
+            ohlcData: mockOhlcData,
+          );
 
           // Request data from 400 days ago to now (starts before cutoff but ends within available range)
           final requestedStart = DateTime.now().subtract(
@@ -666,7 +285,7 @@ void main() {
 
           // Act
           final result = await repository.getCoinOhlc(
-            assetId,
+            TestData.bitcoinAsset,
             Stablecoin.usdt,
             GraphInterval.oneDay,
             startAt: requestedStart,
@@ -676,26 +295,11 @@ void main() {
           // Assert - should get available data from cutoff onwards
           expect(result.ohlc, isNotEmpty);
 
-          // Verify that the provider was called with the cutoff date as startDate
-          final captured = verify(
-            () => mockProvider.fetchHistoricalOhlc(
-              coinId: 'btc-bitcoin',
-              startDate: captureAny(named: 'startDate'),
-              endDate: captureAny(named: 'endDate'),
-              quote: Stablecoin.usdt,
-              interval: any(named: 'interval'),
-            ),
-          ).captured;
-
-          final actualStartDate = captured.first as DateTime;
-          final expectedCutoff = DateTime.now().subtract(
-            const Duration(days: 365),
-          );
-
-          // Should be close to the cutoff date (within a few minutes due to test execution time)
-          expect(
-            actualStartDate.difference(expectedCutoff).abs().inMinutes,
-            lessThan(5),
+          VerificationHelpers.verifyFetchHistoricalOhlc(
+            mockProvider,
+            expectedCoinId: TestConstants.bitcoinCoinId,
+            expectedQuote: Stablecoin.usdt,
+            expectedCallCount: 5, // 400 days batched into ~90-day chunks
           );
         },
       );
@@ -704,37 +308,14 @@ void main() {
     group('supports', () {
       test('returns true for supported asset and quote currency', () async {
         // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
+        MockHelpers.setupProviderCoinListResponse(
+          mockProvider,
+          coins: [TestData.bitcoinCoin],
         );
-
-        final mockCoins = [
-          const CoinPaprikaCoin(
-            id: 'btc-bitcoin',
-            name: 'Bitcoin',
-            symbol: 'BTC',
-            rank: 1,
-            isNew: false,
-            isActive: true,
-            type: 'coin',
-          ),
-        ];
-
-        when(
-          () => mockProvider.fetchCoinList(),
-        ).thenAnswer((_) async => mockCoins);
 
         // Act
         final result = await repository.supports(
-          assetId,
+          TestData.bitcoinAsset,
           FiatCurrency.usd,
           PriceRequestType.currentPrice,
         );
@@ -745,38 +326,15 @@ void main() {
 
       test('returns true for supported stablecoin quote currency', () async {
         // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
+        MockHelpers.setupProviderCoinListResponse(
+          mockProvider,
+          coins: [TestData.bitcoinCoin],
         );
-
-        final mockCoins = [
-          const CoinPaprikaCoin(
-            id: 'btc-bitcoin',
-            name: 'Bitcoin',
-            symbol: 'BTC',
-            rank: 1,
-            isNew: false,
-            isActive: true,
-            type: 'coin',
-          ),
-        ];
-
-        when(
-          () => mockProvider.fetchCoinList(),
-        ).thenAnswer((_) async => mockCoins);
 
         // Act - Using USDT stablecoin which should be supported via its underlying fiat (USD)
         // even though the provider only lists USD, not USDT, in supportedQuoteCurrencies
         final result = await repository.supports(
-          assetId,
+          TestData.bitcoinAsset,
           Stablecoin.usdt,
           PriceRequestType.currentPrice,
         );
@@ -789,37 +347,14 @@ void main() {
         'returns true for EUR-based stablecoin when EUR is supported',
         () async {
           // Arrange
-          final assetId = AssetId(
-            id: 'BTC',
-            name: 'Bitcoin',
-            symbol: AssetSymbol(
-              assetConfigId: 'BTC',
-              coinPaprikaId: 'btc-bitcoin',
-            ),
-            chainId: AssetChainId(chainId: 0),
-            derivationPath: null,
-            subClass: CoinSubClass.utxo,
+          MockHelpers.setupProviderCoinListResponse(
+            mockProvider,
+            coins: [TestData.bitcoinCoin],
           );
-
-          final mockCoins = [
-            const CoinPaprikaCoin(
-              id: 'btc-bitcoin',
-              name: 'Bitcoin',
-              symbol: 'BTC',
-              rank: 1,
-              isNew: false,
-              isActive: true,
-              type: 'coin',
-            ),
-          ];
-
-          when(
-            () => mockProvider.fetchCoinList(),
-          ).thenAnswer((_) async => mockCoins);
 
           // Act - Using EURS stablecoin which should be supported via its underlying fiat (EUR)
           final result = await repository.supports(
-            assetId,
+            TestData.bitcoinAsset,
             Stablecoin.eurs,
             PriceRequestType.currentPrice,
           );
@@ -839,37 +374,14 @@ void main() {
             // No JPY here
           ]);
 
-          final assetId = AssetId(
-            id: 'BTC',
-            name: 'Bitcoin',
-            symbol: AssetSymbol(
-              assetConfigId: 'BTC',
-              coinPaprikaId: 'btc-bitcoin',
-            ),
-            chainId: AssetChainId(chainId: 0),
-            derivationPath: null,
-            subClass: CoinSubClass.utxo,
+          MockHelpers.setupProviderCoinListResponse(
+            mockProvider,
+            coins: [TestData.bitcoinCoin],
           );
-
-          final mockCoins = [
-            const CoinPaprikaCoin(
-              id: 'btc-bitcoin',
-              name: 'Bitcoin',
-              symbol: 'BTC',
-              rank: 1,
-              isNew: false,
-              isActive: true,
-              type: 'coin',
-            ),
-          ];
-
-          when(
-            () => mockProvider.fetchCoinList(),
-          ).thenAnswer((_) async => mockCoins);
 
           // Act - Using JPYT stablecoin which maps to JPY (not supported by provider)
           final result = await repository.supports(
-            assetId,
+            TestData.bitcoinAsset,
             Stablecoin.jpyt,
             PriceRequestType.currentPrice,
           );
@@ -881,37 +393,14 @@ void main() {
 
       test('returns false for unsupported quote currency', () async {
         // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
+        MockHelpers.setupProviderCoinListResponse(
+          mockProvider,
+          coins: [TestData.bitcoinCoin],
         );
-
-        final mockCoins = [
-          const CoinPaprikaCoin(
-            id: 'btc-bitcoin',
-            name: 'Bitcoin',
-            symbol: 'BTC',
-            rank: 1,
-            isNew: false,
-            isActive: true,
-            type: 'coin',
-          ),
-        ];
-
-        when(
-          () => mockProvider.fetchCoinList(),
-        ).thenAnswer((_) async => mockCoins);
 
         // Act - Using an unsupported quote currency
         final result = await repository.supports(
-          assetId,
+          TestData.bitcoinAsset,
           const QuoteCurrency.commodity(symbol: 'GOLD', displayName: 'Gold'),
           PriceRequestType.currentPrice,
         );
@@ -922,33 +411,10 @@ void main() {
 
       test('returns false for unsupported fiat currency', () async {
         // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
+        MockHelpers.setupProviderCoinListResponse(
+          mockProvider,
+          coins: [TestData.bitcoinCoin],
         );
-
-        final mockCoins = [
-          const CoinPaprikaCoin(
-            id: 'btc-bitcoin',
-            name: 'Bitcoin',
-            symbol: 'BTC',
-            rank: 1,
-            isNew: false,
-            isActive: true,
-            type: 'coin',
-          ),
-        ];
-
-        when(
-          () => mockProvider.fetchCoinList(),
-        ).thenAnswer((_) async => mockCoins);
 
         // Create an unsupported fiat currency
         const unsupportedFiat = QuoteCurrency.fiat(
@@ -958,7 +424,7 @@ void main() {
 
         // Act - Using an unsupported fiat currency
         final result = await repository.supports(
-          assetId,
+          TestData.bitcoinAsset,
           unsupportedFiat,
           PriceRequestType.currentPrice,
         );
@@ -968,22 +434,9 @@ void main() {
       });
 
       test('returns false when asset cannot be resolved', () async {
-        // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            // No coinPaprikaId
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
-        );
-
         // Act
         final result = await repository.supports(
-          assetId,
+          TestData.unsupportedAsset,
           FiatCurrency.usd,
           PriceRequestType.currentPrice,
         );
@@ -996,74 +449,36 @@ void main() {
     group('stablecoin to fiat mapping', () {
       test('correctly maps USDT to USD for price requests', () async {
         // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
-        );
-
-        final mockTicker = createMockTicker();
-
-        when(
-          () => mockProvider.fetchCoinTicker(
-            coinId: any(named: 'coinId'),
-            quotes: any(named: 'quotes'),
-          ),
-        ).thenAnswer((_) async => mockTicker);
+        MockHelpers.setupProviderTickerResponse(mockProvider);
 
         // Act - Using USDT stablecoin
-        final result = await repository.getCoinFiatPrice(
-          assetId,
-          fiatCurrency: Stablecoin.usdt,
-        );
+        final result = await repository.getCoinFiatPrice(TestData.bitcoinAsset);
 
         // Assert
-        expect(result, equals(Decimal.fromInt(50000)));
+        expect(result, equals(TestData.bitcoinPriceDecimal));
 
         // Verify that the provider was called with USDT stablecoin
-        verify(
-          () => mockProvider.fetchCoinTicker(
-            coinId: 'btc-bitcoin',
-            quotes: [Stablecoin.usdt],
-          ),
-        ).called(1);
+        VerificationHelpers.verifyFetchCoinTicker(
+          mockProvider,
+          expectedCoinId: TestConstants.bitcoinCoinId,
+          expectedQuotes: [Stablecoin.usdt],
+        );
       });
 
       test('correctly maps EUR-pegged stablecoin for price requests', () async {
         // Arrange
-        final assetId = AssetId(
-          id: 'BTC',
-          name: 'Bitcoin',
-          symbol: AssetSymbol(
-            assetConfigId: 'BTC',
-            coinPaprikaId: 'btc-bitcoin',
-          ),
-          chainId: AssetChainId(chainId: 0),
-          derivationPath: null,
-          subClass: CoinSubClass.utxo,
+        final mockTicker = TestFixtures.createMockTicker(
+          quoteCurrency: TestConstants.eursQuote,
+          price: 42000,
         );
-
-        final mockTicker = createMockTicker(
-          quoteCurrency: 'EURS',
-          price: 42000.0,
+        MockHelpers.setupProviderTickerResponse(
+          mockProvider,
+          ticker: mockTicker,
         );
-
-        when(
-          () => mockProvider.fetchCoinTicker(
-            coinId: any(named: 'coinId'),
-            quotes: any(named: 'quotes'),
-          ),
-        ).thenAnswer((_) async => mockTicker);
 
         // Act - Using EURS stablecoin
         final result = await repository.getCoinFiatPrice(
-          assetId,
+          TestData.bitcoinAsset,
           fiatCurrency: Stablecoin.eurs,
         );
 
@@ -1071,56 +486,22 @@ void main() {
         expect(result, equals(Decimal.fromInt(42000)));
 
         // Verify that the provider was called with EURS stablecoin
-        verify(
-          () => mockProvider.fetchCoinTicker(
-            coinId: 'btc-bitcoin',
-            quotes: [Stablecoin.eurs],
-          ),
-        ).called(1);
+        VerificationHelpers.verifyFetchCoinTicker(
+          mockProvider,
+          expectedCoinId: TestConstants.bitcoinCoinId,
+          expectedQuotes: [Stablecoin.eurs],
+        );
       });
 
       test(
         'uses correct coinPaprikaId for stablecoin in OHLC requests',
         () async {
           // Arrange
-          final assetId = AssetId(
-            id: 'BTC',
-            name: 'Bitcoin',
-            symbol: AssetSymbol(
-              assetConfigId: 'BTC',
-              coinPaprikaId: 'btc-bitcoin',
-            ),
-            chainId: AssetChainId(chainId: 0),
-            derivationPath: null,
-            subClass: CoinSubClass.utxo,
+          final mockOhlcData = [TestFixtures.createMockOhlc()];
+          MockHelpers.setupProviderOhlcResponse(
+            mockProvider,
+            ohlcData: mockOhlcData,
           );
-
-          final mockOhlcData = [
-            Ohlc.coinpaprika(
-              timeOpen: DateTime.now()
-                  .subtract(const Duration(hours: 12))
-                  .millisecondsSinceEpoch,
-              timeClose: DateTime.now()
-                  .subtract(const Duration(hours: 1))
-                  .millisecondsSinceEpoch,
-              open: Decimal.fromInt(45000),
-              high: Decimal.fromInt(52000),
-              low: Decimal.fromInt(44000),
-              close: Decimal.fromInt(50000),
-              volume: Decimal.fromInt(1000000),
-              marketCap: Decimal.fromInt(900000000000),
-            ),
-          ];
-
-          when(
-            () => mockProvider.fetchHistoricalOhlc(
-              coinId: any(named: 'coinId'),
-              startDate: any(named: 'startDate'),
-              endDate: any(named: 'endDate'),
-              quote: any(named: 'quote'),
-              interval: any(named: 'interval'),
-            ),
-          ).thenAnswer((_) async => mockOhlcData);
 
           final now = DateTime.now();
           final startAt = now.subtract(const Duration(hours: 12));
@@ -1128,7 +509,7 @@ void main() {
 
           // Act - Using USDT stablecoin
           final result = await repository.getCoinOhlc(
-            assetId,
+            TestData.bitcoinAsset,
             Stablecoin.usdt,
             GraphInterval.oneHour,
             startAt: startAt,
@@ -1139,19 +520,15 @@ void main() {
           expect(result.ohlc, hasLength(1));
           expect(
             result.ohlc.first.closeDecimal,
-            equals(Decimal.fromInt(50000)),
+            equals(TestData.bitcoinPriceDecimal),
           );
 
           // Verify that the provider was called with USDT stablecoin directly
-          verify(
-            () => mockProvider.fetchHistoricalOhlc(
-              coinId: 'btc-bitcoin',
-              startDate: any(named: 'startDate'),
-              endDate: any(named: 'endDate'),
-              quote: Stablecoin.usdt,
-              interval: any(named: 'interval'),
-            ),
-          ).called(1);
+          VerificationHelpers.verifyFetchHistoricalOhlc(
+            mockProvider,
+            expectedCoinId: TestConstants.bitcoinCoinId,
+            expectedQuote: Stablecoin.usdt,
+          );
         },
       );
 
@@ -1159,34 +536,18 @@ void main() {
         'correctly handles 24hr price change with stablecoin currency',
         () async {
           // Arrange
-          final assetId = AssetId(
-            id: 'BTC',
-            name: 'Bitcoin',
-            symbol: AssetSymbol(
-              assetConfigId: 'BTC',
-              coinPaprikaId: 'btc-bitcoin',
-            ),
-            chainId: AssetChainId(chainId: 0),
-            derivationPath: null,
-            subClass: CoinSubClass.utxo,
-          );
-
-          final mockTicker = createMockTicker(
-            quoteCurrency: 'USDC',
-            price: 50000.0,
+          final mockTicker = TestFixtures.createMockTicker(
+            quoteCurrency: TestConstants.usdcQuote,
             percentChange24h: 3.2,
           );
-
-          when(
-            () => mockProvider.fetchCoinTicker(
-              coinId: any(named: 'coinId'),
-              quotes: any(named: 'quotes'),
-            ),
-          ).thenAnswer((_) async => mockTicker);
+          MockHelpers.setupProviderTickerResponse(
+            mockProvider,
+            ticker: mockTicker,
+          );
 
           // Act - Using USDC stablecoin
           final result = await repository.getCoin24hrPriceChange(
-            assetId,
+            TestData.bitcoinAsset,
             fiatCurrency: Stablecoin.usdc,
           );
 
@@ -1194,12 +555,11 @@ void main() {
           expect(result, equals(Decimal.parse('3.2')));
 
           // Verify that the provider was called with USDC stablecoin
-          verify(
-            () => mockProvider.fetchCoinTicker(
-              coinId: 'btc-bitcoin',
-              quotes: [Stablecoin.usdc],
-            ),
-          ).called(1);
+          VerificationHelpers.verifyFetchCoinTicker(
+            mockProvider,
+            expectedCoinId: TestConstants.bitcoinCoinId,
+            expectedQuotes: [Stablecoin.usdc],
+          );
         },
       );
     });
@@ -1594,7 +954,7 @@ void main() {
         // Batch should not exceed 90-day limit
         const expectedMaxDuration = Duration(days: 90);
         expect(
-          capturedBatchDuration!,
+          capturedBatchDuration,
           lessThanOrEqualTo(expectedMaxDuration),
           reason:
               'Batch duration should not exceed 90-day limit. '

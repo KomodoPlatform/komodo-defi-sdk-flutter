@@ -10,16 +10,19 @@ import 'package:komodo_cex_market_data/src/models/_models_index.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
-class MockHttpClient extends Mock implements http.Client {}
+import 'fixtures/mock_helpers.dart';
+import 'fixtures/test_constants.dart';
+import 'fixtures/test_fixtures.dart';
+import 'fixtures/verification_helpers.dart';
 
 /// Testable CoinPaprikaProvider that allows dependency injection of HTTP client
 class TestableCoinPaprikaProvider extends CoinPaprikaProvider {
   TestableCoinPaprikaProvider({
     required this.httpClient,
-    String? apiKey,
-    String baseUrl = 'api.coinpaprika.com',
-    String apiVersion = '/v1',
-  }) : super(apiKey: apiKey, baseUrl: baseUrl, apiVersion: apiVersion);
+    super.apiKey,
+    super.baseUrl,
+    super.apiVersion,
+  });
 
   final http.Client httpClient;
 
@@ -204,11 +207,9 @@ void main() {
     late TestableCoinPaprikaProvider provider;
 
     setUp(() {
+      MockHelpers.registerFallbackValues();
       mockHttpClient = MockHttpClient();
       provider = TestableCoinPaprikaProvider(httpClient: mockHttpClient);
-
-      // Set up fallback values for mocktail
-      registerFallbackValue(Uri());
     });
 
     group('supportedQuoteCurrencies', () {
@@ -218,12 +219,9 @@ void main() {
 
         // Assert
         expect(supportedCurrencies, isNotEmpty);
-        expect(supportedCurrencies, contains(Cryptocurrency.btc));
-        expect(supportedCurrencies, contains(Cryptocurrency.eth));
-        expect(supportedCurrencies, contains(FiatCurrency.usd));
-        expect(supportedCurrencies, contains(FiatCurrency.eur));
-        expect(supportedCurrencies, contains(FiatCurrency.gbp));
-        expect(supportedCurrencies, contains(FiatCurrency.jpy));
+        for (final currency in TestConstants.defaultSupportedCurrencies) {
+          expect(supportedCurrencies, contains(currency));
+        }
 
         // Verify the list is unmodifiable
         expect(
@@ -257,130 +255,86 @@ void main() {
     group('fetchHistoricalOhlc URL format validation', () {
       test('generates correct URL format without quote parameter', () async {
         // Arrange
-        final mockResponse = http.Response(
-          jsonEncode([
-            {
-              'timestamp': '2024-01-01T00:00:00Z',
-              'price': 50000.0,
-              'volume_24h': 1000000.0,
-              'market_cap': 900000000000.0,
-            },
-          ]),
-          200,
-        );
+        final mockResponse = TestFixtures.createHistoricalOhlcResponse();
 
         when(
           () => mockHttpClient.get(any()),
         ).thenAnswer((_) async => mockResponse);
 
-        final startDate = DateTime.parse('2024-01-01T00:00:00Z');
+        final startDate = TestData.pastDate;
 
         // Act
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
+          coinId: TestConstants.bitcoinCoinId,
           startDate: startDate,
         );
 
         // Assert
-        final capturedUri =
-            verify(() => mockHttpClient.get(captureAny())).captured.single
-                as Uri;
-
-        // Verify URL structure
-        expect(capturedUri.host, equals('api.coinpaprika.com'));
-        expect(capturedUri.path, equals('/v1/tickers/btc-bitcoin/historical'));
-
-        // Verify query parameters
-        expect(capturedUri.queryParameters, hasLength(2));
-        expect(capturedUri.queryParameters['start'], equals('2024-01-01'));
-        expect(capturedUri.queryParameters['interval'], equals('1d'));
-
-        // Verify NO quote parameter is included
-        expect(capturedUri.queryParameters.containsKey('quote'), isFalse);
-        expect(capturedUri.queryParameters.containsKey('limit'), isFalse);
-        expect(capturedUri.queryParameters.containsKey('end'), isFalse);
+        VerificationHelpers.verifyHistoricalOhlcUrl(
+          mockHttpClient,
+          TestConstants.bitcoinCoinId,
+          expectedStartDate: TestConstants.dateFormat,
+          expectedInterval: TestConstants.interval1d,
+          excludedParams: ['quote', 'limit', 'end'],
+        );
       });
 
       test('converts 24h interval to 1d for API compatibility', () async {
         // Arrange
-        final mockResponse = http.Response(
-          jsonEncode([
-            {
-              'timestamp': '2024-01-01T00:00:00Z',
-              'price': 50000.0,
-              'volume_24h': 1000000.0,
-              'market_cap': 900000000000.0,
-            },
-          ]),
-          200,
-        );
+        final mockResponse = TestFixtures.createHistoricalOhlcResponse();
 
         when(
           () => mockHttpClient.get(any()),
         ).thenAnswer((_) async => mockResponse);
 
-        final startDate = DateTime.parse('2024-01-01T00:00:00Z');
-
         // Act
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
-          startDate: startDate,
-          interval: '24h',
+          coinId: TestConstants.bitcoinCoinId,
+          startDate: TestData.pastDate,
+          interval: TestConstants.interval24h,
         );
 
         // Assert
-        final capturedUri =
-            verify(() => mockHttpClient.get(captureAny())).captured.single
-                as Uri;
-        expect(capturedUri.queryParameters['interval'], equals('1d'));
+        VerificationHelpers.verifyIntervalConversion(
+          mockHttpClient,
+          TestConstants.interval24h,
+          TestConstants.interval1d,
+        );
       });
 
       test('preserves 1h interval as-is', () async {
         // Arrange
-        final mockResponse = http.Response(
-          jsonEncode([
-            {
-              'timestamp': '2024-01-01T00:00:00Z',
-              'price': 44000.0,
-              'volume_24h': 500000.0,
-              'market_cap': 800000000000.0,
-            },
-          ]),
-          200,
+        final mockResponse = TestFixtures.createHistoricalOhlcResponse(
+          price: 44000,
+          volume24h: TestConstants.mediumVolume,
+          marketCap: 800000000000,
         );
 
         when(
           () => mockHttpClient.get(any()),
         ).thenAnswer((_) async => mockResponse);
 
-        final startDate = DateTime.parse('2024-01-01T00:00:00Z');
-
         // Act
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
-          startDate: startDate,
-          interval: '1h',
+          coinId: TestConstants.bitcoinCoinId,
+          startDate: TestData.pastDate,
+          interval: TestConstants.interval1h,
         );
 
         // Assert
-        final capturedUri =
-            verify(() => mockHttpClient.get(captureAny())).captured.single
-                as Uri;
-        expect(capturedUri.queryParameters['interval'], equals('1h'));
+        VerificationHelpers.verifyIntervalConversion(
+          mockHttpClient,
+          TestConstants.interval1h,
+          TestConstants.interval1h,
+        );
       });
 
       test('formats date correctly as YYYY-MM-DD', () async {
         // Arrange
-        final mockResponse = http.Response(
-          jsonEncode([
-            {
-              'timestamp': '2024-01-01T00:00:00Z',
-              'price': 1.02,
-              'volume_24h': 100.0,
-              'market_cap': 20000000.0,
-            },
-          ]),
-          200,
+        final mockResponse = TestFixtures.createHistoricalOhlcResponse(
+          price: 1.02,
+          volume24h: TestConstants.lowVolume,
+          marketCap: TestConstants.smallMarketCap,
         );
 
         when(
@@ -391,192 +345,230 @@ void main() {
 
         // Act
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
+          coinId: TestConstants.bitcoinCoinId,
           startDate: startDate,
         );
 
         // Assert
-        final capturedUri =
-            verify(() => mockHttpClient.get(captureAny())).captured.single
-                as Uri;
-        expect(capturedUri.queryParameters['start'], equals('2024-08-25'));
+        VerificationHelpers.verifyDateFormatting(
+          mockHttpClient,
+          startDate,
+          '2024-08-25',
+        );
       });
 
       test('generates URL matching correct format example', () async {
         // Arrange
-        final mockResponse = http.Response(
-          jsonEncode([
-            {
-              'timestamp': '2025-01-01T00:00:00Z',
-              'price': 50000.0,
-              'volume_24h': 1000000.0,
-              'market_cap': 900000000000.0,
-            },
-          ]),
-          200,
+        final mockResponse = TestFixtures.createHistoricalOhlcResponse(
+          timestamp: '2025-01-01T00:00:00Z',
         );
 
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => mockResponse);
 
-        final startDate = DateTime(2025, 1, 1);
+        final startDate = DateTime(2025);
 
         // Act
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
+          coinId: TestConstants.bitcoinCoinId,
           startDate: startDate,
-          interval: '1d',
         );
 
         // Assert
-        final capturedUri =
-            verify(() => mockHttpClient.get(captureAny())).captured.single
-                as Uri;
-
-        // Verify the URL matches the correct format:
-        // https://api.coinpaprika.com/v1/tickers/btc-bitcoin/historical?start=2025-01-01&interval=1d
-        expect(capturedUri.toString(),
-            equals('https://api.coinpaprika.com/v1/tickers/btc-bitcoin/historical?start=2025-01-01&interval=1d'));
+        VerificationHelpers.verifyHttpGetCall(
+          mockHttpClient,
+          'https://api.coinpaprika.com/v1/tickers/btc-bitcoin/historical?start=2025-01-01&interval=1d',
+        );
       });
     });
 
     group('interval conversion tests', () {
+      final emptyResponse = TestFixtures.createHistoricalOhlcResponse(
+        ticks: [],
+      );
+      final testDate = DateTime(2024);
+
       test('converts 24h to 1d', () async {
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => emptyResponse);
 
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
-          startDate: DateTime(2024, 1, 1),
-          interval: '24h',
+          coinId: TestConstants.bitcoinCoinId,
+          startDate: testDate,
+          interval: TestConstants.interval24h,
         );
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-        expect(capturedUri.queryParameters['interval'], equals('1d'));
+        VerificationHelpers.verifyIntervalConversion(
+          mockHttpClient,
+          TestConstants.interval24h,
+          TestConstants.interval1d,
+        );
       });
 
       test('preserves 1d as-is', () async {
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => emptyResponse);
 
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
-          startDate: DateTime(2024, 1, 1),
-          interval: '1d',
+          coinId: TestConstants.bitcoinCoinId,
+          startDate: testDate,
         );
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-        expect(capturedUri.queryParameters['interval'], equals('1d'));
+        VerificationHelpers.verifyIntervalConversion(
+          mockHttpClient,
+          TestConstants.interval1d,
+          TestConstants.interval1d,
+        );
       });
 
       test('preserves 1h as-is', () async {
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => emptyResponse);
 
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
-          startDate: DateTime(2024, 1, 1),
-          interval: '1h',
+          coinId: TestConstants.bitcoinCoinId,
+          startDate: testDate,
+          interval: TestConstants.interval1h,
         );
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-        expect(capturedUri.queryParameters['interval'], equals('1h'));
+        VerificationHelpers.verifyIntervalConversion(
+          mockHttpClient,
+          TestConstants.interval1h,
+          TestConstants.interval1h,
+        );
       });
 
       test('preserves 5m as-is', () async {
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => emptyResponse);
 
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
-          startDate: DateTime(2024, 1, 1),
-          interval: '5m',
+          coinId: TestConstants.bitcoinCoinId,
+          startDate: testDate,
+          interval: TestConstants.interval5m,
         );
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-        expect(capturedUri.queryParameters['interval'], equals('5m'));
+        VerificationHelpers.verifyIntervalConversion(
+          mockHttpClient,
+          TestConstants.interval5m,
+          TestConstants.interval5m,
+        );
       });
 
       test('preserves 15m as-is', () async {
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => emptyResponse);
 
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
-          startDate: DateTime(2024, 1, 1),
-          interval: '15m',
+          coinId: TestConstants.bitcoinCoinId,
+          startDate: testDate,
+          interval: TestConstants.interval15m,
         );
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-        expect(capturedUri.queryParameters['interval'], equals('15m'));
+        VerificationHelpers.verifyIntervalConversion(
+          mockHttpClient,
+          TestConstants.interval15m,
+          TestConstants.interval15m,
+        );
       });
 
       test('preserves 30m as-is', () async {
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => emptyResponse);
 
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
-          startDate: DateTime(2024, 1, 1),
-          interval: '30m',
+          coinId: TestConstants.bitcoinCoinId,
+          startDate: testDate,
+          interval: TestConstants.interval30m,
         );
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-        expect(capturedUri.queryParameters['interval'], equals('30m'));
+        VerificationHelpers.verifyIntervalConversion(
+          mockHttpClient,
+          TestConstants.interval30m,
+          TestConstants.interval30m,
+        );
       });
 
       test('passes through unknown intervals as-is', () async {
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => emptyResponse);
 
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
-          startDate: DateTime(2024, 1, 1),
+          coinId: TestConstants.bitcoinCoinId,
+          startDate: testDate,
           interval: '7d',
         );
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-        expect(capturedUri.queryParameters['interval'], equals('7d'));
+        VerificationHelpers.verifyIntervalConversion(
+          mockHttpClient,
+          '7d',
+          '7d',
+        );
       });
     });
 
     group('date formatting tests', () {
+      final emptyResponse = TestFixtures.createHistoricalOhlcResponse(
+        ticks: [],
+      );
+
       test('formats single digit month correctly', () async {
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => emptyResponse);
 
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
+          coinId: TestConstants.bitcoinCoinId,
           startDate: DateTime(2024, 3, 5),
         );
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-        expect(capturedUri.queryParameters['start'], equals('2024-03-05'));
+        VerificationHelpers.verifyDateFormatting(
+          mockHttpClient,
+          DateTime(2024, 3, 5),
+          TestConstants.dateFormatWithSingleDigits,
+        );
       });
 
       test('formats single digit day correctly', () async {
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => emptyResponse);
 
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
+          coinId: TestConstants.bitcoinCoinId,
           startDate: DateTime(2024, 12, 7),
         );
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-        expect(capturedUri.queryParameters['start'], equals('2024-12-07'));
+        VerificationHelpers.verifyDateFormatting(
+          mockHttpClient,
+          DateTime(2024, 12, 7),
+          '2024-12-07',
+        );
       });
 
       test('ignores time portion of datetime', () async {
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => emptyResponse);
 
         await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
+          coinId: TestConstants.bitcoinCoinId,
           startDate: DateTime(2024, 6, 15, 14, 30, 45, 123, 456),
         );
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-        expect(capturedUri.queryParameters['start'], equals('2024-06-15'));
+        VerificationHelpers.verifyDateFormatting(
+          mockHttpClient,
+          DateTime(2024, 6, 15, 14, 30, 45, 123, 456),
+          '2024-06-15',
+        );
       });
     });
 
@@ -589,19 +581,13 @@ void main() {
         // The correct format is:
         // https://api.coinpaprika.com/v1/tickers/btc-bitcoin/historical?start=2025-01-01&interval=1d
 
-        final mockResponse = http.Response(
-          jsonEncode([
-            {
-              'timestamp': '2025-01-01T00:00:00Z',
-              'price': 50000.0,
-              'volume_24h': 1000000.0,
-              'market_cap': 900000000000.0,
-            },
-          ]),
-          200, // Should not be 400 Bad Request
+        final mockResponse = TestFixtures.createHistoricalOhlcResponse(
+          timestamp: '2025-01-01T00:00:00Z',
         );
 
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
+        when(
+          () => mockHttpClient.get(any()),
+        ).thenAnswer((_) async => mockResponse);
 
         final startDate = DateTime(2025, 8, 25);
 
@@ -609,51 +595,50 @@ void main() {
         final result = await provider.fetchHistoricalOhlc(
           coinId: 'aur-auroracoin',
           startDate: startDate,
-          interval: '24h', // This gets converted to '1d'
+          interval: TestConstants.interval24h, // This gets converted to '1d'
         );
 
         // Assert
         expect(result, isNotEmpty);
 
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-
-        // Verify the URL does NOT contain the problematic parameters that caused 400 errors
-        expect(capturedUri.queryParameters.containsKey('quote'), isFalse,
-            reason: 'quote parameter should not be included in historical OHLC requests');
-        expect(capturedUri.queryParameters.containsKey('limit'), isFalse,
-            reason: 'limit parameter should not be included');
-        expect(capturedUri.queryParameters.containsKey('end'), isFalse,
-            reason: 'end parameter should not be included unless specifically needed');
-
-        // Verify the URL contains only the required parameters
-        expect(capturedUri.queryParameters, hasLength(2));
-        expect(capturedUri.queryParameters['start'], equals('2025-08-25'));
-        expect(capturedUri.queryParameters['interval'], equals('1d')); // 24h converted to 1d
-
-        // Verify the complete URL format is correct
-        expect(capturedUri.toString(),
-            equals('https://api.coinpaprika.com/v1/tickers/aur-auroracoin/historical?start=2025-08-25&interval=1d'));
-      });
-
-      test('validates that quote parameter removal prevents USDT-related 400 errors', () async {
-        // The original problematic URL included &quote=usdt which caused 400 errors
-        final mockResponse = http.Response(jsonEncode([]), 200);
-        when(() => mockHttpClient.get(any())).thenAnswer((_) async => mockResponse);
-
-        // This call previously would have included quote=usdt in the URL
-        await provider.fetchHistoricalOhlc(
-          coinId: 'btc-bitcoin',
-          startDate: DateTime(2025, 8, 25),
-          quote: Stablecoin.usdt, // This parameter is now ignored for historical data
+        VerificationHelpers.verifyHttpGetCallMultiple(
+          mockHttpClient,
+          expectedUrl: 'https://api.coinpaprika.com/v1/tickers/aur-auroracoin/historical?start=2025-08-25&interval=1d',
+          expectedHost: TestConstants.baseUrl,
+          expectedPath: '${TestConstants.apiVersion}/tickers/aur-auroracoin/historical',
+          expectedQueryParamKeys: ['start', 'interval'],
+          excludedParams: ['quote', 'limit', 'end'],
         );
-
-        final capturedUri = verify(() => mockHttpClient.get(captureAny())).captured.single as Uri;
-
-        // Verify USDT quote is not included in the URL
-        expect(capturedUri.queryParameters.containsKey('quote'), isFalse);
-        expect(capturedUri.toString(), isNot(contains('usdt')));
-        expect(capturedUri.toString(), isNot(contains('quote')));
       });
+
+      test(
+        'validates that quote parameter removal prevents USDT-related 400 errors',
+        () async {
+          // The original problematic URL included &quote=usdt which caused 400 errors
+          final mockResponse = TestFixtures.createHistoricalOhlcResponse(
+            ticks: [],
+          );
+          when(
+            () => mockHttpClient.get(any()),
+          ).thenAnswer((_) async => mockResponse);
+
+          // This call previously would have included quote=usdt in the URL
+          await provider.fetchHistoricalOhlc(
+            coinId: TestConstants.bitcoinCoinId,
+            startDate: DateTime(2025, 8, 25),
+            quote: Stablecoin
+                .usdt, // This parameter is now ignored for historical data
+          );
+
+          final capturedUri =
+              verify(() => mockHttpClient.get(captureAny())).captured.single
+                  as Uri;
+          expect(capturedUri.queryParameters.containsKey('quote'), isFalse,
+              reason: 'Quote parameter should not be included in historical OHLC requests');
+          expect(capturedUri.toString(), isNot(contains('usdt')));
+          expect(capturedUri.toString(), isNot(contains('quote')));
+        },
+      );
     });
 
     group('fetchCoinTicker quote currency mapping', () {
@@ -661,16 +646,19 @@ void main() {
         'uses correct coinPaprikaId mapping for multiple quote currencies',
         () async {
           // Arrange
-          final mockResponse = http.Response(
-            jsonEncode({
-              'id': 'btc-bitcoin',
-              'quotes': {
-                'USD': {'price': 50000.0},
-                'USDT': {'price': 50010.0},
-                'EUR': {'price': 42000.0},
-              },
-            }),
-            200,
+          final mockResponse = TestFixtures.createTickerResponse(
+            quotes: TestFixtures.createMultipleQuotes(
+              currencies: [
+                TestConstants.usdQuote,
+                TestConstants.usdtQuote,
+                TestConstants.eurQuote,
+              ],
+              prices: [
+                TestConstants.bitcoinPrice,
+                TestConstants.bitcoinPrice + 10,
+                42000.0,
+              ],
+            ),
           );
 
           when(
@@ -679,30 +667,26 @@ void main() {
 
           // Act
           await provider.fetchCoinTicker(
-            coinId: 'btc-bitcoin',
+            coinId: TestConstants.bitcoinCoinId,
             quotes: [FiatCurrency.usd, Stablecoin.usdt, FiatCurrency.eur],
           );
 
           // Assert
-          final capturedUri =
-              verify(() => mockHttpClient.get(captureAny())).captured.single
-                  as Uri;
-          final quotesParam = capturedUri.queryParameters['quotes'];
-          expect(quotesParam, equals('USD,USDT,EUR'));
+          VerificationHelpers.verifyTickerUrl(
+            mockHttpClient,
+            TestConstants.bitcoinCoinId,
+            expectedQuotes: 'USD,USDT,EUR',
+          );
         },
       );
 
       test('converts coinPaprikaId to uppercase for API request', () async {
         // Arrange
-        final mockResponse = http.Response(
-          jsonEncode({
-            'id': 'btc-bitcoin',
-            'quotes': {
-              'BTC': {'price': 1.0},
-              'ETH': {'price': 15.2},
-            },
-          }),
-          200,
+        final mockResponse = TestFixtures.createTickerResponse(
+          quotes: TestFixtures.createMultipleQuotes(
+            currencies: [TestConstants.btcQuote, TestConstants.ethQuote],
+            prices: [1.0, 15.2],
+          ),
         );
 
         when(
@@ -711,28 +695,39 @@ void main() {
 
         // Act
         await provider.fetchCoinTicker(
-          coinId: 'btc-bitcoin',
+          coinId: TestConstants.bitcoinCoinId,
           quotes: [Cryptocurrency.btc, Cryptocurrency.eth],
         );
 
         // Assert
-        final capturedUri =
-            verify(() => mockHttpClient.get(captureAny())).captured.single
-                as Uri;
-        final quotesParam = capturedUri.queryParameters['quotes'];
-        expect(quotesParam, equals('BTC,ETH'));
+        VerificationHelpers.verifyTickerUrl(
+          mockHttpClient,
+          TestConstants.bitcoinCoinId,
+          expectedQuotes: 'BTC,ETH',
+        );
       });
 
       test('handles single quote currency correctly', () async {
         // Arrange
-        final mockResponse = http.Response(
-          jsonEncode({
-            'id': 'btc-bitcoin',
-            'quotes': {
-              'GBP': {'price': 38000.0},
+        final mockResponse = TestFixtures.createTickerResponse(
+          quotes: {
+            TestConstants.gbpQuote: {
+              'price': 38000.0,
+              'volume_24h': TestConstants.highVolume,
+              'volume_24h_change_24h': 0.0,
+              'market_cap': TestConstants.bitcoinMarketCap,
+              'market_cap_change_24h': 0.0,
+              'percent_change_15m': 0.0,
+              'percent_change_30m': 0.0,
+              'percent_change_1h': 0.0,
+              'percent_change_6h': 0.0,
+              'percent_change_12h': 0.0,
+              'percent_change_24h': TestConstants.positiveChange,
+              'percent_change_7d': 0.0,
+              'percent_change_30d': 0.0,
+              'percent_change_1y': 0.0,
             },
-          }),
-          200,
+          },
         );
 
         when(
@@ -741,45 +736,23 @@ void main() {
 
         // Act
         await provider.fetchCoinTicker(
-          coinId: 'btc-bitcoin',
+          coinId: TestConstants.bitcoinCoinId,
           quotes: [FiatCurrency.gbp],
         );
 
         // Assert
-        final capturedUri =
-            verify(() => mockHttpClient.get(captureAny())).captured.single
-                as Uri;
-        final quotesParam = capturedUri.queryParameters['quotes'];
-        expect(quotesParam, equals('GBP'));
+        VerificationHelpers.verifyTickerUrl(
+          mockHttpClient,
+          TestConstants.bitcoinCoinId,
+          expectedQuotes: TestConstants.gbpQuote,
+        );
       });
     });
 
     group('fetchCoinMarkets quote currency mapping', () {
       test('uses correct coinPaprikaId mapping for market data', () async {
         // Arrange
-        final mockResponse = http.Response(
-          jsonEncode([
-            {
-              'exchange_id': 'binance',
-              'exchange_name': 'Binance',
-              'pair': 'BTC/USDT',
-              'base_currency_id': 'btc-bitcoin',
-              'base_currency_name': 'Bitcoin',
-              'quote_currency_id': 'usdt-tether',
-              'quote_currency_name': 'Tether',
-              'market_url': 'https://binance.com/trade/BTC_USDT',
-              'category': 'Spot',
-              'fee_type': 'Percentage',
-              'outlier': false,
-              'adjusted_volume24h_share': 12.5,
-              'last_updated': '2023-01-01T00:00:00Z',
-              'quotes': {
-                'USD': {'price': '50000.0', 'volume_24h': '1000000.0'},
-              },
-            },
-          ]),
-          200,
-        );
+        final mockResponse = TestFixtures.createMarketsResponse();
 
         when(
           () => mockHttpClient.get(any()),
@@ -787,30 +760,36 @@ void main() {
 
         // Act
         await provider.fetchCoinMarkets(
-          coinId: 'btc-bitcoin',
+          coinId: TestConstants.bitcoinCoinId,
           quotes: [FiatCurrency.usd, Stablecoin.usdt],
         );
 
         // Assert
-        final capturedUri =
-            verify(() => mockHttpClient.get(captureAny())).captured.single
-                as Uri;
-        final quotesParam = capturedUri.queryParameters['quotes'];
-        expect(quotesParam, equals('USD,USDT'));
+        VerificationHelpers.verifyMarketsUrl(
+          mockHttpClient,
+          TestConstants.bitcoinCoinId,
+          expectedQuotes: 'USD,USDT',
+        );
       });
     });
 
     group('coinPaprikaId extension usage', () {
       test('verifies QuoteCurrency.coinPaprikaId returns lowercase values', () {
         // Test various currency types to ensure the extension works correctly
-        expect(FiatCurrency.usd.coinPaprikaId, equals('usd'));
-        expect(FiatCurrency.eur.coinPaprikaId, equals('eur'));
-        expect(FiatCurrency.gbp.coinPaprikaId, equals('gbp'));
-        expect(Stablecoin.usdt.coinPaprikaId, equals('usdt'));
-        expect(Stablecoin.usdc.coinPaprikaId, equals('usdc'));
-        expect(Stablecoin.eurs.coinPaprikaId, equals('eurs'));
-        expect(Cryptocurrency.btc.coinPaprikaId, equals('btc'));
-        expect(Cryptocurrency.eth.coinPaprikaId, equals('eth'));
+        final expectedMappings = {
+          FiatCurrency.usd: 'usd',
+          FiatCurrency.eur: 'eur',
+          FiatCurrency.gbp: 'gbp',
+          Stablecoin.usdt: 'usdt',
+          Stablecoin.usdc: 'usdc',
+          Stablecoin.eurs: 'eurs',
+          Cryptocurrency.btc: 'btc',
+          Cryptocurrency.eth: 'eth',
+        };
+
+        expectedMappings.forEach((currency, expectedId) {
+          expect(currency.coinPaprikaId, equals(expectedId));
+        });
       });
 
       test('verifies provider uses coinPaprikaId extension consistently', () {
@@ -832,18 +811,13 @@ void main() {
     group('error handling', () {
       test('throws exception when HTTP request fails for OHLC', () async {
         // Arrange
-        when(
-          () => mockHttpClient.get(any()),
-        ).thenAnswer((_) async => http.Response('Server Error', 500));
-
-        final startDate = DateTime.parse('2024-01-01T00:00:00Z');
+        MockHelpers.setupErrorResponses(mockHttpClient);
 
         // Act & Assert
         expect(
           () => provider.fetchHistoricalOhlc(
-            coinId: 'btc-bitcoin',
-            startDate: startDate,
-            quote: FiatCurrency.usd,
+            coinId: TestConstants.bitcoinCoinId,
+            startDate: TestData.pastDate,
           ),
           throwsA(isA<Exception>()),
         );
@@ -851,14 +825,12 @@ void main() {
 
       test('throws exception when HTTP request fails for ticker', () async {
         // Arrange
-        when(
-          () => mockHttpClient.get(any()),
-        ).thenAnswer((_) async => http.Response('Server Error', 500));
+        MockHelpers.setupErrorResponses(mockHttpClient);
 
         // Act & Assert
         expect(
           () => provider.fetchCoinTicker(
-            coinId: 'btc-bitcoin',
+            coinId: TestConstants.bitcoinCoinId,
             quotes: [FiatCurrency.usd],
           ),
           throwsA(isA<Exception>()),

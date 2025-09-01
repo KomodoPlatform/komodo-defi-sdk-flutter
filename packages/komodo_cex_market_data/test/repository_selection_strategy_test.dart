@@ -1,10 +1,5 @@
 import 'package:decimal/decimal.dart';
-import 'package:komodo_cex_market_data/src/binance/binance.dart';
-import 'package:komodo_cex_market_data/src/binance/models/binance_24hr_ticker.dart';
-import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
-import 'package:komodo_cex_market_data/src/cex_repository.dart';
-import 'package:komodo_cex_market_data/src/models/models.dart';
-import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
+import 'package:komodo_cex_market_data/src/_core_index.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
 
@@ -67,10 +62,9 @@ class TestBinanceProvider implements IBinanceProvider {
 
 // Mock repository that always supports requests
 class MockSupportingRepository implements CexRepository {
+  MockSupportingRepository(this.name, {this.shouldSupport = true});
   final String name;
   final bool shouldSupport;
-
-  MockSupportingRepository(this.name, {this.shouldSupport = true});
 
   @override
   Future<bool> supports(
@@ -209,7 +203,7 @@ void main() {
           derivationPath: null,
           subClass: CoinSubClass.utxo,
         );
-        final fiat = FiatCurrency.usd;
+        const fiat = FiatCurrency.usd;
 
         final repo = await strategy.selectRepository(
           assetId: asset,
