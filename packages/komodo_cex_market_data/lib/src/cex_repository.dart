@@ -1,5 +1,5 @@
 import 'package:decimal/decimal.dart';
-import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/models/_models_index.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 

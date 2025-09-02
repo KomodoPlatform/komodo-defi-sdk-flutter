@@ -11,13 +11,13 @@ class CommunityData extends Equatable {
   });
 
   factory CommunityData.fromJson(Map<String, dynamic> json) => CommunityData(
-        facebookLikes: json['facebook_likes'] as dynamic,
-        twitterFollowers: json['twitter_followers'] as dynamic,
-        redditAveragePosts48h: json['reddit_average_posts_48h'] as int?,
-        redditAverageComments48h: json['reddit_average_comments_48h'] as int?,
-        redditSubscribers: json['reddit_subscribers'] as dynamic,
-        redditAccountsActive48h: json['reddit_accounts_active_48h'] as dynamic,
-      );
+    facebookLikes: json['facebook_likes'] as dynamic,
+    twitterFollowers: json['twitter_followers'] as dynamic,
+    redditAveragePosts48h: json['reddit_average_posts_48h'] as int?,
+    redditAverageComments48h: json['reddit_average_comments_48h'] as int?,
+    redditSubscribers: json['reddit_subscribers'] as dynamic,
+    redditAccountsActive48h: json['reddit_accounts_active_48h'] as dynamic,
+  );
   final dynamic facebookLikes;
   final dynamic twitterFollowers;
   final int? redditAveragePosts48h;
@@ -26,13 +26,13 @@ class CommunityData extends Equatable {
   final dynamic redditAccountsActive48h;
 
   Map<String, dynamic> toJson() => {
-        'facebook_likes': facebookLikes,
-        'twitter_followers': twitterFollowers,
-        'reddit_average_posts_48h': redditAveragePosts48h,
-        'reddit_average_comments_48h': redditAverageComments48h,
-        'reddit_subscribers': redditSubscribers,
-        'reddit_accounts_active_48h': redditAccountsActive48h,
-      };
+    'facebook_likes': facebookLikes,
+    'twitter_followers': twitterFollowers,
+    'reddit_average_posts_48h': redditAveragePosts48h,
+    'reddit_average_comments_48h': redditAverageComments48h,
+    'reddit_subscribers': redditSubscribers,
+    'reddit_accounts_active_48h': redditAccountsActive48h,
+  };
 
   CommunityData copyWith({
     dynamic facebookLikes,

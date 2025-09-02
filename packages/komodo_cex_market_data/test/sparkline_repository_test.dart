@@ -54,10 +54,10 @@ void main() {
       fallbackRepo = MockCexRepository();
       mockStrategy = MockRepositorySelectionStrategy();
 
-      sparklineRepo = SparklineRepository(
-        repositories: [primaryRepo, fallbackRepo],
-        selectionStrategy: mockStrategy,
-      );
+      sparklineRepo = SparklineRepository([
+        primaryRepo,
+        fallbackRepo,
+      ], selectionStrategy: mockStrategy);
 
       // Setup default supports behavior
       when(
@@ -573,7 +573,7 @@ void main() {
       });
 
       test('throws exception when not initialized', () async {
-        final uninitializedRepo = SparklineRepository();
+        final uninitializedRepo = SparklineRepository.defaultInstance();
 
         expect(
           () => uninitializedRepo.fetchSparkline(testAsset),

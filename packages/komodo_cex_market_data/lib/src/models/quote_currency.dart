@@ -46,8 +46,8 @@ sealed class QuoteCurrency with _$QuoteCurrency {
         if (symbol == 'TRY') return 'try';
         return symbol.toLowerCase();
       },
-      stablecoin:
-          (symbol, displayName, underlyingFiat) => underlyingFiat.coinGeckoId,
+      stablecoin: (symbol, displayName, underlyingFiat) =>
+          underlyingFiat.coinGeckoId,
       crypto: (symbol, displayName) => symbol.toLowerCase(),
       commodity: (symbol, displayName) => symbol.toLowerCase(),
     );
@@ -374,6 +374,22 @@ class FiatCurrency {
     symbol: 'ZAR',
     displayName: 'South African Rand',
   );
+  static const bob = QuoteCurrency.fiat(
+    symbol: 'BOB',
+    displayName: 'Bolivian Boliviano',
+  );
+  static const cop = QuoteCurrency.fiat(
+    symbol: 'COP',
+    displayName: 'Colombian Peso',
+  );
+  static const pen = QuoteCurrency.fiat(
+    symbol: 'PEN',
+    displayName: 'Peruvian Sol',
+  );
+  static const isk = QuoteCurrency.fiat(
+    symbol: 'ISK',
+    displayName: 'Icelandic Krona',
+  );
 
   /// List of all available fiat currencies.
   ///
@@ -436,6 +452,10 @@ class FiatCurrency {
     vef,
     vnd,
     zar,
+    bob,
+    cop,
+    pen,
+    isk,
   ];
 
   /// Optimized lookup map for fast symbol-to-currency resolution.
@@ -871,5 +891,21 @@ extension QuoteCurrencyMapping on QuoteCurrency {
         final available = availableStablecoins;
         return available.isNotEmpty ? available.first : null;
     }
+  }
+}
+
+/// CoinPaprika-specific quote currency extensions
+extension CoinPaprikaQuoteCurrency on QuoteCurrency {
+  /// Gets the CoinPaprika-compatible currency identifier.
+  ///
+  /// CoinPaprika uses lowercase currency symbols for quote currencies.
+  /// This extension maps QuoteCurrency instances to their CoinPaprika equivalents.
+  String get coinPaprikaId {
+    return map(
+      fiat: (fiat) => fiat.symbol.toLowerCase(),
+      stablecoin: (stable) => stable.symbol.toLowerCase(),
+      crypto: (crypto) => crypto.symbol.toLowerCase(),
+      commodity: (commodity) => commodity.symbol.toLowerCase(),
+    );
   }
 }

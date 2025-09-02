@@ -13,14 +13,11 @@ class PublicInterestStats extends Equatable {
   final dynamic bingMatches;
 
   Map<String, dynamic> toJson() => {
-        'alexa_rank': alexaRank,
-        'bing_matches': bingMatches,
-      };
+    'alexa_rank': alexaRank,
+    'bing_matches': bingMatches,
+  };
 
-  PublicInterestStats copyWith({
-    dynamic alexaRank,
-    dynamic bingMatches,
-  }) {
+  PublicInterestStats copyWith({dynamic alexaRank, dynamic bingMatches}) {
     return PublicInterestStats(
       alexaRank: alexaRank ?? this.alexaRank,
       bingMatches: bingMatches ?? this.bingMatches,

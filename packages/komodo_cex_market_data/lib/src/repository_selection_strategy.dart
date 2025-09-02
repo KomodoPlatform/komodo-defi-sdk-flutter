@@ -1,13 +1,34 @@
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
     show RepositoryPriorityManager;
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
-import 'package:komodo_cex_market_data/src/models/cex_coin.dart';
 import 'package:komodo_cex_market_data/src/models/quote_currency.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart' show Logger;
 
 /// Enum for the type of price request
-enum PriceRequestType { currentPrice, priceChange, priceHistory }
+///
+/// This enum defines the different types of price-related requests that can be made
+/// to cryptocurrency exchange repositories. Each type represents a specific kind
+/// of market data that may be supported differently across various data providers.
+enum PriceRequestType {
+  /// Request for the current/latest price of an asset
+  ///
+  /// This represents the most recent price available for a given asset
+  /// in a specific fiat currency.
+  currentPrice,
+
+  /// Request for price change information over a time period
+  ///
+  /// This includes percentage changes, absolute changes, and other
+  /// price movement metrics for a given time frame.
+  priceChange,
+
+  /// Request for historical price data
+  ///
+  /// This includes price data points over time, such as daily, hourly,
+  /// or minute-level price history for charting and analysis purposes.
+  priceHistory,
+}
 
 /// Strategy interface for selecting repositories
 abstract class RepositorySelectionStrategy {
@@ -26,31 +47,11 @@ abstract class RepositorySelectionStrategy {
 /// Default strategy for selecting the best repository for a given asset
 class DefaultRepositorySelectionStrategy
     implements RepositorySelectionStrategy {
-  final Map<CexRepository, _RepositorySupportCache> _supportCache = {};
-
   static final Logger _logger = Logger('DefaultRepositorySelectionStrategy');
 
   @override
   Future<void> ensureCacheInitialized(List<CexRepository> repositories) async {
-    for (final repo in repositories) {
-      if (!_supportCache.containsKey(repo)) {
-        try {
-          final coins = await repo.getCoinList();
-          final fiatCurrencies =
-              coins
-                  .expand((c) => c.currencies.map((s) => s.toUpperCase()))
-                  .toSet();
-          _supportCache[repo] = _RepositorySupportCache(
-            coins: coins,
-            fiatCurrencies: fiatCurrencies,
-          );
-        } catch (e, st) {
-          // Ignore repository initialization failures and continue.
-          // Repositories that fail to initialize won't be selected.
-          _logger.severe('Failed to initialize repository', e, st);
-        }
-      }
-    }
+    // No longer needed since we delegate to repository-specific supports() method
   }
 
   /// Selects the best repository for a given asset, fiat, and request type
@@ -61,42 +62,37 @@ class DefaultRepositorySelectionStrategy
     required PriceRequestType requestType,
     required List<CexRepository> availableRepositories,
   }) async {
-    await ensureCacheInitialized(availableRepositories);
-    final candidates =
-        availableRepositories
-            .where((repo) => _supportsAssetAndFiat(repo, assetId, fiatCurrency))
-            .toList()
-          ..sort(
-            (a, b) => RepositoryPriorityManager.getPriority(
-              a,
-            ).compareTo(RepositoryPriorityManager.getPriority(b)),
+    final candidates = <CexRepository>[];
+    const timeout = Duration(seconds: 2);
+
+    await Future.wait(
+      availableRepositories.map((repo) async {
+        try {
+          final isSupported = await repo
+              .supports(assetId, fiatCurrency, requestType)
+              .timeout(timeout, onTimeout: () => false);
+          if (isSupported) {
+            candidates.add(repo);
+          }
+        } catch (e, st) {
+          // Log errors but continue with other repositories
+          _logger.warning(
+            'Failed to check support for ${repo.runtimeType} with asset '
+            '${assetId.id} and fiat ${fiatCurrency.symbol} (requestType: $requestType)',
+            e,
+            st,
           );
+        }
+      }),
+    );
+
+    // Sort by priority
+    candidates.sort(
+      (a, b) => RepositoryPriorityManager.getPriority(
+        a,
+      ).compareTo(RepositoryPriorityManager.getPriority(b)),
+    );
+
     return candidates.isNotEmpty ? candidates.first : null;
   }
-
-  /// Checks if a repository supports the given asset and fiat currency
-  bool _supportsAssetAndFiat(
-    CexRepository repo,
-    AssetId assetId,
-    QuoteCurrency fiatCurrency,
-  ) {
-    final cache = _supportCache[repo];
-    if (cache == null) return false;
-
-    final supportsAsset = cache.coins.any(
-      (c) => c.id.toUpperCase() == assetId.symbol.configSymbol.toUpperCase(),
-    );
-    final supportsFiat = cache.fiatCurrencies.contains(
-      fiatCurrency.symbol.toUpperCase(),
-    );
-
-    return supportsAsset && supportsFiat;
-  }
-}
-
-class _RepositorySupportCache {
-  _RepositorySupportCache({required this.coins, required this.fiatCurrencies});
-
-  final List<CexCoin> coins;
-  final Set<String> fiatCurrencies;
 }

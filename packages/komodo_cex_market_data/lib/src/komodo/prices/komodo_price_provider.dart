@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/models/_models_index.dart';
 
 /// Interface for fetching prices from Komodo API.
 abstract class IKomodoPriceProvider {

@@ -1,5 +1,6 @@
 import 'package:dragon_charts_flutter/dragon_charts_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart' show RepositoryProvider;
 import 'package:kdf_sdk_example/widgets/assets/asset_market_info.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
@@ -62,8 +63,9 @@ class _AssetItemTrailing extends StatelessWidget {
 
     // Use the parent coin ticker for child assets so that token logos display
     // the network they belong to (e.g. ETH for ERC20 tokens).
-    final protocolTicker =
-        isChildAsset ? asset.id.parentId?.id : asset.id.subClass.iconTicker;
+    final protocolTicker = isChildAsset
+        ? asset.id.parentId?.id
+        : asset.id.subClass.iconTicker;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -72,7 +74,7 @@ class _AssetItemTrailing extends StatelessWidget {
           const Icon(Icons.lock, color: Colors.grey),
           const SizedBox(width: 8),
         ],
-        CoinSparkline(assetId: asset.id),
+        if (!asset.protocol.isTestnet) CoinSparkline(assetId: asset.id),
         const SizedBox(width: 8),
         AssetMarketInfo(asset),
         const SizedBox(width: 8),
@@ -124,7 +126,9 @@ class _CoinSparklineState extends State<CoinSparkline> {
   @override
   void initState() {
     super.initState();
-    _sparklineFuture = sparklineRepository.fetchSparkline(widget.assetId);
+    _sparklineFuture = RepositoryProvider.of<SparklineRepository>(
+      context,
+    ).fetchSparkline(widget.assetId);
   }
 
   @override
@@ -132,7 +136,9 @@ class _CoinSparklineState extends State<CoinSparkline> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.assetId != widget.assetId) {
       setState(() {
-        _sparklineFuture = sparklineRepository.fetchSparkline(widget.assetId);
+        _sparklineFuture = RepositoryProvider.of<SparklineRepository>(
+          context,
+        ).fetchSparkline(widget.assetId);
       });
     }
   }

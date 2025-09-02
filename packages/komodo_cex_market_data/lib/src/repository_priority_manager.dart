@@ -1,7 +1,8 @@
-import 'package:komodo_cex_market_data/src/binance/binance.dart';
+import 'package:komodo_cex_market_data/src/binance/_binance_index.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
-import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
-import 'package:komodo_cex_market_data/src/komodo/komodo.dart';
+import 'package:komodo_cex_market_data/src/coingecko/_coingecko_index.dart';
+import 'package:komodo_cex_market_data/src/coinpaprika/_coinpaprika_index.dart';
+import 'package:komodo_cex_market_data/src/komodo/_komodo_index.dart';
 
 /// Utility class for managing repository priorities using a map-based approach.
 ///
@@ -13,14 +14,16 @@ class RepositoryPriorityManager {
   static const Map<Type, int> defaultPriorities = {
     KomodoPriceRepository: 1,
     BinanceRepository: 2,
-    CoinGeckoRepository: 3,
+    CoinPaprikaRepository: 3,
+    CoinGeckoRepository: 4,
   };
 
   /// Priority map optimized for sparkline data fetching.
   /// Binance is prioritized for sparkline data due to better data quality.
   static const Map<Type, int> sparklinePriorities = {
     BinanceRepository: 1,
-    CoinGeckoRepository: 2,
+    CoinPaprikaRepository: 2,
+    CoinGeckoRepository: 3,
   };
 
   /// Gets the priority of a repository using the default priority scheme.
@@ -73,13 +76,13 @@ class RepositoryPriorityManager {
     List<CexRepository> repositories,
     Map<Type, int> customPriorities,
   ) {
-    final sorted = repositories.toList();
-    sorted.sort(
-      (a, b) => getPriorityWithCustomMap(
-        a,
-        customPriorities,
-      ).compareTo(getPriorityWithCustomMap(b, customPriorities)),
-    );
+    final sorted = repositories.toList()
+      ..sort(
+        (a, b) => getPriorityWithCustomMap(
+          a,
+          customPriorities,
+        ).compareTo(getPriorityWithCustomMap(b, customPriorities)),
+      );
     return sorted;
   }
 
@@ -90,10 +93,10 @@ class RepositoryPriorityManager {
   static List<CexRepository> sortBySparklinePriority(
     List<CexRepository> repositories,
   ) {
-    final sorted = repositories.toList();
-    sorted.sort(
-      (a, b) => getSparklinePriority(a).compareTo(getSparklinePriority(b)),
-    );
+    final sorted = repositories.toList()
+      ..sort(
+        (a, b) => getSparklinePriority(a).compareTo(getSparklinePriority(b)),
+      );
     return sorted;
   }
 }

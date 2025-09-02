@@ -13,9 +13,9 @@ class CodeAdditionsDeletions4Weeks extends Equatable {
   final dynamic deletions;
 
   Map<String, dynamic> toJson() => {
-        'additions': additions,
-        'deletions': deletions,
-      };
+    'additions': additions,
+    'deletions': deletions,
+  };
 
   CodeAdditionsDeletions4Weeks copyWith({
     dynamic additions,
