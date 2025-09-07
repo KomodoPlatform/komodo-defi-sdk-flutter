@@ -55,13 +55,15 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
     }
 
     final walletId = WalletId.fromName(config.walletName!, authOptions);
-    // ignore: omit_local_variable_types
-    KdfUser currentUser = KdfUser(walletId: walletId, isBip39Seed: false);
+    final isBip39Seed = await _isSeedBip39Compatible(config);
+    final currentUser = KdfUser(walletId: walletId, isBip39Seed: isBip39Seed);
     await _secureStorage.saveUser(currentUser);
 
+    // Do not allow authentication to proceed for HD wallets if the seed is not
+    // BIP39 compatible.
     if (currentUser.isHd) {
       try {
-        currentUser = await _verifyBip39Compatibility(
+        return await _verifyBip39Compatibility(
           walletPassword: config.walletPassword,
           currentUser,
         );
@@ -74,6 +76,27 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
     }
 
     return currentUser;
+  }
+
+  /// Checks if the seed is a valid BIP39 seed phrase.
+  /// Throws [AuthException] if the seed could not be obtained from KDF.
+  Future<bool> _isSeedBip39Compatible(KdfStartupConfig config) async {
+    final plaintext = await _getMnemonic(
+      encrypted: false,
+      walletPassword: config.walletPassword,
+    );
+
+    if (plaintext.plaintextMnemonic == null) {
+      throw AuthException(
+        'Failed to decrypt seed for verification',
+        type: AuthExceptionType.generalAuthError,
+      );
+    }
+
+    final isBip39 = MnemonicValidator().validateBip39(
+      plaintext.plaintextMnemonic!,
+    );
+    return isBip39;
   }
 
   /// Requires a user to be signed into a valid wallet in order to verify the
