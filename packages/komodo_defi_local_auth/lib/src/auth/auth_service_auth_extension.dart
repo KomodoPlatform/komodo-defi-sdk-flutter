@@ -62,17 +62,10 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
     // Do not allow authentication to proceed for HD wallets if the seed is not
     // BIP39 compatible.
     if (currentUser.isHd) {
-      try {
-        return await _verifyBip39Compatibility(
-          walletPassword: config.walletPassword,
-          currentUser,
-        );
-      } on AuthException {
-        // Verify BIP39 compatibility for HD wallets after registration
-        // if verification fails, the user can still log into the wallet in legacy
-        // mode.
-        rethrow;
-      }
+      return _verifyBip39Compatibility(
+        currentUser,
+        walletPassword: config.walletPassword,
+      );
     }
 
     return currentUser;
@@ -93,9 +86,9 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
       );
     }
 
-    final isBip39 = MnemonicValidator().validateBip39(
-      plaintext.plaintextMnemonic!,
-    );
+    final validator = MnemonicValidator();
+    await validator.init();
+    final isBip39 = validator.validateBip39(plaintext.plaintextMnemonic!);
     return isBip39;
   }
 
