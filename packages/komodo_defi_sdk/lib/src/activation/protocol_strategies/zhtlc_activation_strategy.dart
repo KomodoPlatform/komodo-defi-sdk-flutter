@@ -53,11 +53,11 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
       final userConfig = await configService.getZhtlcOrRequest(asset.id);
 
       if (userConfig == null || userConfig.zcashParamsPath.trim().isEmpty) {
-        yield ActivationProgress(
+        yield const ActivationProgress(
           status: 'Zcash params path required',
           errorMessage: 'Zcash params path required',
           isComplete: true,
-          progressDetails: const ActivationProgressDetails(
+          progressDetails: ActivationProgressDetails(
             currentStep: ActivationStep.error,
             stepCount: 1,
           ),
@@ -138,7 +138,6 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
                 ),
               );
             }
-            break;
 
           case 'WaitingLightwalletd':
             yield const ActivationProgress(
@@ -150,7 +149,6 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
                 additionalInfo: {'connectionStatus': 'connecting'},
               ),
             );
-            break;
 
           case 'ScanningBlocks':
             if (!scanningBlocks) {
@@ -169,7 +167,6 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
                 },
               ),
             );
-            break;
 
           case 'Error':
             yield ActivationProgress(
@@ -199,7 +196,6 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
                 },
               ),
             );
-            break;
         }
 
         if (status.status == 'Ok') {

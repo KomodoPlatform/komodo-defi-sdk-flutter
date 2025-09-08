@@ -3,3 +3,6 @@ analyzer:
   errors:
     use_if_null_to_convert_nulls_to_bools: ignore
     omit_local_variable_types: ignore
+
+    # Required to use jsonserializable with freezed
+    invalid_annotation_target: ignore
