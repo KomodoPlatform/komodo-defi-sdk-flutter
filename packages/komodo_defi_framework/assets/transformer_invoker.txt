@@ -1,0 +1,3 @@
+This is a marker file used to invoke the komodo_wallet_build_transformer as declared
+in packages/komodo_defi_framework/pubspec.yaml under flutter.assets.
+

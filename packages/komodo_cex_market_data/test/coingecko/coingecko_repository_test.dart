@@ -1,7 +1,5 @@
 import 'package:decimal/decimal.dart';
-import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
-import 'package:komodo_cex_market_data/src/models/models.dart';
-import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
+import 'package:komodo_cex_market_data/src/_core_index.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';

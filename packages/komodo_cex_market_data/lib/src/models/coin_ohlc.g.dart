@@ -68,3 +68,29 @@ Map<String, dynamic> _$BinanceOhlcToJson(BinanceOhlc instance) =>
       ),
       'runtimeType': instance.$type,
     };
+
+CoinPaprikaOhlc _$CoinPaprikaOhlcFromJson(Map<String, dynamic> json) =>
+    CoinPaprikaOhlc(
+      timeOpen: (json['time_open'] as num).toInt(),
+      timeClose: (json['time_close'] as num).toInt(),
+      open: Decimal.fromJson(json['open'] as String),
+      high: Decimal.fromJson(json['high'] as String),
+      low: Decimal.fromJson(json['low'] as String),
+      close: Decimal.fromJson(json['close'] as String),
+      volume: const DecimalConverter().fromJson(json['volume']),
+      marketCap: const DecimalConverter().fromJson(json['market_cap']),
+      $type: json['runtimeType'] as String?,
+    );
+
+Map<String, dynamic> _$CoinPaprikaOhlcToJson(CoinPaprikaOhlc instance) =>
+    <String, dynamic>{
+      'time_open': instance.timeOpen,
+      'time_close': instance.timeClose,
+      'open': instance.open,
+      'high': instance.high,
+      'low': instance.low,
+      'close': instance.close,
+      'volume': const DecimalConverter().toJson(instance.volume),
+      'market_cap': const DecimalConverter().toJson(instance.marketCap),
+      'runtimeType': instance.$type,
+    };

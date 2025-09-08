@@ -12,7 +12,7 @@ import 'package:kdf_sdk_example/widgets/instance_manager/instance_view.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_drawer.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
-    show sparklineRepository;
+    show SparklineRepository;
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
@@ -47,6 +47,7 @@ void main() async {
   await defaultSdk.initialize();
   dragon.log('Default SDK instance initialized');
 
+  final sparklineRepository = SparklineRepository.defaultInstance();
   unawaited(
     sparklineRepository.init().catchError((
       Object? error,
@@ -63,7 +64,12 @@ void main() async {
 
   runApp(
     MultiRepositoryProvider(
-      providers: [RepositoryProvider<KomodoDefiSdk>.value(value: defaultSdk)],
+      providers: [
+        RepositoryProvider<KomodoDefiSdk>.value(value: defaultSdk),
+        RepositoryProvider<SparklineRepository>.value(
+          value: sparklineRepository,
+        ),
+      ],
       child: KdfInstanceManagerProvider(
         notifier: instanceManager,
         child: MaterialApp(
@@ -154,10 +160,9 @@ class _KomodoAppState extends State<KomodoApp> {
   void _updateInstanceUser(String instanceName, KdfUser? user) {
     setState(() {
       _currentUsers[instanceName] = user;
-      _statusMessages[instanceName] =
-          user != null
-              ? 'Current wallet: ${user.walletId.name}'
-              : 'Not signed in';
+      _statusMessages[instanceName] = user != null
+          ? 'Current wallet: ${user.walletId.name}'
+          : 'Not signed in';
     });
     dragon.DragonLogs.setSessionMetadata({
       'instance': instanceName,
@@ -189,13 +194,12 @@ class _KomodoAppState extends State<KomodoApp> {
     if (assets == null) return;
 
     setState(() {
-      _filteredAssets =
-          assets.values.where((v) {
-            final asset = v.id.name;
-            final id = v.id.id;
-            return asset.toLowerCase().contains(query) ||
-                id.toLowerCase().contains(query);
-          }).toList();
+      _filteredAssets = assets.values.where((v) {
+        final asset = v.id.name;
+        final id = v.id.id;
+        return asset.toLowerCase().contains(query) ||
+            id.toLowerCase().contains(query);
+      }).toList();
     });
   }
 
@@ -219,10 +223,9 @@ class _KomodoAppState extends State<KomodoApp> {
         actions: [
           if (instances.isNotEmpty) ...[
             Badge(
-              backgroundColor:
-                  instances[_selectedInstanceIndex].isConnected
-                      ? Colors.green
-                      : Colors.red,
+              backgroundColor: instances[_selectedInstanceIndex].isConnected
+                  ? Colors.green
+                  : Colors.red,
               child: const Icon(Icons.cloud),
             ),
             IconButton(
@@ -239,45 +242,43 @@ class _KomodoAppState extends State<KomodoApp> {
           ],
         ],
       ),
-      body:
-          instances.isEmpty
-              ? const Center(child: Text('No KDF instances configured'))
-              : IndexedStack(
-                index: _selectedInstanceIndex,
-                children: [
-                  for (final instance in instances)
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: BlocProvider(
-                        create: (context) => AuthBloc(sdk: instance.sdk),
-                        child: BlocListener<AuthBloc, AuthState>(
-                          listener: (context, state) {
-                            final user =
-                                state.isAuthenticated ? state.user : null;
-                            _updateInstanceUser(instance.name, user);
-                          },
-                          child: Form(
-                            key: _formKey,
-                            autovalidateMode:
-                                AutovalidateMode.onUserInteraction,
-                            child: InstanceView(
-                              instance: instance,
-                              state: 'active',
-                              statusMessage:
-                                  _statusMessages[instance.name] ??
-                                  'Not initialized',
-                              searchController: _searchController,
-                              filteredAssets: _filteredAssets,
-                              onNavigateToAsset:
-                                  (asset) =>
-                                      _onNavigateToAsset(instance, asset),
-                            ),
+      body: instances.isEmpty
+          ? const Center(child: Text('No KDF instances configured'))
+          : IndexedStack(
+              index: _selectedInstanceIndex,
+              children: [
+                for (final instance in instances)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: BlocProvider(
+                      create: (context) => AuthBloc(sdk: instance.sdk),
+                      child: BlocListener<AuthBloc, AuthState>(
+                        listener: (context, state) {
+                          final user = state.isAuthenticated
+                              ? state.user
+                              : null;
+                          _updateInstanceUser(instance.name, user);
+                        },
+                        child: Form(
+                          key: _formKey,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          child: InstanceView(
+                            instance: instance,
+                            state: 'active',
+                            statusMessage:
+                                _statusMessages[instance.name] ??
+                                'Not initialized',
+                            searchController: _searchController,
+                            filteredAssets: _filteredAssets,
+                            onNavigateToAsset: (asset) =>
+                                _onNavigateToAsset(instance, asset),
                           ),
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
+            ),
       bottomNavigationBar: _buildInstanceNavigator(instances),
     );
   }

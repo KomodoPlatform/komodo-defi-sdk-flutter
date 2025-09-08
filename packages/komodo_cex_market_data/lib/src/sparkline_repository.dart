@@ -2,37 +2,33 @@ import 'dart:async';
 
 import 'package:hive_ce/hive.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-import 'package:komodo_cex_market_data/src/hive_adapters.dart';
-import 'package:komodo_cex_market_data/src/models/sparkline_data.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
-// TODO: create higher-level abstraction and move to SDK to avoid duplicating
-// repositories and creating global variables like these
-// Global CoinGecko repository instance for backward compatibility
-final CoinGeckoRepository _coinGeckoRepository = CoinGeckoRepository(
-  coinGeckoProvider: CoinGeckoCexProvider(),
-);
-final BinanceRepository _binanceRepository = BinanceRepository(
-  binanceProvider: const BinanceProvider(),
-);
-
-SparklineRepository sparklineRepository = SparklineRepository();
-
 /// Repository for fetching sparkline data
+// TODO: create higher-level abstraction and move to SDK
 class SparklineRepository with RepositoryFallbackMixin {
   /// Creates a new SparklineRepository with the given repositories.
   ///
   /// If repositories are not provided, defaults to Binance and CoinGecko.
-  SparklineRepository({
-    List<CexRepository>? repositories,
+  SparklineRepository(
+    this._repositories, {
     RepositorySelectionStrategy? selectionStrategy,
-  }) : _repositories =
-           repositories ?? [_binanceRepository, _coinGeckoRepository],
-       _selectionStrategy =
+  }) : _selectionStrategy =
            selectionStrategy ?? DefaultRepositorySelectionStrategy();
-  static final Logger _logger = Logger('SparklineRepository');
 
+  /// Creates a new SparklineRepository with the default repositories.
+  ///
+  /// Default repositories are Binance, CoinGecko, and CoinPaprika.
+  factory SparklineRepository.defaultInstance() {
+    return SparklineRepository([
+      BinanceRepository(binanceProvider: const BinanceProvider()),
+      CoinPaprikaRepository(coinPaprikaProvider: CoinPaprikaProvider()),
+      CoinGeckoRepository(coinGeckoProvider: CoinGeckoCexProvider()),
+    ], selectionStrategy: DefaultRepositorySelectionStrategy());
+  }
+
+  static final Logger _logger = Logger('SparklineRepository');
   final List<CexRepository> _repositories;
   final RepositorySelectionStrategy _selectionStrategy;
 
@@ -43,7 +39,8 @@ class SparklineRepository with RepositoryFallbackMixin {
   final Duration cacheExpiry = const Duration(hours: 1);
   Box<SparklineData>? _box;
 
-  /// Map to track ongoing requests and prevent duplicate requests for the same symbol
+  /// Map to track ongoing requests and prevent duplicate requests for the
+  /// same symbol
   final Map<String, Future<List<double>?>> _inFlightRequests = {};
 
   @override
@@ -179,7 +176,8 @@ class SparklineRepository with RepositoryFallbackMixin {
 
   /// Internal method to perform the actual sparkline fetch
   ///
-  /// This is separated from fetchSparkline to enable proper request deduplication
+  /// This is separated from fetchSparkline to enable proper request
+  /// deduplication
   Future<List<double>?> _performSparklineFetch(AssetId assetId) async {
     final symbol = assetId.symbol.configSymbol;
 
@@ -232,7 +230,8 @@ class SparklineRepository with RepositoryFallbackMixin {
           );
         }
         _logger.fine(
-          'Fetched ${data.length} close prices for $symbol from ${repo.runtimeType}',
+          'Fetched ${data.length} close prices for $symbol from '
+          '${repo.runtimeType}',
         );
         return data;
       },
