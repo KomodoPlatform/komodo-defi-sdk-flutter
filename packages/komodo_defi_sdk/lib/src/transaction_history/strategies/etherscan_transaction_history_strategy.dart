@@ -252,7 +252,11 @@ class EtherscanProtocolHelper {
     }
 
     final protocol = asset.protocol as Erc20Protocol;
-    return '$baseEndpoint/${protocol.swapContractAddress}';
+    final tokenContractAddress = protocol.contractAddress;
+    if (tokenContractAddress == null || tokenContractAddress.isEmpty) {
+      return null;
+    }
+    return '$baseEndpoint/$tokenContractAddress';
   }
 
   String? _getBaseEndpoint(AssetId id) {
