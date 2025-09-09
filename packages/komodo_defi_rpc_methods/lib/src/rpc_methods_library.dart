@@ -159,14 +159,35 @@ class UtilityMethods extends BaseRpcMethodNamespace {
     required String platform,
     required String contractAddress,
     String? rpcPass,
-  }) => execute(
-    GetTokenInfoRequest(
-      protocolType: protocolType,
-      platform: platform,
-      contractAddress: contractAddress,
-      rpcPass: rpcPass ?? '',
-    ),
-  );
+  }) async {
+    // Ensure the contract address is mixed-case per API requirements
+    String mixedCaseContract = contractAddress;
+    try {
+      final converted = await execute(
+        ConvertAddressRequest(
+          rpcPass: rpcPass ?? '',
+          coin: platform,
+          fromAddress: contractAddress,
+          toAddressFormat: const AddressFormat(
+            format: 'mixedcase',
+            network: '',
+          ),
+        ),
+      );
+      mixedCaseContract = converted.address;
+    } catch (_) {
+      // Fallback to original if conversion fails
+    }
+
+    return execute(
+      GetTokenInfoRequest(
+        protocolType: protocolType,
+        platform: platform,
+        contractAddress: mixedCaseContract,
+        rpcPass: rpcPass ?? '',
+      ),
+    );
+  }
 
   /// Signs a message with a coin's signing key
   Future<SignMessageResponse> signMessage({
