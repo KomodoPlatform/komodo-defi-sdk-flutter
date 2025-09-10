@@ -25,3 +25,10 @@ abstract class IAssetProvider extends IAssetLookup {
   /// Get list of enabled coin tickers
   Future<Set<String>> getEnabledCoins();
 }
+
+/// Interface for notifying about asset changes that require UI refresh
+// ignore: one_member_abstracts
+abstract interface class IAssetRefreshNotifier {
+  /// Notifies that custom tokens have changed and should be refreshed
+  void notifyCustomTokensChanged();
+}

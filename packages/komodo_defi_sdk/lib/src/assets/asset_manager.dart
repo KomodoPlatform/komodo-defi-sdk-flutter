@@ -1,6 +1,6 @@
 // lib/src/assets/asset_manager.dart
 
-import 'dart:async';
+import 'dart:async' show StreamSubscription, unawaited;
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart' show ValueGetter;
@@ -42,7 +42,7 @@ typedef AssetIdMap = SplayTreeMap<AssetId, Asset>;
 ///
 /// The manager listens to authentication changes to keep the available asset
 /// list in sync with the active wallet's capabilities.
-class AssetManager implements IAssetProvider {
+class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
   /// Creates a new instance of AssetManager.
   ///
   /// This is typically created by the SDK and shouldn't need to be instantiated
@@ -93,7 +93,7 @@ class AssetManager implements IAssetProvider {
 
     _refreshCoins(const NoAssetFilterStrategy());
 
-    await _initializeCustomTokens();
+    await _refreshCustomTokens();
   }
 
   /// Exposes the currently active commit hash for coins config.
@@ -107,7 +107,6 @@ class AssetManager implements IAssetProvider {
     _orderedCoins
       ..clear()
       ..addAll(_coins.filteredAssets(strategy));
-    _currentFilterStrategy = strategy;
   }
 
   /// Applies a new [strategy] for filtering available assets.
@@ -115,18 +114,24 @@ class AssetManager implements IAssetProvider {
   /// This is called whenever the authentication state changes so the
   /// visible asset list always matches the capabilities of the active wallet.
   void setFilterStrategy(AssetFilterStrategy strategy) {
+    _currentFilterStrategy = strategy;
     if (_coins.isInitialized) {
       _refreshCoins(strategy);
+      // Also refresh custom tokens to apply the new filter strategy
+      unawaited(_refreshCustomTokens());
     }
   }
 
-  Future<void> _initializeCustomTokens() async {
+  Future<void> _refreshCustomTokens() async {
     final user = await _auth.currentUser;
     if (user != null) {
       final customTokens = await _customAssetHistory.getWalletAssets(
         user.walletId,
       );
-      for (final customToken in customTokens) {
+
+      final filteredCustomTokens = _filterCustomTokens(customTokens);
+
+      for (final customToken in filteredCustomTokens) {
         _orderedCoins[customToken.id] = customToken;
       }
     }
@@ -146,10 +151,9 @@ class AssetManager implements IAssetProvider {
     // Trezor does not support all assets yet, so we apply a filter here
     // to only show assets that are compatible with Trezor.
     // WalletConnect and Metamask will require similar handling in the future.
-    final strategy =
-        isTrezor
-            ? const TrezorAssetFilterStrategy(hiddenAssets: {'BCH'})
-            : const NoAssetFilterStrategy();
+    final strategy = isTrezor
+        ? const TrezorAssetFilterStrategy(hiddenAssets: {'BCH'})
+        : const NoAssetFilterStrategy();
 
     setFilterStrategy(strategy);
   }
@@ -159,12 +163,11 @@ class AssetManager implements IAssetProvider {
   /// Returns null if no matching asset is found.
   /// Throws [StateError] if called before initialization.
   @override
-  Asset? fromId(AssetId id) =>
-      _coins.isInitialized
-          ? available[id]
-          : throw StateError(
-            'Assets have not been initialized. Call init() first.',
-          );
+  Asset? fromId(AssetId id) => _coins.isInitialized
+      ? available[id]
+      : throw StateError(
+          'Assets have not been initialized. Call init() first.',
+        );
 
   /// Returns all available assets, ordered by priority.
   ///
@@ -251,6 +254,26 @@ class AssetManager implements IAssetProvider {
   /// Returns a stream of [ActivationProgress] updates.
   Stream<ActivationProgress> activateAssets(List<Asset> assets) =>
       _activationManager().activateAssets(assets);
+
+  @override
+  void notifyCustomTokensChanged() {
+    // Refresh custom tokens when notified by the activation manager
+    unawaited(_refreshCustomTokens());
+  }
+
+  /// Filters custom tokens based on the current asset filtering strategy.
+  ///
+  /// Custom tokens don't have traditional coin configs, so we create a minimal
+  /// config structure to support filtering decisions. This ensures custom tokens
+  /// are properly filtered alongside regular assets.
+  Set<Asset> _filterCustomTokens(Set<Asset> customTokens) {
+    final strategy = _currentFilterStrategy;
+    if (strategy == null) return customTokens;
+
+    return customTokens.where((Asset token) {
+      return strategy.shouldInclude(token, token.protocol.config);
+    }).toSet();
+  }
 
   /// Disposes of the asset manager, cleaning up resources.
   ///

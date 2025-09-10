@@ -109,6 +109,7 @@ Future<void> bootstrap({
       container<CustomAssetHistoryStorage>(),
       assetManager,
       balanceManager,
+      assetManager,
     );
 
     return activationManager;

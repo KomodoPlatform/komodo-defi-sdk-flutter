@@ -19,6 +19,7 @@ class ActivationManager {
     this._customTokenHistory,
     this._assetLookup,
     this._balanceManager,
+    this._assetRefreshNotifier,
   );
 
   final ApiClient _client;
@@ -26,6 +27,7 @@ class ActivationManager {
   final AssetHistoryStorage _assetHistory;
   final CustomAssetHistoryStorage _customTokenHistory;
   final IAssetLookup _assetLookup;
+  final IAssetRefreshNotifier _assetRefreshNotifier;
   final IBalanceManager _balanceManager;
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
@@ -39,12 +41,8 @@ class ActivationManager {
         .protect(operation)
         .timeout(
           _operationTimeout,
-          onTimeout:
-              () =>
-                  throw TimeoutException(
-                    'Operation timed out',
-                    _operationTimeout,
-                  ),
+          onTimeout: () =>
+              throw TimeoutException('Operation timed out', _operationTimeout),
         );
   }
 
@@ -77,13 +75,10 @@ class ActivationManager {
         continue;
       }
 
-      final parentAsset =
-          group.parentId == null
-              ? null
-              : _assetLookup.fromId(group.parentId!) ??
-                  (throw StateError(
-                    'Parent asset ${group.parentId} not found',
-                  ));
+      final parentAsset = group.parentId == null
+          ? null
+          : _assetLookup.fromId(group.parentId!) ??
+                (throw StateError('Parent asset ${group.parentId} not found'));
 
       yield ActivationProgress(
         status: 'Starting activation for ${group.primary.id.name}...',
@@ -139,14 +134,13 @@ class ActivationManager {
   /// Check if asset and its children are already activated
   Future<ActivationProgress> _checkActivationStatus(_AssetGroup group) async {
     try {
-      final enabledCoins =
-          await _client.rpc.generalActivation.getEnabledCoins();
-      final enabledAssetIds =
-          enabledCoins.result
-              .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
-              .expand((assets) => assets)
-              .map((asset) => asset.id)
-              .toSet();
+      final enabledCoins = await _client.rpc.generalActivation
+          .getEnabledCoins();
+      final enabledAssetIds = enabledCoins.result
+          .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
+          .expand((assets) => assets)
+          .map((asset) => asset.id)
+          .toSet();
 
       final isActive = enabledAssetIds.contains(group.primary.id);
       final childrenActive =
@@ -211,6 +205,11 @@ class ActivationManager {
           // Pre-cache balance for the activated asset
           await _balanceManager.precacheBalance(asset);
         }
+
+        // Notify asset manager to refresh custom tokens if any were activated
+        if (allAssets.any((asset) => asset.protocol.isCustomToken)) {
+          _assetRefreshNotifier.notifyCustomTokensChanged();
+        }
       }
 
       if (!completer.isCompleted) {
@@ -237,8 +236,8 @@ class ActivationManager {
     }
 
     try {
-      final enabledCoins =
-          await _client.rpc.generalActivation.getEnabledCoins();
+      final enabledCoins = await _client.rpc.generalActivation
+          .getEnabledCoins();
       return enabledCoins.result
           .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
           .expand((assets) => assets)
