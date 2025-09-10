@@ -1,4 +1,4 @@
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+THIS SHOULD BE A LINTER ERRORimport 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class ZhtlcMethodsNamespace extends BaseRpcMethodNamespace {
@@ -38,6 +38,24 @@ class ZhtlcMethodsNamespace extends BaseRpcMethodNamespace {
   }) {
     return execute(
       TaskEnableZhtlcUserAction(
+        taskId: taskId,
+        actionType: actionType,
+        pin: pin,
+        passphrase: passphrase,
+        rpcPass: rpcPass,
+      ),
+    );
+  }
+
+  /// For Trezor support flows using the legacy/user-action RPC name
+  Future<UserActionResponse> initZCoinUserAction({
+    required int taskId,
+    required String actionType,
+    String? pin,
+    String? passphrase,
+  }) {
+    return execute(
+      TaskInitZCoinUserAction(
         taskId: taskId,
         actionType: actionType,
         pin: pin,
@@ -89,6 +107,44 @@ class TaskEnableZhtlcUserAction
     this.passphrase,
     super.rpcPass,
   }) : super(method: 'task::enable_z_coin::user_action', mmrpc: '2.0');
+
+  final int taskId;
+  final String actionType;
+  final String? pin;
+  final String? passphrase;
+
+  @override
+  JsonMap toJson() => {
+    ...super.toJson(),
+    'userpass': rpcPass,
+    'mmrpc': mmrpc,
+    'method': method,
+    'params': {
+      'task_id': taskId,
+      'user_action': {
+        'action_type': actionType,
+        if (pin != null) 'pin': pin,
+        if (passphrase != null) 'passphrase': passphrase,
+      },
+    },
+  };
+
+  @override
+  UserActionResponse parse(JsonMap json) {
+    return UserActionResponse.parse(json);
+  }
+}
+
+/// Trezor-specific user action endpoint used by some environments
+class TaskInitZCoinUserAction
+    extends BaseRequest<UserActionResponse, GeneralErrorResponse> {
+  TaskInitZCoinUserAction({
+    required this.taskId,
+    required this.actionType,
+    this.pin,
+    this.passphrase,
+    super.rpcPass,
+  }) : super(method: 'init_z_coin_user_action', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final String actionType;
