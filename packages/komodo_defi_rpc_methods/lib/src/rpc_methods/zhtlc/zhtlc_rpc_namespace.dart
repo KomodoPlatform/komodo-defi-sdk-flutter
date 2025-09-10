@@ -106,7 +106,7 @@ class TaskEnableZhtlcUserAction
     this.pin,
     this.passphrase,
     super.rpcPass,
-  }) : super(method: 'task::enable_z_coin::user_action', mmrpc: '2.0');
+  }) : super(method: 'task::enable_z_coin::user_action', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final String actionType;

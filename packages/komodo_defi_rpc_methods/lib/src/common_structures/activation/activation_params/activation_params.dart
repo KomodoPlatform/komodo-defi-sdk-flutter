@@ -370,9 +370,9 @@ class ActivationRpcData {
           ?.cast<String>(),
       // The Komodo API uses 'servers' under rpc_data for Electrum mode.
       // For some legacy ZHTLC examples, 'electrum' may appear at top-level config.
-      electrum:
-          (json.valueOrNull<List<dynamic>>('servers') ??
-                  json.valueOrNull<List<dynamic>>('electrum'))
+      electrum: (json.valueOrNull<List<dynamic>>('servers') ??
+                  json.valueOrNull<List<dynamic>>('electrum') ??
+                  json.valueOrNull<List<dynamic>>('electrum_servers'))
               ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
               .toList(),
       syncParams: ZhtlcSyncParams.tryParse(

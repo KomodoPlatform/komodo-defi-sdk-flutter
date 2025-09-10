@@ -26,7 +26,7 @@ class ZhtlcProtocol extends ProtocolClass {
     // We require at least one of electrum servers or light wallet d servers to be present.
 
     // Backward compatibility: some configs provided 'electrum' under config used by Electrum mode
-    final hasElectrum = json.containsKey('electrum');
+    final hasElectrum = json.containsKey('electrum') || json.containsKey('electrum_servers');
     final hasLightWalletD = json.containsKey('light_wallet_d_servers');
 
     if (!hasElectrum && !hasLightWalletD) {
