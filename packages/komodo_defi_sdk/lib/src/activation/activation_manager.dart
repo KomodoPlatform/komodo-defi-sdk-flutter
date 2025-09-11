@@ -18,9 +18,9 @@ class ActivationManager {
     this._assetHistory,
     this._customTokenHistory,
     this._assetLookup,
-    this._balanceManager,
-    this._assetRefreshNotifier,
-  );
+    this._balanceManager, {
+    required IAssetRefreshNotifier assetRefreshNotifier,
+  }) : _assetRefreshNotifier = assetRefreshNotifier;
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;

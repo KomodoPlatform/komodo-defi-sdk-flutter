@@ -1,4 +1,4 @@
-// TODOrefactor to rely on komodo_coins cache instead of duplicating the
+// TODO: refactor to rely on komodo_coins cache instead of duplicating the
 // splaytreemap cache here. This turns it into a thinner wrapper than it
 // already is.
 import 'dart:async' show StreamSubscription, unawaited;
@@ -104,7 +104,6 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
   Future<String?> get latestCoinsCommit async => _coins.getLatestCommitHash();
 
   void _refreshCoins(AssetFilterStrategy strategy) {
-    if (_currentFilterStrategy?.strategyId == strategy.strategyId) return;
     _orderedCoins
       ..clear()
       ..addAll(_coins.filteredAssets(strategy));
@@ -115,6 +114,8 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
   /// This is called whenever the authentication state changes so the
   /// visible asset list always matches the capabilities of the active wallet.
   void setFilterStrategy(AssetFilterStrategy strategy) {
+    if (_currentFilterStrategy?.strategyId == strategy.strategyId) return;
+
     _currentFilterStrategy = strategy;
     if (_coins.isInitialized) {
       _refreshCoins(strategy);
@@ -128,6 +129,15 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
     if (user == null) {
       debugPrint('No user signed in, skipping custom token refresh');
       return;
+    }
+
+    // Drop previously injected custom tokens to avoid stale entries
+    final toRemove = <AssetId>[];
+    _orderedCoins.forEach((id, asset) {
+      if (asset.protocol.isCustomToken) toRemove.add(id);
+    });
+    for (final id in toRemove) {
+      _orderedCoins.remove(id);
     }
 
     final customTokens = await _customAssetHistory.getWalletAssets(

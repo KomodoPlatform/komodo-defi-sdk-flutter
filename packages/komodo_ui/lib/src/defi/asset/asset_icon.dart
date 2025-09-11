@@ -172,10 +172,10 @@ class _AssetIconResolver extends StatelessWidget {
     final sanitizedId = resolver._sanitizedId;
 
     try {
-      if (_customIconsCache.containsKey(asset.symbol.configSymbol)) {
+      if (_customIconsCache.containsKey(sanitizedId)) {
         if (context.mounted) {
           await precacheImage(
-            _customIconsCache[asset.symbol.configSymbol]!,
+            _customIconsCache[sanitizedId]!,
             context,
             onError: (e, stackTrace) {
               if (throwExceptions) {
