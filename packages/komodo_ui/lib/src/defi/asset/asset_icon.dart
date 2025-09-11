@@ -52,15 +52,15 @@ class AssetIcon extends StatelessWidget {
         size: size,
       ),
     );
-    
+
     // Apply opacity first for disabled state
     icon = Opacity(opacity: suspended ? disabledTheme.a : 1.0, child: icon);
-    
+
     // Then wrap with Hero widget if provided (Hero should be outermost)
     if (heroTag != null) {
       icon = Hero(tag: heroTag!, child: icon);
     }
-    
+
     return icon;
   }
 
@@ -148,7 +148,8 @@ class _AssetIconResolver extends StatelessWidget {
   static final Map<String, ImageProvider> _customIconsCache = {};
 
   static void registerCustomIcon(AssetId assetId, ImageProvider imageProvider) {
-    _customIconsCache[assetId.symbol.configSymbol] = imageProvider;
+    final sanitizedId = assetId.symbol.configSymbol.toLowerCase();
+    _customIconsCache[sanitizedId] = imageProvider;
   }
 
   static void clearCaches() {
