@@ -1,9 +1,10 @@
-// lib/src/assets/asset_manager.dart
-
+// TODOrefactor to rely on komodo_coins cache instead of duplicating the
+// splaytreemap cache here. This turns it into a thinner wrapper than it
+// already is.
 import 'dart:async' show StreamSubscription, unawaited;
 import 'dart:collection';
 
-import 'package:flutter/foundation.dart' show ValueGetter;
+import 'package:flutter/foundation.dart' show ValueGetter, debugPrint;
 import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
@@ -124,16 +125,19 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
 
   Future<void> _refreshCustomTokens() async {
     final user = await _auth.currentUser;
-    if (user != null) {
-      final customTokens = await _customAssetHistory.getWalletAssets(
-        user.walletId,
-      );
+    if (user == null) {
+      debugPrint('No user signed in, skipping custom token refresh');
+      return;
+    }
 
-      final filteredCustomTokens = _filterCustomTokens(customTokens);
+    final customTokens = await _customAssetHistory.getWalletAssets(
+      user.walletId,
+    );
 
-      for (final customToken in filteredCustomTokens) {
-        _orderedCoins[customToken.id] = customToken;
-      }
+    final filteredCustomTokens = _filterCustomTokens(customTokens);
+
+    for (final customToken in filteredCustomTokens) {
+      _orderedCoins[customToken.id] = customToken;
     }
   }
 
@@ -174,7 +178,7 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
   /// Default assets (configured in [KomodoDefiSdkConfig]) appear first,
   /// followed by other assets in alphabetical order.
   @override
-  Map<AssetId, Asset> get available => _orderedCoins;
+  Map<AssetId, Asset> get available => Map.unmodifiable(_orderedCoins);
   Map<AssetId, Asset> get availableOrdered => available;
 
   /// Returns currently activated assets for the signed-in user.
@@ -208,7 +212,9 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
   /// ```
   @override
   Set<Asset> findAssetsByConfigId(String ticker) {
-    return available.values.where((asset) => asset.id.id == ticker).toSet();
+    // Create a defensive copy to prevent concurrent modification during iteration
+    final assetsCopy = List<Asset>.from(_orderedCoins.values);
+    return assetsCopy.where((asset) => asset.id.id == ticker).toSet();
   }
 
   /// Returns child assets for the given parent asset ID.
@@ -222,7 +228,9 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
   /// ```
   @override
   Set<Asset> childAssetsOf(AssetId parentId) {
-    return available.values
+    // Create a defensive copy to prevent concurrent modification during iteration
+    final assetsCopy = List<Asset>.from(_orderedCoins.values);
+    return assetsCopy
         .where(
           (asset) => asset.id.isChildAsset && asset.id.parentId == parentId,
         )
@@ -258,7 +266,11 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
   @override
   void notifyCustomTokensChanged() {
     // Refresh custom tokens when notified by the activation manager
-    unawaited(_refreshCustomTokens());
+    unawaited(
+      _refreshCustomTokens().catchError((Object e, StackTrace s) {
+        debugPrint('Custom token refresh failed: $e');
+      }),
+    );
   }
 
   /// Filters custom tokens based on the current asset filtering strategy.
