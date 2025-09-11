@@ -223,7 +223,7 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
   @override
   Set<Asset> findAssetsByConfigId(String ticker) {
     // Create a defensive copy to prevent concurrent modification during iteration
-    final assetsCopy = List<Asset>.from(_orderedCoins.values);
+    final assetsCopy = List<Asset>.of(_orderedCoins.values);
     return assetsCopy.where((asset) => asset.id.id == ticker).toSet();
   }
 
@@ -239,7 +239,7 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
   @override
   Set<Asset> childAssetsOf(AssetId parentId) {
     // Create a defensive copy to prevent concurrent modification during iteration
-    final assetsCopy = List<Asset>.from(_orderedCoins.values);
+    final assetsCopy = List<Asset>.of(_orderedCoins.values);
     return assetsCopy
         .where(
           (asset) => asset.id.isChildAsset && asset.id.parentId == parentId,
