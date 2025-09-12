@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 typedef JsonMap = Map<String, dynamic>;
@@ -36,16 +37,19 @@ class ZhtlcUserConfig {
     required this.zcashParamsPath,
     this.scanBlocksPerIteration = 1000,
     this.scanIntervalMs = 0,
+    this.syncParams,
   });
 
   final String zcashParamsPath;
   final int scanBlocksPerIteration;
   final int scanIntervalMs;
+  final ZhtlcSyncParams? syncParams;
 
   JsonMap toJson() => {
     'zcashParamsPath': zcashParamsPath,
     'scanBlocksPerIteration': scanBlocksPerIteration,
     'scanIntervalMs': scanIntervalMs,
+    if (syncParams != null) 'syncParams': syncParams!.toJsonRequest(),
   };
 
   static ZhtlcUserConfig fromJson(JsonMap json) => ZhtlcUserConfig(
@@ -53,6 +57,9 @@ class ZhtlcUserConfig {
     scanBlocksPerIteration:
         json.valueOrNull<int>('scanBlocksPerIteration') ?? 1000,
     scanIntervalMs: json.valueOrNull<int>('scanIntervalMs') ?? 0,
+    syncParams: ZhtlcSyncParams.tryParse(
+      json.valueOrNull<dynamic>('syncParams'),
+    ),
   );
 }
 
@@ -93,6 +100,10 @@ class JsonActivationConfigRepository implements ActivationConfigRepository {
 class ActivationConfigService {
   ActivationConfigService(this.repo);
   final ActivationConfigRepository repo;
+
+  Future<ZhtlcUserConfig?> getSavedZhtlc(AssetId id) async {
+    return repo.getConfig<ZhtlcUserConfig>(id);
+  }
 
   Future<ZhtlcUserConfig?> getZhtlcOrRequest(
     AssetId id, {

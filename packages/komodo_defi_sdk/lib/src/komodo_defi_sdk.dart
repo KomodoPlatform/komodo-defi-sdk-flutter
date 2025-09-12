@@ -15,6 +15,7 @@ import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
+import 'package:get_it/get_it.dart' as get_it_global;
 
 /// A high-level SDK that provides a simple way to build cross-platform applications
 /// using the Komodo DeFi Framework, with a primary focus on wallet functionality.
@@ -316,6 +317,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
         ActivationConfigService(
           JsonActivationConfigRepository(InMemoryKeyValueStore()),
         ),
+      );
+    }
+    // Also expose ActivationConfigService via the global GetIt so strategies
+    // that resolve it from the global locator can access the same instance.
+    final activationService = _container<ActivationConfigService>();
+    if (!get_it_global.GetIt.I.isRegistered<ActivationConfigService>()) {
+      get_it_global.GetIt.I.registerSingleton<ActivationConfigService>(
+        activationService,
       );
     }
     _isInitialized = true;

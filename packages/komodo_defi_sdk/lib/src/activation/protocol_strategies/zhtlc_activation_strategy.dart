@@ -64,13 +64,26 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
         return;
       }
 
-      final params = ZhtlcActivationParams.fromConfigJson(protocol.config)
+      var params = ZhtlcActivationParams.fromConfigJson(protocol.config)
           .copyWith(
             scanBlocksPerIteration: userConfig.scanBlocksPerIteration as int?,
             scanIntervalMs: userConfig.scanIntervalMs as int?,
             zcashParamsPath: userConfig.zcashParamsPath as String?,
             privKeyPolicy: privKeyPolicy,
           );
+
+      // Apply sync params if provided by the user configuration via rpc_data
+      if (params.mode?.rpcData != null && userConfig.syncParams != null) {
+        final rpcData = params.mode!.rpcData!;
+        final updatedRpcData = ActivationRpcData(
+          lightWalletDServers: rpcData.lightWalletDServers,
+          electrum: rpcData.electrum,
+          syncParams: userConfig.syncParams,
+        );
+        params = params.copyWith(
+          mode: ActivationMode(rpc: params.mode!.rpc, rpcData: updatedRpcData),
+        );
+      }
 
       // Setup parameters
 
