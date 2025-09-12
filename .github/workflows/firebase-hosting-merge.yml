@@ -89,5 +89,6 @@ jobs:
           channelId: live
           projectId: komodo-defi-sdk
           entryPoint: ./packages/komodo_defi_sdk/example
+          target: kdf-sdk
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
