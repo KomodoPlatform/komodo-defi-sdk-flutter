@@ -1,16 +1,20 @@
 // TODO: Refactor so that the start sync mode can be passed. For now, it is
 // hard-coded to sync from the time of activation.
 
-import 'package:get_it/get_it.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
-  const ZhtlcActivationStrategy(super.client, this.privKeyPolicy);
+  const ZhtlcActivationStrategy(
+    super.client,
+    this.privKeyPolicy,
+    this.configService,
+  );
 
   final PrivateKeyPolicy privKeyPolicy;
+  final ActivationConfigService configService;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {CoinSubClass.zhtlc};
@@ -46,9 +50,6 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
       final protocol = asset.protocol as ZhtlcProtocol;
 
       // Resolve user configuration (zcash params, scan tuning)
-      final services = GetIt.instance;
-      final ActivationConfigService configService =
-          services<ActivationConfigService>();
       final userConfig = await configService.getZhtlcOrRequest(asset.id);
 
       if (userConfig == null || userConfig.zcashParamsPath.trim().isEmpty) {

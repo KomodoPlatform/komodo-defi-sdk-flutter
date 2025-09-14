@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 import 'package:komodo_defi_sdk/src/balances/balance_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mutex/mutex.dart';
@@ -19,6 +20,7 @@ class ActivationManager {
     this._customTokenHistory,
     this._assetLookup,
     this._balanceManager,
+    this._configService,
   );
 
   final ApiClient _client;
@@ -27,6 +29,7 @@ class ActivationManager {
   final CustomAssetHistoryStorage _customTokenHistory;
   final IAssetLookup _assetLookup;
   final IBalanceManager _balanceManager;
+  final ActivationConfigService _configService;
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
 
@@ -39,12 +42,8 @@ class ActivationManager {
         .protect(operation)
         .timeout(
           _operationTimeout,
-          onTimeout:
-              () =>
-                  throw TimeoutException(
-                    'Operation timed out',
-                    _operationTimeout,
-                  ),
+          onTimeout: () =>
+              throw TimeoutException('Operation timed out', _operationTimeout),
         );
   }
 
@@ -77,13 +76,10 @@ class ActivationManager {
         continue;
       }
 
-      final parentAsset =
-          group.parentId == null
-              ? null
-              : _assetLookup.fromId(group.parentId!) ??
-                  (throw StateError(
-                    'Parent asset ${group.parentId} not found',
-                  ));
+      final parentAsset = group.parentId == null
+          ? null
+          : _assetLookup.fromId(group.parentId!) ??
+                (throw StateError('Parent asset ${group.parentId} not found'));
 
       yield ActivationProgress(
         status: 'Starting activation for ${group.primary.id.name}...',
@@ -108,6 +104,7 @@ class ActivationManager {
         final activator = ActivationStrategyFactory.createStrategy(
           _client,
           privKeyPolicy,
+          _configService,
         );
 
         await for (final progress in activator.activate(
@@ -139,14 +136,13 @@ class ActivationManager {
   /// Check if asset and its children are already activated
   Future<ActivationProgress> _checkActivationStatus(_AssetGroup group) async {
     try {
-      final enabledCoins =
-          await _client.rpc.generalActivation.getEnabledCoins();
-      final enabledAssetIds =
-          enabledCoins.result
-              .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
-              .expand((assets) => assets)
-              .map((asset) => asset.id)
-              .toSet();
+      final enabledCoins = await _client.rpc.generalActivation
+          .getEnabledCoins();
+      final enabledAssetIds = enabledCoins.result
+          .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
+          .expand((assets) => assets)
+          .map((asset) => asset.id)
+          .toSet();
 
       final isActive = enabledAssetIds.contains(group.primary.id);
       final childrenActive =
@@ -237,8 +233,8 @@ class ActivationManager {
     }
 
     try {
-      final enabledCoins =
-          await _client.rpc.generalActivation.getEnabledCoins();
+      final enabledCoins = await _client.rpc.generalActivation
+          .getEnabledCoins();
       return enabledCoins.result
           .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
           .expand((assets) => assets)
