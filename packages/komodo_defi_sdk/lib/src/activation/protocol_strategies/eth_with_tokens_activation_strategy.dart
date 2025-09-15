@@ -5,8 +5,14 @@ import 'package:komodo_defi_sdk/src/transaction_history/strategies/etherscan_tra
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
+/// Activation strategy for ETH with tokens
+/// Handles platform chains (ETH, BSC, MATIC, etc) and can activate multiple
+/// tokens of the same platform together.
 class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
+  /// Creates a new [EthWithTokensActivationStrategy] with the given client and
+  /// private key policy.
   const EthWithTokensActivationStrategy(super.client, this.privKeyPolicy);
+
   static final _logger = Logger('EthWithTokensActivationStrategy');
 
   /// The private key management policy to use for this strategy.
@@ -51,7 +57,10 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
   ]) async* {
     if (children?.isNotEmpty == true) {
       _logger.fine(
-        'Starting activation for asset: ${asset.id.name} with ${children!.length} tokens, protocol: ${asset.protocol.subClass.formatted}, privKeyPolicy: $privKeyPolicy',
+        'Starting activation for asset: ${asset.id.name} with '
+        '${children!.length} tokens, '
+        'protocol: ${asset.protocol.subClass.formatted}, '
+        'privKeyPolicy: $privKeyPolicy',
       );
       yield ActivationProgress(
         status: 'Activating ${asset.id.name} with ${children.length} tokens...',
@@ -67,7 +76,9 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
       );
     } else {
       _logger.fine(
-        'Starting activation for asset: ${asset.id.name}, protocol: ${asset.protocol.subClass.formatted}, privKeyPolicy: $privKeyPolicy',
+        'Starting activation for asset: ${asset.id.name}, '
+        'protocol: ${asset.protocol.subClass.formatted}, '
+        'privKeyPolicy: $privKeyPolicy',
       );
       yield ActivationProgress(
         status: 'Activating ${asset.id.name}...',
@@ -98,16 +109,17 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
 
       await client.rpc.erc20.enableEthWithTokens(
         ticker: asset.id.id,
-        params: EthWithTokensActivationParams.fromJson(
-          asset.protocol.config,
-        ).copyWith(
-          erc20Tokens:
-              children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
-              [],
-          txHistory: const EtherscanProtocolHelper()
-              .shouldEnableTransactionHistory(asset),
-          privKeyPolicy: privKeyPolicy,
-        ),
+        params: EthWithTokensActivationParams.fromJson(asset.protocol.config)
+            .copyWith(
+              erc20Tokens:
+                  children
+                      ?.map((e) => TokensRequest(ticker: e.id.id))
+                      .toList() ??
+                  [],
+              txHistory: const EtherscanProtocolHelper()
+                  .shouldEnableTransactionHistory(asset),
+              privKeyPolicy: privKeyPolicy,
+            ),
       );
 
       yield const ActivationProgress(

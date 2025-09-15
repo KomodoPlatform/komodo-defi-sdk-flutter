@@ -52,7 +52,9 @@ class Erc20ActivationStrategy extends ProtocolActivationStrategy {
     }
 
     _logger.fine(
-      'Starting activation for asset: ${asset.id.name}, protocol: ${asset.protocol.subClass.formatted}, privKeyPolicy: $privKeyPolicy',
+      'Starting activation for asset: ${asset.id.name}, '
+      'protocol: ${asset.protocol.subClass.formatted}, '
+      'privKeyPolicy: $privKeyPolicy',
     );
     yield ActivationProgress(
       status: 'Activating ${asset.id.name} token...',

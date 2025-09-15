@@ -34,17 +34,6 @@ class Erc20Protocol extends ProtocolClass {
     return Erc20ActivationParams.fromJsonConfig(super.config);
   }
 
-  ActivationParams activationParamsWithTokens([List<Asset>? childTokens]) {
-    return childTokens == null
-        ? Erc20ActivationParams.fromJsonConfig(super.config)
-        : EthWithTokensActivationParams.fromJson(config).copyWith(
-            erc20Tokens: childTokens
-                .map((token) => TokensRequest(ticker: token.id.id))
-                .toList(),
-            txHistory: true,
-          );
-  }
-
   static void _validateErc20Config(JsonMap json) {
     final requiredFields = {
       'nodes': 'RPC nodes',
@@ -54,10 +43,7 @@ class Erc20Protocol extends ProtocolClass {
 
     for (final field in requiredFields.entries) {
       if (!json.containsKey(field.key)) {
-        throw MissingProtocolFieldException(
-          field.value,
-          field.key,
-        );
+        throw MissingProtocolFieldException(field.value, field.key);
       }
     }
   }
