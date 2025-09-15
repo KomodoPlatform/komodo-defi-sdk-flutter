@@ -1,7 +1,7 @@
 // @ts-check
 import init, { LogLevel } from "../kdf/bin/kdflib.js";
 import * as kdflib from "../kdf/bin/kdflib.js";
-import { loadCompressedWasm } from "./wasm_loader";
+import { loadCompressedWasm } from "./wasm_loader.js";
 
 const LOG_LEVEL = LogLevel.Info;
 
