@@ -19,11 +19,18 @@ export async function loadCompressedWasm(url) {
             );
         }
 
+        // Ensure response.body is available
+        if (!response.body) {
+            throw new Error(
+                'Response body is not available. Streaming not supported or body already consumed.'
+            );
+        }
+
         // Create a decompression stream for gzip
         const decompressionStream = new DecompressionStream('gzip');
 
         // Pipe the response through the decompression stream
-        const decompressedStream = response.body?.pipeThrough(decompressionStream);
+        const decompressedStream = response.body.pipeThrough(decompressionStream);
 
         // Read the decompressed stream into an ArrayBuffer
         const reader = decompressedStream.getReader();
@@ -45,7 +52,7 @@ export async function loadCompressedWasm(url) {
             offset += chunk.length;
         }
 
-        console.log(`WASM decompressed: ${(totalLength / 1024 / 1024).toFixed(2)} MB`);
+        //console.log(`WASM decompressed: ${(totalLength / 1024 / 1024).toFixed(2)} MB`);
 
         return result.buffer;
     } catch (error) {
