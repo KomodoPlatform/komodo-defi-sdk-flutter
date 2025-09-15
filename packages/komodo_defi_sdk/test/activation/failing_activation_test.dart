@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
-import 'package:komodo_defi_sdk/src/activation/retryable_activation_manager.dart';
-import 'package:komodo_defi_types/src/utils/retry_config.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
+import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/src/utils/retry_config.dart';
 import 'package:test/test.dart';
 
 import 'mocks/controllable_mock_strategies.dart';
@@ -25,36 +26,34 @@ void main() {
   group('Failing Activation Strategy Tests', () {
     late ActivationManagerTestSetup setup;
     late ControllableMockActivationStrategy controllableStrategy;
-    late RetryableActivationManager retryableManager;
+    late SharedActivationCoordinator coordinator;
 
     setUp(() {
-      setup = ActivationManagerTestSetup()..setUp();
-
       // Create a controllable strategy for deterministic testing
       controllableStrategy = ControllableMockActivationStrategy(
         MockApiClient(),
       );
 
-      // Create a retryable manager with no-retry configuration for testing
-      retryableManager = RetryableActivationManager(
-        setup.mockClient,
+      // Build activation manager with the controllable strategy
+      setup = ActivationManagerTestSetup()
+        ..setUp(
+          activationStrategyFactory: DirectTestActivationStrategyFactory(
+            controllableStrategy,
+          ),
+        );
+
+      // Create coordinator with no-retry configuration for testing
+      coordinator = SharedActivationCoordinator(
+        setup.activationManager,
         setup.mockAuth,
-        setup.mockAssetHistory,
-        setup.mockCustomTokenHistory,
-        setup.mockAssetLookup,
-        setup.mockBalanceManager,
-        activationStrategyFactory: DirectTestActivationStrategyFactory(
-          controllableStrategy,
-        ),
         retryConfig: RetryConfig.noRetry, // No retries, no timeout conflicts
         retryStrategy: const NoRetryStrategy(),
-        operationTimeout: const Duration(milliseconds: 500),
       );
     });
 
     tearDown(() async {
       controllableStrategy.dispose();
-      await retryableManager.dispose();
+      await coordinator.dispose();
       setup.tearDown();
     });
 
@@ -63,15 +62,14 @@ void main() {
         // Configure the strategy to fail after emitting some progress
         controllableStrategy.configureFailure(
           progressMessages: ['Starting activation...', 'Processing...'],
-          errorMessage: 'Simulated activation failure',
         );
 
         bool activationCompleted = false;
         Object? caughtError;
 
         // Attempt activation - we expect it to fail
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .listen(
               (_) {},
               onError: (Object e) {
@@ -108,13 +106,13 @@ void main() {
         // The key test: verify that the manager is still responsive after the failure
         bool managerResponsive = false;
         try {
-          retryableManager
+          coordinator
               .getActiveAssets()
               .then((activeAssets) {
                 expect(activeAssets, isA<Set<dynamic>>());
                 managerResponsive = true;
               })
-              .catchError((e) {
+              .catchError((Object e) {
                 // Even if this fails due to mock setup, it should not hang
                 managerResponsive =
                     true; // If it responds quickly, it's responsive
@@ -150,7 +148,7 @@ void main() {
       );
 
       try {
-        await retryableManager.activateAsset(setup.testAsset).last;
+        await coordinator.activateAssetStream(setup.testAsset).last;
         firstActivationCompleted = true;
       } catch (e) {
         firstError = e;
@@ -180,7 +178,7 @@ void main() {
 
       // Second activation attempt - should also fail but should be able to start
       try {
-        await retryableManager.activateAsset(setup.testAsset).last;
+        await coordinator.activateAssetStream(setup.testAsset).last;
         secondActivationCompleted = true;
       } catch (e) {
         secondError = e;
@@ -228,7 +226,7 @@ void main() {
 
       // First, cause an activation to fail
       try {
-        await retryableManager.activateAsset(setup.testAsset).last;
+        await coordinator.activateAssetStream(setup.testAsset).last;
         activationCompleted = true;
       } catch (e) {
         // Expected to fail
@@ -246,7 +244,7 @@ void main() {
 
       // Test that manager can still respond to queries
       try {
-        final isActive = await retryableManager
+        final isActive = await coordinator
             .isAssetActive(setup.testAsset.id)
             .timeout(const Duration(milliseconds: 100));
         expect(isActive, isA<bool>());
@@ -254,15 +252,14 @@ void main() {
       } catch (e) {
         // Try another operation to verify responsiveness
         try {
-          final activeAssets = await retryableManager.getActiveAssets().timeout(
+          final activeAssets = await coordinator.getActiveAssets().timeout(
             const Duration(milliseconds: 100),
           );
           expect(activeAssets, isA<Set<dynamic>>());
           managerResponsive = true;
         } catch (e) {
           // Manager might fail due to mock setup, but should not hang
-          managerResponsive =
-              true; // If it responds quickly, it's responsive
+          managerResponsive = true; // If it responds quickly, it's responsive
         }
       }
 
@@ -290,7 +287,7 @@ void main() {
         );
 
         try {
-          await retryableManager.activateAsset(setup.testAsset).last;
+          await coordinator.activateAssetStream(setup.testAsset).last;
           activationCompleted = true;
         } catch (e) {
           errors.add(e);
@@ -324,7 +321,7 @@ void main() {
       // Manager should still be functional after multiple failures
       bool managerResponsive = false;
       try {
-        final activeAssets = await retryableManager.getActiveAssets().timeout(
+        final activeAssets = await coordinator.getActiveAssets().timeout(
           const Duration(milliseconds: 100),
         );
         expect(activeAssets, isA<Set<dynamic>>());
@@ -350,13 +347,14 @@ void main() {
       // Start multiple concurrent activations that will fail
       for (int i = 0; i < 3; i++) {
         // Each gets its own strategy instance to avoid conflicts
-        final strategy = ControllableMockActivationStrategy(MockApiClient());
-        strategy.configureFailure(
-          progressMessages: ['Concurrent activation $i...'],
-          errorMessage: 'Concurrent failure $i',
-        );
+        final strategy = ControllableMockActivationStrategy(MockApiClient())
+          ..configureFailure(
+            progressMessages: ['Concurrent activation $i...'],
+            errorMessage: 'Concurrent failure $i',
+          );
 
-        final manager = RetryableActivationManager(
+        // Build an ActivationManager with dedicated strategy and wrap with a coordinator
+        final dedicatedManager = ActivationManager(
           setup.mockClient,
           setup.mockAuth,
           setup.mockAssetHistory,
@@ -366,19 +364,24 @@ void main() {
           activationStrategyFactory: DirectTestActivationStrategyFactory(
             strategy,
           ),
+          assetRefreshNotifier: setup.mockAssetLookup,
+        );
+        final dedicatedCoordinator = SharedActivationCoordinator(
+          dedicatedManager,
+          setup.mockAuth,
           retryConfig: RetryConfig.noRetry,
           retryStrategy: const NoRetryStrategy(),
-          operationTimeout: const Duration(milliseconds: 300),
         );
 
-        final future = manager
-            .activateAsset(setup.testAsset)
+        final future = dedicatedCoordinator
+            .activateAssetStream(setup.testAsset)
             .last
             .then((_) => true) // If it completes, return true
             .catchError((Object _) => false) // If it fails, return false
             .whenComplete(() async {
               strategy.dispose();
-              await manager.dispose();
+              await dedicatedCoordinator.dispose();
+              await dedicatedManager.dispose();
             });
         futures.add(future);
       }
@@ -396,7 +399,7 @@ void main() {
       // Manager should still be responsive
       bool managerResponsive = false;
       try {
-        final isActive = await retryableManager
+        final isActive = await coordinator
             .isAssetActive(setup.testAsset.id)
             .timeout(const Duration(milliseconds: 100));
         expect(isActive, isA<bool>());
@@ -430,7 +433,7 @@ void main() {
       );
 
       try {
-        await for (final progress in retryableManager.activateAsset(
+        await for (final progress in coordinator.activateAssetStream(
           setup.testAsset,
         )) {
           progressEvents.add(progress);

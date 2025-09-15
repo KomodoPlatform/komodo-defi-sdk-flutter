@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
-import 'package:komodo_defi_sdk/src/activation/retryable_activation_manager.dart';
-import 'package:komodo_defi_types/src/utils/retry_config.dart';
+import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/src/utils/retry_config.dart';
 import 'package:test/test.dart';
 
 import 'mocks/controllable_mock_strategies.dart';
@@ -24,34 +24,31 @@ void main() {
   group('fake_async Timeout Demonstration', () {
     late ActivationManagerTestSetup setup;
     late ControllableMockActivationStrategy controllableStrategy;
-    late RetryableActivationManager retryableManager;
+    late SharedActivationCoordinator coordinator;
 
     setUp(() {
-      setup = ActivationManagerTestSetup()..setUp();
+      setup = ActivationManagerTestSetup()
+        ..setUp(
+          activationStrategyFactory: DirectTestActivationStrategyFactory(
+            controllableStrategy,
+          ),
+        );
 
       controllableStrategy = ControllableMockActivationStrategy(
         MockApiClient(),
       );
 
-      retryableManager = RetryableActivationManager(
-        setup.mockClient,
+      coordinator = SharedActivationCoordinator(
+        setup.activationManager,
         setup.mockAuth,
-        setup.mockAssetHistory,
-        setup.mockCustomTokenHistory,
-        setup.mockAssetLookup,
-        setup.mockBalanceManager,
-        activationStrategyFactory: DirectTestActivationStrategyFactory(
-          controllableStrategy,
-        ),
         retryConfig: RetryConfig.testing,
         retryStrategy: const NoRetryStrategy(),
-        operationTimeout: const Duration(seconds: 30), // Long internal timeout
       );
     });
 
     tearDown(() async {
       controllableStrategy.dispose();
-      await retryableManager.dispose();
+      await coordinator.dispose();
       await setup.tearDown();
     });
 
@@ -70,11 +67,11 @@ void main() {
 
         // Start activation with 100ms external timeout
         // This would normally be overridden by the 30-second internal timeout
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .timeout(const Duration(milliseconds: 100))
             .listen(
-              (progress) => progressEvents.add(progress),
+              progressEvents.add,
               onError: (Object e) {
                 if (e is TimeoutException) {
                   timeoutOccurred = true;
@@ -119,34 +116,34 @@ void main() {
         // Test multiple timeout scenarios
 
         // 50ms timeout
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .timeout(const Duration(milliseconds: 50))
             .listen(
               (_) {},
-              onError: (e) {
+              onError: (Object e) {
                 if (e is TimeoutException) shortTimeoutFired = true;
               },
             );
 
         // 150ms timeout
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .timeout(const Duration(milliseconds: 150))
             .listen(
               (_) {},
-              onError: (e) {
+              onError: (Object e) {
                 if (e is TimeoutException) mediumTimeoutFired = true;
               },
             );
 
         // 300ms timeout
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .timeout(const Duration(milliseconds: 300))
             .listen(
               (_) {},
-              onError: (e) {
+              onError: (Object e) {
                 if (e is TimeoutException) longTimeoutFired = true;
               },
             );
@@ -201,8 +198,8 @@ void main() {
         Object? timeoutException;
 
         // External 100ms timeout should fire before RetryConfig.testing 500ms timeout
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .timeout(const Duration(milliseconds: 100))
             .listen(
               (_) {},
@@ -245,8 +242,8 @@ void main() {
         final timeoutTimes = <Duration>[];
         final progressTimes = <Duration>[];
 
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .timeout(
               const Duration(milliseconds: 123),
             ) // Odd number for precision

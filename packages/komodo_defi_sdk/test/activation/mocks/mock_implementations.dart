@@ -35,7 +35,7 @@ class MockUtxoMethods {
     required String ticker,
     required dynamic params,
   }) async {
-    return MockEnableUtxoInitResponse(taskId: 'mock-task-${ticker}');
+    return MockEnableUtxoInitResponse(taskId: 'mock-task-$ticker');
   }
 
   Future<MockTaskStatusResponse> taskEnableStatus(String taskId) async {
@@ -162,9 +162,9 @@ class MockIBalanceManager implements IBalanceManager {
 }
 
 /// Helper class for mocking asset lookup
-class MockAssetLookup implements IAssetLookup {
-  final Map<AssetId, Asset> _assets;
+class MockAssetLookup implements IAssetLookup, IAssetRefreshNotifier {
   MockAssetLookup(this._assets);
+  final Map<AssetId, Asset> _assets;
 
   @override
   Map<AssetId, Asset> get available => _assets;
@@ -179,4 +179,7 @@ class MockAssetLookup implements IAssetLookup {
   @override
   Set<Asset> childAssetsOf(AssetId parentId) =>
       _assets.values.where((a) => a.id.parentId == parentId).toSet();
+
+  @override
+  void notifyCustomTokensChanged() {}
 }

@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
-import 'package:komodo_defi_sdk/src/activation/retryable_activation_manager.dart';
-import 'package:komodo_defi_types/src/utils/retry_config.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
+import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/src/utils/retry_config.dart';
 import 'package:test/test.dart';
 
 import 'mocks/controllable_mock_strategies.dart';
@@ -28,36 +29,34 @@ void main() {
   group('Hanging Activation Strategy Tests', () {
     late ActivationManagerTestSetup setup;
     late ControllableMockActivationStrategy controllableStrategy;
-    late RetryableActivationManager retryableManager;
+    late SharedActivationCoordinator coordinator;
 
     setUp(() {
-      setup = ActivationManagerTestSetup()..setUp();
-
       // Create a controllable strategy for deterministic hanging behavior
       controllableStrategy = ControllableMockActivationStrategy(
         MockApiClient(),
       );
 
-      // Create a retryable manager with no-retry configuration for testing
-      retryableManager = RetryableActivationManager(
-        setup.mockClient,
+      // Build activation manager with the controllable strategy
+      setup = ActivationManagerTestSetup()
+        ..setUp(
+          activationStrategyFactory: DirectTestActivationStrategyFactory(
+            controllableStrategy,
+          ),
+        );
+
+      // Create coordinator with no-retry configuration for testing
+      coordinator = SharedActivationCoordinator(
+        setup.activationManager,
         setup.mockAuth,
-        setup.mockAssetHistory,
-        setup.mockCustomTokenHistory,
-        setup.mockAssetLookup,
-        setup.mockBalanceManager,
-        activationStrategyFactory: DirectTestActivationStrategyFactory(
-          controllableStrategy,
-        ),
-        retryConfig: RetryConfig.noRetry, // No retries, no timeout conflicts
+        retryConfig: RetryConfig.noRetry,
         retryStrategy: const NoRetryStrategy(),
-        operationTimeout: const Duration(milliseconds: 300),
       );
     });
 
     tearDown(() async {
       controllableStrategy.dispose();
-      await retryableManager.dispose();
+      await coordinator.dispose();
       await setup.tearDown();
     });
 
@@ -72,8 +71,8 @@ void main() {
         Object? caughtException;
 
         // Start activation with external timeout
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .timeout(const Duration(milliseconds: 200))
             .listen(
               (_) {}, // Handle progress events
@@ -119,8 +118,8 @@ void main() {
           progressMessages: ['First activation starting...'],
         );
 
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .timeout(const Duration(milliseconds: 150))
             .listen(
               (_) {},
@@ -150,8 +149,8 @@ void main() {
         );
 
         // Second activation attempt - should also timeout but should be able to start fresh
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .timeout(const Duration(milliseconds: 150))
             .listen(
               (_) {},
@@ -189,8 +188,8 @@ void main() {
           Object? activationException;
 
           // Start an activation that would hang (but we'll timeout)
-          retryableManager
-              .activateAsset(setup.testAsset)
+          coordinator
+              .activateAssetStream(setup.testAsset)
               .timeout(const Duration(milliseconds: 200))
               .listen(
                 (_) {},
@@ -211,7 +210,7 @@ void main() {
           var managerResponsive = false;
           try {
             // This should work quickly with fake_async
-            retryableManager
+            coordinator
                 .isAssetActive(setup.testAsset.id)
                 .then((isActive) {
                   // Should return some value (true or false) without hanging
@@ -260,12 +259,13 @@ void main() {
         // Start multiple activations that would hang
         for (var i = 0; i < 3; i++) {
           // Each gets its own strategy instance to avoid conflicts
-          final strategy = ControllableMockActivationStrategy(MockApiClient());
-          strategy.configureHang(
-            progressMessages: ['Concurrent hanging activation $i...'],
-          );
+          final strategy = ControllableMockActivationStrategy(MockApiClient())
+            ..configureHang(
+              progressMessages: ['Concurrent hanging activation $i...'],
+            );
 
-          final manager = RetryableActivationManager(
+          // Build dedicated ActivationManager and Coordinator for this concurrent test
+          final dedicatedManager = ActivationManager(
             setup.mockClient,
             setup.mockAuth,
             setup.mockAssetHistory,
@@ -275,25 +275,27 @@ void main() {
             activationStrategyFactory: DirectTestActivationStrategyFactory(
               strategy,
             ),
+            assetRefreshNotifier: setup.mockAssetLookup,
+          );
+          final dedicatedCoordinator = SharedActivationCoordinator(
+            dedicatedManager,
+            setup.mockAuth,
             retryConfig: RetryConfig.noRetry,
             retryStrategy: const NoRetryStrategy(),
-            operationTimeout: const Duration(milliseconds: 200),
           );
 
-          final future = manager
-              .activateAsset(setup.testAsset)
+          final future = dedicatedCoordinator
+              .activateAssetStream(setup.testAsset)
               .timeout(const Duration(milliseconds: 150))
               .last
               .then((_) {
                 fail('Activation $i should have timed out');
               })
-              .catchError((Object e) {
-                exceptions.add(e);
-                // Return void instead of null for proper type
-              })
+              .catchError(exceptions.add)
               .whenComplete(() async {
                 strategy.dispose();
-                await manager.dispose();
+                await dedicatedCoordinator.dispose();
+                await dedicatedManager.dispose();
               });
           futures.add(future);
         }
@@ -319,7 +321,7 @@ void main() {
         // Main manager should still be responsive
         var managerResponsive = false;
         try {
-          final activeAssets = await retryableManager.getActiveAssets();
+          final activeAssets = await coordinator.getActiveAssets();
           expect(activeAssets, isA<Set<dynamic>>());
           managerResponsive = true;
         } catch (e) {
@@ -351,13 +353,11 @@ void main() {
         final progressUpdates = <ActivationProgress>[];
         Object? finalException;
 
-        retryableManager
-            .activateAsset(setup.testAsset)
+        coordinator
+            .activateAssetStream(setup.testAsset)
             .timeout(const Duration(milliseconds: 200))
             .listen(
-              (progress) {
-                progressUpdates.add(progress);
-              },
+              progressUpdates.add,
               onError: (Object e) {
                 if (e is TimeoutException) {
                   finalException = e;

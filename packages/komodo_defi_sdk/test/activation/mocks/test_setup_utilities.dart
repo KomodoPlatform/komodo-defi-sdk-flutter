@@ -1,7 +1,5 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
-import 'package:komodo_defi_sdk/src/activation/retryable_activation_manager.dart';
-import 'package:komodo_defi_types/src/utils/retry_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 import 'mock_implementations.dart';
@@ -27,10 +25,9 @@ class ActivationManagerTestSetup {
     Duration? operationTimeout,
   }) {
     // Create enabled coins list from tickers
-    enabledCoinsForTest =
-        (preEnabledCoinTickers ?? [])
-            .map((ticker) => EnabledCoinInfo(ticker: ticker))
-            .toList();
+    enabledCoinsForTest = (preEnabledCoinTickers ?? [])
+        .map((ticker) => EnabledCoinInfo(ticker: ticker))
+        .toList();
 
     // Initialize mocks with configurable responses
     mockClient = MockApiClient(enabledCoins: enabledCoinsForTest);
@@ -47,7 +44,6 @@ class ActivationManagerTestSetup {
       chainId: AssetChainId(chainId: 1),
       derivationPath: null,
       subClass: CoinSubClass.utxo,
-      parentId: null,
     );
 
     testAsset = Asset(
@@ -81,7 +77,7 @@ class ActivationManagerTestSetup {
       mockAssetLookup,
       mockBalanceManager,
       activationStrategyFactory: activationStrategyFactory,
-      operationTimeout: operationTimeout,
+      assetRefreshNotifier: mockAssetLookup,
     );
   }
 
@@ -93,10 +89,9 @@ class ActivationManagerTestSetup {
     Duration? operationTimeout,
   }) {
     // Create enabled coins list from tickers
-    enabledCoinsForTest =
-        (preEnabledCoinTickers ?? [])
-            .map((ticker) => EnabledCoinInfo(ticker: ticker))
-            .toList();
+    enabledCoinsForTest = (preEnabledCoinTickers ?? [])
+        .map((ticker) => EnabledCoinInfo(ticker: ticker))
+        .toList();
 
     // Initialize mocks with configurable responses
     mockClient = MockApiClient(enabledCoins: enabledCoinsForTest);
@@ -124,7 +119,7 @@ class ActivationManagerTestSetup {
       mockAssetLookup,
       mockBalanceManager,
       activationStrategyFactory: activationStrategyFactory,
-      operationTimeout: operationTimeout,
+      assetRefreshNotifier: mockAssetLookup,
     );
   }
 
@@ -134,8 +129,9 @@ class ActivationManagerTestSetup {
     IActivationStrategyFactory? activationStrategyFactory,
     Duration? operationTimeout,
   }) {
-    enabledCoinsForTest =
-        tickers.map((ticker) => EnabledCoinInfo(ticker: ticker)).toList();
+    enabledCoinsForTest = tickers
+        .map((ticker) => EnabledCoinInfo(ticker: ticker))
+        .toList();
 
     // Recreate the mock client with new enabled coins
     mockClient = MockApiClient(enabledCoins: enabledCoinsForTest);
@@ -149,43 +145,7 @@ class ActivationManagerTestSetup {
       mockAssetLookup,
       mockBalanceManager,
       activationStrategyFactory: activationStrategyFactory,
-      operationTimeout: operationTimeout,
-    );
-  }
-
-  /// Set up test environment using RetryableActivationManager
-  void setUpWithRetryableManager({
-    List<String>? preEnabledCoinTickers,
-    IActivationStrategyFactory? activationStrategyFactory,
-    Duration? operationTimeout,
-    RetryConfig? retryConfig,
-    RetryStrategy? retryStrategy,
-  }) {
-    setUp(
-      preEnabledCoinTickers: preEnabledCoinTickers,
-      activationStrategyFactory: activationStrategyFactory,
-      operationTimeout: operationTimeout,
-    );
-  }
-
-  /// Create a RetryableActivationManager for testing
-  RetryableActivationManager createRetryableManager({
-    IActivationStrategyFactory? activationStrategyFactory,
-    RetryConfig? retryConfig,
-    RetryStrategy? retryStrategy,
-    Duration? operationTimeout,
-  }) {
-    return RetryableActivationManager(
-      mockClient,
-      mockAuth,
-      mockAssetHistory,
-      mockCustomTokenHistory,
-      mockAssetLookup,
-      mockBalanceManager,
-      activationStrategyFactory: activationStrategyFactory,
-      retryConfig: retryConfig ?? RetryConfig.testing,
-      retryStrategy: retryStrategy ?? const NoRetryStrategy(),
-      operationTimeout: operationTimeout ?? const Duration(milliseconds: 500),
+      assetRefreshNotifier: mockAssetLookup,
     );
   }
 

@@ -1,12 +1,12 @@
 import 'package:collection/collection.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart' show IAssetLookup;
-import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
+import 'package:komodo_defi_sdk/src/activation/asset_group.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
 
 class MockAssetLookup implements IAssetLookup {
-  final Map<AssetId, Asset> _assets;
   MockAssetLookup(this._assets);
+  final Map<AssetId, Asset> _assets;
 
   @override
   Map<AssetId, Asset> get available => _assets;
@@ -41,12 +41,13 @@ AssetId makeAssetId({
 }
 
 class DummyProtocol extends ProtocolClass {
-  const DummyProtocol({required CoinSubClass subClass})
-    : super(subClass: subClass, config: const {});
+  const DummyProtocol({required super.subClass}) : super(config: const {});
   @override
   bool get supportsMultipleAddresses => false;
   @override
   bool get requiresHdWallet => false;
+  @override
+  bool get isMemoSupported => false;
 }
 
 Asset makeAsset({required AssetId id, CoinSubClass? protocolSubClass}) {
@@ -93,17 +94,15 @@ void main() {
     late MockAssetLookup lookup;
 
     setUp(() {
-      bnbId = makeAssetId(id: 'BNB', name: 'BNB', subClass: CoinSubClass.bep20);
+      bnbId = makeAssetId(id: 'BNB', name: 'BNB');
       usdtBep20Id = makeAssetId(
         id: 'USDT-BEP20',
         name: 'USDT-BEP20',
-        subClass: CoinSubClass.bep20,
         parentId: bnbId,
       );
       cakeBep20Id = makeAssetId(
         id: 'CAKE-BEP20',
         name: 'CAKE-BEP20',
-        subClass: CoinSubClass.bep20,
         parentId: bnbId,
       );
       ethId = makeAssetId(id: 'ETH', name: 'ETH', subClass: CoinSubClass.erc20);
