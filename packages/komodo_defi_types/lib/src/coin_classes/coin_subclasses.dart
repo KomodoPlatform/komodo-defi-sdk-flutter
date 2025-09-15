@@ -142,16 +142,43 @@ enum CoinSubClass {
     }
   }
 
-  // Parse
+  /// Parse a string to a coin subclass.
+  ///
+  /// Attempts to match the string to a coin subclass by:
+  /// - Partial match to the subclass name
+  /// - Partial match to the subclass ticker
+  /// - Partial match to the subclass token standard suffix
+  /// - Partial match to the subclass formatted name
+  ///
+  /// Throws [StateError] if no match is found.
   static CoinSubClass parse(String value) {
     const filteredChars = ['_', '-', ' '];
     final regex = RegExp('(${filteredChars.join('|')})');
 
     final sanitizedValue = value.toLowerCase().replaceAll(regex, '');
 
-    return CoinSubClass.values.firstWhere(
-      (e) => e.toString().toLowerCase().contains(sanitizedValue),
-    );
+    return CoinSubClass.values.firstWhere((e) {
+      // Exit early if exact match to default to previous behavior and avoid
+      // unnecessary checks.
+      final matchesValue = e.toString().toLowerCase().contains(sanitizedValue);
+      if (matchesValue) {
+        return true;
+      }
+
+      final matchesTicker = e.ticker.toLowerCase().contains(sanitizedValue);
+      if (matchesTicker) {
+        return true;
+      }
+
+      final matchesTokenStandardSuffix =
+          e.tokenStandardSuffix?.toLowerCase().contains(sanitizedValue) ??
+          false;
+      if (matchesTokenStandardSuffix) {
+        return true;
+      }
+
+      return e.formatted.toLowerCase().contains(sanitizedValue);
+    });
   }
 
   static CoinSubClass? tryParse(String value) {
@@ -289,6 +316,54 @@ enum CoinSubClass {
         return const Color(0xFFFC9D37); // rbtc: "#fc9d37"
       case CoinSubClass.zhtlc:
         return const Color(0xFFC29F47); // arrr: "#c29f47"
+      case CoinSubClass.unknown:
+        return null;
+    }
+  }
+}
+
+extension CoinSubClassTokenStandard on CoinSubClass {
+  /// Canonical short token/network standard suffix used for parent asset
+  /// disambiguation in display names. Returns null when no suffix should
+  /// be appended for the given subclass.
+  String? get tokenStandardSuffix {
+    switch (this) {
+      case CoinSubClass.erc20:
+        return 'ERC20';
+      case CoinSubClass.bep20:
+        return 'BEP20';
+      case CoinSubClass.qrc20:
+        return 'QRC20';
+      case CoinSubClass.ftm20:
+        return 'FTM20';
+      case CoinSubClass.arbitrum:
+        return 'ARB20';
+      case CoinSubClass.avx20:
+        return 'AVX20';
+      case CoinSubClass.matic:
+        return 'PLG20';
+      case CoinSubClass.moonriver:
+        return 'MVR20';
+      case CoinSubClass.krc20:
+        return 'KRC20';
+      case CoinSubClass.hrc20:
+        return 'HRC20';
+      case CoinSubClass.hecoChain:
+        return 'HCO20';
+      // Subclasses without a canonical short token/network standard suffix
+      case CoinSubClass.moonbeam:
+      case CoinSubClass.slp: // ignore: deprecated_member_use_from_same_package
+      case CoinSubClass.sia:
+      case CoinSubClass.smartChain:
+      case CoinSubClass.ethereumClassic:
+      case CoinSubClass.ubiq:
+      case CoinSubClass.utxo:
+      case CoinSubClass.smartBch:
+      case CoinSubClass.tendermint:
+      case CoinSubClass.tendermintToken:
+      case CoinSubClass.ewt:
+      case CoinSubClass.rskSmartBitcoin:
+      case CoinSubClass.zhtlc:
       case CoinSubClass.unknown:
         return null;
     }

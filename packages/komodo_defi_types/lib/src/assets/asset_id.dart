@@ -18,14 +18,13 @@ class AssetId extends Equatable {
     final subClass = CoinSubClass.parse(json.value('type'));
 
     final parentCoinTicker = json.valueOrNull<String>('parent_coin');
-    final maybeParent =
-        parentCoinTicker == null
-            ? null
-            : knownIds?.singleWhere(
-              (parent) =>
-                  parent.id == parentCoinTicker &&
-                  parent.subClass.canBeParentOf(subClass),
-            );
+    final maybeParent = parentCoinTicker == null
+        ? null
+        : knownIds?.singleWhere(
+            (parent) =>
+                parent.id == parentCoinTicker &&
+                parent.subClass.canBeParentOf(subClass),
+          );
 
     return AssetId(
       id: json.value<String>('coin'),
@@ -72,52 +71,6 @@ class AssetId extends Equatable {
     );
   }
 
-  static const _isMultipleTypesPerAssetAllowed = false;
-
-  /// Method that parses a config object and returns a set of [AssetId] objects.
-  ///
-  /// For most coins, this will return a single [AssetId] object. However, for
-  /// coins that have `other_types` defined in the config, this will return
-  /// multiple [AssetId] objects.
-  static Set<AssetId> parseAllTypes(
-    JsonMap json, {
-    required Set<AssetId>? knownIds,
-  }) {
-    final assetIds = {AssetId.parse(json, knownIds: knownIds)};
-
-    if (!_isMultipleTypesPerAssetAllowed) {
-      return assetIds;
-    }
-
-    // Remove below if it is confirmed that we will never encounter a coin with
-    // multiple types which need to be treated as separate assets. This was
-    // possible in the past with SLP coins, but they have been deprecated.
-
-    final otherTypes = json.valueOrNull<List<String>>('other_types') ?? [];
-
-    for (final otherType in otherTypes) {
-      final jsonCopy = JsonMap.from(json);
-      final otherTypesCopy =
-          List<String>.from(otherTypes)
-            ..remove(otherType)
-            ..add(json.value('type'));
-
-      // TODO: Perhaps restructure so we can copy the protocol data from
-      // another coin with the same type
-      if (otherType == 'UTXO') {
-        // remove all fields except for protocol->type from the protocol data
-        jsonCopy['protocol'] = {'type': otherType};
-      }
-
-      jsonCopy['type'] = otherType;
-      jsonCopy['other_types'] = otherTypesCopy;
-
-      // assetIds.add(AssetId.parse(jsonCopy));
-    }
-
-    return assetIds;
-  }
-
   JsonMap toJson() => {
     'coin': id,
     'fname': name,
@@ -139,6 +92,22 @@ class AssetId extends Equatable {
     return id == other.id &&
         subClass == other.subClass &&
         chainId.formattedChainId == other.chainId.formattedChainId;
+  }
+
+  /// A display-friendly name that disambiguates networks using the token
+  /// standard suffix from the asset `id` when present.
+  ///
+  /// Examples:
+  /// - id: `ETH-ARB20`, name: `Ethereum` -> `Ethereum (ARB20)`
+  /// - id: `USDT-ERC20`, name: `Tether USD` -> `Tether USD (ERC20)`
+  /// - id: `BTC`, name: `Bitcoin` -> `Bitcoin`
+  String get displayName {
+    // Only append suffix for top-level (parent) assets. Child assets already
+    // convey their network via parent linkage and UI badges.
+    if (isChildAsset) return name;
+    final String? suffix = subClass.tokenStandardSuffix;
+    if (suffix == null) return name;
+    return '$name ($suffix)';
   }
 }
 

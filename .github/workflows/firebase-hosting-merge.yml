@@ -48,8 +48,12 @@ jobs:
       # - name: Bootstrap workspace
       #   run: melos bootstrap
       - name: Run dry web build to generate assets (expected to fail)
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd playground && flutter build web --release || echo "Dry build completed (failure expected)"
       - name: Build playground web
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd playground && flutter build web --release
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -75,6 +79,8 @@ jobs:
       # - name: Bootstrap workspace
       #   run: melos bootstrap
       - name: Build SDK example web
+        env:
+          GITHUB_API_PUBLIC_READONLY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd packages/komodo_defi_sdk/example && flutter build web --release
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

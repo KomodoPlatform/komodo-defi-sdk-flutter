@@ -9,6 +9,15 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// This class follows the Single Responsibility Principle by focusing
 /// solely on seed node acquisition and management.
 class SeedNodeService {
+  /// Gets the runtime configuration for seed node updates.
+  ///
+  /// This method loads the appropriate configuration for fetching seed nodes,
+  /// following the same pattern as other update managers in the framework.
+  static Future<AssetRuntimeUpdateConfig> _getRuntimeConfig() async {
+    final configRepository = AssetRuntimeUpdateConfigRepository();
+    return await configRepository.tryLoad() ?? const AssetRuntimeUpdateConfig();
+  }
+
   /// Fetches seed nodes from the remote configuration with fallback to defaults.
   ///
   /// This method attempts to fetch the latest seed nodes from the Komodo Platform
@@ -21,10 +30,14 @@ class SeedNodeService {
     bool filterForWeb = kIsWeb,
   }) async {
     try {
+      final config = await _getRuntimeConfig();
       final (
         seedNodes: nodes,
         netId: netId,
-      ) = await SeedNodeUpdater.fetchSeedNodes(filterForWeb: filterForWeb);
+      ) = await SeedNodeUpdater.fetchSeedNodes(
+        filterForWeb: filterForWeb,
+        config: config,
+      );
 
       return (
         seedNodes: SeedNodeUpdater.seedNodesToStringList(nodes),

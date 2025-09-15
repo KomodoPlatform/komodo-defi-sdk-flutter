@@ -16,22 +16,21 @@ class DeveloperData extends Equatable {
   });
 
   factory DeveloperData.fromJson(Map<String, dynamic> json) => DeveloperData(
-        forks: json['forks'] as dynamic,
-        stars: json['stars'] as dynamic,
-        subscribers: json['subscribers'] as dynamic,
-        totalIssues: json['total_issues'] as dynamic,
-        closedIssues: json['closed_issues'] as dynamic,
-        pullRequestsMerged: json['pull_requests_merged'] as dynamic,
-        pullRequestContributors: json['pull_request_contributors'] as dynamic,
-        codeAdditionsDeletions4Weeks:
-            json['code_additions_deletions_4_weeks'] == null
-                ? null
-                : CodeAdditionsDeletions4Weeks.fromJson(
-                    json['code_additions_deletions_4_weeks']
-                        as Map<String, dynamic>,
-                  ),
-        commitCount4Weeks: json['commit_count_4_weeks'] as dynamic,
-      );
+    forks: json['forks'] as dynamic,
+    stars: json['stars'] as dynamic,
+    subscribers: json['subscribers'] as dynamic,
+    totalIssues: json['total_issues'] as dynamic,
+    closedIssues: json['closed_issues'] as dynamic,
+    pullRequestsMerged: json['pull_requests_merged'] as dynamic,
+    pullRequestContributors: json['pull_request_contributors'] as dynamic,
+    codeAdditionsDeletions4Weeks:
+        json['code_additions_deletions_4_weeks'] == null
+        ? null
+        : CodeAdditionsDeletions4Weeks.fromJson(
+            json['code_additions_deletions_4_weeks'] as Map<String, dynamic>,
+          ),
+    commitCount4Weeks: json['commit_count_4_weeks'] as dynamic,
+  );
   final dynamic forks;
   final dynamic stars;
   final dynamic subscribers;
@@ -43,17 +42,16 @@ class DeveloperData extends Equatable {
   final dynamic commitCount4Weeks;
 
   Map<String, dynamic> toJson() => {
-        'forks': forks,
-        'stars': stars,
-        'subscribers': subscribers,
-        'total_issues': totalIssues,
-        'closed_issues': closedIssues,
-        'pull_requests_merged': pullRequestsMerged,
-        'pull_request_contributors': pullRequestContributors,
-        'code_additions_deletions_4_weeks':
-            codeAdditionsDeletions4Weeks?.toJson(),
-        'commit_count_4_weeks': commitCount4Weeks,
-      };
+    'forks': forks,
+    'stars': stars,
+    'subscribers': subscribers,
+    'total_issues': totalIssues,
+    'closed_issues': closedIssues,
+    'pull_requests_merged': pullRequestsMerged,
+    'pull_request_contributors': pullRequestContributors,
+    'code_additions_deletions_4_weeks': codeAdditionsDeletions4Weeks?.toJson(),
+    'commit_count_4_weeks': commitCount4Weeks,
+  };
 
   DeveloperData copyWith({
     dynamic forks,

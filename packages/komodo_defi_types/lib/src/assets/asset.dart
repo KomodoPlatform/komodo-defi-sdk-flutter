@@ -25,8 +25,8 @@ class Asset extends Equatable {
     );
   }
 
-  factory Asset.fromJson(JsonMap json) {
-    final assetId = AssetId.parse(json, knownIds: const {});
+  factory Asset.fromJson(JsonMap json, {Set<AssetId>? knownIds}) {
+    final assetId = AssetId.parse(json, knownIds: knownIds);
     final protocol = ProtocolClass.fromJson(json);
     return Asset(
       id: assetId,
@@ -71,11 +71,11 @@ class Asset extends Equatable {
   bool get supportsMessageSigning => signMessagePrefix != null;
 
   JsonMap toJson() => {
-        'protocol': protocol.toJson(),
-        'id': id.toJson(),
-        'wallet_only': isWalletOnly,
-        if (signMessagePrefix != null) 'sign_message_prefix': signMessagePrefix,
-      };
+    'protocol': protocol.toJson(),
+    'id': id.toJson(),
+    'wallet_only': isWalletOnly,
+    if (signMessagePrefix != null) 'sign_message_prefix': signMessagePrefix,
+  };
 
   @override
   List<Object?> get props => [id, protocol, isWalletOnly, signMessagePrefix];

@@ -1,14 +1,5 @@
 import 'package:decimal/decimal.dart';
-import 'package:komodo_cex_market_data/komodo_cex_market_data.dart'
-    show PriceRequestType;
-import 'package:komodo_cex_market_data/src/binance/binance.dart';
-import 'package:komodo_cex_market_data/src/binance/models/binance_24hr_ticker.dart';
-import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
-import 'package:komodo_cex_market_data/src/cex_repository.dart';
-import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
-import 'package:komodo_cex_market_data/src/komodo/komodo.dart';
-import 'package:komodo_cex_market_data/src/models/models.dart';
-import 'package:komodo_cex_market_data/src/repository_priority_manager.dart';
+import 'package:komodo_cex_market_data/src/_core_index.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:test/test.dart';
 
@@ -93,7 +84,7 @@ class TestBinanceProvider implements IBinanceProvider {
     int? limit,
     String? baseUrl,
   }) async {
-    return CoinOhlc(ohlc: []);
+    return const CoinOhlc(ohlc: []);
   }
 }
 
@@ -189,7 +180,7 @@ void main() {
       });
 
       test('returns correct priority for CoinGeckoRepository', () {
-        expect(RepositoryPriorityManager.getPriority(coinGeckoRepo), equals(3));
+        expect(RepositoryPriorityManager.getPriority(coinGeckoRepo), equals(4));
       });
 
       test('returns 999 for unknown repository types', () {
@@ -208,7 +199,7 @@ void main() {
       test('returns correct priority for CoinGeckoRepository', () {
         expect(
           RepositoryPriorityManager.getSparklinePriority(coinGeckoRepo),
-          equals(2),
+          equals(3),
         );
       });
 
@@ -354,7 +345,7 @@ void main() {
         );
         expect(
           RepositoryPriorityManager.defaultPriorities[CoinGeckoRepository],
-          equals(3),
+          equals(4),
         );
       });
 
@@ -365,7 +356,7 @@ void main() {
         );
         expect(
           RepositoryPriorityManager.sparklinePriorities[CoinGeckoRepository],
-          equals(2),
+          equals(3),
         );
         expect(
           RepositoryPriorityManager.sparklinePriorities[KomodoPriceRepository],

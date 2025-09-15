@@ -1,6 +1,6 @@
 name: komodo_cex_market_data
 description: CEX market data repositories and strategies with fallbacks for Komodo SDK apps.
-version: 0.0.2+1
+version: 0.0.3+1
 repository: https://github.com/KomodoPlatform/komodo-defi-sdk-flutter
 
 environment:
@@ -17,19 +17,21 @@ dependencies:
   freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
 
-  komodo_defi_types: ^0.3.0+2
+  komodo_defi_types: ^0.3.2+1
 
   # Approved via https://github.com/KomodoPlatform/komodo-wallet/pull/1106
-  hive: ^2.2.3 # Changed from git to pub.dev because git dependencies are not allowed in published packages
+  hive_ce: ^2.2.3+ce # Changed from hive to hive_ce for Hive CE compatibility
   logging: ^1.3.0
   async: ^2.13.0 # same as transitive version in build_transformer package
   get_it: ^8.0.3
 
 dev_dependencies:
   flutter_lints: ^6.0.0 # flutter.dev
+  index_generator: ^4.0.1
   mocktail: ^1.0.4
   test: ^1.25.7
   freezed: ^3.0.4
   json_serializable: ^6.7.1
   build_runner: ^2.4.14
+  hive_ce_generator: ^1.9.3
   very_good_analysis: ^9.0.0

@@ -1,3 +1,16 @@
+## 0.3.1+2
+
+ - Update a dependency to the latest release.
+
+## 0.3.1+1
+
+ - **FIX**: add missing deps.
+
+## 0.3.1
+
+ - **FIX**: pub submission errors.
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
 ## 0.3.0+1
 
 > Note: This release has breaking changes.

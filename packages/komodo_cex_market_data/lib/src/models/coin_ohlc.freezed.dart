@@ -23,6 +23,10 @@ Ohlc _$OhlcFromJson(
           return BinanceOhlc.fromJson(
             json
           );
+                case 'coinpaprika':
+          return CoinPaprikaOhlc.fromJson(
+            json
+          );
         
           default:
             throw CheckedFromJsonException(
@@ -38,7 +42,11 @@ Ohlc _$OhlcFromJson(
 /// @nodoc
 mixin _$Ohlc {
 
-@DecimalConverter() Decimal get open;@DecimalConverter() Decimal get high;@DecimalConverter() Decimal get low;@DecimalConverter() Decimal get close;
+/// Opening price as a [Decimal] for precision
+@DecimalConverter() Decimal get open;/// Highest price reached during this period as a [Decimal]
+@DecimalConverter() Decimal get high;/// Lowest price reached during this period as a [Decimal]
+@DecimalConverter() Decimal get low;/// Closing price as a [Decimal] for precision
+@DecimalConverter() Decimal get close;
 /// Create a copy of Ohlc
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -115,12 +123,13 @@ extension OhlcPatterns on Ohlc {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( CoinGeckoOhlc value)?  coingecko,TResult Function( BinanceOhlc value)?  binance,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( CoinGeckoOhlc value)?  coingecko,TResult Function( BinanceOhlc value)?  binance,TResult Function( CoinPaprikaOhlc value)?  coinpaprika,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case CoinGeckoOhlc() when coingecko != null:
 return coingecko(_that);case BinanceOhlc() when binance != null:
-return binance(_that);case _:
+return binance(_that);case CoinPaprikaOhlc() when coinpaprika != null:
+return coinpaprika(_that);case _:
   return orElse();
 
 }
@@ -138,12 +147,13 @@ return binance(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( CoinGeckoOhlc value)  coingecko,required TResult Function( BinanceOhlc value)  binance,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( CoinGeckoOhlc value)  coingecko,required TResult Function( BinanceOhlc value)  binance,required TResult Function( CoinPaprikaOhlc value)  coinpaprika,}){
 final _that = this;
 switch (_that) {
 case CoinGeckoOhlc():
 return coingecko(_that);case BinanceOhlc():
-return binance(_that);case _:
+return binance(_that);case CoinPaprikaOhlc():
+return coinpaprika(_that);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -160,12 +170,13 @@ return binance(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( CoinGeckoOhlc value)?  coingecko,TResult? Function( BinanceOhlc value)?  binance,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( CoinGeckoOhlc value)?  coingecko,TResult? Function( BinanceOhlc value)?  binance,TResult? Function( CoinPaprikaOhlc value)?  coinpaprika,}){
 final _that = this;
 switch (_that) {
 case CoinGeckoOhlc() when coingecko != null:
 return coingecko(_that);case BinanceOhlc() when binance != null:
-return binance(_that);case _:
+return binance(_that);case CoinPaprikaOhlc() when coinpaprika != null:
+return coinpaprika(_that);case _:
   return null;
 
 }
@@ -182,11 +193,12 @@ return binance(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( int timestamp, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close)?  coingecko,TResult Function( int openTime, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close,  int closeTime, @DecimalConverter()  Decimal? volume, @DecimalConverter()  Decimal? quoteAssetVolume,  int? numberOfTrades, @DecimalConverter()  Decimal? takerBuyBaseAssetVolume, @DecimalConverter()  Decimal? takerBuyQuoteAssetVolume)?  binance,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( int timestamp, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close)?  coingecko,TResult Function( int openTime, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close,  int closeTime, @DecimalConverter()  Decimal? volume, @DecimalConverter()  Decimal? quoteAssetVolume,  int? numberOfTrades, @DecimalConverter()  Decimal? takerBuyBaseAssetVolume, @DecimalConverter()  Decimal? takerBuyQuoteAssetVolume)?  binance,TResult Function( int timeOpen,  int timeClose, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close, @DecimalConverter()  Decimal? volume, @DecimalConverter()  Decimal? marketCap)?  coinpaprika,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case CoinGeckoOhlc() when coingecko != null:
 return coingecko(_that.timestamp,_that.open,_that.high,_that.low,_that.close);case BinanceOhlc() when binance != null:
-return binance(_that.openTime,_that.open,_that.high,_that.low,_that.close,_that.closeTime,_that.volume,_that.quoteAssetVolume,_that.numberOfTrades,_that.takerBuyBaseAssetVolume,_that.takerBuyQuoteAssetVolume);case _:
+return binance(_that.openTime,_that.open,_that.high,_that.low,_that.close,_that.closeTime,_that.volume,_that.quoteAssetVolume,_that.numberOfTrades,_that.takerBuyBaseAssetVolume,_that.takerBuyQuoteAssetVolume);case CoinPaprikaOhlc() when coinpaprika != null:
+return coinpaprika(_that.timeOpen,_that.timeClose,_that.open,_that.high,_that.low,_that.close,_that.volume,_that.marketCap);case _:
   return orElse();
 
 }
@@ -204,11 +216,12 @@ return binance(_that.openTime,_that.open,_that.high,_that.low,_that.close,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( int timestamp, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close)  coingecko,required TResult Function( int openTime, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close,  int closeTime, @DecimalConverter()  Decimal? volume, @DecimalConverter()  Decimal? quoteAssetVolume,  int? numberOfTrades, @DecimalConverter()  Decimal? takerBuyBaseAssetVolume, @DecimalConverter()  Decimal? takerBuyQuoteAssetVolume)  binance,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( int timestamp, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close)  coingecko,required TResult Function( int openTime, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close,  int closeTime, @DecimalConverter()  Decimal? volume, @DecimalConverter()  Decimal? quoteAssetVolume,  int? numberOfTrades, @DecimalConverter()  Decimal? takerBuyBaseAssetVolume, @DecimalConverter()  Decimal? takerBuyQuoteAssetVolume)  binance,required TResult Function( int timeOpen,  int timeClose, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close, @DecimalConverter()  Decimal? volume, @DecimalConverter()  Decimal? marketCap)  coinpaprika,}) {final _that = this;
 switch (_that) {
 case CoinGeckoOhlc():
 return coingecko(_that.timestamp,_that.open,_that.high,_that.low,_that.close);case BinanceOhlc():
-return binance(_that.openTime,_that.open,_that.high,_that.low,_that.close,_that.closeTime,_that.volume,_that.quoteAssetVolume,_that.numberOfTrades,_that.takerBuyBaseAssetVolume,_that.takerBuyQuoteAssetVolume);case _:
+return binance(_that.openTime,_that.open,_that.high,_that.low,_that.close,_that.closeTime,_that.volume,_that.quoteAssetVolume,_that.numberOfTrades,_that.takerBuyBaseAssetVolume,_that.takerBuyQuoteAssetVolume);case CoinPaprikaOhlc():
+return coinpaprika(_that.timeOpen,_that.timeClose,_that.open,_that.high,_that.low,_that.close,_that.volume,_that.marketCap);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -225,11 +238,12 @@ return binance(_that.openTime,_that.open,_that.high,_that.low,_that.close,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( int timestamp, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close)?  coingecko,TResult? Function( int openTime, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close,  int closeTime, @DecimalConverter()  Decimal? volume, @DecimalConverter()  Decimal? quoteAssetVolume,  int? numberOfTrades, @DecimalConverter()  Decimal? takerBuyBaseAssetVolume, @DecimalConverter()  Decimal? takerBuyQuoteAssetVolume)?  binance,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( int timestamp, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close)?  coingecko,TResult? Function( int openTime, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close,  int closeTime, @DecimalConverter()  Decimal? volume, @DecimalConverter()  Decimal? quoteAssetVolume,  int? numberOfTrades, @DecimalConverter()  Decimal? takerBuyBaseAssetVolume, @DecimalConverter()  Decimal? takerBuyQuoteAssetVolume)?  binance,TResult? Function( int timeOpen,  int timeClose, @DecimalConverter()  Decimal open, @DecimalConverter()  Decimal high, @DecimalConverter()  Decimal low, @DecimalConverter()  Decimal close, @DecimalConverter()  Decimal? volume, @DecimalConverter()  Decimal? marketCap)?  coinpaprika,}) {final _that = this;
 switch (_that) {
 case CoinGeckoOhlc() when coingecko != null:
 return coingecko(_that.timestamp,_that.open,_that.high,_that.low,_that.close);case BinanceOhlc() when binance != null:
-return binance(_that.openTime,_that.open,_that.high,_that.low,_that.close,_that.closeTime,_that.volume,_that.quoteAssetVolume,_that.numberOfTrades,_that.takerBuyBaseAssetVolume,_that.takerBuyQuoteAssetVolume);case _:
+return binance(_that.openTime,_that.open,_that.high,_that.low,_that.close,_that.closeTime,_that.volume,_that.quoteAssetVolume,_that.numberOfTrades,_that.takerBuyBaseAssetVolume,_that.takerBuyQuoteAssetVolume);case CoinPaprikaOhlc() when coinpaprika != null:
+return coinpaprika(_that.timeOpen,_that.timeClose,_that.open,_that.high,_that.low,_that.close,_that.volume,_that.marketCap);case _:
   return null;
 
 }
@@ -244,10 +258,15 @@ class CoinGeckoOhlc implements Ohlc {
   const CoinGeckoOhlc({required this.timestamp, @DecimalConverter() required this.open, @DecimalConverter() required this.high, @DecimalConverter() required this.low, @DecimalConverter() required this.close, final  String? $type}): $type = $type ?? 'coingecko';
   factory CoinGeckoOhlc.fromJson(Map<String, dynamic> json) => _$CoinGeckoOhlcFromJson(json);
 
+/// Unix timestamp in milliseconds for this data point
  final  int timestamp;
+/// Opening price as a [Decimal] for precision
 @override@DecimalConverter() final  Decimal open;
+/// Highest price reached during this period as a [Decimal]
 @override@DecimalConverter() final  Decimal high;
+/// Lowest price reached during this period as a [Decimal]
 @override@DecimalConverter() final  Decimal low;
+/// Closing price as a [Decimal] for precision
 @override@DecimalConverter() final  Decimal close;
 
 @JsonKey(name: 'runtimeType')
@@ -325,16 +344,27 @@ class BinanceOhlc implements Ohlc {
   const BinanceOhlc({required this.openTime, @DecimalConverter() required this.open, @DecimalConverter() required this.high, @DecimalConverter() required this.low, @DecimalConverter() required this.close, required this.closeTime, @DecimalConverter() this.volume, @DecimalConverter() this.quoteAssetVolume, this.numberOfTrades, @DecimalConverter() this.takerBuyBaseAssetVolume, @DecimalConverter() this.takerBuyQuoteAssetVolume, final  String? $type}): $type = $type ?? 'binance';
   factory BinanceOhlc.fromJson(Map<String, dynamic> json) => _$BinanceOhlcFromJson(json);
 
+/// Unix timestamp in milliseconds when this kline opened
  final  int openTime;
+/// Opening price as a [Decimal] for precision
 @override@DecimalConverter() final  Decimal open;
+/// Highest price reached during this kline as a [Decimal]
 @override@DecimalConverter() final  Decimal high;
+/// Lowest price reached during this kline as a [Decimal]
 @override@DecimalConverter() final  Decimal low;
+/// Closing price as a [Decimal] for precision
 @override@DecimalConverter() final  Decimal close;
+/// Unix timestamp in milliseconds when this kline closed
  final  int closeTime;
+/// Trading volume during this kline as a [Decimal]
 @DecimalConverter() final  Decimal? volume;
+/// Quote asset volume during this kline as a [Decimal]
 @DecimalConverter() final  Decimal? quoteAssetVolume;
+/// Number of trades executed during this kline
  final  int? numberOfTrades;
+/// Volume of the asset bought by takers during this kline as a [Decimal]
 @DecimalConverter() final  Decimal? takerBuyBaseAssetVolume;
+/// Quote asset volume of the asset bought by takers during this kline as a [Decimal]
 @DecimalConverter() final  Decimal? takerBuyQuoteAssetVolume;
 
 @JsonKey(name: 'runtimeType')
@@ -404,6 +434,101 @@ as Decimal?,quoteAssetVolume: freezed == quoteAssetVolume ? _self.quoteAssetVolu
 as Decimal?,numberOfTrades: freezed == numberOfTrades ? _self.numberOfTrades : numberOfTrades // ignore: cast_nullable_to_non_nullable
 as int?,takerBuyBaseAssetVolume: freezed == takerBuyBaseAssetVolume ? _self.takerBuyBaseAssetVolume : takerBuyBaseAssetVolume // ignore: cast_nullable_to_non_nullable
 as Decimal?,takerBuyQuoteAssetVolume: freezed == takerBuyQuoteAssetVolume ? _self.takerBuyQuoteAssetVolume : takerBuyQuoteAssetVolume // ignore: cast_nullable_to_non_nullable
+as Decimal?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+@JsonSerializable(fieldRename: FieldRename.snake)
+class CoinPaprikaOhlc implements Ohlc {
+  const CoinPaprikaOhlc({required this.timeOpen, required this.timeClose, @DecimalConverter() required this.open, @DecimalConverter() required this.high, @DecimalConverter() required this.low, @DecimalConverter() required this.close, @DecimalConverter() this.volume, @DecimalConverter() this.marketCap, final  String? $type}): $type = $type ?? 'coinpaprika';
+  factory CoinPaprikaOhlc.fromJson(Map<String, dynamic> json) => _$CoinPaprikaOhlcFromJson(json);
+
+/// Unix timestamp in milliseconds when this period opened
+ final  int timeOpen;
+/// Unix timestamp in milliseconds when this period closed
+ final  int timeClose;
+/// Opening price as a [Decimal] for precision
+@override@DecimalConverter() final  Decimal open;
+/// Highest price reached during this period as a [Decimal]
+@override@DecimalConverter() final  Decimal high;
+/// Lowest price reached during this period as a [Decimal]
+@override@DecimalConverter() final  Decimal low;
+/// Closing price as a [Decimal] for precision
+@override@DecimalConverter() final  Decimal close;
+/// Trading volume during this period as a [Decimal]
+@DecimalConverter() final  Decimal? volume;
+/// Market capitalization as a [Decimal]
+@DecimalConverter() final  Decimal? marketCap;
+
+@JsonKey(name: 'runtimeType')
+final String $type;
+
+
+/// Create a copy of Ohlc
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CoinPaprikaOhlcCopyWith<CoinPaprikaOhlc> get copyWith => _$CoinPaprikaOhlcCopyWithImpl<CoinPaprikaOhlc>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CoinPaprikaOhlcToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CoinPaprikaOhlc&&(identical(other.timeOpen, timeOpen) || other.timeOpen == timeOpen)&&(identical(other.timeClose, timeClose) || other.timeClose == timeClose)&&(identical(other.open, open) || other.open == open)&&(identical(other.high, high) || other.high == high)&&(identical(other.low, low) || other.low == low)&&(identical(other.close, close) || other.close == close)&&(identical(other.volume, volume) || other.volume == volume)&&(identical(other.marketCap, marketCap) || other.marketCap == marketCap));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,timeOpen,timeClose,open,high,low,close,volume,marketCap);
+
+@override
+String toString() {
+  return 'Ohlc.coinpaprika(timeOpen: $timeOpen, timeClose: $timeClose, open: $open, high: $high, low: $low, close: $close, volume: $volume, marketCap: $marketCap)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CoinPaprikaOhlcCopyWith<$Res> implements $OhlcCopyWith<$Res> {
+  factory $CoinPaprikaOhlcCopyWith(CoinPaprikaOhlc value, $Res Function(CoinPaprikaOhlc) _then) = _$CoinPaprikaOhlcCopyWithImpl;
+@override @useResult
+$Res call({
+ int timeOpen, int timeClose,@DecimalConverter() Decimal open,@DecimalConverter() Decimal high,@DecimalConverter() Decimal low,@DecimalConverter() Decimal close,@DecimalConverter() Decimal? volume,@DecimalConverter() Decimal? marketCap
+});
+
+
+
+
+}
+/// @nodoc
+class _$CoinPaprikaOhlcCopyWithImpl<$Res>
+    implements $CoinPaprikaOhlcCopyWith<$Res> {
+  _$CoinPaprikaOhlcCopyWithImpl(this._self, this._then);
+
+  final CoinPaprikaOhlc _self;
+  final $Res Function(CoinPaprikaOhlc) _then;
+
+/// Create a copy of Ohlc
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? timeOpen = null,Object? timeClose = null,Object? open = null,Object? high = null,Object? low = null,Object? close = null,Object? volume = freezed,Object? marketCap = freezed,}) {
+  return _then(CoinPaprikaOhlc(
+timeOpen: null == timeOpen ? _self.timeOpen : timeOpen // ignore: cast_nullable_to_non_nullable
+as int,timeClose: null == timeClose ? _self.timeClose : timeClose // ignore: cast_nullable_to_non_nullable
+as int,open: null == open ? _self.open : open // ignore: cast_nullable_to_non_nullable
+as Decimal,high: null == high ? _self.high : high // ignore: cast_nullable_to_non_nullable
+as Decimal,low: null == low ? _self.low : low // ignore: cast_nullable_to_non_nullable
+as Decimal,close: null == close ? _self.close : close // ignore: cast_nullable_to_non_nullable
+as Decimal,volume: freezed == volume ? _self.volume : volume // ignore: cast_nullable_to_non_nullable
+as Decimal?,marketCap: freezed == marketCap ? _self.marketCap : marketCap // ignore: cast_nullable_to_non_nullable
 as Decimal?,
   ));
 }

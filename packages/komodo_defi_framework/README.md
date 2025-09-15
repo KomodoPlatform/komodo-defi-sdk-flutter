@@ -88,7 +88,7 @@ flutter:
     - assets/config/
     - assets/coin_icons/png/
     - app_build/build_config.json
-    - path: assets/.transformer_invoker
+    - path: assets/transformer_invoker.txt
       transformers:
         - package: komodo_wallet_build_transformer
           args:

@@ -49,35 +49,34 @@ class ProjectStats {
 /// Parses command-line arguments and initiates the upgrade process.
 /// Handles errors and displays usage information when needed.
 void main(List<String> arguments) async {
-  final parser =
-      ArgParser()
-        ..addOption(
-          'dir',
-          abbr: 'd',
-          help: 'Directory path to search for Flutter projects',
-          defaultsTo: Directory.current.path,
-        )
-        ..addFlag(
-          'major-versions',
-          abbr: 'm',
-          help: 'Allow major version upgrades',
-          defaultsTo: false,
-          negatable: false,
-        )
-        ..addFlag(
-          'unlock-transitive',
-          abbr: 't',
-          help:
-              'Allow upgrading transitive dependencies beyond direct dependency constraints',
-          defaultsTo: false,
-          negatable: false,
-        )
-        ..addFlag(
-          'help',
-          abbr: 'h',
-          help: 'Show this help message',
-          negatable: false,
-        );
+  final parser = ArgParser()
+    ..addOption(
+      'dir',
+      abbr: 'd',
+      help: 'Directory path to search for Flutter projects',
+      defaultsTo: Directory.current.path,
+    )
+    ..addFlag(
+      'major-versions',
+      abbr: 'm',
+      help: 'Allow major version upgrades',
+      defaultsTo: false,
+      negatable: false,
+    )
+    ..addFlag(
+      'unlock-transitive',
+      abbr: 't',
+      help:
+          'Allow upgrading transitive dependencies beyond direct dependency constraints',
+      defaultsTo: false,
+      negatable: false,
+    )
+    ..addFlag(
+      'help',
+      abbr: 'h',
+      help: 'Show this help message',
+      negatable: false,
+    );
 
   try {
     final results = parser.parse(arguments);

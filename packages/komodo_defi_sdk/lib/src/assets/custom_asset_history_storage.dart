@@ -11,7 +11,12 @@ class CustomAssetHistoryStorage {
   /// Store custom tokens used by a wallet
   Future<void> storeWalletAssets(WalletId walletId, Set<Asset> assets) async {
     final key = _getStorageKey(walletId);
-    final assetsJsonArray = assets.map((asset) => asset.toJson()).toList();
+    // Use the protocol config instead of asset toJson due to missing fields
+    // from the incomplete Asset.toJson implementation. Similar to the
+    // komodo_coin_updates/hive/hive_adapters.dart issue.
+    final assetsJsonArray = assets
+        .map((asset) => asset.protocol.config)
+        .toList();
     await _storage.write(key: key, value: assetsJsonArray.toJsonString());
   }
 

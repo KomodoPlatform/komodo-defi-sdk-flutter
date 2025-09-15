@@ -50,6 +50,9 @@ void main() {
         ],
       );
       when(
+        () => fallback.supports(any(), any(), any()),
+      ).thenAnswer((_) async => true);
+      when(
         () => fallback.getCoinFiatPrice(asset('BTC')),
       ).thenAnswer((_) async => Decimal.parse('3.0'));
 

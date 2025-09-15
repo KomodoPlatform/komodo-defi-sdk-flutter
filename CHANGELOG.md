@@ -3,6 +3,198 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-08-25
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`komodo_defi_types` - `v0.3.2+1`](#komodo_defi_types---v0321)
+ - [`komodo_wallet_cli` - `v0.4.0+1`](#komodo_wallet_cli---v0401)
+ - [`komodo_ui` - `v0.3.0+3`](#komodo_ui---v0303)
+ - [`komodo_defi_sdk` - `v0.4.0+3`](#komodo_defi_sdk---v0403)
+ - [`komodo_defi_rpc_methods` - `v0.3.1+1`](#komodo_defi_rpc_methods---v0311)
+ - [`komodo_defi_local_auth` - `v0.3.1+2`](#komodo_defi_local_auth---v0312)
+ - [`komodo_defi_framework` - `v0.3.1+2`](#komodo_defi_framework---v0312)
+ - [`komodo_coins` - `v0.3.1+2`](#komodo_coins---v0312)
+ - [`komodo_coin_updates` - `v1.1.1`](#komodo_coin_updates---v111)
+ - [`komodo_cex_market_data` - `v0.0.3+1`](#komodo_cex_market_data---v0031)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `komodo_ui` - `v0.3.0+3`
+ - `komodo_defi_sdk` - `v0.4.0+3`
+ - `komodo_defi_rpc_methods` - `v0.3.1+1`
+ - `komodo_defi_local_auth` - `v0.3.1+2`
+ - `komodo_defi_framework` - `v0.3.1+2`
+ - `komodo_coins` - `v0.3.1+2`
+ - `komodo_coin_updates` - `v1.1.1`
+ - `komodo_cex_market_data` - `v0.0.3+1`
+
+---
+
+#### `komodo_defi_types` - `v0.3.2+1`
+
+ - **DOCS**(komodo_defi_types): update CHANGELOG for 0.3.2 with pub submission fix.
+
+#### `komodo_wallet_cli` - `v0.4.0+1`
+
+ - **REFACTOR**(komodo_wallet_cli): replace print() with stdout/stderr and improve logging.
+
+
+## 2025-08-25
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`komodo_coins` - `v0.3.1+1`](#komodo_coins---v0311)
+ - [`komodo_defi_sdk` - `v0.4.0+2`](#komodo_defi_sdk---v0402)
+ - [`komodo_defi_framework` - `v0.3.1+1`](#komodo_defi_framework---v0311)
+ - [`komodo_defi_local_auth` - `v0.3.1+1`](#komodo_defi_local_auth---v0311)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `komodo_defi_sdk` - `v0.4.0+2`
+ - `komodo_defi_framework` - `v0.3.1+1`
+ - `komodo_defi_local_auth` - `v0.3.1+1`
+
+---
+
+#### `komodo_coins` - `v0.3.1+1`
+
+ - **FIX**: add missing deps.
+
+
+## 2025-08-25
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`komodo_defi_sdk` - `v0.4.0+1`](#komodo_defi_sdk---v0401)
+
+---
+
+#### `komodo_defi_sdk` - `v0.4.0+1`
+
+ - **FIX**: add missing dependency.
+
+
+## 2025-08-25
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - [`dragon_charts_flutter` - `v0.1.1-dev.3`](#dragon_charts_flutter---v011-dev3)
+ - [`dragon_logs` - `v2.0.0`](#dragon_logs---v200)
+ - [`komodo_defi_sdk` - `v0.4.0`](#komodo_defi_sdk---v040)
+ - [`komodo_wallet_build_transformer` - `v0.4.0`](#komodo_wallet_build_transformer---v040)
+ - [`komodo_wallet_cli` - `v0.4.0`](#komodo_wallet_cli---v040)
+
+Packages with other changes:
+
+ - [`komodo_cex_market_data` - `v0.0.3`](#komodo_cex_market_data---v003)
+ - [`komodo_coin_updates` - `v1.1.0`](#komodo_coin_updates---v110)
+ - [`komodo_coins` - `v0.3.1`](#komodo_coins---v031)
+ - [`komodo_defi_framework` - `v0.3.1`](#komodo_defi_framework---v031)
+ - [`komodo_defi_local_auth` - `v0.3.1`](#komodo_defi_local_auth---v031)
+ - [`komodo_defi_rpc_methods` - `v0.3.1`](#komodo_defi_rpc_methods---v031)
+ - [`komodo_defi_types` - `v0.3.1`](#komodo_defi_types---v031)
+ - [`komodo_ui` - `v0.3.0+2`](#komodo_ui---v0302)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `komodo_ui` - `v0.3.0+2`
+
+---
+
+#### `dragon_charts_flutter` - `v0.1.1-dev.3`
+
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
+#### `dragon_logs` - `v2.0.0`
+
+ - **FIX**(deps): misc deps fixes.
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
+#### `komodo_defi_sdk` - `v0.4.0`
+
+ - **FIX**(cex-market-data): coingecko ohlc parsing (#203).
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
+#### `komodo_wallet_build_transformer` - `v0.4.0`
+
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
+#### `komodo_wallet_cli` - `v0.4.0`
+
+ - **FIX**(pub): add non-generic description.
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
+#### `komodo_cex_market_data` - `v0.0.3`
+
+ - **FIX**(cex-market-data): coingecko ohlc parsing (#203).
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
+#### `komodo_coin_updates` - `v1.1.0`
+
+ - **FIX**(deps): misc deps fixes.
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
+#### `komodo_coins` - `v0.3.1`
+
+ - **FIX**: pub submission errors.
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
+#### `komodo_defi_framework` - `v0.3.1`
+
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
+#### `komodo_defi_local_auth` - `v0.3.1`
+
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
+#### `komodo_defi_rpc_methods` - `v0.3.1`
+
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
+#### `komodo_defi_types` - `v0.3.1`
+
+ - **FIX**: pub submission errors.
+ - **FIX**(deps): resolve deps error.
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
+
 ## 2025-08-21
 
 ### Changes

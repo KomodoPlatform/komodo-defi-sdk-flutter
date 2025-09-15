@@ -1,3 +1,11 @@
+## 0.3.1+1
+
+ - Update a dependency to the latest release.
+
+## 0.3.1
+
+ - **FEAT**(coin-updates): integrate komodo_coin_updates into komodo_coins (#190).
+
 ## 0.3.0+1
 
 > Note: This release has breaking changes.

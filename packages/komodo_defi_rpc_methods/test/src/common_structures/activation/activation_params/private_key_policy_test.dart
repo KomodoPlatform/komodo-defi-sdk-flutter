@@ -81,40 +81,40 @@ void main() {
 
     group('handles JSON object inputs', () {
       test('parses context_priv_key JSON object', () {
-        final json = {'type': 'context_priv_key'};
+        final json = {'type': 'ContextPrivKey'};
         final result = PrivateKeyPolicy.fromLegacyJson(json);
         expect(result, const PrivateKeyPolicy.contextPrivKey());
       });
 
       test('parses trezor JSON object', () {
-        final json = {'type': 'trezor'};
+        final json = {'type': 'Trezor'};
         final result = PrivateKeyPolicy.fromLegacyJson(json);
         expect(result, const PrivateKeyPolicy.trezor());
       });
 
       test('parses metamask JSON object', () {
-        final json = {'type': 'metamask'};
+        final json = {'type': 'Metamask'};
         final result = PrivateKeyPolicy.fromLegacyJson(json);
         expect(result, const PrivateKeyPolicy.metamask());
       });
 
       test('parses wallet_connect JSON object without session_topic', () {
-        final json = {'type': 'wallet_connect', 'session_topic': ''};
+        final json = {'type': 'WalletConnect', 'session_topic': ''};
         final result = PrivateKeyPolicy.fromLegacyJson(json);
         expect(result, isA<PrivateKeyPolicy>());
         expect(result.toString(), contains('walletConnect'));
-        expect(result.toJson()['type'], 'wallet_connect');
+        expect(result.toJson()['type'], 'WalletConnect');
       });
 
       test('parses wallet_connect JSON object with session_topic', () {
         final json = {
-          'type': 'wallet_connect',
+          'type': 'WalletConnect',
           'session_topic': 'test_session_topic_123',
         };
         final result = PrivateKeyPolicy.fromLegacyJson(json);
         expect(result, isA<PrivateKeyPolicy>());
         expect(result.toString(), contains('walletConnect'));
-        expect(result.toJson()['type'], 'wallet_connect');
+        expect(result.toJson()['type'], 'WalletConnect');
         expect(result.toJson()['session_topic'], 'test_session_topic_123');
       });
 
@@ -231,11 +231,11 @@ void main() {
     group('integration with fromJson', () {
       test('validates that JSON objects are passed to fromJson correctly', () {
         final validJsonCases = [
-          {'type': 'context_priv_key'},
-          {'type': 'trezor'},
-          {'type': 'metamask'},
-          {'type': 'wallet_connect', 'session_topic': ''},
-          {'type': 'wallet_connect', 'session_topic': 'test_topic'},
+          {'type': 'ContextPrivKey'},
+          {'type': 'Trezor'},
+          {'type': 'Metamask'},
+          {'type': 'WalletConnect', 'session_topic': ''},
+          {'type': 'WalletConnect', 'session_topic': 'test_topic'},
         ];
 
         for (final json in validJsonCases) {
@@ -260,11 +260,11 @@ void main() {
           'metamask',
           'WalletConnect',
           'wallet_connect',
-          {'type': 'context_priv_key'},
-          {'type': 'trezor'},
-          {'type': 'metamask'},
-          {'type': 'wallet_connect', 'session_topic': ''},
-          {'type': 'wallet_connect', 'session_topic': 'test'},
+          {'type': 'ContextPrivKey'},
+          {'type': 'Trezor'},
+          {'type': 'Metamask'},
+          {'type': 'WalletConnect', 'session_topic': ''},
+          {'type': 'WalletConnect', 'session_topic': 'test'},
         ];
 
         for (final testCase in testCases) {

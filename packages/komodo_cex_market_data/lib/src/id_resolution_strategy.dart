@@ -128,6 +128,59 @@ class CoinGeckoIdResolutionStrategy implements IdResolutionStrategy {
   }
 }
 
+/// CoinPaprika-specific ID resolution strategy
+class CoinPaprikaIdResolutionStrategy implements IdResolutionStrategy {
+  static final Logger _logger = Logger('CoinPaprikaIdResolutionStrategy');
+
+  @override
+  String get platformName => 'CoinPaprika';
+
+  /// Only uses the coinPaprikaId, as CoinPaprika API requires specific coin IDs.
+  /// If coinPaprikaId is null, then the CoinPaprika API cannot be used and an
+  /// error is thrown in [resolveTradingSymbol].
+  @override
+  List<String> getIdPriority(AssetId assetId) {
+    final coinPaprikaId = assetId.symbol.coinPaprikaId;
+
+    if (coinPaprikaId == null || coinPaprikaId.isEmpty) {
+      _logger.warning(
+        'Missing coinPaprikaId for asset ${assetId.symbol.configSymbol}. '
+        'CoinPaprika API cannot be used for this asset.',
+      );
+    }
+
+    return [
+      coinPaprikaId,
+    ].where((id) => id != null && id.isNotEmpty).cast<String>().toList();
+  }
+
+  @override
+  bool canResolve(AssetId assetId) {
+    return getIdPriority(assetId).isNotEmpty;
+  }
+
+  @override
+  String resolveTradingSymbol(AssetId assetId) {
+    final ids = getIdPriority(assetId);
+    if (ids.isEmpty) {
+      // Thrown when the asset lacks a CoinPaprika identifier and no suitable
+      // fallback exists in [getIdPriority]. Callers should catch this in
+      // feature-detection paths (e.g., supports()).
+      throw ArgumentError(
+        'Cannot resolve trading symbol for asset ${assetId.id} on $platformName',
+      );
+    }
+
+    final resolvedSymbol = ids.first;
+    _logger.finest(
+      'Resolved trading symbol for ${assetId.symbol.configSymbol}: $resolvedSymbol '
+      '(priority: ${ids.join(', ')})',
+    );
+
+    return resolvedSymbol;
+  }
+}
+
 /// Komodo-specific ID resolution strategy
 class KomodoIdResolutionStrategy implements IdResolutionStrategy {
   @override

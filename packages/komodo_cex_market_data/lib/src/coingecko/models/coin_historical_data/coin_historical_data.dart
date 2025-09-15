@@ -62,16 +62,16 @@ class CoinHistoricalData extends Equatable {
   final PublicInterestStats? publicInterestStats;
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'symbol': symbol,
-        'name': name,
-        'localization': localization?.toJson(),
-        'image': image?.toJson(),
-        'market_data': marketData?.toJson(),
-        'community_data': communityData?.toJson(),
-        'developer_data': developerData?.toJson(),
-        'public_interest_stats': publicInterestStats?.toJson(),
-      };
+    'id': id,
+    'symbol': symbol,
+    'name': name,
+    'localization': localization?.toJson(),
+    'image': image?.toJson(),
+    'market_data': marketData?.toJson(),
+    'community_data': communityData?.toJson(),
+    'developer_data': developerData?.toJson(),
+    'public_interest_stats': publicInterestStats?.toJson(),
+  };
 
   CoinHistoricalData copyWith({
     String? id,

@@ -1,3 +1,9 @@
+## 0.1.1-dev.3
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **CHORE**: unify Dart SDK (^3.9.0) and Flutter (>=3.35.0 <3.36.0) constraints across workspace.
+
 ## 0.1.1-dev.2
 
 > Note: This release has breaking changes.

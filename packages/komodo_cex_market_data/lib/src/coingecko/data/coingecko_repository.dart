@@ -1,30 +1,32 @@
 import 'package:async/async.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
-import 'package:komodo_cex_market_data/src/coingecko/coingecko.dart';
+import 'package:komodo_cex_market_data/src/coingecko/_coingecko_index.dart';
 import 'package:komodo_cex_market_data/src/coingecko/models/coin_historical_data/coin_historical_data.dart';
 import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
-import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/models/_models_index.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// The number of seconds in a day.
 const int secondsInDay = 86400;
 
-/// The maximum number of days that CoinGecko API supports for historical data.
-const int maxCoinGeckoDays = 365;
-
 /// A repository class for interacting with the CoinGecko API.
 class CoinGeckoRepository implements CexRepository {
   /// Creates a new instance of [CoinGeckoRepository].
   CoinGeckoRepository({
     required this.coinGeckoProvider,
+    this.apiPlan = const CoingeckoApiPlan.demo(),
     bool enableMemoization = true,
   }) : _idResolutionStrategy = CoinGeckoIdResolutionStrategy(),
        _enableMemoization = enableMemoization;
 
   /// The CoinGecko provider to use for fetching data.
   final ICoinGeckoProvider coinGeckoProvider;
+
+  /// The API plan defining rate limits and historical data access.
+  final CoingeckoApiPlan apiPlan;
+
   final IdResolutionStrategy _idResolutionStrategy;
   final bool _enableMemoization;
 
@@ -59,19 +61,16 @@ class CoinGeckoRepository implements CexRepository {
   /// Internal method to fetch coin list data from the API.
   Future<List<CexCoin>> _fetchCoinListInternal() async {
     final coins = await coinGeckoProvider.fetchCoinList();
-    final supportedCurrencies =
-        await coinGeckoProvider.fetchSupportedVsCurrencies();
+    final supportedCurrencies = await coinGeckoProvider
+        .fetchSupportedVsCurrencies();
 
-    final result =
-        coins
-            .map(
-              (CexCoin e) =>
-                  e.copyWith(currencies: supportedCurrencies.toSet()),
-            )
-            .toSet();
+    final result = coins
+        .map((CexCoin e) => e.copyWith(currencies: supportedCurrencies.toSet()))
+        .toSet();
 
-    _cachedFiatCurrencies =
-        supportedCurrencies.map((s) => s.toUpperCase()).toSet();
+    _cachedFiatCurrencies = supportedCurrencies
+        .map((s) => s.toUpperCase())
+        .toSet();
 
     return result.toList();
   }
@@ -89,13 +88,21 @@ class CoinGeckoRepository implements CexRepository {
     if (startAt != null && endAt != null) {
       final timeDelta = endAt.difference(startAt);
       days = (timeDelta.inSeconds.toDouble() / secondsInDay).ceil();
+
+      // Ensure we don't request 0 days
+      if (days <= 0) {
+        days = 1;
+      }
     }
 
     // Use the same ticker resolution as other methods
     final tradingSymbol = resolveTradingSymbol(assetId);
 
-    // If the request is within the CoinGecko limit, make a single request
-    if (days <= maxCoinGeckoDays) {
+    // Get the maximum days allowed by the current API plan for daily historical data
+    final maxDaysAllowed = _getMaxDaysForDailyData();
+
+    // If the request is within the API plan limit, make a single request
+    if (days <= maxDaysAllowed) {
       return coinGeckoProvider.fetchCoinOhlc(
         tradingSymbol,
         quoteCurrency.coinGeckoId,
@@ -106,18 +113,16 @@ class CoinGeckoRepository implements CexRepository {
     // If the request exceeds the limit, we need startAt and endAt to split requests
     if (startAt == null || endAt == null) {
       throw ArgumentError(
-        'startAt and endAt must be provided for requests exceeding $maxCoinGeckoDays days',
+        'startAt and endAt must be provided for requests exceeding $maxDaysAllowed days',
       );
     }
 
-    // Split the request into multiple sequential requests
+    // Split the request into multiple sequential requests to stay within free tier limits
     final allOhlcData = <Ohlc>[];
     var currentStart = startAt;
 
     while (currentStart.isBefore(endAt)) {
-      final currentEnd = currentStart.add(
-        const Duration(days: maxCoinGeckoDays),
-      );
+      final currentEnd = currentStart.add(Duration(days: maxDaysAllowed));
       final batchEndDate = currentEnd.isAfter(endAt) ? endAt : currentEnd;
 
       final batchDays = batchEndDate.difference(currentStart).inDays;
@@ -131,6 +136,11 @@ class CoinGeckoRepository implements CexRepository {
 
       allOhlcData.addAll(batchOhlc.ohlc);
       currentStart = batchEndDate;
+
+      // Add a small delay between batch requests to avoid rate limiting
+      if (currentStart.isBefore(endAt)) {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
     }
 
     return CoinOhlc(ohlc: allOhlcData);
@@ -170,14 +180,14 @@ class CoinGeckoRepository implements CexRepository {
     final currentPriceMap = coinPrice.marketData?.currentPrice?.toJson();
     if (currentPriceMap == null) {
       throw Exception(
-        'Market data or current price not found in response: $coinPrice',
+        'Market data or current price not found in historical data response',
       );
     }
 
     final price = currentPriceMap[mappedFiatId];
     if (price == null) {
       throw Exception(
-        'Price data for $mappedFiatId not found in response: $coinPrice',
+        'Price data for $mappedFiatId not found in historical data response',
       );
     }
     return Decimal.parse(price.toString());
@@ -208,13 +218,13 @@ class CoinGeckoRepository implements CexRepository {
 
     final result = <DateTime, Decimal>{};
 
-    // Process in batches to avoid overwhelming the API
-    for (var i = 0; i <= daysDiff; i += maxCoinGeckoDays) {
+    // Process in batches to avoid overwhelming the API and stay within API plan limits
+    final maxDaysAllowed = _getMaxDaysForDailyData();
+    for (var i = 0; i <= daysDiff; i += maxDaysAllowed) {
       final batchStartDate = startDate.add(Duration(days: i));
-      final batchEndDate =
-          i + maxCoinGeckoDays > daysDiff
-              ? endDate
-              : startDate.add(Duration(days: i + maxCoinGeckoDays));
+      final batchEndDate = i + maxDaysAllowed > daysDiff
+          ? endDate
+          : startDate.add(Duration(days: i + maxDaysAllowed));
 
       final ohlcData = await getCoinOhlc(
         assetId,
@@ -238,6 +248,11 @@ class CoinGeckoRepository implements CexRepository {
       });
 
       result.addAll(batchResult);
+
+      // Add a small delay between batch requests to avoid rate limiting
+      if (i + maxDaysAllowed <= daysDiff) {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
     }
 
     return result;
@@ -292,5 +307,23 @@ class CoinGeckoRepository implements CexRepository {
       // If we cannot resolve a trading symbol, treat as unsupported
       return false;
     }
+  }
+
+  /// Gets the maximum number of days allowed for daily historical data requests
+  /// based on the current API plan.
+  int _getMaxDaysForDailyData() {
+    final cutoffDate = apiPlan.getDailyHistoricalDataCutoff();
+    if (cutoffDate == null) {
+      // No cutoff means unlimited access, but we still need to batch requests
+      // Use a reasonable batch size for API efficiency
+      return 365;
+    }
+
+    final now = DateTime.now().toUtc();
+    final daysSinceCutoff = now.difference(cutoffDate).inDays;
+
+    // For demo plan (1 year limit), return 365
+    // For paid plans with cutoff from 2013/2018, return a reasonable batch size
+    return daysSinceCutoff > 365 ? 365 : daysSinceCutoff;
   }
 }
