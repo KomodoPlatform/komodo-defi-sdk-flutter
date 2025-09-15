@@ -24,6 +24,7 @@ Future<void> bootstrap({
   required KomodoDefiSdkConfig config,
   required GetIt container,
   KomodoDefiFramework? kdfFramework,
+  void Function(String)? externalLogger,
 }) async {
   final rpcPassword = await SecureRpcPasswordMixin().ensureRpcPassword();
 
@@ -36,7 +37,7 @@ Future<void> bootstrap({
 
     return KomodoDefiFramework.create(
       hostConfig: resolvedHostConfig,
-      externalLogger: kDebugMode ? print : null,
+      externalLogger: externalLogger ?? (kDebugMode ? print : null),
     );
   });
 
