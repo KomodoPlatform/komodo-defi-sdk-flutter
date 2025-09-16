@@ -209,13 +209,12 @@ class ActivationManager {
 
         final allAssets = [group.primary, ...(group.children?.toList() ?? [])];
 
-        // Notify asset lookup before precaching balances to ensure custom token
-        // is available for balance precaching. Shared activation coordinator
-        // somehow allows a recursive activation from PubkeyManager through
-        // resulting in a hanging activation - neither completer completes, and
-        // neither fails.
+        // Wait for asset refresh to complete before precaching balances to ensure
+        // custom token is available for balance precaching. This prevents race
+        // conditions where balance precaching fails because the custom token
+        // isn't yet available in the asset lookup.
         if (allAssets.any((asset) => asset.protocol.isCustomToken)) {
-          _assetRefreshNotifier.notifyCustomTokensChanged();
+          await _assetRefreshNotifier.notifyAndWaitForCustomTokensRefresh();
         }
 
         for (final asset in allAssets) {

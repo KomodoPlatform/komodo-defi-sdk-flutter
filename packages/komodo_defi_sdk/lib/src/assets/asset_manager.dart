@@ -284,6 +284,16 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
     );
   }
 
+  @override
+  Future<void> notifyAndWaitForCustomTokensRefresh() async {
+    try {
+      await _refreshCustomTokens();
+    } catch (e) {
+      debugPrint('Custom token refresh failed: $e');
+      rethrow;
+    }
+  }
+
   /// Filters custom tokens based on the current asset filtering strategy.
   ///
   /// Custom tokens don't have traditional coin configs, so we create a minimal

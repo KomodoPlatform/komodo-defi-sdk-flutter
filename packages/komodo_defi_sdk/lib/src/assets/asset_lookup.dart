@@ -27,8 +27,10 @@ abstract class IAssetProvider extends IAssetLookup {
 }
 
 /// Interface for notifying about asset changes that require UI refresh
-// ignore: one_member_abstracts
 abstract interface class IAssetRefreshNotifier {
   /// Notifies that custom tokens have changed and should be refreshed
   void notifyCustomTokensChanged();
+
+  /// Notifies that custom tokens have changed and waits for refresh to complete
+  Future<void> notifyAndWaitForCustomTokensRefresh();
 }
