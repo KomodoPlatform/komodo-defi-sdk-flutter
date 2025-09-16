@@ -109,6 +109,8 @@ Future<void> bootstrap({
       container<CustomAssetHistoryStorage>(),
       assetManager,
       balanceManager,
+      // Separate interface used to avoid muddying the IAssetProvider interface
+      assetRefreshNotifier: assetManager,
     );
 
     return activationManager;
@@ -135,8 +137,8 @@ Future<void> bootstrap({
   container.registerSingletonAsync<PubkeyManager>(() async {
     final client = await container.getAsync<ApiClient>();
     final auth = await container.getAsync<KomodoDefiLocalAuth>();
-    final activationCoordinator =
-        await container.getAsync<SharedActivationCoordinator>();
+    final activationCoordinator = await container
+        .getAsync<SharedActivationCoordinator>();
     final pubkeyManager = PubkeyManager(client, auth, activationCoordinator);
 
     // Set the PubkeyManager on BalanceManager now that it's available
@@ -193,8 +195,8 @@ Future<void> bootstrap({
       final auth = await container.getAsync<KomodoDefiLocalAuth>();
       final assetProvider = await container.getAsync<AssetManager>();
       final pubkeys = await container.getAsync<PubkeyManager>();
-      final activationCoordinator =
-          await container.getAsync<SharedActivationCoordinator>();
+      final activationCoordinator = await container
+          .getAsync<SharedActivationCoordinator>();
       return TransactionHistoryManager(
         client,
         auth,
@@ -218,8 +220,8 @@ Future<void> bootstrap({
       final assetProvider = await container.getAsync<AssetManager>();
       final feeManager = await container.getAsync<FeeManager>();
 
-      final activationCoordinator =
-          await container.getAsync<SharedActivationCoordinator>();
+      final activationCoordinator = await container
+          .getAsync<SharedActivationCoordinator>();
       return WithdrawalManager(
         client,
         assetProvider,
@@ -240,8 +242,8 @@ Future<void> bootstrap({
       final client = await container.getAsync<ApiClient>();
       final auth = await container.getAsync<KomodoDefiLocalAuth>();
       final assetProvider = await container.getAsync<AssetManager>();
-      final activationCoordinator =
-          await container.getAsync<SharedActivationCoordinator>();
+      final activationCoordinator = await container
+          .getAsync<SharedActivationCoordinator>();
       return SecurityManager(
         client,
         auth,
