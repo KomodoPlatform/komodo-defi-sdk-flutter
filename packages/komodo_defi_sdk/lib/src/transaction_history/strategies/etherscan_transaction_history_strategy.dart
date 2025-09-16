@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
@@ -257,9 +257,7 @@ class EtherscanProtocolHelper {
       return null;
     }
 
-    // Token-specific URLs are returning 404, so use ETH URL until resolved
-    // or clarified
-    return '$_ethUrl/$tokenContractAddress';
+    return '$baseEndpoint/$tokenContractAddress';
   }
 
   String? _getBaseEndpoint(AssetId id) {
