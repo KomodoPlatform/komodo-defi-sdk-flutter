@@ -335,8 +335,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       config: _config,
       kdfFramework: _kdfFramework,
       container: _container,
-      externalLogger: _onLog,
+      // Let SDK manage onLog subscription itself to avoid duplication
+      externalLogger: null,
     );
+    // Ensure consistent onLog subscription when framework is created by SDK
+    if (_onLog != null && _logSubscription == null) {
+      final framework = _container<KomodoDefiFramework>();
+      _logSubscription = framework.logStream.listen(_onLog!);
+    }
     _isInitialized = true;
   }
 
@@ -389,13 +395,16 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     if (_isDisposed) return;
     _isDisposed = true;
 
+    // Always cancel log subscription even if SDK wasn't initialized
+    await _logSubscription?.cancel();
+    _logSubscription = null;
+
     if (!_isInitialized) return;
 
     _isInitialized = false;
     _initializationFuture = null;
 
-    await _logSubscription?.cancel();
-    _logSubscription = null;
+    // (Already cancelled above)
 
     await Future.wait([
       _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
