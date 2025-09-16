@@ -142,6 +142,7 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
 
     final customTokens = await _customAssetHistory.getWalletAssets(
       user.walletId,
+      _orderedCoins.keys.toSet(),
     );
 
     final filteredCustomTokens = _filterCustomTokens(customTokens);

@@ -21,9 +21,16 @@ class CustomAssetHistoryStorage {
   }
 
   /// Add a single asset to wallet's history
-  Future<void> addAssetToWallet(WalletId walletId, Asset asset) async {
-    final assets = await getWalletAssets(walletId);
-    // Equatable operators not working as expected, so we need to check manually
+  ///
+  /// [walletId] is the wallet to add the asset to.
+  /// [asset] is the asset to add to the wallet.
+  /// [knownAssets] is used to find the parent asset for child assets.
+  Future<void> addAssetToWallet(
+    WalletId walletId,
+    Asset asset,
+    Set<AssetId> knownAssets,
+  ) async {
+    final assets = await getWalletAssets(walletId, knownAssets);
     if (assets.any((historicalAsset) => historicalAsset.id.id == asset.id.id)) {
       return;
     }
@@ -32,15 +39,25 @@ class CustomAssetHistoryStorage {
   }
 
   /// Get all assets previously used by a wallet
-  Future<Set<Asset>> getWalletAssets(WalletId walletId) async {
+  ///
+  /// [walletId] is the wallet to get the assets from.
+  /// [knownAssets] is used to find the parent asset for child assets.
+  Future<Set<Asset>> getWalletAssets(
+    WalletId walletId,
+    Set<AssetId> knownAssets,
+  ) async {
     final key = _getStorageKey(walletId);
     final value = await _storage.read(key: key);
     if (value == null || value.isEmpty) return {};
     final assetsJsonArray = jsonListFromString(value);
-    return assetsJsonArray.map(Asset.fromJson).toSet();
+    return assetsJsonArray
+        .map((json) => Asset.fromJson(json, knownIds: knownAssets))
+        .toSet();
   }
 
   /// Clear wallet's custom token history
+  ///
+  /// [walletId] is the wallet to clear the assets from.
   Future<void> clearWalletAssets(WalletId walletId) async {
     final key = _getStorageKey(walletId);
     await _storage.delete(key: key);
