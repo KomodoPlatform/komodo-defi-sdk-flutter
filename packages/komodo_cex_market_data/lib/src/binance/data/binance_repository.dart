@@ -35,8 +35,33 @@ class BinanceRepository implements CexRepository {
 
   static final Logger _logger = Logger('BinanceRepository');
 
+  /// Priority order of USD stablecoins for fallback selection
+  /// Ordered from most liquid/preferred to least preferred
+  static const List<String> _usdStablecoinPriority = [
+    'USDT', // Tether - most liquid
+    'USDC', // USD Coin - most regulated
+    'BUSD', // Binance USD - native to Binance
+    'FDUSD', // First Digital USD
+    'TUSD', // TrueUSD
+    'USDP', // Pax Dollar
+    'DAI', // MakerDAO DAI
+    'FRAX', // Frax
+    'LUSD', // Liquity USD
+    'GUSD', // Gemini Dollar
+    'SUSD', // Synthetix USD
+    'FEI', // Fei USD
+  ];
+
   final AsyncMemoizer<List<CexCoin>> _coinListMemoizer = AsyncMemoizer();
+  // TODO: determine whether we want to use this field, since Binance
+  // uses per-coin quote currencies rather than a fixed set.
+  // ignore: unused_field
   Set<String>? _cachedFiatCurrencies;
+
+  /// Get the USD stablecoin priority configuration
+  /// Returns a list of USD stablecoins ordered by preference for fallback selection
+  static List<String> get usdStablecoinPriority =>
+      List.unmodifiable(_usdStablecoinPriority);
 
   @override
   Future<List<CexCoin>> getCoinList() async {
@@ -95,10 +120,29 @@ class BinanceRepository implements CexRepository {
     int? limit,
   }) async {
     final baseTicker = resolveTradingSymbol(assetId);
-    final relTicker = quoteCurrency.binanceId;
 
-    if (baseTicker.toUpperCase() == relTicker.toUpperCase()) {
-      throw ArgumentError('Base and rel coin tickers cannot be the same');
+    // Find the best available quote currency for this coin
+    final coins = await getCoinList();
+    final coin = coins.firstWhere(
+      (c) => c.id.toUpperCase() == baseTicker.toUpperCase(),
+      orElse: () =>
+          throw ArgumentError.value(baseTicker, 'assetId', 'Asset not found'),
+    );
+
+    final effectiveQuote = _getEffectiveQuoteCurrency(coin, quoteCurrency);
+    if (effectiveQuote == null) {
+      throw ArgumentError(
+        'No suitable quote currency available for $baseTicker with '
+        'requested ${quoteCurrency.symbol}',
+      );
+    }
+
+    if (baseTicker.toUpperCase() == effectiveQuote.toUpperCase()) {
+      throw ArgumentError.value(
+        effectiveQuote,
+        'quoteCurrency',
+        'Base and rel coin tickers cannot be the same',
+      );
     }
 
     final startUnixTimestamp = startAt?.millisecondsSinceEpoch;
@@ -110,7 +154,7 @@ class BinanceRepository implements CexRepository {
     for (final baseUrl in binanceApiEndpoint) {
       try {
         final symbolString =
-            '${baseTicker.toUpperCase()}${relTicker.toUpperCase()}';
+            '${baseTicker.toUpperCase()}${effectiveQuote.toUpperCase()}';
         return await _binanceProvider.fetchKlines(
           symbolString,
           intervalAbbreviation,
@@ -143,10 +187,32 @@ class BinanceRepository implements CexRepository {
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
-    final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
 
-    if (tradingSymbol.toUpperCase() == fiatCurrencyId.toUpperCase()) {
-      throw ArgumentError('Coin and fiat coin cannot be the same');
+    // Find the best available quote currency for this coin
+    final coins = await getCoinList();
+    final coin = coins.firstWhere(
+      (c) => c.id.toUpperCase() == tradingSymbol.toUpperCase(),
+      orElse: () => throw ArgumentError.value(
+        tradingSymbol,
+        'assetId',
+        'Asset not found',
+      ),
+    );
+
+    final effectiveQuote = _getEffectiveQuoteCurrency(coin, fiatCurrency);
+    if (effectiveQuote == null) {
+      throw ArgumentError(
+        'No suitable quote currency available for $tradingSymbol with '
+        'requested ${fiatCurrency.symbol}',
+      );
+    }
+
+    if (tradingSymbol.toUpperCase() == effectiveQuote.toUpperCase()) {
+      throw ArgumentError.value(
+        effectiveQuote,
+        'fiatCurrency',
+        'Coin and fiat coin cannot be the same',
+      );
     }
 
     final endAt = priceDate ?? DateTime.now();
@@ -169,11 +235,33 @@ class BinanceRepository implements CexRepository {
     List<DateTime> dates, {
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
-    final tradingSymbol = resolveTradingSymbol(assetId).toLowerCase();
-    final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
+    final tradingSymbol = resolveTradingSymbol(assetId);
 
-    if (tradingSymbol == fiatCurrencyId) {
-      throw ArgumentError('Coin and fiat coin cannot be the same');
+    // Find the best available quote currency for this coin
+    final coins = await getCoinList();
+    final coin = coins.firstWhere(
+      (c) => c.id.toUpperCase() == tradingSymbol.toUpperCase(),
+      orElse: () => throw ArgumentError.value(
+        tradingSymbol,
+        'assetId',
+        'Asset not found',
+      ),
+    );
+
+    final effectiveQuote = _getEffectiveQuoteCurrency(coin, fiatCurrency);
+    if (effectiveQuote == null) {
+      throw ArgumentError(
+        'No suitable quote currency available for $tradingSymbol with '
+        'requested ${fiatCurrency.symbol}',
+      );
+    }
+
+    if (tradingSymbol.toLowerCase() == effectiveQuote.toLowerCase()) {
+      throw ArgumentError.value(
+        effectiveQuote,
+        'fiatCurrency',
+        'Coin and fiat coin cannot be the same',
+      );
     }
 
     dates.sort();
@@ -227,15 +315,37 @@ class BinanceRepository implements CexRepository {
     QuoteCurrency fiatCurrency = Stablecoin.usdt,
   }) async {
     final tradingSymbol = resolveTradingSymbol(assetId);
-    final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
 
-    if (tradingSymbol.toUpperCase() == fiatCurrencyId.toUpperCase()) {
-      throw ArgumentError('Coin and fiat coin cannot be the same');
+    // Find the best available quote currency for this coin
+    final coins = await getCoinList();
+    final coin = coins.firstWhere(
+      (c) => c.id.toUpperCase() == tradingSymbol.toUpperCase(),
+      orElse: () => throw ArgumentError.value(
+        tradingSymbol,
+        'assetId',
+        'Asset not found',
+      ),
+    );
+
+    final effectiveQuote = _getEffectiveQuoteCurrency(coin, fiatCurrency);
+    if (effectiveQuote == null) {
+      throw ArgumentError(
+        'No suitable quote currency available for $tradingSymbol with '
+        'requested ${fiatCurrency.symbol}',
+      );
+    }
+
+    if (tradingSymbol.toUpperCase() == effectiveQuote.toUpperCase()) {
+      throw ArgumentError.value(
+        effectiveQuote,
+        'fiatCurrency',
+        'Coin and fiat coin cannot be the same',
+      );
     }
 
     final trimmedCoinId = tradingSymbol.replaceAll(RegExp('-segwit'), '');
     final symbol =
-        '${trimmedCoinId.toUpperCase()}${fiatCurrencyId.toUpperCase()}';
+        '${trimmedCoinId.toUpperCase()}${effectiveQuote.toUpperCase()}';
 
     // Try primary endpoint first, fallback to secondary on failure
     Exception? lastException;
@@ -279,6 +389,49 @@ class BinanceRepository implements CexRepository {
     return coins.values.toList();
   }
 
+  /// Find the best available USD stablecoin for a specific coin
+  /// Returns null if no USD stablecoins are available for this coin
+  String? _findBestUsdStablecoinForCoin(CexCoin coin) {
+    for (final stablecoin in _usdStablecoinPriority) {
+      if (coin.currencies.contains(stablecoin)) {
+        return stablecoin;
+      }
+    }
+    return null;
+  }
+
+  /// Get the effective quote currency for a coin, with fallback logic
+  /// For USD/USDT requests, tries to find the best available USD stablecoin
+  String? _getEffectiveQuoteCurrency(
+    CexCoin coin,
+    QuoteCurrency quoteCurrency,
+  ) {
+    final originalQuote = quoteCurrency.binanceId.toUpperCase();
+
+    // If the coin directly supports the requested quote currency, use it
+    if (coin.currencies.contains(originalQuote)) {
+      return originalQuote;
+    }
+
+    // Special handling for USD and USD stablecoins
+    final isUsdRequest =
+        quoteCurrency.symbol.toUpperCase() == 'USD' ||
+        (quoteCurrency.isStablecoin &&
+            quoteCurrency.maybeWhen(
+              stablecoin: (_, __, underlying) =>
+                  underlying.symbol.toUpperCase() == 'USD',
+              orElse: () => false,
+            ));
+
+    if (isUsdRequest) {
+      // Try to find any available USD stablecoin for this coin
+      return _findBestUsdStablecoinForCoin(coin);
+    }
+
+    // For non-USD currencies, no fallback - must have exact match
+    return null;
+  }
+
   @override
   Future<bool> supports(
     AssetId assetId,
@@ -287,19 +440,22 @@ class BinanceRepository implements CexRepository {
   ) async {
     try {
       final coins = await getCoinList();
-      final fiat = fiatCurrency.binanceId;
       // If resolveTradingSymbol throws, treat as unsupported
       final tradingSymbol = resolveTradingSymbol(assetId);
 
       // Find the specific coin
       final coin = coins.firstWhere(
         (c) => c.id.toUpperCase() == tradingSymbol.toUpperCase(),
-        orElse: () => throw ArgumentError('Asset not found'),
+        orElse: () => throw ArgumentError.value(
+          tradingSymbol,
+          'assetId',
+          'Asset not found',
+        ),
       );
 
-      // Check if this specific coin supports the mapped fiat currency
-      final supportsFiat = coin.currencies.contains(fiat.toUpperCase());
-      return supportsFiat;
+      // Check if we can find an effective quote currency for this coin
+      final effectiveQuote = _getEffectiveQuoteCurrency(coin, fiatCurrency);
+      return effectiveQuote != null;
     } on ArgumentError {
       return false;
     }
