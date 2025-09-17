@@ -75,9 +75,15 @@ class StartupCoinsProvider {
       await manager.init();
 
       final assets = manager.all;
-      final configs = <JsonMap>[
-        for (final asset in assets.values) asset.protocol.config,
-      ];
+      // Sort to avoid random ordering of params that causes segfault on linux
+      final configs =
+          <JsonMap>[for (final asset in assets.values) asset.protocol.config]
+            ..sort((a, b) {
+              final aId = a['coin'] as String? ?? '';
+              final bId = b['coin'] as String? ?? '';
+              return aId.compareTo(bId);
+            });
+
       return JsonList.of(configs);
     } finally {
       try {
