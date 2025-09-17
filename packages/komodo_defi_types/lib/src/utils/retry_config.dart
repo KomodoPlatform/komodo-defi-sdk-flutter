@@ -28,28 +28,16 @@ abstract class RetryConfig with _$RetryConfig {
 
   const RetryConfig._();
 
+  factory RetryConfig.tenSecondTimeout() =>
+      const RetryConfig(perAttemptTimeout: Duration(seconds: 10));
+
+  factory RetryConfig.minuteTimeout() => const RetryConfig(
+    maxAttempts: 10,
+    perAttemptTimeout: Duration(seconds: 60),
+  );
+
   /// Configuration with no retries - fails immediately on first error.
   static const noRetry = RetryConfig(maxAttempts: 1);
-
-  /// Configuration with quick timeout for testing.
-  static const quickTimeout = RetryConfig(
-    maxAttempts: 1,
-    perAttemptTimeout: Duration(milliseconds: 100),
-  );
-
-  /// Configuration optimized for testing - no retries and quick timeout.
-  static const testing = RetryConfig(
-    maxAttempts: 1,
-    perAttemptTimeout: Duration(milliseconds: 500),
-    backoffDelay: Duration.zero,
-  );
-
-  /// Configuration for production use with reasonable defaults.
-  static const production = RetryConfig(
-    maxAttempts: 3,
-    perAttemptTimeout: Duration(seconds: 30),
-    backoffDelay: Duration(milliseconds: 500),
-  );
 
   /// Default retry condition - retries on TimeoutException and Exception.
   bool defaultShouldRetry(Object error) {
@@ -67,8 +55,8 @@ abstract class RetryStrategy {
 }
 
 /// Default retry strategy using the existing retryStream utility.
-class DefaultRetryStrategy implements RetryStrategy {
-  const DefaultRetryStrategy();
+class BufferedEventRetryStrategy implements RetryStrategy {
+  const BufferedEventRetryStrategy();
 
   @override
   Stream<T> executeWithRetry<T>(

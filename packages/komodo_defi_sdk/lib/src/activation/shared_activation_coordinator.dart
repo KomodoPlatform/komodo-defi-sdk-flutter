@@ -1,13 +1,39 @@
 import 'dart:async';
-import 'dart:developer' show log;
 
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_policy.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_result.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_state_store.dart';
+import 'package:komodo_defi_sdk/src/activation/services/activation_event_bus.dart';
+import 'package:komodo_defi_sdk/src/activation/services/activation_status_service.dart';
+import 'package:komodo_defi_sdk/src/activation/services/availability_verifier.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart'
+    show BufferedEventRetryStrategy, RetryConfig, RetryStrategy;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
+import 'package:mutex/mutex.dart' show ReadWriteMutex;
+
+/// Timeout configuration for different operation types
+class _TimeoutConfig {
+  static const Duration statusCheck = Duration(
+    seconds: 10,
+  ); // Network operation
+  static const Duration cleanup = Duration(seconds: 3); // Internal operation
+}
 
 /// Shared coordinator for asset activations across all managers.
 /// Prevents race conditions by ensuring only one activation per asset at a time
 /// and sharing the result with all requesting managers.
+///
+/// **CONCURRENCY PROTECTION:**
+/// All state access is protected by the [IActivationStateStore] implementation which
+/// uses an internal [ReadWriteMutex] to ensure thread safety:
+/// - Read operations (status checks, getters) use read locks for concurrency
+/// - Write operations (state modifications, stream creation) use write locks for exclusivity
+/// - Multiple concurrent calls to [activateAsset] or [activateAssetStream] for the same
+///   asset will result in one activation being started, with subsequent calls joining
+///   the existing operation and receiving the same result/stream.
 ///
 /// **CRITICAL TIMING ISSUE HANDLING:**
 /// This coordinator addresses a race condition where activation RPC can complete
@@ -16,36 +42,54 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// fail with "No such coin" errors. The coordinator waits for coin availability
 /// verification before declaring activation successful.
 class SharedActivationCoordinator {
-  SharedActivationCoordinator(this._activationManager, this._auth) {
-    // Listen for auth state changes
+  /// Creates a new [SharedActivationCoordinator] with the given dependencies.
+  ///
+  /// [retryConfig] optional, defaults to [RetryConfig.defaultConfig]
+  /// [retryStrategy] optional, defaults to [RetryStrategy.defaultStrategy]
+  /// [ActivationManager] handles asset activation lifecycle reporting.
+  /// [KomodoDefiLocalAuth] required to listen for auth state changes.
+  /// [IActivationStatusService] optional, defaults to [ActivationStatusService]
+  /// [IAvailabilityVerifier] optional, defaults to [AvailabilityVerifier]
+  /// [IActivationEventBus] optional, defaults to [ActivationEventBus]
+  /// [IActivationStateStore] optional, defaults to [ActivationStateStore]
+  SharedActivationCoordinator(
+    this._activationManager,
+    this._auth, {
+    RetryConfig? retryConfig,
+    RetryStrategy? retryStrategy,
+    IActivationStatusService? statusService,
+    IAvailabilityVerifier? availabilityVerifier,
+    IActivationEventBus? eventBus,
+    IActivationStateStore? stateStore,
+  }) : _policy = ActivationPolicy(
+         retryConfig ?? RetryConfig.minuteTimeout(),
+         retryStrategy ?? const BufferedEventRetryStrategy(),
+       ),
+       _state = stateStore ?? ActivationStateStore(),
+       _events = eventBus ?? ActivationEventBus() {
+    _status = statusService ?? ActivationStatusService(_activationManager);
+    _availability = availabilityVerifier ?? AvailabilityVerifier(_status);
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
   }
 
   final ActivationManager _activationManager;
   final KomodoDefiLocalAuth _auth;
-  StreamSubscription<KdfUser?>? _authSubscription;
 
-  /// Track pending activations to prevent duplicates
-  final Map<AssetId, Completer<ActivationResult>> _pendingActivations = {};
+  late final StreamSubscription<KdfUser?>? _authSubscription;
+  late final IActivationStatusService _status;
+  late final IAvailabilityVerifier _availability;
 
-  /// Track active activation streams for joining
-  final Map<AssetId, StreamController<ActivationProgress>> _activeStreams = {};
-
-  /// Track failed activations
-  final Set<AssetId> _failedActivations = <AssetId>{};
-
-  /// Stream controller for broadcasting failed activations changes
-  final StreamController<Set<AssetId>> _failedActivationsController =
-      StreamController<Set<AssetId>>.broadcast();
-
-  /// Stream controller for broadcasting pending activations changes
-  final StreamController<Set<AssetId>> _pendingActivationsController =
-      StreamController<Set<AssetId>>.broadcast();
+  /// Central policy and mutable state/event store
+  final ActivationPolicy _policy;
+  final IActivationStateStore _state;
+  final IActivationEventBus _events;
 
   /// Current wallet ID being tracked
   WalletId? _currentWalletId;
 
   bool _isDisposed = false;
+
+  final Logger _logger = Logger('SharedActivationCoordinator');
 
   /// Handle authentication state changes
   Future<void> _handleAuthStateChanged(KdfUser? user) async {
@@ -60,35 +104,24 @@ class SharedActivationCoordinator {
 
   /// Reset all internal state when wallet changes
   Future<void> _resetState() async {
-    log(
+    _logger.info(
       'Resetting SharedActivationCoordinator state due to wallet change',
-      name: 'SharedActivationCoordinator',
     );
 
-    // Cancel all pending activations
-    for (final completer in _pendingActivations.values) {
-      if (!completer.isCompleted) {
+    // Cancel all pending activations before clearing
+    final pendingAssetIds = await _state.getPendingAssetIds();
+    for (final assetId in pendingAssetIds) {
+      final completer = await _state.getPendingActivation(assetId);
+      if (completer != null && !completer.isCompleted) {
         completer.completeError(
           StateError('Wallet changed, activation cancelled'),
         );
       }
     }
-    _pendingActivations.clear();
 
-    // Close all active streams
-    for (final controller in _activeStreams.values) {
-      if (!controller.isClosed) {
-        controller.close();
-      }
-    }
-    _activeStreams.clear();
-
-    // Clear failed activations
-    _failedActivations.clear();
-
-    // Notify stream watchers of state changes
-    _broadcastPendingActivations();
-    _broadcastFailedActivations();
+    await _state.reset();
+    await _broadcastPendingActivations();
+    await _broadcastFailedActivations();
   }
 
   /// Activate an asset with coordination across all managers.
@@ -99,88 +132,188 @@ class SharedActivationCoordinator {
       throw StateError('SharedActivationCoordinator has been disposed');
     }
 
-    // Check if activation is already in progress
-    final existingActivation = _pendingActivations[asset.id];
+    _logger.info('Activation requested for asset: ${asset.id.id}');
+
+    final existingActivation = await _state.getPendingActivation(asset.id);
     if (existingActivation != null) {
-      log(
-        'Joining existing activation for ${asset.id.id}',
-        name: 'SharedActivationCoordinator',
-      );
+      _logger.info('Joining existing activation for ${asset.id.id}');
       return existingActivation.future;
     }
 
-    // Check if asset is already active
-    final isActive = await _activationManager.isAssetActive(asset.id);
+    final isActive = await _status
+        .isAssetActive(asset.id)
+        .timeout(_TimeoutConfig.statusCheck);
     if (isActive) {
+      _logger.info('Asset ${asset.id.id} is already active, returning success');
       return ActivationResult.success(asset.id);
     }
 
-    final completer = Completer<ActivationResult>();
-    _pendingActivations[asset.id] = completer;
+    // Create completer and register activation
+    final newCompleter = Completer<ActivationResult>();
+    final existingCompleter = await _state.registerPendingActivation(
+      asset.id,
+      newCompleter,
+    );
+
+    // If another activation was already registered, join it
+    if (existingCompleter != null) {
+      _logger.info(
+        'Joining activation that started while registering: ${asset.id.id}',
+      );
+      return existingCompleter.future;
+    }
 
     // Clear any previous failed status for this asset
-    if (_failedActivations.remove(asset.id)) {
-      _broadcastFailedActivations();
+    final wasCleared = await _state.clearFailedAsset(asset.id);
+    if (wasCleared) {
+      _logger.info(
+        'Cleared previous failed activation status for ${asset.id.id}',
+      );
     }
 
     // Broadcast that this asset is now pending
-    _broadcastPendingActivations();
+    _logger.info('Starting activation for ${asset.id.id}');
+    await _broadcastPendingActivations();
+    await _broadcastFailedActivations();
 
     try {
-      // Subscribe to activation stream and wait for completion
-      await for (final progress in _activationManager.activateAsset(asset)) {
-        if (progress.isComplete) {
-          if (progress.isSuccess) {
-            // Wait for coin to actually become available before declaring success
-            try {
-              await _waitForCoinAvailability(asset.id);
-              final result = ActivationResult.success(asset.id);
-              if (!completer.isCompleted) {
-                completer.complete(result);
-              }
-            } catch (e) {
-              _failedActivations.add(asset.id);
-              _broadcastFailedActivations();
-              final result = ActivationResult.failure(
-                asset.id,
-                'Activation completed but coin did not become available: $e',
-              );
-              if (!completer.isCompleted) {
-                completer.complete(result);
-              }
-            }
-          } else {
-            _failedActivations.add(asset.id);
-            _broadcastFailedActivations();
-            final result = ActivationResult.failure(
-              asset.id,
-              progress.errorMessage ?? 'Unknown activation error',
+      // If a stream activation is already in progress, join it and wait for completion
+      final existingStream = await _state.existingStreamWithHistory(asset.id);
+      if (existingStream != null) {
+        await _watchExistingStream(asset, existingStream, newCompleter);
+      } else {
+        // Execute activation using injected executor
+        final activationStream = _policy.retryStrategy
+            .executeWithRetry<ActivationProgress>(
+              () => _activationManager.activateAssets([asset]),
+              _policy.retryConfig,
             );
-            if (!completer.isCompleted) {
-              completer.complete(result);
+        await for (final progress in activationStream) {
+          if (progress.isComplete) {
+            if (progress.isSuccess) {
+              try {
+                await _availability.waitUntilAvailable(asset.id);
+                _logger.info('Successfully activated asset: ${asset.id.id}');
+                final result = ActivationResult.success(asset.id);
+                if (!newCompleter.isCompleted) {
+                  newCompleter.complete(result);
+                }
+              } catch (e) {
+                _logger.warning(
+                  'Activation completed but coin ${asset.id.id} did not become available: $e',
+                );
+                await _state.markAssetFailed(
+                  asset.id,
+                  'Activation completed but coin did not become available: $e',
+                );
+                await _broadcastFailedActivations();
+                final result = ActivationResult.failure(
+                  asset.id,
+                  'Activation completed but coin did not become available: $e',
+                );
+                if (!newCompleter.isCompleted) {
+                  newCompleter.complete(result);
+                }
+              }
+            } else {
+              final errorMsg =
+                  progress.errorMessage ?? 'Unknown activation error';
+              _logger.warning(
+                'Activation failed for ${asset.id.id}: $errorMsg',
+              );
+              await _state.markAssetFailed(asset.id, errorMsg);
+              await _broadcastFailedActivations();
+              final result = ActivationResult.failure(asset.id, errorMsg);
+              if (!newCompleter.isCompleted) {
+                newCompleter.complete(result);
+              }
             }
+            break;
           }
-          break;
         }
       }
-    } catch (e, stackTrace) {
-      if (!completer.isCompleted) {
-        _failedActivations.add(asset.id);
-        _broadcastFailedActivations();
-        log(
-          'Activation failed for ${asset.id.id}: $e',
-          name: 'SharedActivationCoordinator',
-          error: e,
-          stackTrace: stackTrace,
+    } on TimeoutException catch (e) {
+      if (!newCompleter.isCompleted) {
+        await _state.markAssetFailed(asset.id);
+        await _broadcastFailedActivations();
+        _logger.severe('Activation timed out for ${asset.id.id}: $e', e);
+        newCompleter.complete(
+          ActivationResult.failure(
+            asset.id,
+            'Activation timed out: ${e.message}',
+          ),
         );
-        completer.complete(ActivationResult.failure(asset.id, e.toString()));
+      }
+    } catch (e, stackTrace) {
+      if (!newCompleter.isCompleted) {
+        await _state.markAssetFailed(asset.id);
+        await _broadcastFailedActivations();
+        _logger.severe(
+          'Activation failed for ${asset.id.id}: $e',
+          e,
+          stackTrace,
+        );
+        newCompleter.complete(ActivationResult.failure(asset.id, e.toString()));
       }
     } finally {
-      _pendingActivations.remove(asset.id);
-      _broadcastPendingActivations();
+      await _state.removePendingActivation(asset.id);
+      _logger.info('Completed activation attempt for ${asset.id.id}');
+      await _broadcastPendingActivations();
     }
 
-    return completer.future;
+    return newCompleter.future;
+  }
+
+  Future<void> _watchExistingStream(
+    Asset asset,
+    Stream<ActivationProgress> existingStream,
+    Completer<ActivationResult> newCompleter,
+  ) async {
+    _logger.info(
+      'Activation stream already running for ${asset.id.id}, waiting for completion',
+    );
+    await for (final progress in existingStream) {
+      if (progress.isComplete) {
+        if (progress.isSuccess) {
+          try {
+            await _availability.waitUntilAvailable(asset.id);
+            _logger.info(
+              'Successfully activated asset (joined): ${asset.id.id}',
+            );
+            final result = ActivationResult.success(asset.id);
+            if (!newCompleter.isCompleted) {
+              newCompleter.complete(result);
+            }
+          } catch (e) {
+            _logger.warning(
+              'Activation completed (joined) but coin ${asset.id.id} did not become available: $e',
+            );
+            await _state.markAssetFailed(
+              asset.id,
+              'Activation completed but coin did not become available: $e',
+            );
+            await _broadcastFailedActivations();
+            final result = ActivationResult.failure(
+              asset.id,
+              'Activation completed but coin did not become available: $e',
+            );
+            if (!newCompleter.isCompleted) {
+              newCompleter.complete(result);
+            }
+          }
+        } else {
+          final errorMsg = progress.errorMessage ?? 'Unknown activation error';
+          _logger.warning('Activation failed for ${asset.id.id}: $errorMsg');
+          await _state.markAssetFailed(asset.id, errorMsg);
+          await _broadcastFailedActivations();
+          final result = ActivationResult.failure(asset.id, errorMsg);
+          if (!newCompleter.isCompleted) {
+            newCompleter.complete(result);
+          }
+        }
+        break;
+      }
+    }
   }
 
   /// Get activation progress stream for an asset.
@@ -190,78 +323,123 @@ class SharedActivationCoordinator {
       throw StateError('SharedActivationCoordinator has been disposed');
     }
 
-    // Check if there's already an active stream for this asset
-    var controller = _activeStreams[asset.id];
-    if (controller != null && !controller.isClosed) {
-      log(
-        'Joining existing activation stream for ${asset.id.id}',
-        name: 'SharedActivationCoordinator',
-      );
-      return controller.stream;
+    _logger.info('Activation stream requested for asset: ${asset.id.id}');
+
+    return _createStreamWithMutexProtection(asset);
+  }
+
+  Stream<ActivationProgress> _createStreamWithMutexProtection(
+    Asset asset,
+  ) async* {
+    // Check for existing stream
+    final existing = await _state.existingStreamWithHistory(asset.id);
+    if (existing != null) {
+      _logger.info('Joining existing activation stream for ${asset.id.id}');
+      yield* existing;
+      return;
     }
 
-    // Create new broadcast controller
+    // Create new stream controller
+    _logger.info('Creating new activation stream for ${asset.id.id}');
+    late final StreamController<ActivationProgress> controller;
     controller = StreamController<ActivationProgress>.broadcast(
-      onCancel: () {
-        // Clean up when all listeners cancel
-        if (controller?.hasListener == false) {
-          _activeStreams.remove(asset.id);
-          controller?.close();
+      onCancel: () async {
+        if (controller.hasListener == false) {
+          await _state.removeActiveStream(asset.id);
+          await controller.close();
         }
       },
     );
-    _activeStreams[asset.id] = controller;
 
-    // Start activation and forward progress to subscribers
+    await _state.registerActiveStream(asset.id, controller);
+
+    // Check again if another stream was created while we were setting up
+    final doubleCheck = await _state.existingStreamWithHistory(asset.id);
+    if (doubleCheck != null && doubleCheck != controller.stream) {
+      _logger.info('Joining stream created while setting up: ${asset.id.id}');
+      await controller.close();
+      yield* doubleCheck;
+      return;
+    }
+
     _activationManager
         .activateAsset(asset)
         .listen(
-          (progress) {
-            final currentController = _activeStreams[asset.id];
-            if (currentController != null && !currentController.isClosed) {
-              currentController.add(progress);
-            }
+          (progress) async {
+            // Add progress to history and notify stream
+            await _state.addProgressToHistory(asset.id, progress);
 
-            // Clean up when activation completes
             if (progress.isComplete) {
-              // For stream-based activation, we don't wait for coin availability
-              // as subscribers may want to handle this themselves
-              Timer.run(() {
-                final controllerToClose = _activeStreams.remove(asset.id);
-                if (controllerToClose != null && !controllerToClose.isClosed) {
-                  controllerToClose.close();
+              _logger.info(
+                'Stream activation '
+                '${progress.isSuccess ? 'completed' : 'failed'} '
+                'for ${asset.id.id}',
+              );
+              if (!progress.isSuccess) {
+                await _state.markAssetFailed(
+                  asset.id,
+                  progress.errorMessage ?? 'Unknown activation error',
+                );
+                await _broadcastFailedActivations();
+              }
+              Timer.run(() async {
+                final toClose = await _state.removeActiveStream(asset.id);
+                if (toClose != null && !toClose.isClosed) {
+                  await toClose.close();
                 }
               });
             }
           },
-          onError: (Object error, StackTrace stackTrace) {
-            final currentController = _activeStreams[asset.id];
-            if (currentController != null && !currentController.isClosed) {
-              currentController.addError(error, stackTrace);
-              _activeStreams.remove(asset.id);
-              currentController.close();
+          onError: (Object error, StackTrace stackTrace) async {
+            _logger.severe(
+              'Error in activation stream for ${asset.id.id}: $error',
+              error,
+              stackTrace,
+            );
+            await _state.markAssetFailed(asset.id, error.toString());
+            await _broadcastFailedActivations();
+
+            final current = await _state.getActiveStream(asset.id);
+            if (current != null && !current.isClosed) {
+              current.addError(error, stackTrace);
+              await _state.removeActiveStream(asset.id);
+              await current.close();
             }
           },
-          onDone: () {
-            final controllerToClose = _activeStreams.remove(asset.id);
-            if (controllerToClose != null && !controllerToClose.isClosed) {
-              controllerToClose.close();
+          onDone: () async {
+            final toClose = await _state.removeActiveStream(asset.id);
+            if (toClose != null && !toClose.isClosed) {
+              await toClose.close();
             }
           },
         );
 
-    return controller.stream;
+    // Return the stream with history that's already created by the state store
+    final streamWithHistory = await _state.existingStreamWithHistory(asset.id);
+    if (streamWithHistory != null) {
+      yield* streamWithHistory;
+    }
   }
 
   /// Check if an asset is currently being activated
-  bool isActivationInProgress(AssetId assetId) {
-    return _pendingActivations.containsKey(assetId) ||
-        _activeStreams.containsKey(assetId);
+  Future<bool> isActivationInProgress(AssetId assetId) async {
+    final hasPending = await _state.getPendingActivation(assetId) != null;
+    final hasStream = await _state.hasActiveStream(assetId);
+    return hasPending || hasStream;
   }
 
   /// Check if an asset is active (delegated to ActivationManager)
-  Future<bool> isAssetActive(AssetId assetId) {
-    return _activationManager.isAssetActive(assetId);
+  Future<bool> isAssetActive(AssetId assetId) async {
+    try {
+      return await _status
+          .isAssetActive(assetId)
+          .timeout(_TimeoutConfig.statusCheck);
+    } on TimeoutException catch (e) {
+      _logger.warning(
+        'Status check timed out for ${assetId.id}: $e, returning false',
+      );
+      return false;
+    }
   }
 
   /// Watch failed activations.
@@ -271,7 +449,7 @@ class SharedActivationCoordinator {
     if (_isDisposed) {
       throw StateError('SharedActivationCoordinator has been disposed');
     }
-    return _failedActivationsController.stream;
+    return _events.watchFailed();
   }
 
   /// Watch pending activations.
@@ -281,88 +459,49 @@ class SharedActivationCoordinator {
     if (_isDisposed) {
       throw StateError('SharedActivationCoordinator has been disposed');
     }
-    return _pendingActivationsController.stream;
+    return _events.watchPending();
   }
 
   /// Get current set of failed activations
-  Set<AssetId> get failedActivations => Set<AssetId>.from(_failedActivations);
+  Future<Set<AssetId>> get failedActivations async {
+    return _state.getFailedAssetIds();
+  }
 
   /// Get current set of pending activations
-  Set<AssetId> get pendingActivations => _pendingActivations.keys.toSet();
+  Future<Set<AssetId>> get pendingActivations async {
+    return _state.getPendingAssetIds();
+  }
 
   /// Clear failed activation status for an asset
-  void clearFailedActivation(AssetId assetId) {
-    if (_failedActivations.remove(assetId)) {
-      _broadcastFailedActivations();
+  Future<void> clearFailedActivation(AssetId assetId) async {
+    final wasRemoved = await _state.clearFailedAsset(assetId);
+    if (wasRemoved) {
+      _logger.info('Cleared failed activation status for ${assetId.id}');
+      await _broadcastFailedActivations();
     }
   }
 
   /// Clear all failed activations
-  void clearAllFailedActivations() {
-    if (_failedActivations.isNotEmpty) {
-      _failedActivations.clear();
-      _broadcastFailedActivations();
+  Future<void> clearAllFailedActivations() async {
+    final count = await _state.clearAllFailedAssets();
+    if (count > 0) {
+      _logger.info('Cleared all failed activations ($count assets)');
+      await _broadcastFailedActivations();
     }
   }
 
-  /// Wait for a coin to become available after activation completes.
-  /// This addresses the timing issue where activation RPC completes successfully
-  /// but the coin needs a few milliseconds to appear in the enabled coins list.
-  Future<void> _waitForCoinAvailability(AssetId assetId) async {
-    const maxRetries = 15; // Up to ~3 seconds with exponential backoff
-    const baseDelay = Duration(milliseconds: 50);
-    const maxDelay = Duration(milliseconds: 500);
-
-    log(
-      'Waiting for coin ${assetId.id} to become available after activation',
-      name: 'SharedActivationCoordinator',
-    );
-
-    for (int attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        final isAvailable = await _activationManager.isAssetActive(assetId);
-        if (isAvailable) {
-          log(
-            'Coin ${assetId.id} became available after ${attempt + 1} attempts',
-            name: 'SharedActivationCoordinator',
-          );
-          return;
-        }
-      } catch (e) {
-        log(
-          'Error checking coin availability (attempt ${attempt + 1}): $e',
-          name: 'SharedActivationCoordinator',
-        );
-      }
-
-      if (attempt < maxRetries - 1) {
-        // Exponential backoff with max cap
-        final delayMs = (baseDelay.inMilliseconds * (1 << attempt)).clamp(
-          baseDelay.inMilliseconds,
-          maxDelay.inMilliseconds,
-        );
-        await Future<void>.delayed(Duration(milliseconds: delayMs));
-      }
-    }
-
-    throw StateError(
-      'Coin ${assetId.id} did not become available after activation '
-      '(waited $maxRetries attempts)',
-    );
-  }
+  // Unused: internal retry/availability helpers now live in dedicated classes.
 
   /// Broadcast current failed activations to stream listeners
-  void _broadcastFailedActivations() {
-    if (!_failedActivationsController.isClosed) {
-      _failedActivationsController.add(Set<AssetId>.from(_failedActivations));
-    }
+  Future<void> _broadcastFailedActivations() async {
+    final failed = await _state.getFailedAssetIds();
+    _events.emitFailed(failed);
   }
 
   /// Broadcast current pending activations to stream listeners
-  void _broadcastPendingActivations() {
-    if (!_pendingActivationsController.isClosed) {
-      _pendingActivationsController.add(_pendingActivations.keys.toSet());
-    }
+  Future<void> _broadcastPendingActivations() async {
+    final pending = await _state.getPendingAssetIds();
+    _events.emitPending(pending);
   }
 
   /// Dispose of the coordinator and clean up resources
@@ -370,68 +509,29 @@ class SharedActivationCoordinator {
     if (_isDisposed) return;
     _isDisposed = true;
 
-    log(
-      'Disposing SharedActivationCoordinator',
-      name: 'SharedActivationCoordinator',
-    );
+    _logger.info('Disposing SharedActivationCoordinator');
 
     // Cancel auth subscription
     await _authSubscription?.cancel();
-    _authSubscription = null;
 
-    // Cancel all pending activations
-    for (final completer in _pendingActivations.values) {
-      if (!completer.isCompleted) {
+    // Cancel all pending activations before clearing
+    final pendingAssetIds = await _state.getPendingAssetIds();
+    for (final assetId in pendingAssetIds) {
+      final completer = await _state.getPendingActivation(assetId);
+      if (completer != null && !completer.isCompleted) {
         completer.completeError(
           StateError('SharedActivationCoordinator disposed'),
         );
       }
     }
-    _pendingActivations.clear();
 
-    // Close all active streams
-    for (final controller in _activeStreams.values) {
-      if (!controller.isClosed) {
-        controller.close();
-      }
+    await _state.reset();
+
+    // Close event bus
+    try {
+      await _events.dispose().timeout(_TimeoutConfig.cleanup);
+    } catch (e, s) {
+      _logger.warning('Failed to close activation event bus', e, s);
     }
-    _activeStreams.clear();
-
-    // Close state tracking streams
-    if (!_failedActivationsController.isClosed) {
-      _failedActivationsController.close();
-    }
-    if (!_pendingActivationsController.isClosed) {
-      _pendingActivationsController.close();
-    }
-
-    // Clear state tracking sets
-    _failedActivations.clear();
-  }
-}
-
-/// Result of an asset activation operation
-class ActivationResult {
-  const ActivationResult._(this.assetId, this.isSuccess, this.errorMessage);
-
-  factory ActivationResult.success(AssetId assetId) {
-    return ActivationResult._(assetId, true, null);
-  }
-
-  factory ActivationResult.failure(AssetId assetId, String errorMessage) {
-    return ActivationResult._(assetId, false, errorMessage);
-  }
-
-  final AssetId assetId;
-  final bool isSuccess;
-  final String? errorMessage;
-
-  bool get isFailure => !isSuccess;
-
-  @override
-  String toString() {
-    return isSuccess
-        ? 'ActivationResult.success(${assetId.id})'
-        : 'ActivationResult.failure(${assetId.id}, $errorMessage)';
   }
 }

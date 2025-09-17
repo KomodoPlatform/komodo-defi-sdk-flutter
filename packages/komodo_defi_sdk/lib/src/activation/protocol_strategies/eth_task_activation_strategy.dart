@@ -5,7 +5,11 @@ import 'package:komodo_defi_sdk/src/transaction_history/strategies/etherscan_tra
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
+/// Task-based activation strategy for ETH, specifically required for hardware
+/// and external wallet support (e.g. MetaMask, WalletConnect, etc)
 class EthTaskActivationStrategy extends ProtocolActivationStrategy {
+  /// Creates a new [EthTaskActivationStrategy] with the given client and
+  /// private key policy.
   const EthTaskActivationStrategy(super.client, this.privKeyPolicy);
   static final _logger = Logger('EthTaskActivationStrategy');
 
@@ -50,7 +54,8 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
     final protocol = asset.protocol as Erc20Protocol;
 
     _logger.fine(
-      'Starting activation for asset: ${asset.id.name}, protocol: ${protocol.subClass.formatted}, privKeyPolicy: $privKeyPolicy',
+      'Starting activation for asset: ${asset.id.name}, '
+      'protocol: ${protocol.subClass.formatted}, privKeyPolicy: $privKeyPolicy',
     );
     yield ActivationProgress(
       status: 'Starting ${asset.id.name} activation...',
@@ -77,16 +82,17 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
 
       final taskResponse = await client.rpc.erc20.enableEthInit(
         ticker: asset.id.id,
-        params: EthWithTokensActivationParams.fromJson(
-          asset.protocol.config,
-        ).copyWith(
-          erc20Tokens:
-              children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
-              [],
-          txHistory: const EtherscanProtocolHelper()
-              .shouldEnableTransactionHistory(asset),
-          privKeyPolicy: privKeyPolicy,
-        ),
+        params: EthWithTokensActivationParams.fromJson(asset.protocol.config)
+            .copyWith(
+              erc20Tokens:
+                  children
+                      ?.map((e) => TokensRequest(ticker: e.id.id))
+                      .toList() ??
+                  [],
+              txHistory: const EtherscanProtocolHelper()
+                  .shouldEnableTransactionHistory(asset),
+              privKeyPolicy: privKeyPolicy,
+            ),
       );
 
       yield ActivationProgress(
@@ -127,7 +133,8 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
             );
           } else {
             _logger.warning(
-              'Activation failed for asset: ${asset.id.name}, status: ${status.status}, details: ${status.details}',
+              'Activation failed for asset: ${asset.id.name}, '
+              'status: ${status.status}, details: ${status.details}',
             );
             yield ActivationProgress(
               status: 'Activation failed: ${status.details}',
@@ -146,7 +153,8 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
           // Only log unexpected/unknown status for debugging
           if (!_knownEthStatuses.contains(status.status)) {
             _logger.fine(
-              'Unknown activation status for asset: ${asset.id.name}, status: ${status.status}',
+              'Unknown activation status for asset: ${asset.id.name}, '
+              'status: ${status.status}',
             );
           }
           final progress = _parseEthStatus(status.status);
