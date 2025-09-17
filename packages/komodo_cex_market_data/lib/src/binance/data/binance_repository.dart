@@ -7,7 +7,6 @@
 import 'package:async/async.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -51,28 +50,23 @@ class BinanceRepository implements CexRepository {
 
   /// Internal method to fetch coin list data from the API.
   Future<List<CexCoin>> _fetchCoinListInternal() async {
-    try {
-      // Try primary endpoint first, fallback to secondary on failure
-      Exception? lastException;
-      for (final baseUrl in binanceApiEndpoint) {
-        try {
-          final exchangeInfo = await _binanceProvider.fetchExchangeInfoReduced(
-            baseUrl: baseUrl,
-          );
-          final coinsList = _convertSymbolsToCoins(exchangeInfo);
-          _cachedFiatCurrencies = exchangeInfo.symbols
-              .map((s) => s.quoteAsset.toUpperCase())
-              .toSet();
-          return coinsList;
-        } catch (e) {
-          lastException = e is Exception ? e : Exception(e.toString());
-        }
+    // Try primary endpoint first, fallback to secondary on failure
+    Exception? lastException;
+    for (final baseUrl in binanceApiEndpoint) {
+      try {
+        final exchangeInfo = await _binanceProvider.fetchExchangeInfoReduced(
+          baseUrl: baseUrl,
+        );
+        final coinsList = _convertSymbolsToCoins(exchangeInfo);
+        _cachedFiatCurrencies = exchangeInfo.symbols
+            .map((s) => s.quoteAsset.toUpperCase())
+            .toSet();
+        return coinsList;
+      } catch (e) {
+        lastException = e is Exception ? e : Exception(e.toString());
       }
-      throw lastException ?? Exception('All endpoints failed');
-    } catch (e, s) {
-      _logger.severe('Failed to fetch coin list from Binance API: $e', e, s);
-      rethrow;
     }
+    throw lastException ?? Exception('All endpoints failed');
   }
 
   CexCoin _binanceCoin(String baseCoinAbbr, String quoteCoinAbbr) {
@@ -98,7 +92,11 @@ class BinanceRepository implements CexRepository {
     final relTicker = quoteCurrency.binanceId;
 
     if (baseTicker.toUpperCase() == relTicker.toUpperCase()) {
-      throw ArgumentError('Base and rel coin tickers cannot be the same');
+      throw ArgumentError.value(
+        baseTicker,
+        'baseTicker',
+        'Base and rel coin tickers cannot be the same',
+      );
     }
 
     final startUnixTimestamp = startAt?.millisecondsSinceEpoch;
@@ -146,7 +144,11 @@ class BinanceRepository implements CexRepository {
     final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
 
     if (tradingSymbol.toUpperCase() == fiatCurrencyId.toUpperCase()) {
-      throw ArgumentError('Coin and fiat coin cannot be the same');
+      throw ArgumentError.value(
+        fiatCurrency,
+        'Fiat Currency',
+        'Coin and fiat coin cannot be the same',
+      );
     }
 
     final endAt = priceDate ?? DateTime.now();
@@ -173,7 +175,11 @@ class BinanceRepository implements CexRepository {
     final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
 
     if (tradingSymbol == fiatCurrencyId) {
-      throw ArgumentError('Coin and fiat coin cannot be the same');
+      throw ArgumentError.value(
+        tradingSymbol,
+        'tradingSymbol',
+        'Coin and fiat coin cannot be the same',
+      );
     }
 
     dates.sort();
@@ -230,7 +236,11 @@ class BinanceRepository implements CexRepository {
     final fiatCurrencyId = fiatCurrency.binanceId.toLowerCase();
 
     if (tradingSymbol.toUpperCase() == fiatCurrencyId.toUpperCase()) {
-      throw ArgumentError('Coin and fiat coin cannot be the same');
+      throw ArgumentError.value(
+        tradingSymbol,
+        'tradingSymbol',
+        'Coin and fiat coin cannot be the same',
+      );
     }
 
     final trimmedCoinId = tradingSymbol.replaceAll(RegExp('-segwit'), '');

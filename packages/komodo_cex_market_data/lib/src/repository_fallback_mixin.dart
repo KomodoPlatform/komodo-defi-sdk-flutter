@@ -109,7 +109,7 @@ mixin RepositoryFallbackMixin {
     _repositoryFailureCounts[repoType] =
         (_repositoryFailureCounts[repoType] ?? 0) + 1;
 
-    _logger.info(
+    _logger.fine(
       'Repository ${repo.runtimeType} failure recorded '
       '(count: ${_repositoryFailureCounts[repoType]})',
     );
@@ -150,9 +150,7 @@ mixin RepositoryFallbackMixin {
     final healthyRepos = priceRepositories.where(_isRepositoryHealthy).toList();
 
     if (healthyRepos.isEmpty) {
-      _logger.warning(
-        'No healthy repositories available, using all repositories',
-      );
+      _logger.fine('No healthy repositories available, using all repositories');
       // Even when no healthy repos, still filter by support
       final supportingRepos = <CexRepository>[];
       for (final repo in priceRepositories) {
@@ -299,7 +297,7 @@ mixin RepositoryFallbackMixin {
         _recordRepositorySuccess(repo);
 
         if (attemptCount > 1) {
-          _logger.info(
+          _logger.fine(
             'Successfully fetched $operationName for '
             '${assetId.symbol.assetConfigId} '
             'using repository ${repo.runtimeType} on attempt $attemptCount',
@@ -333,8 +331,7 @@ mixin RepositoryFallbackMixin {
       }
     }
 
-    // All attempts exhausted
-    _logger.warning(
+    _logger.info(
       'All $attemptCount attempts failed for $operationName '
       '${assetId.symbol.assetConfigId}',
     );
@@ -363,7 +360,7 @@ mixin RepositoryFallbackMixin {
       );
     } catch (e, s) {
       _logger
-        ..fine(
+        ..warning(
           'All attempts failed for $operationName '
           '${assetId.symbol.configSymbol}',
         )

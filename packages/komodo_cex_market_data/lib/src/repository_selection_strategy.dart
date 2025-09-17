@@ -76,7 +76,7 @@ class DefaultRepositorySelectionStrategy
           }
         } catch (e, st) {
           // Log errors but continue with other repositories
-          _logger.warning(
+          _logger.fine(
             'Failed to check support for ${repo.runtimeType} with asset '
             '${assetId.id} and fiat ${fiatCurrency.symbol} (requestType: $requestType)',
             e,
