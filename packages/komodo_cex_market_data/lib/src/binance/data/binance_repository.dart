@@ -7,7 +7,6 @@
 import 'package:async/async.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -45,7 +44,6 @@ class BinanceRepository implements CexRepository {
     'TUSD', // TrueUSD
     'USDP', // Pax Dollar
     'DAI', // MakerDAO DAI
-    'FRAX', // Frax
     'LUSD', // Liquity USD
     'GUSD', // Gemini Dollar
     'SUSD', // Synthetix USD
@@ -53,10 +51,6 @@ class BinanceRepository implements CexRepository {
   ];
 
   final AsyncMemoizer<List<CexCoin>> _coinListMemoizer = AsyncMemoizer();
-  // TODO: determine whether we want to use this field, since Binance
-  // uses per-coin quote currencies rather than a fixed set.
-  // ignore: unused_field
-  Set<String>? _cachedFiatCurrencies;
 
   /// Get the USD stablecoin priority configuration
   /// Returns a list of USD stablecoins ordered by preference for fallback selection
@@ -84,11 +78,7 @@ class BinanceRepository implements CexRepository {
           final exchangeInfo = await _binanceProvider.fetchExchangeInfoReduced(
             baseUrl: baseUrl,
           );
-          final coinsList = _convertSymbolsToCoins(exchangeInfo);
-          _cachedFiatCurrencies = exchangeInfo.symbols
-              .map((s) => s.quoteAsset.toUpperCase())
-              .toSet();
-          return coinsList;
+          return _convertSymbolsToCoins(exchangeInfo);
         } catch (e) {
           lastException = e is Exception ? e : Exception(e.toString());
         }
@@ -264,14 +254,13 @@ class BinanceRepository implements CexRepository {
       );
     }
 
-    dates.sort();
-
     if (dates.isEmpty) {
       return {};
     }
 
-    final startDate = dates.first.add(const Duration(days: -2));
-    final endDate = dates.last.add(const Duration(days: 2));
+    final sortedDates = List.of(dates)..sort();
+    final startDate = sortedDates.first.add(const Duration(days: -2));
+    final endDate = sortedDates.last.add(const Duration(days: 2));
     final daysDiff = endDate.difference(startDate).inDays;
 
     final result = <DateTime, Decimal>{};
@@ -343,9 +332,8 @@ class BinanceRepository implements CexRepository {
       );
     }
 
-    final trimmedCoinId = tradingSymbol.replaceAll(RegExp('-segwit'), '');
     final symbol =
-        '${trimmedCoinId.toUpperCase()}${effectiveQuote.toUpperCase()}';
+        '${tradingSymbol.toUpperCase()}${effectiveQuote.toUpperCase()}';
 
     // Try primary endpoint first, fallback to secondary on failure
     Exception? lastException;
