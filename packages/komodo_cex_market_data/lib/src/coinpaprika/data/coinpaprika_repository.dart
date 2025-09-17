@@ -90,7 +90,7 @@ class CoinPaprikaRepository implements CexRepository {
     final apiPlan = coinPaprikaProvider.apiPlan;
 
     // Determine the actual fetchable date range (using UTC)
-    var effectiveStartAt = startAt;
+    var effectiveStartAt = startAt?.toUtc();
     final effectiveEndAt = endAt ?? DateTime.now().toUtc();
 
     // If no startAt provided, use default based on plan limit or

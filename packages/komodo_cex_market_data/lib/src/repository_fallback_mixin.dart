@@ -331,7 +331,7 @@ mixin RepositoryFallbackMixin {
       }
     }
 
-    _logger.info(
+    _logger.warning(
       'All $attemptCount attempts failed for $operationName '
       '${assetId.symbol.assetConfigId}',
     );
@@ -359,12 +359,7 @@ mixin RepositoryFallbackMixin {
         maxTotalAttempts: maxTotalAttempts,
       );
     } catch (e, s) {
-      _logger
-        ..warning(
-          'All attempts failed for $operationName '
-          '${assetId.symbol.configSymbol}',
-        )
-        ..finest('Stack trace: $s');
+      _logger.finest('Stack trace: $s');
       return null;
     }
   }
