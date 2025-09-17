@@ -42,6 +42,9 @@ BinanceExchangeInfoResponseReduced buildComprehensiveExchangeInfo({
       _createSymbol(symbol: 'BTCGUSD', baseAsset: 'BTC', quoteAsset: 'GUSD'),
       _createSymbol(symbol: 'BTCSUSD', baseAsset: 'BTC', quoteAsset: 'SUSD'),
       _createSymbol(symbol: 'BTCFEI', baseAsset: 'BTC', quoteAsset: 'FEI'),
+      // VIA coin - only supports BNB and ETH, not USDT (to test currency mapping bug)
+      _createSymbol(symbol: 'VIABNB', baseAsset: 'VIA', quoteAsset: 'BNB'),
+      _createSymbol(symbol: 'VIAETH', baseAsset: 'VIA', quoteAsset: 'ETH'),
     ],
   );
 }

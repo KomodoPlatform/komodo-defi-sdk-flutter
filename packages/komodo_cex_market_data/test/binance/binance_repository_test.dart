@@ -1,7 +1,5 @@
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
-import 'package:komodo_cex_market_data/src/binance/models/binance_24hr_ticker.dart';
-import 'package:komodo_cex_market_data/src/binance/models/binance_exchange_info_reduced.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -223,6 +221,77 @@ void main() {
           reason: 'Unknown asset should not be supported',
         );
       });
+
+      test(
+        'should not support USD fiat when coin exists but USDT pair does not',
+        () async {
+          final viaAssetId = AssetId(
+            id: 'viacoin',
+            name: 'Viacoin',
+            symbol: AssetSymbol(assetConfigId: 'VIA'),
+            chainId: AssetChainId(chainId: 0),
+            derivationPath: null,
+            subClass: CoinSubClass.utxo,
+          );
+
+          // VIA coin should be supported (it has BNB and ETH pairs)
+          final supportsViaBnb = await repository.supports(
+            viaAssetId,
+            Cryptocurrency.bnb,
+            PriceRequestType.currentPrice,
+          );
+
+          expect(supportsViaBnb, isTrue, reason: 'VIA should support BNB pair');
+
+          // But USD (which maps to USDT) should not be supported since VIA-USDT pair doesn't exist
+          final supportsViaUsd = await repository.supports(
+            viaAssetId,
+            FiatCurrency.usd,
+            PriceRequestType.currentPrice,
+          );
+
+          expect(
+            supportsViaUsd,
+            isFalse,
+            reason:
+                'VIA should not support USD because VIA-USDT pair does not exist',
+          );
+        },
+      );
+
+      test('should handle coin with limited fiat support correctly', () async {
+        final viaAssetId = AssetId(
+          id: 'viacoin',
+          name: 'Viacoin',
+          symbol: AssetSymbol(assetConfigId: 'VIA'),
+          chainId: AssetChainId(chainId: 0),
+          derivationPath: null,
+          subClass: CoinSubClass.utxo,
+        );
+
+        // VIA should support cryptocurrencies it has pairs for
+        final supportsViaEth = await repository.supports(
+          viaAssetId,
+          Cryptocurrency.eth,
+          PriceRequestType.currentPrice,
+        );
+
+        expect(supportsViaEth, isTrue, reason: 'VIA should support ETH pair');
+
+        // But should not support any stablecoin that maps to USDT
+        final supportsTribeStablecoin = await repository.supports(
+          viaAssetId,
+          Stablecoin.tribe, // This maps to USDT
+          PriceRequestType.currentPrice,
+        );
+
+        expect(
+          supportsTribeStablecoin,
+          isFalse,
+          reason:
+              'VIA should not support TRIBE stablecoin (maps to USDT) since VIA-USDT pair does not exist',
+        );
+      });
     });
 
     group('Price fetching with mapping', () {
@@ -431,6 +500,33 @@ void main() {
         expect(Stablecoin.eurs.binanceId, equals('EURS'));
         expect(Stablecoin.eurt.binanceId, equals('EURT'));
       });
+    });
+
+    group('Bug reproduction: coin supported but fiat mapping fails', () {
+      test(
+        'getCoinFiatPrice should fail for VIA-USD when only VIA-BNB/ETH pairs exist',
+        () async {
+          final viaAssetId = AssetId(
+            id: 'viacoin',
+            name: 'Viacoin',
+            symbol: AssetSymbol(assetConfigId: 'VIA'),
+            chainId: AssetChainId(chainId: 0),
+            derivationPath: null,
+            subClass: CoinSubClass.utxo,
+          );
+
+          // This should fail because VIA-USDT pair doesn't exist
+          expect(
+            () async => await repository.getCoinFiatPrice(
+              viaAssetId,
+              fiatCurrency: FiatCurrency.usd,
+            ),
+            throwsA(isA<Exception>()),
+            reason:
+                'Should fail when trying to get VIA price in USD (which maps to USDT) when VIA-USDT pair does not exist',
+          );
+        },
+      );
     });
   });
 }

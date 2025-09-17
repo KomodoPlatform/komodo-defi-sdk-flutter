@@ -290,12 +290,16 @@ class BinanceRepository implements CexRepository {
       final fiat = fiatCurrency.binanceId;
       // If resolveTradingSymbol throws, treat as unsupported
       final tradingSymbol = resolveTradingSymbol(assetId);
-      final supportsAsset = coins.any(
+
+      // Find the specific coin
+      final coin = coins.firstWhere(
         (c) => c.id.toUpperCase() == tradingSymbol.toUpperCase(),
+        orElse: () => throw ArgumentError('Asset not found'),
       );
-      final supportsFiat =
-          _cachedFiatCurrencies?.contains(fiat.toUpperCase()) ?? false;
-      return supportsAsset && supportsFiat;
+
+      // Check if this specific coin supports the mapped fiat currency
+      final supportsFiat = coin.currencies.contains(fiat.toUpperCase());
+      return supportsFiat;
     } on ArgumentError {
       return false;
     }
