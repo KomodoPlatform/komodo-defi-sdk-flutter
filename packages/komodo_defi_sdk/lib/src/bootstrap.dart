@@ -59,7 +59,6 @@ Future<void> bootstrap({
 
   // Asset history storage singletons
   container.registerLazySingleton(AssetHistoryStorage.new);
-  container.registerLazySingleton(CustomAssetHistoryStorage.new);
   container.registerLazySingleton(KomodoAssetsUpdateManager.new);
 
   // Register asset manager first since it's a core dependency
@@ -70,7 +69,6 @@ Future<void> bootstrap({
       client,
       auth,
       config,
-      container<CustomAssetHistoryStorage>(),
       () => container<ActivationManager>(),
       container<KomodoAssetsUpdateManager>(),
     );
@@ -106,11 +104,11 @@ Future<void> bootstrap({
       client,
       auth,
       container<AssetHistoryStorage>(),
-      container<CustomAssetHistoryStorage>(),
       assetManager,
       balanceManager,
-      // Separate interface used to avoid muddying the IAssetProvider interface
-      assetRefreshNotifier: assetManager,
+      // Needed here to add custom tokens to the same instance
+      // as the asset manager
+      container<KomodoAssetsUpdateManager>(),
     );
 
     return activationManager;

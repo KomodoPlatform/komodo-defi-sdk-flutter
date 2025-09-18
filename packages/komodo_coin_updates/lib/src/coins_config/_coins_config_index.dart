@@ -8,5 +8,7 @@ export 'coin_config_repository.dart';
 export 'coin_config_repository_factory.dart';
 export 'coin_config_storage.dart';
 export 'config_transform.dart';
+export 'custom_token_storage.dart';
+export 'custom_token_storage_interface.dart';
 export 'github_coin_config_provider.dart';
 export 'local_asset_coin_config_provider.dart';

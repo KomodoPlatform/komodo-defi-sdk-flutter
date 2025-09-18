@@ -140,6 +140,7 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
         configSources: configProviders,
         loadingStrategy: _loadingStrategy,
         defaultPriorityTickers: defaultPriorityTickers,
+        customTokenStorage: CustomTokenStorage(),
       );
 
       // Initialize update manager

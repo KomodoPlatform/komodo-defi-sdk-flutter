@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
@@ -16,19 +17,17 @@ class ActivationManager {
     this._client,
     this._auth,
     this._assetHistory,
-    this._customTokenHistory,
     this._assetLookup,
-    this._balanceManager, {
-    required IAssetRefreshNotifier assetRefreshNotifier,
-  }) : _assetRefreshNotifier = assetRefreshNotifier;
+    this._balanceManager,
+    this._assetsUpdateManager,
+  );
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final AssetHistoryStorage _assetHistory;
-  final CustomAssetHistoryStorage _customTokenHistory;
   final IAssetLookup _assetLookup;
-  final IAssetRefreshNotifier _assetRefreshNotifier;
   final IBalanceManager _balanceManager;
+  final KomodoAssetsUpdateManager _assetsUpdateManager;
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
 
@@ -192,14 +191,9 @@ class ActivationManager {
     if (progress.isSuccess) {
       final user = await _auth.currentUser;
       if (user != null) {
-        // TODO: consider abstracting this and other custom token operations out
-        // of the activation manager
+        // Store custom tokens using CoinConfigManager
         if (group.primary.protocol.isCustomToken) {
-          await _customTokenHistory.addAssetToWallet(
-            user.walletId,
-            group.primary,
-            _assetLookup.available.keys.toSet(),
-          );
+          await _assetsUpdateManager.assets.storeCustomToken(group.primary);
         } else {
           await _assetHistory.addAssetToWallet(
             user.walletId,
@@ -209,21 +203,9 @@ class ActivationManager {
 
         final allAssets = [group.primary, ...(group.children?.toList() ?? [])];
 
-        // Wait for asset refresh to complete before precaching balances to ensure
-        // custom token is available for balance precaching. This prevents race
-        // conditions where balance precaching fails because the custom token
-        // isn't yet available in the asset lookup.
-        if (allAssets.any((asset) => asset.protocol.isCustomToken)) {
-          await _assetRefreshNotifier.notifyAndWaitForCustomTokensRefresh();
-        }
-
         for (final asset in allAssets) {
           if (asset.protocol.isCustomToken) {
-            await _customTokenHistory.addAssetToWallet(
-              user.walletId,
-              asset,
-              _assetLookup.available.keys.toSet(),
-            );
+            await _assetsUpdateManager.assets.storeCustomToken(asset);
           }
 
           // Pre-cache balance for the activated asset
