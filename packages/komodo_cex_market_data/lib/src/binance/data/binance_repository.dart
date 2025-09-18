@@ -70,18 +70,16 @@ class BinanceRepository implements CexRepository {
 
   /// Internal method to fetch coin list data from the API.
   Future<List<CexCoin>> _fetchCoinListInternal() async {
-    try {
-      // Try primary endpoint first, fallback to secondary on failure
-      Exception? lastException;
-      for (final baseUrl in binanceApiEndpoint) {
-        try {
-          final exchangeInfo = await _binanceProvider.fetchExchangeInfoReduced(
-            baseUrl: baseUrl,
-          );
-          return _convertSymbolsToCoins(exchangeInfo);
-        } catch (e) {
-          lastException = e is Exception ? e : Exception(e.toString());
-        }
+    Exception? lastException;
+    // Try primary endpoint first, fallback to secondary on failure
+    for (final baseUrl in binanceApiEndpoint) {
+      try {
+        final exchangeInfo = await _binanceProvider.fetchExchangeInfoReduced(
+          baseUrl: baseUrl,
+        );
+        return _convertSymbolsToCoins(exchangeInfo);
+      } catch (e) {
+        lastException = e is Exception ? e : Exception(e.toString());
       }
     }
     throw lastException ?? Exception('All endpoints failed');
