@@ -192,23 +192,42 @@ class ActivationManager {
     if (progress.isSuccess) {
       final user = await _auth.currentUser;
       if (user != null) {
-        await _assetHistory.addAssetToWallet(
-          user.walletId,
-          group.primary.id.id,
-        );
-
-        final allAssets = [group.primary, ...(group.children?.toList() ?? [])];
-        for (final asset in allAssets) {
-          if (asset.protocol.isCustomToken) {
-            await _customTokenHistory.addAssetToWallet(user.walletId, asset);
-          }
-          // Pre-cache balance for the activated asset
-          await _balanceManager.precacheBalance(asset);
+        // TODO: consider abstracting this and other custom token operations out
+        // of the activation manager
+        if (group.primary.protocol.isCustomToken) {
+          await _customTokenHistory.addAssetToWallet(
+            user.walletId,
+            group.primary,
+            _assetLookup.available.keys.toSet(),
+          );
+        } else {
+          await _assetHistory.addAssetToWallet(
+            user.walletId,
+            group.primary.id.id,
+          );
         }
 
-        // Notify asset manager to refresh custom tokens if any were activated
+        final allAssets = [group.primary, ...(group.children?.toList() ?? [])];
+
+        // Wait for asset refresh to complete before precaching balances to ensure
+        // custom token is available for balance precaching. This prevents race
+        // conditions where balance precaching fails because the custom token
+        // isn't yet available in the asset lookup.
         if (allAssets.any((asset) => asset.protocol.isCustomToken)) {
-          _assetRefreshNotifier.notifyCustomTokensChanged();
+          await _assetRefreshNotifier.notifyAndWaitForCustomTokensRefresh();
+        }
+
+        for (final asset in allAssets) {
+          if (asset.protocol.isCustomToken) {
+            await _customTokenHistory.addAssetToWallet(
+              user.walletId,
+              asset,
+              _assetLookup.available.keys.toSet(),
+            );
+          }
+
+          // Pre-cache balance for the activated asset
+          await _balanceManager.precacheBalance(asset);
         }
       }
 

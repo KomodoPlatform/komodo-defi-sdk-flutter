@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
@@ -63,8 +63,9 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
       for (final address in addresses) {
         final uri = url.replace(
           pathSegments: [...url.pathSegments, address.address],
-          queryParameters:
-              asset.protocol.isTestnet ? {'testnet': 'true'} : null,
+          queryParameters: asset.protocol.isTestnet
+              ? {'testnet': 'true'}
+              : null,
         );
         // Add the address as the next path segment
 
@@ -88,14 +89,14 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
           t.fromId,
           t.itemCount,
         ),
-        _ =>
-          throw UnsupportedError(
-            'Unsupported pagination type: ${pagination.runtimeType}',
-          ),
+        _ => throw UnsupportedError(
+          'Unsupported pagination type: ${pagination.runtimeType}',
+        ),
       };
 
-      final currentBlock =
-          allTransactions.isNotEmpty ? allTransactions.first.blockHeight : 0;
+      final currentBlock = allTransactions.isNotEmpty
+          ? allTransactions.first.blockHeight
+          : 0;
 
       return MyTxHistoryResponse(
         mmrpc: RpcVersion.v2_0,
@@ -152,13 +153,12 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
             blockHeight: tx.value<int>('block_height'),
             confirmations: tx.value<int>('confirmations'),
             timestamp: tx.value<int>('timestamp'),
-            feeDetails:
-                tx.valueOrNull<JsonMap>('fee_details') != null
-                    ? FeeInfo.fromJson(
-                      tx.value<JsonMap>('fee_details')
-                        ..setIfAbsentOrEmpty('type', 'EthGas'),
-                    )
-                    : null,
+            feeDetails: tx.valueOrNull<JsonMap>('fee_details') != null
+                ? FeeInfo.fromJson(
+                    tx.value<JsonMap>('fee_details')
+                      ..setIfAbsentOrEmpty('type', 'EthGas'),
+                  )
+                : null,
             coin: coinId,
             internalId: tx.value<String>('internal_id'),
             memo: tx.valueOrNull<String>('memo'),
@@ -252,7 +252,12 @@ class EtherscanProtocolHelper {
     }
 
     final protocol = asset.protocol as Erc20Protocol;
-    return '$baseEndpoint/${protocol.swapContractAddress}';
+    final tokenContractAddress = protocol.contractAddress;
+    if (tokenContractAddress == null || tokenContractAddress.isEmpty) {
+      return null;
+    }
+
+    return '$baseEndpoint/$tokenContractAddress';
   }
 
   String? _getBaseEndpoint(AssetId id) {
