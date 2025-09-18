@@ -142,6 +142,7 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
 
     final customTokens = await _customAssetHistory.getWalletAssets(
       user.walletId,
+      _orderedCoins.keys.toSet(),
     );
 
     final filteredCustomTokens = _filterCustomTokens(customTokens);
@@ -281,6 +282,16 @@ class AssetManager implements IAssetProvider, IAssetRefreshNotifier {
         debugPrint('Custom token refresh failed: $e');
       }),
     );
+  }
+
+  @override
+  Future<void> notifyAndWaitForCustomTokensRefresh() async {
+    try {
+      await _refreshCustomTokens();
+    } catch (e) {
+      debugPrint('Custom token refresh failed: $e');
+      rethrow;
+    }
   }
 
   /// Filters custom tokens based on the current asset filtering strategy.
