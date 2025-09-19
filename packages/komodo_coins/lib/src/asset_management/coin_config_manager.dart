@@ -339,22 +339,6 @@ class StrategicCoinConfigManager
         .toSet();
   }
 
-  /// Creates a duplicate AssetId with a modified name and id to avoid conflicts
-  AssetId _createDuplicateAssetId(AssetId originalId) {
-    var counter = 1;
-    AssetId duplicateId;
-
-    do {
-      final newName = '${originalId.name}_custom$counter';
-      final newId = '${originalId.id}_custom$counter';
-
-      duplicateId = originalId.copyWith(id: newId, name: newName);
-      counter++;
-    } while (_assets!.containsKey(duplicateId));
-
-    return duplicateId;
-  }
-
   /// Loads custom tokens and merges them directly into _assets
   Future<void> _loadAndMergeCustomTokens() async {
     try {
@@ -365,23 +349,7 @@ class StrategicCoinConfigManager
 
       // Add custom tokens to _assets, handling conflicts by creating duplicate entries
       for (final customToken in customTokens) {
-        if (_assets!.containsKey(customToken.id)) {
-          // Conflict detected - create a duplicate entry with a modified name
-          final duplicateAssetId = _createDuplicateAssetId(customToken.id);
-          final duplicateAsset = Asset(
-            id: duplicateAssetId,
-            protocol: customToken.protocol,
-            isWalletOnly: customToken.isWalletOnly,
-            signMessagePrefix: customToken.signMessagePrefix,
-          );
-          _assets![duplicateAssetId] = duplicateAsset;
-          _logger.fine(
-            'Asset conflict detected for ${customToken.id.id}. '
-            'Created duplicate with id: ${duplicateAssetId.id}',
-          );
-        } else {
-          _assets![customToken.id] = customToken;
-        }
+        _assets![customToken.id] = customToken;
       }
 
       _logger.fine('Merged ${customTokens.length} custom tokens into assets');
@@ -390,32 +358,38 @@ class StrategicCoinConfigManager
     }
   }
 
+  /// Updates filter caches when an asset is added
+  void _updateFilterCachesForAddedAsset(Asset asset) {
+    for (final entry in _filterCache.entries) {
+      final strategyId = entry.key;
+      final cachedAssets = entry.value;
+
+      // Create a strategy instance using the factory method
+      final strategy = AssetFilterStrategy.fromStrategyId(strategyId);
+      if (strategy != null) {
+        final config = asset.protocol.config;
+        if (strategy.shouldInclude(asset, config)) {
+          cachedAssets[asset.id] = asset;
+        }
+      }
+    }
+  }
+
+  /// Updates filter caches when an asset is removed
+  void _updateFilterCachesForRemovedAsset(AssetId assetId) {
+    for (final cachedAssets in _filterCache.values) {
+      cachedAssets.remove(assetId);
+    }
+  }
+
   @override
   Future<void> storeCustomToken(Asset asset) async {
     _checkNotDisposed();
     _assertInitialized();
+
     await _customTokenStorage.storeCustomToken(asset);
-    if (_isInitialized) {
-      // Add the custom token directly to _assets, handling conflicts
-      if (_assets!.containsKey(asset.id)) {
-        // Conflict detected - create a duplicate entry with a modified name
-        final duplicateAssetId = _createDuplicateAssetId(asset.id);
-        final duplicateAsset = Asset(
-          id: duplicateAssetId,
-          protocol: asset.protocol,
-          isWalletOnly: asset.isWalletOnly,
-          signMessagePrefix: asset.signMessagePrefix,
-        );
-        _assets![duplicateAssetId] = duplicateAsset;
-        _logger.fine(
-          'Asset conflict detected for ${asset.id.id}. '
-          'Created duplicate with id: ${duplicateAssetId.id}',
-        );
-      } else {
-        _assets![asset.id] = asset;
-      }
-      _filterCache.clear(); // Clear filter cache after adding custom token
-    }
+    _assets![asset.id] = asset;
+    _updateFilterCachesForAddedAsset(asset);
   }
 
   @override
@@ -423,11 +397,8 @@ class StrategicCoinConfigManager
     _checkNotDisposed();
     _assertInitialized();
     await _customTokenStorage.deleteCustomToken(assetId);
-    if (_isInitialized) {
-      // Remove the custom token from _assets
-      _assets!.remove(assetId);
-      _filterCache.clear(); // Clear filter cache after deleting custom token
-    }
+    _assets!.remove(assetId);
+    _updateFilterCachesForRemovedAsset(assetId);
   }
 
   @override

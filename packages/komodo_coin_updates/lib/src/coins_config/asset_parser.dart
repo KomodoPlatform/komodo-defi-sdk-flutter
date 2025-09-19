@@ -28,11 +28,11 @@ class AssetParser {
   /// - [logContext]: Optional context string for logging (e.g., 'from asset bundle')
   ///
   /// Returns a list of successfully parsed assets.
-  Future<List<Asset>> parseAssetsFromConfig(
+  List<Asset> parseAssetsFromConfig(
     Map<String, Map<String, dynamic>> transformedConfigs, {
     bool Function(Map<String, dynamic>)? shouldFilterCoin,
     String? logContext,
-  }) async {
+  }) {
     final context = logContext != null ? ' $logContext' : '';
 
     _log.info(
@@ -141,6 +141,42 @@ class AssetParser {
     }
 
     return assets;
+  }
+
+  /// Rebuilds parent-child relationships for a list of assets.
+  ///
+  /// This method implements a two-pass strategy similar to parseAssetsFromConfig:
+  /// 1. First pass: Identify platform assets (no parent) and collect their AssetIds
+  /// 2. Second pass: Reparse child assets using the known platform AssetIds
+  ///
+  /// This is useful when loading assets from storage where parent-child relationships
+  /// need to be reconstructed.
+  ///
+  /// Parameters:
+  /// - [assets]: List of assets to rebuild relationships for
+  /// - [logContext]: Optional context string for logging
+  ///
+  /// Returns a list of assets with properly rebuilt parent-child relationships.
+  List<Asset> rebuildParentChildRelationships(
+    Iterable<Asset> assets, {
+    String? logContext,
+  }) {
+    final context = logContext != null ? ' $logContext' : '';
+
+    _log.fine(
+      'Rebuilding parent-child relationships for ${assets.length} assets$context',
+    );
+
+    // Convert assets back to config format for re-parsing
+    final assetConfigs = <String, Map<String, dynamic>>{};
+    for (final asset in assets) {
+      assetConfigs[asset.id.symbol.assetConfigId] = asset.protocol.config;
+    }
+
+    return parseAssetsFromConfig(
+      assetConfigs,
+      logContext: 'while rebuilding relationships$context',
+    );
   }
 
   /// Helper method to check if a coin configuration has no parent.

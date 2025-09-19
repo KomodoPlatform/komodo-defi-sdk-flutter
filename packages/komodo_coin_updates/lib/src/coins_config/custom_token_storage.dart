@@ -1,5 +1,5 @@
 import 'package:hive_ce/hive.dart';
-import 'package:komodo_coin_updates/src/coins_config/custom_token_storage_interface.dart';
+import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -13,14 +13,20 @@ class CustomTokenStorage implements ICustomTokenStorage {
   CustomTokenStorage({
     this.customTokensBoxName = 'custom_tokens',
     LazyBox<Asset>? customTokensBox,
-  }) : _customTokensBox = customTokensBox;
+    AssetParser assetParser = const AssetParser(),
+  }) : _customTokensBox = customTokensBox,
+       _assetParser = assetParser;
 
   static final Logger _log = Logger('CustomTokenStorage');
 
   /// The name of the Hive box for custom tokens.
   final String customTokensBoxName;
 
+  /// Not final to allow for reopening if closed or in a corrupted state.
   LazyBox<Asset>? _customTokensBox;
+
+  /// The asset parser used to rebuild parent-child relationships.
+  final AssetParser _assetParser;
 
   @override
   Future<void> storeCustomToken(Asset asset) async {
@@ -45,14 +51,36 @@ class CustomTokenStorage implements ICustomTokenStorage {
     final values = await Future.wait(
       keys.map((dynamic key) => box.get(key as String)),
     );
-    return values.whereType<Asset>().toList();
+
+    return _assetParser
+        .rebuildParentChildRelationships(
+          values.whereType<Asset>(),
+          logContext: 'for custom tokens',
+        )
+        .map(
+          (asset) => asset.copyWith(
+            // IMPORTANT: This cast to Erc20Protocol is by design for now,
+            // as custom tokens are currently only supported for ERC20.
+            // This may change in future versions to support other protocols.
+            protocol: (asset.protocol as Erc20Protocol).copyWith(
+              isCustomToken: true,
+            ),
+          ),
+        )
+        .toList();
   }
 
   @override
   Future<Asset?> getCustomToken(AssetId assetId) async {
     _log.fine('Retrieving custom token ${assetId.id}');
     final box = await _openCustomTokensBox();
-    return await box.get(assetId.id);
+    final asset = await box.get(assetId.id);
+    return asset?.copyWith(
+      // IMPORTANT: This cast to Erc20Protocol is by design for now,
+      // as custom tokens are currently only supported for ERC20.
+      // This may change in future versions to support other protocols.
+      protocol: (asset.protocol as Erc20Protocol).copyWith(isCustomToken: true),
+    );
   }
 
   @override

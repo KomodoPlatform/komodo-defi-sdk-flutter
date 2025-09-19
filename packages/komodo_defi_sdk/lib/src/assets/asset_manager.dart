@@ -134,7 +134,7 @@ class AssetManager implements IAssetProvider {
   /// The filtering and ordering is handled by the underlying coin_config_manager.
   @override
   Map<AssetId, Asset> get available =>
-      _coins.filteredAssets(_currentFilterStrategy);
+      Map.unmodifiable(_coins.filteredAssets(_currentFilterStrategy));
 
   /// Returns currently activated assets for the signed-in user.
   ///

@@ -70,7 +70,7 @@ class StartupCoinsProvider {
       manager = StrategicCoinConfigManager(
         configSources: sources,
         loadingStrategy: loadingStrategy ?? StorageFirstLoadingStrategy(),
-        customTokenStorage: CustomTokenStorage(),
+        customTokenStorage: const NoOpCustomTokenStorage(),
       );
 
       await manager.init();
