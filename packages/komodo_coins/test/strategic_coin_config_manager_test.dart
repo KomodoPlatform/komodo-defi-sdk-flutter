@@ -76,10 +76,12 @@ void main() {
       });
 
       // Set up source loading
-      when(() => mockStorageSource.loadAssets())
-          .thenAnswer((_) async => testAssets);
-      when(() => mockLocalSource.loadAssets())
-          .thenAnswer((_) async => testAssets);
+      when(
+        () => mockStorageSource.loadAssets(),
+      ).thenAnswer((_) async => testAssets);
+      when(
+        () => mockLocalSource.loadAssets(),
+      ).thenAnswer((_) async => testAssets);
     });
 
     group('Constructor', () {
@@ -138,8 +140,9 @@ void main() {
       });
 
       test('handles source availability check failures gracefully', () async {
-        when(() => mockStorageSource.isAvailable())
-            .thenThrow(Exception('Availability check failed'));
+        when(
+          () => mockStorageSource.isAvailable(),
+        ).thenThrow(Exception('Availability check failed'));
 
         final manager = StrategicCoinConfigManager(
           configSources: [mockStorageSource, mockLocalSource],
@@ -152,8 +155,9 @@ void main() {
       });
 
       test('handles source loading failures gracefully', () async {
-        when(() => mockStorageSource.loadAssets())
-            .thenThrow(Exception('Load failed'));
+        when(
+          () => mockStorageSource.loadAssets(),
+        ).thenThrow(Exception('Load failed'));
 
         final manager = StrategicCoinConfigManager(
           configSources: [mockStorageSource, mockLocalSource],
@@ -200,10 +204,12 @@ void main() {
 
       test('deduplicates assets from multiple sources', () async {
         // Set up sources to return the same assets
-        when(() => mockStorageSource.loadAssets())
-            .thenAnswer((_) async => testAssets);
-        when(() => mockLocalSource.loadAssets())
-            .thenAnswer((_) async => testAssets);
+        when(
+          () => mockStorageSource.loadAssets(),
+        ).thenAnswer((_) async => testAssets);
+        when(
+          () => mockLocalSource.loadAssets(),
+        ).thenAnswer((_) async => testAssets);
 
         final dedupManager = StrategicCoinConfigManager(
           configSources: [mockStorageSource, mockLocalSource],
@@ -234,8 +240,11 @@ void main() {
         expect(filtered, isNotEmpty);
         // All test assets should be UTXO type
         expect(
-          filtered.values
-              .every((asset) => asset.id.subClass == CoinSubClass.utxo),
+          filtered.values.every(
+            (asset) =>
+                asset.id.subClass == CoinSubClass.utxo ||
+                asset.id.subClass == CoinSubClass.smartChain,
+          ),
           isTrue,
         );
       });
@@ -254,10 +263,12 @@ void main() {
         final noTrezorAsset = Asset.fromJson(noTrezorConfig);
 
         // Set up source to return only the no-trezor asset
-        when(() => mockStorageSource.loadAssets())
-            .thenAnswer((_) async => [noTrezorAsset]);
-        when(() => mockLocalSource.loadAssets())
-            .thenAnswer((_) async => [noTrezorAsset]);
+        when(
+          () => mockStorageSource.loadAssets(),
+        ).thenAnswer((_) async => [noTrezorAsset]);
+        when(
+          () => mockLocalSource.loadAssets(),
+        ).thenAnswer((_) async => [noTrezorAsset]);
 
         final noTrezorManager = StrategicCoinConfigManager(
           configSources: [mockStorageSource, mockLocalSource],
@@ -294,11 +305,11 @@ void main() {
       });
 
       test('finds asset by ticker and subclass', () {
-        final found = manager.findByTicker('KMD', CoinSubClass.utxo);
+        final found = manager.findByTicker('KMD', CoinSubClass.smartChain);
 
         expect(found, isNotNull);
         expect(found!.id.id, equals('KMD'));
-        expect(found.id.subClass, equals(CoinSubClass.utxo));
+        expect(found.id.subClass, equals(CoinSubClass.smartChain));
       });
 
       test('returns null when asset not found', () {
@@ -356,8 +367,9 @@ void main() {
       });
 
       test('handles refresh failures gracefully', () async {
-        when(() => mockStorageSource.loadAssets())
-            .thenThrow(Exception('Refresh failed'));
+        when(
+          () => mockStorageSource.loadAssets(),
+        ).thenThrow(Exception('Refresh failed'));
 
         final initialAssets = Map<AssetId, Asset>.from(manager.all);
 

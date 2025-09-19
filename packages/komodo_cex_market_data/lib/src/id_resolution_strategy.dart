@@ -36,7 +36,7 @@ class BinanceIdResolutionStrategy implements IdResolutionStrategy {
     final configSymbol = assetId.symbol.configSymbol;
 
     if (binanceId == null || binanceId.isEmpty) {
-      _logger.warning(
+      _logger.fine(
         'Missing binanceId for asset ${assetId.symbol.configSymbol}, '
         'falling back to configSymbol. This may cause API issues.',
       );
@@ -90,7 +90,7 @@ class CoinGeckoIdResolutionStrategy implements IdResolutionStrategy {
     final coinGeckoId = assetId.symbol.coinGeckoId;
 
     if (coinGeckoId == null || coinGeckoId.isEmpty) {
-      _logger.warning(
+      _logger.fine(
         'Missing coinGeckoId for asset ${assetId.symbol.configSymbol}, '
         'falling back to configSymbol. This may cause API issues.',
       );
@@ -143,7 +143,7 @@ class CoinPaprikaIdResolutionStrategy implements IdResolutionStrategy {
     final coinPaprikaId = assetId.symbol.coinPaprikaId;
 
     if (coinPaprikaId == null || coinPaprikaId.isEmpty) {
-      _logger.warning(
+      _logger.fine(
         'Missing coinPaprikaId for asset ${assetId.symbol.configSymbol}. '
         'CoinPaprika API cannot be used for this asset.',
       );
