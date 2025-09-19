@@ -89,7 +89,7 @@ class CustomTokenStorage implements ICustomTokenStorage {
       return false;
     }
 
-    final box = await Hive.openLazyBox<Asset>(customTokensBoxName);
+    final box = await _openCustomTokensBox();
     return box.isNotEmpty;
   }
 
@@ -137,10 +137,20 @@ class CustomTokenStorage implements ICustomTokenStorage {
   }
 
   Future<LazyBox<Asset>> _openCustomTokensBox() async {
-    if (_customTokensBox == null) {
+    if (_customTokensBox == null || !_customTokensBox!.isOpen) {
       _log.fine('Opening custom tokens box "$customTokensBoxName"');
-      _customTokensBox = await Hive.openLazyBox<Asset>(customTokensBoxName);
+      try {
+        _customTokensBox = await Hive.openLazyBox<Asset>(customTokensBoxName);
+      } catch (e) {
+        _log.warning('Failed to open custom tokens box, retrying: $e');
+        // If the box is in a corrupted state, try to delete and recreate
+        if (await Hive.boxExists(customTokensBoxName)) {
+          await _customTokensBox?.close();
+        }
+        _customTokensBox = await Hive.openLazyBox<Asset>(customTokensBoxName);
+      }
     }
+
     return _customTokensBox!;
   }
 }
