@@ -17,7 +17,7 @@ abstract class CustomTokenStore {
   /// Retrieves all custom tokens from storage.
   /// Returns an empty list if none.
   /// Implementations should return a deterministic order (e.g., sorted by AssetId).
-  Future<List<Asset>> getAllCustomTokens();
+  Future<List<Asset>> getAllCustomTokens(Set<AssetId> knownIds);
 
   /// Retrieves a single custom token by its AssetId.
   /// Returns null if the token is not found.

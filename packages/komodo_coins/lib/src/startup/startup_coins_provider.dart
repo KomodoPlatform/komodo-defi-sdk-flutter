@@ -30,6 +30,7 @@ class StartupCoinsProvider {
     LoadingStrategy? loadingStrategy,
     String? appStoragePath,
     String? appName,
+    CustomTokenStore? customTokenStorage,
   }) async {
     final resolvedAppName = appName ?? 'komodo_coins';
 
@@ -70,7 +71,8 @@ class StartupCoinsProvider {
       manager = StrategicCoinConfigManager(
         configSources: sources,
         loadingStrategy: loadingStrategy ?? StorageFirstLoadingStrategy(),
-        customTokenStorage: const NoOpCustomTokenStorage(),
+        customTokenStorage:
+            customTokenStorage ?? const NoOpCustomTokenStorage(),
       );
 
       await manager.init();

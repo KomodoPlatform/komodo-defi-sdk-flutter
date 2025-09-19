@@ -6,7 +6,7 @@ import 'package:logging/logging.dart';
 /// Storage for custom tokens that are not part of the official coin configuration.
 /// These tokens are persisted independently from the main coin configuration
 /// and are not affected by coin config updates.
-class CustomTokenStorage implements ICustomTokenStorage {
+class CustomTokenStorage implements CustomTokenStore {
   /// Creates a custom token storage instance.
   /// [customTokensBoxName] is the name of the Hive box for storing custom tokens.
   /// [customTokensBox] is an optional pre-opened LazyBox for testing/mocking.
@@ -29,6 +29,12 @@ class CustomTokenStorage implements ICustomTokenStorage {
   final AssetParser _assetParser;
 
   @override
+  Future<void> init() async {
+    // Initialize by opening the box - this ensures storage is ready
+    await _openCustomTokensBox();
+  }
+
+  @override
   Future<void> storeCustomToken(Asset asset) async {
     _log.fine('Storing custom token ${asset.id.id}');
     final box = await _openCustomTokensBox();
@@ -44,17 +50,16 @@ class CustomTokenStorage implements ICustomTokenStorage {
   }
 
   @override
-  Future<List<Asset>> getAllCustomTokens() async {
+  Future<List<Asset>> getAllCustomTokens(Set<AssetId> knownIds) async {
     _log.fine('Retrieving all custom tokens');
     final box = await _openCustomTokensBox();
-    final keys = box.keys;
-    final values = await Future.wait(
-      keys.map((dynamic key) => box.get(key as String)),
-    );
+    final keys = box.keys.cast<String>();
+    final values = await Future.wait(keys.map(box.get));
 
     return _assetParser
-        .rebuildParentChildRelationships(
+        .rebuildParentChildRelationshipsWithKnownParents(
           values.whereType<Asset>(),
+          knownIds,
           logContext: 'for custom tokens',
         )
         .map(
@@ -90,17 +95,30 @@ class CustomTokenStorage implements ICustomTokenStorage {
   }
 
   @override
-  Future<void> deleteCustomToken(AssetId assetId) async {
+  Future<bool> deleteCustomToken(AssetId assetId) async {
     _log.fine('Deleting custom token ${assetId.id}');
     final box = await _openCustomTokensBox();
+    final existed = box.containsKey(assetId.id);
     await box.delete(assetId.id);
+    return existed;
   }
 
   @override
-  Future<void> deleteCustomTokens(List<AssetId> assetIds) async {
+  Future<int> deleteCustomTokens(List<AssetId> assetIds) async {
     _log.fine('Deleting ${assetIds.length} custom tokens');
     final box = await _openCustomTokensBox();
-    await box.deleteAll(assetIds.map((id) => id.id));
+    final keys = assetIds.map((id) => id.id).toList();
+
+    // Count how many actually exist before deletion
+    var deletedCount = 0;
+    for (final key in keys) {
+      if (box.containsKey(key)) {
+        deletedCount++;
+      }
+    }
+
+    await box.deleteAll(keys);
+    return deletedCount;
   }
 
   @override
@@ -112,17 +130,14 @@ class CustomTokenStorage implements ICustomTokenStorage {
 
   @override
   Future<bool> hasCustomTokens() async {
-    final boxExists = await Hive.boxExists(customTokensBoxName);
-    if (!boxExists) {
-      return false;
-    }
-
+    final exists = await Hive.boxExists(customTokensBoxName);
+    if (!exists) return false;
     final box = await _openCustomTokensBox();
     return box.isNotEmpty;
   }
 
   @override
-  Future<bool> updateCustomToken(Asset asset) async {
+  Future<bool> upsertCustomToken(Asset asset) async {
     final box = await _openCustomTokensBox();
     final existed = box.containsKey(asset.id.id);
     await box.put(asset.id.id, asset);

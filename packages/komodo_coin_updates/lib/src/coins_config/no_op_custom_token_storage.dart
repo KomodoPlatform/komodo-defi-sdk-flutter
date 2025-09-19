@@ -1,12 +1,17 @@
-import 'package:komodo_coin_updates/src/coins_config/custom_token_storage_interface.dart';
+import 'package:komodo_coin_updates/src/coins_config/custom_token_store.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
-/// A no-op implementation of [ICustomTokenStorage] that always returns empty results.
+/// A no-op implementation of [CustomTokenStore] that always returns empty results.
 /// This is useful in scenarios where custom tokens should not be included,
 /// such as in startup coin providers that need to provide a minimal coin list
 /// to initialize the system without user-specific customizations.
-class NoOpCustomTokenStorage implements ICustomTokenStorage {
+class NoOpCustomTokenStorage implements CustomTokenStore {
   const NoOpCustomTokenStorage();
+
+  @override
+  Future<void> init() async {
+    // No-op: nothing to initialize
+  }
 
   @override
   Future<void> storeCustomToken(Asset asset) async {
@@ -19,7 +24,7 @@ class NoOpCustomTokenStorage implements ICustomTokenStorage {
   }
 
   @override
-  Future<List<Asset>> getAllCustomTokens() async {
+  Future<List<Asset>> getAllCustomTokens(Set<AssetId> knownIds) async {
     // Always returns empty list
     return <Asset>[];
   }
@@ -37,13 +42,15 @@ class NoOpCustomTokenStorage implements ICustomTokenStorage {
   }
 
   @override
-  Future<void> deleteCustomToken(AssetId assetId) async {
-    // No-op: nothing to delete
+  Future<bool> deleteCustomToken(AssetId assetId) async {
+    // No-op: nothing to delete, returns false (nothing was deleted)
+    return false;
   }
 
   @override
-  Future<void> deleteCustomTokens(List<AssetId> assetIds) async {
-    // No-op: nothing to delete
+  Future<int> deleteCustomTokens(List<AssetId> assetIds) async {
+    // No-op: nothing to delete, returns 0 (no tokens deleted)
+    return 0;
   }
 
   @override
@@ -58,8 +65,8 @@ class NoOpCustomTokenStorage implements ICustomTokenStorage {
   }
 
   @override
-  Future<bool> updateCustomToken(Asset asset) async {
-    // No-op: doesn't update anything, returns false (not updated)
+  Future<bool> upsertCustomToken(Asset asset) async {
+    // No-op: doesn't upsert anything, returns false (not updated)
     return false;
   }
 

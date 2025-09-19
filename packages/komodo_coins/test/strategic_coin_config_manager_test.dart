@@ -21,7 +21,7 @@ class MockCoinConfigRepository extends Mock implements CoinConfigRepository {}
 class MockLocalAssetCoinConfigProvider extends Mock
     implements LocalAssetCoinConfigProvider {}
 
-class MockCustomTokenStorage extends Mock implements ICustomTokenStorage {}
+class MockCustomTokenStorage extends Mock implements CustomTokenStore {}
 
 // Fake classes for mocktail fallback values
 class FakeRuntimeUpdateConfig extends Fake
@@ -561,14 +561,16 @@ void main() {
 
         // Set up mock custom token storage behavior
         when(
-          () => mockCustomTokenStorage.getAllCustomTokens(),
+          () => mockCustomTokenStorage.getAllCustomTokens(any()),
         ).thenAnswer((_) async => []);
         when(
           () => mockCustomTokenStorage.storeCustomToken(any()),
         ).thenAnswer((_) async {});
-        when(
-          () => mockCustomTokenStorage.deleteCustomToken(any()),
-        ).thenAnswer((_) async {});
+        when(() => mockCustomTokenStorage.deleteCustomToken(any())).thenAnswer((
+          _,
+        ) async {
+          return true;
+        });
         when(() => mockCustomTokenStorage.dispose()).thenAnswer((_) async {});
 
         manager = StrategicCoinConfigManager(
@@ -587,7 +589,7 @@ void main() {
         test('loads custom tokens during initialization', () async {
           // Set up custom tokens to be returned during init
           when(
-            () => mockCustomTokenStorage.getAllCustomTokens(),
+            () => mockCustomTokenStorage.getAllCustomTokens(any()),
           ).thenAnswer((_) async => [customToken1, customToken2]);
 
           final managerWithTokens = StrategicCoinConfigManager(
@@ -609,7 +611,7 @@ void main() {
 
         test('handles custom token loading failure gracefully', () async {
           when(
-            () => mockCustomTokenStorage.getAllCustomTokens(),
+            () => mockCustomTokenStorage.getAllCustomTokens(any()),
           ).thenThrow(Exception('Storage error'));
 
           final managerWithError = StrategicCoinConfigManager(
@@ -628,7 +630,7 @@ void main() {
         test('handles conflict resolution with existing assets', () async {
           // Set up conflicting custom token
           when(
-            () => mockCustomTokenStorage.getAllCustomTokens(),
+            () => mockCustomTokenStorage.getAllCustomTokens(any()),
           ).thenAnswer((_) async => [conflictingToken]);
 
           final managerWithConflict = StrategicCoinConfigManager(
@@ -880,7 +882,7 @@ void main() {
 
           // Set up mock to return custom tokens during refresh
           when(
-            () => mockCustomTokenStorage.getAllCustomTokens(),
+            () => mockCustomTokenStorage.getAllCustomTokens(any()),
           ).thenAnswer((_) async => [customToken1, customToken2]);
 
           // Refresh assets
@@ -898,7 +900,7 @@ void main() {
 
           // Make custom token loading fail during refresh
           when(
-            () => mockCustomTokenStorage.getAllCustomTokens(),
+            () => mockCustomTokenStorage.getAllCustomTokens(any()),
           ).thenThrow(Exception('Storage error during refresh'));
 
           // Refresh should complete without throwing

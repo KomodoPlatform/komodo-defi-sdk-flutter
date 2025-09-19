@@ -85,7 +85,7 @@ class AssetManager implements IAssetProvider {
   ///
   /// This is called whenever the authentication state changes so the
   /// visible asset list always matches the capabilities of the active wallet.
-  Future<void> setFilterStrategy(AssetFilterStrategy strategy) async {
+  void setFilterStrategy(AssetFilterStrategy strategy) {
     if (_currentFilterStrategy.strategyId == strategy.strategyId) {
       return;
     }
@@ -99,7 +99,7 @@ class AssetManager implements IAssetProvider {
   ///
   /// When a hardware wallet such as Trezor is connected we limit the list of
   /// available assets to only those explicitly supported by that wallet.
-  Future<void> _handleAuthStateChange(KdfUser? user) async {
+  void _handleAuthStateChange(KdfUser? user) {
     if (_isDisposed) return;
 
     final isTrezor =
@@ -113,7 +113,7 @@ class AssetManager implements IAssetProvider {
         ? const TrezorAssetFilterStrategy(hiddenAssets: {'BCH'})
         : const NoAssetFilterStrategy();
 
-    await setFilterStrategy(strategy);
+    setFilterStrategy(strategy);
   }
 
   /// Returns an asset by its [AssetId], if available.

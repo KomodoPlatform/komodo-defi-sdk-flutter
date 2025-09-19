@@ -1190,7 +1190,6 @@ void main() {
             'TUSD',
             'USDP',
             'DAI',
-            'FRAX',
             'LUSD',
             'GUSD',
             'SUSD',

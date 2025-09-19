@@ -59,7 +59,9 @@ Future<void> bootstrap({
 
   // Asset history storage singletons
   container.registerLazySingleton(AssetHistoryStorage.new);
-  container.registerLazySingleton(KomodoAssetsUpdateManager.new);
+  container.registerSingletonAsync<KomodoAssetsUpdateManager>(
+    () async => KomodoAssetsUpdateManager(),
+  );
 
   // Register asset manager first since it's a core dependency
   container.registerSingletonAsync<AssetManager>(() async {
@@ -94,25 +96,34 @@ Future<void> bootstrap({
   }, dependsOn: [AssetManager, KomodoDefiLocalAuth]);
 
   // Register activation manager with asset manager dependency
-  container.registerSingletonAsync<ActivationManager>(() async {
-    final client = await container.getAsync<ApiClient>();
-    final auth = await container.getAsync<KomodoDefiLocalAuth>();
-    final assetManager = await container.getAsync<AssetManager>();
-    final balanceManager = await container.getAsync<BalanceManager>();
+  container.registerSingletonAsync<ActivationManager>(
+    () async {
+      final client = await container.getAsync<ApiClient>();
+      final auth = await container.getAsync<KomodoDefiLocalAuth>();
+      final assetManager = await container.getAsync<AssetManager>();
+      final balanceManager = await container.getAsync<BalanceManager>();
 
-    final activationManager = ActivationManager(
-      client,
-      auth,
-      container<AssetHistoryStorage>(),
-      assetManager,
-      balanceManager,
-      // Needed here to add custom tokens to the same instance
-      // as the asset manager
-      container<KomodoAssetsUpdateManager>(),
-    );
+      final activationManager = ActivationManager(
+        client,
+        auth,
+        container<AssetHistoryStorage>(),
+        assetManager,
+        balanceManager,
+        // Needed here to add custom tokens to the same instance
+        // as the asset manager
+        container<KomodoAssetsUpdateManager>(),
+      );
 
-    return activationManager;
-  }, dependsOn: [ApiClient, KomodoDefiLocalAuth, AssetManager, BalanceManager]);
+      return activationManager;
+    },
+    dependsOn: [
+      ApiClient,
+      KomodoDefiLocalAuth,
+      AssetManager,
+      BalanceManager,
+      KomodoAssetsUpdateManager,
+    ],
+  );
 
   // Register shared activation coordinator
   container.registerSingletonAsync<SharedActivationCoordinator>(() async {

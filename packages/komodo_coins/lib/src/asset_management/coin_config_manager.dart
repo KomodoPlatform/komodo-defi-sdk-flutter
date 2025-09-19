@@ -70,7 +70,7 @@ class StrategicCoinConfigManager
     required List<CoinConfigSource> configSources,
     LoadingStrategy? loadingStrategy,
     Set<String> defaultPriorityTickers = const {},
-    ICustomTokenStorage? customTokenStorage,
+    CustomTokenStore? customTokenStorage,
   }) {
     return StrategicCoinConfigManager._internal(
       configSources: configSources,
@@ -84,7 +84,7 @@ class StrategicCoinConfigManager
     required List<CoinConfigSource> configSources,
     required LoadingStrategy loadingStrategy,
     required Set<String> defaultPriorityTickers,
-    required ICustomTokenStorage customTokenStorage,
+    required CustomTokenStore customTokenStorage,
   }) : _configSources = configSources,
        _loadingStrategy = loadingStrategy,
        _defaultPriorityTickers = Set.unmodifiable(defaultPriorityTickers),
@@ -95,7 +95,7 @@ class StrategicCoinConfigManager
   final List<CoinConfigSource> _configSources;
   final LoadingStrategy _loadingStrategy;
   final Set<String> _defaultPriorityTickers;
-  final ICustomTokenStorage _customTokenStorage;
+  final CustomTokenStore _customTokenStorage;
 
   // Required by CoinConfigFallbackMixin
   @override
@@ -342,7 +342,10 @@ class StrategicCoinConfigManager
   /// Loads custom tokens and merges them directly into _assets
   Future<void> _loadAndMergeCustomTokens() async {
     try {
-      final customTokens = await _customTokenStorage.getAllCustomTokens();
+      final knownIds = _assets!.keys.toSet();
+      final customTokens = await _customTokenStorage.getAllCustomTokens(
+        knownIds,
+      );
       if (customTokens.isEmpty) {
         return;
       }
