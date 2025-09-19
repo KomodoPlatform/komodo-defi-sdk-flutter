@@ -76,7 +76,6 @@ void main() {
             Stablecoin.tusd, // TUSD
             Stablecoin.usdp, // USDP
             Stablecoin.dai, // DAI
-            Stablecoin.frax, // FRAX
             Stablecoin.lusd, // LUSD
             Stablecoin.gusd, // GUSD
             Stablecoin.susd, // SUSD

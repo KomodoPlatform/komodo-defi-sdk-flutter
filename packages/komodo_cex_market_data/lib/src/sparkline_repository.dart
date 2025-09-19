@@ -250,7 +250,7 @@ class SparklineRepository with RepositoryFallbackMixin {
     // If all repositories failed, cache null result to avoid repeated attempts
     final failedCacheData = SparklineData.failed();
     await _box!.put(symbol, failedCacheData);
-    _logger.warning(
+    _logger.fine(
       'All repositories failed fetching sparkline for $symbol; cached null',
     );
     return null;
@@ -288,7 +288,7 @@ class SparklineRepository with RepositoryFallbackMixin {
     try {
       final raw = _box!.get(symbol);
       if (raw is! SparklineData) {
-        _logger.warning(
+        _logger.fine(
           'Cache entry for $symbol has unexpected type: ${raw.runtimeType}; '
           'Clearing entry and skipping',
         );
@@ -308,7 +308,7 @@ class SparklineRepository with RepositoryFallbackMixin {
         return List<double>.unmodifiable(data);
       }
     } catch (e, s) {
-      _logger.severe('Error reading cache for $symbol', e, s);
+      _logger.warning('Error reading cache for $symbol', e, s);
     }
 
     _logger.fine('Cache hit (typed) for $symbol but data null (failed)');

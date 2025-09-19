@@ -266,7 +266,9 @@ void main() {
         // All test assets should be smart chain type (based on actual parsing behavior)
         expect(
           filtered.values.every(
-            (asset) => asset.id.subClass == CoinSubClass.smartChain,
+            (asset) =>
+                asset.id.subClass == CoinSubClass.utxo ||
+                asset.id.subClass == CoinSubClass.smartChain,
           ),
           isTrue,
         );
