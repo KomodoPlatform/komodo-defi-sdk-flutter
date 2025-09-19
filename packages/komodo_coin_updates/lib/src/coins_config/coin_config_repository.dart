@@ -104,10 +104,8 @@ class CoinConfigRepository implements CoinConfigStorage {
   /// Retrieves all assets from storage, excluding any whose symbol appears
   /// in [excludedAssets]. Returns an empty list if storage is empty.
   ///
-  /// This method implements a two-pass parsing strategy to rebuild parent-child
-  /// relationships between assets, similar to AssetParser:
-  /// 1. First pass: Parse platform assets (no parent) to get their AssetIds
-  /// 2. Second pass: Reparse child assets using known platform AssetIds
+  /// This method uses the AssetParser to rebuild parent-child relationships
+  /// between assets that were loaded from storage.
   Future<List<Asset>> getAssets({
     List<String> excludedAssets = const <String>[],
   }) async {
@@ -119,18 +117,15 @@ class CoinConfigRepository implements CoinConfigStorage {
     final values = await Future.wait(
       keys.map((dynamic key) => box.get(key as String)),
     );
-    final allAssetConfigs = values
+    final rawAssets = values
         .whereType<Asset>()
         .where((a) => !excludedAssets.contains(a.id.id))
-        .map(
-          (asset) =>
-              MapEntry(asset.id.symbol.assetConfigId, asset.protocol.config),
-        );
+        .toList();
 
-    final transformedConfigs = Map<String, Map<String, dynamic>>.fromEntries(
-      allAssetConfigs,
+    return _assetParser.rebuildParentChildRelationships(
+      rawAssets,
+      logContext: 'from storage',
     );
-    return _assetParser.parseAssetsFromConfig(transformedConfigs);
   }
 
   @override
