@@ -213,7 +213,7 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
             onAssetSelected: (asset) async {
               // If asset is ZHTLC and has no saved config, prompt user for config
               if (asset.id.subClass == CoinSubClass.zhtlc) {
-                final sdk = context.read<KomodoDefiSdk>();
+                final sdk = widget.instance.sdk;
                 final existing = await sdk.activationConfigService
                     .getSavedZhtlc(asset.id);
                 if (existing == null && mounted) {

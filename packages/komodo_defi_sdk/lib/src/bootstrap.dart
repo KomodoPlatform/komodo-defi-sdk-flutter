@@ -8,6 +8,7 @@ import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart'
     show CexMarketDataManager, MarketDataManager;
@@ -61,6 +62,15 @@ Future<void> bootstrap({
   container.registerLazySingleton(AssetHistoryStorage.new);
   container.registerLazySingleton(CustomAssetHistoryStorage.new);
   container.registerLazySingleton(KomodoAssetsUpdateManager.new);
+
+  // Activation configuration service (must be available before ActivationManager)
+  if (!container.isRegistered<ActivationConfigService>()) {
+    container.registerSingleton<ActivationConfigService>(
+      ActivationConfigService(
+        JsonActivationConfigRepository(InMemoryKeyValueStore()),
+      ),
+    );
+  }
 
   // Register asset manager first since it's a core dependency
   container.registerSingletonAsync<AssetManager>(() async {

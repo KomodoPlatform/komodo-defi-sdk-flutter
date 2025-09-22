@@ -311,13 +311,6 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       kdfFramework: _kdfFramework,
       container: _container,
     );
-    if (!_container.isRegistered<ActivationConfigService>()) {
-      _container.registerSingleton<ActivationConfigService>(
-        ActivationConfigService(
-          JsonActivationConfigRepository(InMemoryKeyValueStore()),
-        ),
-      );
-    }
     _isInitialized = true;
   }
 
