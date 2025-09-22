@@ -31,6 +31,7 @@ export 'src/komodo_defi_sdk.dart' show KomodoDefiSdk;
 export 'src/widgets/asset_balance_text.dart';
 export 'src/activation_config/activation_config_service.dart'
     show
+        WalletIdResolver,
         ActivationConfigService,
         ActivationConfigRepository,
         JsonActivationConfigRepository,
@@ -38,3 +39,5 @@ export 'src/activation_config/activation_config_service.dart'
         ZhtlcUserConfig,
         ActivationSettingDescriptor,
         AssetIdActivationSettings;
+export 'src/activation_config/hive_activation_config_repository.dart'
+    show HiveActivationConfigRepository;

@@ -2,6 +2,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
@@ -9,6 +10,7 @@ import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
+import 'package:komodo_defi_sdk/src/activation_config/hive_activation_config_repository.dart';
 import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart'
     show CexMarketDataManager, MarketDataManager;
@@ -18,6 +20,14 @@ import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+
+var _activationConfigHiveInitialized = false;
+
+Future<void> _ensureActivationConfigHiveInitialized() async {
+  if (_activationConfigHiveInitialized) return;
+  await Hive.initFlutter();
+  _activationConfigHiveInitialized = true;
+}
 
 /// Bootstrap the SDK's dependencies
 Future<void> bootstrap({
@@ -65,11 +75,15 @@ Future<void> bootstrap({
 
   // Activation configuration service (must be available before ActivationManager)
   if (!container.isRegistered<ActivationConfigService>()) {
-    container.registerSingleton<ActivationConfigService>(
-      ActivationConfigService(
-        JsonActivationConfigRepository(InMemoryKeyValueStore()),
-      ),
-    );
+    container.registerSingletonAsync<ActivationConfigService>(() async {
+      await _ensureActivationConfigHiveInitialized();
+      final auth = await container.getAsync<KomodoDefiLocalAuth>();
+      final repo = HiveActivationConfigRepository();
+      return ActivationConfigService(
+        repo,
+        walletIdResolver: () async => (await auth.currentUser)?.walletId,
+      );
+    }, dependsOn: [KomodoDefiLocalAuth]);
   }
 
   // Register asset manager first since it's a core dependency
@@ -106,25 +120,34 @@ Future<void> bootstrap({
   }, dependsOn: [AssetManager, KomodoDefiLocalAuth]);
 
   // Register activation manager with asset manager dependency
-  container.registerSingletonAsync<ActivationManager>(() async {
-    final client = await container.getAsync<ApiClient>();
-    final auth = await container.getAsync<KomodoDefiLocalAuth>();
-    final assetManager = await container.getAsync<AssetManager>();
-    final balanceManager = await container.getAsync<BalanceManager>();
-    final configService = container<ActivationConfigService>();
+  container.registerSingletonAsync<ActivationManager>(
+    () async {
+      final client = await container.getAsync<ApiClient>();
+      final auth = await container.getAsync<KomodoDefiLocalAuth>();
+      final assetManager = await container.getAsync<AssetManager>();
+      final balanceManager = await container.getAsync<BalanceManager>();
+      final configService = await container.getAsync<ActivationConfigService>();
 
-    final activationManager = ActivationManager(
-      client,
-      auth,
-      container<AssetHistoryStorage>(),
-      container<CustomAssetHistoryStorage>(),
-      assetManager,
-      balanceManager,
-      configService,
-    );
+      final activationManager = ActivationManager(
+        client,
+        auth,
+        container<AssetHistoryStorage>(),
+        container<CustomAssetHistoryStorage>(),
+        assetManager,
+        balanceManager,
+        configService,
+      );
 
-    return activationManager;
-  }, dependsOn: [ApiClient, KomodoDefiLocalAuth, AssetManager, BalanceManager]);
+      return activationManager;
+    },
+    dependsOn: [
+      ApiClient,
+      KomodoDefiLocalAuth,
+      AssetManager,
+      BalanceManager,
+      ActivationConfigService,
+    ],
+  );
 
   // Register shared activation coordinator
   container.registerSingletonAsync<SharedActivationCoordinator>(() async {

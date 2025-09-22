@@ -27,8 +27,12 @@ class InMemoryKeyValueStore implements KeyValueStore {
 
 /// Repository abstraction for typed activation configs.
 abstract class ActivationConfigRepository {
-  Future<TConfig?> getConfig<TConfig>(AssetId id);
-  Future<void> saveConfig<TConfig>(AssetId id, TConfig config);
+  Future<TConfig?> getConfig<TConfig>(WalletId walletId, AssetId id);
+  Future<void> saveConfig<TConfig>(
+    WalletId walletId,
+    AssetId id,
+    TConfig config,
+  );
 }
 
 /// Minimal ZHTLC user configuration.
@@ -80,58 +84,108 @@ class JsonActivationConfigRepository implements ActivationConfigRepository {
   JsonActivationConfigRepository(this.store);
   final KeyValueStore store;
 
-  String _key(AssetId id) => 'activation_config:${id.id}';
+  String _key(WalletId walletId, AssetId id) =>
+      'activation_config:${walletId.compoundId}:${id.id}';
 
   @override
-  Future<TConfig?> getConfig<TConfig>(AssetId id) async {
-    final data = await store.get(_key(id));
+  Future<TConfig?> getConfig<TConfig>(WalletId walletId, AssetId id) async {
+    final data = await store.get(_key(walletId, id));
     if (data == null) return null;
     return ActivationConfigMapper.decode<TConfig>(data);
   }
 
   @override
-  Future<void> saveConfig<TConfig>(AssetId id, TConfig config) async {
+  Future<void> saveConfig<TConfig>(
+    WalletId walletId,
+    AssetId id,
+    TConfig config,
+  ) async {
     final json = ActivationConfigMapper.encode(config as Object);
-    await store.set(_key(id), json);
+    await store.set(_key(walletId, id), json);
   }
 }
 
+typedef WalletIdResolver = Future<WalletId?> Function();
+
 /// Service orchestrating retrieval/request of activation configs.
 class ActivationConfigService {
-  ActivationConfigService(this.repo);
+  ActivationConfigService(
+    this.repo, {
+    required WalletIdResolver walletIdResolver,
+  }) : _walletIdResolver = walletIdResolver;
+
   final ActivationConfigRepository repo;
+  final WalletIdResolver _walletIdResolver;
+
+  Future<WalletId> _requireActiveWallet() async {
+    final walletId = await _walletIdResolver();
+    if (walletId == null) {
+      throw StateError('Attempted to access activation config with no wallet');
+    }
+    return walletId;
+  }
 
   Future<ZhtlcUserConfig?> getSavedZhtlc(AssetId id) async {
-    return repo.getConfig<ZhtlcUserConfig>(id);
+    final walletId = await _requireActiveWallet();
+    return repo.getConfig<ZhtlcUserConfig>(walletId, id);
   }
 
   Future<ZhtlcUserConfig?> getZhtlcOrRequest(
     AssetId id, {
     Duration timeout = const Duration(seconds: 60),
   }) async {
-    final existing = await repo.getConfig<ZhtlcUserConfig>(id);
+    final walletId = await _requireActiveWallet();
+    final key = _WalletAssetKey(walletId, id);
+
+    final existing = await repo.getConfig<ZhtlcUserConfig>(walletId, id);
     if (existing != null) return existing;
 
     final completer = Completer<ZhtlcUserConfig?>();
-    _awaitingControllers[id] = completer;
+    _awaitingControllers[key] = completer;
     try {
       final result = await completer.future.timeout(
         timeout,
         onTimeout: () => null,
       );
       if (result == null) return null;
-      await repo.saveConfig(id, result);
+      await repo.saveConfig(walletId, id, result);
       return result;
     } finally {
-      _awaitingControllers.remove(id);
+      _awaitingControllers.remove(key);
     }
   }
 
-  void submitZhtlc(AssetId id, ZhtlcUserConfig config) {
-    _awaitingControllers[id]?.complete(config);
+  Future<void> saveZhtlcConfig(AssetId id, ZhtlcUserConfig config) async {
+    final walletId = await _requireActiveWallet();
+    await repo.saveConfig(walletId, id, config);
   }
 
-  final Map<AssetId, Completer<ZhtlcUserConfig?>> _awaitingControllers = {};
+  Future<void> submitZhtlc(AssetId id, ZhtlcUserConfig config) async {
+    final walletId = await _walletIdResolver();
+    if (walletId == null) return;
+    _awaitingControllers[_WalletAssetKey(walletId, id)]?.complete(config);
+  }
+
+  final Map<_WalletAssetKey, Completer<ZhtlcUserConfig?>> _awaitingControllers =
+      {};
+}
+
+class _WalletAssetKey {
+  _WalletAssetKey(this.walletId, this.assetId);
+
+  final WalletId walletId;
+  final AssetId assetId;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is _WalletAssetKey &&
+        other.walletId == walletId &&
+        other.assetId == assetId;
+  }
+
+  @override
+  int get hashCode => Object.hash(walletId, assetId);
 }
 
 /// UI helper for building configuration forms.

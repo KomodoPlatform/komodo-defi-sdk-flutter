@@ -219,7 +219,7 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
                 if (existing == null && mounted) {
                   final config = await _showZhtlcConfigDialog(context, asset);
                   if (config != null) {
-                    await sdk.activationConfigService.repo.saveConfig(
+                    await sdk.activationConfigService.saveZhtlcConfig(
                       asset.id,
                       config,
                     );
