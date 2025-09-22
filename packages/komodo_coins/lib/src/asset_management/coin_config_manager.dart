@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coins/src/asset_filter.dart';
 import 'package:komodo_coins/src/asset_management/coin_config_fallback_mixin.dart';
 import 'package:komodo_coins/src/asset_management/loading_strategy.dart';
@@ -53,6 +54,12 @@ abstract class CoinConfigManager {
 
   /// Disposes of all resources
   Future<void> dispose();
+
+  /// Stores a custom token
+  Future<void> storeCustomToken(Asset asset);
+
+  /// Deletes a custom token
+  Future<void> deleteCustomToken(AssetId assetId);
 }
 
 /// Implementation of [CoinConfigManager] that uses strategy pattern for loading
@@ -63,11 +70,13 @@ class StrategicCoinConfigManager
     required List<CoinConfigSource> configSources,
     LoadingStrategy? loadingStrategy,
     Set<String> defaultPriorityTickers = const {},
+    CustomTokenStore? customTokenStorage,
   }) {
     return StrategicCoinConfigManager._internal(
       configSources: configSources,
       loadingStrategy: loadingStrategy ?? StorageFirstLoadingStrategy(),
       defaultPriorityTickers: defaultPriorityTickers,
+      customTokenStorage: customTokenStorage ?? CustomTokenStorage(),
     );
   }
 
@@ -75,15 +84,18 @@ class StrategicCoinConfigManager
     required List<CoinConfigSource> configSources,
     required LoadingStrategy loadingStrategy,
     required Set<String> defaultPriorityTickers,
+    required CustomTokenStore customTokenStorage,
   }) : _configSources = configSources,
        _loadingStrategy = loadingStrategy,
-       _defaultPriorityTickers = Set.unmodifiable(defaultPriorityTickers);
+       _defaultPriorityTickers = Set.unmodifiable(defaultPriorityTickers),
+       _customTokenStorage = customTokenStorage;
 
   static final _logger = Logger('StrategicCoinConfigManager');
 
   final List<CoinConfigSource> _configSources;
   final LoadingStrategy _loadingStrategy;
   final Set<String> _defaultPriorityTickers;
+  final CustomTokenStore _customTokenStorage;
 
   // Required by CoinConfigFallbackMixin
   @override
@@ -185,6 +197,7 @@ class StrategicCoinConfigManager
     );
 
     _assets = _mapAssets(assets);
+    await _loadAndMergeCustomTokens();
     _logger.info('Loaded ${assets.length} assets');
   }
 
@@ -234,6 +247,7 @@ class StrategicCoinConfigManager
     );
 
     _assets = _mapAssets(assets);
+    await _loadAndMergeCustomTokens();
     _filterCache.clear(); // Clear cache after refresh
 
     // Refresh commit hash cache when assets are refreshed
@@ -325,6 +339,71 @@ class StrategicCoinConfigManager
         .toSet();
   }
 
+  /// Loads custom tokens and merges them directly into _assets
+  Future<void> _loadAndMergeCustomTokens() async {
+    try {
+      final knownIds = _assets!.keys.toSet();
+      final customTokens = await _customTokenStorage.getAllCustomTokens(
+        knownIds,
+      );
+      if (customTokens.isEmpty) {
+        return;
+      }
+
+      // Add custom tokens to _assets, handling conflicts by creating duplicate entries
+      for (final customToken in customTokens) {
+        _assets![customToken.id] = customToken;
+      }
+
+      _logger.fine('Merged ${customTokens.length} custom tokens into assets');
+    } catch (e, s) {
+      _logger.warning('Failed to load custom tokens', e, s);
+    }
+  }
+
+  /// Updates filter caches when an asset is added
+  void _updateFilterCachesForAddedAsset(Asset asset) {
+    for (final entry in _filterCache.entries) {
+      final strategyId = entry.key;
+      final cachedAssets = entry.value;
+
+      // Create a strategy instance using the factory method
+      final strategy = AssetFilterStrategy.fromStrategyId(strategyId);
+      if (strategy != null) {
+        final config = asset.protocol.config;
+        if (strategy.shouldInclude(asset, config)) {
+          cachedAssets[asset.id] = asset;
+        }
+      }
+    }
+  }
+
+  /// Updates filter caches when an asset is removed
+  void _updateFilterCachesForRemovedAsset(AssetId assetId) {
+    for (final cachedAssets in _filterCache.values) {
+      cachedAssets.remove(assetId);
+    }
+  }
+
+  @override
+  Future<void> storeCustomToken(Asset asset) async {
+    _checkNotDisposed();
+    _assertInitialized();
+
+    await _customTokenStorage.storeCustomToken(asset);
+    _assets![asset.id] = asset;
+    _updateFilterCachesForAddedAsset(asset);
+  }
+
+  @override
+  Future<void> deleteCustomToken(AssetId assetId) async {
+    _checkNotDisposed();
+    _assertInitialized();
+    await _customTokenStorage.deleteCustomToken(assetId);
+    _assets!.remove(assetId);
+    _updateFilterCachesForRemovedAsset(assetId);
+  }
+
   @override
   Future<void> dispose() async {
     if (_isDisposed) {
@@ -336,6 +415,7 @@ class StrategicCoinConfigManager
     _assets = null;
     _filterCache.clear();
     _cachedCommitHash = null; // Clear commit hash cache
+    await _customTokenStorage.dispose(); // Dispose custom token storage
     clearSourceHealthData(); // Clear mixin data
     _logger.fine('Disposed StrategicCoinConfigManager');
   }

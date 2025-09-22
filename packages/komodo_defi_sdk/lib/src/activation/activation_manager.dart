@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
+import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
@@ -15,25 +18,21 @@ class ActivationManager {
     this._client,
     this._auth,
     this._assetHistory,
-    this._customTokenHistory,
     this._assetLookup,
-    this._balanceManager, {
-    required IAssetRefreshNotifier assetRefreshNotifier,
-    IActivationStrategyFactory? activationStrategyFactory,
-  }) : _activationStrategyFactory =
-           activationStrategyFactory ??
-           const DefaultActivationStrategyFactory(),
-       _assetRefreshNotifier = assetRefreshNotifier;
+    this._balanceManager,
+    this._assetsUpdateManager,
+  );
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final AssetHistoryStorage _assetHistory;
-  final CustomAssetHistoryStorage _customTokenHistory;
   final IAssetLookup _assetLookup;
-  final IAssetRefreshNotifier _assetRefreshNotifier;
   final IBalanceManager _balanceManager;
-  final IActivationStrategyFactory _activationStrategyFactory;
-  static final _logger = Logger('ActivationManager');
+  final KomodoAssetsUpdateManager _assetsUpdateManager;
+  final _activationMutex = Mutex();
+  static const _operationTimeout = Duration(seconds: 30);
+
+  final Map<AssetId, Completer<void>> _activationCompleters = {};
   bool _isDisposed = false;
 
   /// Activate a single asset
@@ -164,27 +163,25 @@ class ActivationManager {
     if (progress.isSuccess) {
       final user = await _auth.currentUser;
       if (user != null) {
-        _logger.fine(
-          'Adding ${group.primary.id.name} to user wallet '
-          '${user.walletId}',
-        );
-        await _assetHistory.addAssetToWallet(
-          user.walletId,
-          group.primary.id.id,
-        );
-
-        final allAssets = [group.primary, ...(group.children?.toList() ?? [])];
-        for (final asset in allAssets) {
-          if (asset.protocol.isCustomToken) {
-            await _customTokenHistory.addAssetToWallet(user.walletId, asset);
-          }
-          // Pre-cache balance for the activated asset
-          await _balanceManager.precacheBalance(asset);
+        // Store custom tokens using CoinConfigManager
+        if (group.primary.protocol.isCustomToken) {
+          await _assetsUpdateManager.assets.storeCustomToken(group.primary);
+        } else {
+          await _assetHistory.addAssetToWallet(
+            user.walletId,
+            group.primary.id.id,
+          );
         }
 
-        // Notify asset manager to refresh custom tokens if any were activated
-        if (allAssets.any((asset) => asset.protocol.isCustomToken)) {
-          _assetRefreshNotifier.notifyCustomTokensChanged();
+        final allAssets = [group.primary, ...(group.children?.toList() ?? [])];
+
+        for (final asset in allAssets) {
+          if (asset.protocol.isCustomToken) {
+            await _assetsUpdateManager.assets.storeCustomToken(asset);
+          }
+
+          // Pre-cache balance for the activated asset
+          await _balanceManager.precacheBalance(asset);
         }
       }
     } else {

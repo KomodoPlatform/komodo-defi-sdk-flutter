@@ -1,8 +1,5 @@
 import 'package:hive_ce/hive.dart';
-import 'package:komodo_coin_updates/src/coins_config/coin_config_provider.dart';
-import 'package:komodo_coin_updates/src/coins_config/coin_config_storage.dart';
-import 'package:komodo_coin_updates/src/coins_config/config_transform.dart';
-import 'package:komodo_coin_updates/src/coins_config/github_coin_config_provider.dart';
+import 'package:komodo_coin_updates/src/coins_config/_coins_config_index.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -19,7 +16,8 @@ class CoinConfigRepository implements CoinConfigStorage {
     this.assetsBoxName = 'assets',
     this.settingsBoxName = 'coins_settings',
     this.coinsCommitKey = 'coins_commit',
-  });
+    AssetParser assetParser = const AssetParser(),
+  }) : _assetParser = assetParser;
 
   /// Convenience factory that derives a provider from a runtime config and
   /// uses default Hive boxes (`assets`, `coins_settings`).
@@ -30,11 +28,13 @@ class CoinConfigRepository implements CoinConfigStorage {
     this.assetsBoxName = 'assets',
     this.settingsBoxName = 'coins_settings',
     this.coinsCommitKey = 'coins_commit',
+    AssetParser assetParser = const AssetParser(),
   }) : coinConfigProvider = GithubCoinConfigProvider.fromConfig(
          config,
          githubToken: githubToken,
          transformer: transformer,
-       );
+       ),
+       _assetParser = assetParser;
   static final Logger _log = Logger('CoinConfigRepository');
 
   /// The provider that fetches the coins and coin configs.
@@ -51,6 +51,8 @@ class CoinConfigRepository implements CoinConfigStorage {
 
   /// The key for the coins commit. The value is the commit hash.
   final String coinsCommitKey;
+
+  final AssetParser _assetParser;
 
   /// Fetches the latest commit from the provider, downloads assets for that
   /// commit, and upserts them in local storage along with the commit hash.
@@ -101,6 +103,9 @@ class CoinConfigRepository implements CoinConfigStorage {
   @override
   /// Retrieves all assets from storage, excluding any whose symbol appears
   /// in [excludedAssets]. Returns an empty list if storage is empty.
+  ///
+  /// This method uses the AssetParser to rebuild parent-child relationships
+  /// between assets that were loaded from storage.
   Future<List<Asset>> getAssets({
     List<String> excludedAssets = const <String>[],
   }) async {
@@ -112,16 +117,22 @@ class CoinConfigRepository implements CoinConfigStorage {
     final values = await Future.wait(
       keys.map((dynamic key) => box.get(key as String)),
     );
-    final result = values
+    final rawAssets = values
         .whereType<Asset>()
         .where((a) => !excludedAssets.contains(a.id.id))
         .toList();
-    _log.fine('Retrieved ${result.length} assets');
-    return result;
+
+    return _assetParser.rebuildParentChildRelationships(
+      rawAssets,
+      logContext: 'from storage',
+    );
   }
 
   @override
   /// Retrieves a single [Asset] by its [assetId] from storage.
+  /// NOTE: Parent/child relationships are not rebuilt for single asset retrieval.
+  /// Use [getAssets] if you need proper parent relationships.
+  /// Returns `null` if the asset is not found.
   Future<Asset?> getAsset(AssetId assetId) async {
     _log.fine('Retrieving asset ${assetId.id}');
     final a = await (await _openAssetsBox()).get(assetId.id);

@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:async';
 
 import 'package:get_it/get_it.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
@@ -109,8 +110,17 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   ///   )
   /// );
   /// ```
-  factory KomodoDefiSdk({IKdfHostConfig? host, KomodoDefiSdkConfig? config}) {
-    return KomodoDefiSdk._(host, config ?? const KomodoDefiSdkConfig(), null);
+  factory KomodoDefiSdk({
+    IKdfHostConfig? host,
+    KomodoDefiSdkConfig? config,
+    void Function(String)? onLog,
+  }) {
+    return KomodoDefiSdk._(
+      host,
+      config ?? const KomodoDefiSdkConfig(),
+      null,
+      onLog,
+    );
   }
 
   /// Creates a new SDK instance from an existing KDF framework instance.
@@ -126,16 +136,26 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   factory KomodoDefiSdk.fromFramework(
     KomodoDefiFramework framework, {
     KomodoDefiSdkConfig? config,
+    void Function(String)? onLog,
   }) {
     return KomodoDefiSdk._(
       null,
       config ?? const KomodoDefiSdkConfig(),
       framework,
+      onLog,
     );
   }
 
-  KomodoDefiSdk._(this._hostConfig, this._config, this._kdfFramework) {
+  KomodoDefiSdk._(
+    this._hostConfig,
+    this._config,
+    this._kdfFramework,
+    this._onLog,
+  ) {
     _container = GetIt.asNewInstance();
+    if (_kdfFramework != null && _onLog != null) {
+      _logSubscription = _kdfFramework!.logStream.listen(_onLog!);
+    }
   }
 
   final IKdfHostConfig? _hostConfig;
@@ -145,6 +165,8 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   bool _isInitialized = false;
   bool _isDisposed = false;
   Future<void>? _initializationFuture;
+  final void Function(String)? _onLog;
+  StreamSubscription<String>? _logSubscription;
 
   /// The API client for making direct RPC calls.
   ///
@@ -262,6 +284,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   BalanceManager get balances =>
       _assertSdkInitialized(_container<BalanceManager>());
 
+  /// Public stream of framework logs.
+  ///
+  /// Subscribe to receive human-readable log messages from the underlying
+  /// Komodo DeFi Framework. Requires the SDK to be initialized.
+  Stream<String> get logStream => _assertSdkInitialized(
+        _container<KomodoDefiFramework>().logStream,
+      );
+
   /// Initializes the SDK instance.
   ///
   /// This must be called before using any SDK functionality. The initialization
@@ -305,7 +335,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       config: _config,
       kdfFramework: _kdfFramework,
       container: _container,
+      // Let SDK manage onLog subscription itself to avoid duplication
+      externalLogger: null,
     );
+    // Ensure consistent onLog subscription when framework is created by SDK
+    if (_onLog != null && _logSubscription == null) {
+      final framework = _container<KomodoDefiFramework>();
+      _logSubscription = framework.logStream.listen(_onLog!);
+    }
     _isInitialized = true;
   }
 
@@ -358,10 +395,16 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     if (_isDisposed) return;
     _isDisposed = true;
 
+    // Always cancel log subscription even if SDK wasn't initialized
+    await _logSubscription?.cancel();
+    _logSubscription = null;
+
     if (!_isInitialized) return;
 
     _isInitialized = false;
     _initializationFuture = null;
+
+    // (Already cancelled above)
 
     await Future.wait([
       _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
