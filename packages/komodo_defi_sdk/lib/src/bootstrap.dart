@@ -35,6 +35,7 @@ Future<void> bootstrap({
   required KomodoDefiSdkConfig config,
   required GetIt container,
   KomodoDefiFramework? kdfFramework,
+  void Function(String)? externalLogger,
 }) async {
   final rpcPassword = await SecureRpcPasswordMixin().ensureRpcPassword();
 
@@ -47,7 +48,7 @@ Future<void> bootstrap({
 
     return KomodoDefiFramework.create(
       hostConfig: resolvedHostConfig,
-      externalLogger: kDebugMode ? print : null,
+      externalLogger: externalLogger ?? (kDebugMode ? print : null),
     );
   });
 
@@ -70,8 +71,9 @@ Future<void> bootstrap({
 
   // Asset history storage singletons
   container.registerLazySingleton(AssetHistoryStorage.new);
-  container.registerLazySingleton(CustomAssetHistoryStorage.new);
-  container.registerLazySingleton(KomodoAssetsUpdateManager.new);
+  container.registerSingletonAsync<KomodoAssetsUpdateManager>(
+    () async => KomodoAssetsUpdateManager(),
+  );
 
   // Activation configuration service (must be available before ActivationManager)
   if (!container.isRegistered<ActivationConfigService>()) {
@@ -94,7 +96,6 @@ Future<void> bootstrap({
       client,
       auth,
       config,
-      container<CustomAssetHistoryStorage>(),
       () => container<ActivationManager>(),
       container<KomodoAssetsUpdateManager>(),
     );
@@ -132,10 +133,12 @@ Future<void> bootstrap({
         client,
         auth,
         container<AssetHistoryStorage>(),
-        container<CustomAssetHistoryStorage>(),
         assetManager,
         balanceManager,
         configService,
+        // Needed here to add custom tokens to the same instance
+        // as the asset manager
+        container<KomodoAssetsUpdateManager>(),
       );
 
       return activationManager;
@@ -146,6 +149,7 @@ Future<void> bootstrap({
       AssetManager,
       BalanceManager,
       ActivationConfigService,
+      KomodoAssetsUpdateManager,
     ],
   );
 

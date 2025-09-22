@@ -70,6 +70,21 @@ class Asset extends Equatable {
   /// coin config.
   bool get supportsMessageSigning => signMessagePrefix != null;
 
+  /// Creates a copy of this Asset with optionally modified fields.
+  Asset copyWith({
+    AssetId? id,
+    ProtocolClass? protocol,
+    bool? isWalletOnly,
+    String? signMessagePrefix,
+  }) {
+    return Asset(
+      id: id ?? this.id,
+      protocol: protocol ?? this.protocol,
+      isWalletOnly: isWalletOnly ?? this.isWalletOnly,
+      signMessagePrefix: signMessagePrefix ?? this.signMessagePrefix,
+    );
+  }
+
   JsonMap toJson() => {
     'protocol': protocol.toJson(),
     'id': id.toJson(),

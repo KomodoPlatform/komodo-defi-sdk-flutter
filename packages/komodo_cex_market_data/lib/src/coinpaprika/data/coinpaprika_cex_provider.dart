@@ -106,38 +106,23 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
 
   @override
   Future<List<CoinPaprikaCoin>> fetchCoinList() async {
-    _logger.info('Fetching coin list from CoinPaprika');
-
     final uri = Uri.https(baseUrl, '$apiVersion/coins');
-    try {
-      final response = await _httpClient
-          .get(uri, headers: _createRequestHeaderMap())
-          .timeout(CoinPaprikaConfig.timeout);
 
-      if (response.statusCode != 200) {
-        _throwApiErrorOrException(response, 'ALL', 'coin list fetch');
-      }
+    final response = await _httpClient
+        .get(uri, headers: _createRequestHeaderMap())
+        .timeout(CoinPaprikaConfig.timeout);
 
-      final coins = jsonDecode(response.body) as List<dynamic>;
-      final result = coins
-          .cast<Map<String, dynamic>>()
-          .map(CoinPaprikaCoin.fromJson)
-          .toList();
-
-      _logger.info(
-        'Successfully fetched ${result.length} coins from CoinPaprika',
-      );
-      return result;
-    } on TimeoutException catch (e) {
-      _logger.severe('Timeout while fetching coin list from CoinPaprika', e);
-      throw TimeoutException(
-        'Request to fetch coin list timed out after ${CoinPaprikaConfig.timeout.inSeconds} seconds',
-        CoinPaprikaConfig.timeout,
-      );
-    } catch (e, st) {
-      _logger.severe('Failed to fetch coin list from CoinPaprika', e, st);
-      rethrow;
+    if (response.statusCode != 200) {
+      _throwApiErrorOrException(response, 'ALL', 'coin list fetch');
     }
+
+    final coins = jsonDecode(response.body) as List<dynamic>;
+    final result = coins
+        .cast<Map<String, dynamic>>()
+        .map(CoinPaprikaCoin.fromJson)
+        .toList();
+
+    return result;
   }
 
   /// Fetches historical OHLC data using the correct CoinPaprika API format.
@@ -164,12 +149,6 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
     // Map quote currency: stablecoins -> underlying fiat (e.g., USDT -> USD)
     final mappedQuote = _mapQuoteCurrencyForApi(quote);
 
-    _logger.fine(
-      'Fetching OHLC data for $coinId from ${_formatDateForApi(startDate)} '
-      '${endDate != null ? 'to ${_formatDateForApi(endDate)}' : ''} '
-      '(interval: $apiInterval, quote: ${mappedQuote.coinPaprikaId})',
-    );
-
     // CoinPaprika API only requires start date and interval for historical data
     final queryParams = <String, String>{
       'start': _formatDateForApi(startDate),
@@ -184,42 +163,22 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
       '$apiVersion/tickers/$coinId/historical',
       queryParams,
     );
-    try {
-      final response = await _httpClient
-          .get(uri, headers: _createRequestHeaderMap())
-          .timeout(CoinPaprikaConfig.timeout);
 
-      if (response.statusCode != 200) {
-        _throwApiErrorOrException(response, coinId, 'OHLC data fetch');
-      }
+    final response = await _httpClient
+        .get(uri, headers: _createRequestHeaderMap())
+        .timeout(CoinPaprikaConfig.timeout);
 
-      final ticksData = jsonDecode(response.body) as List<dynamic>;
-      final result = ticksData
-          .cast<Map<String, dynamic>>()
-          .map(_parseTicksToOhlc)
-          .toList();
-
-      _logger.info(
-        'Successfully fetched ${result.length} OHLC data points for $coinId',
-      );
-      return result;
-    } on TimeoutException catch (e) {
-      _logger.severe(
-        'Timeout while fetching OHLC data for $coinId from CoinPaprika',
-        e,
-      );
-      throw TimeoutException(
-        'Request to fetch OHLC data for $coinId timed out after ${CoinPaprikaConfig.timeout.inSeconds} seconds',
-        CoinPaprikaConfig.timeout,
-      );
-    } catch (e, st) {
-      _logger.severe(
-        'Failed to fetch OHLC data for $coinId from CoinPaprika',
-        e,
-        st,
-      );
-      rethrow;
+    if (response.statusCode != 200) {
+      _throwApiErrorOrException(response, coinId, 'OHLC data fetch');
     }
+
+    final ticksData = jsonDecode(response.body) as List<dynamic>;
+    final result = ticksData
+        .cast<Map<String, dynamic>>()
+        .map(_parseTicksToOhlc)
+        .toList();
+
+    return result;
   }
 
   @override
@@ -232,7 +191,6 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
     final quotesParam = mappedQuotes
         .map((q) => q.coinPaprikaId.toUpperCase())
         .join(',');
-    _logger.info('Fetching market data for $coinId with quotes: $quotesParam');
 
     final queryParams = <String, String>{'quotes': quotesParam};
 
@@ -241,40 +199,22 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
       '$apiVersion/coins/$coinId/markets',
       queryParams,
     );
-    try {
-      final response = await _httpClient
-          .get(uri, headers: _createRequestHeaderMap())
-          .timeout(CoinPaprikaConfig.timeout);
 
-      if (response.statusCode != 200) {
-        _throwApiErrorOrException(response, coinId, 'market data fetch');
-      }
+    final response = await _httpClient
+        .get(uri, headers: _createRequestHeaderMap())
+        .timeout(CoinPaprikaConfig.timeout);
 
-      final markets = jsonDecode(response.body) as List<dynamic>;
-      final result = markets
-          .cast<Map<String, dynamic>>()
-          .map(CoinPaprikaMarket.fromJson)
-          .toList();
-
-      _logger.info('Successfully fetched ${result.length} markets for $coinId');
-      return result;
-    } on TimeoutException catch (e) {
-      _logger.severe(
-        'Timeout while fetching market data for $coinId from CoinPaprika',
-        e,
-      );
-      throw TimeoutException(
-        'Request to fetch market data for $coinId timed out after ${CoinPaprikaConfig.timeout.inSeconds} seconds',
-        CoinPaprikaConfig.timeout,
-      );
-    } catch (e, st) {
-      _logger.severe(
-        'Failed to fetch market data for $coinId from CoinPaprika',
-        e,
-        st,
-      );
-      rethrow;
+    if (response.statusCode != 200) {
+      _throwApiErrorOrException(response, coinId, 'market data fetch');
     }
+
+    final markets = jsonDecode(response.body) as List<dynamic>;
+    final result = markets
+        .cast<Map<String, dynamic>>()
+        .map(CoinPaprikaMarket.fromJson)
+        .toList();
+
+    return result;
   }
 
   /// Fetches ticker data for a specific coin.
@@ -291,41 +231,21 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
     final quotesParam = mappedQuotes
         .map((q) => q.coinPaprikaId.toUpperCase())
         .join(',');
-    _logger.info('Fetching ticker data for $coinId with quotes: $quotesParam');
 
     final queryParams = <String, String>{'quotes': quotesParam};
 
     final uri = Uri.https(baseUrl, '$apiVersion/tickers/$coinId', queryParams);
-    try {
-      final response = await _httpClient
-          .get(uri, headers: _createRequestHeaderMap())
-          .timeout(CoinPaprikaConfig.timeout);
 
-      if (response.statusCode != 200) {
-        _throwApiErrorOrException(response, coinId, 'ticker data fetch');
-      }
-      final ticker = jsonDecode(response.body) as Map<String, dynamic>;
-      final result = CoinPaprikaTicker.fromJson(ticker);
-      _logger.info('Successfully fetched ticker data for $coinId');
-      return result;
-    } on TimeoutException catch (e) {
-      _logger.severe(
-        'Timeout while fetching ticker data for $coinId from CoinPaprika',
-        e,
-      );
-      throw TimeoutException(
-        'Request to fetch ticker data for $coinId timed out after '
-        '${CoinPaprikaConfig.timeout.inSeconds} seconds',
-        CoinPaprikaConfig.timeout,
-      );
-    } catch (e, st) {
-      _logger.severe(
-        'Failed to fetch ticker data for $coinId from CoinPaprika',
-        e,
-        st,
-      );
-      rethrow;
+    final response = await _httpClient
+        .get(uri, headers: _createRequestHeaderMap())
+        .timeout(CoinPaprikaConfig.timeout);
+
+    if (response.statusCode != 200) {
+      _throwApiErrorOrException(response, coinId, 'ticker data fetch');
     }
+    final ticker = jsonDecode(response.body) as Map<String, dynamic>;
+    final result = CoinPaprikaTicker.fromJson(ticker);
+    return result;
   }
 
   /// Validates if the requested date range is within the current API plan's
@@ -343,9 +263,11 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
   }) {
     // Validate interval support
     if (!apiPlan.isIntervalSupported(interval)) {
-      throw ArgumentError(
+      throw ArgumentError.value(
+        interval,
+        'interval',
         'Interval "$interval" is not supported in the ${apiPlan.planName} plan. '
-        'Supported intervals: ${apiPlan.availableIntervals.join(", ")}',
+            'Supported intervals: ${apiPlan.availableIntervals.join(", ")}',
       );
     }
 
@@ -360,22 +282,26 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
 
     // Check if any requested date is before the cutoff
     if (startDate != null && startDate.isBefore(cutoffDate)) {
-      throw ArgumentError(
+      throw ArgumentError.value(
+        startDate,
+        'startDate',
         'Historical data before ${_formatDateForApi(cutoffDate)} is not '
-        'available in the ${apiPlan.planName} plan. '
-        'Requested start date: ${_formatDateForApi(startDate)}. '
-        '${apiPlan.ohlcLimitDescription}. Please request more recent data or '
-        'upgrade your plan.',
+            'available in the ${apiPlan.planName} plan. '
+            'Requested start date: ${_formatDateForApi(startDate)}. '
+            '${apiPlan.ohlcLimitDescription}. Please request more recent data or '
+            'upgrade your plan.',
       );
     }
 
     if (endDate != null && endDate.isBefore(cutoffDate)) {
-      throw ArgumentError(
+      throw ArgumentError.value(
+        endDate,
+        'endDate',
         'Historical data before ${_formatDateForApi(cutoffDate)} is not '
-        'available in the ${apiPlan.planName} plan. '
-        'Requested end date: ${_formatDateForApi(endDate)}. '
-        '${apiPlan.ohlcLimitDescription}. Please request more recent data or '
-        'upgrade your plan.',
+            'available in the ${apiPlan.planName} plan. '
+            'Requested end date: ${_formatDateForApi(endDate)}. '
+            '${apiPlan.ohlcLimitDescription}. Please request more recent data or '
+            'upgrade your plan.',
       );
     }
   }
@@ -385,10 +311,12 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
   /// Throws [ArgumentError] if the interval is not supported.
   void _validateInterval(String interval) {
     if (!apiPlan.isIntervalSupported(interval)) {
-      throw ArgumentError(
+      throw ArgumentError.value(
+        interval,
+        'interval',
         'Interval "$interval" is not supported in the ${apiPlan.planName} '
-        'plan. Supported intervals: ${apiPlan.availableIntervals.join(", ")}. '
-        'Please use a supported interval or upgrade to a higher plan.',
+            'plan. Supported intervals: ${apiPlan.availableIntervals.join(", ")}. '
+            'Please use a supported interval or upgrade to a higher plan.',
       );
     }
   }
@@ -544,9 +472,11 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
         '${cutoffDate != null ? '(since ${_formatDateForApi(cutoffDate)})' : ''}',
       );
 
-      throw ArgumentError(
+      throw ArgumentError.value(
+        response.body,
+        'apiResponse',
         'Historical data not available: ${apiPlan.ohlcLimitDescription}. '
-        'Please request more recent data or upgrade your plan.',
+            'Please request more recent data or upgrade your plan.',
       );
     }
 

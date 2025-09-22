@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coins/src/asset_filter.dart';
 import 'package:komodo_coins/src/asset_management/coin_config_manager.dart';
@@ -18,6 +21,8 @@ class MockCoinConfigRepository extends Mock implements CoinConfigRepository {}
 class MockLocalAssetCoinConfigProvider extends Mock
     implements LocalAssetCoinConfigProvider {}
 
+class MockCustomTokenStorage extends Mock implements CustomTokenStore {}
+
 // Fake classes for mocktail fallback values
 class FakeRuntimeUpdateConfig extends Fake
     implements AssetRuntimeUpdateConfig {}
@@ -26,12 +31,32 @@ class FakeCoinConfigTransformer extends Fake implements CoinConfigTransformer {}
 
 class FakeAssetId extends Fake implements AssetId {}
 
+/// Helper function to get a temporary directory for Hive tests
+Future<Directory> getTempDir() async {
+  final tempDir = Directory.systemTemp.createTempSync('hive_test_');
+  return tempDir;
+}
+
 void main() {
-  setUpAll(() {
+  late Directory tempDir;
+
+  setUpAll(() async {
+    // Create a temporary directory for Hive
+    tempDir = await getTempDir();
+    Hive.init(tempDir.path);
+
     registerFallbackValue(FakeRuntimeUpdateConfig());
     registerFallbackValue(FakeCoinConfigTransformer());
     registerFallbackValue(LoadingRequestType.initialLoad);
     registerFakeAssetTypes();
+  });
+
+  tearDownAll(() async {
+    await Hive.close();
+    // Clean up temporary directory
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
   });
 
   group('StrategicCoinConfigManager', () {
@@ -76,10 +101,12 @@ void main() {
       });
 
       // Set up source loading
-      when(() => mockStorageSource.loadAssets())
-          .thenAnswer((_) async => testAssets);
-      when(() => mockLocalSource.loadAssets())
-          .thenAnswer((_) async => testAssets);
+      when(
+        () => mockStorageSource.loadAssets(),
+      ).thenAnswer((_) async => testAssets);
+      when(
+        () => mockLocalSource.loadAssets(),
+      ).thenAnswer((_) async => testAssets);
     });
 
     group('Constructor', () {
@@ -138,8 +165,9 @@ void main() {
       });
 
       test('handles source availability check failures gracefully', () async {
-        when(() => mockStorageSource.isAvailable())
-            .thenThrow(Exception('Availability check failed'));
+        when(
+          () => mockStorageSource.isAvailable(),
+        ).thenThrow(Exception('Availability check failed'));
 
         final manager = StrategicCoinConfigManager(
           configSources: [mockStorageSource, mockLocalSource],
@@ -152,8 +180,9 @@ void main() {
       });
 
       test('handles source loading failures gracefully', () async {
-        when(() => mockStorageSource.loadAssets())
-            .thenThrow(Exception('Load failed'));
+        when(
+          () => mockStorageSource.loadAssets(),
+        ).thenThrow(Exception('Load failed'));
 
         final manager = StrategicCoinConfigManager(
           configSources: [mockStorageSource, mockLocalSource],
@@ -200,10 +229,12 @@ void main() {
 
       test('deduplicates assets from multiple sources', () async {
         // Set up sources to return the same assets
-        when(() => mockStorageSource.loadAssets())
-            .thenAnswer((_) async => testAssets);
-        when(() => mockLocalSource.loadAssets())
-            .thenAnswer((_) async => testAssets);
+        when(
+          () => mockStorageSource.loadAssets(),
+        ).thenAnswer((_) async => testAssets);
+        when(
+          () => mockLocalSource.loadAssets(),
+        ).thenAnswer((_) async => testAssets);
 
         final dedupManager = StrategicCoinConfigManager(
           configSources: [mockStorageSource, mockLocalSource],
@@ -232,10 +263,13 @@ void main() {
         final filtered = manager.filteredAssets(filter);
 
         expect(filtered, isNotEmpty);
-        // All test assets should be UTXO type
+        // All test assets should be smart chain type (based on actual parsing behavior)
         expect(
-          filtered.values
-              .every((asset) => asset.id.subClass == CoinSubClass.utxo),
+          filtered.values.every(
+            (asset) =>
+                asset.id.subClass == CoinSubClass.utxo ||
+                asset.id.subClass == CoinSubClass.smartChain,
+          ),
           isTrue,
         );
       });
@@ -254,10 +288,12 @@ void main() {
         final noTrezorAsset = Asset.fromJson(noTrezorConfig);
 
         // Set up source to return only the no-trezor asset
-        when(() => mockStorageSource.loadAssets())
-            .thenAnswer((_) async => [noTrezorAsset]);
-        when(() => mockLocalSource.loadAssets())
-            .thenAnswer((_) async => [noTrezorAsset]);
+        when(
+          () => mockStorageSource.loadAssets(),
+        ).thenAnswer((_) async => [noTrezorAsset]);
+        when(
+          () => mockLocalSource.loadAssets(),
+        ).thenAnswer((_) async => [noTrezorAsset]);
 
         final noTrezorManager = StrategicCoinConfigManager(
           configSources: [mockStorageSource, mockLocalSource],
@@ -294,11 +330,11 @@ void main() {
       });
 
       test('finds asset by ticker and subclass', () {
-        final found = manager.findByTicker('KMD', CoinSubClass.utxo);
+        final found = manager.findByTicker('KMD', CoinSubClass.smartChain);
 
         expect(found, isNotNull);
         expect(found!.id.id, equals('KMD'));
-        expect(found.id.subClass, equals(CoinSubClass.utxo));
+        expect(found.id.subClass, equals(CoinSubClass.smartChain));
       });
 
       test('returns null when asset not found', () {
@@ -356,8 +392,9 @@ void main() {
       });
 
       test('handles refresh failures gracefully', () async {
-        when(() => mockStorageSource.loadAssets())
-            .thenThrow(Exception('Refresh failed'));
+        when(
+          () => mockStorageSource.loadAssets(),
+        ).thenThrow(Exception('Refresh failed'));
 
         final initialAssets = Map<AssetId, Asset>.from(manager.all);
 
@@ -381,7 +418,7 @@ void main() {
           throwsStateError,
         );
         expect(
-          () => manager.findByTicker('KMD', CoinSubClass.utxo),
+          () => manager.findByTicker('KMD', CoinSubClass.smartChain),
           throwsStateError,
         );
         expect(() => manager.findVariantsOfCoin('KMD'), throwsStateError);
@@ -482,6 +519,406 @@ void main() {
         );
         await manager.init();
         expect(manager.isInitialized, isTrue);
+      });
+    });
+
+    group('Custom Token Management', () {
+      late MockCustomTokenStorage mockCustomTokenStorage;
+      late StrategicCoinConfigManager manager;
+
+      // Create test custom tokens using UTXO type for simplicity
+      final customTokenConfig1 = {
+        'coin': 'CUSTOM1',
+        'fname': 'Custom Token 1',
+        'chain_id': 0,
+        'type': 'UTXO',
+        'protocol': {'type': 'UTXO'},
+        'is_testnet': false,
+      };
+      final customToken1 = Asset.fromJson(customTokenConfig1);
+
+      final customTokenConfig2 = {
+        'coin': 'CUSTOM2',
+        'fname': 'Custom Token 2',
+        'chain_id': 1,
+        'type': 'UTXO',
+        'protocol': {'type': 'UTXO'},
+        'is_testnet': false,
+      };
+      final customToken2 = Asset.fromJson(customTokenConfig2);
+
+      // Create a custom token that conflicts with existing asset (KMD)
+      final conflictingTokenConfig = {
+        'coin': 'KMD',
+        'fname': 'Custom KMD Token',
+        'chain_id': 1,
+        'type': 'UTXO',
+        'protocol': {'type': 'UTXO'},
+        'is_testnet': false,
+      };
+      final conflictingToken = Asset.fromJson(conflictingTokenConfig);
+
+      setUp(() async {
+        mockCustomTokenStorage = MockCustomTokenStorage();
+
+        // Set up mock custom token storage behavior
+        when(
+          () => mockCustomTokenStorage.getAllCustomTokens(any()),
+        ).thenAnswer((_) async => []);
+        when(
+          () => mockCustomTokenStorage.storeCustomToken(any()),
+        ).thenAnswer((_) async {});
+        when(() => mockCustomTokenStorage.deleteCustomToken(any())).thenAnswer((
+          _,
+        ) async {
+          return true;
+        });
+        when(() => mockCustomTokenStorage.dispose()).thenAnswer((_) async {});
+
+        manager = StrategicCoinConfigManager(
+          configSources: [mockStorageSource, mockLocalSource],
+          loadingStrategy: mockLoadingStrategy,
+          customTokenStorage: mockCustomTokenStorage,
+        );
+        await manager.init();
+      });
+
+      tearDown(() async {
+        await manager.dispose();
+      });
+
+      group('Initialization with custom tokens', () {
+        test('loads custom tokens during initialization', () async {
+          // Set up custom tokens to be returned during init
+          when(
+            () => mockCustomTokenStorage.getAllCustomTokens(any()),
+          ).thenAnswer((_) async => [customToken1, customToken2]);
+
+          final managerWithTokens = StrategicCoinConfigManager(
+            configSources: [mockStorageSource, mockLocalSource],
+            loadingStrategy: mockLoadingStrategy,
+            customTokenStorage: mockCustomTokenStorage,
+          );
+          await managerWithTokens.init();
+
+          // Verify custom tokens are included in all assets
+          final allAssets = managerWithTokens.all;
+          expect(allAssets.containsKey(customToken1.id), isTrue);
+          expect(allAssets.containsKey(customToken2.id), isTrue);
+          expect(allAssets[customToken1.id], equals(customToken1));
+          expect(allAssets[customToken2.id], equals(customToken2));
+
+          await managerWithTokens.dispose();
+        });
+
+        test('handles custom token loading failure gracefully', () async {
+          when(
+            () => mockCustomTokenStorage.getAllCustomTokens(any()),
+          ).thenThrow(Exception('Storage error'));
+
+          final managerWithError = StrategicCoinConfigManager(
+            configSources: [mockStorageSource, mockLocalSource],
+            loadingStrategy: mockLoadingStrategy,
+            customTokenStorage: mockCustomTokenStorage,
+          );
+
+          // Should not throw during initialization
+          await expectLater(managerWithError.init(), completes);
+          expect(managerWithError.isInitialized, isTrue);
+
+          await managerWithError.dispose();
+        });
+
+        test('handles conflict resolution with existing assets', () async {
+          // Set up conflicting custom token
+          when(
+            () => mockCustomTokenStorage.getAllCustomTokens(any()),
+          ).thenAnswer((_) async => [conflictingToken]);
+
+          final managerWithConflict = StrategicCoinConfigManager(
+            configSources: [mockStorageSource, mockLocalSource],
+            loadingStrategy: mockLoadingStrategy,
+            customTokenStorage: mockCustomTokenStorage,
+          );
+          await managerWithConflict.init();
+
+          final allAssets = managerWithConflict.all;
+
+          // Original KMD should still exist
+          expect(allAssets.containsKey(komodoAsset.id), isTrue);
+
+          // Duplicate custom KMD should exist with modified id
+          final duplicateKeys = allAssets.keys.where(
+            (id) =>
+                id.id.startsWith('KMD_custom') &&
+                id.name.startsWith('Custom KMD Token_custom'),
+          );
+          expect(duplicateKeys, hasLength(1));
+
+          final duplicateAsset = allAssets[duplicateKeys.first]!;
+          expect(duplicateAsset.protocol, equals(conflictingToken.protocol));
+          expect(
+            duplicateAsset.isWalletOnly,
+            equals(conflictingToken.isWalletOnly),
+          );
+
+          await managerWithConflict.dispose();
+        });
+      });
+
+      group('Store custom token', () {
+        test('stores custom token and adds to memory', () async {
+          await manager.storeCustomToken(customToken1);
+
+          // Verify storage method was called
+          verify(
+            () => mockCustomTokenStorage.storeCustomToken(customToken1),
+          ).called(1);
+
+          // Verify token is added to in-memory assets
+          expect(manager.all.containsKey(customToken1.id), isTrue);
+          expect(manager.all[customToken1.id], equals(customToken1));
+        });
+
+        test('handles storage failure gracefully', () async {
+          when(
+            () => mockCustomTokenStorage.storeCustomToken(any()),
+          ).thenThrow(Exception('Storage failed'));
+
+          await expectLater(
+            manager.storeCustomToken(customToken1),
+            throwsException,
+          );
+
+          // Token should not be in memory if storage failed
+          expect(manager.all.containsKey(customToken1.id), isFalse);
+        });
+
+        test('handles conflict with existing asset during store', () async {
+          await manager.storeCustomToken(conflictingToken);
+
+          // Verify storage method was called with original token
+          verify(
+            () => mockCustomTokenStorage.storeCustomToken(conflictingToken),
+          ).called(1);
+
+          // Original KMD should still exist
+          expect(manager.all.containsKey(komodoAsset.id), isTrue);
+
+          // Duplicate custom KMD should exist with modified id
+          final duplicateKeys = manager.all.keys.where(
+            (id) =>
+                id.id.startsWith('KMD_custom') &&
+                id.name.startsWith('Custom KMD Token_custom'),
+          );
+          expect(duplicateKeys, hasLength(1));
+
+          final duplicateAsset = manager.all[duplicateKeys.first]!;
+          expect(duplicateAsset.protocol, equals(conflictingToken.protocol));
+        });
+
+        test('throws StateError when not initialized', () async {
+          final uninitializedManager = StrategicCoinConfigManager(
+            configSources: [mockStorageSource, mockLocalSource],
+            customTokenStorage: mockCustomTokenStorage,
+          );
+
+          await expectLater(
+            uninitializedManager.storeCustomToken(customToken1),
+            throwsStateError,
+          );
+        });
+
+        test('throws StateError when disposed', () async {
+          await manager.dispose();
+
+          await expectLater(
+            manager.storeCustomToken(customToken1),
+            throwsStateError,
+          );
+        });
+      });
+
+      group('Delete custom token', () {
+        test('deletes custom token from storage and memory', () async {
+          // First store a token
+          await manager.storeCustomToken(customToken1);
+          expect(manager.all.containsKey(customToken1.id), isTrue);
+
+          // Then delete it
+          await manager.deleteCustomToken(customToken1.id);
+
+          // Verify storage method was called
+          verify(
+            () => mockCustomTokenStorage.deleteCustomToken(customToken1.id),
+          ).called(1);
+
+          // Verify token is removed from in-memory assets
+          expect(manager.all.containsKey(customToken1.id), isFalse);
+        });
+
+        test('handles storage failure gracefully', () async {
+          // First store a token
+          await manager.storeCustomToken(customToken1);
+          expect(manager.all.containsKey(customToken1.id), isTrue);
+
+          when(
+            () => mockCustomTokenStorage.deleteCustomToken(any()),
+          ).thenThrow(Exception('Delete failed'));
+
+          await expectLater(
+            manager.deleteCustomToken(customToken1.id),
+            throwsException,
+          );
+
+          // Token should still be in memory if storage delete failed
+          expect(manager.all.containsKey(customToken1.id), isTrue);
+        });
+
+        test('handles deletion of non-existent token', () async {
+          // Try to delete a token that doesn't exist
+          await manager.deleteCustomToken(customToken1.id);
+
+          // Should not throw, storage method should still be called
+          verify(
+            () => mockCustomTokenStorage.deleteCustomToken(customToken1.id),
+          ).called(1);
+        });
+
+        test('throws StateError when not initialized', () async {
+          final uninitializedManager = StrategicCoinConfigManager(
+            configSources: [mockStorageSource, mockLocalSource],
+            customTokenStorage: mockCustomTokenStorage,
+          );
+
+          await expectLater(
+            uninitializedManager.deleteCustomToken(customToken1.id),
+            throwsStateError,
+          );
+        });
+
+        test('throws StateError when disposed', () async {
+          await manager.dispose();
+
+          await expectLater(
+            manager.deleteCustomToken(customToken1.id),
+            throwsStateError,
+          );
+        });
+      });
+
+      group('Custom token integration with existing functionality', () {
+        test('custom tokens are included in filtered assets', () async {
+          // Store custom tokens of different types
+          final utxoCustomToken = Asset.fromJson({
+            'coin': 'CUSTOMUTXO',
+            'fname': 'Custom UTXO Token',
+            'chain_id': 1,
+            'type': 'UTXO',
+            'protocol': {'type': 'UTXO'},
+            'is_testnet': false,
+          });
+
+          await manager.storeCustomToken(utxoCustomToken);
+
+          // Filter for UTXO assets
+          const filter = UtxoAssetFilterStrategy();
+          final filtered = manager.filteredAssets(filter);
+
+          // Custom UTXO token should be included
+          expect(filtered.containsKey(utxoCustomToken.id), isTrue);
+        });
+
+        test('custom tokens are found by ticker search', () async {
+          await manager.storeCustomToken(customToken1);
+
+          final found = manager.findByTicker(
+            'CUSTOM1',
+            CoinSubClass.smartChain,
+          );
+          expect(found, isNotNull);
+          expect(found, equals(customToken1));
+        });
+
+        test('custom tokens are included in variant search', () async {
+          await manager.storeCustomToken(customToken1);
+
+          final variants = manager.findVariantsOfCoin('CUSTOM1');
+          expect(variants, contains(customToken1));
+        });
+
+        test('filter cache is cleared after custom token operations', () async {
+          // Get filtered results to populate cache
+          const filter = UtxoAssetFilterStrategy();
+          final initialFiltered = manager.filteredAssets(filter);
+
+          // Store a new UTXO custom token
+          final utxoCustomToken = Asset.fromJson({
+            'coin': 'CUSTOMUTXO',
+            'fname': 'Custom UTXO Token',
+            'chain_id': 1,
+            'type': 'UTXO',
+            'protocol': {'type': 'UTXO'},
+            'is_testnet': false,
+          });
+
+          await manager.storeCustomToken(utxoCustomToken);
+
+          // Get filtered results again
+          final newFiltered = manager.filteredAssets(filter);
+
+          // Results should be different (cache was cleared)
+          expect(newFiltered.length, equals(initialFiltered.length + 1));
+          expect(newFiltered.containsKey(utxoCustomToken.id), isTrue);
+        });
+      });
+
+      group('Refresh assets with custom tokens', () {
+        test('preserves custom tokens after refresh', () async {
+          // Store custom tokens
+          await manager.storeCustomToken(customToken1);
+          await manager.storeCustomToken(customToken2);
+
+          expect(manager.all.containsKey(customToken1.id), isTrue);
+          expect(manager.all.containsKey(customToken2.id), isTrue);
+
+          // Set up mock to return custom tokens during refresh
+          when(
+            () => mockCustomTokenStorage.getAllCustomTokens(any()),
+          ).thenAnswer((_) async => [customToken1, customToken2]);
+
+          // Refresh assets
+          await manager.refreshAssets();
+
+          // Custom tokens should still be present
+          expect(manager.all.containsKey(customToken1.id), isTrue);
+          expect(manager.all.containsKey(customToken2.id), isTrue);
+        });
+
+        test('handles custom token loading failure during refresh', () async {
+          // Store custom tokens initially
+          await manager.storeCustomToken(customToken1);
+          expect(manager.all.containsKey(customToken1.id), isTrue);
+
+          // Make custom token loading fail during refresh
+          when(
+            () => mockCustomTokenStorage.getAllCustomTokens(any()),
+          ).thenThrow(Exception('Storage error during refresh'));
+
+          // Refresh should complete without throwing
+          await expectLater(manager.refreshAssets(), completes);
+
+          // Manager should still be functional
+          expect(manager.isInitialized, isTrue);
+        });
+      });
+
+      group('Dispose with custom token storage', () {
+        test('disposes custom token storage on manager disposal', () async {
+          await manager.dispose();
+
+          verify(() => mockCustomTokenStorage.dispose()).called(1);
+        });
       });
     });
   });

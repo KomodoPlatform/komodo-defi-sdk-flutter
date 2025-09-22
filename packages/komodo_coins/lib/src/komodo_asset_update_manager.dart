@@ -68,12 +68,14 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
     this.enableAutoUpdate = true,
     this.appStoragePath,
     this.appName,
+    CustomTokenStore? customTokenStorage,
   }) : _configRepository =
            configRepository ?? AssetRuntimeUpdateConfigRepository(),
        _transformer = transformer ?? const CoinConfigTransformer(),
        _dataFactory = dataFactory ?? const DefaultCoinConfigDataFactory(),
        _loadingStrategy = loadingStrategy ?? StorageFirstLoadingStrategy(),
-       _updateStrategy = updateStrategy ?? const BackgroundUpdateStrategy();
+       _updateStrategy = updateStrategy ?? const BackgroundUpdateStrategy(),
+       _customTokenStorage = customTokenStorage;
 
   static final Logger _log = Logger('KomodoAssetsUpdateManager');
 
@@ -92,6 +94,7 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
   final CoinConfigDataFactory _dataFactory;
   final LoadingStrategy _loadingStrategy;
   final UpdateStrategy _updateStrategy;
+  final CustomTokenStore? _customTokenStorage;
 
   // Internal managers using strategy pattern
   CoinConfigManager? _assetsManager;
@@ -140,6 +143,7 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
         configSources: configProviders,
         loadingStrategy: _loadingStrategy,
         defaultPriorityTickers: defaultPriorityTickers,
+        customTokenStorage: _customTokenStorage ?? CustomTokenStorage(),
       );
 
       // Initialize update manager
