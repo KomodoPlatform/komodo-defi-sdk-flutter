@@ -1,7 +1,4 @@
-// lib/src/assets/asset_manager.dart
-
-import 'dart:async';
-import 'dart:collection';
+import 'dart:async' show StreamSubscription;
 
 import 'package:flutter/foundation.dart' show ValueGetter;
 import 'package:komodo_coins/komodo_coins.dart';
@@ -10,8 +7,6 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-
-typedef AssetIdMap = SplayTreeMap<AssetId, Asset>;
 
 /// Manages the lifecycle and state of crypto assets in the Komodo DeFi Framework.
 ///
@@ -51,7 +46,6 @@ class AssetManager implements IAssetProvider {
     this._client,
     this._auth,
     this._config,
-    this._customAssetHistory,
     this._activationManager,
     this._coins,
   ) {
@@ -61,12 +55,10 @@ class AssetManager implements IAssetProvider {
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final KomodoDefiSdkConfig _config;
-  final CustomAssetHistoryStorage _customAssetHistory;
   final AssetsUpdateManager _coins;
-  late final AssetIdMap _orderedCoins;
   StreamSubscription<KdfUser?>? _authSubscription;
   bool _isDisposed = false;
-  AssetFilterStrategy? _currentFilterStrategy;
+  AssetFilterStrategy _currentFilterStrategy = const NoAssetFilterStrategy();
 
   /// NB: This cannot be used during initialization. This is a workaround
   /// to publicly expose the activation manager's activation methods.
@@ -79,21 +71,8 @@ class AssetManager implements IAssetProvider {
   /// manually.
   Future<void> init() async {
     await _coins.init(defaultPriorityTickers: _config.defaultAssets);
-
-    _orderedCoins = AssetIdMap((keyA, keyB) {
-      final isDefaultA = _config.defaultAssets.contains(keyA.id);
-      final isDefaultB = _config.defaultAssets.contains(keyB.id);
-
-      if (isDefaultA != isDefaultB) {
-        return isDefaultA ? -1 : 1;
-      }
-
-      return keyA.toString().compareTo(keyB.toString());
-    });
-
-    _refreshCoins(const NoAssetFilterStrategy());
-
-    await _initializeCustomTokens();
+    // call get filtered assets to update the cache
+    _coins.filteredAssets(_currentFilterStrategy);
   }
 
   /// Exposes the currently active commit hash for coins config.
@@ -102,34 +81,18 @@ class AssetManager implements IAssetProvider {
   /// Exposes the latest available commit hash for coins config.
   Future<String?> get latestCoinsCommit async => _coins.getLatestCommitHash();
 
-  void _refreshCoins(AssetFilterStrategy strategy) {
-    if (_currentFilterStrategy?.strategyId == strategy.strategyId) return;
-    _orderedCoins
-      ..clear()
-      ..addAll(_coins.filteredAssets(strategy));
-    _currentFilterStrategy = strategy;
-  }
-
   /// Applies a new [strategy] for filtering available assets.
   ///
   /// This is called whenever the authentication state changes so the
   /// visible asset list always matches the capabilities of the active wallet.
   void setFilterStrategy(AssetFilterStrategy strategy) {
-    if (_coins.isInitialized) {
-      _refreshCoins(strategy);
+    if (_currentFilterStrategy.strategyId == strategy.strategyId) {
+      return;
     }
-  }
 
-  Future<void> _initializeCustomTokens() async {
-    final user = await _auth.currentUser;
-    if (user != null) {
-      final customTokens = await _customAssetHistory.getWalletAssets(
-        user.walletId,
-      );
-      for (final customToken in customTokens) {
-        _orderedCoins[customToken.id] = customToken;
-      }
-    }
+    _currentFilterStrategy = strategy;
+    // call get filtered assets to update the cache
+    _coins.filteredAssets(_currentFilterStrategy);
   }
 
   /// Reacts to authentication changes by updating the active asset filter.
@@ -146,10 +109,9 @@ class AssetManager implements IAssetProvider {
     // Trezor does not support all assets yet, so we apply a filter here
     // to only show assets that are compatible with Trezor.
     // WalletConnect and Metamask will require similar handling in the future.
-    final strategy =
-        isTrezor
-            ? const TrezorAssetFilterStrategy(hiddenAssets: {'BCH'})
-            : const NoAssetFilterStrategy();
+    final strategy = isTrezor
+        ? const TrezorAssetFilterStrategy(hiddenAssets: {'BCH'})
+        : const NoAssetFilterStrategy();
 
     setFilterStrategy(strategy);
   }
@@ -159,20 +121,20 @@ class AssetManager implements IAssetProvider {
   /// Returns null if no matching asset is found.
   /// Throws [StateError] if called before initialization.
   @override
-  Asset? fromId(AssetId id) =>
-      _coins.isInitialized
-          ? available[id]
-          : throw StateError(
-            'Assets have not been initialized. Call init() first.',
-          );
+  Asset? fromId(AssetId id) => _coins.isInitialized
+      ? available[id]
+      : throw StateError(
+          'Assets have not been initialized. Call init() first.',
+        );
 
   /// Returns all available assets, ordered by priority.
   ///
   /// Default assets (configured in [KomodoDefiSdkConfig]) appear first,
   /// followed by other assets in alphabetical order.
+  /// The filtering and ordering is handled by the underlying coin_config_manager.
   @override
-  Map<AssetId, Asset> get available => _orderedCoins;
-  Map<AssetId, Asset> get availableOrdered => available;
+  Map<AssetId, Asset> get available =>
+      Map.unmodifiable(_coins.filteredAssets(_currentFilterStrategy));
 
   /// Returns currently activated assets for the signed-in user.
   ///

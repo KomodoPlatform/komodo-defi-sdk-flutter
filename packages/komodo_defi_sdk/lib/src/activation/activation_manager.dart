@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
@@ -16,17 +17,17 @@ class ActivationManager {
     this._client,
     this._auth,
     this._assetHistory,
-    this._customTokenHistory,
     this._assetLookup,
     this._balanceManager,
+    this._assetsUpdateManager,
   );
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final AssetHistoryStorage _assetHistory;
-  final CustomAssetHistoryStorage _customTokenHistory;
   final IAssetLookup _assetLookup;
   final IBalanceManager _balanceManager;
+  final KomodoAssetsUpdateManager _assetsUpdateManager;
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
 
@@ -39,12 +40,8 @@ class ActivationManager {
         .protect(operation)
         .timeout(
           _operationTimeout,
-          onTimeout:
-              () =>
-                  throw TimeoutException(
-                    'Operation timed out',
-                    _operationTimeout,
-                  ),
+          onTimeout: () =>
+              throw TimeoutException('Operation timed out', _operationTimeout),
         );
   }
 
@@ -77,13 +74,10 @@ class ActivationManager {
         continue;
       }
 
-      final parentAsset =
-          group.parentId == null
-              ? null
-              : _assetLookup.fromId(group.parentId!) ??
-                  (throw StateError(
-                    'Parent asset ${group.parentId} not found',
-                  ));
+      final parentAsset = group.parentId == null
+          ? null
+          : _assetLookup.fromId(group.parentId!) ??
+                (throw StateError('Parent asset ${group.parentId} not found'));
 
       yield ActivationProgress(
         status: 'Starting activation for ${group.primary.id.name}...',
@@ -139,14 +133,13 @@ class ActivationManager {
   /// Check if asset and its children are already activated
   Future<ActivationProgress> _checkActivationStatus(_AssetGroup group) async {
     try {
-      final enabledCoins =
-          await _client.rpc.generalActivation.getEnabledCoins();
-      final enabledAssetIds =
-          enabledCoins.result
-              .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
-              .expand((assets) => assets)
-              .map((asset) => asset.id)
-              .toSet();
+      final enabledCoins = await _client.rpc.generalActivation
+          .getEnabledCoins();
+      final enabledAssetIds = enabledCoins.result
+          .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
+          .expand((assets) => assets)
+          .map((asset) => asset.id)
+          .toSet();
 
       final isActive = enabledAssetIds.contains(group.primary.id);
       final childrenActive =
@@ -198,16 +191,23 @@ class ActivationManager {
     if (progress.isSuccess) {
       final user = await _auth.currentUser;
       if (user != null) {
-        await _assetHistory.addAssetToWallet(
-          user.walletId,
-          group.primary.id.id,
-        );
+        // Store custom tokens using CoinConfigManager
+        if (group.primary.protocol.isCustomToken) {
+          await _assetsUpdateManager.assets.storeCustomToken(group.primary);
+        } else {
+          await _assetHistory.addAssetToWallet(
+            user.walletId,
+            group.primary.id.id,
+          );
+        }
 
         final allAssets = [group.primary, ...(group.children?.toList() ?? [])];
+
         for (final asset in allAssets) {
           if (asset.protocol.isCustomToken) {
-            await _customTokenHistory.addAssetToWallet(user.walletId, asset);
+            await _assetsUpdateManager.assets.storeCustomToken(asset);
           }
+
           // Pre-cache balance for the activated asset
           await _balanceManager.precacheBalance(asset);
         }
@@ -237,8 +237,8 @@ class ActivationManager {
     }
 
     try {
-      final enabledCoins =
-          await _client.rpc.generalActivation.getEnabledCoins();
+      final enabledCoins = await _client.rpc.generalActivation
+          .getEnabledCoins();
       return enabledCoins.result
           .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
           .expand((assets) => assets)

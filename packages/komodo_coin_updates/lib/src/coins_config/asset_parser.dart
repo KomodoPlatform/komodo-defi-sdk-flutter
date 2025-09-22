@@ -28,11 +28,11 @@ class AssetParser {
   /// - [logContext]: Optional context string for logging (e.g., 'from asset bundle')
   ///
   /// Returns a list of successfully parsed assets.
-  Future<List<Asset>> parseAssetsFromConfig(
+  List<Asset> parseAssetsFromConfig(
     Map<String, Map<String, dynamic>> transformedConfigs, {
     bool Function(Map<String, dynamic>)? shouldFilterCoin,
     String? logContext,
-  }) async {
+  }) {
     final context = logContext != null ? ' $logContext' : '';
 
     _log.info(
@@ -141,6 +141,94 @@ class AssetParser {
     }
 
     return assets;
+  }
+
+  /// Rebuilds parent-child relationships for a list of assets.
+  ///
+  /// This method implements a two-pass strategy similar to parseAssetsFromConfig:
+  /// 1. First pass: Identify platform assets (no parent) and collect their AssetIds
+  /// 2. Second pass: Reparse child assets using the known platform AssetIds
+  ///
+  /// This is useful when loading assets from storage where parent-child relationships
+  /// need to be reconstructed.
+  ///
+  /// Parameters:
+  /// - [assets]: List of assets to rebuild relationships for
+  /// - [logContext]: Optional context string for logging
+  ///
+  /// Returns a list of assets with properly rebuilt parent-child relationships.
+  List<Asset> rebuildParentChildRelationships(
+    Iterable<Asset> assets, {
+    String? logContext,
+  }) {
+    final context = logContext != null ? ' $logContext' : '';
+
+    _log.fine(
+      'Rebuilding parent-child relationships for ${assets.length} assets$context',
+    );
+
+    // Convert assets back to config format for re-parsing
+    final assetConfigs = <String, Map<String, dynamic>>{};
+    for (final asset in assets) {
+      assetConfigs[asset.id.symbol.assetConfigId] = asset.protocol.config;
+    }
+
+    return parseAssetsFromConfig(
+      assetConfigs,
+      logContext: 'while rebuilding relationships$context',
+    );
+  }
+
+  /// Rebuilds parent-child relationships for a list of assets using known parent IDs.
+  ///
+  /// This method is more efficient than the double-pass strategy when you already
+  /// know the parent AssetIds. It directly reconstructs child assets with proper
+  /// parent relationships without needing to identify platform assets first.
+  ///
+  /// Parameters:
+  /// - [assets]: List of assets to rebuild relationships for
+  /// - [knownParentIds]: Set of known parent AssetIds for resolving relationships
+  /// - [logContext]: Optional context string for logging
+  ///
+  /// Returns a list of assets with properly rebuilt parent-child relationships.
+  List<Asset> rebuildParentChildRelationshipsWithKnownParents(
+    Iterable<Asset> assets,
+    Set<AssetId> knownParentIds, {
+    String? logContext,
+  }) {
+    final context = logContext != null ? ' $logContext' : '';
+
+    _log.fine(
+      'Rebuilding parent-child relationships for ${assets.length} assets '
+      'with ${knownParentIds.length} known parent IDs$context',
+    );
+
+    final rebuiltAssets = <Asset>[];
+
+    for (final asset in assets) {
+      try {
+        // Reconstruct the asset using the known parent IDs
+        final rebuiltAsset = Asset.fromJson(
+          asset.protocol.config,
+          knownIds: knownParentIds,
+        );
+        rebuiltAssets.add(rebuiltAsset);
+      } catch (e, s) {
+        _log.warning(
+          'Failed to rebuild asset ${asset.id.id} with known parents: $e',
+          e,
+          s,
+        );
+        // Fall back to the original asset if reconstruction fails
+        rebuiltAssets.add(asset);
+      }
+    }
+
+    _log.fine(
+      'Successfully rebuilt ${rebuiltAssets.length} assets with known parents$context',
+    );
+
+    return rebuiltAssets;
   }
 
   /// Helper method to check if a coin configuration has no parent.

@@ -607,15 +607,6 @@ class CoinGeckoCexProvider implements ICoinGeckoProvider {
       response.body,
     );
 
-    _logger.warning(
-      ApiErrorParser.createSafeErrorMessage(
-        operation: operation,
-        service: 'CoinGecko',
-        statusCode: response.statusCode,
-        coinId: coinId,
-      ),
-    );
-
     throw Exception(apiError.message);
   }
 }

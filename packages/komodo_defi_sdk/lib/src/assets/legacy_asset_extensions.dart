@@ -52,7 +52,7 @@ extension AssetTickerIndexExtension on AssetManager {
       if (_isInitialized) return;
       _tickerIndex
         ..clear()
-        ..addAll(_buildTickerIndex(availableOrdered.values));
+        ..addAll(_buildTickerIndex(available.values));
       _isInitialized = true;
     });
   }

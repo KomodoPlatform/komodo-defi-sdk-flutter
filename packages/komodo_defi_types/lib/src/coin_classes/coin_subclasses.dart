@@ -142,16 +142,43 @@ enum CoinSubClass {
     }
   }
 
-  // Parse
+  /// Parse a string to a coin subclass.
+  ///
+  /// Attempts to match the string to a coin subclass by:
+  /// - Partial match to the subclass name
+  /// - Partial match to the subclass ticker
+  /// - Partial match to the subclass token standard suffix
+  /// - Partial match to the subclass formatted name
+  ///
+  /// Throws [StateError] if no match is found.
   static CoinSubClass parse(String value) {
     const filteredChars = ['_', '-', ' '];
     final regex = RegExp('(${filteredChars.join('|')})');
 
     final sanitizedValue = value.toLowerCase().replaceAll(regex, '');
 
-    return CoinSubClass.values.firstWhere(
-      (e) => e.toString().toLowerCase().contains(sanitizedValue),
-    );
+    return CoinSubClass.values.firstWhere((e) {
+      // Exit early if exact match to default to previous behavior and avoid
+      // unnecessary checks.
+      final matchesValue = e.toString().toLowerCase().contains(sanitizedValue);
+      if (matchesValue) {
+        return true;
+      }
+
+      final matchesTicker = e.ticker.toLowerCase().contains(sanitizedValue);
+      if (matchesTicker) {
+        return true;
+      }
+
+      final matchesTokenStandardSuffix =
+          e.tokenStandardSuffix?.toLowerCase().contains(sanitizedValue) ??
+          false;
+      if (matchesTokenStandardSuffix) {
+        return true;
+      }
+
+      return e.formatted.toLowerCase().contains(sanitizedValue);
+    });
   }
 
   static CoinSubClass? tryParse(String value) {

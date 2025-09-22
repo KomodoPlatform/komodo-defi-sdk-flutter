@@ -2,7 +2,6 @@ import 'package:async/async.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/coingecko/_coingecko_index.dart';
-import 'package:komodo_cex_market_data/src/coingecko/models/coin_historical_data/coin_historical_data.dart';
 import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
 import 'package:komodo_cex_market_data/src/models/_models_index.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';

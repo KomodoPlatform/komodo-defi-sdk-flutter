@@ -62,8 +62,8 @@ class RepositoryPriorityManager {
   /// [repositories] The list of repositories to sort.
   /// Returns a new sorted list with highest priority repositories first.
   static List<CexRepository> sortByPriority(List<CexRepository> repositories) {
-    final sorted = repositories.toList();
-    sorted.sort((a, b) => getPriority(a).compareTo(getPriority(b)));
+    final sorted = repositories.toList()
+      ..sort((a, b) => getPriority(a).compareTo(getPriority(b)));
     return sorted;
   }
 
