@@ -152,12 +152,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     this._config,
     this._kdfFramework,
     this._onLog,
-  ) {
-    _container = GetIt.asNewInstance();
-    if (_kdfFramework != null && _onLog != null) {
-      _logSubscription = _kdfFramework?.logStream.listen(_onLog);
-    }
-  }
+  ) : _container = GetIt.asNewInstance();
 
   final IKdfHostConfig? _hostConfig;
   final KomodoDefiSdkConfig _config;
@@ -167,7 +162,6 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   bool _isDisposed = false;
   Future<void>? _initializationFuture;
   final void Function(String)? _onLog;
-  StreamSubscription<String>? _logSubscription;
 
   /// The API client for making direct RPC calls.
   ///
@@ -334,31 +328,26 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
   Future<void> _initialize() async {
     _assertNotDisposed();
+
+    log('KomodoDefiSdk: Starting initialization...', name: 'KomodoDefiSdk');
+    final stopwatch = Stopwatch()..start();
+
     await bootstrap(
       hostConfig: _hostConfig,
       config: _config,
       kdfFramework: _kdfFramework,
       container: _container,
-      // Let SDK manage onLog subscription itself to avoid duplication
-      externalLogger: null,
+      // Pass onLog callback to bootstrap for direct framework integration
+      externalLogger: _onLog,
     );
-    if (!_container.isRegistered<ActivationConfigService>()) {
-      _container.registerSingleton<ActivationConfigService>(
-        ActivationConfigService(
-          JsonActivationConfigRepository(InMemoryKeyValueStore()),
-          walletIdResolver: () async {
-            final auth = _container<KomodoDefiLocalAuth>();
-            return (await auth.currentUser)?.walletId;
-          },
-        ),
-      );
-    }
-    // Ensure consistent onLog subscription when framework is created by SDK
-    if (_onLog != null && _logSubscription == null) {
-      final framework = _container<KomodoDefiFramework>();
-      _logSubscription = framework.logStream.listen(_onLog);
-    }
+
     _isInitialized = true;
+
+    stopwatch.stop();
+    log(
+      'KomodoDefiSdk: Initialization completed in ${stopwatch.elapsedMilliseconds}ms',
+      name: 'KomodoDefiSdk',
+    );
   }
 
   /// Gets the current user's authentication options.
@@ -410,16 +399,10 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     if (_isDisposed) return;
     _isDisposed = true;
 
-    // Always cancel log subscription even if SDK wasn't initialized
-    await _logSubscription?.cancel();
-    _logSubscription = null;
-
     if (!_isInitialized) return;
 
     _isInitialized = false;
     _initializationFuture = null;
-
-    // (Already cancelled above)
 
     await Future.wait([
       _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),

@@ -1,6 +1,7 @@
 // ignore_for_file: cascade_invocations
 
-import 'package:flutter/foundation.dart';
+import 'dart:developer';
+
 import 'package:get_it/get_it.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
@@ -18,6 +19,7 @@ import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
+import 'package:komodo_defi_sdk/src/withdrawals/legacy_withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -37,6 +39,9 @@ Future<void> bootstrap({
   KomodoDefiFramework? kdfFramework,
   void Function(String)? externalLogger,
 }) async {
+  log('Bootstrap: Starting dependency injection setup...', name: 'Bootstrap');
+  final stopwatch = Stopwatch()..start();
+
   final rpcPassword = await SecureRpcPasswordMixin().ensureRpcPassword();
 
   // Framework and core dependencies
@@ -48,7 +53,7 @@ Future<void> bootstrap({
 
     return KomodoDefiFramework.create(
       hostConfig: resolvedHostConfig,
-      externalLogger: externalLogger ?? (kDebugMode ? print : null),
+      externalLogger: externalLogger,
     );
   });
 
@@ -76,17 +81,15 @@ Future<void> bootstrap({
   );
 
   // Activation configuration service (must be available before ActivationManager)
-  if (!container.isRegistered<ActivationConfigService>()) {
-    container.registerSingletonAsync<ActivationConfigService>(() async {
-      await _ensureActivationConfigHiveInitialized();
-      final auth = await container.getAsync<KomodoDefiLocalAuth>();
-      final repo = HiveActivationConfigRepository();
-      return ActivationConfigService(
-        repo,
-        walletIdResolver: () async => (await auth.currentUser)?.walletId,
-      );
-    }, dependsOn: [KomodoDefiLocalAuth]);
-  }
+  container.registerSingletonAsync<ActivationConfigService>(() async {
+    await _ensureActivationConfigHiveInitialized();
+    final auth = await container.getAsync<KomodoDefiLocalAuth>();
+    final repo = HiveActivationConfigRepository();
+    return ActivationConfigService(
+      repo,
+      walletIdResolver: () async => (await auth.currentUser)?.walletId,
+    );
+  }, dependsOn: [KomodoDefiLocalAuth]);
 
   // Register asset manager first since it's a core dependency
   container.registerSingletonAsync<AssetManager>(() async {
@@ -226,6 +229,11 @@ Future<void> bootstrap({
     return FeeManager(client);
   }, dependsOn: [ApiClient]);
 
+  container.registerSingletonAsync<LegacyWithdrawalManager>(() async {
+    final client = await container.getAsync<ApiClient>();
+    return LegacyWithdrawalManager(client);
+  }, dependsOn: [ApiClient]);
+
   container.registerSingletonAsync<TransactionHistoryManager>(
     () async {
       final client = await container.getAsync<ApiClient>();
@@ -256,6 +264,7 @@ Future<void> bootstrap({
       final client = await container.getAsync<ApiClient>();
       final assetProvider = await container.getAsync<AssetManager>();
       final feeManager = await container.getAsync<FeeManager>();
+      final legacyManager = await container.getAsync<LegacyWithdrawalManager>();
 
       final activationCoordinator = await container
           .getAsync<SharedActivationCoordinator>();
@@ -264,6 +273,7 @@ Future<void> bootstrap({
         assetProvider,
         feeManager,
         activationCoordinator,
+        legacyManager,
       );
     },
     dependsOn: [
@@ -271,6 +281,7 @@ Future<void> bootstrap({
       AssetManager,
       SharedActivationCoordinator,
       FeeManager,
+      LegacyWithdrawalManager,
     ],
   );
 
@@ -298,4 +309,10 @@ Future<void> bootstrap({
 
   // Wait for all async singletons to initialize
   await container.allReady();
+
+  stopwatch.stop();
+  log(
+    'Bootstrap: Dependency injection setup completed in ${stopwatch.elapsedMilliseconds}ms',
+    name: 'Bootstrap',
+  );
 }
