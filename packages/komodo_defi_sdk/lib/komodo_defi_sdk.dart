@@ -29,3 +29,4 @@ export 'src/assets/asset_pubkey_extensions.dart';
 export 'src/assets/legacy_asset_extensions.dart';
 export 'src/komodo_defi_sdk.dart' show KomodoDefiSdk;
 export 'src/widgets/asset_balance_text.dart';
+export 'src/seed_import/_seed_import_index.dart';
