@@ -6,7 +6,6 @@ import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
-import 'package:komodo_defi_framework/src/operations/kdf_operations_native.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -222,11 +221,8 @@ class KomodoDefiFramework implements ApiClient {
     }
 
     // Dispose of KDF operations to free native resources
-    // Check if the implementation has a dispose method
     final operations = _kdfOperations;
-    if (operations is KdfOperationsNativeLibrary) {
-      operations.dispose();
-    }
+    operations.dispose();
   }
 
   String get operationsName => _kdfOperations.operationsName;
