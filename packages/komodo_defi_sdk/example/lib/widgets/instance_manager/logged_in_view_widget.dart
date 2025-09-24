@@ -6,10 +6,10 @@ import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/common/private_keys_display_widget.dart';
 import 'package:kdf_sdk_example/widgets/common/security_warning_dialog.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 
 class LoggedInViewWidget extends StatefulWidget {
   const LoggedInViewWidget({

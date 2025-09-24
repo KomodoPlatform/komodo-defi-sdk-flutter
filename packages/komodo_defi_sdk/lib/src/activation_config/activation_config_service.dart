@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 typedef JsonMap = Map<String, dynamic>;
 
@@ -78,6 +80,69 @@ abstract class ActivationConfigMapper {
     if (T == ZhtlcUserConfig) return ZhtlcUserConfig.fromJson(json) as T;
     throw UnsupportedError('Unsupported type for decode: $T');
   }
+}
+
+/// Wrapper class for storing activation configs in Hive.
+/// This replaces the problematic Map<String, String> storage approach
+/// and provides type safety while using the encode/decode functions.
+class HiveActivationConfigWrapper extends HiveObject {
+  HiveActivationConfigWrapper({required this.walletId, required this.configs});
+
+  /// Creates a wrapper from individual config components
+  factory HiveActivationConfigWrapper.fromComponents({
+    required WalletId walletId,
+    required Map<String, Object> configs,
+  }) {
+    final encodedConfigs = <String, String>{};
+    configs.forEach((assetId, config) {
+      final json = ActivationConfigMapper.encode(config);
+      encodedConfigs[assetId] = jsonEncode(json);
+    });
+    return HiveActivationConfigWrapper(
+      walletId: walletId,
+      configs: encodedConfigs,
+    );
+  }
+
+  /// The wallet ID this configuration belongs to
+  @HiveField(0)
+  final WalletId walletId;
+
+  /// Map of asset ID to JSON-encoded configuration strings
+  @HiveField(1)
+  final Map<String, String> configs;
+
+  /// Gets a decoded configuration by asset ID and type
+  TConfig? getConfig<TConfig>(String assetId) {
+    final encodedConfig = configs[assetId];
+    if (encodedConfig == null) return null;
+
+    final json = jsonDecode(encodedConfig) as JsonMap;
+    return ActivationConfigMapper.decode<TConfig>(json);
+  }
+
+  /// Sets a configuration by asset ID
+  HiveActivationConfigWrapper setConfig(String assetId, Object config) {
+    final json = ActivationConfigMapper.encode(config);
+    final newConfigs = Map<String, String>.from(configs);
+    newConfigs[assetId] = jsonEncode(json);
+
+    return HiveActivationConfigWrapper(walletId: walletId, configs: newConfigs);
+  }
+
+  /// Removes a configuration by asset ID
+  HiveActivationConfigWrapper removeConfig(String assetId) {
+    final newConfigs = Map<String, String>.from(configs);
+    newConfigs.remove(assetId);
+
+    return HiveActivationConfigWrapper(walletId: walletId, configs: newConfigs);
+  }
+
+  /// Checks if a configuration exists for the given asset ID
+  bool hasConfig(String assetId) => configs.containsKey(assetId);
+
+  /// Gets all asset IDs that have configurations
+  List<String> getAssetIds() => configs.keys.toList();
 }
 
 class JsonActivationConfigRepository implements ActivationConfigRepository {
