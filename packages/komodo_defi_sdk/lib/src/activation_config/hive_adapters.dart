@@ -15,7 +15,7 @@ part 'hive_adapters.g.dart';
 /// Call this function before opening any Hive boxes to ensure
 /// all type adapters are properly registered.
 void registerActivationConfigAdapters() {
-  if (!Hive.isAdapterRegistered(0)) {
+  if (!Hive.isAdapterRegistered(20)) {
     Hive.registerAdapter(HiveActivationConfigWrapperAdapter());
   }
 }
