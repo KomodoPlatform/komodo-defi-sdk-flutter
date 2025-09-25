@@ -20,7 +20,7 @@ void main() {
 
     // Test data
     final testData = Uint8List.fromList(List.generate(1024, (i) => i % 256));
-    final testHash = sha256.convert(testData).toString();
+    final testHash = sha256.convert(testData).toString().toLowerCase();
 
     setUp(() {
       mockHttpClient = MockHttpClient();
@@ -59,7 +59,7 @@ void main() {
       test('returns empty list when all files exist and are valid', () async {
         File fileFactory(String path) {
           final file = MockFile();
-          when(() => file.exists()).thenAnswer((_) async => true);
+          when(() => file.existsSync()).thenReturn(true);
           when(() => file.path).thenReturn(path);
           when(
             () => file.openRead(),
@@ -200,6 +200,7 @@ void main() {
         File fileFactory(String path) {
           final file = MockFile();
           when(() => file.exists()).thenAnswer((_) async => true);
+          when(() => file.existsSync()).thenReturn(true);
           when(() => file.path).thenReturn(path);
           when(
             () => file.openRead(),
@@ -285,7 +286,7 @@ void main() {
       test('returns true for valid hash', () async {
         File fileFactory(String path) {
           final file = MockFile();
-          when(() => file.exists()).thenAnswer((_) async => true);
+          when(() => file.existsSync()).thenReturn(true);
           when(() => file.path).thenReturn(path);
           when(
             () => file.openRead(),
@@ -325,7 +326,7 @@ void main() {
       test('is case insensitive', () async {
         File fileFactory(String path) {
           final file = MockFile();
-          when(() => file.exists()).thenAnswer((_) async => true);
+          when(() => file.existsSync()).thenReturn(true);
           when(() => file.path).thenReturn(path);
           when(
             () => file.openRead(),
@@ -384,7 +385,7 @@ void main() {
       test('returns correct hash for existing file', () async {
         File fileFactory(String path) {
           final file = MockFile();
-          when(() => file.exists()).thenAnswer((_) async => true);
+          when(() => file.existsSync()).thenReturn(true);
           when(() => file.path).thenReturn(path);
           when(
             () => file.openRead(),
@@ -403,7 +404,7 @@ void main() {
       test('returns null when file does not exist', () async {
         File fileFactory(String path) {
           final file = MockFile();
-          when(() => file.exists()).thenAnswer((_) async => false);
+          when(() => file.existsSync()).thenReturn(false);
           when(() => file.path).thenReturn(path);
           return file;
         }

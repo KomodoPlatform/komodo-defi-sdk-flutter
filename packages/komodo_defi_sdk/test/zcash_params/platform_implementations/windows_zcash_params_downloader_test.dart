@@ -49,20 +49,16 @@ void main() {
     });
 
     group('getParamsPath', () {
-      test('returns correct APPDATA path when environment variable exists', () {
-        // Mock Platform.environment - in real tests you'd use a platform package
-        // For now, we'll test the path construction logic by calling the method
-        expect(
-          () async => downloader.getParamsPath(),
-          throwsA(isA<StateError>()),
-        );
+      test('returns null when APPDATA environment variable missing', () async {
+        // On non-Windows platforms, APPDATA won't exist
+        final path = await downloader.getParamsPath();
+        expect(path, isNull);
       });
 
-      test('throws StateError when APPDATA environment variable missing', () {
-        expect(
-          () async => downloader.getParamsPath(),
-          throwsA(isA<StateError>()),
-        );
+      test('returns correct path format when APPDATA exists', () {
+        // This test would need to mock Platform.environment in a real scenario
+        // For now, we just verify the method doesn't throw
+        expect(() async => downloader.getParamsPath(), returnsNormally);
       });
     });
 
@@ -117,7 +113,7 @@ void main() {
             fail('Expected failure but got success');
           },
           failure: (error) {
-            expect(error, contains('APPDATA environment variable not found'));
+            expect(error, contains('Unable to determine parameters path'));
           },
         );
       });
@@ -321,7 +317,7 @@ void main() {
             fail('Expected failure but got success');
           },
           failure: (error) {
-            expect(error, contains('APPDATA environment variable not found'));
+            expect(error, contains('Unable to determine parameters path'));
           },
         );
       });

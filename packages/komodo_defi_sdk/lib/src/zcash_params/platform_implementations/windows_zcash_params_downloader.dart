@@ -109,7 +109,7 @@ class WindowsZcashParamsDownloader extends ZcashParamsDownloader {
   Future<String?> getParamsPath() async {
     final appData = Platform.environment['APPDATA'];
     if (appData == null) {
-      throw StateError('APPDATA environment variable not found');
+      return null;
     }
     return path.join(appData, 'ZcashParams');
   }
