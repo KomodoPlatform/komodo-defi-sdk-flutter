@@ -34,6 +34,15 @@ abstract class ZcashParamsDownloader {
   /// - Report progress through the [downloadProgress] stream
   /// - Handle network failures gracefully with retries and fallback URLs
   /// - Return the path to the parameters directory on success
+  ///
+  /// Throws:
+  /// - [StateError] if required environment variables are missing (APPDATA on Windows, HOME on Unix)
+  /// - [FileSystemException] if directory creation or file operations fail
+  /// - [IOException] if file I/O operations fail
+  /// - [SocketException] for network connectivity issues
+  /// - [TimeoutException] if download operations timeout
+  /// - [HttpException] for HTTP-related errors
+  /// - [ArgumentError] for invalid path operations
   Future<DownloadResult> downloadParams();
 
   /// Gets the platform-specific path where ZCash parameters should be stored.
@@ -47,6 +56,10 @@ abstract class ZcashParamsDownloader {
   /// - macOS: `/Users/Username/Library/Application Support/ZcashParams`
   /// - Linux: `/home/username/.zcash-params`
   /// - Web: `null`
+  ///
+  /// Throws:
+  /// - [StateError] if required environment variables are missing (APPDATA on Windows, HOME on Unix)
+  /// - [ArgumentError] for invalid path operations
   Future<String?> getParamsPath();
 
   /// Checks if all required ZCash parameters are available locally.
@@ -59,6 +72,12 @@ abstract class ZcashParamsDownloader {
   /// - The parameters directory exists
   /// - All required parameter files are present
   /// - Files are not corrupted (optional, basic size check)
+  ///
+  /// Throws:
+  /// - [StateError] if required environment variables are missing
+  /// - [FileSystemException] if file system operations fail
+  /// - [IOException] if file access operations fail
+  /// - [ArgumentError] for invalid path operations
   Future<bool> areParamsAvailable();
 
   /// Stream that reports download progress for parameter files.
@@ -88,6 +107,12 @@ abstract class ZcashParamsDownloader {
   /// - Ensuring all required files are present
   ///
   /// Returns true if all files are valid, false if any issues are detected.
+  ///
+  /// Throws:
+  /// - [StateError] if required environment variables are missing
+  /// - [FileSystemException] if file system operations fail
+  /// - [IOException] if file access or hashing operations fail
+  /// - [ArgumentError] for invalid path operations
   Future<bool> validateParams();
 
   /// Validates the SHA256 hash of a specific parameter file.
@@ -97,6 +122,11 @@ abstract class ZcashParamsDownloader {
   ///
   /// Returns true if the file's hash matches the expected hash, false otherwise.
   /// Returns false if the file doesn't exist or cannot be read.
+  ///
+  /// Throws:
+  /// - [FileSystemException] if file system operations fail
+  /// - [IOException] if file access or hashing operations fail
+  /// - [ArgumentError] for invalid file paths
   Future<bool> validateFileHash(String filePath, String expectedHash);
 
   /// Gets the SHA256 hash of a file.
@@ -105,6 +135,11 @@ abstract class ZcashParamsDownloader {
   ///
   /// Returns the SHA256 hash in hexadecimal format, or null if the file
   /// doesn't exist or cannot be read.
+  ///
+  /// Throws:
+  /// - [FileSystemException] if file system operations fail
+  /// - [IOException] if file access or hashing operations fail
+  /// - [ArgumentError] for invalid file paths
   Future<String?> getFileHash(String filePath);
 
   /// Clears all downloaded parameter files.
@@ -113,5 +148,11 @@ abstract class ZcashParamsDownloader {
   /// Useful for troubleshooting or forcing a fresh download.
   ///
   /// Returns true if files were successfully cleared, false if there was an error.
+  ///
+  /// Throws:
+  /// - [StateError] if required environment variables are missing
+  /// - [FileSystemException] if directory deletion operations fail
+  /// - [IOException] if file system operations fail
+  /// - [ArgumentError] for invalid path operations
   Future<bool> clearParams();
 }

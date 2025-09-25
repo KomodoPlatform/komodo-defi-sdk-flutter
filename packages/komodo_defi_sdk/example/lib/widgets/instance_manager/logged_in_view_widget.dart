@@ -6,8 +6,7 @@ import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/common/private_keys_display_widget.dart';
 import 'package:kdf_sdk_example/widgets/common/security_warning_dialog.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
+import 'package:kdf_sdk_example/widgets/instance_manager/zhtlc_config_dialog.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -217,7 +216,11 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
                 final existing = await sdk.activationConfigService
                     .getSavedZhtlc(asset.id);
                 if (existing == null && mounted) {
-                  final config = await _showZhtlcConfigDialog(context, asset);
+                  final config =
+                      await ZhtlcConfigDialogHandler.handleZhtlcConfigDialog(
+                        context,
+                        asset,
+                      );
                   if (config != null) {
                     await sdk.activationConfigService.saveZhtlcConfig(
                       asset.id,
@@ -235,165 +238,5 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
         ),
       ],
     );
-  }
-
-  Future<ZhtlcUserConfig?> _showZhtlcConfigDialog(
-    BuildContext context,
-    Asset asset,
-  ) async {
-    final zcashPathController = TextEditingController();
-    final blocksPerIterController = TextEditingController(text: '1000');
-    final intervalMsController = TextEditingController(text: '0');
-
-    String syncType = 'date'; // earliest | height | date
-    final syncValueController = TextEditingController(
-      text:
-          (DateTime.now()
-                      .subtract(const Duration(days: 2))
-                      .millisecondsSinceEpoch ~/
-                  1000)
-              .toString(),
-    );
-
-    ZhtlcUserConfig? result;
-
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setInnerState) {
-            return AlertDialog(
-              title: Text('Configure ${asset.id.name}'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: zcashPathController,
-                      decoration: const InputDecoration(
-                        labelText: 'Zcash parameters path',
-                        helperText: 'Folder containing sapling params',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: blocksPerIterController,
-                      decoration: const InputDecoration(
-                        labelText: 'Blocks per iteration',
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: intervalMsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Scan interval (ms)',
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        const Text('Start sync from:'),
-                        const SizedBox(width: 12),
-                        DropdownButton<String>(
-                          value: syncType,
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'earliest',
-                              child: Text('Earliest (sapling)'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'height',
-                              child: Text('Block height'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'date',
-                              child: Text('Unix timestamp'),
-                            ),
-                          ],
-                          onChanged: (v) {
-                            if (v == null) return;
-                            setInnerState(() => syncType = v);
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        if (syncType != 'earliest')
-                          Expanded(
-                            child: TextField(
-                              controller: syncValueController,
-                              decoration: InputDecoration(
-                                labelText: syncType == 'height'
-                                    ? 'Block height'
-                                    : 'Unix timestamp (sec)',
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final path = zcashPathController.text.trim();
-                    if (path.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Zcash params path is required'),
-                        ),
-                      );
-                      return;
-                    }
-
-                    ZhtlcSyncParams? syncParams;
-                    if (syncType == 'earliest') {
-                      syncParams = ZhtlcSyncParams.earliest();
-                    } else {
-                      final v = int.tryParse(syncValueController.text.trim());
-                      if (v == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              syncType == 'height'
-                                  ? 'Enter a valid height'
-                                  : 'Enter a valid unix timestamp (seconds)',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-                      syncParams = syncType == 'height'
-                          ? ZhtlcSyncParams.height(v)
-                          : ZhtlcSyncParams.date(v);
-                    }
-
-                    result = ZhtlcUserConfig(
-                      zcashParamsPath: path,
-                      scanBlocksPerIteration:
-                          int.tryParse(blocksPerIterController.text) ?? 1000,
-                      scanIntervalMs:
-                          int.tryParse(intervalMsController.text) ?? 0,
-                      syncParams: syncParams,
-                    );
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    return result;
   }
 }

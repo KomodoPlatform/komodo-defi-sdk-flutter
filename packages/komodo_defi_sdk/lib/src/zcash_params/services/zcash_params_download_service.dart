@@ -5,6 +5,9 @@ import 'package:crypto/crypto.dart' show sha256;
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_sdk/src/zcash_params/models/download_progress.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/models/zcash_params_config.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart'
+    show ExponentialBackoff, retry;
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 /// Interface for ZCash parameters download functionality.
@@ -73,10 +76,16 @@ abstract class ZcashParamsDownloadService {
 /// Default implementation of ZcashParamsDownloadService.
 class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
   /// Creates a DefaultZcashParamsDownloadService instance.
-  DefaultZcashParamsDownloadService({http.Client? httpClient})
-    : _httpClient = httpClient ?? http.Client();
+  DefaultZcashParamsDownloadService({
+    http.Client? httpClient,
+    this.enableHashValidation = true,
+  }) : _httpClient = httpClient ?? http.Client();
 
+  static final Logger _logger = Logger('ZcashParamsDownloadService');
   final http.Client _httpClient;
+
+  /// Whether hash validation is enabled for this service instance.
+  final bool enableHashValidation;
 
   @override
   Future<bool> downloadMissingFiles(
@@ -86,25 +95,40 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
     bool Function() isCancelled,
     ZcashParamsConfig config,
   ) async {
-    for (final fileName in missingFiles) {
-      if (isCancelled()) {
-        return false;
+    _logger.info(
+      'Starting download of ${missingFiles.length} missing files '
+      'to $destinationDirectory',
+    );
+
+    try {
+      for (final fileName in missingFiles) {
+        if (isCancelled()) {
+          _logger.warning('Download cancelled for file: $fileName');
+          return false;
+        }
+
+        final success = await _downloadFile(
+          fileName,
+          destinationDirectory,
+          progressController,
+          isCancelled,
+          config,
+        );
+
+        if (!success) {
+          _logger.severe('Failed to download file: $fileName');
+          return false;
+        }
+
+        _logger.fine('Successfully downloaded file: $fileName');
       }
 
-      final success = await _downloadFile(
-        fileName,
-        destinationDirectory,
-        progressController,
-        isCancelled,
-        config,
-      );
-
-      if (!success) {
-        return false;
-      }
+      _logger.info('Successfully downloaded all ${missingFiles.length} files');
+      return true;
+    } catch (e, stackTrace) {
+      _logger.severe('Error during download process', e, stackTrace);
+      return false;
     }
-
-    return true;
   }
 
   @override
@@ -113,29 +137,43 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
     File Function(String) fileFactory,
     ZcashParamsConfig config,
   ) async {
-    final missingFiles = <String>[];
+    _logger.fine(
+      'Checking for missing files in directory: $destinationDirectory',
+    );
 
-    for (final fileName in config.fileNames) {
-      final file = fileFactory(path.join(destinationDirectory, fileName));
-      if (!await file.exists()) {
-        missingFiles.add(fileName);
-      } else {
-        // Check if file hash is valid
-        final paramFile = config.getParamFile(fileName);
-        if (paramFile != null) {
-          final isValid = await validateFileHash(
-            file.path,
-            paramFile.sha256Hash,
-            fileFactory,
-          );
-          if (!isValid) {
-            missingFiles.add(fileName);
+    try {
+      final missingFiles = <String>[];
+
+      for (final fileName in config.fileNames) {
+        final file = fileFactory(path.join(destinationDirectory, fileName));
+        if (!file.existsSync()) {
+          _logger.fine('File not found: $fileName');
+          missingFiles.add(fileName);
+        } else if (enableHashValidation) {
+          // Check if file hash is valid only if validation is enabled
+          final paramFile = config.getParamFile(fileName);
+          if (paramFile != null) {
+            final isValid = await validateFileHash(
+              file.path,
+              paramFile.sha256Hash,
+              fileFactory,
+            );
+            if (!isValid) {
+              _logger.warning('File hash validation failed for: $fileName');
+              missingFiles.add(fileName);
+            }
           }
         }
       }
-    }
 
-    return missingFiles;
+      _logger.info(
+        'Found ${missingFiles.length} missing files: ${missingFiles.join(', ')}',
+      );
+      return missingFiles;
+    } catch (e, stackTrace) {
+      _logger.severe('Error checking for missing files', e, stackTrace);
+      return config.fileNames;
+    }
   }
 
   @override
@@ -143,9 +181,17 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
     String directoryPath,
     Directory Function(String) directoryFactory,
   ) async {
-    final directory = directoryFactory(directoryPath);
-    if (!directory.existsSync()) {
-      await directory.create(recursive: true);
+    _logger.fine('Ensuring directory exists: $directoryPath');
+
+    try {
+      final directory = directoryFactory(directoryPath);
+      if (!directory.existsSync()) {
+        _logger.info('Creating directory: $directoryPath');
+        await directory.create(recursive: true);
+      }
+    } catch (e, stackTrace) {
+      _logger.severe('Error creating directory: $directoryPath', e, stackTrace);
+      rethrow;
     }
   }
 
@@ -155,27 +201,38 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
     File Function(String) fileFactory,
     ZcashParamsConfig config,
   ) async {
+    _logger.fine('Validating all files in directory: $directoryPath');
+
     try {
       for (final paramFile in config.paramFiles) {
         final file = fileFactory(path.join(directoryPath, paramFile.fileName));
 
-        if (!await file.exists()) {
+        if (!file.existsSync()) {
+          _logger.warning(
+            'File does not exist during validation: ${paramFile.fileName}',
+          );
           return false;
         }
 
-        // Validate file hash
-        final isValid = await validateFileHash(
-          file.path,
-          paramFile.sha256Hash,
-          fileFactory,
-        );
-        if (!isValid) {
-          return false;
+        if (enableHashValidation) {
+          final isValid = await validateFileHash(
+            file.path,
+            paramFile.sha256Hash,
+            fileFactory,
+          );
+          if (!isValid) {
+            _logger.warning(
+              'File hash validation failed: ${paramFile.fileName}',
+            );
+            return false;
+          }
         }
       }
 
+      _logger.info('All files validated successfully');
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      _logger.severe('Error during file validation', e, stackTrace);
       return false;
     }
   }
@@ -186,13 +243,31 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
     String expectedHash,
     File Function(String) fileFactory,
   ) async {
+    _logger.fine('Validating hash for file: $filePath');
+
     try {
       final actualHash = await getFileHash(filePath, fileFactory);
       if (actualHash == null) {
+        _logger.warning('Could not calculate hash for file: $filePath');
         return false;
       }
-      return actualHash.toLowerCase() == expectedHash.toLowerCase();
-    } catch (e) {
+
+      final isValid = actualHash.toLowerCase() == expectedHash.toLowerCase();
+      if (!isValid) {
+        _logger.warning(
+          'Hash mismatch for $filePath. Expected: $expectedHash, Actual: $actualHash',
+        );
+      } else {
+        _logger.fine('Hash validation successful for: $filePath');
+      }
+
+      return isValid;
+    } catch (e, stackTrace) {
+      _logger.severe(
+        'Error validating file hash for: $filePath',
+        e,
+        stackTrace,
+      );
       return false;
     }
   }
@@ -202,32 +277,55 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
     String filePath,
     File Function(String) fileFactory,
   ) async {
+    _logger.fine('Calculating hash for file: $filePath');
+
     try {
       final file = fileFactory(filePath);
-      if (!await file.exists()) {
+      if (!file.existsSync()) {
+        _logger.fine('File does not exist for hash calculation: $filePath');
         return null;
       }
 
       final stream = file.openRead();
       final digest = await sha256.bind(stream).first;
-      return digest.toString();
-    } catch (e) {
+
+      // Ensure lowercase hex string to match Rust format!("{:x}", hasher.finalize())
+      final hash = digest.toString().toLowerCase();
+      _logger.fine('Hash calculated for $filePath: $hash');
+      return hash;
+    } catch (e, stackTrace) {
+      _logger.severe(
+        'Error calculating file hash for: $filePath',
+        e,
+        stackTrace,
+      );
       return null;
     }
   }
 
   @override
   Future<int?> getRemoteFileSize(String url) async {
+    _logger.fine('Getting remote file size for: $url');
+
     try {
       final response = await _httpClient.head(Uri.parse(url));
       if (response.statusCode == 200) {
         final contentLength = response.headers['content-length'];
         if (contentLength != null) {
-          return int.tryParse(contentLength);
+          final size = int.tryParse(contentLength);
+          _logger.fine('Remote file size for $url: $size bytes');
+          return size;
         }
       }
-    } catch (e) {
-      // Ignore errors and return null
+      _logger.warning(
+        'Could not get remote file size for $url, status: ${response.statusCode}',
+      );
+    } catch (e, stackTrace) {
+      _logger.warning(
+        'Error getting remote file size for: $url',
+        e,
+        stackTrace,
+      );
     }
     return null;
   }
@@ -237,13 +335,25 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
     String directoryPath,
     Directory Function(String) directoryFactory,
   ) async {
+    _logger.info('Clearing files from directory: $directoryPath');
+
     try {
       final directory = directoryFactory(directoryPath);
       if (directory.existsSync()) {
         await directory.delete(recursive: true);
+        _logger.info('Successfully cleared directory: $directoryPath');
+      } else {
+        _logger.fine(
+          'Directory does not exist, nothing to clear: $directoryPath',
+        );
       }
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      _logger.severe(
+        'Error clearing files from directory: $directoryPath',
+        e,
+        stackTrace,
+      );
       return false;
     }
   }
@@ -259,52 +369,98 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
     final destinationPath = path.join(destinationDirectory, fileName);
     final paramFile = config.getParamFile(fileName);
 
+    _logger.info('Starting download of file: $fileName');
+
     // Try primary URL first, then backup URLs
     for (final baseUrl in config.downloadUrls) {
-      if (isCancelled()) return false;
+      if (isCancelled()) {
+        _logger.warning('Download cancelled for file: $fileName');
+        return false;
+      }
 
       final fileUrl = config.getFileUrl(baseUrl, fileName);
+      _logger.info('Attempting download from URL: $fileUrl');
 
       try {
         // Get file size dynamically
+        _logger.fine('Getting remote file size for: $fileUrl');
         final remoteSize = await getRemoteFileSize(fileUrl);
         final expectedSize = remoteSize ?? paramFile?.expectedSize;
+        _logger
+          ..fine('Remote file size: $remoteSize, expected size: $expectedSize')
+          ..info('Starting download from URL with retry: $fileUrl');
 
-        final success = await _downloadFromUrl(
-          fileUrl,
-          destinationPath,
-          fileName,
-          expectedSize,
-          progressController,
-          isCancelled,
-          config,
+        final success = await retry(
+          () => _downloadFromUrl(
+            fileUrl,
+            destinationPath,
+            fileName,
+            expectedSize,
+            progressController,
+            isCancelled,
+            config,
+          ),
+          maxAttempts: 3,
+          backoffStrategy: ExponentialBackoff(
+            initialDelay: const Duration(seconds: 1),
+            maxDelay: const Duration(seconds: 30),
+            withJitter: true,
+          ),
+          onRetry: (attempt, error, delay) {
+            _logger.warning(
+              'Retry attempt $attempt for $fileName from $fileUrl after '
+              '$delay due to: $error',
+            );
+          },
+        );
+        _logger.info(
+          'Download from URL completed: $fileUrl, success: $success',
         );
 
         if (success) {
-          // Validate downloaded file hash
-          if (paramFile != null) {
+          // Validate downloaded file hash if enabled
+          if (enableHashValidation && paramFile != null) {
             final isValid = await validateFileHash(
               destinationPath,
               paramFile.sha256Hash,
               File.new,
             );
             if (!isValid) {
+              _logger.warning(
+                'Downloaded file hash validation failed for $fileName, '
+                'trying next URL',
+              );
               // Delete invalid file and try next URL
               final file = File(destinationPath);
-              if (await file.exists()) {
+              if (file.existsSync()) {
                 await file.delete();
               }
               continue;
             }
+            _logger.info(
+              'Successfully downloaded and validated file: $fileName',
+            );
+          } else {
+            _logger.info(
+              'Successfully downloaded file: $fileName (hash validation '
+              '${enableHashValidation ? 'passed' : 'disabled'})',
+            );
           }
           return true;
         }
-      } catch (e) {
-        // Continue to next URL
+      } catch (e, stackTrace) {
+        _logger.warning(
+          'Error downloading from $fileUrl for file $fileName',
+          e,
+          stackTrace,
+        );
         continue;
       }
     }
 
+    _logger.severe(
+      'Failed to download file from all available URLs: $fileName',
+    );
     return false;
   }
 
@@ -319,6 +475,7 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
     ZcashParamsConfig config,
   ) async {
     http.StreamedResponse? response;
+    _logger.info('Starting HTTP download from URL: $url to $destinationPath');
 
     try {
       final request = http.Request('GET', Uri.parse(url));
@@ -329,6 +486,7 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
           .timeout(config.downloadTimeout);
 
       if (response.statusCode != 200) {
+        _logger.warning('HTTP error ${response.statusCode} for URL: $url');
         return false;
       }
 
@@ -337,48 +495,53 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
 
       int downloaded = 0;
       final total = expectedSize ?? response.contentLength ?? 0;
+      _logger.fine('Downloading $fileName: $total bytes expected');
 
-      // Create a buffer for chunked reading
-      final buffer = <int>[];
-      const bufferSize = 8192; // 8KB buffer
-
+      _logger.info('Starting to process download stream for: $fileName');
+      var chunkCount = 0;
       await for (final chunk in response.stream) {
+        chunkCount++;
+        if (chunkCount % 100 == 0) {
+          _logger.finer(
+            'Processed $chunkCount chunks for $fileName, '
+            'downloaded: $downloaded bytes',
+          );
+        }
+
         if (isCancelled()) {
+          _logger.warning(
+            'Download cancelled for $fileName at $downloaded bytes',
+          );
           await sink.close();
-          if (await file.exists()) {
+          if (file.existsSync()) {
             await file.delete();
           }
           return false;
         }
 
-        buffer.addAll(chunk);
+        // Write chunk directly to avoid corruption
+        sink.add(chunk);
+        downloaded += chunk.length;
 
-        // Write in larger chunks to improve performance
-        if (buffer.length >= bufferSize) {
-          sink.add(buffer);
-          downloaded += buffer.length;
-          buffer.clear();
-
-          // Report progress
-          if (total > 0) {
-            progressController.add(
-              DownloadProgress(
-                fileName: fileName,
-                downloaded: downloaded,
-                total: total,
-              ),
-            );
-          }
+        // Report progress
+        if (total > 0) {
+          progressController.add(
+            DownloadProgress(
+              fileName: fileName,
+              downloaded: downloaded,
+              total: total,
+            ),
+          );
         }
       }
+      _logger.info(
+        'Finished processing download stream for: $fileName, '
+        'total chunks: $chunkCount',
+      );
 
-      // Write remaining buffer
-      if (buffer.isNotEmpty) {
-        sink.add(buffer);
-        downloaded += buffer.length;
-      }
-
+      _logger.fine('Closing file sink for: $fileName');
       await sink.close();
+      _logger.fine('File sink closed successfully for: $fileName');
 
       // Final progress update
       progressController.add(
@@ -389,12 +552,19 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
         ),
       );
 
+      _logger.fine('Successfully downloaded $fileName: $downloaded bytes');
       return true;
-    } on TimeoutException {
-      response?.stream.listen(null).cancel();
+    } on TimeoutException catch (e, stackTrace) {
+      _logger.warning(
+        'Download timeout for $fileName from $url',
+        e,
+        stackTrace,
+      );
+      await response?.stream.listen(null).cancel();
       return false;
-    } catch (e) {
-      response?.stream.listen(null).cancel();
+    } catch (e, stackTrace) {
+      _logger.severe('Error downloading $fileName from $url', e, stackTrace);
+      await response?.stream.listen(null).cancel();
       return false;
     }
   }
@@ -402,6 +572,7 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
   /// Disposes of resources used by this service.
   @override
   void dispose() {
+    _logger.fine('Disposing ZcashParamsDownloadService');
     _httpClient.close();
   }
 }

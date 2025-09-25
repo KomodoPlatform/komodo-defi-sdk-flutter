@@ -36,16 +36,13 @@ abstract class ZcashParamsConfig with _$ZcashParamsConfig {
     required List<ZcashParamFile> paramFiles,
 
     /// Primary download URL for ZCash parameters.
-    @Default('https://z.cash/downloads/')
-    String primaryUrl,
+    @Default('https://komodoplatform.com/downloads/') String primaryUrl,
 
     /// Backup download URL for ZCash parameters.
-    @Default('https://komodoplatform.com/downloads/')
-    String backupUrl,
+    @Default('https://z.cash/downloads/') String backupUrl,
 
     /// Timeout duration for HTTP downloads in seconds.
-    @Default(1800)
-    int downloadTimeoutSeconds, // 30 minutes
+    @Default(1800) int downloadTimeoutSeconds, // 30 minutes
     /// Maximum number of retry attempts for failed downloads.
     @Default(3) int maxRetries,
 
@@ -53,8 +50,7 @@ abstract class ZcashParamsConfig with _$ZcashParamsConfig {
     @Default(5) int retryDelaySeconds,
 
     /// Buffer size for file downloads in bytes (1MB).
-    @Default(1048576)
-    int downloadBufferSize,
+    @Default(1048576) int downloadBufferSize,
   }) = _ZcashParamsConfig;
 
   const ZcashParamsConfig._();
@@ -69,7 +65,7 @@ abstract class ZcashParamsConfig with _$ZcashParamsConfig {
       ZcashParamFile(
         fileName: 'sapling-spend.params',
         sha256Hash:
-            '8bc20a7f013b2b58970cddd2e7ea028975c88ae7ceb9259a5344a16bc2c0eef7',
+            '8e48ffd23abb3a5fd9c5589204f32d9c31285a04b78096ba40a79b75677efc13',
         expectedSize: 47958396,
       ),
       ZcashParamFile(
@@ -81,7 +77,7 @@ abstract class ZcashParamsConfig with _$ZcashParamsConfig {
       ZcashParamFile(
         fileName: 'sprout-groth16.params',
         sha256Hash:
-            'b685d700c60328498fbde589c8c7c484c722b788b265b72af448a5bf0ee55b8c',
+            'b685d700c60328498fbde589c8c7c484c722b788b265b72af448a5bf0ee55b50',
         expectedSize: 725523612,
       ),
     ],

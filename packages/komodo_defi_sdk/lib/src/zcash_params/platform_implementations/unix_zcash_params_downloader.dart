@@ -32,9 +32,13 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
     ZcashParamsDownloadService? downloadService,
     Directory Function(String)? directoryFactory,
     File Function(String)? fileFactory,
+    bool enableHashValidation = true,
     super.config,
   }) : _downloadService =
-           downloadService ?? DefaultZcashParamsDownloadService(),
+           downloadService ??
+           DefaultZcashParamsDownloadService(
+             enableHashValidation: enableHashValidation,
+           ),
        _directoryFactory = directoryFactory ?? Directory.new,
        _fileFactory = fileFactory ?? File.new;
 
@@ -56,56 +60,53 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
       );
     }
 
-    try {
-      _isDownloading = true;
-      _isCancelled = false;
+    _isDownloading = true;
+    _isCancelled = false;
 
-      final paramsPath = await getParamsPath();
-      if (paramsPath == null) {
-        return const DownloadResult.failure(
-          error: 'Unable to determine parameters path',
-        );
-      }
-
-      // Create directory if it doesn't exist
-      await _downloadService.ensureDirectoryExists(
-        paramsPath,
-        _directoryFactory,
-      );
-
-      // Check which files need to be downloaded
-      final missingFiles = await _downloadService.getMissingFiles(
-        paramsPath,
-        _fileFactory,
-        config,
-      );
-
-      if (missingFiles.isEmpty) {
-        return DownloadResult.success(paramsPath: paramsPath);
-      }
-
-      // Download missing files
-      final downloadSuccess = await _downloadService.downloadMissingFiles(
-        paramsPath,
-        missingFiles,
-        _progressController,
-        () => _isCancelled,
-        config,
-      );
-
-      if (!downloadSuccess) {
-        return const DownloadResult.failure(
-          error: 'Failed to download one or more parameter files',
-        );
-      }
-
-      return DownloadResult.success(paramsPath: paramsPath);
-    } catch (e) {
-      return DownloadResult.failure(error: 'Download failed: $e');
-    } finally {
+    final paramsPath = await getParamsPath();
+    if (paramsPath == null) {
       _isDownloading = false;
       _isCancelled = false;
+      return const DownloadResult.failure(
+        error: 'Unable to determine parameters path',
+      );
     }
+
+    // Create directory if it doesn't exist
+    await _downloadService.ensureDirectoryExists(paramsPath, _directoryFactory);
+
+    // Check which files need to be downloaded
+    final missingFiles = await _downloadService.getMissingFiles(
+      paramsPath,
+      _fileFactory,
+      config,
+    );
+
+    if (missingFiles.isEmpty) {
+      _isDownloading = false;
+      _isCancelled = false;
+      return DownloadResult.success(paramsPath: paramsPath);
+    }
+
+    // Download missing files
+    final downloadSuccess = await _downloadService.downloadMissingFiles(
+      paramsPath,
+      missingFiles,
+      _progressController,
+      () => _isCancelled,
+      config,
+    );
+
+    _isDownloading = false;
+    _isCancelled = false;
+
+    if (!downloadSuccess) {
+      return const DownloadResult.failure(
+        error: 'Failed to download one or more parameter files',
+      );
+    }
+
+    return DownloadResult.success(paramsPath: paramsPath);
   }
 
   @override
@@ -125,20 +126,16 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
 
   @override
   Future<bool> areParamsAvailable() async {
-    try {
-      final paramsPath = await getParamsPath();
-      if (paramsPath == null) return false;
+    final paramsPath = await getParamsPath();
+    if (paramsPath == null) return false;
 
-      final missingFiles = await _downloadService.getMissingFiles(
-        paramsPath,
-        _fileFactory,
-        config,
-      );
+    final missingFiles = await _downloadService.getMissingFiles(
+      paramsPath,
+      _fileFactory,
+      config,
+    );
 
-      return missingFiles.isEmpty;
-    } catch (e) {
-      return false;
-    }
+    return missingFiles.isEmpty;
   }
 
   @override
@@ -155,52 +152,32 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
 
   @override
   Future<bool> validateParams() async {
-    try {
-      final paramsPath = await getParamsPath();
-      if (paramsPath == null) return false;
+    final paramsPath = await getParamsPath();
+    if (paramsPath == null) return false;
 
-      return await _downloadService.validateFiles(
-        paramsPath,
-        _fileFactory,
-        config,
-      );
-    } catch (e) {
-      return false;
-    }
+    return _downloadService.validateFiles(paramsPath, _fileFactory, config);
   }
 
   @override
   Future<bool> validateFileHash(String filePath, String expectedHash) async {
-    try {
-      return await _downloadService.validateFileHash(
-        filePath,
-        expectedHash,
-        _fileFactory,
-      );
-    } catch (e) {
-      return false;
-    }
+    return _downloadService.validateFileHash(
+      filePath,
+      expectedHash,
+      _fileFactory,
+    );
   }
 
   @override
   Future<String?> getFileHash(String filePath) async {
-    try {
-      return await _downloadService.getFileHash(filePath, _fileFactory);
-    } catch (e) {
-      return null;
-    }
+    return _downloadService.getFileHash(filePath, _fileFactory);
   }
 
   @override
   Future<bool> clearParams() async {
-    try {
-      final paramsPath = await getParamsPath();
-      if (paramsPath == null) return false;
+    final paramsPath = await getParamsPath();
+    if (paramsPath == null) return false;
 
-      return await _downloadService.clearFiles(paramsPath, _directoryFactory);
-    } catch (e) {
-      return false;
-    }
+    return _downloadService.clearFiles(paramsPath, _directoryFactory);
   }
 
   /// Disposes of resources used by this downloader.

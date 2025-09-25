@@ -302,4 +302,11 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       );
     }
   }
+  
+  @override
+  void dispose() {
+    _process = null;
+    stdoutSub = null;
+    stderrSub = null;
+  }
 }

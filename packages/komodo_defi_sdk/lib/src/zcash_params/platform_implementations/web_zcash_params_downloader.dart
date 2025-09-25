@@ -10,6 +10,7 @@ import 'package:komodo_defi_sdk/src/zcash_params/zcash_params_downloader.dart';
 /// since it cannot access the local file system in the same way as native platforms.
 /// This implementation provides a no-op interface that always indicates success.
 class WebZcashParamsDownloader extends ZcashParamsDownloader {
+  /// Creates a new [WebZcashParamsDownloader] instance.
   WebZcashParamsDownloader({super.config});
 
   final StreamController<DownloadProgress> _progressController =

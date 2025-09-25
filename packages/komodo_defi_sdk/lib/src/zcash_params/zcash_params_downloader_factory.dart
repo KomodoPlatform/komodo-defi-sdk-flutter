@@ -37,6 +37,7 @@ class ZcashParamsDownloaderFactory {
   static ZcashParamsDownloader create({
     ZcashParamsDownloadService? downloadService,
     ZcashParamsConfig? config,
+    bool enableHashValidation = true,
   }) {
     if (kIsWeb) {
       return WebZcashParamsDownloader(config: config);
@@ -46,6 +47,7 @@ class ZcashParamsDownloaderFactory {
       return WindowsZcashParamsDownloader(
         downloadService: downloadService,
         config: config,
+        enableHashValidation: enableHashValidation,
       );
     }
 
@@ -53,6 +55,7 @@ class ZcashParamsDownloaderFactory {
     return UnixZcashParamsDownloader(
       downloadService: downloadService,
       config: config,
+      enableHashValidation: enableHashValidation,
     );
   }
 
@@ -68,6 +71,7 @@ class ZcashParamsDownloaderFactory {
     ZcashParamsPlatform platformType, {
     ZcashParamsDownloadService? downloadService,
     ZcashParamsConfig? config,
+    bool enableHashValidation = true,
   }) {
     switch (platformType) {
       case ZcashParamsPlatform.web:
@@ -76,11 +80,13 @@ class ZcashParamsDownloaderFactory {
         return WindowsZcashParamsDownloader(
           downloadService: downloadService,
           config: config,
+          enableHashValidation: enableHashValidation,
         );
       case ZcashParamsPlatform.unix:
         return UnixZcashParamsDownloader(
           downloadService: downloadService,
           config: config,
+          enableHashValidation: enableHashValidation,
         );
     }
   }
@@ -107,7 +113,7 @@ class ZcashParamsDownloaderFactory {
   /// Returns false for web platforms (which don't need local parameters)
   /// and true for all other platforms.
   static bool get requiresDownload {
-    return !kIsWeb;
+    return !kIsWeb && !kIsWasm;
   }
 
   /// Gets the expected parameters directory path for the current platform.
