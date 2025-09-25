@@ -4,6 +4,9 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:http/src/byte_stream.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/models/download_progress.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/models/zcash_params_config.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/services/zcash_params_download_service.dart';
 import 'package:mocktail/mocktail.dart';
 
 /// Mock HTTP client for testing download functionality
@@ -29,6 +32,10 @@ class MockFileStat extends Mock implements FileStat {}
 
 /// Mock IOSink for testing file writing
 class MockIOSink extends Mock implements IOSink {}
+
+/// Mock ZCash parameters download service for testing
+class MockZcashParamsDownloadService extends Mock
+    implements ZcashParamsDownloadService {}
 
 /// Helper class to create test HTTP responses
 class TestHttpResponse {

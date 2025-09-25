@@ -421,6 +421,7 @@ void main() {
         File fileFactory(String path) {
           final file = MockFile();
           when(() => file.exists()).thenAnswer((_) async => true);
+          when(() => file.existsSync()).thenReturn(true);
           when(() => file.path).thenReturn(path);
           when(
             () => file.openRead(),
@@ -688,7 +689,7 @@ void main() {
 
     group('edge cases and error handling', () {
       test('handles null or malformed URLs gracefully', () async {
-        expect(() => service.getRemoteFileSize(''), returnsNormally);
+        await expectLater(service.getRemoteFileSize(''), completes);
       });
 
       test('handles config with no param files', () async {

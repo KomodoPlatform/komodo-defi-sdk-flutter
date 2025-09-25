@@ -86,9 +86,14 @@ abstract class ActivationConfigMapper {
 /// This replaces the problematic Map<String, String> storage approach
 /// and provides type safety while using the encode/decode functions.
 class HiveActivationConfigWrapper extends HiveObject {
+  /// Creates a wrapper from a wallet ID and a map of asset IDs to configurations
+  /// [walletId] The wallet ID this configuration belongs to
+  /// [configs] The map of asset IDs to configurations
   HiveActivationConfigWrapper({required this.walletId, required this.configs});
 
   /// Creates a wrapper from individual config components
+  /// [walletId] The wallet ID this configuration belongs to
+  /// [configs] The map of asset IDs to configurations
   factory HiveActivationConfigWrapper.fromComponents({
     required WalletId walletId,
     required Map<String, Object> configs,

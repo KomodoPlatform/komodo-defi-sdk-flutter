@@ -307,25 +307,29 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     stderrSub = null;
 
     // Gracefully stop the process if running
-    if (_process != null) {
+    final capturedProcess = _process;
+    if (capturedProcess != null) {
       _kdfRemote.kdfStop().timeout(const Duration(seconds: 3)).ignore();
-      _gracefulProcessShutdown();
+      unawaited(_gracefulProcessShutdown(capturedProcess));
     }
 
     // Clean up remote resources
     _kdfRemote.dispose();
   }
 
-  void _gracefulProcessShutdown() {
-    // Execute the exact pattern requested: await the process exit with timeout and catchError
-    () async {
-      await _process!.exitCode.timeout(const Duration(seconds: 5)).catchError((
-        _,
-      ) {
-        _process!.kill();
-        return -1; // Return an int to match Future<int>
-      });
-      _process = null;
-    }();
+  Future<void> _gracefulProcessShutdown(Process capturedProcess) async {
+    try {
+      await capturedProcess.exitCode
+          .timeout(const Duration(seconds: 5))
+          .catchError((_) {
+            capturedProcess.kill();
+            return -1; // Return an int to match Future<int>
+          });
+    } finally {
+      // Only set _process = null if it still equals the captured instance
+      if (_process == capturedProcess) {
+        _process = null;
+      }
+    }
   }
 }

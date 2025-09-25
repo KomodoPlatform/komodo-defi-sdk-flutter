@@ -6,6 +6,7 @@ library _zcash_params;
 export 'models/download_progress.dart';
 export 'models/download_result.dart';
 export 'models/zcash_params_config.dart';
+export 'platforms/mobile_zcash_params_downloader.dart';
 export 'platforms/unix_zcash_params_downloader.dart';
 export 'platforms/web_zcash_params_downloader.dart';
 export 'platforms/windows_zcash_params_downloader.dart';

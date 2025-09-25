@@ -53,7 +53,7 @@ void main() {
       test('returns normally but fails due to missing APPDATA', () {
         // This test would need to mock Platform.environment in a real scenario
         // For now, we just verify the method doesn't throw
-        expect(() async => downloader.getParamsPath(), returnsNormally);
+        expect(downloader.getParamsPath(), completes);
       });
     });
 

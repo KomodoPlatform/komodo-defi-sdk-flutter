@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/models/zcash_params_config.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/platforms/mobile_zcash_params_downloader.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/platforms/unix_zcash_params_downloader.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/platforms/web_zcash_params_downloader.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/platforms/windows_zcash_params_downloader.dart';
@@ -15,6 +16,7 @@ import 'package:komodo_defi_sdk/src/zcash_params/zcash_params_downloader.dart';
 /// - Web: [WebZcashParamsDownloader] (no-op implementation)
 /// - Windows: [WindowsZcashParamsDownloader] (downloads to %APPDATA%\ZcashParams)
 /// - macOS/Linux: [UnixZcashParamsDownloader] (downloads to platform-specific paths)
+/// - iOS/Android: [MobileZcashParamsDownloader] (downloads to app documents directory)
 class ZcashParamsDownloaderFactory {
   const ZcashParamsDownloaderFactory._();
 
@@ -28,6 +30,7 @@ class ZcashParamsDownloaderFactory {
   /// - [WebZcashParamsDownloader] for web platforms
   /// - [WindowsZcashParamsDownloader] for Windows platforms
   /// - [UnixZcashParamsDownloader] for macOS and Linux platforms
+  /// - [MobileZcashParamsDownloader] for iOS and Android platforms
   ///
   /// Example usage:
   /// ```dart
@@ -45,6 +48,14 @@ class ZcashParamsDownloaderFactory {
 
     if (Platform.isWindows) {
       return WindowsZcashParamsDownloader(
+        downloadService: downloadService,
+        config: config,
+        enableHashValidation: enableHashValidation,
+      );
+    }
+
+    if (Platform.isIOS || Platform.isAndroid) {
+      return MobileZcashParamsDownloader(
         downloadService: downloadService,
         config: config,
         enableHashValidation: enableHashValidation,
@@ -82,6 +93,12 @@ class ZcashParamsDownloaderFactory {
           config: config,
           enableHashValidation: enableHashValidation,
         );
+      case ZcashParamsPlatform.mobile:
+        return MobileZcashParamsDownloader(
+          downloadService: downloadService,
+          config: config,
+          enableHashValidation: enableHashValidation,
+        );
       case ZcashParamsPlatform.unix:
         return UnixZcashParamsDownloader(
           downloadService: downloadService,
@@ -103,6 +120,10 @@ class ZcashParamsDownloaderFactory {
 
     if (Platform.isWindows) {
       return ZcashParamsPlatform.windows;
+    }
+
+    if (Platform.isIOS || Platform.isAndroid) {
+      return ZcashParamsPlatform.mobile;
     }
 
     return ZcashParamsPlatform.unix;
@@ -141,6 +162,9 @@ enum ZcashParamsPlatform {
   /// Windows platform - downloads to %APPDATA%\ZcashParams
   windows,
 
+  /// Mobile platforms (iOS, Android) - downloads to app documents directory
+  mobile,
+
   /// Unix-like platforms (macOS, Linux) - downloads to platform-specific paths
   unix,
 }
@@ -154,6 +178,8 @@ extension ZcashParamsPlatformExtension on ZcashParamsPlatform {
         return 'Web';
       case ZcashParamsPlatform.windows:
         return 'Windows';
+      case ZcashParamsPlatform.mobile:
+        return 'Mobile';
       case ZcashParamsPlatform.unix:
         return 'Unix/Linux';
     }
@@ -165,6 +191,7 @@ extension ZcashParamsPlatformExtension on ZcashParamsPlatform {
       case ZcashParamsPlatform.web:
         return false;
       case ZcashParamsPlatform.windows:
+      case ZcashParamsPlatform.mobile:
       case ZcashParamsPlatform.unix:
         return true;
     }
@@ -176,6 +203,8 @@ extension ZcashParamsPlatformExtension on ZcashParamsPlatform {
       case ZcashParamsPlatform.web:
         return null;
       case ZcashParamsPlatform.windows:
+        return 'ZcashParams';
+      case ZcashParamsPlatform.mobile:
         return 'ZcashParams';
       case ZcashParamsPlatform.unix:
         return null; // Varies by Unix platform

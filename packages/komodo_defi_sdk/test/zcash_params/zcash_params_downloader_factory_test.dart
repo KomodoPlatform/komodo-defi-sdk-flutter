@@ -4,6 +4,7 @@ import 'package:komodo_defi_sdk/src/zcash_params/models/download_result.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/platforms/web_zcash_params_downloader.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/platforms/windows_zcash_params_downloader.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/platforms/unix_zcash_params_downloader.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/platforms/mobile_zcash_params_downloader.dart';
 
 void main() {
   group('ZcashParamsDownloaderFactory', () {
@@ -33,6 +34,14 @@ void main() {
 
         expect(downloader, isA<UnixZcashParamsDownloader>());
       });
+
+      test('creates MobileZcashParamsDownloader for Mobile platform', () {
+        final downloader = ZcashParamsDownloaderFactory.createForPlatform(
+          ZcashParamsPlatform.mobile,
+        );
+
+        expect(downloader, isA<MobileZcashParamsDownloader>());
+      });
     });
 
     group('createForPlatform', () {
@@ -48,6 +57,9 @@ void main() {
               break;
             case ZcashParamsPlatform.windows:
               expect(downloader, isA<WindowsZcashParamsDownloader>());
+              break;
+            case ZcashParamsPlatform.mobile:
+              expect(downloader, isA<MobileZcashParamsDownloader>());
               break;
             case ZcashParamsPlatform.unix:
               expect(downloader, isA<UnixZcashParamsDownloader>());
@@ -119,6 +131,7 @@ void main() {
       test('returns correct display names', () {
         expect(ZcashParamsPlatform.web.displayName, equals('Web'));
         expect(ZcashParamsPlatform.windows.displayName, equals('Windows'));
+        expect(ZcashParamsPlatform.mobile.displayName, equals('Mobile'));
         expect(ZcashParamsPlatform.unix.displayName, equals('Unix/Linux'));
       });
     });
@@ -127,6 +140,7 @@ void main() {
       test('returns correct download requirements', () {
         expect(ZcashParamsPlatform.web.requiresDownload, isFalse);
         expect(ZcashParamsPlatform.windows.requiresDownload, isTrue);
+        expect(ZcashParamsPlatform.mobile.requiresDownload, isTrue);
         expect(ZcashParamsPlatform.unix.requiresDownload, isTrue);
       });
     });
@@ -136,6 +150,10 @@ void main() {
         expect(ZcashParamsPlatform.web.defaultDirectoryName, isNull);
         expect(
           ZcashParamsPlatform.windows.defaultDirectoryName,
+          equals('ZcashParams'),
+        );
+        expect(
+          ZcashParamsPlatform.mobile.defaultDirectoryName,
           equals('ZcashParams'),
         );
         expect(ZcashParamsPlatform.unix.defaultDirectoryName, isNull);
@@ -179,9 +197,10 @@ void main() {
 
     test('enum values are complete', () {
       // Ensure all enum values are handled in the factory
-      expect(ZcashParamsPlatform.values.length, equals(3));
+      expect(ZcashParamsPlatform.values.length, equals(4));
       expect(ZcashParamsPlatform.values, contains(ZcashParamsPlatform.web));
       expect(ZcashParamsPlatform.values, contains(ZcashParamsPlatform.windows));
+      expect(ZcashParamsPlatform.values, contains(ZcashParamsPlatform.mobile));
       expect(ZcashParamsPlatform.values, contains(ZcashParamsPlatform.unix));
     });
   });

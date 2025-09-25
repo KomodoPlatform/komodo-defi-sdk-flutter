@@ -11,19 +11,17 @@ import 'package:komodo_defi_sdk/src/zcash_params/zcash_params_downloader.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
-/// Unix platform implementation of ZCash parameters downloader.
+/// Mobile platform implementation of ZCash parameters downloader.
 ///
-/// Downloads ZCash parameters to platform-specific directories:
-/// - macOS: `$HOME/Library/Application Support/ZcashParams`
-/// - Linux: `$HOME/.zcash-params`
+/// Downloads ZCash parameters to the application documents directory
+/// on both iOS and Android platforms:
+/// - iOS: Application Documents directory (within app sandbox)
+/// - Android: Application Documents directory (app-private storage)
 ///
-/// If the HOME environment variable is not available, falls back to the
-/// application documents directory: `Documents/ZcashParams`
-///
-/// This implementation handles Unix-specific path resolution and
+/// This implementation handles mobile-specific path resolution and
 /// delegates downloading logic to the injected download service.
-class UnixZcashParamsDownloader extends ZcashParamsDownloader {
-  /// Creates a Unix ZCash parameters downloader.
+class MobileZcashParamsDownloader extends ZcashParamsDownloader {
+  /// Creates a Mobile ZCash parameters downloader.
   ///
   /// [downloadService] can be provided for custom download logic, otherwise
   /// a default implementation is used.
@@ -33,14 +31,11 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
   /// If not provided, a default configuration with known parameter files
   /// and their hashes is used.
   /// See [ZcashParamsConfig] for details.
-  /// [homeDirectoryOverride] allows specifying a custom home directory path
-  /// when the HOME environment variable is not available or needs to be overridden.
-  UnixZcashParamsDownloader({
+  MobileZcashParamsDownloader({
     ZcashParamsDownloadService? downloadService,
     Directory Function(String)? directoryFactory,
     File Function(String)? fileFactory,
     bool enableHashValidation = true,
-    String? homeDirectoryOverride,
     super.config,
   }) : _downloadService =
            downloadService ??
@@ -48,13 +43,11 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
              enableHashValidation: enableHashValidation,
            ),
        _directoryFactory = directoryFactory ?? Directory.new,
-       _fileFactory = fileFactory ?? File.new,
-       _homeDirectoryOverride = homeDirectoryOverride;
+       _fileFactory = fileFactory ?? File.new;
 
   final ZcashParamsDownloadService _downloadService;
   final Directory Function(String) _directoryFactory;
   final File Function(String) _fileFactory;
-  final String? _homeDirectoryOverride;
 
   final StreamController<DownloadProgress> _progressController =
       StreamController<DownloadProgress>.broadcast();
@@ -116,6 +109,8 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
       }
 
       return DownloadResult.success(paramsPath: paramsPath);
+    } catch (e) {
+      return DownloadResult.failure(error: 'Download failed: ${e.toString()}');
     } finally {
       _isDownloading = false;
       _isCancelled = false;
@@ -124,18 +119,6 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
 
   @override
   Future<String?> getParamsPath() async {
-    final home = _homeDirectoryOverride ?? Platform.environment['HOME'];
-
-    if (home != null) {
-      if (Platform.isMacOS) {
-        return path.join(home, 'Library', 'Application Support', 'ZcashParams');
-      } else {
-        // Linux and other Unix-like systems
-        return path.join(home, '.zcash-params');
-      }
-    }
-
-    // Fallback to application documents directory if HOME is not available
     try {
       final documentsDirectory = await getApplicationDocumentsDirectory();
       return path.join(documentsDirectory.path, 'ZcashParams');

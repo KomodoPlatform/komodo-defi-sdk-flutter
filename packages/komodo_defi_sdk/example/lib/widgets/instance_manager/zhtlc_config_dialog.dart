@@ -22,7 +22,10 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 class ZhtlcConfigDialogHandler {
   /// Shows a download progress dialog for Zcash parameters.
   ///
-  /// Returns true if download completes successfully, false if cancelled.
+  /// Returns:
+  /// - true if download completes successfully
+  /// - false if user cancelled
+  /// - null if download failed
   static Future<bool?> _showDownloadProgressDialog(
     BuildContext context,
     ZcashParamsDownloader downloader,
@@ -38,6 +41,7 @@ class ZhtlcConfigDialogHandler {
     );
     var downloadComplete = false;
     var downloadSuccess = false;
+    var dialogClosed = false;
 
     // Show the progress dialog that monitors download completion
     return showDialog<bool>(
@@ -49,7 +53,7 @@ class ZhtlcConfigDialogHandler {
             // Listen for download completion and close dialog automatically
             downloadFuture
                 .then((result) {
-                  if (!downloadComplete && context.mounted) {
+                  if (!downloadComplete && !dialogClosed && context.mounted) {
                     downloadComplete = true;
                     downloadSuccess = result.when(
                       success: (paramsPath) => true,
@@ -57,11 +61,12 @@ class ZhtlcConfigDialogHandler {
                     );
 
                     // Close the dialog with the result
+                    dialogClosed = true;
                     Navigator.of(context).pop(downloadSuccess);
                   }
                 })
                 .catchError((Object e, StackTrace? stackTrace) {
-                  if (!downloadComplete && context.mounted) {
+                  if (!downloadComplete && !dialogClosed && context.mounted) {
                     downloadComplete = true;
                     downloadSuccess = false;
 
@@ -71,10 +76,9 @@ class ZhtlcConfigDialogHandler {
                       debugPrint('Stack trace: $stackTrace');
                     }
 
-                    // Pass error information back to caller
-                    Navigator.of(
-                      context,
-                    ).pop({'success': false, 'error': e.toString()});
+                    // Indicate download failed (null result)
+                    dialogClosed = true;
+                    Navigator.of(context).pop();
                   }
                 });
 
@@ -119,8 +123,11 @@ class ZhtlcConfigDialogHandler {
               actions: [
                 TextButton(
                   onPressed: () async {
-                    await downloader.cancelDownload();
-                    Navigator.of(context).pop(false); // Cancelled
+                    if (!dialogClosed) {
+                      dialogClosed = true;
+                      await downloader.cancelDownload();
+                      Navigator.of(context).pop(false); // Cancelled
+                    }
                   },
                   child: const Text('Cancel'),
                 ),
@@ -143,8 +150,9 @@ class ZhtlcConfigDialogHandler {
   ) async {
     // On desktop platforms, try to download Zcash parameters first
     if (ZcashParamsDownloaderFactory.requiresDownload) {
+      ZcashParamsDownloader? downloader;
       try {
-        final downloader = ZcashParamsDownloaderFactory.create();
+        downloader = ZcashParamsDownloaderFactory.create();
 
         // Check if parameters are already available
         final areAvailable = await downloader.areParamsAvailable();
@@ -158,25 +166,15 @@ class ZhtlcConfigDialogHandler {
           if (downloadResult == false) {
             // User cancelled the download
             return null;
-          } else if (downloadResult == true) {
-            // Download successful, get the path
-            final paramsPath = await downloader.getParamsPath();
-            return _showZhtlcConfigDialog(
-              context,
-              asset,
-              prefilledZcashPath: paramsPath,
-            );
           }
-          // downloadResult == null means download failed, continue to manual config
-        } else {
-          // Parameters already available, get the path
-          final paramsPath = await downloader.getParamsPath();
-          return _showZhtlcConfigDialog(
-            context,
-            asset,
-            prefilledZcashPath: paramsPath,
-          );
         }
+
+        final paramsPath = await downloader.getParamsPath();
+        return _showZhtlcConfigDialog(
+          context,
+          asset,
+          prefilledZcashPath: paramsPath,
+        );
       } catch (e) {
         // Error creating downloader or getting params path
         if (context.mounted) {
@@ -187,6 +185,9 @@ class ZhtlcConfigDialogHandler {
             ),
           );
         }
+      } finally {
+        // Always dispose the downloader to release resources
+        downloader?.dispose();
       }
     }
 
