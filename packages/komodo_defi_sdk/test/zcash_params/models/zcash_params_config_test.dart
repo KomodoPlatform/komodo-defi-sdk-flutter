@@ -123,7 +123,7 @@ void main() {
         expect(config.maxRetries, equals(3));
         expect(config.retryDelaySeconds, equals(5));
         expect(config.downloadBufferSize, equals(1048576));
-        expect(config.paramFiles.length, equals(3));
+        expect(config.paramFiles.length, equals(2));
       });
 
       test('creates instance with custom values', () {
@@ -157,14 +157,18 @@ void main() {
           ZcashParamsConfig.defaultConfig.backupUrl,
           equals('https://komodoplatform.com/downloads/'),
         );
-        expect(ZcashParamsConfig.defaultConfig.paramFiles.length, equals(3));
+        expect(ZcashParamsConfig.defaultConfig.paramFiles.length, equals(2));
       });
 
       test('has all required parameter files', () {
         final fileNames = ZcashParamsConfig.defaultConfig.fileNames;
         expect(fileNames, contains('sapling-spend.params'));
         expect(fileNames, contains('sapling-output.params'));
-        expect(fileNames, contains('sprout-groth16.params'));
+      });
+
+      test('does not include sprout-groth16.params', () {
+        final fileNames = ZcashParamsConfig.defaultConfig.fileNames;
+        expect(fileNames, isNot(contains('sprout-groth16.params')));
       });
 
       test('all parameter files have hashes', () {
@@ -172,6 +176,60 @@ void main() {
           expect(file.sha256Hash, isNotEmpty);
           expect(file.sha256Hash.length, equals(64)); // SHA256 is 64 hex chars
         }
+      });
+    });
+
+    group('extended configuration', () {
+      test('has correct default values', () {
+        expect(
+          ZcashParamsConfig.extendedConfig.primaryUrl,
+          equals('https://z.cash/downloads/'),
+        );
+        expect(
+          ZcashParamsConfig.extendedConfig.backupUrl,
+          equals('https://komodoplatform.com/downloads/'),
+        );
+        expect(ZcashParamsConfig.extendedConfig.paramFiles.length, equals(3));
+      });
+
+      test('has all parameter files including sprout', () {
+        final fileNames = ZcashParamsConfig.extendedConfig.fileNames;
+        expect(fileNames, contains('sapling-spend.params'));
+        expect(fileNames, contains('sapling-output.params'));
+        expect(fileNames, contains('sprout-groth16.params'));
+      });
+
+      test('all parameter files have hashes', () {
+        for (final file in ZcashParamsConfig.extendedConfig.paramFiles) {
+          expect(file.sha256Hash, isNotEmpty);
+          expect(file.sha256Hash.length, equals(64)); // SHA256 is 64 hex chars
+        }
+      });
+
+      test('fileNames returns correct list', () {
+        expect(
+          ZcashParamsConfig.extendedConfig.fileNames,
+          equals([
+            'sapling-spend.params',
+            'sapling-output.params',
+            'sprout-groth16.params',
+          ]),
+        );
+      });
+
+      test('totalExpectedSize calculates correctly', () {
+        final expectedTotal = ZcashParamsConfig.extendedConfig.paramFiles
+            .where((file) => file.expectedSize != null)
+            .fold(0, (sum, file) => sum + file.expectedSize!);
+
+        expect(
+          ZcashParamsConfig.extendedConfig.totalExpectedSize,
+          equals(expectedTotal),
+        );
+        expect(
+          ZcashParamsConfig.extendedConfig.totalExpectedSize,
+          greaterThan(700 * 1024 * 1024),
+        ); // > 700MB
       });
     });
 
@@ -189,11 +247,7 @@ void main() {
       test('fileNames returns correct list', () {
         expect(
           config.fileNames,
-          equals([
-            'sapling-spend.params',
-            'sapling-output.params',
-            'sprout-groth16.params',
-          ]),
+          equals(['sapling-spend.params', 'sapling-output.params']),
         );
       });
 
@@ -211,10 +265,6 @@ void main() {
             .fold(0, (sum, file) => sum + file.expectedSize!);
 
         expect(config.totalExpectedSize, equals(expectedTotal));
-        expect(
-          config.totalExpectedSize,
-          greaterThan(700 * 1024 * 1024),
-        ); // > 700MB
       });
     });
 
@@ -226,7 +276,7 @@ void main() {
         expect(
           file.sha256Hash,
           equals(
-            '8bc20a7f013b2b58970cddd2e7ea028975c88ae7ceb9259a5344a16bc2c0eef7',
+            '8e48ffd23abb3a5fd9c5589204f32d9c31285a04b78096ba40a79b75677efc13',
           ),
         );
       });
@@ -276,7 +326,7 @@ void main() {
         expect(
           hash,
           equals(
-            '8bc20a7f013b2b58970cddd2e7ea028975c88ae7ceb9259a5344a16bc2c0eef7',
+            '8e48ffd23abb3a5fd9c5589204f32d9c31285a04b78096ba40a79b75677efc13',
           ),
         );
       });
@@ -456,12 +506,12 @@ void main() {
         for (final file in config.paramFiles) {
           if (file.expectedSize != null) {
             expect(
-              file.expectedSize!,
+              file.expectedSize,
               greaterThan(1024 * 1024),
               reason: '${file.fileName} should be at least 1MB',
             );
             expect(
-              file.expectedSize!,
+              file.expectedSize,
               lessThan(1024 * 1024 * 1024),
               reason: '${file.fileName} should be less than 1GB',
             );

@@ -59,8 +59,26 @@ abstract class ZcashParamsConfig with _$ZcashParamsConfig {
   factory ZcashParamsConfig.fromJson(Map<String, dynamic> json) =>
       _$ZcashParamsConfigFromJson(json);
 
-  /// Default configuration instance.
+  /// Default configuration instance with only sapling parameters.
   static const ZcashParamsConfig defaultConfig = ZcashParamsConfig(
+    paramFiles: [
+      ZcashParamFile(
+        fileName: 'sapling-spend.params',
+        sha256Hash:
+            '8e48ffd23abb3a5fd9c5589204f32d9c31285a04b78096ba40a79b75677efc13',
+        expectedSize: 47958396,
+      ),
+      ZcashParamFile(
+        fileName: 'sapling-output.params',
+        sha256Hash:
+            '2f0ebbcbb9bb0bcffe95a397e7eba89c29eb4dde6191c339db88570e3f3fb0e4',
+        expectedSize: 3592860,
+      ),
+    ],
+  );
+
+  /// Extended configuration instance with all parameter files including sprout.
+  static const ZcashParamsConfig extendedConfig = ZcashParamsConfig(
     paramFiles: [
       ZcashParamFile(
         fileName: 'sapling-spend.params',

@@ -194,8 +194,8 @@ class ZhtlcConfigDialogHandler {
     final syncValueController = TextEditingController();
     DateTime? selectedDateTime;
 
-    String formatDateTime(DateTime dateTime) {
-      return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    String formatDate(DateTime dateTime) {
+      return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}';
     }
 
     Future<void> selectDate(BuildContext context) async {
@@ -207,30 +207,16 @@ class ZhtlcConfigDialogHandler {
       );
 
       if (picked != null) {
-        final time = await showTimePicker(
-          context: context,
-          initialTime: TimeOfDay.fromDateTime(
-            selectedDateTime ?? DateTime.now(),
-          ),
-        );
-
-        if (time != null) {
-          selectedDateTime = DateTime(
-            picked.year,
-            picked.month,
-            picked.day,
-            time.hour,
-            time.minute,
-          );
-          syncValueController.text = formatDateTime(selectedDateTime!);
-        }
+        // Default to midnight (00:00) of the selected day
+        selectedDateTime = DateTime(picked.year, picked.month, picked.day);
+        syncValueController.text = formatDate(selectedDateTime!);
       }
     }
 
     // Initialize with default date (2 days ago)
     void initializeDate() {
       selectedDateTime = DateTime.now().subtract(const Duration(days: 2));
-      syncValueController.text = formatDateTime(selectedDateTime!);
+      syncValueController.text = formatDate(selectedDateTime!);
     }
 
     initializeDate();
