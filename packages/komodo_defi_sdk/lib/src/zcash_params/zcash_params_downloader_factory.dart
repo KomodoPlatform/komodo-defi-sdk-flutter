@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/models/zcash_params_config.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/platform_implementations/unix_zcash_params_downloader.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/platform_implementations/web_zcash_params_downloader.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/platform_implementations/windows_zcash_params_downloader.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/platforms/unix_zcash_params_downloader.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/platforms/web_zcash_params_downloader.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/platforms/windows_zcash_params_downloader.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/services/zcash_params_download_service.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/zcash_params_downloader.dart';
 
@@ -39,7 +39,7 @@ class ZcashParamsDownloaderFactory {
     ZcashParamsConfig? config,
     bool enableHashValidation = true,
   }) {
-    if (kIsWeb) {
+    if (kIsWeb || kIsWasm) {
       return WebZcashParamsDownloader(config: config);
     }
 
@@ -97,7 +97,7 @@ class ZcashParamsDownloaderFactory {
   /// know which platform-specific implementation will be used without
   /// actually creating the downloader.
   static ZcashParamsPlatform detectPlatform() {
-    if (kIsWeb) {
+    if (kIsWeb || kIsWasm) {
       return ZcashParamsPlatform.web;
     }
 
@@ -128,14 +128,7 @@ class ZcashParamsDownloaderFactory {
     try {
       return await downloader.getParamsPath();
     } finally {
-      // Clean up resources if the downloader supports it
-      if (downloader is WebZcashParamsDownloader) {
-        downloader.dispose();
-      } else if (downloader is WindowsZcashParamsDownloader) {
-        downloader.dispose();
-      } else if (downloader is UnixZcashParamsDownloader) {
-        downloader.dispose();
-      }
+      downloader.dispose();
     }
   }
 }

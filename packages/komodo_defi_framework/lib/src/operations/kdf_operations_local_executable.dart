@@ -17,9 +17,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     Duration startupTimeout = const Duration(seconds: 30),
     KdfExecutableFinder? executableFinder,
     this.executableName = 'kdf',
-  })  : _startupTimeout = startupTimeout,
-        _executableFinder =
-            executableFinder ?? KdfExecutableFinder(logCallback: _logCallback);
+  }) : _startupTimeout = startupTimeout,
+       _executableFinder =
+           executableFinder ?? KdfExecutableFinder(logCallback: _logCallback);
 
   factory KdfOperationsLocalExecutable.create({
     required void Function(String) logCallback,
@@ -72,10 +72,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   static final Uri _url = Uri.parse('http://127.0.0.1:7783');
 
   Future<Process> _startKdf(JsonMap params) async {
-    final executablePath =
-        (await _executableFinder.findExecutable(executableName: executableName))
-            ?.absolute
-            .path;
+    final executablePath = (await _executableFinder.findExecutable(
+      executableName: executableName,
+    ))?.absolute.path;
     if (executablePath == null) {
       throw KdfException(
         'KDF executable not found in any of the expected locations. '
@@ -115,11 +114,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       final environment = Map<String, String>.of(Platform.environment)
         ..['MM_COINS_PATH'] = coinsConfigFile.path;
 
-      final newProcess = await Process.start(
-        executablePath,
-        [sensitiveArgs.toJsonString()],
-        environment: environment,
-      );
+      final newProcess = await Process.start(executablePath, [
+        sensitiveArgs.toJsonString(),
+      ], environment: environment);
 
       _logCallback('Launched executable: $executablePath');
       _attachProcessListeners(newProcess, coinsTempDir);
@@ -195,11 +192,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     }
 
     final coinsCount = params.valueOrNull<List<dynamic>>('coins')?.length;
-    _logCallback('Starting KDF with parameters: ${{
-      ...params,
-      'coins': '{{OMITTED $coinsCount ITEMS}}',
-      'log_level': logLevel ?? 3,
-    }.censored().toJsonString()}');
+    _logCallback(
+      'Starting KDF with parameters: ${{...params, 'coins': '{{OMITTED $coinsCount ITEMS}}', 'log_level': logLevel ?? 3}.censored().toJsonString()}',
+    );
 
     try {
       _process = await _startKdf(params);
@@ -247,9 +242,9 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   Future<StopStatus> kdfStop() async {
     var stopStatus = StopStatus.ok;
     try {
-      stopStatus = await _kdfRemote
-          .kdfStop()
-          .catchError((_) => StopStatus.errorStopping);
+      stopStatus = await _kdfRemote.kdfStop().catchError(
+        (_) => StopStatus.errorStopping,
+      );
 
       if (_process == null || _process?.pid == 0) {
         _logCallback('Process is not running, skipping shutdown.');
@@ -302,11 +297,35 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       );
     }
   }
-  
+
   @override
   void dispose() {
-    _process = null;
+    // Cancel and clean up subscriptions
+    stdoutSub?.cancel().ignore();
     stdoutSub = null;
+    stderrSub?.cancel().ignore();
     stderrSub = null;
+
+    // Gracefully stop the process if running
+    if (_process != null) {
+      _kdfRemote.kdfStop().timeout(const Duration(seconds: 3)).ignore();
+      _gracefulProcessShutdown();
+    }
+
+    // Clean up remote resources
+    _kdfRemote.dispose();
+  }
+
+  void _gracefulProcessShutdown() {
+    // Execute the exact pattern requested: await the process exit with timeout and catchError
+    () async {
+      await _process!.exitCode.timeout(const Duration(seconds: 5)).catchError((
+        _,
+      ) {
+        _process!.kill();
+        return -1; // Return an int to match Future<int>
+      });
+      _process = null;
+    }();
   }
 }

@@ -1,24 +1,21 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:komodo_defi_sdk/src/_internal_exports.dart'
-    show ZcashParamsConfig;
 import 'package:komodo_defi_sdk/src/zcash_params/models/download_progress.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/models/download_result.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/services/zcash_params_download_service.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/zcash_params_downloader.dart';
 import 'package:path/path.dart' as path;
 
-/// Unix platform implementation of ZCash parameters downloader.
+/// Windows platform implementation of ZCash parameters downloader.
 ///
-/// Downloads ZCash parameters to platform-specific directories:
-/// - macOS: `$HOME/Library/Application Support/ZcashParams`
-/// - Linux: `$HOME/.zcash-params`
+/// Downloads ZCash parameters to the Windows APPDATA directory:
+/// `%APPDATA%\ZcashParams`
 ///
-/// This implementation handles Unix-specific path resolution and
+/// This implementation handles Windows-specific path resolution and
 /// delegates downloading logic to the injected download service.
-class UnixZcashParamsDownloader extends ZcashParamsDownloader {
-  /// Creates a Unix ZCash parameters downloader.
+class WindowsZcashParamsDownloader extends ZcashParamsDownloader {
+  /// Creates a Windows ZCash parameters downloader.
   ///
   /// [downloadService] can be provided for custom download logic, otherwise
   /// a default implementation is used.
@@ -27,8 +24,7 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
   /// [config] allows overriding the default ZCash parameters configuration.
   /// If not provided, a default configuration with known parameter files
   /// and their hashes is used.
-  /// See [ZcashParamsConfig] for details.
-  UnixZcashParamsDownloader({
+  WindowsZcashParamsDownloader({
     ZcashParamsDownloadService? downloadService,
     Directory Function(String)? directoryFactory,
     File Function(String)? fileFactory,
@@ -111,17 +107,11 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
 
   @override
   Future<String?> getParamsPath() async {
-    final home = Platform.environment['HOME'];
-    if (home == null) {
-      throw StateError('HOME environment variable not found');
+    final appData = Platform.environment['APPDATA'];
+    if (appData == null) {
+      return null;
     }
-
-    if (Platform.isMacOS) {
-      return path.join(home, 'Library', 'Application Support', 'ZcashParams');
-    } else {
-      // Linux and other Unix-like systems
-      return path.join(home, '.zcash-params');
-    }
+    return path.join(appData, 'ZcashParams');
   }
 
   @override
@@ -136,6 +126,20 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
     );
 
     return missingFiles.isEmpty;
+  }
+
+  @override
+  Future<bool> validateFileHash(String filePath, String expectedHash) async {
+    return _downloadService.validateFileHash(
+      filePath,
+      expectedHash,
+      _fileFactory,
+    );
+  }
+
+  @override
+  Future<String?> getFileHash(String filePath) async {
+    return _downloadService.getFileHash(filePath, _fileFactory);
   }
 
   @override
@@ -159,20 +163,6 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
   }
 
   @override
-  Future<bool> validateFileHash(String filePath, String expectedHash) async {
-    return _downloadService.validateFileHash(
-      filePath,
-      expectedHash,
-      _fileFactory,
-    );
-  }
-
-  @override
-  Future<String?> getFileHash(String filePath) async {
-    return _downloadService.getFileHash(filePath, _fileFactory);
-  }
-
-  @override
   Future<bool> clearParams() async {
     final paramsPath = await getParamsPath();
     if (paramsPath == null) return false;
@@ -181,6 +171,7 @@ class UnixZcashParamsDownloader extends ZcashParamsDownloader {
   }
 
   /// Disposes of resources used by this downloader.
+  @override
   void dispose() {
     _downloadService.dispose();
     _progressController.close();

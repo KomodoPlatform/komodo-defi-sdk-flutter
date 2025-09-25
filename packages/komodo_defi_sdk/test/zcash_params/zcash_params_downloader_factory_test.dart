@@ -1,9 +1,9 @@
 import 'package:test/test.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/zcash_params_downloader_factory.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/models/download_result.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/platform_implementations/web_zcash_params_downloader.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/platform_implementations/windows_zcash_params_downloader.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/platform_implementations/unix_zcash_params_downloader.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/platforms/web_zcash_params_downloader.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/platforms/windows_zcash_params_downloader.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/platforms/unix_zcash_params_downloader.dart';
 
 void main() {
   group('ZcashParamsDownloaderFactory', () {
@@ -87,13 +87,7 @@ void main() {
       });
     });
 
-    group('requiresDownload', () {
-      test('returns false for web platform', () {
-        // This test assumes we're not running on web
-        // In a real test setup, you would mock platform detection
-        expect(ZcashParamsDownloaderFactory.requiresDownload, isA<bool>());
-      });
-    });
+    // (Redundant test removed; platform-specific assertions exist below.)
 
     group('getDefaultParamsPath', () {
       test('returns path for platforms that support it', () async {
@@ -104,8 +98,9 @@ void main() {
 
         expect(downloader, isA<UnixZcashParamsDownloader>());
 
-        // Note: In a real test, we would mock the environment variables
-        // For now, we just verify the method exists and can be called
+        // Note: In a real test, environment variables would be mocked.
+        final path = await downloader.getParamsPath();
+        expect(path, anyOf(isA<String>(), isNull));
       });
 
       test('returns null for web platform', () async {
@@ -216,7 +211,7 @@ void main() {
               )
               as WebZcashParamsDownloader;
 
-      // Web downloader should immediately return success and nulls
+      // Web downloader should immediately return success; no local path is available (getParamsPath returns null)
       final result = await downloader.downloadParams();
       expect(result, isA<DownloadResultSuccess>());
       result.when(

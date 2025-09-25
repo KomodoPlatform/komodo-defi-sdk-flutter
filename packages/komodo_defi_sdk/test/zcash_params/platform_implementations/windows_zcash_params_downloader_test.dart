@@ -1,11 +1,8 @@
-import 'dart:async';
 import 'dart:io';
 
-import 'package:http/src/byte_stream.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/models/download_progress.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/models/download_result.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/models/zcash_params_config.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/platform_implementations/windows_zcash_params_downloader.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/platforms/windows_zcash_params_downloader.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/services/zcash_params_download_service.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -18,7 +15,6 @@ void main() {
     late MockHttpClient mockHttpClient;
     late MockDirectory mockDirectory;
     late MockFile mockFile;
-    late MockIOSink mockSink;
 
     Directory mockDirectoryFactory(String path) => mockDirectory;
     File mockFileFactory(String path) => mockFile;
@@ -33,7 +29,6 @@ void main() {
       mockHttpClient = MockHttpClient();
       mockDirectory = MockDirectory();
       mockFile = MockFile();
-      mockSink = MockIOSink();
 
       downloader = WindowsZcashParamsDownloader(
         downloadService: DefaultZcashParamsDownloadService(
@@ -55,7 +50,7 @@ void main() {
         expect(path, isNull);
       });
 
-      test('returns correct path format when APPDATA exists', () {
+      test('returns normally but fails due to missing APPDATA', () {
         // This test would need to mock Platform.environment in a real scenario
         // For now, we just verify the method doesn't throw
         expect(() async => downloader.getParamsPath(), returnsNormally);

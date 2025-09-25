@@ -155,4 +155,9 @@ abstract class ZcashParamsDownloader {
   /// - [IOException] if file system operations fail
   /// - [ArgumentError] for invalid path operations
   Future<bool> clearParams();
+
+  /// Disposes of the downloader.
+  ///
+  /// This method should be called to release any resources used by the downloader.
+  void dispose();
 }

@@ -342,5 +342,18 @@ void main() {
         expect(progress.percentage, equals(50.0));
       });
     });
+
+    group('JSON serialization', () {
+      test('JSON round-trip', () {
+        const original = DownloadProgress(
+          fileName: 'a.params',
+          downloaded: 42,
+          total: 100,
+        );
+        final json = original.toJson();
+        final restored = DownloadProgress.fromJson(json);
+        expect(restored, equals(original));
+      });
+    });
   });
 }

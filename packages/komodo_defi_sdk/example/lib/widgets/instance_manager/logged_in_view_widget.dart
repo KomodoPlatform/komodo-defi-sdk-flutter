@@ -221,6 +221,7 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
                         context,
                         asset,
                       );
+                  if (!mounted) return;
                   if (config != null) {
                     await sdk.activationConfigService.saveZhtlcConfig(
                       asset.id,

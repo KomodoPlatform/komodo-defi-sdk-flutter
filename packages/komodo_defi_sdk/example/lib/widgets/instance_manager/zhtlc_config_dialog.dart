@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
     show ZhtlcSyncParams;
@@ -25,8 +27,15 @@ class ZhtlcConfigDialogHandler {
     BuildContext context,
     ZcashParamsDownloader downloader,
   ) async {
+    const downloadTimeout = Duration(minutes: 10);
     // Start the download
-    final downloadFuture = downloader.downloadParams();
+    final downloadFuture = downloader.downloadParams().timeout(
+      downloadTimeout,
+      onTimeout: () => throw TimeoutException(
+        'Download timed out after ${downloadTimeout.inMinutes} minutes',
+        downloadTimeout,
+      ),
+    );
     var downloadComplete = false;
     var downloadSuccess = false;
 
@@ -51,11 +60,21 @@ class ZhtlcConfigDialogHandler {
                     Navigator.of(context).pop(downloadSuccess);
                   }
                 })
-                .catchError((e) {
+                .catchError((Object e, StackTrace? stackTrace) {
                   if (!downloadComplete && context.mounted) {
                     downloadComplete = true;
                     downloadSuccess = false;
-                    Navigator.of(context).pop(false);
+
+                    // Log the error for debugging
+                    debugPrint('Zcash parameters download failed: $e');
+                    if (stackTrace != null) {
+                      debugPrint('Stack trace: $stackTrace');
+                    }
+
+                    // Pass error information back to caller
+                    Navigator.of(
+                      context,
+                    ).pop({'success': false, 'error': e.toString()});
                   }
                 });
 
@@ -81,12 +100,10 @@ class ZhtlcConfigDialogHandler {
                               ),
                               const SizedBox(height: 8),
                               LinearProgressIndicator(
-                                value: progress?.percentage != null
-                                    ? progress!.percentage / 100
-                                    : 0,
+                                value: (progress?.percentage ?? 0) / 100,
                               ),
                               Text(
-                                '${progress?.percentage != null ? progress!.percentage.toStringAsFixed(1) : '0'}%',
+                                '${(progress?.percentage ?? 0).toStringAsFixed(1)}%',
                                 style: Theme.of(context).textTheme.bodySmall,
                                 textAlign: TextAlign.center,
                               ),
@@ -195,7 +212,7 @@ class ZhtlcConfigDialogHandler {
     DateTime? selectedDateTime;
 
     String formatDate(DateTime dateTime) {
-      return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}';
+      return dateTime.toIso8601String().split('T')[0];
     }
 
     Future<void> selectDate(BuildContext context) async {
@@ -357,6 +374,7 @@ class ZhtlcConfigDialogHandler {
                         );
                         return;
                       }
+                      // Convert to Unix timestamp (seconds since epoch)
                       final unixTimestamp =
                           selectedDateTime!.millisecondsSinceEpoch ~/ 1000;
                       syncParams = ZhtlcSyncParams.date(unixTimestamp);

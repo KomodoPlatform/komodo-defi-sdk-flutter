@@ -475,6 +475,10 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
     ZcashParamsConfig config,
   ) async {
     http.StreamedResponse? response;
+    IOSink? sink;
+    bool success = false;
+    final file = File(destinationPath);
+
     _logger.info('Starting HTTP download from URL: $url to $destinationPath');
 
     try {
@@ -490,8 +494,7 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
         return false;
       }
 
-      final file = File(destinationPath);
-      final sink = file.openWrite();
+      sink = file.openWrite();
 
       int downloaded = 0;
       final total = expectedSize ?? response.contentLength ?? 0;
@@ -512,10 +515,6 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
           _logger.warning(
             'Download cancelled for $fileName at $downloaded bytes',
           );
-          await sink.close();
-          if (file.existsSync()) {
-            await file.delete();
-          }
           return false;
         }
 
@@ -539,10 +538,6 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
         'total chunks: $chunkCount',
       );
 
-      _logger.fine('Closing file sink for: $fileName');
-      await sink.close();
-      _logger.fine('File sink closed successfully for: $fileName');
-
       // Final progress update
       progressController.add(
         DownloadProgress(
@@ -553,6 +548,7 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
       );
 
       _logger.fine('Successfully downloaded $fileName: $downloaded bytes');
+      success = true;
       return true;
     } on TimeoutException catch (e, stackTrace) {
       _logger.warning(
@@ -560,12 +556,38 @@ class DefaultZcashParamsDownloadService implements ZcashParamsDownloadService {
         e,
         stackTrace,
       );
-      await response?.stream.listen(null).cancel();
       return false;
     } catch (e, stackTrace) {
       _logger.severe('Error downloading $fileName from $url', e, stackTrace);
-      await response?.stream.listen(null).cancel();
       return false;
+    } finally {
+      // Close sink if it's open
+      if (sink != null) {
+        try {
+          _logger.fine('Closing file sink for: $fileName');
+          await sink.close();
+          _logger.fine('File sink closed successfully for: $fileName');
+        } catch (e) {
+          _logger.warning('Error closing sink for $fileName: $e');
+        }
+      }
+
+      // Clean up partial file on failure
+      if (!success && file.existsSync()) {
+        try {
+          await file.delete();
+          _logger.fine('Deleted partial file: $destinationPath');
+        } catch (e) {
+          _logger.warning('Failed to delete partial file $destinationPath: $e');
+        }
+      }
+
+      // Clean up response stream
+      try {
+        await response?.stream.listen(null).cancel();
+      } catch (e) {
+        _logger.fine('Error cancelling response stream: $e');
+      }
     }
   }
 

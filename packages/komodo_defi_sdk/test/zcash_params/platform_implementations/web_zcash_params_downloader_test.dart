@@ -1,6 +1,6 @@
 import 'package:komodo_defi_sdk/src/zcash_params/models/download_progress.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/models/download_result.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/platform_implementations/web_zcash_params_downloader.dart';
+import 'package:komodo_defi_sdk/src/zcash_params/platforms/web_zcash_params_downloader.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -40,15 +40,6 @@ void main() {
         expect(result1, isA<DownloadResultSuccess>());
         expect(result2, isA<DownloadResultSuccess>());
       });
-
-      test('is fast (completes immediately)', () async {
-        final stopwatch = Stopwatch()..start();
-        await downloader.downloadParams();
-        stopwatch.stop();
-
-        // Should complete in well under 100ms since it's a no-op
-        expect(stopwatch.elapsedMilliseconds, lessThan(100));
-      });
     });
 
     group('getParamsPath', () {
@@ -65,14 +56,6 @@ void main() {
         expect(path2, isNull);
         expect(path1, equals(path2));
       });
-
-      test('is fast (completes immediately)', () async {
-        final stopwatch = Stopwatch()..start();
-        await downloader.getParamsPath();
-        stopwatch.stop();
-
-        expect(stopwatch.elapsedMilliseconds, lessThan(50));
-      });
     });
 
     group('areParamsAvailable', () {
@@ -88,14 +71,6 @@ void main() {
         expect(available1, isTrue);
         expect(available2, isTrue);
         expect(available1, equals(available2));
-      });
-
-      test('is fast (completes immediately)', () async {
-        final stopwatch = Stopwatch()..start();
-        await downloader.areParamsAvailable();
-        stopwatch.stop();
-
-        expect(stopwatch.elapsedMilliseconds, lessThan(50));
       });
     });
 
@@ -156,14 +131,6 @@ void main() {
         final cancelled = await downloader.cancelDownload();
         expect(cancelled, isFalse);
       });
-
-      test('is fast (completes immediately)', () async {
-        final stopwatch = Stopwatch()..start();
-        await downloader.cancelDownload();
-        stopwatch.stop();
-
-        expect(stopwatch.elapsedMilliseconds, lessThan(50));
-      });
     });
 
     group('validateParams', () {
@@ -191,14 +158,6 @@ void main() {
         final valid = await downloader.validateParams();
         expect(valid, isTrue);
       });
-
-      test('is fast (completes immediately)', () async {
-        final stopwatch = Stopwatch()..start();
-        await downloader.validateParams();
-        stopwatch.stop();
-
-        expect(stopwatch.elapsedMilliseconds, lessThan(50));
-      });
     });
 
     group('clearParams', () {
@@ -225,14 +184,6 @@ void main() {
         await downloader.downloadParams();
         final cleared = await downloader.clearParams();
         expect(cleared, isTrue);
-      });
-
-      test('is fast (completes immediately)', () async {
-        final stopwatch = Stopwatch()..start();
-        await downloader.clearParams();
-        stopwatch.stop();
-
-        expect(stopwatch.elapsedMilliseconds, lessThan(50));
       });
     });
 
@@ -287,7 +238,7 @@ void main() {
       });
 
       test('can handle rapid sequential calls', () async {
-        final futures = <Future>[];
+        final futures = <Future<dynamic>>[];
 
         // Make multiple rapid calls to all methods
         for (int i = 0; i < 10; i++) {

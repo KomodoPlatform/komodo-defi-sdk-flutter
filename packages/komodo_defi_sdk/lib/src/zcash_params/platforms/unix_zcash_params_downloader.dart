@@ -1,21 +1,24 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:komodo_defi_sdk/src/_internal_exports.dart'
+    show ZcashParamsConfig;
 import 'package:komodo_defi_sdk/src/zcash_params/models/download_progress.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/models/download_result.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/services/zcash_params_download_service.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/zcash_params_downloader.dart';
 import 'package:path/path.dart' as path;
 
-/// Windows platform implementation of ZCash parameters downloader.
+/// Unix platform implementation of ZCash parameters downloader.
 ///
-/// Downloads ZCash parameters to the Windows APPDATA directory:
-/// `%APPDATA%\ZcashParams`
+/// Downloads ZCash parameters to platform-specific directories:
+/// - macOS: `$HOME/Library/Application Support/ZcashParams`
+/// - Linux: `$HOME/.zcash-params`
 ///
-/// This implementation handles Windows-specific path resolution and
+/// This implementation handles Unix-specific path resolution and
 /// delegates downloading logic to the injected download service.
-class WindowsZcashParamsDownloader extends ZcashParamsDownloader {
-  /// Creates a Windows ZCash parameters downloader.
+class UnixZcashParamsDownloader extends ZcashParamsDownloader {
+  /// Creates a Unix ZCash parameters downloader.
   ///
   /// [downloadService] can be provided for custom download logic, otherwise
   /// a default implementation is used.
@@ -24,7 +27,8 @@ class WindowsZcashParamsDownloader extends ZcashParamsDownloader {
   /// [config] allows overriding the default ZCash parameters configuration.
   /// If not provided, a default configuration with known parameter files
   /// and their hashes is used.
-  WindowsZcashParamsDownloader({
+  /// See [ZcashParamsConfig] for details.
+  UnixZcashParamsDownloader({
     ZcashParamsDownloadService? downloadService,
     Directory Function(String)? directoryFactory,
     File Function(String)? fileFactory,
@@ -45,6 +49,8 @@ class WindowsZcashParamsDownloader extends ZcashParamsDownloader {
   final StreamController<DownloadProgress> _progressController =
       StreamController<DownloadProgress>.broadcast();
 
+  bool _isDisposed = false;
+
   bool _isDownloading = false;
   bool _isCancelled = false;
 
@@ -59,59 +65,66 @@ class WindowsZcashParamsDownloader extends ZcashParamsDownloader {
     _isDownloading = true;
     _isCancelled = false;
 
-    final paramsPath = await getParamsPath();
-    if (paramsPath == null) {
-      _isDownloading = false;
-      _isCancelled = false;
-      return const DownloadResult.failure(
-        error: 'Unable to determine parameters path',
+    try {
+      final paramsPath = await getParamsPath();
+      if (paramsPath == null) {
+        return const DownloadResult.failure(
+          error: 'Unable to determine parameters path',
+        );
+      }
+
+      // Create directory if it doesn't exist
+      await _downloadService.ensureDirectoryExists(
+        paramsPath,
+        _directoryFactory,
       );
-    }
 
-    // Create directory if it doesn't exist
-    await _downloadService.ensureDirectoryExists(paramsPath, _directoryFactory);
+      // Check which files need to be downloaded
+      final missingFiles = await _downloadService.getMissingFiles(
+        paramsPath,
+        _fileFactory,
+        config,
+      );
 
-    // Check which files need to be downloaded
-    final missingFiles = await _downloadService.getMissingFiles(
-      paramsPath,
-      _fileFactory,
-      config,
-    );
+      if (missingFiles.isEmpty) {
+        return DownloadResult.success(paramsPath: paramsPath);
+      }
 
-    if (missingFiles.isEmpty) {
-      _isDownloading = false;
-      _isCancelled = false;
+      // Download missing files
+      final downloadSuccess = await _downloadService.downloadMissingFiles(
+        paramsPath,
+        missingFiles,
+        _progressController,
+        () => _isCancelled,
+        config,
+      );
+
+      if (!downloadSuccess) {
+        return const DownloadResult.failure(
+          error: 'Failed to download one or more parameter files',
+        );
+      }
+
       return DownloadResult.success(paramsPath: paramsPath);
+    } finally {
+      _isDownloading = false;
+      _isCancelled = false;
     }
-
-    // Download missing files
-    final downloadSuccess = await _downloadService.downloadMissingFiles(
-      paramsPath,
-      missingFiles,
-      _progressController,
-      () => _isCancelled,
-      config,
-    );
-
-    _isDownloading = false;
-    _isCancelled = false;
-
-    if (!downloadSuccess) {
-      return const DownloadResult.failure(
-        error: 'Failed to download one or more parameter files',
-      );
-    }
-
-    return DownloadResult.success(paramsPath: paramsPath);
   }
 
   @override
   Future<String?> getParamsPath() async {
-    final appData = Platform.environment['APPDATA'];
-    if (appData == null) {
-      return null;
+    final home = Platform.environment['HOME'];
+    if (home == null) {
+      throw StateError('HOME environment variable not found');
     }
-    return path.join(appData, 'ZcashParams');
+
+    if (Platform.isMacOS) {
+      return path.join(home, 'Library', 'Application Support', 'ZcashParams');
+    } else {
+      // Linux and other Unix-like systems
+      return path.join(home, '.zcash-params');
+    }
   }
 
   @override
@@ -126,20 +139,6 @@ class WindowsZcashParamsDownloader extends ZcashParamsDownloader {
     );
 
     return missingFiles.isEmpty;
-  }
-
-  @override
-  Future<bool> validateFileHash(String filePath, String expectedHash) async {
-    return _downloadService.validateFileHash(
-      filePath,
-      expectedHash,
-      _fileFactory,
-    );
-  }
-
-  @override
-  Future<String?> getFileHash(String filePath) async {
-    return _downloadService.getFileHash(filePath, _fileFactory);
   }
 
   @override
@@ -163,6 +162,20 @@ class WindowsZcashParamsDownloader extends ZcashParamsDownloader {
   }
 
   @override
+  Future<bool> validateFileHash(String filePath, String expectedHash) async {
+    return _downloadService.validateFileHash(
+      filePath,
+      expectedHash,
+      _fileFactory,
+    );
+  }
+
+  @override
+  Future<String?> getFileHash(String filePath) async {
+    return _downloadService.getFileHash(filePath, _fileFactory);
+  }
+
+  @override
   Future<bool> clearParams() async {
     final paramsPath = await getParamsPath();
     if (paramsPath == null) return false;
@@ -171,8 +184,26 @@ class WindowsZcashParamsDownloader extends ZcashParamsDownloader {
   }
 
   /// Disposes of resources used by this downloader.
+  @override
   void dispose() {
-    _downloadService.dispose();
-    _progressController.close();
+    if (_isDisposed) {
+      return;
+    }
+
+    _isDisposed = true;
+
+    try {
+      _downloadService.dispose();
+    } catch (_) {
+      // Ignore errors from download service disposal
+    }
+
+    try {
+      if (!_progressController.isClosed) {
+        _progressController.close();
+      }
+    } catch (_) {
+      // Ignore errors from closing progress controller
+    }
   }
 }

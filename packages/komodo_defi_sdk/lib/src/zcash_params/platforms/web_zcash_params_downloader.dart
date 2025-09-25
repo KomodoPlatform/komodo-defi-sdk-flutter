@@ -69,7 +69,10 @@ class WebZcashParamsDownloader extends ZcashParamsDownloader {
   }
 
   /// Disposes of resources used by this downloader.
+  @override
   void dispose() {
-    _progressController.close();
+    if (!_progressController.isClosed) {
+      _progressController.close();
+    }
   }
 }

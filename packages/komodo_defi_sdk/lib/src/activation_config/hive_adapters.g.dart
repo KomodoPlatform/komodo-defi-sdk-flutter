@@ -9,7 +9,7 @@ part of 'hive_adapters.dart';
 class HiveActivationConfigWrapperAdapter
     extends TypeAdapter<HiveActivationConfigWrapper> {
   @override
-  final typeId = 20;
+  final typeId = 0;
 
   @override
   HiveActivationConfigWrapper read(BinaryReader reader) {
