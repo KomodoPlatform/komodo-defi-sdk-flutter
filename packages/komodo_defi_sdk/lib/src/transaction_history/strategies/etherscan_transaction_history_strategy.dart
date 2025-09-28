@@ -110,6 +110,11 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
         total: allTransactions.length,
         totalPages: (allTransactions.length / paginatedResults.pageSize).ceil(),
         pageNumber: pagination is PagePagination ? pagination.pageNumber : null,
+        pagingOptions: switch (pagination) {
+          final PagePagination p => Pagination(pageNumber: p.pageNumber),
+          final TransactionBasedPagination t => Pagination(fromId: t.fromId),
+          _ => null,
+        },
         transactions: paginatedResults.transactions,
       );
     } catch (e) {

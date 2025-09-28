@@ -8,22 +8,24 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 class TransactionHistoryStrategyFactory {
   TransactionHistoryStrategyFactory(
     PubkeyManager pubkeyManager,
-    KomodoDefiLocalAuth auth,
-  ) : _strategies = [
-          EtherscanTransactionStrategy(pubkeyManager: pubkeyManager),
-          V2TransactionStrategy(auth),
-          const LegacyTransactionStrategy(),
-          const ZhtlcTransactionStrategy(),
-        ];
+    KomodoDefiLocalAuth auth, {
+    List<TransactionHistoryStrategy>? strategies,
+  }) : _strategies =
+           strategies ??
+           [
+             EtherscanTransactionStrategy(pubkeyManager: pubkeyManager),
+             V2TransactionStrategy(auth),
+             const LegacyTransactionStrategy(),
+             const ZhtlcTransactionStrategy(),
+           ];
 
   final List<TransactionHistoryStrategy> _strategies;
 
   TransactionHistoryStrategy forAsset(Asset asset) {
     final strategy = _strategies.firstWhere(
       (strategy) => strategy.supportsAsset(asset),
-      orElse: () => throw UnsupportedError(
-        'No strategy found for asset ${asset.id.id}',
-      ),
+      orElse: () =>
+          throw UnsupportedError('No strategy found for asset ${asset.id.id}'),
     );
 
     return strategy;
@@ -38,9 +40,9 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   Set<Type> get supportedPaginationModes => {
-        PagePagination,
-        TransactionBasedPagination,
-      };
+    PagePagination,
+    TransactionBasedPagination,
+  };
 
   // TODO: Consider for the future how multi-account support will be handled.
   // The HistoryTarget could be added to the abstract strategy, but only if
@@ -58,13 +60,13 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
 
     return switch (pagination) {
       final PagePagination p => client.rpc.transactionHistory.myTxHistory(
-          coin: asset.id.id,
-          limit: p.itemsPerPage,
-          pagingOptions: Pagination(pageNumber: p.pageNumber),
-          target: isHdWallet
-              ? const HdHistoryTarget.accountId(0)
-              : IguanaHistoryTarget(),
-        ),
+        coin: asset.id.id,
+        limit: p.itemsPerPage,
+        pagingOptions: Pagination(pageNumber: p.pageNumber),
+        target: isHdWallet
+            ? const HdHistoryTarget.accountId(0)
+            : IguanaHistoryTarget(),
+      ),
       final TransactionBasedPagination t =>
         client.rpc.transactionHistory.myTxHistory(
           coin: asset.id.id,
@@ -75,8 +77,8 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
               : IguanaHistoryTarget(),
         ),
       _ => throw UnsupportedError(
-          'Pagination mode ${pagination.runtimeType} not supported',
-        ),
+        'Pagination mode ${pagination.runtimeType} not supported',
+      ),
     };
   }
 
@@ -97,9 +99,9 @@ class LegacyTransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   Set<Type> get supportedPaginationModes => {
-        PagePagination,
-        TransactionBasedPagination,
-      };
+    PagePagination,
+    TransactionBasedPagination,
+  };
 
   @override
   Future<MyTxHistoryResponse> fetchTransactionHistory(
@@ -111,10 +113,10 @@ class LegacyTransactionStrategy extends TransactionHistoryStrategy {
 
     return switch (pagination) {
       final PagePagination p => client.rpc.transactionHistory.myTxHistoryLegacy(
-          coin: asset.id.id,
-          limit: p.itemsPerPage,
-          pageNumber: p.pageNumber,
-        ),
+        coin: asset.id.id,
+        limit: p.itemsPerPage,
+        pageNumber: p.pageNumber,
+      ),
       final TransactionBasedPagination t =>
         client.rpc.transactionHistory.myTxHistoryLegacy(
           coin: asset.id.id,
@@ -122,8 +124,8 @@ class LegacyTransactionStrategy extends TransactionHistoryStrategy {
           fromId: t.fromId,
         ),
       _ => throw UnsupportedError(
-          'Pagination mode ${pagination.runtimeType} not supported',
-        ),
+        'Pagination mode ${pagination.runtimeType} not supported',
+      ),
     };
   }
 
