@@ -66,43 +66,43 @@ class AddressSelectInput extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child:
-                    selectedAddress != null
-                        ? Row(
-                          children: [
-                            Text(
-                              selectedAddress!.formatted,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0.5,
-                              ),
+                child: selectedAddress != null
+                    ? Row(
+                        children: [
+                          Text(
+                            selectedAddress!.formatted,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.5,
                             ),
-                            const SizedBox(width: 4),
-                            if (verified?.call(selectedAddress!) ?? false) ...[
-                              Icon(
-                                Icons.verified,
-                                size: 16,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            Text(
-                              '(${selectedAddress!.balance.spendable} $assetName)',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(
-                                  0.7,
-                                ),
-                              ),
+                          ),
+                          const SizedBox(width: 4),
+                          if (verified?.call(selectedAddress!) ?? false) ...[
+                            Icon(
+                              Icons.verified,
+                              size: 16,
+                              color: theme.colorScheme.primary,
                             ),
                             const SizedBox(width: 8),
                           ],
-                        )
-                        : Text(
-                          hint,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          Text(
+                            '(${selectedAddress!.balance.spendable} $assetName)',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color
+                                  ?.withValues(alpha: 0.7),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                      )
+                    : Text(
+                        hint,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.textTheme.bodyMedium?.color?.withValues(
+                            alpha: 0.5,
                           ),
                         ),
+                      ),
               ),
               const Icon(
                 Icons.arrow_drop_down,
