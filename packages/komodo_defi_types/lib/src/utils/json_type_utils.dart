@@ -126,6 +126,13 @@ T? _traverseJson<T>(
         if (parsed != null) return parsed as T;
       }
 
+      // Rounding precision loss is not a concern when converting int to String
+      // This is safe because int to String conversion is always exact.
+      // “For any int i, it is guaranteed that i == int.parse(i.toString()).”
+      if (T == String && value is int) {
+        return value.toString() as T;
+      }
+
       // Handle lossy casts if allowed
       if (lossyCast && T == String && value is num) {
         return value.toString() as T;
