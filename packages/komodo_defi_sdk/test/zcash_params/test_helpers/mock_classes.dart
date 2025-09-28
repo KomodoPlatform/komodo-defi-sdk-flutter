@@ -4,8 +4,6 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:http/src/byte_stream.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/models/download_progress.dart';
-import 'package:komodo_defi_sdk/src/zcash_params/models/zcash_params_config.dart';
 import 'package:komodo_defi_sdk/src/zcash_params/services/zcash_params_download_service.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -310,7 +308,7 @@ class TestUtils {
           completer.complete(events);
         }
       },
-      onError: (error) {
+      onError: (Object error) {
         subscription.cancel();
         completer.completeError(error);
       },

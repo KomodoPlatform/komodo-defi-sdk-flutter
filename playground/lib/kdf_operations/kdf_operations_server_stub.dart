@@ -48,4 +48,7 @@ class KdfHttpServerOperations implements IKdfOperations {
   Future<bool> isAvailable(IKdfHostConfig hostConfig) async {
     throw UnsupportedError('Unknown platforms are not supported');
   }
+  
+  @override
+  void dispose() { }
 }
