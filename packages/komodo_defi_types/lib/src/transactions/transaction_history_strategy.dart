@@ -34,22 +34,4 @@ abstract class TransactionHistoryStrategy {
       );
     }
   }
-
-  /// Helper method to convert legacy pagination parameters to TransactionPagination
-  TransactionPagination _getLegacyPagination({
-    String? fromId,
-    int? pageNumber,
-    int limit = 10,
-  }) {
-    if (fromId != null) {
-      return TransactionBasedPagination(
-        fromId: fromId,
-        itemCount: limit,
-      );
-    }
-    return PagePagination(
-      pageNumber: pageNumber ?? 1,
-      itemsPerPage: limit,
-    );
-  }
 }
