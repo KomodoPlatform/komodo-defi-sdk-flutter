@@ -1,10 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
+import 'package:komodo_defi_sdk/src/activation/protocol_strategies/zhtlc_activation_progress.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-
-const _kZhtlcErrorCode = 'ZHTLC_ACTIVATION_ERROR';
 
 /// High-level phases emitted by the ZHTLC activation task engine.
 enum ZhtlcActivationPhase {
@@ -19,9 +18,6 @@ enum ZhtlcActivationPhase {
 
   /// Waiting for a connection to an available lightwalletd server.
   waitingLightwalletd,
-
-  /// Scanning historical blockchain data for relevant transactions.
-  scanningBlocks,
 
   /// Fetching balance information from the backend.
   requestingWalletBalance,
@@ -189,7 +185,7 @@ class ZhtlcActivationProgressEstimator {
           progressDetails: ActivationProgressDetails(
             currentStep: ActivationStep.error,
             stepCount: stepCount,
-            errorCode: _kZhtlcErrorCode,
+            errorCode: ZhtlcActivationProgress.errorCode,
             errorDetails: message,
             additionalInfo: baseInfo,
           ),
@@ -215,7 +211,7 @@ class ZhtlcActivationProgressEstimator {
         progressDetails: ActivationProgressDetails(
           currentStep: ActivationStep.error,
           stepCount: stepCount,
-          errorCode: _kZhtlcErrorCode,
+          errorCode: ZhtlcActivationProgress.errorCode,
           errorDetails: parsedDetail.error != null
               ? jsonToString(parsedDetail.error)
               : message,
@@ -347,16 +343,6 @@ class ZhtlcActivationProgressEstimator {
               rawJson: json,
               message: 'Connecting to Lightwalletd server...',
             );
-          case ZhtlcActivationPhase.scanningBlocks:
-            final data = _asJsonMap(payload);
-            return ZhtlcStatusDetail(
-              phase: ZhtlcActivationPhase.scanningBlocks,
-              raw: rawDetails,
-              rawJson: json,
-              message: 'Scanning blockchain...',
-              currentScannedBlock: _asInt(data['current_scanned_block']),
-              latestBlock: _asInt(data['latest_block']),
-            );
           case ZhtlcActivationPhase.completed:
             return ZhtlcStatusDetail(
               phase: ZhtlcActivationPhase.completed,
@@ -397,12 +383,6 @@ class ZhtlcActivationProgressEstimator {
           phase: phase,
           raw: rawDetails,
           message: 'Connecting to Lightwalletd server...',
-        );
-      case ZhtlcActivationPhase.scanningBlocks:
-        return ZhtlcStatusDetail(
-          phase: phase,
-          raw: rawDetails,
-          message: 'Scanning blockchain...',
         );
       case ZhtlcActivationPhase.requestingWalletBalance:
         return ZhtlcStatusDetail(
@@ -480,16 +460,6 @@ class ZhtlcActivationProgressEstimator {
         );
       case ZhtlcActivationPhase.waitingLightwalletd:
         return weights.waitingLightwalletd;
-      case ZhtlcActivationPhase.scanningBlocks:
-        final ratio = detail.progressRatio;
-        if (ratio != null) {
-          final computed = ratio * weights.buildingWalletDbWeight;
-          return math.max(
-            weights.minWalletDbProgress,
-            math.min(weights.buildingWalletDbWeight, computed),
-          );
-        }
-        return weights.scanningBlocks;
       case ZhtlcActivationPhase.finishing:
         return weights.finishing;
       case ZhtlcActivationPhase.waitingForTrezor:
@@ -517,8 +487,6 @@ class ZhtlcActivationProgressEstimator {
         return ActivationStep.database;
       case ZhtlcActivationPhase.waitingLightwalletd:
         return ActivationStep.connection;
-      case ZhtlcActivationPhase.scanningBlocks:
-        return ActivationStep.scanning;
       case ZhtlcActivationPhase.requestingWalletBalance:
         return ActivationStep.processing;
       case ZhtlcActivationPhase.finishing:
@@ -594,7 +562,10 @@ class ZhtlcActivationProgressEstimator {
   }
 
   static ZhtlcActivationPhase _phaseFromKey(String key) {
-    final normalized = key.trim().toLowerCase();
+    final normalized = key.trim().toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9]'),
+      '',
+    );
     if (normalized.contains('updatingblockscache')) {
       return ZhtlcActivationPhase.updatingBlocksCache;
     }
@@ -603,9 +574,6 @@ class ZhtlcActivationProgressEstimator {
     }
     if (normalized.contains('waitinglightwalletd')) {
       return ZhtlcActivationPhase.waitingLightwalletd;
-    }
-    if (normalized.contains('scanningblocks')) {
-      return ZhtlcActivationPhase.scanningBlocks;
     }
     if (normalized.contains('requestingwalletbalance')) {
       return ZhtlcActivationPhase.requestingWalletBalance;

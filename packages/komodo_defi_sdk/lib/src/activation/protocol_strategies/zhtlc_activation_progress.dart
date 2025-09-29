@@ -6,6 +6,8 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// Convenience wrapper around [ActivationProgress] that exposes the canonical
 /// progress snapshots used throughout ZHTLC activation.
 class ZhtlcActivationProgress extends ActivationProgress {
+  static const errorCode = 'ZHTLC_ACTIVATION_ERROR';
+
   const ZhtlcActivationProgress._({
     required super.status,
     super.isComplete,
@@ -49,12 +51,12 @@ class ZhtlcActivationProgress extends ActivationProgress {
       progressDetails: ActivationProgressDetails(
         currentStep: ActivationStep.error,
         stepCount: 6,
-        errorCode: 'ZHTLC_ACTIVATION_ERROR',
+        errorCode: ZhtlcActivationProgress.errorCode,
         errorDetails: error.toString(),
         stackTrace: stack.toString(),
         additionalInfo: {
           'errorType': error.runtimeType.toString(),
-          'timestamp': DateTime.now().toIso8601String(),
+          'timestamp': DateTime.now().toUtc().toIso8601String(),
         },
       ),
     );

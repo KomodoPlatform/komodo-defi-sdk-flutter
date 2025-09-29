@@ -17,6 +17,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
     super.client,
     this.privKeyPolicy,
     this.configService, {
+    this.pollingInterval = const Duration(milliseconds: 500),
     ZhtlcActivationProgressEstimator? progressEstimator,
   }) : progressEstimator =
            progressEstimator ?? const ZhtlcActivationProgressEstimator();
@@ -29,6 +30,9 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
 
   /// Progress estimator that maps task status updates to activation progress.
   final ZhtlcActivationProgressEstimator progressEstimator;
+
+  /// Interval between TaskShepherd status polls when monitoring activation.
+  final Duration pollingInterval;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {CoinSubClass.zhtlc};
@@ -58,11 +62,19 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
         return;
       }
 
+      final effectivePollingInterval =
+          userConfig.taskStatusPollingIntervalMs != null &&
+                  userConfig.taskStatusPollingIntervalMs! > 0
+              ? Duration(
+                  milliseconds: userConfig.taskStatusPollingIntervalMs!,
+                )
+              : pollingInterval;
+
       var params = ZhtlcActivationParams.fromConfigJson(protocol.config)
           .copyWith(
-            scanBlocksPerIteration: userConfig.scanBlocksPerIteration as int?,
-            scanIntervalMs: userConfig.scanIntervalMs as int?,
-            zcashParamsPath: userConfig.zcashParamsPath as String?,
+            scanBlocksPerIteration: userConfig.scanBlocksPerIteration,
+            scanIntervalMs: userConfig.scanIntervalMs,
+            zcashParamsPath: userConfig.zcashParamsPath,
             privKeyPolicy: privKeyPolicy,
           );
 
@@ -91,7 +103,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
             ),
             isTaskComplete: (TaskStatusResponse s) =>
                 s.status == 'Ok' || s.status == 'Error',
-            pollingInterval: const Duration(milliseconds: 500),
+            pollingInterval: effectivePollingInterval,
             // cancelTask intentionally omitted, as it is not used in this
             // context and leaving it enabled lead to uncaught exceptions
             // when taskId was already finished.

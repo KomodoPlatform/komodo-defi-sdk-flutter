@@ -43,18 +43,22 @@ class ZhtlcUserConfig {
     required this.zcashParamsPath,
     this.scanBlocksPerIteration = 1000,
     this.scanIntervalMs = 0,
+    this.taskStatusPollingIntervalMs,
     this.syncParams,
   });
 
   final String zcashParamsPath;
   final int scanBlocksPerIteration;
   final int scanIntervalMs;
+  final int? taskStatusPollingIntervalMs;
   final ZhtlcSyncParams? syncParams;
 
   JsonMap toJson() => {
     'zcashParamsPath': zcashParamsPath,
     'scanBlocksPerIteration': scanBlocksPerIteration,
     'scanIntervalMs': scanIntervalMs,
+    if (taskStatusPollingIntervalMs != null)
+      'taskStatusPollingIntervalMs': taskStatusPollingIntervalMs,
     if (syncParams != null) 'syncParams': syncParams!.toJsonRequest(),
   };
 
@@ -63,6 +67,9 @@ class ZhtlcUserConfig {
     scanBlocksPerIteration:
         json.valueOrNull<int>('scanBlocksPerIteration') ?? 1000,
     scanIntervalMs: json.valueOrNull<int>('scanIntervalMs') ?? 0,
+    taskStatusPollingIntervalMs: json.valueOrNull<int>(
+      'taskStatusPollingIntervalMs',
+    ),
     syncParams: ZhtlcSyncParams.tryParse(
       json.valueOrNull<dynamic>('syncParams'),
     ),
@@ -300,6 +307,13 @@ extension AssetIdActivationSettings on AssetId {
             label: 'Scan interval (ms)',
             type: 'number',
             defaultValue: 0,
+          ),
+          ActivationSettingDescriptor(
+            key: 'taskStatusPollingIntervalMs',
+            label: 'Task status polling interval (ms)',
+            type: 'number',
+            defaultValue: 500,
+            helpText: 'Delay between status polls while monitoring activation',
           ),
         ];
       default:
