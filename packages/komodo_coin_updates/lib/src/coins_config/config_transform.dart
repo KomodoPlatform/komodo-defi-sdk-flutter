@@ -266,7 +266,7 @@ class ZhtlcLightWalletTransform implements CoinConfigTransform {
       'light_wallet_d_servers_wss',
     );
 
-    return lightWalletServersWss != null;
+    return lightWalletServersWss != null && lightWalletServersWss.isNotEmpty;
   }
 
   @override

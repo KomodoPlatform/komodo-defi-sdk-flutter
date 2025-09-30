@@ -1,20 +1,38 @@
-// TODO: Refactor so that the start sync mode can be passed. For now, it is
-// hard-coded to sync from the time of activation.
+// TODO(komodo-team): Allow passing the start sync mode; currently hard-coded
+// to sync from the time of activation.
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
+import 'package:komodo_defi_sdk/src/activation/protocol_strategies/zhtlc_activation_progress.dart';
+import 'package:komodo_defi_sdk/src/activation/protocol_strategies/zhtlc_activation_progress_estimator.dart';
 import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+/// Activation strategy for ZHTLC-based assets that translates task updates into
+/// user-facing progress events.
 class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
+  /// Creates a strategy that activates ZHTLC assets using the provided
+  /// services.
   const ZhtlcActivationStrategy(
     super.client,
     this.privKeyPolicy,
-    this.configService,
-  );
+    this.configService, {
+    this.pollingInterval = const Duration(milliseconds: 500),
+    ZhtlcActivationProgressEstimator? progressEstimator,
+  }) : progressEstimator =
+           progressEstimator ?? const ZhtlcActivationProgressEstimator();
 
+  /// Policy used when deriving private keys during activation.
   final PrivateKeyPolicy privKeyPolicy;
+
+  /// Service that provides user-configured activation parameters.
   final ActivationConfigService configService;
+
+  /// Progress estimator that maps task status updates to activation progress.
+  final ZhtlcActivationProgressEstimator progressEstimator;
+
+  /// Interval between TaskShepherd status polls when monitoring activation.
+  final Duration pollingInterval;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {CoinSubClass.zhtlc};
@@ -33,43 +51,30 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
       );
     }
 
-    yield ActivationProgress(
-      status: 'Starting ZHTLC activation...',
-      progressDetails: ActivationProgressDetails(
-        currentStep: ActivationStep.initialization,
-        stepCount: 6,
-        additionalInfo: {
-          'protocol': 'ZHTLC',
-          'asset': asset.id.name,
-          'scanBlocksPerIteration': 200,
-        },
-      ),
-    );
+    yield ZhtlcActivationProgress.starting(asset);
 
     try {
       final protocol = asset.protocol as ZhtlcProtocol;
-
-      // Resolve user configuration (zcash params, scan tuning)
       final userConfig = await configService.getZhtlcOrRequest(asset.id);
 
       if (userConfig == null || userConfig.zcashParamsPath.trim().isEmpty) {
-        yield const ActivationProgress(
-          status: 'Zcash params path required',
-          errorMessage: 'Zcash params path required',
-          isComplete: true,
-          progressDetails: ActivationProgressDetails(
-            currentStep: ActivationStep.error,
-            stepCount: 1,
-          ),
-        );
+        yield ActivationProgressZhtlc.missingZcashParams();
         return;
       }
 
+      final effectivePollingInterval =
+          userConfig.taskStatusPollingIntervalMs != null &&
+                  userConfig.taskStatusPollingIntervalMs! > 0
+              ? Duration(
+                  milliseconds: userConfig.taskStatusPollingIntervalMs!,
+                )
+              : pollingInterval;
+
       var params = ZhtlcActivationParams.fromConfigJson(protocol.config)
           .copyWith(
-            scanBlocksPerIteration: userConfig.scanBlocksPerIteration as int?,
-            scanIntervalMs: userConfig.scanIntervalMs as int?,
-            zcashParamsPath: userConfig.zcashParamsPath as String?,
+            scanBlocksPerIteration: userConfig.scanBlocksPerIteration,
+            scanIntervalMs: userConfig.scanIntervalMs,
+            zcashParamsPath: userConfig.zcashParamsPath,
             privKeyPolicy: privKeyPolicy,
           );
 
@@ -86,20 +91,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
         );
       }
 
-      // Setup parameters
-
-      yield ActivationProgress(
-        status: 'Validating ZHTLC parameters...',
-        progressPercentage: 20,
-        progressDetails: ActivationProgressDetails(
-          currentStep: ActivationStep.validation,
-          stepCount: 6,
-          additionalInfo: {
-            'electrumServers': protocol.requiredServers.toJsonRequest(),
-            'zcashParamsPath': protocol.zcashParamsPath,
-          },
-        ),
-      );
+      yield ZhtlcActivationProgress.validation(protocol);
 
       // Initialize task and watch via TaskShepherd
       final stream = client.rpc.zhtlc
@@ -111,148 +103,48 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
             ),
             isTaskComplete: (TaskStatusResponse s) =>
                 s.status == 'Ok' || s.status == 'Error',
-            cancelTask: (int taskId) async {
-              await client.rpc.zhtlc.enableZhtlcCancel(taskId: taskId);
-            },
-            pollingInterval: const Duration(milliseconds: 500),
+            pollingInterval: effectivePollingInterval,
+            // cancelTask intentionally omitted, as it is not used in this
+            // context and leaving it enabled lead to uncaught exceptions
+            // when taskId was already finished.
+            // TODO(gui-team): investigate why this is the case.
           );
 
-      var buildingWalletDb = false;
-      var scanningBlocks = false;
-      var currentBlock = 0;
+      var emittedCompletion = false;
       TaskStatusResponse? lastStatus;
 
       await for (final status in stream) {
         lastStatus = status;
-        switch (status.details) {
-          case 'BuildingWalletDb':
-            if (!buildingWalletDb) {
-              buildingWalletDb = true;
-              yield const ActivationProgress(
-                status: 'Building wallet database...',
-                progressPercentage: 40,
-                progressDetails: ActivationProgressDetails(
-                  currentStep: ActivationStep.database,
-                  stepCount: 6,
-                  additionalInfo: {'dbStatus': 'building'},
-                ),
-              );
-            }
+        final detail = progressEstimator.parse(status.details);
 
-          case 'WaitingLightwalletd':
-            yield const ActivationProgress(
-              status: 'Connecting to Lightwalletd server...',
-              progressPercentage: 60,
-              progressDetails: ActivationProgressDetails(
-                currentStep: ActivationStep.connection,
-                stepCount: 6,
-                additionalInfo: {'connectionStatus': 'connecting'},
-              ),
-            );
+        final progress = progressEstimator.estimate(
+          status: status,
+          asset: asset,
+          detail: detail,
+        );
 
-          case 'ScanningBlocks':
-            if (!scanningBlocks) {
-              scanningBlocks = true;
-              currentBlock = await _getCurrentBlock(asset.id.id);
-            }
-            yield ActivationProgress(
-              status: 'Scanning blockchain...',
-              progressPercentage: 80,
-              progressDetails: ActivationProgressDetails(
-                currentStep: ActivationStep.scanning,
-                stepCount: 6,
-                additionalInfo: {
-                  'currentBlock': currentBlock,
-                  'scanStatus': 'inProgress',
-                },
-              ),
-            );
+        yield progress;
 
-          case 'Error':
-            yield ActivationProgress(
-              status: 'Activation failed',
-              errorMessage: status.details,
-              isComplete: true,
-              progressDetails: ActivationProgressDetails(
-                currentStep: ActivationStep.error,
-                stepCount: 6,
-                errorCode: 'ZHTLC_ACTIVATION_ERROR',
-                errorDetails: status.details,
-              ),
-            );
-            return;
-
-          // For any other progress states, fall through to default handler
-
-          default:
-            yield ActivationProgress(
-              status: status.details,
-              progressDetails: ActivationProgressDetails(
-                currentStep: ActivationStep.processing,
-                stepCount: 6,
-                additionalInfo: {
-                  'status': status.details,
-                  'lastKnownBlock': currentBlock,
-                },
-              ),
-            );
-        }
-
-        if (status.status == 'Ok') {
-          yield ActivationProgress.success(
-            details: ActivationProgressDetails(
-              currentStep: ActivationStep.complete,
-              stepCount: 6,
-              additionalInfo: {
-                'activatedChain': asset.id.name,
-                'activationTime': DateTime.now().toIso8601String(),
-                'finalBlock': currentBlock,
-              },
-            ),
-          );
+        if (progress.isComplete) {
+          emittedCompletion = true;
+          return;
         }
       }
 
       // If the task ended with an error status but without emitting a specific
       // error detail case, emit a failure result now.
-      if (lastStatus != null && lastStatus.status == 'Error') {
-        yield ActivationProgress(
-          status: 'Activation failed',
-          errorMessage: lastStatus.details,
-          isComplete: true,
-          progressDetails: ActivationProgressDetails(
-            currentStep: ActivationStep.error,
-            stepCount: 6,
-            errorCode: 'ZHTLC_ACTIVATION_ERROR',
-            errorDetails: lastStatus.details,
-          ),
+      if (!emittedCompletion &&
+          lastStatus != null &&
+          lastStatus.status == 'Error') {
+        final detail = progressEstimator.parse(lastStatus.details);
+        yield progressEstimator.estimate(
+          status: lastStatus,
+          asset: asset,
+          detail: detail,
         );
       }
     } catch (e, stack) {
-      yield ActivationProgress(
-        status: 'Activation failed',
-        errorMessage: e.toString(),
-        isComplete: true,
-        progressDetails: ActivationProgressDetails(
-          currentStep: ActivationStep.error,
-          stepCount: 6,
-          errorCode: 'ZHTLC_ACTIVATION_ERROR',
-          errorDetails: e.toString(),
-          stackTrace: stack.toString(),
-          additionalInfo: {
-            'errorType': e.runtimeType.toString(),
-            'timestamp': DateTime.now().toIso8601String(),
-          },
-        ),
-      );
+      yield ActivationProgressZhtlc.failure(e, stack);
     }
-  }
-
-  Future<int> _getCurrentBlock(String coin) async {
-    final resp = await client.rpc.transactionHistory.zCoinTxHistory(
-      coin: coin,
-      limit: 1,
-    );
-    return resp.currentBlock;
   }
 }
