@@ -1,0 +1,246 @@
+{
+  "mmrpc": "2.0",
+  "result": {
+    "asks": [
+      {
+        "coin": "DGB",
+        "address": {
+          "address_type": "Transparent",
+          "address_data": "DEsCggcN3WNmaTkF2WpqoMQqx4JGQrLbPS"
+        },
+        "price": {
+          "decimal": "0.0002658065",
+          "rational": [
+            [1, [531613]],
+            [1, [2000000000]]
+          ],
+          "fraction": {
+            "numer": "531613",
+            "denom": "2000000000"
+          }
+        },
+        "pubkey": "03de96cb66dcfaceaa8b3d4993ce8914cd5fe84e3fd53cefdae45add8032792a12",
+        "uuid": "1115d7f2-a7b9-4ab1-913f-497db2549a2b",
+        "is_mine": false,
+        "base_max_volume": {
+          "decimal": "90524.256020352",
+          "rational": [
+            [1, [2846113615, 164]],
+            [1, [7812500]]
+          ],
+          "fraction": {
+            "numer": "707220750159",
+            "denom": "7812500"
+          }
+        },
+        "base_min_volume": {
+          "decimal": "0.3762135237475381527539770472129161626973004798603495399849138376977237200745655204067620618758382508",
+          "rational": [
+            [1, [200000]],
+            [1, [531613]]
+          ],
+          "fraction": {
+            "numer": "200000",
+            "denom": "531613"
+          }
+        },
+        "rel_max_volume": {
+          "decimal": "24.061935657873693888",
+          "rational": [
+            [1, [4213143411, 87536811]],
+            [1, [3466432512, 3637978]]
+          ],
+          "fraction": {
+            "numer": "375967744654276467",
+            "denom": "15625000000000000"
+          }
+        },
+        "rel_min_volume": {
+          "decimal": "0.0001",
+          "rational": [
+            [1, [1]],
+            [1, [10000]]
+          ],
+          "fraction": {
+            "numer": "1",
+            "denom": "10000"
+          }
+        },
+        "conf_settings": {
+          "base_confs": 7,
+          "base_nota": false,
+          "rel_confs": 2,
+          "rel_nota": false
+        },
+        "base_max_volume_aggr": {
+          "decimal": "133319.023345413",
+          "rational": [
+            [1, [3238477573, 31040]],
+            [1, [1000000000]]
+          ],
+          "fraction": {
+            "numer": "133319023345413",
+            "denom": "1000000000"
+          }
+        },
+        "rel_max_volume_aggr": {
+          "decimal": "35.2500366381728643576",
+          "rational": [
+            [1, [473921343, 1669176307, 2]],
+            [1, [2436694016, 291038304]]
+          ],
+          "fraction": {
+            "numer": "44062545797716080447",
+            "denom": "1250000000000000000"
+          }
+        }
+      }
+    ],
+    "base": "DGB",
+    "bids": [
+      {
+        "coin": "DASH",
+        "address": {
+          "address_type": "Transparent",
+          "address_data": "XcYdfQgeuM5f5V2LNo9g8o8p3rPPbKwwCg"
+        },
+        "price": {
+          "decimal": "0.0002544075418788651605521516540338523799763700988224165198319218986992534200426899830070024093907274001",
+          "rational": [
+            [1, [1410065408, 2]],
+            [1, [3765089107, 9151]]
+          ],
+          "fraction": {
+            "numer": "10000000000",
+            "denom": "39307010814803"
+          }
+        },
+        "pubkey": "0315d9c51c657ab1be4ae9d3ab6e76a619d3bccfe830d5363fa168424c0d044732",
+        "uuid": "e9e4feb2-60b4-4184-8294-591687171e6b",
+        "is_mine": false,
+        "base_max_volume": {
+          "decimal": "15449.5309493280527473176",
+          "rational": [
+            [1, [161102659, 3869502237, 1046]],
+            [1, [2436694016, 291038304]]
+          ],
+          "fraction": {
+            "numer": "19311913686660065934147",
+            "denom": "1250000000000000000"
+          }
+        },
+        "base_min_volume": {
+          "decimal": "0.39307010814803",
+          "rational": [
+            [1, [3765089107, 9151]],
+            [1, [276447232, 23283]]
+          ],
+          "fraction": {
+            "numer": "39307010814803",
+            "denom": "100000000000000"
+          }
+        },
+        "rel_max_volume": {
+          "decimal": "3.930477192",
+          "rational": [
+            [1, [491309649]],
+            [1, [125000000]]
+          ],
+          "fraction": {
+            "numer": "491309649",
+            "denom": "125000000"
+          }
+        },
+        "rel_min_volume": {
+          "decimal": "0.0001",
+          "rational": [
+            [1, [1]],
+            [1, [10000]]
+          ],
+          "fraction": {
+            "numer": "1",
+            "denom": "10000"
+          }
+        },
+        "conf_settings": {
+          "base_confs": 7,
+          "base_nota": false,
+          "rel_confs": 2,
+          "rel_nota": false
+        },
+        "base_max_volume_aggr": {
+          "decimal": "15449.5309493280527473176",
+          "rational": [
+            [1, [161102659, 3869502237, 1046]],
+            [1, [2436694016, 291038304]]
+          ],
+          "fraction": {
+            "numer": "19311913686660065934147",
+            "denom": "1250000000000000000"
+          }
+        },
+        "rel_max_volume_aggr": {
+          "decimal": "3.930477192",
+          "rational": [
+            [1, [491309649]],
+            [1, [125000000]]
+          ],
+          "fraction": {
+            "numer": "491309649",
+            "denom": "125000000"
+          }
+        }
+      }
+    ],
+    "net_id": 8762,
+    "num_asks": 3,
+    "num_bids": 3,
+    "rel": "DASH",
+    "timestamp": 1694183345,
+    "total_asks_base_vol": {
+      "decimal": "133319.023345413",
+      "rational": [
+        [1, [3238477573, 31040]],
+        [1, [1000000000]]
+      ],
+      "fraction": {
+        "numer": "133319023345413",
+        "denom": "1000000000"
+      }
+    },
+    "total_asks_rel_vol": {
+      "decimal": "35.2500366381728643576",
+      "rational": [
+        [1, [473921343, 1669176307, 2]],
+        [1, [2436694016, 291038304]]
+      ],
+      "fraction": {
+        "numer": "44062545797716080447",
+        "denom": "1250000000000000000"
+      }
+    },
+    "total_bids_base_vol": {
+      "decimal": "59100.6554157135128550633",
+      "rational": [
+        [1, [1422777577, 2274178813, 32038]],
+        [1, [2313682944, 2328306436]]
+      ],
+      "fraction": {
+        "numer": "591006554157135128550633",
+        "denom": "10000000000000000000"
+      }
+    },
+    "total_bids_rel_vol": {
+      "decimal": "14.814675225",
+      "rational": [
+        [1, [592587009]],
+        [1, [40000000]]
+      ],
+      "fraction": {
+        "numer": "592587009",
+        "denom": "40000000"
+      }
+    }
+  },
+  "id": 42
+}

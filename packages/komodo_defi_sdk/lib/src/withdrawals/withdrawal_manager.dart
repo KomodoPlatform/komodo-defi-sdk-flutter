@@ -80,6 +80,7 @@ class WithdrawalManager {
     this._assetProvider,
     this._feeManager,
     this._activationCoordinator,
+    this._legacyManager,
   );
 
   /// Flag to enable/disable fee estimation features.
@@ -99,6 +100,7 @@ class WithdrawalManager {
   final IAssetProvider _assetProvider;
   final SharedActivationCoordinator _activationCoordinator;
   final FeeManager _feeManager;
+  final LegacyWithdrawalManager _legacyManager;
   final _activeWithdrawals = <int, StreamController<WithdrawalProgress>>{};
 
   /// Cancels an active withdrawal task.
@@ -485,29 +487,27 @@ class WithdrawalManager {
     WithdrawParameters parameters,
   ) async {
     try {
-      final asset =
-          _assetProvider.findAssetsByConfigId(parameters.asset).single;
+      final asset = _assetProvider
+          .findAssetsByConfigId(parameters.asset)
+          .single;
       final isTendermintProtocol = asset.protocol is TendermintProtocol;
 
       // Tendermint assets are not yet supported by the task-based API
       // and require a legacy implementation
       if (isTendermintProtocol) {
-        final legacyManager = LegacyWithdrawalManager(_client);
-        return await legacyManager.previewWithdrawal(parameters);
+        return await _legacyManager.previewWithdrawal(parameters);
       }
 
       final paramsWithFee = await _ensureFee(parameters, asset);
 
       // Use task-based approach for non-Tendermint assets
-      final stream = (await _client.rpc.withdraw.init(
-        paramsWithFee,
-      )).watch<WithdrawStatusResponse>(
-        getTaskStatus:
-            (int taskId) =>
+      final stream = (await _client.rpc.withdraw.init(paramsWithFee))
+          .watch<WithdrawStatusResponse>(
+            getTaskStatus: (int taskId) =>
                 _client.rpc.withdraw.status(taskId, forgetIfFinished: false),
-        isTaskComplete:
-            (WithdrawStatusResponse status) => status.status != 'InProgress',
-      );
+            isTaskComplete: (WithdrawStatusResponse status) =>
+                status.status != 'InProgress',
+          );
 
       final lastStatus = await stream.last;
 
@@ -610,15 +610,15 @@ class WithdrawalManager {
   Stream<WithdrawalProgress> withdraw(WithdrawParameters parameters) async* {
     int? taskId;
     try {
-      final asset =
-          _assetProvider.findAssetsByConfigId(parameters.asset).single;
+      final asset = _assetProvider
+          .findAssetsByConfigId(parameters.asset)
+          .single;
       final isTendermintProtocol = asset.protocol is TendermintProtocol;
 
       // Tendermint assets are not yet supported by the task-based API
       // and require a legacy implementation
       if (isTendermintProtocol) {
-        final legacyManager = LegacyWithdrawalManager(_client);
-        yield* legacyManager.withdraw(parameters);
+        yield* _legacyManager.withdraw(parameters);
         return;
       }
 
@@ -641,14 +641,12 @@ class WithdrawalManager {
       WithdrawStatusResponse? lastProgress;
 
       await for (final status in initResponse.watch<WithdrawStatusResponse>(
-        getTaskStatus:
-            (int taskId) async =>
-                lastProgress = await _client.rpc.withdraw.status(
-                  taskId,
-                  forgetIfFinished: false,
-                ),
-        isTaskComplete:
-            (WithdrawStatusResponse status) => status.status != 'InProgress',
+        getTaskStatus: (int taskId) async => lastProgress = await _client
+            .rpc
+            .withdraw
+            .status(taskId, forgetIfFinished: false),
+        isTaskComplete: (WithdrawStatusResponse status) =>
+            status.status != 'InProgress',
       )) {
         if (status.status == 'Error') {
           yield* Stream.error(

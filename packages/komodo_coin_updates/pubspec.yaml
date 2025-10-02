@@ -29,7 +29,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   freezed: ^3.0.4
-  hive_ce_generator: ^1.9.2
+  hive_ce_generator: ^1.9.3
   hive_test: ^1.0.1
   index_generator: ^4.0.1
   json_serializable: ^6.7.1

@@ -6,6 +6,7 @@ import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 import 'package:komodo_defi_sdk/src/balances/balance_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mutex/mutex.dart';
@@ -19,6 +20,7 @@ class ActivationManager {
     this._assetHistory,
     this._assetLookup,
     this._balanceManager,
+    this._configService,
     this._assetsUpdateManager,
   );
 
@@ -27,6 +29,7 @@ class ActivationManager {
   final AssetHistoryStorage _assetHistory;
   final IAssetLookup _assetLookup;
   final IBalanceManager _balanceManager;
+  final ActivationConfigService _configService;
   final KomodoAssetsUpdateManager _assetsUpdateManager;
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
@@ -82,7 +85,7 @@ class ActivationManager {
       yield ActivationProgress(
         status: 'Starting activation for ${group.primary.id.name}...',
         progressDetails: ActivationProgressDetails(
-          currentStep: 'group_start',
+          currentStep: ActivationStep.groupStart,
           stepCount: 1,
           additionalInfo: {
             'primaryAsset': group.primary.id.name,
@@ -102,6 +105,7 @@ class ActivationManager {
         final activator = ActivationStrategyFactory.createStrategy(
           _client,
           privKeyPolicy,
+          _configService,
         );
 
         await for (final progress in activator.activate(
@@ -161,7 +165,7 @@ class ActivationManager {
     return const ActivationProgress(
       status: 'Needs activation',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'init',
+        currentStep: ActivationStep.init,
         stepCount: 1,
       ),
     );

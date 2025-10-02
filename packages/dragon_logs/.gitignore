@@ -1,62 +1,8 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.idea/
-.vscode/
-*.iml
+# See https://www.dartlang.org/guides/libraries/private-files
 
-# Android related
-**/android/app/build/
-**/android/.gradle/
-**/android/captures/
-**/android/gradle-wrapper.jar
-**/android/local.properties
-**/android/.idea/
-**/android/.directory
-**/android/*/src/main/res/mipmap-*/.DS_Store
-**/android/*/src/main/res/drawable-*/.DS_Store
-**/android/*/src/main/res/drawable-*/.DS_Store
-**/android/*/src/main/res/raw/.DS_Store
-
-# iOS related
-**/ios/.generated/
-**/ios/.idea/
-**/ios/.vagrant/
-**/ios/.sconsign.dblite
-**/ios/.svn/
-**/ios/*xcuserdata
-**/ios/*.moved-aside
-**/ios/*.pbxuser
-**/ios/*.mode1v3
-**/ios/*.mode2v3
-**/ios/*.perspectivev3
-**/ios/Podfile.lock
-**/ios/Pods/
-**/ios/.*.sw?
-**/ios/*.bak
-**/ios/*~
-**/ios/.lock-wscript
-**/ios/Build/
-**/ios/DerivedData/
-**/ios/.DS_Store
-
-# Flutter/Dart related
+# Files and directories created by pub
 .dart_tool/
 .packages
-.pub/
-.pub-cache/
 build/
-**/doc/api/
-.flutter-plugins
-.flutter-plugins-dependencies
-flutter_export_environment.sh
-#Not required for packages
-/pubspec.lock
-
-# Exceptions to above rules.
-!**/ios/**/default.profraw
-
+/web/
+pubspec.lock

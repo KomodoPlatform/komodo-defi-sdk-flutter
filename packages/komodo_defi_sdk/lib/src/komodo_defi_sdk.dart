@@ -15,6 +15,7 @@ import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 
 /// A high-level SDK that provides a simple way to build cross-platform applications
 /// using the Komodo DeFi Framework, with a primary focus on wallet functionality.
@@ -151,12 +152,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     this._config,
     this._kdfFramework,
     this._onLog,
-  ) {
-    _container = GetIt.asNewInstance();
-    if (_kdfFramework != null && _onLog != null) {
-      _logSubscription = _kdfFramework!.logStream.listen(_onLog!);
-    }
-  }
+  ) : _container = GetIt.asNewInstance();
 
   final IKdfHostConfig? _hostConfig;
   final KomodoDefiSdkConfig _config;
@@ -166,7 +162,6 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   bool _isDisposed = false;
   Future<void>? _initializationFuture;
   final void Function(String)? _onLog;
-  StreamSubscription<String>? _logSubscription;
 
   /// The API client for making direct RPC calls.
   ///
@@ -199,6 +194,10 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Throws [StateError] if accessed before initialization.
   AddressOperations get addresses =>
       _assertSdkInitialized(_container<AddressOperations>());
+
+  /// Service for resolving/persisting activation configuration.
+  ActivationConfigService get activationConfigService =>
+      _assertSdkInitialized(_container<ActivationConfigService>());
 
   /// The asset manager instance.
   ///
@@ -288,9 +287,8 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   ///
   /// Subscribe to receive human-readable log messages from the underlying
   /// Komodo DeFi Framework. Requires the SDK to be initialized.
-  Stream<String> get logStream => _assertSdkInitialized(
-        _container<KomodoDefiFramework>().logStream,
-      );
+  Stream<String> get logStream =>
+      _assertSdkInitialized(_container<KomodoDefiFramework>().logStream);
 
   /// Initializes the SDK instance.
   ///
@@ -330,20 +328,26 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
   Future<void> _initialize() async {
     _assertNotDisposed();
+
+    log('KomodoDefiSdk: Starting initialization...', name: 'KomodoDefiSdk');
+    final stopwatch = Stopwatch()..start();
+
     await bootstrap(
       hostConfig: _hostConfig,
       config: _config,
       kdfFramework: _kdfFramework,
       container: _container,
-      // Let SDK manage onLog subscription itself to avoid duplication
-      externalLogger: null,
+      // Pass onLog callback to bootstrap for direct framework integration
+      externalLogger: _onLog,
     );
-    // Ensure consistent onLog subscription when framework is created by SDK
-    if (_onLog != null && _logSubscription == null) {
-      final framework = _container<KomodoDefiFramework>();
-      _logSubscription = framework.logStream.listen(_onLog!);
-    }
+
     _isInitialized = true;
+
+    stopwatch.stop();
+    log(
+      'KomodoDefiSdk: Initialization completed in ${stopwatch.elapsedMilliseconds}ms',
+      name: 'KomodoDefiSdk',
+    );
   }
 
   /// Gets the current user's authentication options.
@@ -395,16 +399,10 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     if (_isDisposed) return;
     _isDisposed = true;
 
-    // Always cancel log subscription even if SDK wasn't initialized
-    await _logSubscription?.cancel();
-    _logSubscription = null;
-
     if (!_isInitialized) return;
 
     _isInitialized = false;
     _initializationFuture = null;
-
-    // (Already cancelled above)
 
     await Future.wait([
       _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),

@@ -41,7 +41,7 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Activating ${asset.id.name}...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 2,
         additionalInfo: {
           'assetType': 'token',
@@ -70,7 +70,7 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
 
       yield ActivationProgress.success(
         details: ActivationProgressDetails(
-          currentStep: 'complete',
+          currentStep: ActivationStep.complete,
           stepCount: 2,
           additionalInfo: {
             'activatedChain': asset.id.name,
@@ -85,7 +85,7 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 2,
           errorCode: 'ERC20_ACTIVATION_ERROR',
           errorDetails: e.toString(),

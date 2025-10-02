@@ -50,7 +50,7 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Starting ${asset.id.name} activation...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 5,
         additionalInfo: {
           'chainType': protocol.subClass.formatted,
@@ -65,30 +65,31 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
         status: 'Validating protocol configuration...',
         progressPercentage: 20,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'validation',
+          currentStep: ActivationStep.validation,
           stepCount: 5,
         ),
       );
 
       final taskResponse = await client.rpc.erc20.enableEthInit(
         ticker: asset.id.id,
-        params: EthWithTokensActivationParams.fromJson(
-          asset.protocol.config,
-        ).copyWith(
-          erc20Tokens:
-              children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
-              [],
-          txHistory: const EtherscanProtocolHelper()
-              .shouldEnableTransactionHistory(asset),
-          privKeyPolicy: privKeyPolicy,
-        ),
+        params: EthWithTokensActivationParams.fromJson(asset.protocol.config)
+            .copyWith(
+              erc20Tokens:
+                  children
+                      ?.map((e) => TokensRequest(ticker: e.id.id))
+                      .toList() ??
+                  [],
+              txHistory: const EtherscanProtocolHelper()
+                  .shouldEnableTransactionHistory(asset),
+              privKeyPolicy: privKeyPolicy,
+            ),
       );
 
       yield ActivationProgress(
         status: 'Establishing network connections...',
         progressPercentage: 40,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'connection',
+          currentStep: ActivationStep.connection,
           stepCount: 5,
           additionalInfo: {
             'nodes': protocol.requiredServers.toJsonRequest(),
@@ -108,7 +109,7 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
           if (status.status == 'Ok') {
             yield ActivationProgress.success(
               details: ActivationProgressDetails(
-                currentStep: 'complete',
+                currentStep: ActivationStep.complete,
                 stepCount: 5,
                 additionalInfo: {
                   'activatedChain': asset.id.name,
@@ -123,7 +124,7 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
               errorMessage: status.details,
               isComplete: true,
               progressDetails: ActivationProgressDetails(
-                currentStep: 'error',
+                currentStep: ActivationStep.error,
                 stepCount: 5,
                 errorCode: 'ETH_TASK_ACTIVATION_ERROR',
                 errorDetails: status.details,
@@ -151,7 +152,7 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 5,
           errorCode: 'ETH_TASK_ACTIVATION_ERROR',
           errorDetails: e.toString(),
@@ -161,56 +162,61 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
     }
   }
 
-  ({String status, double percentage, String step, Map<String, dynamic> info})
+  ({
+    String status,
+    double percentage,
+    ActivationStep step,
+    Map<String, dynamic> info,
+  })
   _parseEthStatus(String status) {
     switch (status) {
       case 'ActivatingCoin':
         return (
           status: 'Activating platform coin...',
           percentage: 60,
-          step: 'coin_activation',
+          step: ActivationStep.platformActivation,
           info: {'activationType': 'platform'},
         );
       case 'RequestingWalletBalance':
         return (
           status: 'Requesting wallet balance...',
           percentage: 70,
-          step: 'balance_request',
+          step: ActivationStep.verification,
           info: {'dataType': 'balance'},
         );
       case 'ActivatingTokens':
         return (
           status: 'Activating ERC20 tokens...',
           percentage: 80,
-          step: 'token_activation',
+          step: ActivationStep.tokenActivation,
           info: {'activationType': 'tokens'},
         );
       case 'Finishing':
         return (
           status: 'Finalizing activation...',
           percentage: 90,
-          step: 'finalization',
+          step: ActivationStep.processing,
           info: {'stage': 'completion'},
         );
       case 'WaitingForTrezorToConnect':
         return (
           status: 'Waiting for Trezor device...',
           percentage: 50,
-          step: 'trezor_connection',
+          step: ActivationStep.connection,
           info: {'deviceType': 'Trezor', 'action': 'connect'},
         );
       case 'FollowHwDeviceInstructions':
         return (
           status: 'Follow instructions on hardware device',
           percentage: 55,
-          step: 'hardware_interaction',
+          step: ActivationStep.connection,
           info: {'deviceType': 'Hardware', 'action': 'follow_instructions'},
         );
       default:
         return (
           status: 'Processing activation...',
           percentage: 95,
-          step: 'processing',
+          step: ActivationStep.processing,
           info: {'status': status},
         );
     }
