@@ -32,6 +32,7 @@ export 'general/token_balance.dart';
 export 'general/wallet_info.dart';
 export 'hd_wallet/account_balance_info.dart';
 export 'hd_wallet/address_info.dart';
+export 'hd_wallet/address_path.dart';
 export 'hd_wallet/derivation_method.dart';
 export 'lightning/channel_info.dart';
 export 'networks/lightning/activation_params.dart';

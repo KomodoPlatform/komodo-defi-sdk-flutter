@@ -119,59 +119,58 @@ class _AssetHeaderWidgetState extends State<AssetHeaderWidget> {
 
     final message = await showDialog<String>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Sign Message'),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isHdWallet &&
-                      widget.pubkeys != null &&
-                      widget.pubkeys!.keys.isNotEmpty) ...[
-                    Text(
-                      'Using address: ${widget.pubkeys!.keys[0].address}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  TextFormField(
-                    controller: messageController,
-                    decoration: const InputDecoration(
-                      labelText: 'Message to sign',
-                      hintText: 'Enter a message to sign',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a message';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'The signature can be used to prove that you own this address.',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  if (formKey.currentState?.validate() == true) {
-                    Navigator.pop(context, messageController.text);
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Message'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isHdWallet &&
+                  widget.pubkeys != null &&
+                  widget.pubkeys!.keys.isNotEmpty) ...[
+                Text(
+                  'Using address: ${widget.pubkeys!.keys[0].address}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+              ],
+              TextFormField(
+                controller: messageController,
+                decoration: const InputDecoration(
+                  labelText: 'Message to sign',
+                  hintText: 'Enter a message to sign',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a message';
                   }
+                  return null;
                 },
-                child: const Text('Sign'),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'The signature can be used to prove that you own this address.',
+                style: TextStyle(fontSize: 12),
               ),
             ],
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() == true) {
+                Navigator.pop(context, messageController.text);
+              }
+            },
+            child: const Text('Sign'),
+          ),
+        ],
+      ),
     );
 
     if (message == null) return;
@@ -182,10 +181,9 @@ class _AssetHeaderWidgetState extends State<AssetHeaderWidget> {
           .read<KomodoDefiSdk>()
           .messageSigning
           .signMessage(
-            coin: widget.asset.id.id,
+            asset: widget.asset,
+            addressInfo: widget.pubkeys!.keys.first,
             message: message,
-            address: widget.pubkeys!.keys.first.address,
-            derivationPath: widget.pubkeys!.keys.first.derivationPath,
           );
       setState(() => _signedMessage = signature);
     } catch (e) {
@@ -241,21 +239,19 @@ class _AssetHeaderWidgetState extends State<AssetHeaderWidget> {
           currentUser: _currentUser,
           isSigningMessage: _isSigningMessage,
           isExportingPrivateKey: _isExportingPrivateKey,
-          onSend:
-              widget.pubkeys == null
-                  ? null
-                  : () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder:
-                            (context) => WithdrawalScreen(
-                              asset: widget.asset,
-                              pubkeys: widget.pubkeys!,
-                            ),
+          onSend: widget.pubkeys == null
+              ? null
+              : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (context) => WithdrawalScreen(
+                        asset: widget.asset,
+                        pubkeys: widget.pubkeys!,
                       ),
-                    );
-                  },
+                    ),
+                  );
+                },
           onReceive: () {},
           onSignMessage: _showSignMessageDialog,
           onExportPrivateKey: _exportPrivateKey,

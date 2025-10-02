@@ -1,9 +1,10 @@
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Manager for cryptographic message signing and verification operations.
 ///
-/// This class provides methods to sign messages using a coin's private key and
-/// verify messages that have been signed with a private key.
+/// This class provides methods to sign messages using an asset's private key
+/// and verify messages that have been signed with a private key.
 class MessageSigningManager {
   /// Creates a new message signing manager.
   ///
@@ -12,45 +13,47 @@ class MessageSigningManager {
 
   final ApiClient _client;
 
-  /// Signs a message with the private key of the specified coin.
+  /// Signs a message with the private key of the specified asset.
   ///
   /// This method creates a cryptographic signature that can be used to prove
   /// ownership of an address.
   ///
-  /// For HD wallets, you can optionally pass a specific derivation to sign
-  /// from using either a full `derivationPath` (preferred) or the
-  /// `accountId`/`chain`/`addressId` components.
-  ///
   /// Parameters:
-  /// - [coin]: The ticker of the coin to use for signing (e.g., "BTC").
+  /// - [asset]: The asset to use for signing.
+  /// - [addressInfo]: The pubkey/address info to sign with. Must be from the
+  ///   asset's pubkeys.
   /// - [message]: The message to sign.
-  /// - [address]: The address to sign the message with. The coin must be
-  ///  enabled and have this address in the current wallet.
-  ///
   ///
   /// Returns:
   /// A [Future] that completes with the signature as a string.
   ///
   /// Throws:
   /// - [Exception] if the signing operation fails for any reason.
-  /// - [UnknownAddressException] if the address is not associated with the
-  ///  specified coin.
+  ///
+  /// Example:
+  /// ```dart
+  /// final pubkeys = await sdk.pubkeys.getPubkeys(asset);
+  /// final signature = await sdk.messageSigning.signMessage(
+  ///   asset: asset,
+  ///   addressInfo: pubkeys.keys.first,
+  ///   message: 'Hello, world!',
+  /// );
+  /// ```
   Future<String> signMessage({
-    required String coin,
+    required Asset asset,
+    required PubkeyInfo addressInfo,
     required String message,
-    required String address,
-    String? derivationPath,
-    int? accountId,
-    String? chain,
-    int? addressId,
   }) async {
+    // Convert PubkeyInfo derivation path to AddressPath if present
+    AddressPath? addressPath;
+    if (addressInfo.derivationPath != null) {
+      addressPath = AddressPath.derivationPath(addressInfo.derivationPath!);
+    }
+
     final response = await _client.rpc.utility.signMessage(
-      coin: coin,
+      coin: asset.id.id,
       message: message,
-      derivationPath: derivationPath,
-      accountId: accountId,
-      chain: chain,
-      addressId: addressId,
+      addressPath: addressPath,
     );
     return response.signature;
   }
@@ -61,25 +64,35 @@ class MessageSigningManager {
   /// created by the private key corresponding to the specified address.
   ///
   /// Parameters:
-  /// - [coin]: The ticker of the coin to use for verification (e.g., "BTC").
+  /// - [asset]: The asset to use for verification.
   /// - [message]: The original message that was signed.
   /// - [signature]: The signature to verify.
   /// - [address]: The address that supposedly signed the message.
   ///
   /// Returns:
   /// A [Future] that completes with a boolean indicating whether the signature
-  ///  is valid.
+  /// is valid.
   ///
   /// Throws:
   /// - [Exception] if the verification operation fails for any reason.
+  ///
+  /// Example:
+  /// ```dart
+  /// final isValid = await sdk.messageSigning.verifyMessage(
+  ///   asset: asset,
+  ///   message: 'Hello, world!',
+  ///   signature: 'H8Jk+O21IJ0ob3p...',
+  ///   address: 'RXNtAyDSsY3DS3VxTpJegzoHU9bUX54j56',
+  /// );
+  /// ```
   Future<bool> verifyMessage({
-    required String coin,
+    required Asset asset,
     required String message,
     required String signature,
     required String address,
   }) async {
     final response = await _client.rpc.utility.verifyMessage(
-      coin: coin,
+      coin: asset.id.id,
       message: message,
       signature: signature,
       address: address,
@@ -95,7 +108,7 @@ class UnknownAddressException implements Exception {
   UnknownAddressException([
     this.message =
         'Unknown address. The specified address is not associated with the '
-            'coin. Ensure the coin is enabled and the address is generated.',
+        'coin. Ensure the coin is enabled and the address is generated.',
   ]);
 
   /// The error message associated with the exception.
