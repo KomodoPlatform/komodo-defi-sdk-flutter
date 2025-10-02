@@ -1,5 +1,7 @@
-import 'package:flutter/foundation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+
+part 'address_path.freezed.dart';
 
 /// Address path for HD wallet operations
 ///
@@ -8,15 +10,15 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// The AddressPath can be specified in two ways:
 /// 1. Using a full derivation path (e.g., "m/44'/141'/0'/0/0")
 /// 2. Using component parts: account_id, chain, and address_id
-@immutable
-class AddressPath {
+@freezed
+class AddressPath with _$AddressPath {
   /// Creates an AddressPath using a full derivation path
   ///
+  /// Format: m/44'/COIN_ID'/ACCOUNT_ID'/CHAIN/ADDRESS_ID
+  /// (or m/84'/COIN_ID'/ACCOUNT_ID'/CHAIN/ADDRESS_ID for segwit coins)
+  ///
   /// Example: `AddressPath.derivationPath("m/44'/141'/1'/0/3")`
-  const AddressPath.derivationPath(String this.derivationPath)
-    : accountId = null,
-      chain = null,
-      addressId = null;
+  const factory AddressPath.derivationPath(String path) = _DerivationPath;
 
   /// Creates an AddressPath using component parts
   ///
@@ -32,11 +34,13 @@ class AddressPath {
   ///   addressId: 3,
   /// )
   /// ```
-  const AddressPath.components({
-    required this.accountId,
-    required this.chain,
-    required this.addressId,
-  }) : derivationPath = null;
+  const factory AddressPath.components({
+    required int accountId,
+    required String chain,
+    required int addressId,
+  }) = _ComponentsPath;
+
+  const AddressPath._();
 
   /// Creates an AddressPath from JSON
   ///
@@ -67,69 +71,27 @@ class AddressPath {
     );
   }
 
-  /// The full BIP44 derivation path
-  ///
-  /// Format: m/44'/COIN_ID'/ACCOUNT_ID'/CHAIN/ADDRESS_ID
-  /// (or m/84'/COIN_ID'/ACCOUNT_ID'/CHAIN/ADDRESS_ID for segwit coins)
-  ///
-  /// Example: "m/44'/141'/0'/0/0"
-  final String? derivationPath;
-
-  /// The index of the account in the wallet, starting from 0
-  final int? accountId;
-
-  /// The chain: either "External" or "Internal"
-  ///
-  /// Expressed as an integer with External being 0 and Internal being 1
-  final String? chain;
-
-  /// The index of the address in the account, starting from 0
-  final int? addressId;
-
   /// Converts the AddressPath to JSON
   ///
   /// Returns either:
   /// - `{"derivation_path": "m/44'/141'/1'/0/3"}`
   /// - `{"account_id": 1, "chain": "External", "address_id": 3}`
   JsonMap toJson() {
-    if (derivationPath != null) {
-      return {'derivation_path': derivationPath};
-    }
-
-    return {'account_id': accountId, 'chain': chain, 'address_id': addressId};
+    return when(
+      derivationPath: (path) => {'derivation_path': path},
+      components: (accountId, chain, addressId) => {
+        'account_id': accountId,
+        'chain': chain,
+        'address_id': addressId,
+      },
+    );
   }
 
   /// Whether this AddressPath uses a derivation path
-  bool get usesDerivationPath => derivationPath != null;
+  bool get usesDerivationPath =>
+      maybeWhen(derivationPath: (_) => true, orElse: () => false);
 
   /// Whether this AddressPath uses component parts
-  bool get usesComponents => accountId != null;
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-
-    return other is AddressPath &&
-        other.derivationPath == derivationPath &&
-        other.accountId == accountId &&
-        other.chain == chain &&
-        other.addressId == addressId;
-  }
-
-  @override
-  int get hashCode {
-    return derivationPath.hashCode ^
-        accountId.hashCode ^
-        chain.hashCode ^
-        addressId.hashCode;
-  }
-
-  @override
-  String toString() {
-    if (usesDerivationPath) {
-      return 'AddressPath.derivationPath($derivationPath)';
-    }
-    return 'AddressPath.components('
-        'accountId: $accountId, chain: $chain, addressId: $addressId)';
-  }
+  bool get usesComponents =>
+      maybeWhen(components: (_, __, ___) => true, orElse: () => false);
 }
