@@ -294,9 +294,12 @@ class PubkeyManager implements IPubkeyManager {
   }
 
   /// Called when authentication state changes to do the following:
-  /// - clear active watchers
-  /// - indicate disconnection with state error to controllers
-  /// - restart the pubkey watchers for the active controllers WITHOUT auto-activation
+  /// - clear active watchers by canceling all subscriptions
+  /// - close all controllers after indicating disconnection with state error
+  /// - clear pubkey caches
+  ///
+  /// Note: This method does NOT restart watchers. New watchers will be created
+  /// on-demand when clients call watchPubkeys() again.
   Future<void> _resetState() async {
     _logger.fine('Resetting state');
     final stopwatch = Stopwatch()..start();
@@ -330,7 +333,9 @@ class PubkeyManager implements IPubkeyManager {
       if (!controller.isClosed) {
         // Add error to signal disconnection before closing
         controller.addError(
-          StateError('Wallet changed, reconnecting pubkey watchers'),
+          const WalletChangedDisconnectException(
+            'Wallet changed, reconnecting pubkey watchers',
+          ),
         );
 
         controllerCloseFutures.add(
@@ -374,7 +379,11 @@ class PubkeyManager implements IPubkeyManager {
         .toList();
     _activeWatchers.clear();
     for (final StreamSubscription<dynamic> subscription in watcherSubs) {
-      pending.add(subscription.cancel());
+      pending.add(
+        subscription.cancel().catchError((Object e, StackTrace s) {
+          _logger.warning('Error cancelling pubkey watcher', e, s);
+        }),
+      );
     }
 
     final List<StreamController<AssetPubkeys>> controllers = _pubkeysControllers
@@ -382,7 +391,11 @@ class PubkeyManager implements IPubkeyManager {
         .toList();
     _pubkeysControllers.clear();
     for (final StreamController<AssetPubkeys> controller in controllers) {
-      pending.add(controller.close());
+      pending.add(
+        controller.close().catchError((Object e, StackTrace s) {
+          _logger.warning('Error closing pubkey controller', e, s);
+        }),
+      );
     }
 
     try {

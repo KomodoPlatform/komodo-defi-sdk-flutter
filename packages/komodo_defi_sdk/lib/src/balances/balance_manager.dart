@@ -150,7 +150,9 @@ class BalanceManager implements IBalanceManager {
       if (!controller.isClosed) {
         // Add error to signal disconnection before closing
         controller.addError(
-          StateError('Wallet changed, reconnecting balance watchers'),
+          const WalletChangedDisconnectException(
+            'Wallet changed, reconnecting balance watchers',
+          ),
         );
 
         cleanupFutures.add(

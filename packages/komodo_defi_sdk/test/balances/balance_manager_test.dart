@@ -235,7 +235,7 @@ void main() {
 
       // Setup common mocks
       when(() => auth.currentUser).thenAnswer(
-        (_) async => KdfUser(
+        (_) async => const KdfUser(
           walletId: WalletId(
             name: 'test-wallet',
             authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
@@ -315,7 +315,7 @@ void main() {
         subscriptions.add(sub);
 
         // Allow controller creation
-        await Future<void>.delayed(Duration(milliseconds: 10));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
       }
 
       // Measure cleanup time
@@ -323,7 +323,7 @@ void main() {
 
       // Act: Trigger auth state change
       authChanges.add(
-        KdfUser(
+        const KdfUser(
           walletId: WalletId(
             name: 'new-wallet',
             authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
@@ -333,7 +333,7 @@ void main() {
       );
 
       // Wait for cleanup to complete
-      await Future<void>.delayed(Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       stopwatch.stop();
 
       // Assert: Cleanup should be fast (concurrent operations)
@@ -405,7 +405,7 @@ void main() {
         subscriptions.add(sub);
 
         // Allow watcher creation
-        await Future<void>.delayed(Duration(milliseconds: 10));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
       }
 
       // Measure cleanup time
@@ -413,7 +413,7 @@ void main() {
 
       // Act: Trigger auth state change
       authChanges.add(
-        KdfUser(
+        const KdfUser(
           walletId: WalletId(
             name: 'another-wallet',
             authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
@@ -423,7 +423,7 @@ void main() {
       );
 
       // Wait for cleanup to complete
-      await Future<void>.delayed(Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       stopwatch.stop();
 
       // Assert: Cleanup should be fast (concurrent operations)
@@ -493,13 +493,13 @@ void main() {
             .watchBalance(assetId)
             .listen((_) {}, onError: (_) {});
         normalSubs.add(sub);
-        await Future<void>.delayed(Duration(milliseconds: 10));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
       }
 
       // Act: Trigger auth state change - should not throw despite potential failures
       expect(() async {
         authChanges.add(
-          KdfUser(
+          const KdfUser(
             walletId: WalletId(
               name: 'resilient-wallet',
               authOptions: AuthOptions(
@@ -511,7 +511,7 @@ void main() {
         );
 
         // Wait for cleanup to complete
-        await Future<void>.delayed(Duration(milliseconds: 200));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
       }, returnsNormally);
 
       // Assert: The manager should continue to function after cleanup
@@ -563,7 +563,7 @@ void main() {
       final newSub = manager
           .watchBalance(newAssetId)
           .listen((_) {}, onError: (_) {});
-      await Future<void>.delayed(Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       await newSub.cancel();
 
       // Clean up normal subscriptions
@@ -627,14 +627,14 @@ void main() {
             .watchBalance(assetId)
             .listen((_) {}, onError: (_) {});
         subscriptions.add(sub);
-        await Future<void>.delayed(Duration(milliseconds: 5));
+        await Future<void>.delayed(const Duration(milliseconds: 5));
       }
 
       // Act: Measure concurrent cleanup time
       final stopwatch = Stopwatch()..start();
 
       authChanges.add(
-        KdfUser(
+        const KdfUser(
           walletId: WalletId(
             name: 'performance-wallet',
             authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
@@ -644,7 +644,7 @@ void main() {
       );
 
       // Wait for cleanup to complete
-      await Future<void>.delayed(Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       stopwatch.stop();
 
       // Assert: Concurrent cleanup should be reasonably fast
@@ -716,7 +716,7 @@ void main() {
             .watchBalance(assetId)
             .listen((_) {}, onError: (_) {});
         subscriptions.add(sub);
-        await Future<void>.delayed(Duration(milliseconds: 10));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
         // Populate cache by getting balance
         await manager.getBalance(assetId);
@@ -733,7 +733,7 @@ void main() {
 
       // Act: Trigger cleanup
       authChanges.add(
-        KdfUser(
+        const KdfUser(
           walletId: WalletId(
             name: 'clear-test-wallet',
             authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
@@ -742,7 +742,7 @@ void main() {
         ),
       );
 
-      await Future<void>.delayed(Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
 
       // Assert: Cache should be cleared (functional verification)
       for (final asset in assets) {
@@ -805,7 +805,7 @@ void main() {
           (_) async => KdfUser(
             walletId: WalletId(
               name: 'balance-wallet-$cycle',
-              authOptions: AuthOptions(
+              authOptions: const AuthOptions(
                 derivationMethod: DerivationMethod.iguana,
               ),
             ),
@@ -872,7 +872,7 @@ void main() {
         }
 
         // Allow resources to be created
-        await Future<void>.delayed(Duration(milliseconds: 20));
+        await Future<void>.delayed(const Duration(milliseconds: 20));
 
         // Trigger auth state change to next cycle
         if (cycle < cycleCount - 1) {
@@ -880,7 +880,7 @@ void main() {
             KdfUser(
               walletId: WalletId(
                 name: 'balance-wallet-${cycle + 1}',
-                authOptions: AuthOptions(
+                authOptions: const AuthOptions(
                   derivationMethod: DerivationMethod.iguana,
                 ),
               ),
@@ -889,7 +889,7 @@ void main() {
           );
 
           // Wait for cleanup to complete
-          await Future<void>.delayed(Duration(milliseconds: 100));
+          await Future<void>.delayed(const Duration(milliseconds: 100));
         }
 
         // Clean up subscriptions for this cycle
@@ -968,7 +968,7 @@ void main() {
       final finalSub = manager
           .watchBalance(finalAssetId)
           .listen((_) {}, onError: (_) {});
-      await Future<void>.delayed(Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       await finalSub.cancel();
     });
 
@@ -983,7 +983,7 @@ void main() {
           (_) async => KdfUser(
             walletId: WalletId(
               name: 'bal-sub-wallet-$cycle',
-              authOptions: AuthOptions(
+              authOptions: const AuthOptions(
                 derivationMethod: DerivationMethod.iguana,
               ),
             ),
@@ -1047,7 +1047,7 @@ void main() {
         }
 
         // Allow subscriptions to be established
-        await Future<void>.delayed(Duration(milliseconds: 30));
+        await Future<void>.delayed(const Duration(milliseconds: 30));
 
         // Trigger auth state change
         if (cycle < cycleCount - 1) {
@@ -1055,7 +1055,7 @@ void main() {
             KdfUser(
               walletId: WalletId(
                 name: 'bal-sub-wallet-${cycle + 1}',
-                authOptions: AuthOptions(
+                authOptions: const AuthOptions(
                   derivationMethod: DerivationMethod.iguana,
                 ),
               ),
@@ -1064,7 +1064,7 @@ void main() {
           );
 
           // Wait for cleanup to complete
-          await Future<void>.delayed(Duration(milliseconds: 150));
+          await Future<void>.delayed(const Duration(milliseconds: 150));
         }
 
         // Clean up subscriptions for this cycle
@@ -1101,7 +1101,7 @@ void main() {
         () => disposalAuth.authStateChanges,
       ).thenAnswer((_) => disposalAuthChanges.stream);
       when(() => disposalAuth.currentUser).thenAnswer(
-        (_) async => KdfUser(
+        (_) async => const KdfUser(
           walletId: WalletId(
             name: 'bal-disposal-wallet',
             authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
@@ -1221,7 +1221,7 @@ void main() {
           15; // Slightly lower for balance manager due to more complex mocking
 
       when(() => auth.currentUser).thenAnswer(
-        (_) async => KdfUser(
+        (_) async => const KdfUser(
           walletId: WalletId(
             name: 'bal-high-resource-wallet',
             authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
@@ -1287,7 +1287,7 @@ void main() {
 
         // Small delay to avoid overwhelming the system
         if (i % 5 == 0) {
-          await Future<void>.delayed(Duration(milliseconds: 10));
+          await Future<void>.delayed(const Duration(milliseconds: 10));
         }
       }
 
@@ -1295,7 +1295,7 @@ void main() {
       final stopwatch = Stopwatch()..start();
 
       authChanges.add(
-        KdfUser(
+        const KdfUser(
           walletId: WalletId(
             name: 'bal-high-resource-wallet-2',
             authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
@@ -1305,7 +1305,7 @@ void main() {
       );
 
       // Wait for cleanup to complete
-      await Future<void>.delayed(Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
       stopwatch.stop();
 
       // Assert: Cleanup should complete within reasonable time even with many resources
@@ -1367,7 +1367,7 @@ void main() {
       );
 
       when(() => auth.currentUser).thenAnswer(
-        (_) async => KdfUser(
+        (_) async => const KdfUser(
           walletId: WalletId(
             name: 'balance-benchmark-wallet',
             authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
@@ -1460,7 +1460,7 @@ void main() {
         }
 
         // Allow resources to be established
-        await Future<void>.delayed(Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
 
         // Act: Measure cleanup time
         final stopwatch = Stopwatch()..start();
@@ -1469,7 +1469,7 @@ void main() {
           KdfUser(
             walletId: WalletId(
               name: 'balance-benchmark-wallet-$resourceCount',
-              authOptions: AuthOptions(
+              authOptions: const AuthOptions(
                 derivationMethod: DerivationMethod.iguana,
               ),
             ),
@@ -1478,7 +1478,7 @@ void main() {
         );
 
         // Wait for cleanup to complete
-        await Future<void>.delayed(Duration(milliseconds: 200));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
         stopwatch.stop();
 
         performanceResults[resourceCount] = stopwatch.elapsedMilliseconds;
@@ -1489,7 +1489,7 @@ void main() {
         }
 
         // Small delay between tests
-        await Future<void>.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       }
 
       // Assert: Performance should scale reasonably
@@ -1583,13 +1583,13 @@ void main() {
         }
 
         // Allow resources to be established
-        await Future<void>.delayed(Duration(milliseconds: 30));
+        await Future<void>.delayed(const Duration(milliseconds: 30));
 
         // Act: Measure cleanup time
         final stopwatch = Stopwatch()..start();
 
         authChanges.add(
-          KdfUser(
+          const KdfUser(
             walletId: WalletId(
               name: 'balance-typical-usage-wallet',
               authOptions: AuthOptions(
@@ -1601,7 +1601,7 @@ void main() {
         );
 
         // Wait for cleanup to complete
-        await Future<void>.delayed(Duration(milliseconds: 150));
+        await Future<void>.delayed(const Duration(milliseconds: 150));
         stopwatch.stop();
 
         // Assert: Should complete within 1 second for typical usage
@@ -1693,7 +1693,7 @@ void main() {
           }
 
           // Allow resources to be established
-          await Future<void>.delayed(Duration(milliseconds: 40));
+          await Future<void>.delayed(const Duration(milliseconds: 40));
 
           // Act: Measure cleanup time
           final stopwatch = Stopwatch()..start();
@@ -1702,7 +1702,7 @@ void main() {
             KdfUser(
               walletId: WalletId(
                 name: 'balance-baseline-wallet-$run',
-                authOptions: AuthOptions(
+                authOptions: const AuthOptions(
                   derivationMethod: DerivationMethod.iguana,
                 ),
               ),
@@ -1711,7 +1711,7 @@ void main() {
           );
 
           // Wait for cleanup to complete
-          await Future<void>.delayed(Duration(milliseconds: 180));
+          await Future<void>.delayed(const Duration(milliseconds: 180));
           stopwatch.stop();
 
           measurements.add(stopwatch.elapsedMilliseconds);
@@ -1722,7 +1722,7 @@ void main() {
           }
 
           // Delay between runs
-          await Future<void>.delayed(Duration(milliseconds: 100));
+          await Future<void>.delayed(const Duration(milliseconds: 100));
         }
 
         // Calculate statistics
@@ -1826,13 +1826,13 @@ void main() {
       }
 
       // Allow resources to be established
-      await Future<void>.delayed(Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
       // Act: Measure concurrent cleanup time (current implementation)
       final concurrentStopwatch = Stopwatch()..start();
 
       authChanges.add(
-        KdfUser(
+        const KdfUser(
           walletId: WalletId(
             name: 'balance-concurrent-test-wallet',
             authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
@@ -1842,14 +1842,14 @@ void main() {
       );
 
       // Wait for cleanup to complete
-      await Future<void>.delayed(Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       concurrentStopwatch.stop();
 
       final concurrentTime = concurrentStopwatch.elapsedMilliseconds;
 
       // Estimate sequential time (would be roughly the sum of individual operations)
       // Each operation might take ~10-50ms, so sequential would be much slower
-      final estimatedSequentialTime =
+      const estimatedSequentialTime =
           resourceCount * 30; // Conservative estimate
 
       print('BalanceManager concurrent vs sequential comparison:');
