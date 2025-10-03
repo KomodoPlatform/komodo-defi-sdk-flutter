@@ -1,7 +1,7 @@
 {
     "api": {
-        "api_commit_hash": "a9fbf6096257b802e0aac4d936dcc5d2f0c28461",
-        "branch": "main",
+        "api_commit_hash": "476262f0d3390e24cfe672d5e15a78a46397dbfa",
+        "branch": "hotfix-remove-memorydb-size-metric",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
