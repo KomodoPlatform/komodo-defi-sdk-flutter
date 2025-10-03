@@ -622,7 +622,9 @@ void main() {
 
         // Start watch
         final events = <AssetPubkeys>[];
-        final sub = manager.watchPubkeys(asset).listen(events.add);
+        final sub = manager
+            .watchPubkeys(asset)
+            .listen(events.add, onError: (_) {});
 
         // Allow initial microtasks
         await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -876,7 +878,7 @@ void main() {
           signMessagePrefix: null,
         );
 
-        final sub = manager.watchPubkeys(asset).listen((_) {});
+        final sub = manager.watchPubkeys(asset).listen((_) {}, onError: (_) {});
         normalSubs.add(sub);
         await Future<void>.delayed(Duration(milliseconds: 10));
       }
@@ -922,7 +924,9 @@ void main() {
       );
 
       // This should work without throwing, indicating cleanup was resilient
-      final newSub = manager.watchPubkeys(newAsset).listen((_) {});
+      final newSub = manager
+          .watchPubkeys(newAsset)
+          .listen((_) {}, onError: (_) {});
       await Future<void>.delayed(Duration(milliseconds: 50));
       await newSub.cancel();
 
@@ -958,7 +962,7 @@ void main() {
           signMessagePrefix: null,
         );
 
-        final sub = manager.watchPubkeys(asset).listen((_) {});
+        final sub = manager.watchPubkeys(asset).listen((_) {}, onError: (_) {});
         subscriptions.add(sub);
         await Future<void>.delayed(Duration(milliseconds: 5));
       }
@@ -1020,7 +1024,7 @@ void main() {
         );
         assets.add(asset);
 
-        final sub = manager.watchPubkeys(asset).listen((_) {});
+        final sub = manager.watchPubkeys(asset).listen((_) {}, onError: (_) {});
         subscriptions.add(sub);
         await Future<void>.delayed(Duration(milliseconds: 10));
 
@@ -1240,7 +1244,9 @@ void main() {
       );
 
       // This should work without issues, indicating no memory leaks
-      final finalSub = manager.watchPubkeys(finalAsset).listen((_) {});
+      final finalSub = manager
+          .watchPubkeys(finalAsset)
+          .listen((_) {}, onError: (_) {});
       await Future<void>.delayed(Duration(milliseconds: 50));
       await finalSub.cancel();
     });
@@ -1413,7 +1419,9 @@ void main() {
           signMessagePrefix: null,
         );
 
-        final sub = disposalManager.watchPubkeys(asset).listen((_) {});
+        final sub = disposalManager
+            .watchPubkeys(asset)
+            .listen((_) {}, onError: (_) {});
         subscriptions.add(sub);
 
         // Populate cache
@@ -1498,7 +1506,7 @@ void main() {
           signMessagePrefix: null,
         );
 
-        final sub = manager.watchPubkeys(asset).listen((_) {});
+        final sub = manager.watchPubkeys(asset).listen((_) {}, onError: (_) {});
         subscriptions.add(sub);
 
         // Populate cache
@@ -1984,7 +1992,7 @@ void main() {
 
       // Estimate sequential time (would be roughly the sum of individual operations)
       // Each operation might take ~10-50ms, so sequential would be much slower
-      final estimatedSequentialTime =
+      const estimatedSequentialTime =
           resourceCount * 30; // Conservative estimate
 
       print('PubkeyManager concurrent vs sequential comparison:');

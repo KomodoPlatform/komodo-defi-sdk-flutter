@@ -169,7 +169,9 @@ void main() {
       });
 
       final events = <BalanceInfo>[];
-      final sub = manager.watchBalance(assetId).listen(events.add);
+      final sub = manager
+          .watchBalance(assetId)
+          .listen(events.add, onError: (_) {});
 
       // Let initial microtasks run
       await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -487,7 +489,9 @@ void main() {
           ),
         );
 
-        final sub = manager.watchBalance(assetId).listen((_) {});
+        final sub = manager
+            .watchBalance(assetId)
+            .listen((_) {}, onError: (_) {});
         normalSubs.add(sub);
         await Future<void>.delayed(Duration(milliseconds: 10));
       }
@@ -556,7 +560,9 @@ void main() {
       );
 
       // This should work without throwing, indicating cleanup was resilient
-      final newSub = manager.watchBalance(newAssetId).listen((_) {});
+      final newSub = manager
+          .watchBalance(newAssetId)
+          .listen((_) {}, onError: (_) {});
       await Future<void>.delayed(Duration(milliseconds: 50));
       await newSub.cancel();
 
@@ -617,7 +623,9 @@ void main() {
           ),
         );
 
-        final sub = manager.watchBalance(assetId).listen((_) {});
+        final sub = manager
+            .watchBalance(assetId)
+            .listen((_) {}, onError: (_) {});
         subscriptions.add(sub);
         await Future<void>.delayed(Duration(milliseconds: 5));
       }
@@ -704,7 +712,9 @@ void main() {
           ),
         );
 
-        final sub = manager.watchBalance(assetId).listen((_) {});
+        final sub = manager
+            .watchBalance(assetId)
+            .listen((_) {}, onError: (_) {});
         subscriptions.add(sub);
         await Future<void>.delayed(Duration(milliseconds: 10));
 
@@ -955,7 +965,9 @@ void main() {
       );
 
       // This should work without issues, indicating no memory leaks
-      final finalSub = manager.watchBalance(finalAssetId).listen((_) {});
+      final finalSub = manager
+          .watchBalance(finalAssetId)
+          .listen((_) {}, onError: (_) {});
       await Future<void>.delayed(Duration(milliseconds: 50));
       await finalSub.cancel();
     });
@@ -1154,7 +1166,9 @@ void main() {
           ),
         );
 
-        final sub = disposalManager.watchBalance(assetId).listen((_) {});
+        final sub = disposalManager
+            .watchBalance(assetId)
+            .listen((_) {}, onError: (_) {});
         subscriptions.add(sub);
 
         // Populate cache
@@ -1176,6 +1190,11 @@ void main() {
         isNotNull,
       );
 
+      // Clean up subscriptions first
+      for (final sub in subscriptions) {
+        await sub.cancel();
+      }
+
       // Act: Dispose the manager
       await disposalManager.dispose();
 
@@ -1193,11 +1212,6 @@ void main() {
         ),
         throwsA(isA<StateError>()),
       );
-
-      // Clean up subscriptions
-      for (final sub in subscriptions) {
-        await sub.cancel();
-      }
       await disposalAuthChanges.close();
     });
 
@@ -1263,7 +1277,9 @@ void main() {
           ),
         );
 
-        final sub = manager.watchBalance(assetId).listen((_) {});
+        final sub = manager
+            .watchBalance(assetId)
+            .listen((_) {}, onError: (_) {});
         subscriptions.add(sub);
 
         // Populate cache
