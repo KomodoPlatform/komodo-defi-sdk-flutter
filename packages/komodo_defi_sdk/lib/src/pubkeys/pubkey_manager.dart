@@ -296,39 +296,63 @@ class PubkeyManager implements IPubkeyManager {
   /// Called when authentication state changes to do the following:
   /// - clear active watchers
   /// - indicate disconnection with state error to controllers
-  /// - restart the pubkey watchers for the active controllers
+  /// - restart the pubkey watchers for the active controllers WITHOUT auto-activation
   Future<void> _resetState() async {
     _logger.fine('Resetting state');
-    // Cancel all active watchers
-    for (final subscription in _activeWatchers.values) {
-      await subscription.cancel();
-    }
+    final stopwatch = Stopwatch()..start();
+
+    // Cancel all active watchers concurrently
+    final List<StreamSubscription<dynamic>> watcherSubs = _activeWatchers.values
+        .toList();
     _activeWatchers.clear();
 
-    // Notify existing controllers with an error to signal reconnection
-    for (final controller in _pubkeysControllers.values) {
+    final List<Future<void>> subscriptionCancelFutures = <Future<void>>[];
+    for (final subscription in watcherSubs) {
+      subscriptionCancelFutures.add(
+        subscription.cancel().catchError((Object e, StackTrace s) {
+          _logger.warning('Error cancelling pubkey watcher', e, s);
+        }),
+      );
+    }
+
+    if (subscriptionCancelFutures.isNotEmpty) {
+      await Future.wait(subscriptionCancelFutures);
+    }
+
+    // Close all controllers concurrently
+    final List<StreamController<AssetPubkeys>> controllers = _pubkeysControllers
+        .values
+        .toList();
+    _pubkeysControllers.clear();
+
+    final List<Future<void>> controllerCloseFutures = <Future<void>>[];
+    for (final controller in controllers) {
       if (!controller.isClosed) {
+        // Add error to signal disconnection before closing
         controller.addError(
           StateError('Wallet changed, reconnecting pubkey watchers'),
         );
+
+        controllerCloseFutures.add(
+          controller.close().catchError((Object e, StackTrace s) {
+            _logger.warning('Error closing pubkey controller', e, s);
+          }),
+        );
       }
+    }
+
+    if (controllerCloseFutures.isNotEmpty) {
+      await Future.wait(controllerCloseFutures);
     }
 
     // Clear caches
     _pubkeysCache.clear();
 
-    // Restart pubkey watchers for controllers that remain open
-    final existingControllers =
-        Map<AssetId, StreamController<AssetPubkeys>>.from(_pubkeysControllers);
-    for (final entry in existingControllers.entries) {
-      final controller = entry.value;
-      if (controller.isClosed) continue;
-      final assetId = entry.key;
-      final asset = _watchedAssets[assetId];
-      if (asset != null) {
-        await _startWatchingPubkeys(asset, true);
-      }
-    }
+    stopwatch.stop();
+    _logger.fine(
+      'State reset completed in ${stopwatch.elapsedMilliseconds}ms '
+      '(subscriptions: ${watcherSubs.length}, controllers: ${controllers.length})',
+    );
   }
 
   /// Dispose of any resources
@@ -346,15 +370,16 @@ class PubkeyManager implements IPubkeyManager {
       pending.add(authSub.cancel());
     }
 
-    final List<StreamSubscription<dynamic>> watcherSubs =
-        _activeWatchers.values.toList();
+    final List<StreamSubscription<dynamic>> watcherSubs = _activeWatchers.values
+        .toList();
     _activeWatchers.clear();
     for (final StreamSubscription<dynamic> subscription in watcherSubs) {
       pending.add(subscription.cancel());
     }
 
-    final List<StreamController<AssetPubkeys>> controllers =
-        _pubkeysControllers.values.toList();
+    final List<StreamController<AssetPubkeys>> controllers = _pubkeysControllers
+        .values
+        .toList();
     _pubkeysControllers.clear();
     for (final StreamController<AssetPubkeys> controller in controllers) {
       pending.add(controller.close());
