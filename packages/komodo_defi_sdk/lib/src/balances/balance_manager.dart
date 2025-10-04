@@ -126,33 +126,53 @@ class BalanceManager implements IBalanceManager {
   /// Reset all internal state when wallet changes
   Future<void> _resetState() async {
     _logger.fine('Resetting state');
-    // Cancel all active watchers
-    for (final subscription in _activeWatchers.values) {
-      await subscription.cancel();
-    }
+    final stopwatch = Stopwatch()..start();
+
+    final List<Future<void>> cleanupFutures = <Future<void>>[];
+    final List<StreamSubscription<dynamic>> watcherSubs = _activeWatchers.values
+        .toList();
     _activeWatchers.clear();
 
-    // Add errors to existing controllers to signal disconnection
-    for (final controller in _balanceControllers.values) {
+    for (final subscription in watcherSubs) {
+      cleanupFutures.add(
+        subscription.cancel().catchError((Object e, StackTrace s) {
+          _logger.warning('Error cancelling balance watcher', e, s);
+        }),
+      );
+    }
+
+    final List<StreamController<BalanceInfo>> controllers = _balanceControllers
+        .values
+        .toList();
+    _balanceControllers.clear();
+
+    for (final controller in controllers) {
       if (!controller.isClosed) {
+        // Add error to signal disconnection before closing
         controller.addError(
-          StateError('Wallet changed, reconnecting balance watchers'),
+          const WalletChangedDisconnectException(
+            'Wallet changed, reconnecting balance watchers',
+          ),
+        );
+
+        cleanupFutures.add(
+          controller.close().catchError((Object e, StackTrace s) {
+            _logger.warning('Error closing balance controller', e, s);
+          }),
         );
       }
     }
 
-    // Clear caches
-    _balanceCache.clear();
-
-    // Restart balance watchers for existing controllers with the new wallet
-    final existingWatches = Map<AssetId, StreamController<BalanceInfo>>.from(
-      _balanceControllers,
-    );
-    for (final entry in existingWatches.entries) {
-      if (!entry.value.isClosed) {
-        _startWatchingBalance(entry.key, true);
-      }
+    if (cleanupFutures.isNotEmpty) {
+      await Future.wait(cleanupFutures);
     }
+
+    _balanceCache.clear();
+    stopwatch.stop();
+    _logger.fine(
+      'State reset completed in ${stopwatch.elapsedMilliseconds}ms '
+      '(${watcherSubs.length} subscriptions, ${controllers.length} controllers)',
+    );
   }
 
   @override
