@@ -50,6 +50,7 @@ export 'nft/nft_metadata.dart';
 export 'nft/nft_transfer.dart';
 export 'nft/nft_transfer_filter.dart';
 export 'nft/withdraw_nft_data.dart';
+export 'orderbook/order_address.dart';
 export 'orderbook/order_info.dart';
 export 'orderbook/order_type.dart';
 export 'orderbook/request_by.dart';

@@ -43,7 +43,7 @@ class TendermintTokenActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Activating ${asset.id.name} token...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 3,
         additionalInfo: {
           'assetType': 'token',
@@ -58,7 +58,7 @@ class TendermintTokenActivationStrategy extends ProtocolActivationStrategy {
         status: 'Configuring token activation...',
         progressPercentage: 33,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'configuration',
+          currentStep: ActivationStep.processing,
           stepCount: 3,
           additionalInfo: {
             'method': 'enable_tendermint_token',
@@ -78,14 +78,14 @@ class TendermintTokenActivationStrategy extends ProtocolActivationStrategy {
         status: 'Finalizing activation...',
         progressPercentage: 66,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'finalization',
+          currentStep: ActivationStep.processing,
           stepCount: 3,
         ),
       );
 
       yield ActivationProgress.success(
         details: ActivationProgressDetails(
-          currentStep: 'complete',
+          currentStep: ActivationStep.complete,
           stepCount: 3,
           additionalInfo: {
             'activatedToken': asset.id.name,
@@ -101,7 +101,7 @@ class TendermintTokenActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 3,
           errorCode: 'TENDERMINT_TOKEN_ACTIVATION_ERROR',
           errorDetails: e.toString(),

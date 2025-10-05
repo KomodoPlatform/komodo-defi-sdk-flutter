@@ -80,10 +80,9 @@ class KdfOperationsWasm implements IKdfOperations {
     return _startupLock.protect(() async {
       await _ensureLoaded();
 
-      final jsConfig = {
-        'conf': config,
-        'log_level': logLevel ?? 3,
-      }.jsify() as js_interop.JSObject?;
+      final jsConfig =
+          {'conf': config, 'log_level': logLevel ?? 3}.jsify()
+              as js_interop.JSObject?;
 
       try {
         return await _executeKdfMain(jsConfig);
@@ -198,8 +197,10 @@ class KdfOperationsWasm implements IKdfOperations {
     try {
       // Call mm2_stop which may return a Promise or a direct value
       final jsAny = _kdfModule!.callMethod<js_interop.JSAny?>('mm2_stop'.toJS);
-      final status =
-          await parseJsInteropMaybePromise(jsAny, js_maps.mapJsStopResult);
+      final status = await parseJsInteropMaybePromise(
+        jsAny,
+        js_maps.mapJsStopResult,
+      );
 
       // Ensure the node actually stops when we expect success or already stopped
       if (status == StopStatus.ok || status == StopStatus.stoppingAlready) {
@@ -241,8 +242,9 @@ class KdfOperationsWasm implements IKdfOperations {
     request['userpass'] = _config.rpcPassword;
 
     final jsRequest = request.jsify() as js_interop.JSObject?;
-    final jsPromise = _kdfModule!.callMethod('mm2_rpc'.toJS, jsRequest)
-        as js_interop.JSPromise?;
+    final jsPromise =
+        _kdfModule!.callMethod('mm2_rpc'.toJS, jsRequest)
+            as js_interop.JSPromise?;
 
     if (jsPromise == null || jsPromise.isUndefinedOrNull) {
       throw Exception(
@@ -251,21 +253,21 @@ class KdfOperationsWasm implements IKdfOperations {
       );
     }
 
-    final jsResponse = await jsPromise.toDart
-        .then((value) => value)
-        .catchError((Object error) {
-      if (error.toString().contains('RethrownDartError')) {
-        final errorMessage = error.toString().split('\n')[0];
+    final jsResponse = await jsPromise.toDart.then((value) => value).catchError(
+      (Object error) {
+        if (error.toString().contains('RethrownDartError')) {
+          final errorMessage = error.toString().split('\n')[0];
+          throw Exception(
+            'JavaScript error for method ${request['method']}: $errorMessage'
+            '\nRequest: $request',
+          );
+        }
         throw Exception(
-          'JavaScript error for method ${request['method']}: $errorMessage'
+          'Unknown error for method ${request['method']}: $error'
           '\nRequest: $request',
         );
-      }
-      throw Exception(
-        'Unknown error for method ${request['method']}: $error'
-        '\nRequest: $request',
-      );
-    });
+      },
+    );
 
     if (jsResponse == null || jsResponse.isUndefinedOrNull) {
       throw Exception(
@@ -356,10 +358,11 @@ class KdfOperationsWasm implements IKdfOperations {
 
   Future<void> _injectLibrary() async {
     try {
-      _kdfModule = (await js_interop
-              .importModule('./$_kdfJsBootstrapperPath'.toJS)
-              .toDart)
-          .getProperty('kdf'.toJS);
+      _kdfModule =
+          (await js_interop
+                  .importModule('./$_kdfJsBootstrapperPath'.toJS)
+                  .toDart)
+              .getProperty('kdf'.toJS);
 
       _log('KDF library loaded successfully');
     } catch (e) {
@@ -392,6 +395,13 @@ class KdfOperationsWasm implements IKdfOperations {
 
       throw Exception(message);
     }
+  }
+
+  @override
+  void dispose() {
+    // Clean up any resources used by the WASM operations
+    _kdfModule = null;
+    _libraryLoaded = false;
   }
 }
 

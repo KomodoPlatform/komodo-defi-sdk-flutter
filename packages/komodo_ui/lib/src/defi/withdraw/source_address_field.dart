@@ -167,7 +167,7 @@ class _LoadingState extends StatelessWidget {
             Text(
               'Fetching your ${asset.id.name} addresses',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
               ),
             ),
           ],

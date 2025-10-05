@@ -52,7 +52,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         status:
             'Activating ${asset.id.name} with ${children!.length} tokens...',
         progressDetails: ActivationProgressDetails(
-          currentStep: 'initialization',
+          currentStep: ActivationStep.initialization,
           stepCount: 3,
           additionalInfo: {
             'assetType': 'platform',
@@ -65,7 +65,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
       yield ActivationProgress(
         status: 'Activating ${asset.id.name}...',
         progressDetails: ActivationProgressDetails(
-          currentStep: 'initialization',
+          currentStep: ActivationStep.initialization,
           stepCount: 3,
           additionalInfo: {
             'assetType': 'platform',
@@ -80,7 +80,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         status: 'Configuring platform activation...',
         progressPercentage: 33,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'configuration',
+          currentStep: ActivationStep.processing,
           stepCount: 3,
           additionalInfo: {
             'method': 'enableEthWithTokens',
@@ -91,30 +91,31 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
 
       await client.rpc.erc20.enableEthWithTokens(
         ticker: asset.id.id,
-        params: EthWithTokensActivationParams.fromJson(
-          asset.protocol.config,
-        ).copyWith(
-          erc20Tokens:
-              children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
-              [],
-          txHistory: const EtherscanProtocolHelper()
-              .shouldEnableTransactionHistory(asset),
-          privKeyPolicy: privKeyPolicy,
-        ),
+        params: EthWithTokensActivationParams.fromJson(asset.protocol.config)
+            .copyWith(
+              erc20Tokens:
+                  children
+                      ?.map((e) => TokensRequest(ticker: e.id.id))
+                      .toList() ??
+                  [],
+              txHistory: const EtherscanProtocolHelper()
+                  .shouldEnableTransactionHistory(asset),
+              privKeyPolicy: privKeyPolicy,
+            ),
       );
 
       yield const ActivationProgress(
         status: 'Finalizing activation...',
         progressPercentage: 66,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'finalization',
+          currentStep: ActivationStep.processing,
           stepCount: 3,
         ),
       );
 
       yield ActivationProgress.success(
         details: ActivationProgressDetails(
-          currentStep: 'complete',
+          currentStep: ActivationStep.complete,
           stepCount: 3,
           additionalInfo: {
             'activatedChain': asset.id.name,
@@ -130,7 +131,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 3,
           errorCode: 'ETH_WITH_TOKENS_ACTIVATION_ERROR',
           errorDetails: e.toString(),

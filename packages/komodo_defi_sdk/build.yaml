@@ -1,5 +1,10 @@
 targets:
   $default:
     sources:
-      exclude:
-        - "example/**"
+      - lib/**
+      - pubspec.yaml
+    builders:
+      hive_ce_generator:
+        enabled: true
+        generate_for:
+          - lib/src/**.dart

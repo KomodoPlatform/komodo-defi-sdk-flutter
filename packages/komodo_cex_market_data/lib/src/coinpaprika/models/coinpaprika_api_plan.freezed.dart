@@ -281,7 +281,7 @@ return enterprise(_that.ohlcHistoricalDataLimit,_that.availableIntervals,_that.m
 @JsonSerializable()
 
 class _FreePlan extends CoinPaprikaApiPlan {
-  const _FreePlan({this.ohlcHistoricalDataLimit = const Duration(days: 365), final  List<String> availableIntervals = const ['24h', '1d', '7d', '14d', '30d', '90d', '365d'], this.monthlyCallLimit = 20000, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'free',super._();
+  const _FreePlan({this.ohlcHistoricalDataLimit = const Duration(days: 365), final  List<String> availableIntervals = CoinPaprikaIntervals.freeDefaults, this.monthlyCallLimit = 20000, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'free',super._();
   factory _FreePlan.fromJson(Map<String, dynamic> json) => _$FreePlanFromJson(json);
 
 @override@JsonKey() final  Duration ohlcHistoricalDataLimit;
@@ -364,7 +364,7 @@ as int,
 @JsonSerializable()
 
 class _StarterPlan extends CoinPaprikaApiPlan {
-  const _StarterPlan({this.ohlcHistoricalDataLimit = const Duration(days: 1825), final  List<String> availableIntervals = const ['24h', '1d', '7d', '14d', '30d', '90d', '365d', '1h', '2h', '3h', '6h', '12h', '5m', '10m', '15m', '30m', '45m'], this.monthlyCallLimit = 400000, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'starter',super._();
+  const _StarterPlan({this.ohlcHistoricalDataLimit = const Duration(days: 1825), final  List<String> availableIntervals = CoinPaprikaIntervals.premiumDefaults, this.monthlyCallLimit = 400000, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'starter',super._();
   factory _StarterPlan.fromJson(Map<String, dynamic> json) => _$StarterPlanFromJson(json);
 
 @override@JsonKey() final  Duration ohlcHistoricalDataLimit;
@@ -449,7 +449,7 @@ as int,
 @JsonSerializable()
 
 class _ProPlan extends CoinPaprikaApiPlan {
-  const _ProPlan({this.ohlcHistoricalDataLimit, final  List<String> availableIntervals = const ['24h', '1d', '7d', '14d', '30d', '90d', '365d', '1h', '2h', '3h', '6h', '12h', '5m', '10m', '15m', '30m', '45m'], this.monthlyCallLimit = 1000000, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'pro',super._();
+  const _ProPlan({this.ohlcHistoricalDataLimit, final  List<String> availableIntervals = CoinPaprikaIntervals.premiumDefaults, this.monthlyCallLimit = 1000000, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'pro',super._();
   factory _ProPlan.fromJson(Map<String, dynamic> json) => _$ProPlanFromJson(json);
 
 @override final  Duration? ohlcHistoricalDataLimit;
@@ -534,7 +534,7 @@ as int,
 @JsonSerializable()
 
 class _BusinessPlan extends CoinPaprikaApiPlan {
-  const _BusinessPlan({this.ohlcHistoricalDataLimit, final  List<String> availableIntervals = const ['24h', '1d', '7d', '14d', '30d', '90d', '365d', '1h', '2h', '3h', '6h', '12h', '5m', '10m', '15m', '30m', '45m'], this.monthlyCallLimit = 5000000, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'business',super._();
+  const _BusinessPlan({this.ohlcHistoricalDataLimit, final  List<String> availableIntervals = CoinPaprikaIntervals.premiumDefaults, this.monthlyCallLimit = 5000000, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'business',super._();
   factory _BusinessPlan.fromJson(Map<String, dynamic> json) => _$BusinessPlanFromJson(json);
 
 @override final  Duration? ohlcHistoricalDataLimit;
@@ -619,7 +619,7 @@ as int,
 @JsonSerializable()
 
 class _UltimatePlan extends CoinPaprikaApiPlan {
-  const _UltimatePlan({this.ohlcHistoricalDataLimit, final  List<String> availableIntervals = const ['24h', '1d', '7d', '14d', '30d', '90d', '365d', '1h', '2h', '3h', '6h', '12h', '5m', '10m', '15m', '30m', '45m'], this.monthlyCallLimit = 10000000, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'ultimate',super._();
+  const _UltimatePlan({this.ohlcHistoricalDataLimit, final  List<String> availableIntervals = CoinPaprikaIntervals.premiumDefaults, this.monthlyCallLimit = 10000000, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'ultimate',super._();
   factory _UltimatePlan.fromJson(Map<String, dynamic> json) => _$UltimatePlanFromJson(json);
 
 @override final  Duration? ohlcHistoricalDataLimit;
@@ -704,7 +704,7 @@ as int,
 @JsonSerializable()
 
 class _EnterprisePlan extends CoinPaprikaApiPlan {
-  const _EnterprisePlan({this.ohlcHistoricalDataLimit, final  List<String> availableIntervals = const ['24h', '1d', '7d', '14d', '30d', '90d', '365d', '1h', '2h', '3h', '6h', '12h', '5m', '10m', '15m', '30m', '45m'], this.monthlyCallLimit, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'enterprise',super._();
+  const _EnterprisePlan({this.ohlcHistoricalDataLimit, final  List<String> availableIntervals = CoinPaprikaIntervals.premiumDefaults, this.monthlyCallLimit, final  String? $type}): _availableIntervals = availableIntervals,$type = $type ?? 'enterprise',super._();
   factory _EnterprisePlan.fromJson(Map<String, dynamic> json) => _$EnterprisePlanFromJson(json);
 
 @override final  Duration? ohlcHistoricalDataLimit;

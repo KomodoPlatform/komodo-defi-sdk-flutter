@@ -16,18 +16,10 @@ class KdfOperationsRemote implements IKdfOperations {
     required Uri rpcUrl,
     required String userpass,
   }) {
-    return KdfOperationsRemote._(
-      logCallback,
-      rpcUrl,
-      userpass,
-    );
+    return KdfOperationsRemote._(logCallback, rpcUrl, userpass);
   }
 
-  KdfOperationsRemote._(
-    this._logCallback,
-    this._rpcUrl,
-    this._userpass,
-  );
+  KdfOperationsRemote._(this._logCallback, this._rpcUrl, this._userpass);
   final void Function(String) _logCallback;
   final String _userpass;
 
@@ -97,7 +89,8 @@ class KdfOperationsRemote implements IKdfOperations {
 
   @override
   Future<KdfStartupResult> kdfMain(JsonMap startParams, {int? logLevel}) async {
-    const message = 'KDF cannot be started using Remote client. '
+    const message =
+        'KDF cannot be started using Remote client. '
         'Please start the KDF on the remote server manually.';
     _log(message);
 
@@ -114,9 +107,7 @@ class KdfOperationsRemote implements IKdfOperations {
   @override
   Future<StopStatus> kdfStop() async {
     try {
-      final stopResultResponse = await mm2Rpc({
-        'method': 'stop',
-      });
+      final stopResultResponse = await mm2Rpc({'method': 'stop'});
 
       _log('stopResultResponse: $stopResultResponse');
 
@@ -164,17 +155,16 @@ class KdfOperationsRemote implements IKdfOperations {
     try {
       response = await http.post(_baseUrl, body: json.encode(request));
     } on http.ClientException catch (e) {
-      return ConnectionError(
-        e.message,
-        originalException: e,
-      );
+      return ConnectionError(e.message, originalException: e);
     }
 
     if (response.statusCode != 200) {
       return JsonRpcErrorResponse(
         code: response.statusCode,
-        error: {'error': 'HTTP Error', 'status': response.statusCode}
-            .toJsonString(),
+        error: {
+          'error': 'HTTP Error',
+          'status': response.statusCode,
+        }.toJsonString(),
         message: response.body,
       );
     }
@@ -206,5 +196,10 @@ class KdfOperationsRemote implements IKdfOperations {
     } on http.ClientException {
       return null;
     }
+  }
+
+  @override
+  void dispose() {
+    // No-op for remote operations - HTTP client is managed externally
   }
 }
