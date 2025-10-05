@@ -5,14 +5,20 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 class SignMessageRequest
     extends BaseRequest<SignMessageResponse, GeneralErrorResponse> {
   /// Creates a new request to sign a message
+  ///
+  /// [coin] - The coin to sign a message with
+  /// [message] - The message you want to sign
+  /// [addressPath] - Optional HD wallet address path (for HD wallets only)
+  ///
+  /// For non-HD wallets, omit the [addressPath] parameter.
+  /// For HD wallets, provide an [AddressPath] using either:
+  /// - `AddressPath.derivationPath("m/44'/141'/0'/0/0")`
+  /// - `AddressPath.components(accountId: 0, chain: 'External', addressId: 0)`
   SignMessageRequest({
     required String rpcPass,
     required this.coin,
     required this.message,
-    this.derivationPath,
-    this.accountId,
-    this.chain,
-    this.addressId,
+    this.addressPath,
   }) : super(method: 'sign_message', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// The coin to sign a message with
@@ -21,39 +27,19 @@ class SignMessageRequest
   /// The message you want to sign
   final String message;
 
-  /// Optional HD address selector: full derivation path
-  /// Example: m/84'/2'/0'/0/1
-  final String? derivationPath;
-
-  /// Optional HD address selector components
-  /// When provided together with [chain], [addressId] they form the BIP44 path
-  /// m/44'/COIN_ID'/accountId'/chain/addressId
-  final int? accountId;
-
-  /// Optional HD address selector chain. Must be "Internal" or "External" if provided.
-  final String? chain;
-
-  /// Optional HD address selector: address index within the chain
-  final int? addressId;
+  /// Optional HD address path selector
+  ///
+  /// For HD wallets only. If not provided, the root derivation path will be used.
+  /// See [AddressPath] for more details.
+  final AddressPath? addressPath;
 
   @override
   Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{
-      'coin': coin,
-      'message': message,
-    };
+    final params = <String, dynamic>{'coin': coin, 'message': message};
 
-    // HD address selection (preferred nested under 'address')
-    final address = <String, dynamic>{};
-    if (derivationPath != null && derivationPath!.isNotEmpty) {
-      address['derivation_path'] = derivationPath;
-    } else if (accountId != null && chain != null && addressId != null) {
-      address['account_id'] = accountId;
-      address['chain'] = chain;
-      address['address_id'] = addressId;
-    }
-    if (address.isNotEmpty) {
-      params['address'] = address;
+    // Add HD address path if provided
+    if (addressPath != null) {
+      params['address'] = addressPath!.toJson();
     }
 
     return super.toJson().deepMerge({'params': params});
