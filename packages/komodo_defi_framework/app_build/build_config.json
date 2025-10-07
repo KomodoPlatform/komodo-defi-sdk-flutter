@@ -7,7 +7,7 @@
         "source_urls": [
             "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework",
             "https://sdk.devbuilds.komodo.earth/",
-           "https://nebula.decker.im/kdf"
+            "https://nebula.decker.im/"
         ],
         "platforms": {
             "web": {
