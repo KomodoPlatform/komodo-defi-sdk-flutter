@@ -70,7 +70,7 @@ class DevBuildsArtefactDownloader implements ArtefactDownloader {
               // Build absolute URL respecting whether href is absolute or relative
               final resolvedUrl = href.startsWith('http')
                   ? href
-                  : path.join(listingUrl, fileName).replaceAll('\\', '/');
+                  : Uri.parse(listingUrl).resolve(fileName).toString();
               return resolvedUrl;
             }
           }

@@ -33,7 +33,7 @@ void main(List<String> arguments) async {
       'branch',
       abbr: 'b',
       help: 'Branch to fetch commit from',
-      defaultsTo: 'master',
+      defaultsTo: 'main',
     )
     ..addOption(
       'repo',
