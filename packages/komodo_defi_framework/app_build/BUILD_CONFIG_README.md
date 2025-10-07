@@ -40,6 +40,39 @@ Paths in the config are relative to that package directory.
 - Use `--concurrent` for faster downloads in development
 - Override behavior per build via env `OVERRIDE_DEFI_API_DOWNLOAD=true|false`
 
+### Using Nebula mirror and short commit hashes
+
+- You can add Nebula as an additional source in `api.source_urls`:
+
+```
+"source_urls": [
+    "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework",
+    "https://sdk.devbuilds.komodo.earth/",
+    "https://nebula.decker.im/kdf"
+]
+```
+
+- The downloader supports directory listings that are either branch-scoped (e.g., `.../dev/`) or flat. It searches for artifacts that match the platform patterns and contain either the full commit hash or a 7-char short hash.
+- To pin a specific commit (e.g., `4025b8c`) without changing branches, update `api.api_commit_hash` or use the CLI with `--commit`:
+
+```bash
+dart run packages/komodo_wallet_cli/bin/update_api_config.dart \
+  --source mirror \
+  --mirror-url https://nebula.decker.im/ \
+  --commit 4025b8c \
+  --config packages/komodo_defi_framework/app_build/build_config.json \
+  --output-dir packages/komodo_defi_framework/app_build/temp_downloads \
+  --verbose
+```
+
+- To switch to a different Nebula commit in the future, either:
+  - Edit `api.api_commit_hash` in `build_config.json` to the new short/full hash, or
+  - Re-run the CLI with a different `--commit <hash>` value.
+
+Notes:
+- Nebula index includes additional files like `komodo-wallet-*`; these are automatically ignored by the downloader.
+- macOS on Nebula uses `kdf-macos-universal2-<hash>.zip` (special case handled in `matching_pattern`). Other platforms use `kdf_<hash>-<platform>.zip`.
+
 ## Troubleshooting
 
 - Missing files: verify `config_output_path` points to this folder and the file exists

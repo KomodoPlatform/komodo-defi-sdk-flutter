@@ -60,6 +60,11 @@ void main(List<String> arguments) async {
       defaultsTo: 'all',
     )
     ..addOption(
+      'commit',
+      abbr: 'm',
+      help: 'Commit hash to pin (short or full). Overrides latest commit lookup.',
+    )
+    ..addOption(
       'source',
       abbr: 's',
       help: 'Source to fetch from (github or mirror)',
@@ -110,6 +115,7 @@ void main(List<String> arguments) async {
       args['token'] as String? ??
       Platform.environment['GITHUB_API_PUBLIC_READONLY_TOKEN'];
   final platform = args['platform'] as String;
+  final pinnedCommit = (args['commit'] as String?)?.trim();
   final source = args['source'] as String;
   final mirrorUrl = args['mirror-url'] as String;
   final verbose = args['verbose'] as bool;
@@ -128,9 +134,15 @@ void main(List<String> arguments) async {
 
     await fetcher.loadBuildConfig();
 
-    log.info('Fetching latest commit for branch: $branch');
-    final commitHash = await fetcher.fetchLatestCommit();
-    log.info('Latest commit: $commitHash');
+    String commitHash;
+    if (pinnedCommit != null && pinnedCommit.isNotEmpty) {
+      commitHash = pinnedCommit;
+      log.info('Using pinned commit: $commitHash');
+    } else {
+      log.info('Fetching latest commit for branch: $branch');
+      commitHash = await fetcher.fetchLatestCommit();
+      log.info('Latest commit: $commitHash');
+    }
 
     if (platform == 'all') {
       final platforms = fetcher.getSupportedPlatforms();
@@ -496,88 +508,102 @@ class KdfFetcher {
     String? matchingPattern,
     String? matchingKeyword,
   ) async {
-    final url = '$mirrorUrl/$branch/';
-    log.fine('Fetching files from mirror: $url');
+    // Try both branch-scoped and base listings; Nebula is flat
+    final normalizedMirror = mirrorUrl.endsWith('/') ? mirrorUrl : '$mirrorUrl/';
+    final listingUrls = <String>{
+      if (branch.isNotEmpty) '$normalizedMirror$branch/',
+      normalizedMirror,
+    };
 
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Failed to fetch files from mirror: ${response.statusCode} ${response.reasonPhrase}',
-      );
-    }
-
-    final document = parser.parse(response.body);
     final extensions = ['.zip'];
-
-    // Support both full and short hash variants
     final fullHash = commitHash;
     final shortHash = commitHash.substring(0, 7);
     log.info('Looking for files with hash $fullHash or $shortHash');
 
-    // Look for files with either hash length
-    final attemptedFiles = <String>[];
-    for (final element in document.querySelectorAll('a')) {
-      final href = element.attributes['href'];
-      if (href != null) attemptedFiles.add(href);
+    for (final baseUrl in listingUrls) {
+      log.fine('Fetching files from mirror: $baseUrl');
+      try {
+        final response = await http.get(Uri.parse(baseUrl));
+        if (response.statusCode != 200) {
+          log.fine('Mirror listing failed at $baseUrl: ${response.statusCode} ${response.reasonPhrase}');
+          continue;
+        }
 
-      if (href != null && extensions.any(href.endsWith)) {
-        var matches = false;
-        if (matchingPattern != null) {
-          try {
-            final regex = RegExp(matchingPattern);
-            matches = regex.hasMatch(href);
-          } catch (e) {
-            log.warning('Invalid regex pattern: $matchingPattern');
+        final document = parser.parse(response.body);
+        final attemptedFiles = <String>[];
+
+        // First pass: require short/full hash match
+        for (final element in document.querySelectorAll('a')) {
+          final href = element.attributes['href'];
+          if (href == null) continue;
+          attemptedFiles.add(href);
+          if (!extensions.any(href.endsWith)) continue;
+          if (href.contains('wallet')) continue; // Ignore wallet builds
+
+          var matches = false;
+          if (matchingPattern != null) {
+            try {
+              final regex = RegExp(matchingPattern);
+              matches = regex.hasMatch(href);
+            } catch (e) {
+              log.warning('Invalid regex pattern: $matchingPattern');
+            }
+          } else if (matchingKeyword != null) {
+            matches = href.contains(matchingKeyword);
           }
-        } else if (matchingKeyword != null) {
-          matches = href.contains(matchingKeyword);
+
+          if (matches && (href.contains(fullHash) || href.contains(shortHash))) {
+            final fileName = path.basename(href);
+            final resolved = href.startsWith('http')
+                ? href
+                : path.join(baseUrl, fileName).replaceAll('\\\\', '/');
+            log.info('Found matching file: $resolved');
+            return resolved;
+          }
         }
 
-        if (matches && (href.contains(fullHash) || href.contains(shortHash))) {
-          log.info('Found matching file: $href');
-          return '$url$href';
+        // Second pass: latest matching asset without commit constraint
+        for (final element in document.querySelectorAll('a')) {
+          final href = element.attributes['href'];
+          if (href == null) continue;
+          if (!extensions.any(href.endsWith)) continue;
+          if (href.contains('wallet')) continue;
+
+          var matches = false;
+          if (matchingPattern != null) {
+            try {
+              final regex = RegExp(matchingPattern);
+              matches = regex.hasMatch(href);
+            } catch (e) {
+              log.warning('Invalid regex pattern: $matchingPattern');
+            }
+          } else if (matchingKeyword != null) {
+            matches = href.contains(matchingKeyword);
+          }
+
+          if (matches) {
+            final fileName = path.basename(href);
+            final resolved = href.startsWith('http')
+                ? href
+                : path.join(baseUrl, fileName).replaceAll('\\\\', '/');
+            log.warning('Could not find exact commit match. Using latest matching asset: $resolved');
+            return resolved;
+          }
         }
+
+        log.fine(
+          'No matching files found in $baseUrl. '
+          '\nPattern: $matchingPattern, '
+          '\nKeyword: $matchingKeyword, '
+          '\nHashes tried: [$fullHash, $shortHash]'
+          '\nAvailable assets: ${attemptedFiles.join('\n')}',
+        );
+      } catch (e) {
+        log.fine('Error querying mirror listing $baseUrl: $e');
       }
     }
 
-    // If we couldn't find an exact match, try just matching the platform pattern
-    for (final element in document.querySelectorAll('a')) {
-      final href = element.attributes['href'];
-
-      if (href != null && extensions.any(href.endsWith)) {
-        var matches = false;
-        if (matchingPattern != null) {
-          try {
-            final regex = RegExp(matchingPattern);
-            matches = regex.hasMatch(href);
-          } catch (e) {
-            log.warning('Invalid regex pattern: $matchingPattern');
-          }
-        } else if (matchingKeyword != null) {
-          matches = href.contains(matchingKeyword);
-        }
-
-        if (matches) {
-          log.warning(
-            'Could not find exact commit match. Using latest matching asset: $href',
-          );
-          return '$url$href';
-        }
-      }
-    }
-
-    final availableAssets = attemptedFiles.join('\n');
-    log.fine(
-      'No matching files found in $url. '
-      '\nPattern: $matchingPattern, '
-      '\nKeyword: $matchingKeyword, '
-      '\nHashes tried: [$fullHash, $shortHash]'
-      '\nAvailable assets: $availableAssets',
-    );
-
-    throw Exception(
-      'No matching asset found for platform $platform and commit $commitHash',
-    );
+    throw Exception('No matching asset found for platform $platform and commit $commitHash');
   }
 
   /// Downloads a binary from the given URL
