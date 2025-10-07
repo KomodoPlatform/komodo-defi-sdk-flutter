@@ -62,7 +62,8 @@ void main(List<String> arguments) async {
     ..addOption(
       'commit',
       abbr: 'm',
-      help: 'Commit hash to pin (short or full). Overrides latest commit lookup.',
+      help:
+          'Commit hash to pin (short or full). Overrides latest commit lookup.',
     )
     ..addOption(
       'source',
@@ -86,6 +87,13 @@ void main(List<String> arguments) async {
       abbr: 'v',
       negatable: false,
       help: 'Enable verbose logging',
+    )
+    ..addFlag(
+      'strict',
+      negatable: true,
+      defaultsTo: true,
+      help:
+          'Require exact commit-matching assets for all platforms; fail otherwise. Disable with --no-strict.',
     );
 
   ArgResults args;
@@ -119,6 +127,7 @@ void main(List<String> arguments) async {
   final source = args['source'] as String;
   final mirrorUrl = args['mirror-url'] as String;
   final verbose = args['verbose'] as bool;
+  final strict = args['strict'] as bool;
 
   try {
     final fetcher = KdfFetcher(
@@ -130,6 +139,7 @@ void main(List<String> arguments) async {
       source: source,
       mirrorUrl: mirrorUrl,
       verbose: verbose,
+      strict: strict,
     );
 
     await fetcher.loadBuildConfig();
@@ -214,7 +224,8 @@ Examples:
     --source mirror \
     --config packages/komodo_defi_framework/app_build/build_config.json \
     --output-dir packages/komodo_defi_framework/app_build/temp_downloads \
-    --verbose
+    --verbose \
+    --strict
 
   # Update only the web platform
   dart run komodo_wallet_cli:update_api_config \
@@ -222,7 +233,8 @@ Examples:
     --source mirror \
     --platform web \
     --config packages/komodo_defi_framework/app_build/build_config.json \
-    --output-dir packages/komodo_defi_framework/app_build/temp_downloads
+    --output-dir packages/komodo_defi_framework/app_build/temp_downloads \
+    --no-strict
 
   # Update using GitHub as the source
   dart run komodo_wallet_cli:update_api_config \
@@ -249,6 +261,7 @@ class KdfFetcher {
     required this.configPath,
     required this.outputDir,
     required this.verbose,
+    this.strict = true,
     this.token,
     this.source = 'github',
     this.mirrorUrl = 'https://sdk.devbuilds.komodo.earth',
@@ -281,6 +294,7 @@ class KdfFetcher {
   late final String owner;
   late final String repository;
   final bool verbose;
+  final bool strict;
   final log = Logger('KdfFetcher');
 
   Map<String, dynamic>? _configData;
@@ -500,30 +514,33 @@ class KdfFetcher {
       }
     }
 
-    // If we couldn't find an exact match, try just matching the platform pattern
-    for (final release in releases) {
-      final assets = release['assets'] as List<dynamic>;
+    // In strict mode do not fallback – require exact commit match
+    if (!strict) {
+      // If we couldn't find an exact match, try just matching the platform pattern
+      for (final release in releases) {
+        final assets = release['assets'] as List<dynamic>;
 
-      for (final asset in assets) {
-        final fileName = asset['name'] as String;
+        for (final asset in assets) {
+          final fileName = asset['name'] as String;
 
-        var matches = false;
-        if (matchingPattern != null) {
-          try {
-            final regex = RegExp(matchingPattern);
-            matches = regex.hasMatch(fileName);
-          } catch (e) {
-            log.warning('Invalid regex pattern: $matchingPattern');
+          var matches = false;
+          if (matchingPattern != null) {
+            try {
+              final regex = RegExp(matchingPattern);
+              matches = regex.hasMatch(fileName);
+            } catch (e) {
+              log.warning('Invalid regex pattern: $matchingPattern');
+            }
+          } else if (matchingKeyword != null) {
+            matches = fileName.contains(matchingKeyword);
           }
-        } else if (matchingKeyword != null) {
-          matches = fileName.contains(matchingKeyword);
-        }
 
-        if (matches) {
-          log.warning(
-            'Could not find exact commit match. Using latest matching asset: $fileName',
-          );
-          return asset['browser_download_url'] as String;
+          if (matches) {
+            log.warning(
+              'Could not find exact commit match. Using latest matching asset: $fileName',
+            );
+            return asset['browser_download_url'] as String;
+          }
         }
       }
     }
@@ -541,7 +558,9 @@ class KdfFetcher {
     String? matchingKeyword,
   ) async {
     // Try both branch-scoped and base listings; Nebula is flat
-    final normalizedMirror = mirrorUrl.endsWith('/') ? mirrorUrl : '$mirrorUrl/';
+    final normalizedMirror = mirrorUrl.endsWith('/')
+        ? mirrorUrl
+        : '$mirrorUrl/';
     final listingUrls = <String>{
       if (branch.isNotEmpty) '$normalizedMirror$branch/',
       normalizedMirror,
@@ -557,7 +576,9 @@ class KdfFetcher {
       try {
         final response = await http.get(Uri.parse(baseUrl));
         if (response.statusCode != 200) {
-          log.fine('Mirror listing failed at $baseUrl: ${response.statusCode} ${response.reasonPhrase}');
+          log.fine(
+            'Mirror listing failed at $baseUrl: ${response.statusCode} ${response.reasonPhrase}',
+          );
           continue;
         }
 
@@ -584,7 +605,8 @@ class KdfFetcher {
             matches = href.contains(matchingKeyword);
           }
 
-          if (matches && (href.contains(fullHash) || href.contains(shortHash))) {
+          if (matches &&
+              (href.contains(fullHash) || href.contains(shortHash))) {
             final fileName = path.basename(href);
             final resolved = href.startsWith('http')
                 ? href
@@ -594,32 +616,36 @@ class KdfFetcher {
           }
         }
 
-        // Second pass: latest matching asset without commit constraint
-        for (final element in document.querySelectorAll('a')) {
-          final href = element.attributes['href'];
-          if (href == null) continue;
-          if (!extensions.any(href.endsWith)) continue;
-          if (href.contains('wallet')) continue;
+        // Second pass: latest matching asset without commit constraint (only when not strict)
+        if (!strict) {
+          for (final element in document.querySelectorAll('a')) {
+            final href = element.attributes['href'];
+            if (href == null) continue;
+            if (!extensions.any(href.endsWith)) continue;
+            if (href.contains('wallet')) continue;
 
-          var matches = false;
-          if (matchingPattern != null) {
-            try {
-              final regex = RegExp(matchingPattern);
-              matches = regex.hasMatch(href);
-            } catch (e) {
-              log.warning('Invalid regex pattern: $matchingPattern');
+            var matches = false;
+            if (matchingPattern != null) {
+              try {
+                final regex = RegExp(matchingPattern);
+                matches = regex.hasMatch(href);
+              } catch (e) {
+                log.warning('Invalid regex pattern: $matchingPattern');
+              }
+            } else if (matchingKeyword != null) {
+              matches = href.contains(matchingKeyword);
             }
-          } else if (matchingKeyword != null) {
-            matches = href.contains(matchingKeyword);
-          }
 
-          if (matches) {
-            final fileName = path.basename(href);
-            final resolved = href.startsWith('http')
-                ? href
-                : Uri.parse(baseUrl).resolve(fileName).toString();
-            log.warning('Could not find exact commit match. Using latest matching asset: $resolved');
-            return resolved;
+            if (matches) {
+              final fileName = path.basename(href);
+              final resolved = href.startsWith('http')
+                  ? href
+                  : Uri.parse(baseUrl).resolve(fileName).toString();
+              log.warning(
+                'Could not find exact commit match. Using latest matching asset: $resolved',
+              );
+              return resolved;
+            }
           }
         }
 
@@ -635,7 +661,9 @@ class KdfFetcher {
       }
     }
 
-    throw Exception('No matching asset found for platform $platform and commit $commitHash');
+    throw Exception(
+      'No matching asset found for platform $platform and commit $commitHash',
+    );
   }
 
   /// Downloads a binary from the given URL
