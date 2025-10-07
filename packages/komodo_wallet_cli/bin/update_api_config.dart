@@ -144,6 +144,19 @@ void main(List<String> arguments) async {
       log.info('Latest commit: $commitHash');
     }
 
+    // Ensure the build config is updated with a full 40-char commit SHA
+    if (commitHash.length < 40) {
+      try {
+        final fullSha = await fetcher.resolveCommitSha(commitHash);
+        log.info('Resolved short commit to full SHA: $fullSha');
+        commitHash = fullSha;
+      } catch (e) {
+        log.warning(
+          'Failed to resolve short commit to full SHA; proceeding with provided value: $commitHash',
+        );
+      }
+    }
+
     if (platform == 'all') {
       final platforms = fetcher.getSupportedPlatforms();
       log.info('Updating config for all platforms: ${platforms.join(', ')}');
@@ -213,7 +226,7 @@ Examples:
 
   # Update using GitHub as the source
   dart run komodo_wallet_cli:update_api_config \
-    --branch master \
+    --branch main \
     --source github \
     --config packages/komodo_defi_framework/app_build/build_config.json \
     --output-dir packages/komodo_defi_framework/app_build/temp_downloads
@@ -303,6 +316,25 @@ class KdfFetcher {
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     return data['sha'] as String;
+  }
+
+  /// Resolves a short or full commit into a full 40-char SHA via GitHub API
+  Future<String> resolveCommitSha(String shaOrShort) async {
+    final url = '$_apiBaseUrl/commits/$shaOrShort';
+    log.fine('Resolving commit SHA from: $url');
+
+    final response = await http.get(Uri.parse(url), headers: _headers);
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to resolve commit: ${response.statusCode} ${response.reasonPhrase}',
+      );
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final sha = data['sha'] as String?;
+    if (sha == null || sha.length != 40) {
+      throw Exception('Resolved commit SHA is invalid: $sha');
+    }
+    return sha;
   }
 
   /// Loads the build config file
@@ -556,7 +588,7 @@ class KdfFetcher {
             final fileName = path.basename(href);
             final resolved = href.startsWith('http')
                 ? href
-                : path.join(baseUrl, fileName).replaceAll('\\\\', '/');
+                : Uri.parse(baseUrl).resolve(fileName).toString();
             log.info('Found matching file: $resolved');
             return resolved;
           }
@@ -585,7 +617,7 @@ class KdfFetcher {
             final fileName = path.basename(href);
             final resolved = href.startsWith('http')
                 ? href
-                : path.join(baseUrl, fileName).replaceAll('\\\\', '/');
+                : Uri.parse(baseUrl).resolve(fileName).toString();
             log.warning('Could not find exact commit match. Using latest matching asset: $resolved');
             return resolved;
           }
