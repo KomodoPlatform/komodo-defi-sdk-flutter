@@ -150,6 +150,7 @@ abstract class TrezorInitializationState with _$TrezorInitializationState {
       message: message,
       taskId: taskId,
       error: error,
+      data: taskId != null ? AuthenticationData.trezor(taskId: taskId!) : null,
     );
   }
 }

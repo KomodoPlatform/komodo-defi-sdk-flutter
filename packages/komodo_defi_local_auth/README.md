@@ -38,8 +38,53 @@ await auth.register(walletName: 'my_wallet', password: 'strong-pass');
 - Mnemonic management: `getMnemonicEncrypted()`, `getMnemonicPlainText()`, `updatePassword()`
 - Wallet admin: `deleteWallet(...)`
 - Trezor flows (PIN entry etc.) via streaming API
+- WalletConnect authentication with QR code generation and session management
 
 HD is enabled by default via `AuthOptions(derivationMethod: DerivationMethod.hdWallet)`. Override if you need legacy (Iguana) mode.
+
+## WalletConnect Authentication
+
+WalletConnect allows users to authenticate using their mobile wallets by scanning QR codes:
+
+```dart
+// Sign in with WalletConnect
+final authStream = auth.signInStream(
+  options: AuthOptions(
+    privateKeyPolicy: PrivateKeyPolicy.walletConnect(),
+    derivationMethod: DerivationMethod.hdWallet,
+  ),
+  walletName: 'my_wallet',
+  password: 'strong-pass',
+);
+
+await for (final state in authStream) {
+  switch (state.status) {
+    case AuthenticationStatus.generatingQrCode:
+      print('Generating QR code...');
+      break;
+    case AuthenticationStatus.waitingForConnection:
+      final qrData = state.data as QRCodeData;
+      print('Scan QR code: ${qrData.uri}');
+      // Display QR code to user
+      break;
+    case AuthenticationStatus.walletConnected:
+      print('Mobile wallet connected!');
+      break;
+    case AuthenticationStatus.completed:
+      print('Authentication completed: ${state.user?.walletName}');
+      break;
+    case AuthenticationStatus.error:
+      print('Error: ${state.error}');
+      break;
+  }
+}
+
+// Session management
+final sessions = await auth.walletConnect.getSessions();
+final session = await auth.walletConnect.getSession('session_topic');
+await auth.walletConnect.pingSession('session_topic');
+await auth.walletConnect.deleteSession('session_topic');
+```
 
 ## With the SDK
 

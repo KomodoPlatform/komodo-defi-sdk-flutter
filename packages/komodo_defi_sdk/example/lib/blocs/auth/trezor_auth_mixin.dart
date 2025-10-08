@@ -136,6 +136,14 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
           walletName: 'My Trezor',
           knownUsers: state.knownUsers,
         );
+      case AuthenticationStatus.generatingQrCode:
+        throw UnimplementedError();
+      case AuthenticationStatus.waitingForConnection:
+        throw UnimplementedError();
+      case AuthenticationStatus.walletConnected:
+        throw UnimplementedError();
+      case AuthenticationStatus.sessionEstablished:
+        throw UnimplementedError();
     }
   }
 
@@ -149,7 +157,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
   ) async {
     try {
       _log.fine('Providing Trezor PIN for taskId=${event.taskId}');
-      await _sdk.auth.setHardwareDevicePin(event.taskId, event.pin);
+      await _sdk.auth.trezor.setPin(event.taskId, event.pin);
     } catch (e) {
       _log.severe('Failed to provide PIN', e);
       emit(
@@ -168,7 +176,7 @@ mixin TrezorAuthMixin on Bloc<AuthEvent, AuthState> {
   ) async {
     try {
       _log.fine('Providing Trezor passphrase for taskId=${event.taskId}');
-      await _sdk.auth.setHardwareDevicePassphrase(
+      await _sdk.auth.trezor.setPassphrase(
         event.taskId,
         event.passphrase,
       );

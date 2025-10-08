@@ -5,4 +5,6 @@ library _auth;
 
 export 'auth_service.dart';
 export 'auth_state.dart';
+export 'namespaces/trezor_auth_namespace.dart';
+export 'namespaces/walletconnect_auth_namespace.dart';
 export 'storage/secure_storage.dart';

@@ -8,6 +8,7 @@ import 'package:komodo_cex_market_data/komodo_cex_market_data.dart';
 import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/activation_config/hive_adapters.dart';
@@ -65,10 +66,12 @@ Future<void> bootstrap({
   // Auth and storage dependencies
   container.registerSingletonAsync<KomodoDefiLocalAuth>(() async {
     final framework = await container.getAsync<KomodoDefiFramework>();
+    final rpcMethods = KomodoDefiRpcMethods(framework.client);
     final auth = KomodoDefiLocalAuth(
       kdf: framework,
       hostConfig:
           hostConfig ?? LocalConfig(https: true, rpcPassword: rpcPassword),
+      rpcMethods: rpcMethods,
     );
     await auth.ensureInitialized();
     return auth;

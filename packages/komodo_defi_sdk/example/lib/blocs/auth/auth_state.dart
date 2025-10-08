@@ -61,6 +61,14 @@ enum AuthTrezorStatus {
       case AuthenticationStatus.error:
       case AuthenticationStatus.cancelled:
         return AuthTrezorStatus.none;
+      case AuthenticationStatus.generatingQrCode:
+        throw UnimplementedError();
+      case AuthenticationStatus.waitingForConnection:
+        throw UnimplementedError();
+      case AuthenticationStatus.walletConnected:
+        throw UnimplementedError();
+      case AuthenticationStatus.sessionEstablished:
+        throw UnimplementedError();
     }
   }
 }

@@ -1,3 +1,9 @@
+## 0.3.2
+
+ - **FEAT**: Add WalletConnect authentication support with QR code generation, session management, and strategy pattern architecture.
+ - **FEAT**: Extend AuthenticationState with union types for wallet-specific data (QR codes, Trezor, WalletConnect).
+ - **FEAT**: Implement authentication strategy pattern for clean separation of different wallet types.
+
 ## 0.3.1+2
 
  - Update a dependency to the latest release.
