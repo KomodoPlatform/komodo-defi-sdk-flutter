@@ -14,20 +14,23 @@ enum AuthExceptionType {
   registrationNotAllowed,
   internalError,
   apiConnectionError,
+  // WalletConnect-specific error types
+  walletConnectConnectionTimeout,
+  walletConnectSessionExpired,
+  walletConnectUnsupportedChain,
+  walletConnectUserRejected,
+  walletConnectQrCodeGenerationFailed,
+  walletConnectSessionNotFound,
 }
 
 class AuthException implements Exception {
-  AuthException(
-    this.message, {
-    required this.type,
-    this.details = const {},
-  });
+  AuthException(this.message, {required this.type, this.details = const {}});
 
   // Common exception constructors convenience methods
   AuthException.notSignedIn()
-      : this('Not signed in', type: AuthExceptionType.unauthorized);
+    : this('Not signed in', type: AuthExceptionType.unauthorized);
   AuthException.notFound()
-      : this('Not found', type: AuthExceptionType.walletNotFound);
+    : this('Not found', type: AuthExceptionType.walletNotFound);
 
   /// The error message.
   final String message;
@@ -95,6 +98,22 @@ class AuthException implements Exception {
         return matchingPatterns[AuthExceptionType.registrationNotAllowed]!;
       case AuthExceptionType.apiConnectionError:
         return matchingPatterns[AuthExceptionType.apiConnectionError]!;
+      case AuthExceptionType.walletConnectConnectionTimeout:
+        return matchingPatterns[AuthExceptionType
+            .walletConnectConnectionTimeout]!;
+      case AuthExceptionType.walletConnectSessionExpired:
+        return matchingPatterns[AuthExceptionType.walletConnectSessionExpired]!;
+      case AuthExceptionType.walletConnectUnsupportedChain:
+        return matchingPatterns[AuthExceptionType
+            .walletConnectUnsupportedChain]!;
+      case AuthExceptionType.walletConnectUserRejected:
+        return matchingPatterns[AuthExceptionType.walletConnectUserRejected]!;
+      case AuthExceptionType.walletConnectQrCodeGenerationFailed:
+        return matchingPatterns[AuthExceptionType
+            .walletConnectQrCodeGenerationFailed]!;
+      case AuthExceptionType.walletConnectSessionNotFound:
+        return matchingPatterns[AuthExceptionType
+            .walletConnectSessionNotFound]!;
       // The following types don't originate from the API, so we return empty arrays
       case AuthExceptionType.generalAuthError:
       case AuthExceptionType.unauthorized:
@@ -106,38 +125,62 @@ class AuthException implements Exception {
   }
 
   static Map<AuthExceptionType, List<String>> get matchingPatterns => {
-        AuthExceptionType.incorrectPassword: [
-          'Incorrect wallet password',
-          'Error generating or decrypting mnemonic',
-          'HMAC',
-          'Error decrypting mnemonic: HMAC error: MAC tag mismatch',
-          'MAC tag mismatch',
-          'Error decrypting mnemonic',
-        ],
-        AuthExceptionType.walletAlreadyRunning: [
-          'Wallet is already running',
-        ],
-        AuthExceptionType.walletStartFailed: [
-          'Failed to start KDF',
-        ],
-        AuthExceptionType.walletNotFound: [
-          'Wallet does not exist',
-          'No wallet found with the given name',
-        ],
-        AuthExceptionType.walletAlreadyExists: [
-          'Wallet already exists',
-          'A wallet with this name already exists',
-        ],
-        AuthExceptionType.registrationNotAllowed: [
-          'wallet creation is disabled',
-        ],
-        AuthExceptionType.apiConnectionError: [
-          'Connection refused',
-          'Connection timed out',
-        ],
-        // We don't include patterns for the following types as they don't originate from the API
-        // AuthExceptionType.generalAuthError
-        // AuthExceptionType.unauthorized
-        // AuthExceptionType.alreadySignedIn
-      };
+    AuthExceptionType.incorrectPassword: [
+      'Incorrect wallet password',
+      'Error generating or decrypting mnemonic',
+      'HMAC',
+      'Error decrypting mnemonic: HMAC error: MAC tag mismatch',
+      'MAC tag mismatch',
+      'Error decrypting mnemonic',
+    ],
+    AuthExceptionType.walletAlreadyRunning: ['Wallet is already running'],
+    AuthExceptionType.walletStartFailed: ['Failed to start KDF'],
+    AuthExceptionType.walletNotFound: [
+      'Wallet does not exist',
+      'No wallet found with the given name',
+    ],
+    AuthExceptionType.walletAlreadyExists: [
+      'Wallet already exists',
+      'A wallet with this name already exists',
+    ],
+    AuthExceptionType.registrationNotAllowed: ['wallet creation is disabled'],
+    AuthExceptionType.apiConnectionError: [
+      'Connection refused',
+      'Connection timed out',
+    ],
+    AuthExceptionType.walletConnectConnectionTimeout: [
+      'WalletConnect connection timeout',
+      'Connection timeout waiting for mobile wallet',
+      'QR code scan timeout',
+    ],
+    AuthExceptionType.walletConnectSessionExpired: [
+      'WalletConnect session expired',
+      'Session has expired',
+      'Invalid session',
+    ],
+    AuthExceptionType.walletConnectUnsupportedChain: [
+      'Unsupported chain',
+      'Chain not supported by wallet',
+      'Invalid chain ID',
+    ],
+    AuthExceptionType.walletConnectUserRejected: [
+      'User rejected',
+      'Connection rejected by user',
+      'User cancelled',
+    ],
+    AuthExceptionType.walletConnectQrCodeGenerationFailed: [
+      'QR code generation failed',
+      'Failed to generate connection URI',
+      'WalletConnect URI creation failed',
+    ],
+    AuthExceptionType.walletConnectSessionNotFound: [
+      'Session not found',
+      'Invalid session topic',
+      'Session does not exist',
+    ],
+    // We don't include patterns for the following types as they don't originate from the API
+    // AuthExceptionType.generalAuthError
+    // AuthExceptionType.unauthorized
+    // AuthExceptionType.alreadySignedIn
+  };
 }

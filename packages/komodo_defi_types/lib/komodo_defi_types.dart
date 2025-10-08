@@ -12,6 +12,7 @@ export 'src/assets/asset_id.dart';
 export 'src/auth/auth_result.dart';
 // export 'src/auth/exceptions/incorrect_password_exception.dart';
 export 'src/auth/exceptions/auth_exception.dart';
+export 'src/auth/exceptions/walletconnect_auth_exception.dart';
 export 'src/auth/exceptions/wallet_changed_disconnect_exception.dart';
 export 'src/auth/kdf_user.dart';
 export 'src/constants.dart';
