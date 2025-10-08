@@ -41,9 +41,25 @@ final signed = await client.rpc.utility.signMessage(
   coin: 'BTC',
   message: 'Hello, Komodo!'
 );
+
+// WalletConnect hardware wallet operations
+final connection = await client.rpc.walletConnect.newConnection(
+  requiredNamespaces: WcRequiredNamespaces(
+    eip155: WcConnNs(
+      chains: ['eip155:1'],
+      methods: ['eth_sendTransaction', 'personal_sign'],
+      events: ['chainChanged', 'accountsChanged'],
+    ),
+  ),
+);
+
+final sessions = await client.rpc.walletConnect.getSessions();
+final session = await client.rpc.walletConnect.getSession(topic: 'session_topic');
+await client.rpc.walletConnect.pingSession(topic: 'session_topic');
+await client.rpc.walletConnect.deleteSession(topic: 'session_topic');
 ```
 
-Explore exported modules in `lib/src/rpc_methods` for the full surface (activation, wallet, utxo/eth/trezor, trading, orderbook, transaction history, withdrawal, etc.).
+Explore exported modules in `lib/src/rpc_methods` for the full surface (activation, wallet, utxo/eth/trezor, trading, orderbook, transaction history, withdrawal, walletconnect, etc.).
 
 ## License
 

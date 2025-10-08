@@ -90,6 +90,8 @@ export 'wallet/get_wallet_names_request.dart';
 export 'wallet/get_wallet_names_response.dart';
 export 'wallet/my_balance.dart';
 export 'wallet/unban_pubkeys.dart';
+export 'walletconnect/walletconnect_models.dart';
+export 'walletconnect/walletconnect_rpc_namespace.dart';
 export 'withdrawal/send_raw_transaction_request.dart';
 export 'withdrawal/withdraw_request.dart';
 export 'withdrawal/withdrawal_rpc_namespace.dart';

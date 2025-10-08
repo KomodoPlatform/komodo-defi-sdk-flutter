@@ -44,6 +44,8 @@ class KomodoDefiRpcMethods {
 
   // Hardware wallet namespaces
   TrezorMethodsNamespace get trezor => TrezorMethodsNamespace(_client);
+  WalletConnectMethodsNamespace get walletConnect =>
+      WalletConnectMethodsNamespace(_client);
 
   // Trading and DeFi namespaces
   TradingMethodsNamespace get trading => TradingMethodsNamespace(_client);

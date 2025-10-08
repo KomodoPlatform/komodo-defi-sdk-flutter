@@ -1,3 +1,7 @@
+## 0.3.2
+
+ - **FEAT**: Add WalletConnect RPC methods namespace with support for connection management, session operations, and QR code generation.
+
 ## 0.3.1+1
 
  - Update a dependency to the latest release.
