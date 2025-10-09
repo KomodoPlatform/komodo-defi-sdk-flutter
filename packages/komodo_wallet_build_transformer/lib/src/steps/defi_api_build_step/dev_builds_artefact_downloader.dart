@@ -30,12 +30,14 @@ class DevBuildsArtefactDownloader implements ArtefactDownloader {
     ApiFileMatchingConfig matchingConfig,
     String platform,
   ) async {
-    // Try both branch-scoped and base-scoped listings to support different mirrors (devbuilds, Nebula, etc.)
-    final candidateListingUrls = <String>{
-      // Typical devbuilds layout: <mirror>/<branch>/
-      if (apiBranch.isNotEmpty) '$sourceUrl/$apiBranch/',
-      // Nebula may host a flat listing without branch segment
-      '$sourceUrl/',
+    // Try both branch-scoped and base-scoped listings to support different mirrors
+    final normalizedSource = sourceUrl.endsWith('/')
+        ? sourceUrl
+        : '$sourceUrl/';
+    final baseUri = Uri.parse(normalizedSource);
+    final candidateListingUrls = <Uri>{
+      if (apiBranch.isNotEmpty) baseUri.resolve('$apiBranch/'),
+      baseUri,
     };
 
     final extensions = ['.zip'];
@@ -45,35 +47,51 @@ class DevBuildsArtefactDownloader implements ArtefactDownloader {
 
     for (final listingUrl in candidateListingUrls) {
       try {
-        final response = await http.get(Uri.parse(listingUrl));
+        final response = await http.get(listingUrl);
         response.throwIfNotSuccessResponse();
         final document = parser.parse(response.body);
 
         final attemptedFiles = <String>[];
+        final resolvedCandidates =
+            <String, String>{}; // fileName -> resolvedUrl
         for (final element in document.querySelectorAll('a')) {
           final href = element.attributes['href'];
           if (href == null) continue;
           attemptedFiles.add(href);
 
           // Normalize href for directory indexes that include absolute paths
-          final fileName = path.basename(href);
+          final hrefPath = Uri.tryParse(href)?.path ?? href;
+          final fileName = path.basename(hrefPath);
 
           // Ignore wallet archives on Nebula index
           if (fileName.contains('wallet')) {
             continue;
           }
 
-          if (matchingConfig.matches(fileName) &&
-              extensions.any(fileName.endsWith)) {
-            if (fileName.contains(fullHash) || fileName.contains(shortHash)) {
-              _log.info('Found matching file: $fileName at $listingUrl');
+          final matches =
+              matchingConfig.matches(fileName) &&
+              extensions.any(hrefPath.endsWith);
+          if (matches) {
+            final containsHash =
+                hrefPath.contains(fullHash) || hrefPath.contains(shortHash);
+            if (containsHash) {
               // Build absolute URL respecting whether href is absolute or relative
               final resolvedUrl = href.startsWith('http')
                   ? href
-                  : Uri.parse(listingUrl).resolve(fileName).toString();
-              return resolvedUrl;
+                  : listingUrl.resolve(href).toString();
+              resolvedCandidates[fileName] = resolvedUrl;
             }
           }
+        }
+
+        if (resolvedCandidates.isNotEmpty) {
+          final preferred = matchingConfig.choosePreferred(
+            resolvedCandidates.keys,
+          );
+          final url =
+              resolvedCandidates[preferred] ?? resolvedCandidates.values.first;
+          _log.info('Selected file: $preferred at $listingUrl');
+          return url;
         }
 
         _log.fine(
@@ -87,7 +105,9 @@ class DevBuildsArtefactDownloader implements ArtefactDownloader {
       }
     }
 
-    throw Exception('Zip file not found for platform $platform from $sourceUrl');
+    throw Exception(
+      'Zip file not found for platform $platform from $sourceUrl',
+    );
   }
 
   @override
@@ -128,10 +148,12 @@ class DevBuildsArtefactDownloader implements ArtefactDownloader {
       // Determine the platform to use the appropriate extraction command
       if (Platform.isMacOS || Platform.isLinux) {
         // For macOS and Linux, use the `unzip` command with overwrite option
-        final result = await Process.run(
-          'unzip',
-          ['-o', filePath, '-d', destinationFolder],
-        );
+        final result = await Process.run('unzip', [
+          '-o',
+          filePath,
+          '-d',
+          destinationFolder,
+        ]);
         if (result.exitCode != 0) {
           throw Exception('Error extracting zip file: ${result.stderr}');
         }

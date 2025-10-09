@@ -71,7 +71,7 @@ A new Flutter FFI plugin project.
   # Configuration for macOS build
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
-    'EXCLUDED_ARCHS[sdk=macosx*]' => 'i386 x86_64',
+    # Allow building universal macOS apps (arm64 + x86_64). i386 remains excluded by default Xcode settings.
     'OTHER_LDFLAGS' => '-framework SystemConfiguration',
     # Add rpath to ensure dylib can be found at runtime
     'LD_RUNPATH_SEARCH_PATHS' => [

@@ -48,11 +48,11 @@ Paths in the config are relative to that package directory.
 "source_urls": [
     "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework",
     "https://sdk.devbuilds.komodo.earth/",
-    "https://nebula.decker.im/kdf"
+    "https://nebula.decker.im/kdf/"
 ]
 ```
 
-- The downloader supports directory listings that are either branch-scoped (e.g., `.../dev/`) or flat. It searches for artifacts that match the platform patterns and contain either the full commit hash or a 7-char short hash.
+- The downloader expects branch-scoped directory listings (e.g., `.../dev/`) on both devbuilds and Nebula mirrors and will fallback to the base listing when available. It searches for artifacts that match the platform patterns and contain either the full commit hash or a 7-char short hash.
 - To pin a specific commit (e.g., `4025b8c`) without changing branches, update `api.api_commit_hash` or use the CLI with `--commit`:
 
 ```bash

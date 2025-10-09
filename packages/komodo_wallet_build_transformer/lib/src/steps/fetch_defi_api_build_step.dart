@@ -72,8 +72,8 @@ class FetchDefiApiStep extends BuildStep {
 
   List<String> get platformsToUpdate =>
       selectedPlatform != null && platformsConfig.containsKey(selectedPlatform)
-          ? [selectedPlatform!]
-          : platformsConfig.keys.toList();
+      ? [selectedPlatform!]
+      : platformsConfig.keys.toList();
 
   @override
   Future<void> build() async {
@@ -154,24 +154,23 @@ class FetchDefiApiStep extends BuildStep {
   /// See `BUILD_CONFIG_README.md`  in `app_build/BUILD_CONFIG_README.md`.
   bool? get overrideDefiApiDownload =>
       const bool.hasEnvironment(_overrideEnvName)
-          ? const bool.fromEnvironment(_overrideEnvName)
-          : Platform.environment[_overrideEnvName] != null
-          ? bool.tryParse(
-            Platform.environment[_overrideEnvName]!,
-            caseSensitive: false,
-          )
-          : null;
+      ? const bool.fromEnvironment(_overrideEnvName)
+      : Platform.environment[_overrideEnvName] != null
+      ? bool.tryParse(
+          Platform.environment[_overrideEnvName]!,
+          caseSensitive: false,
+        )
+      : null;
 
   Future<void> _updatePlatform(
     String platform,
     ApiBuildPlatformConfig config,
   ) async {
-    final updateMessage =
-        overrideDefiApiDownload != null
-            ? '${overrideDefiApiDownload! ? 'FORCING' : 'SKIPPING'} update of '
-                '$platform platform because OVERRIDE_DEFI_API_DOWNLOAD is set to '
-                '$overrideDefiApiDownload'
-            : null;
+    final updateMessage = overrideDefiApiDownload != null
+        ? '${overrideDefiApiDownload! ? 'FORCING' : 'SKIPPING'} update of '
+              '$platform platform because OVERRIDE_DEFI_API_DOWNLOAD is set to '
+              '$overrideDefiApiDownload'
+        : null;
 
     if (updateMessage != null) {
       _log.info(updateMessage);
@@ -280,8 +279,9 @@ class FetchDefiApiStep extends BuildStep {
       path.join(destinationFolder, '.api_last_updated_$platform'),
     );
     final currentTimestamp = DateTime.now().toIso8601String();
-    final fileChecksum =
-        sha256.convert(File(zipFilePath).readAsBytesSync()).toString();
+    final fileChecksum = sha256
+        .convert(File(zipFilePath).readAsBytesSync())
+        .toString();
     lastUpdatedFile.writeAsStringSync(
       json.encode({
         'api_commit_hash': apiCommitHash,
@@ -320,7 +320,11 @@ class FetchDefiApiStep extends BuildStep {
           config.validZipSha256Checksums,
         );
 
-        if (storedChecksums.toSet().containsAll(targetChecksums)) {
+        // Consider up-to-date if any overlap between stored and target checksums
+        final overlap = storedChecksums.toSet().intersection(
+          targetChecksums.toSet(),
+        );
+        if (overlap.isNotEmpty) {
           _log.info('version: $apiCommitHash and SHA256 checksum match.');
           return false;
         }
@@ -348,7 +352,7 @@ class FetchDefiApiStep extends BuildStep {
     final npmPath = findNode();
     final installResult = await Process.run(npmPath, [
       'install',
-    ], workingDirectory: artifactOutputPath,);
+    ], workingDirectory: artifactOutputPath);
     if (installResult.exitCode != 0) {
       throw Exception('npm install failed: ${installResult.stderr}');
     }
@@ -357,7 +361,7 @@ class FetchDefiApiStep extends BuildStep {
     final buildResult = await Process.run(npmPath, [
       'run',
       'build',
-    ], workingDirectory: artifactOutputPath,);
+    ], workingDirectory: artifactOutputPath);
     if (buildResult.exitCode != 0) {
       throw Exception('npm run build failed: ${buildResult.stderr}');
     }
