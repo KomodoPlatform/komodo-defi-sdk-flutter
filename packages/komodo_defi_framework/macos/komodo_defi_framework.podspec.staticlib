@@ -32,7 +32,7 @@ A new Flutter FFI plugin project.
   # s.pod_target_xcconfig = { "OTHER_LDFLAGS" => "$(inherited) -force_load $(PODS_TARGET_SRCROOT)/Frameworks/libkdflib.a -lstdc++" }
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
-    'EXCLUDED_ARCHS[sdk=macosx*]' => 'i386 x86_64',
+    # Allow building universal macOS apps (arm64 + x86_64). i386 remains excluded by default Xcode settings.
     'OTHER_LDFLAGS' => '-force_load $(PODS_TARGET_SRCROOT)/Frameworks/libkdflib.a -lstdc++ -framework SystemConfiguration'
   }
   

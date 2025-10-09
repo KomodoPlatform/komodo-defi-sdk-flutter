@@ -60,6 +60,55 @@ A new Flutter FFI plugin project.
         echo "Warning: libkdflib.dylib not found in lib/libkdflib.dylib"
       fi
       
+      # Prune binary slices to match $ARCHS (preserve universals) in Release builds only
+      if [ "$CONFIGURATION" = "Release" ]; then
+        TARGET_ARCHS="${ARCHS:-$(arch)}"
+
+        thin_binary_to_archs() {
+          file="$1"
+          keep_archs="$2"
+
+          [ -f "$file" ] || return 0
+
+          # Only act on fat files (multi-arch)
+          if ! lipo -info "$file" | grep -q 'Architectures in the fat file'; then
+            return 0
+          fi
+
+          bin_archs="$(lipo -archs "$file" 2>/dev/null || true)"
+          [ -n "$bin_archs" ] || return 0
+
+          dir="$(dirname "$file")"
+          base="$(basename "$file")"
+          work="$file"
+
+          for arch in $bin_archs; do
+            echo "$keep_archs" | tr ' ' '\n' | grep -qx "$arch" && continue
+            echo "Removing architecture $arch from $base"
+            next="$(mktemp "$dir/.${base}.XXXXXX")"
+            lipo "$work" -remove "$arch" -output "$next"
+            [ "$work" != "$file" ] && rm -f "$work"
+            work="$next"
+          done
+
+          if [ "$work" != "$file" ]; then
+            mv -f "$work" "$file"
+          fi
+        }
+
+        thin_binary_to_archs "$APP_SUPPORT_DIR/kdf" "$TARGET_ARCHS"
+        if [ -f "$APP_SUPPORT_DIR/kdf" ]; then chmod +x "$APP_SUPPORT_DIR/kdf"; fi
+
+        thin_binary_to_archs "$FRAMEWORKS_DIR/libkdflib.dylib" "$TARGET_ARCHS"
+        if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ]; then install_name_tool -id "@rpath/libkdflib.dylib" "$FRAMEWORKS_DIR/libkdflib.dylib"; fi
+
+        # Re-sign after modifications (best-effort)
+        if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
+          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
+          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
+        fi
+      fi
+      
       # Fail if neither file was found
       if [ $FOUND_REQUIRED_FILE -eq 0 ]; then
         echo "Error: Neither kdf executable nor libkdflib.dylib was found. At least one is required."
@@ -71,7 +120,7 @@ A new Flutter FFI plugin project.
   # Configuration for macOS build
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
-    'EXCLUDED_ARCHS[sdk=macosx*]' => 'i386 x86_64',
+    # Allow building universal macOS apps (arm64 + x86_64). i386 remains excluded by default Xcode settings.
     'OTHER_LDFLAGS' => '-framework SystemConfiguration',
     # Add rpath to ensure dylib can be found at runtime
     'LD_RUNPATH_SEARCH_PATHS' => [

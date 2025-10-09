@@ -16,9 +16,9 @@ class ApiBuildPlatformConfig {
     required this.validZipSha256Checksums,
     required this.path,
   }) : assert(
-          validZipSha256Checksums.isNotEmpty,
-          'At least one valid checksum must be provided',
-        );
+         validZipSha256Checksums.isNotEmpty,
+         'At least one valid checksum must be provided',
+       );
 
   /// Creates a [ApiBuildPlatformConfig] from a JSON map.
   ///
@@ -56,6 +56,9 @@ class ApiBuildPlatformConfig {
     final matchingConfig = ApiFileMatchingConfig(
       matchingKeyword: json['matching_keyword'] as String?,
       matchingPattern: json['matching_pattern'] as String?,
+      matchingPreference: (json['matching_preference'] is List)
+          ? List<String>.from(json['matching_preference'] as List)
+          : const <String>[],
     );
 
     return ApiBuildPlatformConfig(
@@ -81,8 +84,8 @@ class ApiBuildPlatformConfig {
 
   /// Converts the configuration to a JSON map.
   Map<String, dynamic> toJson() => {
-        ...matchingConfig.toJson(),
-        'valid_zip_sha256_checksums': validZipSha256Checksums,
-        'path': path,
-      };
+    ...matchingConfig.toJson(),
+    'valid_zip_sha256_checksums': validZipSha256Checksums,
+    'path': path,
+  };
 }

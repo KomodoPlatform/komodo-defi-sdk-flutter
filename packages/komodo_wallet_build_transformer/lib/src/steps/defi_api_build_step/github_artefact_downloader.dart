@@ -63,6 +63,7 @@ class GithubArtefactDownloader implements ArtefactDownloader {
 
     // If no exact version match found, try matching by commit hash
     _log.info('Searching for commit hash match');
+    final candidates = <String, String>{}; // fileName -> url
     for (final release in releases) {
       for (final asset in release.assets) {
         final fileName = path.basename(asset.browserDownloadUrl);
@@ -73,23 +74,33 @@ class GithubArtefactDownloader implements ArtefactDownloader {
               branch: release.tagName,
             );
             if (commitHash == apiCommitHash) {
-              _log.info('Found matching file by commit hash: $fileName');
-              return asset.browserDownloadUrl;
+              candidates[fileName] = asset.browserDownloadUrl;
             }
           }
         }
       }
     }
 
+    if (candidates.isNotEmpty) {
+      final preferred = matchingConfig.choosePreferred(candidates.keys);
+      final url = candidates[preferred] ?? candidates.values.first;
+      _log.info('Selected file: $preferred');
+      return url;
+    }
+
     // Log available assets to help diagnose issues
-    final releaseAssets =
-        releases.expand((r) => r.assets).map((a) => '  - ${a.name}').join('\n');
-    _log.fine('No files found matching criteria:\n'
-        'Platform: $platform\n'
-        'Version: \$version\n'
-        'Hash: $fullHash or $shortHash\n'
-        'Pattern: ${matchingConfig.matchingPattern}\n'
-        'Available assets:\n$releaseAssets');
+    final releaseAssets = releases
+        .expand((r) => r.assets)
+        .map((a) => '  - ${a.name}')
+        .join('\n');
+    _log.fine(
+      'No files found matching criteria:\n'
+      'Platform: $platform\n'
+      'Version: \$version\n'
+      'Hash: $fullHash or $shortHash\n'
+      'Pattern: ${matchingConfig.matchingPattern}\n'
+      'Available assets:\n$releaseAssets',
+    );
 
     throw Exception(
       'Zip file not found for platform $platform in GitHub releases. '
@@ -135,10 +146,12 @@ class GithubArtefactDownloader implements ArtefactDownloader {
       // Determine the platform to use the appropriate extraction command
       if (Platform.isMacOS || Platform.isLinux) {
         // For macOS and Linux, use the `unzip` command with overwrite option
-        final result = await Process.run(
-          'unzip',
-          ['-o', filePath, '-d', destinationFolder],
-        );
+        final result = await Process.run('unzip', [
+          '-o',
+          filePath,
+          '-d',
+          destinationFolder,
+        ]);
         if (result.exitCode != 0) {
           throw Exception('Error extracting zip file: ${result.stderr}');
         }
