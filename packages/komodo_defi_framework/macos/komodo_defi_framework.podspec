@@ -60,19 +60,48 @@ A new Flutter FFI plugin project.
         echo "Warning: libkdflib.dylib not found in lib/libkdflib.dylib"
       fi
       
-      # Thin to active arch in Release builds only
+      # Prune binary slices to match $ARCHS (preserve universals) in Release builds only
       if [ "$CONFIGURATION" = "Release" ]; then
-        ARCH="$(echo "$ARCHS" | awk '{print $1}')"
-        if [ -f "$APP_SUPPORT_DIR/kdf" ] && lipo -info "$APP_SUPPORT_DIR/kdf" | grep -q 'Architectures in the fat file'; then
-          echo "Thinning kdf to $ARCH"
-          lipo -thin "$ARCH" "$APP_SUPPORT_DIR/kdf" -output "$APP_SUPPORT_DIR/kdf"
-          chmod +x "$APP_SUPPORT_DIR/kdf"
-        fi
-        if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ] && lipo -info "$FRAMEWORKS_DIR/libkdflib.dylib" | grep -q 'Architectures in the fat file'; then
-          echo "Thinning libkdflib.dylib to $ARCH"
-          lipo -thin "$ARCH" "$FRAMEWORKS_DIR/libkdflib.dylib" -output "$FRAMEWORKS_DIR/libkdflib.dylib"
-          install_name_tool -id "@rpath/libkdflib.dylib" "$FRAMEWORKS_DIR/libkdflib.dylib"
-        fi
+        TARGET_ARCHS="${ARCHS:-$(arch)}"
+
+        thin_binary_to_archs() {
+          file="$1"
+          keep_archs="$2"
+
+          [ -f "$file" ] || return 0
+
+          # Only act on fat files (multi-arch)
+          if ! lipo -info "$file" | grep -q 'Architectures in the fat file'; then
+            return 0
+          fi
+
+          bin_archs="$(lipo -archs "$file" 2>/dev/null || true)"
+          [ -n "$bin_archs" ] || return 0
+
+          dir="$(dirname "$file")"
+          base="$(basename "$file")"
+          work="$file"
+
+          for arch in $bin_archs; do
+            echo "$keep_archs" | tr ' ' '\n' | grep -qx "$arch" && continue
+            echo "Removing architecture $arch from $base"
+            next="$(mktemp "$dir/.${base}.XXXXXX")"
+            lipo "$work" -remove "$arch" -output "$next"
+            [ "$work" != "$file" ] && rm -f "$work"
+            work="$next"
+          done
+
+          if [ "$work" != "$file" ]; then
+            mv -f "$work" "$file"
+          fi
+        }
+
+        thin_binary_to_archs "$APP_SUPPORT_DIR/kdf" "$TARGET_ARCHS"
+        if [ -f "$APP_SUPPORT_DIR/kdf" ]; then chmod +x "$APP_SUPPORT_DIR/kdf"; fi
+
+        thin_binary_to_archs "$FRAMEWORKS_DIR/libkdflib.dylib" "$TARGET_ARCHS"
+        if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ]; then install_name_tool -id "@rpath/libkdflib.dylib" "$FRAMEWORKS_DIR/libkdflib.dylib"; fi
+
         # Re-sign after modifications (best-effort)
         if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
           codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true

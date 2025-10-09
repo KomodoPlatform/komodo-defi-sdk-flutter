@@ -45,11 +45,11 @@ SPEC CHECKSUMS:
   flutter_inappwebview_macos: c2d68649f9f8f1831bfcd98d73fd6256366d9d1d
   flutter_secure_storage_darwin: ce237a8775b39723566dc72571190a3769d70468
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  komodo_defi_framework: 2b0389a26ed9c574c3665b257bcb3ef147fe5345
+  komodo_defi_framework: 1eb76cee957ff7598498a87bb0d1c470da0f0980
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   url_launcher_macos: 0fba8ddabfc33ce0a9afe7c5fef5aab3d8d2d673
 
-PODFILE CHECKSUM: 236401fc2c932af29a9fcf0e97baeeb2d750d367
+PODFILE CHECKSUM: 9ebaf0ce3d369aaa26a9ea0e159195ed94724cf3
 
 COCOAPODS: 1.16.2

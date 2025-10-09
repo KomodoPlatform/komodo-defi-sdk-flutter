@@ -1,4 +1,5 @@
-/// Configuration for matching API files using either a simple keyword or regex pattern.
+/// Configuration for matching API files using either a simple keyword or regex
+/// pattern.
 class ApiFileMatchingConfig {
   ApiFileMatchingConfig({
     this.matchingKeyword,
@@ -48,11 +49,12 @@ class ApiFileMatchingConfig {
   }
 
   /// Given a list of candidate file names, returns the best according to
-  /// [matchingPreference]. If no preferences are set or no candidate matches
-  /// any preference, the first candidate is returned.
-  String choosePreferred(Iterable<String> candidates) {
+  /// [matchingPreference]. If no preferences are set, returns the first
+  /// candidate. If no candidate matches any preference, returns the first
+  /// candidate.
+  String? choosePreferred(Iterable<String> candidates) {
     final list = candidates.toList();
-    if (list.isEmpty) return '';
+    if (list.isEmpty) return null;
     if (matchingPreference.isEmpty) return list.first;
 
     for (final pref in matchingPreference) {

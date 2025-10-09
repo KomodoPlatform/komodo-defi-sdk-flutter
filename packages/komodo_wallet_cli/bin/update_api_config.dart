@@ -621,7 +621,8 @@ class KdfFetcher {
         final document = parser.parse(response.body);
         final attemptedFiles = <String>[];
 
-        // First pass: require short/full hash match
+        // First pass: require short/full hash match; collect all candidates
+        final hashCandidates = <String, String>{};
         for (final element in document.querySelectorAll('a')) {
           final href = element.attributes['href'];
           if (href == null) continue;
@@ -646,12 +647,22 @@ class KdfFetcher {
 
           if (matches &&
               (hrefPath.contains(fullHash) || hrefPath.contains(shortHash))) {
+            final fileName = path.basename(hrefPath);
             final resolved = href.startsWith('http')
                 ? href
                 : baseUrl.resolve(href).toString();
-            log.info('Found matching file: $resolved');
-            return resolved;
+            hashCandidates[fileName] = resolved;
           }
+        }
+        if (hashCandidates.isNotEmpty) {
+          final preferred = _choosePreferred(
+            hashCandidates.keys,
+            matchingPreference,
+          );
+          final resolved =
+              hashCandidates[preferred] ?? hashCandidates.values.first;
+          log.info('Found matching files for commit; selected: $resolved');
+          return resolved;
         }
 
         // Second pass: latest matching asset without commit constraint (only when not strict)

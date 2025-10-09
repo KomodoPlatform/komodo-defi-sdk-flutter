@@ -279,14 +279,14 @@ class FetchDefiApiStep extends BuildStep {
       path.join(destinationFolder, '.api_last_updated_$platform'),
     );
     final currentTimestamp = DateTime.now().toIso8601String();
-    final fileChecksum = sha256
-        .convert(File(zipFilePath).readAsBytesSync())
-        .toString();
+    final targetChecksums = List<String>.from(
+      platformsConfig[platform]!.validZipSha256Checksums,
+    );
     lastUpdatedFile.writeAsStringSync(
       json.encode({
         'api_commit_hash': apiCommitHash,
         'timestamp': currentTimestamp,
-        'checksums': [fileChecksum],
+        'checksums': targetChecksums,
       }),
     );
     _log.info('Updated last updated file for $platform.');
@@ -320,12 +320,14 @@ class FetchDefiApiStep extends BuildStep {
           config.validZipSha256Checksums,
         );
 
-        // Consider up-to-date if any overlap between stored and target checksums
-        final overlap = storedChecksums.toSet().intersection(
-          targetChecksums.toSet(),
-        );
-        if (overlap.isNotEmpty) {
-          _log.info('version: $apiCommitHash and SHA256 checksum match.');
+        // Consider up-to-date only if the stored set exactly matches the target set
+        final storedSet = storedChecksums.toSet();
+        final targetSet = targetChecksums.toSet();
+        if (storedSet.length == targetSet.length &&
+            storedSet.containsAll(targetSet)) {
+          _log.info(
+            'version: $apiCommitHash and checksum set matches exactly.',
+          );
           return false;
         }
       }
