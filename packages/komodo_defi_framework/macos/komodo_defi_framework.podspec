@@ -60,6 +60,26 @@ A new Flutter FFI plugin project.
         echo "Warning: libkdflib.dylib not found in lib/libkdflib.dylib"
       fi
       
+      # Thin to active arch in Release builds only
+      if [ "$CONFIGURATION" = "Release" ]; then
+        ARCH="$(echo "$ARCHS" | awk '{print $1}')"
+        if [ -f "$APP_SUPPORT_DIR/kdf" ] && lipo -info "$APP_SUPPORT_DIR/kdf" | grep -q 'Architectures in the fat file'; then
+          echo "Thinning kdf to $ARCH"
+          lipo -thin "$ARCH" "$APP_SUPPORT_DIR/kdf" -output "$APP_SUPPORT_DIR/kdf"
+          chmod +x "$APP_SUPPORT_DIR/kdf"
+        fi
+        if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ] && lipo -info "$FRAMEWORKS_DIR/libkdflib.dylib" | grep -q 'Architectures in the fat file'; then
+          echo "Thinning libkdflib.dylib to $ARCH"
+          lipo -thin "$ARCH" "$FRAMEWORKS_DIR/libkdflib.dylib" -output "$FRAMEWORKS_DIR/libkdflib.dylib"
+          install_name_tool -id "@rpath/libkdflib.dylib" "$FRAMEWORKS_DIR/libkdflib.dylib"
+        fi
+        # Re-sign after modifications (best-effort)
+        if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
+          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
+          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
+        fi
+      fi
+      
       # Fail if neither file was found
       if [ $FOUND_REQUIRED_FILE -eq 0 ]; then
         echo "Error: Neither kdf executable nor libkdflib.dylib was found. At least one is required."
