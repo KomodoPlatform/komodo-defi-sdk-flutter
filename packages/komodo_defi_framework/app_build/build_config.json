@@ -27,7 +27,7 @@
                 "path": "ios"
             },
             "macos": {
-                "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|kdf-macos-universal2-[a-f0-9]{7,40}|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
+                "matching_pattern": "^(?:kdf-macos-universal2-[a-f0-9]{7,40}|kdf_[a-f0-9]{7,40}-mac-universal)\\.zip$",
                 "matching_preference": [
                     "universal2",
                     "mac-arm64"
