@@ -9,3 +9,4 @@ export 'trezor_connection_status.dart';
 export 'trezor_exception.dart';
 export 'trezor_initialization_state.dart';
 export 'trezor_repository.dart';
+export 'trezor_user_manager.dart';

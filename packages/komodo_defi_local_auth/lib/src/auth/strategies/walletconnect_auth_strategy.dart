@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:komodo_defi_local_auth/src/auth/auth_service.dart';
 import 'package:komodo_defi_local_auth/src/auth/auth_state.dart';
 import 'package:komodo_defi_local_auth/src/auth/strategies/authentication_strategy.dart';
+import 'package:komodo_defi_local_auth/src/walletconnect/repositories/cosmos_chain_repository.dart';
+import 'package:komodo_defi_local_auth/src/walletconnect/repositories/evm_chain_repository.dart';
+import 'package:komodo_defi_local_auth/src/walletconnect/walletconnect_user_manager.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -17,13 +19,27 @@ class WalletConnectAuthStrategy implements AuthenticationStrategy {
   ///
   /// [authService] - The underlying authentication service
   /// [walletConnectMethods] - WalletConnect RPC methods namespace
-  WalletConnectAuthStrategy(this._authService, this._walletConnectMethods);
+  /// [userManager] - Optional user manager (created if not provided)
+  /// [evmChainRepository] - Optional EVM chain repository (created if not provided)
+  /// [cosmosChainRepository] - Optional Cosmos chain repository (created if not provided)
+  WalletConnectAuthStrategy(
+    IAuthService authService,
+    this._walletConnectMethods, {
+    WalletConnectUserManager? userManager,
+    EvmChainRepository? evmChainRepository,
+    CosmosChainRepository? cosmosChainRepository,
+  }) : _userManager = userManager ?? WalletConnectUserManager(authService),
+       _evmChainRepository = evmChainRepository ?? EvmChainRepository(),
+       _cosmosChainRepository =
+           cosmosChainRepository ?? CosmosChainRepository();
 
   static final _log = Logger('WalletConnectAuthStrategy');
   static const Duration _connectionTimeout = Duration(minutes: 5);
 
-  final IAuthService _authService;
   final WalletConnectMethodsNamespace _walletConnectMethods;
+  final WalletConnectUserManager _userManager;
+  final EvmChainRepository _evmChainRepository;
+  final CosmosChainRepository _cosmosChainRepository;
 
   Timer? _connectionTimer;
   StreamController<AuthenticationState>? _stateController;
@@ -35,14 +51,12 @@ class WalletConnectAuthStrategy implements AuthenticationStrategy {
     String? password,
     Mnemonic? mnemonic,
   }) async* {
-    _log.info('Starting WalletConnect sign-in for wallet: $walletName');
+    _log.info('Starting WalletConnect sign-in');
 
     // Validate and extract session topic from WalletConnect policy
     final sessionTopic = options.privKeyPolicy.maybeWhen(
       walletConnect: (topic) => topic,
-      orElse: () {
-        return null;
-      },
+      orElse: () => null,
     );
 
     if (sessionTopic == null) {
@@ -60,15 +74,109 @@ class WalletConnectAuthStrategy implements AuthenticationStrategy {
     );
 
     try {
-      yield* _authenticateWalletConnectStream(
-        sessionTopic: sessionTopic,
-        isRegistration: false,
-        options: options,
+      // Check if we have an existing session
+      if (sessionTopic.isNotEmpty) {
+        _log.fine('Checking existing WalletConnect session: $sessionTopic');
+        yield const AuthenticationState(
+          status: AuthenticationStatus.initializing,
+          message: 'Checking existing WalletConnect session...',
+        );
+
+        final sessionValid = await _validateExistingSession(sessionTopic);
+        if (sessionValid) {
+          _log.info('Found valid existing session: $sessionTopic');
+
+          // Authenticate with existing session
+          yield const AuthenticationState(
+            status: AuthenticationStatus.authenticating,
+            message: 'Signing in with existing session...',
+          );
+
+          final user = await _userManager.createOrAuthenticateWallet(
+            sessionTopic: sessionTopic,
+            derivationMethod: options.derivationMethod,
+          );
+
+          yield AuthenticationState(
+            status: AuthenticationStatus.completed,
+            user: user,
+            data: AuthenticationData.walletConnect(sessionTopic: sessionTopic),
+          );
+          return;
+        } else {
+          _log.warning('Existing session is invalid: $sessionTopic');
+        }
+      }
+
+      // Generate new QR code for new connection
+      _log.info('Generating new WalletConnect QR code for sign-in');
+      yield const AuthenticationState(
+        status: AuthenticationStatus.generatingQrCode,
+        message: 'Generating QR code for WalletConnect...',
       );
-      _log.info('Successfully completed WalletConnect sign-in');
+
+      final requiredNamespaces = await _buildRequiredNamespaces();
+      final connectionResponse = await _walletConnectMethods.newConnection(
+        requiredNamespaces: requiredNamespaces,
+      );
+
+      _log.fine('Generated QR code with URI: ${connectionResponse.uri}');
+
+      yield AuthenticationState(
+        status: AuthenticationStatus.waitingForConnection,
+        message: 'Scan QR code with your mobile wallet',
+        data: AuthenticationData.qrCode(
+          uri: connectionResponse.uri,
+          requiredNamespaces: requiredNamespaces.toJson(),
+        ),
+      );
+
+      // Wait for connection with timeout
+      _log.fine('Starting connection timeout and waiting for mobile wallet');
+      _startConnectionTimeout();
+
+      final newSessionTopic = await _waitForConnection(connectionResponse.uri);
+      _log.info(
+        'Mobile wallet connected successfully with session: $newSessionTopic',
+      );
+
+      _connectionTimer?.cancel();
+      _connectionTimer = null;
+
+      // Complete authentication with established session
+      yield const AuthenticationState(
+        status: AuthenticationStatus.authenticating,
+        message: 'Signing in with WalletConnect...',
+      );
+
+      final user = await _userManager.createOrAuthenticateWallet(
+        sessionTopic: newSessionTopic,
+        derivationMethod: options.derivationMethod,
+      );
+
+      _log.info('WalletConnect sign-in completed successfully');
+      yield AuthenticationState(
+        status: AuthenticationStatus.completed,
+        user: user,
+        data: AuthenticationData.walletConnect(sessionTopic: newSessionTopic),
+      );
     } catch (e, stackTrace) {
-      _log.severe('WalletConnect sign-in failed', e, stackTrace);
-      yield AuthenticationState.error('WalletConnect sign-in failed: $e');
+      _connectionTimer?.cancel();
+      _connectionTimer = null;
+
+      if (e is TimeoutException) {
+        _log.warning('WalletConnect connection timeout during sign-in');
+        yield AuthenticationState.error(
+          'Connection timeout. Please try again.',
+        );
+      } else {
+        _log.severe('WalletConnect sign-in failed', e, stackTrace);
+        yield AuthenticationState.error('WalletConnect sign-in failed: $e');
+      }
+    } finally {
+      if (_stateController != null && !_stateController!.isClosed) {
+        await _stateController!.close();
+      }
     }
   }
 
@@ -81,13 +189,12 @@ class WalletConnectAuthStrategy implements AuthenticationStrategy {
   }) async* {
     _log.info('Starting WalletConnect registration for wallet: $walletName');
 
-    // Validate and extract session topic from WalletConnect policy
-    final sessionTopic = options.privKeyPolicy.maybeWhen(
-      walletConnect: (topic) => topic,
-      orElse: () => null,
-    );
-
-    if (sessionTopic == null) {
+    // For registration, we don't need an existing session topic
+    // We'll create a new session during the registration process
+    if (options.privKeyPolicy.maybeWhen(
+      walletConnect: (_) => false, // WalletConnect policy is valid
+      orElse: () => true, // Other policies are invalid
+    )) {
       _log.severe(
         'Invalid policy for WalletConnectAuthStrategy registration: ${options.privKeyPolicy}',
       );
@@ -97,29 +204,94 @@ class WalletConnectAuthStrategy implements AuthenticationStrategy {
       return;
     }
 
-    _log.fine(
-      'Registration with session topic: ${sessionTopic.isEmpty ? 'new session' : sessionTopic}',
-    );
+    _log.fine('Starting WalletConnect registration flow');
 
     try {
-      yield* _authenticateWalletConnectStream(
-        sessionTopic: sessionTopic,
-        isRegistration: true,
-        options: options,
-        walletName: walletName,
-        password: password,
-        mnemonic: mnemonic,
+      // Step 1: Create/authenticate user account first
+      yield const AuthenticationState(
+        status: AuthenticationStatus.initializing,
+        message: 'Setting up WalletConnect wallet...',
       );
+
+      // Create a temporary session topic for initial registration
+      // This will be updated when the actual session is established
+      final tempSessionTopic = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+
+      final user = await _userManager.createOrAuthenticateWallet(
+        sessionTopic: tempSessionTopic,
+        derivationMethod: options.derivationMethod,
+        walletName: walletName,
+      );
+
       _log.info(
-        'Successfully completed WalletConnect registration for wallet: $walletName',
+        'Successfully created WalletConnect wallet: ${user.walletId.name}',
+      );
+
+      // Step 2: Generate QR code with comprehensive chain support
+      yield const AuthenticationState(
+        status: AuthenticationStatus.generatingQrCode,
+        message: 'Generating QR code with comprehensive blockchain support...',
+      );
+
+      final requiredNamespaces = await _buildRequiredNamespaces();
+      final connectionResponse = await _walletConnectMethods.newConnection(
+        requiredNamespaces: requiredNamespaces,
+      );
+
+      _log.fine('Generated QR code with URI: ${connectionResponse.uri}');
+
+      yield AuthenticationState(
+        status: AuthenticationStatus.waitingForConnection,
+        message: 'Scan QR code with your mobile wallet',
+        data: AuthenticationData.qrCode(
+          uri: connectionResponse.uri,
+          requiredNamespaces: requiredNamespaces.toJson(),
+        ),
+      );
+
+      // Step 3: Wait for connection with timeout
+      _log.fine('Starting connection timeout and waiting for mobile wallet');
+      _startConnectionTimeout();
+
+      final newSessionTopic = await _waitForConnection(connectionResponse.uri);
+      _log.info(
+        'Mobile wallet connected successfully with session: $newSessionTopic',
+      );
+
+      _connectionTimer?.cancel();
+      _connectionTimer = null;
+
+      // Step 4: Update user with actual session topic
+      final updatedUser = await _userManager.updateSessionTopic(
+        newSessionTopic: newSessionTopic,
+        derivationMethod: options.derivationMethod,
+      );
+
+      _log.info('WalletConnect registration completed successfully');
+      yield AuthenticationState(
+        status: AuthenticationStatus.completed,
+        user: updatedUser,
+        data: AuthenticationData.walletConnect(sessionTopic: newSessionTopic),
       );
     } catch (e, stackTrace) {
-      _log.severe(
-        'WalletConnect registration failed for wallet: $walletName',
-        e,
-        stackTrace,
-      );
-      yield AuthenticationState.error('WalletConnect registration failed: $e');
+      _connectionTimer?.cancel();
+      _connectionTimer = null;
+
+      if (e is TimeoutException) {
+        _log.warning('WalletConnect connection timeout during registration');
+        yield AuthenticationState.error(
+          'Connection timeout. Please try again.',
+        );
+      } else {
+        _log.severe('WalletConnect registration failed', e, stackTrace);
+        yield AuthenticationState.error(
+          'WalletConnect registration failed: $e',
+        );
+      }
+    } finally {
+      if (_stateController != null && !_stateController!.isClosed) {
+        await _stateController!.close();
+      }
     }
   }
 
@@ -154,110 +326,11 @@ class WalletConnectAuthStrategy implements AuthenticationStrategy {
       await _stateController!.close();
     }
 
+    _userManager.dispose();
+    _evmChainRepository.dispose();
+    _cosmosChainRepository.dispose();
+
     _log.fine('WalletConnect auth strategy disposed successfully');
-  }
-
-  /// Main authentication stream that handles the complete WalletConnect flow
-  Stream<AuthenticationState> _authenticateWalletConnectStream({
-    required bool isRegistration,
-    required AuthOptions options,
-    String? sessionTopic,
-    String? walletName,
-    String? password,
-    Mnemonic? mnemonic,
-  }) async* {
-    _log.fine(
-      'Starting WalletConnect authentication stream (isRegistration: $isRegistration)',
-    );
-    _stateController = StreamController<AuthenticationState>();
-
-    try {
-      // Step 1: Check if we have an existing session
-      if (sessionTopic != null && sessionTopic.isNotEmpty) {
-        _log.fine('Checking existing WalletConnect session: $sessionTopic');
-        yield const AuthenticationState(
-          status: AuthenticationStatus.initializing,
-          message: 'Checking existing WalletConnect session...',
-        );
-
-        final sessionValid = await _validateExistingSession(sessionTopic);
-        if (sessionValid) {
-          _log.info('Found valid existing session: $sessionTopic');
-          yield* _completeAuthenticationWithSession(
-            sessionTopic,
-            isRegistration,
-            options,
-            walletName: walletName,
-            password: password,
-            mnemonic: mnemonic,
-          );
-          return;
-        } else {
-          _log.warning('Existing session is invalid: $sessionTopic');
-        }
-      }
-
-      // Step 2: Generate QR code for new connection
-      _log.info('Generating new WalletConnect QR code');
-      yield const AuthenticationState(
-        status: AuthenticationStatus.generatingQrCode,
-        message: 'Generating QR code for WalletConnect...',
-      );
-
-      final connectionResponse = await _generateQRCode();
-      _log.fine('Generated QR code with URI: ${connectionResponse.uri}');
-
-      yield AuthenticationState(
-        status: AuthenticationStatus.waitingForConnection,
-        message: 'Scan QR code with your mobile wallet',
-        data: AuthenticationData.qrCode(
-          uri: connectionResponse.uri,
-          requiredNamespaces: _getRequiredNamespaces().toJson(),
-        ),
-      );
-
-      // Step 3: Wait for connection with timeout
-      _log.fine('Starting connection timeout and waiting for mobile wallet');
-      _startConnectionTimeout();
-
-      final newSessionTopic = await _waitForConnection(connectionResponse.uri);
-      _log.info(
-        'Mobile wallet connected successfully with session: $newSessionTopic',
-      );
-
-      _connectionTimer?.cancel();
-      _connectionTimer = null;
-
-      // Step 4: Complete authentication with established session
-      _log.fine(
-        'Completing authentication with established session: $newSessionTopic',
-      );
-      yield* _completeAuthenticationWithSession(
-        newSessionTopic,
-        isRegistration,
-        options,
-        walletName: walletName,
-        password: password,
-        mnemonic: mnemonic,
-      );
-    } catch (e, stackTrace) {
-      _connectionTimer?.cancel();
-      _connectionTimer = null;
-
-      if (e is TimeoutException) {
-        _log.warning('WalletConnect connection timeout');
-        yield AuthenticationState.error(
-          'Connection timeout. Please try again.',
-        );
-      } else {
-        _log.severe('WalletConnect authentication error', e, stackTrace);
-        yield AuthenticationState.error('WalletConnect error: $e');
-      }
-    } finally {
-      if (_stateController != null && !_stateController!.isClosed) {
-        await _stateController!.close();
-      }
-    }
   }
 
   /// Validates if an existing session is still active
@@ -280,29 +353,114 @@ class WalletConnectAuthStrategy implements AuthenticationStrategy {
     }
   }
 
-  /// Generates a QR code for WalletConnect connection
-  Future<WcNewConnectionResponse> _generateQRCode() async {
-    _log.fine('Generating QR code with required namespaces');
-    final requiredNamespaces = _getRequiredNamespaces();
+  /// Builds required namespaces with comprehensive chain support from repositories.
+  Future<WcRequiredNamespaces> _buildRequiredNamespaces() async {
+    _log.fine('Building required namespaces with dynamic chain support');
 
     try {
-      final response = await _walletConnectMethods.newConnection(
-        requiredNamespaces: requiredNamespaces,
+      // Get EVM chains from repository with fallback
+      List<String> evmChains;
+      try {
+        evmChains = await _evmChainRepository.getEvmChainIds();
+        _log.fine('Retrieved ${evmChains.length} EVM chains from repository');
+      } catch (e, stackTrace) {
+        _log.warning(
+          'Failed to get EVM chains from repository, using cached',
+          e,
+          stackTrace,
+        );
+        evmChains = _evmChainRepository.getCachedEvmChainIds();
+        if (evmChains.isEmpty) {
+          _log.warning('No cached EVM chains available, using defaults');
+          evmChains = _getDefaultEvmChains();
+        }
+      }
+
+      // Get Cosmos chains from repository with fallback
+      List<String> cosmosChains;
+      try {
+        cosmosChains = await _cosmosChainRepository.getCosmosChainIds();
+        _log.fine(
+          'Retrieved ${cosmosChains.length} Cosmos chains from repository',
+        );
+      } catch (e, stackTrace) {
+        _log.warning(
+          'Failed to get Cosmos chains from repository, using cached',
+          e,
+          stackTrace,
+        );
+        cosmosChains = _cosmosChainRepository.getCachedCosmosChainIds();
+        if (cosmosChains.isEmpty) {
+          _log.warning('No cached Cosmos chains available, using defaults');
+          cosmosChains = _getDefaultCosmosChains();
+        }
+      }
+
+      final requiredNamespaces = WcRequiredNamespaces(
+        eip155: WcConnNs(
+          chains: evmChains,
+          methods: [
+            'eth_sendTransaction',
+            'eth_signTransaction',
+            'eth_sign',
+            'personal_sign',
+            'eth_signTypedData',
+            'eth_signTypedData_v1',
+            'eth_signTypedData_v3',
+            'eth_signTypedData_v4',
+          ],
+          events: ['chainChanged', 'accountsChanged'],
+        ),
+        cosmos: WcConnNs(
+          chains: cosmosChains,
+          methods: [
+            'cosmos_signDirect',
+            'cosmos_signAmino',
+            'cosmos_getAccounts',
+          ],
+          events: ['chainChanged', 'accountsChanged'],
+        ),
       );
-      _log.fine('QR code generated successfully');
-      return response;
+
+      _log.info(
+        'Built required namespaces with ${evmChains.length} EVM chains and ${cosmosChains.length} Cosmos chains',
+      );
+
+      return requiredNamespaces;
     } catch (e, stackTrace) {
-      _log.severe('Failed to generate QR code', e, stackTrace);
-      rethrow;
+      _log.severe('Failed to build required namespaces', e, stackTrace);
+      // Return default namespaces as ultimate fallback
+      return _getDefaultRequiredNamespaces();
     }
   }
 
-  /// Gets the required namespaces for WalletConnect connection
-  WcRequiredNamespaces _getRequiredNamespaces() {
-    // Define the required namespaces for EIP155 (Ethereum) and Cosmos chains
+  /// Gets default EVM chain IDs as fallback.
+  List<String> _getDefaultEvmChains() {
+    return [
+      'eip155:1', // Ethereum Mainnet
+      'eip155:137', // Polygon Mainnet
+      'eip155:56', // BNB Smart Chain
+      'eip155:43114', // Avalanche C-Chain
+      'eip155:250', // Fantom Opera
+    ];
+  }
+
+  /// Gets default Cosmos chain IDs as fallback.
+  List<String> _getDefaultCosmosChains() {
+    return [
+      'cosmos:cosmoshub-4', // Cosmos Hub
+      'cosmos:osmosis-1', // Osmosis
+      'cosmos:juno-1', // Juno
+      'cosmos:akashnet-2', // Akash Network
+      'cosmos:secret-4', // Secret Network
+    ];
+  }
+
+  /// Gets default required namespaces as ultimate fallback.
+  WcRequiredNamespaces _getDefaultRequiredNamespaces() {
     return WcRequiredNamespaces(
       eip155: WcConnNs(
-        chains: ['eip155:1', 'eip155:137'], // Ethereum mainnet and Polygon
+        chains: _getDefaultEvmChains(),
         methods: [
           'eth_sendTransaction',
           'eth_signTransaction',
@@ -313,12 +471,14 @@ class WalletConnectAuthStrategy implements AuthenticationStrategy {
         events: ['chainChanged', 'accountsChanged'],
       ),
       cosmos: WcConnNs(
-        chains: ['cosmos:cosmoshub-4'], // Cosmos Hub
+        chains: _getDefaultCosmosChains(),
         methods: ['cosmos_signDirect', 'cosmos_signAmino'],
         events: ['chainChanged', 'accountsChanged'],
       ),
     );
   }
+
+  /// Gets the required namespaces for WalletConnect connection (legacy method for compatibility).
 
   /// Starts a timeout timer for connection attempts
   void _startConnectionTimeout() {
@@ -390,111 +550,5 @@ class WalletConnectAuthStrategy implements AuthenticationStrategy {
 
     _log.severe('No wallet connection detected after $maxAttempts attempts');
     throw TimeoutException('No wallet connection detected', _connectionTimeout);
-  }
-
-  /// Completes authentication using an established WalletConnect session
-  Stream<AuthenticationState> _completeAuthenticationWithSession(
-    String sessionTopic,
-    bool isRegistration,
-    AuthOptions options, {
-    String? walletName,
-    String? password,
-    Mnemonic? mnemonic,
-  }) async* {
-    _log.info(
-      'Completing authentication with session: $sessionTopic (isRegistration: $isRegistration)',
-    );
-
-    try {
-      yield AuthenticationState(
-        status: AuthenticationStatus.sessionEstablished,
-        message: 'WalletConnect session established',
-        data: AuthenticationData.walletConnect(sessionTopic: sessionTopic),
-      );
-
-      // Create updated options with the session topic
-      final updatedOptions = AuthOptions(
-        derivationMethod: options.derivationMethod,
-        allowWeakPassword: options.allowWeakPassword,
-        privKeyPolicy: PrivateKeyPolicy.walletConnect(sessionTopic),
-      );
-
-      KdfUser user;
-      if (isRegistration) {
-        if (walletName == null || password == null) {
-          _log.warning('Registration failed: missing wallet name or password');
-          yield AuthenticationState.error(
-            'Wallet name and password are required for registration',
-          );
-          return;
-        }
-
-        _log.fine('Registering WalletConnect wallet: $walletName');
-        yield const AuthenticationState(
-          status: AuthenticationStatus.authenticating,
-          message: 'Registering WalletConnect wallet...',
-        );
-
-        user = await _authService.register(
-          walletName: walletName,
-          password: password,
-          options: updatedOptions,
-          mnemonic: mnemonic,
-        );
-        _log.info('Successfully registered WalletConnect wallet: $walletName');
-      } else {
-        _log.fine('Signing in with WalletConnect');
-        yield const AuthenticationState(
-          status: AuthenticationStatus.authenticating,
-          message: 'Signing in with WalletConnect...',
-        );
-
-        // For sign-in, we need to find the existing wallet
-        // In a real implementation, you'd have a way to map session topics to wallets
-        final users = await _authService.getUsers();
-        final wcUser = users.firstWhereOrNull(
-          (KdfUser u) => u.walletId.authOptions.privKeyPolicy.maybeWhen(
-            walletConnect: (_) => true,
-            orElse: () => false,
-          ),
-        );
-
-        if (wcUser == null) {
-          _log.warning('No WalletConnect wallet found for sign-in');
-          yield AuthenticationState.error(
-            'No WalletConnect wallet found. Please register first.',
-          );
-          return;
-        }
-
-        _log.fine(
-          'Found existing WalletConnect wallet: ${wcUser.walletId.name}',
-        );
-        user = await _authService.signIn(
-          walletName: wcUser.walletId.name,
-          password: password ?? '',
-          options: updatedOptions,
-        );
-        _log.info(
-          'Successfully signed in WalletConnect wallet: ${wcUser.walletId.name}',
-        );
-      }
-
-      _log.info('WalletConnect authentication completed successfully');
-      yield AuthenticationState(
-        status: AuthenticationStatus.completed,
-        user: user,
-        data: AuthenticationData.walletConnect(sessionTopic: sessionTopic),
-      );
-    } catch (e, stackTrace) {
-      _log.severe(
-        'Failed to complete WalletConnect authentication',
-        e,
-        stackTrace,
-      );
-      yield AuthenticationState.error(
-        'Failed to complete WalletConnect authentication: $e',
-      );
-    }
   }
 }

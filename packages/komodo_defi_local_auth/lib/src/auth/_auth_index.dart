@@ -8,3 +8,8 @@ export 'auth_state.dart';
 export 'namespaces/trezor_auth_namespace.dart';
 export 'namespaces/walletconnect_auth_namespace.dart';
 export 'storage/secure_storage.dart';
+export 'strategies/auth_strategy_factory.dart';
+export 'strategies/authentication_strategy.dart';
+export 'strategies/regular_auth_strategy.dart';
+export 'strategies/trezor_auth_strategy.dart';
+export 'strategies/walletconnect_auth_strategy.dart';

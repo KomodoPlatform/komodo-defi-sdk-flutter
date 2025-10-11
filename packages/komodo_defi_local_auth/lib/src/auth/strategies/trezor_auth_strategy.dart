@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart'
+    show TrezorUserManager;
 import 'package:komodo_defi_local_auth/src/auth/auth_service.dart';
 import 'package:komodo_defi_local_auth/src/auth/auth_state.dart';
 import 'package:komodo_defi_local_auth/src/auth/strategies/authentication_strategy.dart';
@@ -21,30 +23,34 @@ class TrezorAuthStrategy implements AuthenticationStrategy {
   ///
   /// [authService] - The underlying authentication service
   /// [trezorRepository] - Repository for Trezor device operations
+  /// [userManager] - Optional user manager (created if not provided)
   /// [connectionMonitor] - Optional connection monitor (created if not provided)
   /// [secureStorage] - Optional secure storage (uses default if not provided)
   /// [passwordGenerator] - Optional password generator function
   TrezorAuthStrategy(
     this._authService,
     this._trezorRepository, {
+    TrezorUserManager? userManager,
     TrezorConnectionMonitor? connectionMonitor,
     FlutterSecureStorage? secureStorage,
     String Function(int length)? passwordGenerator,
-  }) : _connectionMonitor =
-           connectionMonitor ?? TrezorConnectionMonitor(_trezorRepository),
-       _secureStorage = secureStorage ?? const FlutterSecureStorage(),
-       _generatePassword =
-           passwordGenerator ?? SecurityUtils.generatePasswordSecure;
+  }) : _userManager =
+           userManager ??
+           TrezorUserManager(
+             _authService,
+             secureStorage: secureStorage,
+             passwordGenerator: passwordGenerator,
+           ),
+       _connectionMonitor =
+           connectionMonitor ?? TrezorConnectionMonitor(_trezorRepository);
 
   static const String trezorWalletName = 'My Trezor';
-  static const String _passwordKey = 'trezor_wallet_password';
   static final _log = Logger('TrezorAuthStrategy');
 
   final IAuthService _authService;
   final TrezorRepository _trezorRepository;
-  final FlutterSecureStorage _secureStorage;
+  final TrezorUserManager _userManager;
   final TrezorConnectionMonitor _connectionMonitor;
-  final String Function(int length) _generatePassword;
 
   @override
   Stream<AuthenticationState> signInStream({
@@ -53,9 +59,6 @@ class TrezorAuthStrategy implements AuthenticationStrategy {
     String? password,
     Mnemonic? mnemonic,
   }) async* {
-    _log.info('Starting Trezor sign-in for wallet: $walletName');
-
-    // Validate that this is a Trezor private key policy
     if (options.privKeyPolicy != const PrivateKeyPolicy.trezor()) {
       _log.severe(
         'Invalid policy for TrezorAuthStrategy: ${options.privKeyPolicy}',
@@ -66,14 +69,15 @@ class TrezorAuthStrategy implements AuthenticationStrategy {
       return;
     }
 
-    _log.fine(
-      'Starting Trezor authentication stream with derivation method: ${options.derivationMethod}',
+    _log.info(
+      'Starting Trezor sign-in for wallet: $walletName'
+      'with deravation method ${options.derivationMethod}',
     );
-
     try {
       yield* _authenticateTrezorStream(
         derivationMethod: options.derivationMethod,
-        passphrase: password,
+        // Login attempts via Trezor
+        passphrase: password?.nullIfEmpty,
       );
       _log.info('Successfully completed Trezor sign-in');
     } catch (e, stackTrace) {
@@ -141,6 +145,7 @@ class TrezorAuthStrategy implements AuthenticationStrategy {
     _log.fine('Disposing Trezor auth strategy');
     try {
       _connectionMonitor.dispose();
+      _userManager.dispose();
       _log.fine('Trezor auth strategy disposed successfully');
     } catch (e, stackTrace) {
       _log.severe('Error disposing Trezor auth strategy', e, stackTrace);
@@ -192,7 +197,7 @@ class TrezorAuthStrategy implements AuthenticationStrategy {
   Future<void> clearTrezorPassword() async {
     _log.info('Clearing stored Trezor password');
     try {
-      await _secureStorage.delete(key: _passwordKey);
+      await _userManager.clearStoredPassword();
       _log.fine('Trezor password cleared successfully');
     } catch (e, stackTrace) {
       _log.severe('Failed to clear Trezor password', e, stackTrace);
@@ -203,42 +208,12 @@ class TrezorAuthStrategy implements AuthenticationStrategy {
   /// Gets or generates a password for the Trezor wallet
   Future<String> _getPassword({required bool isNewUser}) async {
     _log.fine('Getting Trezor wallet password (isNewUser: $isNewUser)');
-
-    try {
-      final existing = await _secureStorage.read(key: _passwordKey);
-
-      if (!isNewUser) {
-        if (existing == null) {
-          _log.severe('No stored password found for existing Trezor user');
-          throw AuthException(
-            'Authentication failed for Trezor wallet',
-            type: AuthExceptionType.generalAuthError,
-          );
-        }
-        _log.fine('Retrieved existing password for Trezor wallet');
-        return existing;
-      }
-
-      if (existing != null) {
-        _log.fine('Using existing password for new Trezor wallet');
-        return existing;
-      }
-
-      _log.fine('Generating new password for Trezor wallet');
-      final newPassword = _generatePassword(16);
-      await _secureStorage.write(key: _passwordKey, value: newPassword);
-      _log.fine('New password generated and stored successfully');
-      return newPassword;
-    } catch (e, stackTrace) {
-      _log.severe('Failed to get/generate Trezor password', e, stackTrace);
-      rethrow;
-    }
+    return _userManager.getOrGeneratePassword(isNewUser: isNewUser);
   }
 
   /// Start monitoring Trezor connection status after successful authentication
   void _startConnectionMonitoring({String? devicePubkey}) {
     _log.info('Starting Trezor connection monitoring');
-    _log.fine('Device pubkey: ${devicePubkey ?? 'none'}');
 
     try {
       _connectionMonitor.startMonitoring(
@@ -288,20 +263,8 @@ class TrezorAuthStrategy implements AuthenticationStrategy {
     _log.fine('Checking if current user needs to be signed out');
 
     try {
-      final current = await _authService.getActiveUser();
-      if (current?.walletId.name == trezorWalletName) {
-        _log.warning("Signing out current '${current?.walletId.name}' user");
-        await _stopConnectionMonitoring();
-        try {
-          await _authService.signOut();
-          _log.fine('Trezor user signed out successfully');
-        } catch (e, stackTrace) {
-          _log.warning('Error during Trezor user sign out', e, stackTrace);
-          // ignore sign out errors
-        }
-      } else {
-        _log.finest('No Trezor user to sign out');
-      }
+      await _stopConnectionMonitoring();
+      await _userManager.signOutCurrentUser();
     } catch (e, stackTrace) {
       _log.severe(
         'Failed to check/sign out current Trezor user',
@@ -315,27 +278,7 @@ class TrezorAuthStrategy implements AuthenticationStrategy {
   /// Finds an existing Trezor user in the user list
   Future<KdfUser?> _findExistingTrezorUser() async {
     _log.fine('Searching for existing Trezor user');
-
-    try {
-      final users = await _authService.getUsers();
-      final trezorUser = users.firstWhereOrNull(
-        (u) =>
-            u.walletId.name == trezorWalletName &&
-            u.walletId.authOptions.privKeyPolicy ==
-                const PrivateKeyPolicy.trezor(),
-      );
-
-      if (trezorUser != null) {
-        _log.fine('Found existing Trezor user: ${trezorUser.walletId.name}');
-      } else {
-        _log.fine('No existing Trezor user found');
-      }
-
-      return trezorUser;
-    } catch (e, stackTrace) {
-      _log.severe('Failed to find existing Trezor user', e, stackTrace);
-      rethrow;
-    }
+    return _userManager.findExistingUser();
   }
 
   /// Authenticates with the Trezor wallet (sign in or register)
@@ -354,23 +297,12 @@ class TrezorAuthStrategy implements AuthenticationStrategy {
     );
 
     try {
-      if (existingUser != null) {
-        _log.fine('Signing in to existing Trezor wallet');
-        await _authService.signIn(
-          walletName: trezorWalletName,
-          password: password,
-          options: authOptions,
-        );
-        _log.fine('Successfully signed in to Trezor wallet');
-      } else {
-        _log.fine('Registering new Trezor wallet');
-        await _authService.register(
-          walletName: trezorWalletName,
-          password: password,
-          options: authOptions,
-        );
-        _log.fine('Successfully registered new Trezor wallet');
-      }
+      await _userManager.authenticateWallet(
+        existingUser: existingUser,
+        password: password,
+        authOptions: authOptions,
+      );
+      _log.fine('Successfully authenticated with Trezor wallet');
     } catch (e, stackTrace) {
       _log.severe('Failed to authenticate with Trezor wallet', e, stackTrace);
       rethrow;
@@ -407,8 +339,9 @@ class TrezorAuthStrategy implements AuthenticationStrategy {
   Stream<TrezorInitializationState> _initializeTrezorAndAuthenticate(
     DerivationMethod derivationMethod,
   ) async* {
-    _log.info('Starting Trezor initialization and authentication');
-    _log.fine('Derivation method: $derivationMethod');
+    _log
+      ..info('Starting Trezor initialization and authentication')
+      ..fine('Derivation method: $derivationMethod');
 
     try {
       await _signOutCurrentTrezorUser();

@@ -16,6 +16,7 @@ dependencies:
   flutter_bloc: ^9.1.1
   flutter_secure_storage: ^10.0.0-beta.4
   freezed_annotation: ^3.0.0
+  json_annotation: ^4.9.0
 
   komodo_defi_framework: ^0.3.1+2
   komodo_defi_rpc_methods: ^0.3.1+1
@@ -32,5 +33,6 @@ dev_dependencies:
     sdk: flutter
   freezed: ^3.0.4
   index_generator: ^4.0.1
+  json_serializable: ^6.8.0
   mocktail: ^1.0.4
   very_good_analysis: ^9.0.0
