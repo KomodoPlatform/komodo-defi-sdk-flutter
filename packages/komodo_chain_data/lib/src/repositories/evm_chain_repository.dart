@@ -2,8 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:komodo_defi_local_auth/src/walletconnect/repositories/chain_repository.dart';
-import 'package:komodo_defi_local_auth/src/walletconnect/repositories/evm_chain_info.dart';
+import 'package:komodo_chain_data/komodo_chain_data.dart';
 import 'package:logging/logging.dart';
 
 /// Repository for EVM chain information from chainid.network.
@@ -34,15 +33,15 @@ class EvmChainRepository implements ChainRepository {
   Future<List<ChainInfo>> getChains() async {
     if (isCacheValid && _cachedChains.isNotEmpty) {
       _log.fine('Returning cached EVM chains (${_cachedChains.length} chains)');
-      return _cachedChains;
+      return _cachedChains.cast<ChainInfo>();
     }
 
     try {
       await refreshChains();
-      return _cachedChains;
+      return _cachedChains.cast<ChainInfo>();
     } catch (e, stackTrace) {
       _log.warning('Failed to fetch EVM chains, using defaults', e, stackTrace);
-      return _getDefaultChains();
+      return _getDefaultChains().cast<ChainInfo>();
     }
   }
 
@@ -93,7 +92,7 @@ class EvmChainRepository implements ChainRepository {
 
   @override
   List<ChainInfo> getCachedChains() {
-    return List.unmodifiable(_cachedChains);
+    return List.unmodifiable(_cachedChains.cast<ChainInfo>());
   }
 
   @override

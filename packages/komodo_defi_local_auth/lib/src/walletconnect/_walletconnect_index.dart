@@ -3,10 +3,5 @@
 /// Internal/private classes related to the WalletConnect integration of the Komodo DeFi Framework ecosystem.
 library _walletconnect;
 
-export 'repositories/chain_repository.dart';
-export 'repositories/cosmos_chain_info.dart';
-export 'repositories/cosmos_chain_repository.dart';
-export 'repositories/evm_chain_info.dart';
-export 'repositories/evm_chain_repository.dart';
 export 'secure_wallet_manager.dart';
 export 'walletconnect_user_manager.dart';

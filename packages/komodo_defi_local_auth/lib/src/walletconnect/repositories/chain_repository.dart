@@ -42,9 +42,6 @@ abstract class ChainInfo {
   /// Optional native currency information.
   final String? nativeCurrency;
 
-  /// Converts this chain info to a JSON map.
-  Map<String, dynamic> toJson();
-
   /// Creates a chain info instance from a JSON map.
   static ChainInfo fromJson(Map<String, dynamic> json) {
     throw UnimplementedError('Subclasses must implement fromJson');

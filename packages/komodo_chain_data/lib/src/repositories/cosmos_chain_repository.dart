@@ -2,8 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:komodo_defi_local_auth/src/walletconnect/repositories/chain_repository.dart';
-import 'package:komodo_defi_local_auth/src/walletconnect/repositories/cosmos_chain_info.dart';
+import 'package:komodo_chain_data/komodo_chain_data.dart';
 import 'package:logging/logging.dart';
 
 /// Repository for Cosmos chain information from chains.cosmos.directory.
@@ -36,19 +35,19 @@ class CosmosChainRepository implements ChainRepository {
       _log.fine(
         'Returning cached Cosmos chains (${_cachedChains.length} chains)',
       );
-      return _cachedChains;
+      return _cachedChains.cast<ChainInfo>();
     }
 
     try {
       await refreshChains();
-      return _cachedChains;
+      return _cachedChains.cast<ChainInfo>();
     } catch (e, stackTrace) {
       _log.warning(
         'Failed to fetch Cosmos chains, using defaults',
         e,
         stackTrace,
       );
-      return _getDefaultChains();
+      return _getDefaultChains().cast<ChainInfo>();
     }
   }
 
@@ -70,8 +69,7 @@ class CosmosChainRepository implements ChainRepository {
       }
 
       final responseBody = await response.transform(utf8.decoder).join();
-      final Map<String, dynamic> responseJson =
-          json.decode(responseBody) as Map<String, dynamic>;
+      final responseJson = json.decode(responseBody) as Map<String, dynamic>;
 
       // The chains.cosmos.directory API returns a different structure
       // We need to handle the 'chains' array or individual chain objects
@@ -112,7 +110,7 @@ class CosmosChainRepository implements ChainRepository {
 
   @override
   List<ChainInfo> getCachedChains() {
-    return List.unmodifiable(_cachedChains);
+    return List.unmodifiable(_cachedChains.cast<ChainInfo>());
   }
 
   @override

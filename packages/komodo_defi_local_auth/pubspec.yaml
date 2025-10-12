@@ -18,6 +18,7 @@ dependencies:
   freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
 
+  komodo_chain_data: ^0.0.1
   komodo_defi_framework: ^0.3.1+2
   komodo_defi_rpc_methods: ^0.3.1+1
   komodo_defi_types: ^0.3.2+1

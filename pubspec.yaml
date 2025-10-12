@@ -16,6 +16,7 @@ workspace:
   - packages/komodo_defi_framework
   - packages/komodo_coins
   - packages/komodo_coin_updates
+  - packages/komodo_chain_data
   - packages/komodo_cex_market_data
   - packages/dragon_logs
   - packages/dragon_logs/example

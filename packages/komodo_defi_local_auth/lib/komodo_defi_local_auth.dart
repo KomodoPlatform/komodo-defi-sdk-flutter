@@ -15,12 +15,4 @@ export 'src/auth/_auth_index.dart'
 export 'src/komodo_defi_local_auth.dart';
 export 'src/trezor/_trezor_index.dart' show TrezorUserManager;
 export 'src/walletconnect/_walletconnect_index.dart'
-    show
-        ChainInfo,
-        ChainRepository,
-        CosmosChainInfo,
-        CosmosChainRepository,
-        EvmChainInfo,
-        EvmChainRepository,
-        SecureWalletManager,
-        WalletConnectUserManager;
+    show SecureWalletManager, WalletConnectUserManager;
