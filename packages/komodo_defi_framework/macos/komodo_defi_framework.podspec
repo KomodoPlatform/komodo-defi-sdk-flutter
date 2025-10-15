@@ -109,9 +109,20 @@ A new Flutter FFI plugin project.
         fi
       fi
       
+      # Sign kdf and dylib in all configurations (best-effort)
+      if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
+        if [ -f "$APP_SUPPORT_DIR/kdf" ]; then
+          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
+        fi
+        if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ]; then
+          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
+        fi
+      fi
+      
       # Fail if neither file was found
       if [ $FOUND_REQUIRED_FILE -eq 0 ]; then
-        echo "Error: Neither kdf executable nor libkdflib.dylib was found. At least one is required."
+        echo "\n\nError: Neither kdf executable nor libkdflib.dylib was found. At least one is required."
+        echo "Please try run `flutter clean && flutter build bundle` and try again.\n\n"
         exit 1
       fi
     SCRIPT
