@@ -61,47 +61,48 @@ A new Flutter FFI plugin project.
       fi
       
       # Prune binary slices to match $ARCHS (preserve universals) in Release builds only
-      if [ "$CONFIGURATION" = "Release" ]; then
-        TARGET_ARCHS="${ARCHS:-$(arch)}"
+      case "$CONFIGURATION" in
+        Release*)
+          TARGET_ARCHS="${ARCHS:-$(arch)}"
 
-        thin_binary_to_archs() {
-          file="$1"
-          keep_archs="$2"
+          thin_binary_to_archs() {
+            file="$1"
+            keep_archs="$2"
 
-          [ -f "$file" ] || return 0
+            [ -f "$file" ] || return 0
 
-          # Only act on fat files (multi-arch)
-          if ! lipo -info "$file" | grep -q 'Architectures in the fat file'; then
-            return 0
-          fi
+            # Only act on fat files (multi-arch)
+            if ! lipo -info "$file" | grep -q 'Architectures in the fat file'; then
+              return 0
+            fi
 
-          bin_archs="$(lipo -archs "$file" 2>/dev/null || true)"
-          [ -n "$bin_archs" ] || return 0
+            bin_archs="$(lipo -archs "$file" 2>/dev/null || true)"
+            [ -n "$bin_archs" ] || return 0
 
-          dir="$(dirname "$file")"
-          base="$(basename "$file")"
-          work="$file"
+            dir="$(dirname "$file")"
+            base="$(basename "$file")"
+            work="$file"
 
-          for arch in $bin_archs; do
-            echo "$keep_archs" | tr ' ' '\n' | grep -qx "$arch" && continue
-            echo "Removing architecture $arch from $base"
-            next="$(mktemp "$dir/.${base}.XXXXXX")"
-            lipo "$work" -remove "$arch" -output "$next"
-            [ "$work" != "$file" ] && rm -f "$work"
-            work="$next"
-          done
+            for arch in $bin_archs; do
+              echo "$keep_archs" | tr ' ' '\n' | grep -qx "$arch" && continue
+              echo "Removing architecture $arch from $base"
+              next="$(mktemp "$dir/.${base}.XXXXXX")"
+              lipo "$work" -remove "$arch" -output "$next"
+              [ "$work" != "$file" ] && rm -f "$work"
+              work="$next"
+            done
 
-          if [ "$work" != "$file" ]; then
-            mv -f "$work" "$file"
-          fi
-        }
+            if [ "$work" != "$file" ]; then
+              mv -f "$work" "$file"
+            fi
+          }
 
-        thin_binary_to_archs "$APP_SUPPORT_DIR/kdf" "$TARGET_ARCHS"
-        if [ -f "$APP_SUPPORT_DIR/kdf" ]; then chmod +x "$APP_SUPPORT_DIR/kdf"; fi
+          thin_binary_to_archs "$APP_SUPPORT_DIR/kdf" "$TARGET_ARCHS"
+          if [ -f "$APP_SUPPORT_DIR/kdf" ]; then chmod +x "$APP_SUPPORT_DIR/kdf"; fi
 
-        thin_binary_to_archs "$FRAMEWORKS_DIR/libkdflib.dylib" "$TARGET_ARCHS"
-        if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ]; then install_name_tool -id "@rpath/libkdflib.dylib" "$FRAMEWORKS_DIR/libkdflib.dylib"; fi
-      fi
+          thin_binary_to_archs "$FRAMEWORKS_DIR/libkdflib.dylib" "$TARGET_ARCHS"
+          if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ]; then install_name_tool -id "@rpath/libkdflib.dylib" "$FRAMEWORKS_DIR/libkdflib.dylib"; fi
+      esac
       
       # Re-sign after modifications (best-effort)
       if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
