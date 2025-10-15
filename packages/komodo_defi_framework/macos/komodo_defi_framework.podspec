@@ -16,8 +16,10 @@ A new Flutter FFI plugin project.
   s.dependency 'FlutterMacOS'
 
   s.resource_bundles = {
-    'kdf_resources' => ['bin/kdf', 'lib/*.dylib'].select { |f| Dir.exist?(File.dirname(f)) }
+    'kdf_resources' => ['lib/*.dylib'].select { |f| Dir.exist?(File.dirname(f)) }
   }
+
+  # s.preserve_paths = ['bin/kdf']
 
   s.script_phase = {
     :name => 'Install kdf executable and/or dylib',
@@ -36,6 +38,9 @@ A new Flutter FFI plugin project.
       if [ ! -d "$FRAMEWORKS_DIR" ]; then
         mkdir -p "$FRAMEWORKS_DIR"
       fi
+
+      # Create Helpers directory in current (komodo_defi_framework) framework
+      mkdir -p "${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers"
       
       # Track if we found at least one of the required files
       FOUND_REQUIRED_FILE=0
@@ -123,6 +128,9 @@ A new Flutter FFI plugin project.
 
       # Resign the code if required by the build settings to avoid unstable apps
       code_sign_if_enabled "$APP_SUPPORT_DIR/kdf" || true
+      # Move signed kdf binary to the Framework Helpers
+      # TODO: do we really need this binary in APP_SUPPORT_DIR and FRAMEWORKS_DIR ??? Need tests (!!!)
+      if [ -f "$APP_SUPPORT_DIR/kdf" ]; then cp "$APP_SUPPORT_DIR/kdf" "${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers/kdf"; fi
       code_sign_if_enabled "$FRAMEWORKS_DIR/libkdflib.dylib" || true
 
       # Fail if neither file was found
