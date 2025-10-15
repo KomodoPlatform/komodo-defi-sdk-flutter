@@ -102,20 +102,20 @@ A new Flutter FFI plugin project.
         thin_binary_to_archs "$FRAMEWORKS_DIR/libkdflib.dylib" "$TARGET_ARCHS"
         if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ]; then install_name_tool -id "@rpath/libkdflib.dylib" "$FRAMEWORKS_DIR/libkdflib.dylib"; fi
 
-        # Re-sign after modifications (best-effort)
+        # Re-sign after modifications (best-effort) with hardened runtime and timestamp
         if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
-          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
-          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
+          codesign --force --options runtime --timestamp=auto --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
+          codesign --force --options runtime --timestamp=auto --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
         fi
       fi
       
-      # Sign kdf and dylib in all configurations (best-effort)
+      # Sign kdf and dylib in all configurations (best-effort) with hardened runtime and timestamp
       if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
         if [ -f "$APP_SUPPORT_DIR/kdf" ]; then
-          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
+          codesign --force --options runtime --timestamp=auto --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
         fi
         if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ]; then
-          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
+          codesign --force --options runtime --timestamp=auto --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
         fi
       fi
       
