@@ -60,6 +60,15 @@ A new Flutter FFI plugin project.
         echo "Warning: libkdflib.dylib not found in lib/libkdflib.dylib"
       fi
       
+      # Helper to codesign with hardened runtime + timestamp (best-effort)
+      kdf_codesign() {
+        # args: path-to-binary
+        local bin_path="$1"
+        [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ] || return 0
+        [ -f "$bin_path" ] || return 0
+        codesign --force --options runtime --timestamp=auto --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$bin_path" 2>/dev/null || true
+      }
+
       # Prune binary slices to match $ARCHS (preserve universals) in Release builds only
       if [ "$CONFIGURATION" = "Release" ]; then
         TARGET_ARCHS="${ARCHS:-$(arch)}"
@@ -103,26 +112,20 @@ A new Flutter FFI plugin project.
         if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ]; then install_name_tool -id "@rpath/libkdflib.dylib" "$FRAMEWORKS_DIR/libkdflib.dylib"; fi
 
         # Re-sign after modifications (best-effort) with hardened runtime and timestamp
-        if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
-          codesign --force --options runtime --timestamp=auto --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
-          codesign --force --options runtime --timestamp=auto --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
-        fi
+        kdf_codesign "$APP_SUPPORT_DIR/kdf"
+        kdf_codesign "$FRAMEWORKS_DIR/libkdflib.dylib"
       fi
       
-      # Sign kdf and dylib in all configurations (best-effort) with hardened runtime and timestamp
-      if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
-        if [ -f "$APP_SUPPORT_DIR/kdf" ]; then
-          codesign --force --options runtime --timestamp=auto --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
-        fi
-        if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ]; then
-          codesign --force --options runtime --timestamp=auto --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
-        fi
+      # Sign kdf and dylib in non-Release configurations only to avoid double-signing
+      if [ "$CONFIGURATION" != "Release" ]; then
+        kdf_codesign "$APP_SUPPORT_DIR/kdf"
+        kdf_codesign "$FRAMEWORKS_DIR/libkdflib.dylib"
       fi
       
       # Fail if neither file was found
       if [ $FOUND_REQUIRED_FILE -eq 0 ]; then
-        echo "\n\nError: Neither kdf executable nor libkdflib.dylib was found. At least one is required."
-        echo "Please try run `flutter clean && flutter build bundle` and try again.\n\n"
+        printf "\n\nError: Neither kdf executable nor libkdflib.dylib was found. At least one is required.\n"
+        printf "Please try run flutter clean && flutter build bundle and try again.\n\n"
         exit 1
       fi
     SCRIPT
