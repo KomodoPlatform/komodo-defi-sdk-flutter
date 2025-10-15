@@ -101,14 +101,21 @@ A new Flutter FFI plugin project.
 
         thin_binary_to_archs "$FRAMEWORKS_DIR/libkdflib.dylib" "$TARGET_ARCHS"
         if [ -f "$FRAMEWORKS_DIR/libkdflib.dylib" ]; then install_name_tool -id "@rpath/libkdflib.dylib" "$FRAMEWORKS_DIR/libkdflib.dylib"; fi
-
-        # Re-sign after modifications (best-effort)
-        if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
-          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
-          codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
-        fi
       fi
       
+      # Re-sign after modifications (best-effort)
+      if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]; then
+        RUNTIME_FLAGS=""
+        case "$CONFIGURATION" in
+          Release*) RUNTIME_FLAGS="--options runtime --timestamp" ;;
+        esac
+
+        codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" $RUNTIME_FLAGS "$APP_SUPPORT_DIR/kdf" 2>/dev/null || true
+        codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" $RUNTIME_FLAGS "$FRAMEWORKS_DIR/libkdflib.dylib" 2>/dev/null || true
+      else
+        echo "Warning: EXPANDED_CODE_SIGN_IDENTITY is empty. Code signing skipped."
+      fi
+ 
       # Fail if neither file was found
       if [ $FOUND_REQUIRED_FILE -eq 0 ]; then
         echo "Error: Neither kdf executable nor libkdflib.dylib was found. At least one is required."
