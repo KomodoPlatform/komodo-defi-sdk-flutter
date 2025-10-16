@@ -28,19 +28,10 @@ A new Flutter FFI plugin project.
       # Get the application support directory for macOS
       APP_SUPPORT_DIR="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Library/Application Support"
       FRAMEWORKS_DIR="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Frameworks"
+      HELPERS_DIR="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers"
       
-      # Ensure the application support directory exists
-      if [ ! -d "$APP_SUPPORT_DIR" ]; then
-        mkdir -p "$APP_SUPPORT_DIR"
-      fi
-      
-      # Ensure the frameworks directory exists
-      if [ ! -d "$FRAMEWORKS_DIR" ]; then
-        mkdir -p "$FRAMEWORKS_DIR"
-      fi
-
-      # Create Helpers directory in current (komodo_defi_framework) framework
-      mkdir -p "${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers"
+      # Create all required directories in one go
+      mkdir -p "$APP_SUPPORT_DIR" "$FRAMEWORKS_DIR" "$HELPERS_DIR"
       
       # Track if we found at least one of the required files
       FOUND_REQUIRED_FILE=0
@@ -128,9 +119,10 @@ A new Flutter FFI plugin project.
 
       # Resign the code if required by the build settings to avoid unstable apps
       code_sign_if_enabled "$APP_SUPPORT_DIR/kdf" || true
-      # Move signed kdf binary to the Framework Helpers
-      # TODO: do we really need this binary in APP_SUPPORT_DIR and FRAMEWORKS_DIR ??? Need tests (!!!)
-      if [ -f "$APP_SUPPORT_DIR/kdf" ]; then cp "$APP_SUPPORT_DIR/kdf" "${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers/kdf"; fi
+      # Helpers in komodo_defi_framework is now the ONLY place where KdfExecutableFinder.findExecutable() 
+      # will look for the kdf binary on macOS. The APP_SUPPORT_DIR copy is redundant but kept for 
+      # backward compatibility with older builds.
+      if [ -f "$APP_SUPPORT_DIR/kdf" ]; then cp "$APP_SUPPORT_DIR/kdf" "$HELPERS_DIR/kdf"; fi
       code_sign_if_enabled "$FRAMEWORKS_DIR/libkdflib.dylib" || true
 
       # Fail if neither file was found
