@@ -1,6 +1,6 @@
 {
     "api": {
-        "api_commit_hash": "8beb1196487550157f5616bf27808cb6d4ebf275",
+        "api_commit_hash": "4c4df1326bcad6aa25ab837cad4fc84147e15084",
         "branch": "staging",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
@@ -13,16 +13,14 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "d7cfd4dfa47f455ee283aa02c4dd11542b4bcf349928ec5b07a1f20b7141bd65",
-                    "d1ce6fa6e6dd2d11135fc054b802dc1aea4772af2ae5aef9acc4c3da6ffacd35"
+                    "04634ad306c5f1d9c3616ea8ea56c57d9b2b3655d16060508f17d31d8cb12ca4"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "49c26280232fadbe456fbdd1dacc2cfd7697272202e59e41612691e50376a347",
-                    "57c77787ccab9cb0b7c54cfa0791a30210aa24a8548e66510d5871a6cae0b8a5"
+                    "da025d14d4819933b06232d6a3a6d6ecf1a421c13f2951aacae140e11c2e98e0"
                 ],
                 "path": "ios"
             },
@@ -33,40 +31,35 @@
                     "mac-arm64"
                 ],
                 "valid_zip_sha256_checksums": [
-                    "30550ace9e66a1303ce3295ccd14f73759ff8fb56396419bd2d1d6e2da2cf54e",
-                    "595de272b14ac52c6ee71ab442d355fc7f37b4a92f09198b575e5c44b796393f"
+                    "26f6f307f693e03c0456d5ae9c8fbd7ef267eca1a6dbb2b1b6fd4903e96c1fc3"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "db77335c8637d03e467c2cbb275ea4e57962ca22ed29542941f7105e5ba69e9a",
-                    "619816f62bfd984abf0c2fb83d9efc3fea60b7a305fd912df0ee6c46ab376135"
+                    "540b4438974de5abbb089efb65259a86bbd8a29ad093a16af41faf87785854a7"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "129f6f2467f14c9b7d9f7629d33d70197cb94b2237cbdb01a58e567a1b3260ee",
-                    "5a393ce8dfb888d9edc3e4b24f42ac7f5f6f379cc14d9ac132f8cff37ab566d6"
+                    "8b816dfc97df13ffa5084cd524bde8b9771d95552832f87e1c245d7d6690ba6d"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "00ea932edb7750c60c5d91705907b52ab018a7230f270a0f4286e41ee42cdf74",
-                    "c0ee3ea7a6fe8f4410208b9b841fd90ebdf6a28b30696ead6c1d8c5dc4c0b13d"
+                    "9e437ed6bfa991b736d56f83cf1230ecdbdb6dbd7391d72dd80a5c896628ae12"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "e25067ddb7b51455a109874722a595d7bc2ee4243ebd3af3e98426874d42f23d",
-                    "93aa902af205fc2781c31e90e91688fff5aa63d9a26d77a21b1f95d934cccf75"
+                    "2fdb99247f3d766c3d45050aab73f18e73841502fa2002c285455f22c873a043"
                 ],
                 "path": "linux/bin"
             }
