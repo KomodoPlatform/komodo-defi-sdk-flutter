@@ -34,18 +34,6 @@ class KdfExecutableFinder {
   /// Attempts to find the KDF executable in standard and platform-specific
   /// locations
   Future<File?> findExecutable({String executableName = 'kdf'}) async {
-    // TODO: do we really neeed to leave legacy path here?
-    final macosLegacyBundlePath = p.joinAll([
-      p.dirname(p.dirname(Platform.resolvedExecutable)),
-      'Frameworks',
-      'komodo_defi_framework.framework',
-      'Resources',
-      'kdf_resources.bundle',
-      'Contents',
-      'Resources',
-      executableName,
-    ]);
-
     final macosHelpersInFrameworkPath = p.joinAll([
       p.dirname(p.dirname(Platform.resolvedExecutable)),
       'Frameworks',
@@ -63,7 +51,6 @@ class KdfExecutableFinder {
       p.join(Directory.current.path, '$executableName.exe'),
       p.join(Directory.current.path, 'lib/$executableName'),
       p.join(Directory.current.path, 'lib/$executableName.exe'),
-      macosLegacyBundlePath,
       macosHelpersInFrameworkPath,
       constructWindowsBuildArtifactPath(
         mode: currentBuildMode,
