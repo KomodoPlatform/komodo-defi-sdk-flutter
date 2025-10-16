@@ -146,25 +146,39 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       return true;
     }
 
-    final latestCommitHash = await githubApiProvider.getLatestCommitHash(
-      branch: config.coinsRepoBranch,
-    );
+    // Determine which commit to use for comparison
+    String commitToUse;
 
-    if (latestCommitHash != config.bundledCoinsRepoCommit) {
-      _log.fine(
-        'Cannot skip build step: '
-        'Latest commit hash: $latestCommitHash, '
-        'config commit hash: ${config.bundledCoinsRepoCommit}',
+    if (config.updateCommitOnBuild) {
+      // When updates are enabled, check against latest commit
+      final latestCommitHash = await githubApiProvider.getLatestCommitHash(
+        branch: config.coinsRepoBranch,
       );
-      return false;
+
+      if (latestCommitHash != config.bundledCoinsRepoCommit) {
+        _log.fine(
+          'Cannot skip build step: '
+          'Latest commit hash: $latestCommitHash, '
+          'config commit hash: ${config.bundledCoinsRepoCommit}',
+        );
+        return false;
+      }
+      commitToUse = latestCommitHash;
+    } else {
+      // When updates are disabled, use the pinned commit
+      commitToUse = config.bundledCoinsRepoCommit;
+      _log.fine(
+        'Using pinned commit for comparison: $commitToUse '
+        '(update_commit_on_build is false)',
+      );
     }
 
-    if (!await _canSkipMappedFiles(config.mappedFiles)) {
+    if (!await _canSkipMappedFiles(config.mappedFiles, commitToUse)) {
       _log.fine('Cannot skip build step: mapped files check failed');
       return false;
     }
 
-    if (!await _canSkipMappedFolders(config.mappedFolders)) {
+    if (!await _canSkipMappedFolders(config.mappedFolders, commitToUse)) {
       _log.fine('Cannot skip build step: mapped folders check failed');
       return false;
     }
@@ -199,10 +213,15 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     await GitHubFileDownloader.revertOrDeleteGitFiles(allFiles);
   }
 
-  Future<bool> _canSkipMappedFiles(Map<String, String> files) async {
+  Future<bool> _canSkipMappedFiles(
+    Map<String, String> files,
+    String commitRef,
+  ) async {
     for (final mappedFile in files.entries) {
-      final remoteFile =
-          await githubApiProvider.getFileMetadata(mappedFile.value);
+      final remoteFile = await githubApiProvider.getFileMetadata(
+        mappedFile.value,
+        ref: commitRef,
+      );
       final canSkipFile = await _canSkipFile(
         path.join(artifactOutputDirectory, mappedFile.key),
         remoteFile,
@@ -216,11 +235,14 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     return true;
   }
 
-  Future<bool> _canSkipMappedFolders(Map<String, String> folders) async {
+  Future<bool> _canSkipMappedFolders(
+    Map<String, String> folders,
+    String commitRef,
+  ) async {
     for (final mappedFolder in folders.entries) {
       final remoteFolderContents = await githubApiProvider.getDirectoryContents(
         mappedFolder.value,
-        config.bundledCoinsRepoCommit,
+        commitRef,
       );
       final canSkipFolder = await _canSkipDirectory(
         path.join(artifactOutputDirectory, mappedFolder.key),

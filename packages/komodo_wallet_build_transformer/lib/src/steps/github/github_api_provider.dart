@@ -55,8 +55,11 @@ class GithubApiProvider {
 
   /// Retrieves the contents of a file from the repository API. The [filePath]
   /// parameter specifies the path of the file within the repository.
-  Future<GitHubFile> getFileMetadata(String filePath) async {
-    final fileMetadataUrl = '$_baseUrl/contents/$filePath?ref=$_branch';
+  /// The optional [ref] parameter specifies the commit SHA, branch name, or tag
+  /// to fetch the file from. If not provided, uses the configured branch.
+  Future<GitHubFile> getFileMetadata(String filePath, {String? ref}) async {
+    final reference = ref ?? _branch;
+    final fileMetadataUrl = '$_baseUrl/contents/$filePath?ref=$reference';
     _log.finest('Fetching file metadata from $fileMetadataUrl');
 
     final fileContentResponse =
