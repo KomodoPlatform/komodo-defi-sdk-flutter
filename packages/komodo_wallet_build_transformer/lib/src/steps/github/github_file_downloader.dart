@@ -132,7 +132,7 @@ class GitHubFileDownloader {
 
   Future<String> _fetchFileContent(String fileUrl, String repoCommit) async {
     final isRawContentUrl =
-        fileUrl.startsWith('https://raw.githubusercontent.com');
+        repoContentUrl.startsWith('https://raw.githubusercontent.com');
 
     final fileContentUrl = Uri.parse(
       isRawContentUrl

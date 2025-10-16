@@ -37,14 +37,7 @@ class FetchCoinAssetsBuildStep extends BuildStep {
     ReceivePort? receivePort,
     String? githubToken,
   }) {
-    final config = buildConfig.coinCIConfig.copyWith(
-      // If the branch is `master`, use the repository mirror URL to avoid
-      // rate limiting issues. Consider refactoring config to allow branch
-      // specific mirror URLs to remove this workaround.
-      coinsRepoContentUrl: buildConfig.coinCIConfig.coinsRepoBranch == 'master'
-          ? 'https://komodoplatform.github.io/coins'
-          : null,
-    );
+    final config = buildConfig.coinCIConfig.copyWith();
 
     final provider = GithubApiProvider.withBaseUrl(
       baseUrl: config.coinsRepoApiUrl,
@@ -106,6 +99,16 @@ class FetchCoinAssetsBuildStep extends BuildStep {
         assetPath: buildConfigOutput.path,
         originalBuildConfig: originalBuildConfig,
       );
+    }
+
+    if (config.bundledCoinsRepoCommit !=
+        configWithUpdatedCommit.bundledCoinsRepoCommit) {
+      throw Exception('wtf is going on');
+    }
+
+    if (configWithUpdatedCommit.bundledCoinsRepoCommit !=
+        '95eef3707ef8dbdceec3ed19170c05b91912ecce') {
+      throw Exception('wtf is going on v2');
     }
 
     final downloadMethod = config.concurrentDownloadsEnabled
