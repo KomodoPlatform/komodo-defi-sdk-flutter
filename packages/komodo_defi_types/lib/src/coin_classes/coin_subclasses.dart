@@ -49,8 +49,9 @@ enum CoinSubClass {
       case CoinSubClass.avx20:
         return 'AVAX';
       case CoinSubClass.utxo:
-      case CoinSubClass.smartChain:
         return 'UTXO';
+      case CoinSubClass.smartChain:
+        return 'SMART_CHAIN';
       case CoinSubClass.moonriver:
         return 'MOVR';
       case CoinSubClass.ethereumClassic:
