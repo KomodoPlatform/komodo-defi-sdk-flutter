@@ -101,16 +101,6 @@ class FetchCoinAssetsBuildStep extends BuildStep {
       );
     }
 
-    if (config.bundledCoinsRepoCommit !=
-        configWithUpdatedCommit.bundledCoinsRepoCommit) {
-      throw Exception('wtf is going on');
-    }
-
-    if (configWithUpdatedCommit.bundledCoinsRepoCommit !=
-        '95eef3707ef8dbdceec3ed19170c05b91912ecce') {
-      throw Exception('wtf is going on v2');
-    }
-
     final downloadMethod = config.concurrentDownloadsEnabled
         ? downloader.download
         : downloader.downloadSync;
