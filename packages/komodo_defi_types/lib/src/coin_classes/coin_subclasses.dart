@@ -157,16 +157,31 @@ enum CoinSubClass {
 
     final sanitizedValue = value.toLowerCase().replaceAll(regex, '');
 
-    return CoinSubClass.values.firstWhere((e) {
-      // Exit early if exact match to default to previous behavior and avoid
-      // unnecessary checks.
-      final matchesValue = e.toString().toLowerCase().contains(sanitizedValue);
-      if (matchesValue) {
-        return true;
-      }
+    // First, try to find exact enum name match (highest priority)
+    try {
+      return CoinSubClass.values.firstWhere((e) {
+        final enumName = e.toString().split('.').last.toLowerCase();
+        return enumName == sanitizedValue;
+      });
+    } catch (_) {
+      // If no exact match, continue with other matching strategies
+    }
 
-      final matchesTicker = e.ticker.toLowerCase().contains(sanitizedValue);
-      if (matchesTicker) {
+    // Second, try to find exact ticker match
+    try {
+      return CoinSubClass.values.firstWhere((e) {
+        final tickerLower = e.ticker.toLowerCase();
+        return tickerLower == sanitizedValue;
+      });
+    } catch (_) {
+      // If no exact ticker match, continue with other matching strategies
+    }
+
+    return CoinSubClass.values.firstWhere((e) {
+      // Check if enum name contains the value
+      final enumName = e.toString().split('.').last.toLowerCase();
+      final matchesValue = enumName.contains(sanitizedValue);
+      if (matchesValue) {
         return true;
       }
 
@@ -239,7 +254,7 @@ enum CoinSubClass {
       case CoinSubClass.matic:
         return 'Polygon';
       case CoinSubClass.utxo:
-        return 'UTXO';
+        return 'Native';
       case CoinSubClass.smartBch:
         return 'SmartBCH';
       case CoinSubClass.erc20:
