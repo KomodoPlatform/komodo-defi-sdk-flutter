@@ -11,6 +11,10 @@ void main() {
       // Test that "Smart Chain" parses to CoinSubClass.smartChain
       final smartChainResult = CoinSubClass.parse('Smart Chain');
       expect(smartChainResult, equals(CoinSubClass.smartChain));
+      
+      // Test that "SMART_CHAIN" also parses to CoinSubClass.smartChain
+      final smartChainUnderscoreResult = CoinSubClass.parse('SMART_CHAIN');
+      expect(smartChainUnderscoreResult, equals(CoinSubClass.smartChain));
     });
 
     test('UTXO and Smart Chain have different tickers', () {
