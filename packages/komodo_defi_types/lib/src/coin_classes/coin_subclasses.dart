@@ -30,6 +30,11 @@ enum CoinSubClass {
   zhtlc,
   unknown;
 
+  static String _enumNameLower(CoinSubClass e) {
+    // Normalize enum value to its lowercased name without the enum prefix
+    return e.toString().split('.').last.toLowerCase();
+  }
+
   // TODO: verify all the tickers.
   String get ticker {
     switch (this) {
@@ -49,8 +54,9 @@ enum CoinSubClass {
       case CoinSubClass.avx20:
         return 'AVAX';
       case CoinSubClass.utxo:
-      case CoinSubClass.smartChain:
         return 'UTXO';
+      case CoinSubClass.smartChain:
+        return 'SMART_CHAIN';
       case CoinSubClass.moonriver:
         return 'MOVR';
       case CoinSubClass.ethereumClassic:
@@ -144,7 +150,10 @@ enum CoinSubClass {
 
   /// Parse a string to a coin subclass.
   ///
-  /// Attempts to match the string to a coin subclass by:
+  /// Attempts to match the string to a coin subclass with the following
+  /// precedence:
+  /// - Exact enum name match (highest priority)
+  /// - Exact ticker match (with tie-breakers, e.g. 'UTXO' -> utxo)
   /// - Partial match to the subclass name
   /// - Partial match to the subclass ticker
   /// - Partial match to the subclass token standard suffix
@@ -159,29 +168,44 @@ enum CoinSubClass {
 
     // First, try to find exact enum name match (highest priority)
     try {
-      return CoinSubClass.values.firstWhere((e) {
-        final enumName = e.toString().split('.').last.toLowerCase();
-        return enumName == sanitizedValue;
-      });
-    } catch (_) {
+      return CoinSubClass.values.firstWhere(
+        (e) => _enumNameLower(e) == sanitizedValue,
+      );
+      // ignore: avoid_catching_errors
+    } on StateError {
       // If no exact match, continue with other matching strategies
     }
 
-    // Second, try to find exact ticker match
-    try {
-      return CoinSubClass.values.firstWhere((e) {
-        final tickerLower = e.ticker.toLowerCase();
-        return tickerLower == sanitizedValue;
-      });
-    } catch (_) {
-      // If no exact ticker match, continue with other matching strategies
+    // Second, try to find exact ticker match (sanitized)
+    final exactTickerMatches = CoinSubClass.values
+        .where(
+          (e) => e.ticker.toLowerCase().replaceAll(regex, '') == sanitizedValue,
+        )
+        .toList();
+    if (exactTickerMatches.isNotEmpty) {
+      // Tie-breaker for duplicated tickers. Both smartChain and utxo return
+      // 'UTXO' as ticker; prefer utxo to avoid mislabeling.
+      if (sanitizedValue == 'utxo') {
+        return CoinSubClass.utxo;
+      }
+
+      return exactTickerMatches.first;
     }
 
     return CoinSubClass.values.firstWhere((e) {
       // Check if enum name contains the value
-      final enumName = e.toString().split('.').last.toLowerCase();
+      final enumName = _enumNameLower(e);
       final matchesValue = enumName.contains(sanitizedValue);
       if (matchesValue) {
+        return true;
+      }
+
+      // Check if ticker contains the value (partial ticker match, sanitized)
+      final matchesTicker = e.ticker
+          .toLowerCase()
+          .replaceAll(regex, '')
+          .contains(sanitizedValue);
+      if (matchesTicker) {
         return true;
       }
 
@@ -199,7 +223,7 @@ enum CoinSubClass {
   static CoinSubClass? tryParse(String value) {
     try {
       return parse(value);
-    } catch (_) {
+    } on StateError {
       return null;
     }
   }
