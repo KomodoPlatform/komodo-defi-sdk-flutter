@@ -38,6 +38,7 @@ export 'src/assets/_assets_index.dart' show AssetHdWalletAddressesExtension;
 export 'src/assets/asset_extensions.dart'
     show
         AssetFaucetExtension,
+        AssetIdFaucetExtension,
         AssetUnavailableErrorReasonExtension,
         AssetValidation;
 export 'src/assets/asset_pubkey_extensions.dart';
