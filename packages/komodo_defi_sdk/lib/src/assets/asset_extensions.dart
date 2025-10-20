@@ -7,6 +7,8 @@ final assetTickersWithFaucet = UnmodifiableListView([
   'MORTY',
   'DOC',
   'MARTY',
+  'IRISTEST',
+  'NUCLEUSTEST'
 ]);
 
 extension AssetFaucetExtension on Asset {
