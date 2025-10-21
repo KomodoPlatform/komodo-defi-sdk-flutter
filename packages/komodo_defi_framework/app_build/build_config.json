@@ -1,6 +1,6 @@
 {
     "api": {
-        "api_commit_hash": "4c4df1326bcad6aa25ab837cad4fc84147e15084",
+        "api_commit_hash": "96023711777feda55990a7510c352485d8a5c7a5",
         "branch": "staging",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
@@ -13,14 +13,14 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "04634ad306c5f1d9c3616ea8ea56c57d9b2b3655d16060508f17d31d8cb12ca4"
+                    "37738eb7d487aefa125ffed8e2de0be0d4279752234cfb90c94542d6a054d6f3"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "da025d14d4819933b06232d6a3a6d6ecf1a421c13f2951aacae140e11c2e98e0"
+                    "eef4d2f5ddd000d9c6be7b9b1afcd6e1265096ca4d31664b2481ea89493d1a72"
                 ],
                 "path": "ios"
             },
@@ -31,35 +31,35 @@
                     "mac-arm64"
                 ],
                 "valid_zip_sha256_checksums": [
-                    "26f6f307f693e03c0456d5ae9c8fbd7ef267eca1a6dbb2b1b6fd4903e96c1fc3"
+                    "3943c7ad8cab1e7263eb9693936909df87ae60816f09d16435d7122411895624"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "540b4438974de5abbb089efb65259a86bbd8a29ad093a16af41faf87785854a7"
+                    "c875dac3a4e850dffd68a16036350acfbdde21285f35f0889e4b8abd7c75b67f"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "8b816dfc97df13ffa5084cd524bde8b9771d95552832f87e1c245d7d6690ba6d"
+                    "4125917ceacfbc9da6856bf84281e48768e8a6d7f537019575c751ec1cab0164"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "9e437ed6bfa991b736d56f83cf1230ecdbdb6dbd7391d72dd80a5c896628ae12"
+                    "c99c96c08c02b9d0ebe91c5dbad57aeda3d0b39d0b960343f8831fd70e0af032"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "2fdb99247f3d766c3d45050aab73f18e73841502fa2002c285455f22c873a043"
+                    "04f57689eba9c7d9a901bae3da7c954f2cfa248140a0112df1ab5920871d2926"
                 ],
                 "path": "linux/bin"
             }
@@ -68,7 +68,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "fdc6c7312b2c7da1b4b904103ed30445311072eb",
+        "bundled_coins_repo_commit": "9d99819f3f7a8357464240c8c26f7442f5a7da32",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://raw.githubusercontent.com/KomodoPlatform/coins",
         "coins_repo_branch": "master",
