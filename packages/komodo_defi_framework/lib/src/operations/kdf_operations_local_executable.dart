@@ -10,6 +10,14 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+enum _DesiredKdfState { running, stopped }
+
+/// Local executable-based KDF operations with bounded automatic recovery.
+///
+/// This implementation tracks the spawned process, captures the last startup
+/// parameters, and attempts a limited exponential backoff restart when the
+/// executable exits unexpectedly. Explicit stops and disposal requests disable
+/// the recovery loop to ensure predictable lifecycle control.
 class KdfOperationsLocalExecutable implements IKdfOperations {
   KdfOperationsLocalExecutable._(
     this._logCallback,
@@ -52,6 +60,17 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   Process? _process;
   StreamSubscription<List<int>>? stdoutSub;
   StreamSubscription<List<int>>? stderrSub;
+  JsonMap? _lastStartupParams;
+  int? _lastLogLevel;
+  _DesiredKdfState _desiredState = _DesiredKdfState.stopped;
+  Timer? _autoRestartTimer;
+  Future<void>? _autoRestartTask;
+  int _autoRestartAttempts = 0;
+  int _autoRestartGeneration = 0;
+  bool _isDisposed = false;
+
+  static const int _maxAutoRestartAttempts = 3;
+  static const Duration _initialAutoRestartDelay = Duration(seconds: 2);
 
   @override
   String get operationsName => 'Local Executable';
@@ -183,6 +202,156 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
     } finally {
       _process = null;
     }
+
+    _handleProcessExit(exitCode);
+  }
+
+  void _handleProcessExit(int exitCode) {
+    if (_isDisposed) {
+      return;
+    }
+
+    if (_desiredState != _DesiredKdfState.running) {
+      _logCallback(
+        'KDF process exited with code $exitCode while desired state is '
+        '${_desiredState.name}. No auto restart scheduled.',
+      );
+      return;
+    }
+
+    if (_lastStartupParams == null) {
+      _logCallback(
+        'KDF process exited with code $exitCode but no cached startup '
+        'parameters were found. Auto restart skipped.',
+      );
+      return;
+    }
+
+    _logCallback(
+      'KDF process exited unexpectedly with code $exitCode. Scheduling auto '
+      'restart.',
+    );
+    _scheduleAutoRestart(delay: Duration.zero);
+  }
+
+  void _scheduleAutoRestart({Duration? delay}) {
+    if (_isDisposed) return;
+    if (_autoRestartTimer != null || _autoRestartTask != null) {
+      return;
+    }
+
+    if (_autoRestartAttempts >= _maxAutoRestartAttempts) {
+      _logCallback(
+        'Auto restart attempts exceeded ($_autoRestartAttempts). '
+        'KDF will remain stopped until restarted manually.',
+      );
+      _transitionToStoppedState(clearCachedParams: true);
+      return;
+    }
+
+    final generation = _autoRestartGeneration;
+    final restartDelay = delay ?? _computeRestartDelay();
+    _logCallback(
+      'Scheduling KDF auto restart in ${restartDelay.inSeconds}s '
+      '(attempt ${_autoRestartAttempts + 1}).',
+    );
+    _autoRestartTimer = Timer(restartDelay, () {
+      _autoRestartTimer = null;
+      _performAutoRestart(generation);
+    });
+  }
+
+  Duration _computeRestartDelay() {
+    final multiplier = 1 << _autoRestartAttempts;
+    final seconds = _initialAutoRestartDelay.inSeconds * multiplier;
+    final cappedSeconds = seconds > 30 ? 30 : seconds;
+    return Duration(seconds: cappedSeconds);
+  }
+
+  void _performAutoRestart(int generation) {
+    if (_isDisposed) return;
+    if (generation != _autoRestartGeneration) return;
+    if (_autoRestartTask != null) return;
+    if (_desiredState != _DesiredKdfState.running) return;
+
+    final params = _lastStartupParams;
+    if (params == null) {
+      _logCallback('Auto restart aborted: missing cached startup parameters.');
+      return;
+    }
+
+    if (_process != null && _process!.pid != 0) {
+      _logCallback('Auto restart aborted: KDF process already running.');
+      return;
+    }
+
+    _autoRestartTask = () async {
+      final attempt = _autoRestartAttempts + 1;
+      _logCallback('Attempting KDF auto restart (attempt $attempt).');
+      try {
+        _autoRestartAttempts++;
+        final result = await kdfMain(
+          JsonMap.of(params),
+          logLevel: _lastLogLevel,
+        );
+
+        if (generation != _autoRestartGeneration ||
+            _desiredState != _DesiredKdfState.running) {
+          return;
+        }
+
+        if (result.isStartingOrAlreadyRunning()) {
+          _logCallback(
+            'Auto restart attempt $attempt succeeded (${result.name}).',
+          );
+          _autoRestartAttempts = 0;
+          return;
+        }
+
+        _logCallback(
+          'Auto restart attempt $attempt completed with status '
+          '${result.name}.',
+        );
+      } catch (e, stackTrace) {
+        if (!_isDisposed) {
+          _logCallback('Auto restart attempt $attempt failed: $e\n$stackTrace');
+        }
+      } finally {
+        _autoRestartTask = null;
+      }
+
+      if (_isDisposed || generation != _autoRestartGeneration) {
+        return;
+      }
+
+      if (_desiredState != _DesiredKdfState.running) {
+        return;
+      }
+
+      _scheduleAutoRestart();
+    }();
+  }
+
+  void _cancelPendingAutoRestart() {
+    _autoRestartTimer?.cancel();
+    _autoRestartTimer = null;
+  }
+
+  void _transitionToStoppedState({bool clearCachedParams = false}) {
+    _desiredState = _DesiredKdfState.stopped;
+    _autoRestartGeneration++;
+    _cancelPendingAutoRestart();
+    _autoRestartTask = null;
+    _autoRestartAttempts = 0;
+
+    if (clearCachedParams) {
+      _lastStartupParams = null;
+      _lastLogLevel = null;
+    }
+  }
+
+  void _handleStartupFailure() {
+    _transitionToStoppedState(clearCachedParams: true);
   }
 
   @override
@@ -196,8 +365,15 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
       'Starting KDF with parameters: ${{...params, 'coins': '{{OMITTED $coinsCount ITEMS}}', 'log_level': logLevel ?? 3}.censored().toJsonString()}',
     );
 
+    _cancelPendingAutoRestart();
+    _autoRestartAttempts = 0;
+    final storedParams = JsonMap.of(params);
     try {
       _process = await _startKdf(params);
+      _lastStartupParams = storedParams;
+      _lastLogLevel = logLevel;
+      _desiredState = _DesiredKdfState.running;
+      _autoRestartAttempts = 0;
 
       final timer = Stopwatch()..start();
 
@@ -206,10 +382,11 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
       while (timer.elapsed < _startupTimeout) {
         if (await isRunning()) {
-          break;
+          return KdfStartupResult.ok;
         }
 
         if (exitCode != null) {
+          _handleStartupFailure();
           return KdfStartupResult.tryFromDefaultInt(exitCode!);
         }
 
@@ -220,8 +397,10 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
         return KdfStartupResult.ok;
       }
 
+      _handleStartupFailure();
       return KdfStartupResult.spawnError;
     } catch (e) {
+      _handleStartupFailure();
       _logCallback('Error starting KDF: $e');
       if (e is ArgumentError) {
         return KdfStartupResult.invalidParams;
@@ -242,6 +421,7 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   Future<StopStatus> kdfStop() async {
     var stopStatus = StopStatus.ok;
     try {
+      _transitionToStoppedState(clearCachedParams: true);
       stopStatus = await _kdfRemote.kdfStop().catchError(
         (_) => StopStatus.errorStopping,
       );
@@ -300,6 +480,12 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
 
   @override
   void dispose() {
+    if (_isDisposed) {
+      return;
+    }
+    _isDisposed = true;
+    _transitionToStoppedState(clearCachedParams: true);
+
     // Cancel and clean up subscriptions
     stdoutSub?.cancel().ignore();
     stdoutSub = null;
