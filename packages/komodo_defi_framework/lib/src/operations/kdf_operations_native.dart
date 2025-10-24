@@ -255,7 +255,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   Future<bool> isRunning() =>
       Future.sync(() => _kdfMainStatus() == MainStatus.rpcIsUp);
 
-  final Uri _url = Uri.parse('http://localhost:7783');
+  final Uri _url = Uri.parse('http://127.0.0.1:7783');
   final Client _client = Client();
 
   @override
