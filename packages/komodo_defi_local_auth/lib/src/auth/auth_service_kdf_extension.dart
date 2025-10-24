@@ -19,7 +19,9 @@ extension KdfExtensions on KdfAuthService {
       return null;
     }
 
-    return _secureStorage.getUser(activeWallet);
+    // Prefer lookup by full WalletId if available
+    final byName = await _secureStorage.getUserByName(activeWallet);
+    return byName;
   }
 
   /// Returns the mnenomic for the active wallet in the requested format, if
@@ -141,7 +143,7 @@ extension KdfExtensions on KdfAuthService {
   }
 
   Future<void> _waitUntilKdfRpcIsUp({
-    Duration timeout = const Duration(seconds: 5),
+    Duration timeout = const Duration(seconds: 30),
     bool throwOnTimeout = false,
   }) async {
     final stopwatch = Stopwatch()..start();

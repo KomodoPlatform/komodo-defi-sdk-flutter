@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:developer' as developer;
+import 'package:flutter/widgets.dart';
 
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/src/auth/storage/secure_storage.dart';
@@ -91,9 +93,73 @@ abstract interface class IAuthService {
   Future<void> dispose();
 }
 
-class KdfAuthService implements IAuthService {
+class _WalletSessionSnapshot {
+  const _WalletSessionSnapshot({
+    required this.walletName,
+    required this.password,
+    required this.hdEnabled,
+    required this.allowWeakPassword,
+  });
+
+  factory _WalletSessionSnapshot.fromJson(JsonMap json) {
+    return _WalletSessionSnapshot(
+      walletName: json.value<String>('walletName'),
+      password: json.value<String>('password'),
+      hdEnabled: json.value<bool>('hdEnabled'),
+      allowWeakPassword: json.value<bool>('allowWeakPassword'),
+    );
+  }
+
+  final String walletName;
+  final String password;
+  final bool hdEnabled;
+  final bool allowWeakPassword;
+
+  Future<KdfStartupConfig> buildStartupConfig(KdfAuthService service) {
+    return service._generateStartupConfig(
+      walletName: walletName,
+      walletPassword: password,
+      allowRegistrations: false,
+      hdEnabled: hdEnabled,
+      allowWeakPassword: allowWeakPassword,
+    );
+  }
+
+  _WalletSessionSnapshot copyWith({
+    String? password,
+    bool? hdEnabled,
+    bool? allowWeakPassword,
+  }) {
+    return _WalletSessionSnapshot(
+      walletName: walletName,
+      password: password ?? this.password,
+      hdEnabled: hdEnabled ?? this.hdEnabled,
+      allowWeakPassword: allowWeakPassword ?? this.allowWeakPassword,
+    );
+  }
+
+  JsonMap toJson() => {
+    'walletName': walletName,
+    'password': password,
+    'hdEnabled': hdEnabled,
+    'allowWeakPassword': allowWeakPassword,
+  };
+}
+
+/// Authentication service backed by a local KDF instance.
+///
+/// The service keeps track of the active wallet session, monitors the KDF
+/// process, and will automatically recover the process (and, when safe,
+/// the active wallet) after unexpected terminations.
+class KdfAuthService with WidgetsBindingObserver implements IAuthService {
   KdfAuthService(this._kdfFramework, this._hostConfig) {
     _startHealthCheck();
+    // Attach lifecycle observer to auto-poke recovery on resume.
+    try {
+      WidgetsBinding.instance.addObserver(this);
+    } catch (_) {
+      // No-op if WidgetsBinding is unavailable
+    }
   }
 
   final KomodoDefiFramework _kdfFramework;
@@ -105,6 +171,11 @@ class KdfAuthService implements IAuthService {
 
   KdfUser? _lastEmittedUser;
   Timer? _healthCheckTimer;
+  _WalletSessionSnapshot? _activeSession;
+  Future<void>? _recoveryTask;
+  int _recoveryAttempts = 0;
+
+  static const int _maxRecoveryAttempts = 3;
 
   ApiClient get _client => _kdfFramework.client;
   late final methods = KomodoDefiRpcMethods(_client);
@@ -130,7 +201,7 @@ class KdfAuthService implements IAuthService {
         await _stopKdf();
       }
 
-      final storedUser = await _secureStorage.getUser(walletName);
+      final storedUser = await _secureStorage.getUserByName(walletName);
       if (storedUser == null) {
         throw AuthException.notFound();
       }
@@ -156,6 +227,12 @@ class KdfAuthService implements IAuthService {
       _emitAuthStateChange(user);
       return user;
     });
+
+    await _cacheActiveSession(
+      walletName: walletName,
+      password: password,
+      options: options,
+    );
 
     return user;
   }
@@ -198,11 +275,19 @@ class KdfAuthService implements IAuthService {
       allowWeakPassword: options.allowWeakPassword,
     );
 
-    return _lockWriteOperation(() async {
+    final user = await _lockWriteOperation(() async {
       final currentUser = await _registerNewUser(config, options);
       _emitAuthStateChange(currentUser);
       return currentUser;
     });
+
+    await _cacheActiveSession(
+      walletName: walletName,
+      password: password,
+      options: options,
+    );
+
+    return user;
   }
 
   @override
@@ -214,7 +299,7 @@ class KdfAuthService implements IAuthService {
 
       return Future.wait(
         walletNames.walletNames.map((name) async {
-          final user = await _secureStorage.getUser(name);
+          final user = await _secureStorage.getUserByName(name);
           if (user != null) return user;
 
           // Create new user record if none exists
@@ -230,7 +315,7 @@ class KdfAuthService implements IAuthService {
   }
 
   Future<void> updateUserBip39Status(String walletName, bool isBip39) async {
-    final existingUser = await _secureStorage.getUser(walletName);
+    final existingUser = await _secureStorage.getUserByName(walletName);
     if (existingUser == null) return;
 
     // Don't allow switching to HD if not BIP39
@@ -250,6 +335,7 @@ class KdfAuthService implements IAuthService {
     await _lockWriteOperation(() async {
       await _stopKdf();
       _emitAuthStateChange(null);
+      await _clearActiveSession();
     });
   }
 
@@ -265,6 +351,112 @@ class KdfAuthService implements IAuthService {
 
   AuthOptions get _fallbackAuthOptions =>
       const AuthOptions(derivationMethod: DerivationMethod.hdWallet);
+
+  Future<void> _cacheActiveSession({
+    required String walletName,
+    required String password,
+    required AuthOptions options,
+  }) async {
+    if (_activeSession?.walletName != walletName) {
+      await _clearActiveSession(clearLastActive: false);
+    }
+
+    final snapshot = _WalletSessionSnapshot(
+      walletName: walletName,
+      password: password,
+      hdEnabled: options.derivationMethod == DerivationMethod.hdWallet,
+      allowWeakPassword: options.allowWeakPassword,
+    );
+
+    _activeSession = snapshot;
+    _recoveryAttempts = 0;
+
+    final user = await _secureStorage.getUserByName(walletName);
+    if (user != null) {
+      await _secureStorage.saveSessionSnapshot(
+        user.walletId,
+        snapshot.toJson(),
+      );
+      await _secureStorage.saveLastActiveWalletId(user.walletId);
+    }
+  }
+
+  Future<void> _clearActiveSession({
+    String? walletName,
+    bool clearLastActive = true,
+  }) async {
+    final targetWallet = walletName ?? _activeSession?.walletName;
+
+    _activeSession = null;
+    _recoveryAttempts = 0;
+
+    if (targetWallet != null) {
+      final user = await _secureStorage.getUserByName(targetWallet);
+      if (user != null) {
+        await _secureStorage.deleteSessionSnapshot(user.walletId);
+      }
+      if (clearLastActive) {
+        final lastActive = await _secureStorage.getLastActiveWalletId();
+        if (lastActive != null && lastActive.name == targetWallet) {
+          await _secureStorage.saveLastActiveWalletId(null);
+        }
+      }
+    } else if (clearLastActive) {
+      await _secureStorage.saveLastActiveWalletId(null);
+    }
+  }
+
+  Future<void> _updateSessionPassword(String newPassword) async {
+    final session = await _ensureCachedSession();
+    if (session == null) return;
+
+    final updatedSession = session.copyWith(password: newPassword);
+    _activeSession = updatedSession;
+    _recoveryAttempts = 0;
+
+    final user = await _secureStorage.getUserByName(updatedSession.walletName);
+    if (user != null) {
+      await _secureStorage.saveSessionSnapshot(
+        user.walletId,
+        updatedSession.toJson(),
+      );
+      await _secureStorage.saveLastActiveWalletId(user.walletId);
+    }
+  }
+
+  Future<_WalletSessionSnapshot?> _ensureCachedSession({
+    String? walletName,
+  }) async {
+    if (_activeSession != null) {
+      if (walletName == null ||
+          _activeSession!.walletName.toLowerCase() ==
+              walletName.toLowerCase()) {
+        return _activeSession;
+      }
+    }
+
+    WalletId? resolvedWalletId;
+    if (walletName == null) {
+      resolvedWalletId = await _secureStorage.getLastActiveWalletId();
+    } else {
+      final user = await _secureStorage.getUserByName(walletName);
+      resolvedWalletId = user?.walletId;
+    }
+    if (resolvedWalletId == null) {
+      return null;
+    }
+
+    final snapshotJson = await _secureStorage.getSessionSnapshot(
+      resolvedWalletId,
+    );
+    if (snapshotJson == null) {
+      return null;
+    }
+
+    final snapshot = _WalletSessionSnapshot.fromJson(snapshotJson);
+    _activeSession = snapshot;
+    return snapshot;
+  }
 
   @override
   Future<Mnemonic> getMnemonic({
@@ -306,6 +498,7 @@ class KdfAuthService implements IAuthService {
           currentPassword: currentPassword,
           newPassword: newPassword,
         );
+        await _updateSessionPassword(newPassword);
       } on ChangeMnemonicIncorrectPasswordErrorResponse catch (e) {
         throw AuthException(
           'Incorrect current password',
@@ -340,7 +533,11 @@ class KdfAuthService implements IAuthService {
           walletName: walletName,
           password: password,
         );
-        await _secureStorage.deleteUser(walletName);
+        final user = await _secureStorage.getUserByName(walletName);
+        if (user != null) {
+          await _secureStorage.deleteUserByWalletId(user.walletId);
+        }
+        await _clearActiveSession(walletName: walletName);
       } on DeleteWalletInvalidPasswordErrorResponse catch (e) {
         throw AuthException(
           e.error ?? 'Invalid password',
@@ -393,9 +590,29 @@ class KdfAuthService implements IAuthService {
     await _lockWriteOperation(() async {
       _healthCheckTimer?.cancel();
       await _stopKdf();
-      _authStateController.close();
+      await _authStateController.close();
       _lastEmittedUser = null;
+      await _clearActiveSession();
     });
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {}
+  }
+
+  // Internal API: allow SDK to trigger immediate health check/recovery without
+  // requiring the host app to manage lifecycle hooks.
+  Future<void> checkAndRecoverNow() async {
+    await _checkKdfHealth();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Fire immediate health check/recovery without requiring app code.
+      // Avoid awaiting to not block lifecycle events.
+      // ignore: discarded_futures
+      checkAndRecoverNow();
+    }
   }
 
   late final Future<KdfStartupConfig> _noAuthConfig =
@@ -440,7 +657,7 @@ class KdfAuthService implements IAuthService {
     final activeUser = await _activeUserOrThrow();
     // TODO: Implement locks for this to avoid this method interfering with
     // more sensitive operations.
-    final user = await _secureStorage.getUser(activeUser.walletId.name);
+    final user = await _secureStorage.getUserByWalletId(activeUser.walletId);
     if (user == null) throw AuthException.notFound();
 
     final updatedUser = user.copyWith(metadata: metadata);
@@ -449,6 +666,7 @@ class KdfAuthService implements IAuthService {
 
   @override
   Future<void> restoreSession(KdfUser user) async {
+    await _clearActiveSession(walletName: user.walletId.name);
     // Only attempt to restore the session if KDF is running
     return _runReadOperation(() async {
       try {

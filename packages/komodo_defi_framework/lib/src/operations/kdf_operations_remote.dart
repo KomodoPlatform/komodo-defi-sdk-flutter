@@ -150,26 +150,26 @@ class KdfOperationsRemote implements IKdfOperations {
       _logCallback('mm2Rpc request: ${json.encode(request.censored())}');
     }
 
-    late final http.Response response;
-
     try {
-      response = await http.post(_baseUrl, body: json.encode(request));
+      final response = await http
+          .post(_baseUrl, body: json.encode(request))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode != 200) {
+        return JsonRpcErrorResponse(
+          code: response.statusCode,
+          error: {
+            'error': 'HTTP Error',
+            'status': response.statusCode,
+          }.toJsonString(),
+          message: response.body,
+        );
+      }
+      return json.decode(response.body) as Map<String, dynamic>;
+    } on TimeoutException {
+      return ConnectionError('Request timed out');
     } on http.ClientException catch (e) {
       return ConnectionError(e.message, originalException: e);
     }
-
-    if (response.statusCode != 200) {
-      return JsonRpcErrorResponse(
-        code: response.statusCode,
-        error: {
-          'error': 'HTTP Error',
-          'status': response.statusCode,
-        }.toJsonString(),
-        message: response.body,
-      );
-    }
-
-    return json.decode(response.body) as Map<String, dynamic>;
   }
 
   @override

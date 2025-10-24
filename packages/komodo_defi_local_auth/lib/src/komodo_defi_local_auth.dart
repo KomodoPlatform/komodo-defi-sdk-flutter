@@ -346,7 +346,7 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
 
   static Future<AuthOptions?> storedAuthOptions(String walletName) async {
     return SecureLocalStorage()
-        .getUser(walletName)
+        .getUserByName(walletName)
         .then((user) => user?.authOptions);
   }
 
@@ -672,10 +672,9 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     if (signedIn != expected) {
       throw AuthException(
         'User is ${signedIn ? 'signed in' : 'not signed in'}.',
-        type:
-            signedIn
-                ? AuthExceptionType.alreadySignedIn
-                : AuthExceptionType.unauthorized,
+        type: signedIn
+            ? AuthExceptionType.alreadySignedIn
+            : AuthExceptionType.unauthorized,
       );
     }
   }

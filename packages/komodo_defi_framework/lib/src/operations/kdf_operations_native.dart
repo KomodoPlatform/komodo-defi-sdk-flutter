@@ -266,12 +266,25 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     }
 
     request['userpass'] = _config.rpcPassword;
-    final response = await _client.post(
-      _url,
-      body: json.encode(request),
-      headers: {'Content-Type': 'application/json'},
-    );
-    return json.decode(response.body) as Map<String, dynamic>;
+    try {
+      final response = await _client
+          .post(
+            _url,
+            body: json.encode(request),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 5));
+      return json.decode(response.body) as Map<String, dynamic>;
+    } on TimeoutException catch (e) {
+      _log('mm2Rpc timeout: $e');
+      return ConnectionError('Request timed out');
+    } on Exception catch (e) {
+      _log('mm2Rpc error: $e');
+      return ConnectionError(
+        'Request failed',
+        originalException: e as Exception?,
+      );
+    }
   }
 
   @override
