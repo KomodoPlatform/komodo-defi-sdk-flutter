@@ -25,6 +25,7 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
     CoinSubClass.hecoChain,
     CoinSubClass.rskSmartBitcoin,
     CoinSubClass.arbitrum,
+    CoinSubClass.base,
   };
 
   @override

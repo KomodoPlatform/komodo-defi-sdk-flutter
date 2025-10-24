@@ -28,6 +28,7 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
     CoinSubClass.hecoChain,
     CoinSubClass.rskSmartBitcoin,
     CoinSubClass.arbitrum,
+    CoinSubClass.base,
   };
 
   @override

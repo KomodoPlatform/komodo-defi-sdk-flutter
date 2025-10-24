@@ -1,5 +1,4 @@
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
@@ -43,9 +42,9 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
     }
 
     // TODO! Remove after resolving tx history spamming issue in KW.
-    if (kDebugMode) {
-      return MyTxHistoryResponse.empty();
-    }
+    // if (kDebugMode) {
+    //   return MyTxHistoryResponse.empty();
+    // }
 
     validatePagination(pagination);
 
@@ -286,6 +285,9 @@ class EtherscanProtocolHelper {
       CoinSubClass.erc20 => _ethTokenUrl,
       CoinSubClass.arbitrum when isParentChain => _arbUrl,
       CoinSubClass.arbitrum => _arbTokenUrl,
+      // TODO: migrate to base-specific endpoint when available
+      CoinSubClass.base when isParentChain => _ethUrl,
+      CoinSubClass.base => _ethTokenUrl,
       CoinSubClass.rskSmartBitcoin => _rskUrl,
       CoinSubClass.moonbeam => _glmrUrl,
       CoinSubClass.ethereumClassic => _etcUrl,

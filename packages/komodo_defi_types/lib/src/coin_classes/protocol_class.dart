@@ -47,6 +47,7 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
         CoinSubClass.matic ||
         CoinSubClass.hrc20 ||
         CoinSubClass.arbitrum ||
+        CoinSubClass.base ||
         CoinSubClass.moonriver ||
         CoinSubClass.moonbeam ||
         CoinSubClass.ethereumClassic ||

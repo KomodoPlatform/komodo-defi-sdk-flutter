@@ -6,6 +6,7 @@ enum CoinSubClass {
   moonbeam,
   ftm20,
   arbitrum,
+  base,
   @Deprecated('No longer active. Will be removed in the future.')
   slp,
   sia,
@@ -44,6 +45,8 @@ enum CoinSubClass {
         return 'FTM';
       case CoinSubClass.arbitrum:
         return 'ARB';
+      case CoinSubClass.base:
+        return 'BASE';
       // ignore: deprecated_member_use_from_same_package
       case CoinSubClass.slp:
         return 'SLP';
@@ -100,6 +103,8 @@ enum CoinSubClass {
         return 'FTM';
       case CoinSubClass.arbitrum:
         return 'ARB';
+      case CoinSubClass.base:
+        return 'BASE';
       // ignore: deprecated_member_use_from_same_package
       case CoinSubClass.slp:
         return 'SLP';
@@ -257,6 +262,8 @@ enum CoinSubClass {
         return 'Fantom';
       case CoinSubClass.arbitrum:
         return 'Arbitrum';
+      case CoinSubClass.base:
+        return 'Base';
       case CoinSubClass.slp:
         return 'Simple Ledger Protocol';
       case CoinSubClass.sia:
@@ -312,6 +319,8 @@ enum CoinSubClass {
         return const Color(0xFF14B4EC); // ftm: "#14b4ec"
       case CoinSubClass.arbitrum:
         return const Color(0xFF28A0F0); // arb: "#28a0f0"
+      case CoinSubClass.base:
+        return const Color(0xFF0052FF); // base: "#0052ff"
       // ignore: deprecated_member_use_from_same_package
       case CoinSubClass.slp:
         return const Color(0xFF0CC38C); // slp: "#0cc38c"
@@ -377,6 +386,8 @@ extension CoinSubClassTokenStandard on CoinSubClass {
         return 'FTM20';
       case CoinSubClass.arbitrum:
         return 'ARB20';
+      case CoinSubClass.base:
+        return 'BASE20';
       case CoinSubClass.avx20:
         return 'AVX20';
       case CoinSubClass.matic:
@@ -416,6 +427,7 @@ const Set<CoinSubClass> evmCoinSubClasses = {
   CoinSubClass.matic,
   CoinSubClass.hrc20,
   CoinSubClass.arbitrum,
+  CoinSubClass.base,
   CoinSubClass.moonriver,
   CoinSubClass.moonbeam,
   CoinSubClass.ethereumClassic,
