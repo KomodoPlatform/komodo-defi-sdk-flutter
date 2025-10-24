@@ -1,6 +1,10 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
-import 'package:meta/meta.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
+
+part 'activation_params.freezed.dart';
+part 'activation_params.g.dart';
 
 /// Defines additional parameters used for activation. These params may vary depending
 /// on the coin type.
@@ -14,22 +18,15 @@ import 'package:meta/meta.dart';
 /// - [gapLimit]: Maximum number of empty addresses in a row for HD wallets
 /// - [mode]: Activation mode configuration for QTUM, UTXO & ZHTLC coins
 ///
-/// For ZHTLC coins:
-/// - [zcashParamsPath]: Path to Zcash parameters folder
-/// - [scanBlocksPerIteration]: Number of blocks scanned per iteration (default: 1000)
-/// - [scanIntervalMs]: Interval between scan iterations in ms (default: 0)
 class ActivationParams implements RpcRequestParams {
   const ActivationParams({
     this.requiredConfirmations,
     this.requiresNotarization = false,
-    this.privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    this.privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
     this.minAddressesNumber,
     this.scanPolicy,
     this.gapLimit,
     this.mode,
-    this.zcashParamsPath,
-    this.scanBlocksPerIteration,
-    this.scanIntervalMs,
   });
 
   /// Creates [ActivationParams] from configuration JSON
@@ -38,26 +35,20 @@ class ActivationParams implements RpcRequestParams {
       json,
       type: ActivationModeType.electrum,
     );
+
     return ActivationParams(
       requiredConfirmations: json.valueOrNull<int>('required_confirmations'),
       requiresNotarization:
           json.valueOrNull<bool>('requires_notarization') ?? false,
-      privKeyPolicy:
-          json.valueOrNull<String>('priv_key_policy') == 'Trezor'
-              ? PrivateKeyPolicy.trezor
-              : PrivateKeyPolicy.contextPrivKey,
+      privKeyPolicy: PrivateKeyPolicy.fromLegacyJson(
+        json.valueOrNull<dynamic>('priv_key_policy'),
+      ),
       minAddressesNumber: json.valueOrNull<int>('min_addresses_number'),
-      scanPolicy:
-          json.valueOrNull<String>('scan_policy') == null
-              ? null
-              : ScanPolicy.parse(json.value<String>('scan_policy')),
+      scanPolicy: json.valueOrNull<String>('scan_policy') == null
+          ? null
+          : ScanPolicy.parse(json.value<String>('scan_policy')),
       gapLimit: json.valueOrNull<int>('gap_limit'),
       mode: mode,
-      zcashParamsPath: json.valueOrNull<String>('zcash_params_path'),
-      scanBlocksPerIteration: json.valueOrNull<int>(
-        'scan_blocks_per_iteration',
-      ),
-      scanIntervalMs: json.valueOrNull<int>('scan_interval_ms'),
     );
   }
 
@@ -74,7 +65,7 @@ class ActivationParams implements RpcRequestParams {
 
   /// Whether to use Trezor hardware wallet or context private key.
   /// Defaults to ContextPrivKey.
-  final PrivateKeyPolicy privKeyPolicy;
+  final PrivateKeyPolicy? privKeyPolicy;
 
   /// HD wallets only. How many additional addresses to generate at a minimum.
   final int? minAddressesNumber;
@@ -88,18 +79,6 @@ class ActivationParams implements RpcRequestParams {
   /// they will not be identified when scanning.
   final int? gapLimit;
 
-  /// ZHTLC coins only. Path to folder containing Zcash parameters.
-  /// Optional, defaults to standard location.
-  final String? zcashParamsPath;
-
-  /// ZHTLC coins only. Sets the number of scanned blocks per iteration during
-  /// BuildingWalletDb state. Optional, default value is 1000.
-  final int? scanBlocksPerIteration;
-
-  /// ZHTLC coins only. Sets the interval in milliseconds between iterations of
-  /// BuildingWalletDb state. Optional, default value is 0.
-  final int? scanIntervalMs;
-
   @override
   @mustCallSuper
   JsonMap toRpcParams() {
@@ -107,16 +86,18 @@ class ActivationParams implements RpcRequestParams {
       if (requiredConfirmations != null)
         'required_confirmations': requiredConfirmations,
       'requires_notarization': requiresNotarization,
-      'priv_key_policy': privKeyPolicy.id,
+      // IMPORTANT: Serialization format varies by coin type:
+      // - ETH/ERC20: Uses full JSON object format with type discrimination
+      // - Other coins: Uses legacy PascalCase string format for backward compatibility
+      // This difference is maintained for API compatibility reasons.
+      'priv_key_policy':
+          (privKeyPolicy ?? const PrivateKeyPolicy.contextPrivKey())
+              .pascalCaseName,
       if (minAddressesNumber != null)
         'min_addresses_number': minAddressesNumber,
       if (scanPolicy != null) 'scan_policy': scanPolicy!.value,
       if (gapLimit != null) 'gap_limit': gapLimit,
       if (mode != null) 'mode': mode!.toJsonRequest(),
-      if (zcashParamsPath != null) 'zcash_params_path': zcashParamsPath,
-      if (scanBlocksPerIteration != null)
-        'scan_blocks_per_iteration': scanBlocksPerIteration,
-      if (scanIntervalMs != null) 'scan_interval_ms': scanIntervalMs,
     };
   }
 
@@ -128,43 +109,129 @@ class ActivationParams implements RpcRequestParams {
     ScanPolicy? scanPolicy,
     int? gapLimit,
     ActivationMode? mode,
-    String? zcashParamsPath,
-    int? scanBlocksPerIteration,
-    int? scanIntervalMs,
   }) {
     return ActivationParams(
       requiredConfirmations:
           requiredConfirmations ?? this.requiredConfirmations,
       requiresNotarization: requiresNotarization ?? this.requiresNotarization,
-      privKeyPolicy: privKeyPolicy ?? this.privKeyPolicy,
+      privKeyPolicy:
+          privKeyPolicy ??
+          this.privKeyPolicy ??
+          const PrivateKeyPolicy.contextPrivKey(),
       minAddressesNumber: minAddressesNumber ?? this.minAddressesNumber,
       scanPolicy: scanPolicy ?? this.scanPolicy,
       gapLimit: gapLimit ?? this.gapLimit,
       mode: mode ?? this.mode,
-      zcashParamsPath: zcashParamsPath ?? this.zcashParamsPath,
-      scanBlocksPerIteration:
-          scanBlocksPerIteration ?? this.scanBlocksPerIteration,
-      scanIntervalMs: scanIntervalMs ?? this.scanIntervalMs,
     );
   }
 }
 
 /// Defines the private key policy for activation
-enum PrivateKeyPolicy {
+/// API uses pascal case for PrivKeyPolicy types, so we use it as the
+/// union key case to ensure compatibility with existing APIs.
+@Freezed(unionKey: 'type', unionValueCase: FreezedUnionCase.pascal)
+abstract class PrivateKeyPolicy with _$PrivateKeyPolicy {
+  /// Private constructor to allow for additional methods and properties
+  const PrivateKeyPolicy._();
+
   /// Use context private key (default)
-  contextPrivKey,
+  const factory PrivateKeyPolicy.contextPrivKey() = _ContextPrivKey;
 
   /// Use Trezor hardware wallet
-  trezor;
+  const factory PrivateKeyPolicy.trezor() = _Trezor;
 
-  /// String identifier for the policy
-  String get id {
-    switch (this) {
-      case PrivateKeyPolicy.contextPrivKey:
-        return 'ContextPrivKey';
-      case PrivateKeyPolicy.trezor:
-        return 'Trezor';
+  /// Use MetaMask for activation. WASM (web) only.
+  const factory PrivateKeyPolicy.metamask() = _Metamask;
+
+  /// Use WalletConnect for hardware wallet activation
+  @JsonSerializable(fieldRename: FieldRename.snake)
+  const factory PrivateKeyPolicy.walletConnect(String sessionTopic) =
+      _WalletConnect;
+
+  factory PrivateKeyPolicy.fromJson(Map<String, dynamic> json) =>
+      _$PrivateKeyPolicyFromJson(json);
+
+  /// Converts a string or map to a [PrivateKeyPolicy]
+  /// Throws [ArgumentError] if the input is invalid
+  /// If the input is null, defaults to [PrivateKeyPolicy.contextPrivKey]
+  /// If the input is a string, it must match one of the known policy types.
+  /// If the input is a map, it must contain a 'type' key with a valid policy type.
+  /// If the input is a map with a 'session_topic' key, it will be used for
+  /// [PrivateKeyPolicy.walletConnect].
+  factory PrivateKeyPolicy.fromLegacyJson(dynamic privKeyPolicy) {
+    if (privKeyPolicy == null) {
+      return const PrivateKeyPolicy.contextPrivKey();
     }
+
+    if (privKeyPolicy is Map && privKeyPolicy['type'] != null) {
+      return PrivateKeyPolicy.fromJson(privKeyPolicy as JsonMap);
+    }
+
+    if (privKeyPolicy is! String) {
+      throw ArgumentError(
+        'Invalid private key policy type: ${privKeyPolicy.runtimeType}',
+      );
+    }
+
+    switch (privKeyPolicy) {
+      case 'ContextPrivKey':
+      case 'context_priv_key':
+        return const PrivateKeyPolicy.contextPrivKey();
+      case 'Trezor':
+      case 'trezor':
+        return const PrivateKeyPolicy.trezor();
+      case 'Metamask':
+      case 'metamask':
+        return const PrivateKeyPolicy.metamask();
+      case 'WalletConnect':
+      case 'wallet_connect':
+        return const PrivateKeyPolicy.walletConnect('');
+      default:
+        throw ArgumentError('Unknown private key policy type: $privKeyPolicy');
+    }
+  }
+
+  /// Returns the PascalCase name of the private key policy type
+  ///
+  /// Examples:
+  /// - `PrivateKeyPolicy.contextPrivKey()` → `"ContextPrivKey"`
+  /// - `PrivateKeyPolicy.trezor()` → `"Trezor"`
+  /// - `PrivateKeyPolicy.metamask()` → `"Metamask"`
+  /// - `PrivateKeyPolicy.walletConnect(...)` → `"WalletConnect"`
+  String get pascalCaseName {
+    switch (runtimeType) {
+      case _ContextPrivKey:
+        return 'ContextPrivKey';
+      case _Trezor:
+        return 'Trezor';
+      case _Metamask:
+        return 'Metamask';
+      case _WalletConnect:
+        return 'WalletConnect';
+      default:
+        // Fallback: convert snake_case from JSON to PascalCase
+        final snakeCaseType = toJson()['type'] as String;
+        return snakeCaseType
+            .split('_')
+            .map((word) => word[0].toUpperCase() + word.substring(1))
+            .join();
+    }
+  }
+}
+
+/// Utility to normalize PrivateKeyPolicy RPC serialization across protocols.
+///
+/// - For ETH/ERC20 protocols, the API expects a JSON object form.
+/// - For other protocols, the legacy PascalCase string is used.
+class PrivKeyPolicySerializer {
+  static dynamic toRpc(
+    PrivateKeyPolicy policy, {
+    required CoinSubClass protocol,
+  }) {
+    if (evmCoinSubClasses.contains(protocol)) {
+      return policy.toJson();
+    }
+    return policy.pascalCaseName;
   }
 }
 
@@ -207,10 +274,9 @@ class ActivationMode {
   }) {
     return ActivationMode(
       rpc: type.value,
-      rpcData:
-          type == ActivationModeType.native
-              ? null
-              : ActivationRpcData.fromJson(json),
+      rpcData: type == ActivationModeType.native
+          ? null
+          : ActivationRpcData.fromJson(json),
     );
   }
 
@@ -223,7 +289,10 @@ class ActivationMode {
 
   JsonMap toJsonRequest() => {
     'rpc': rpc,
-    if (rpcData != null) 'rpc_data': rpcData!.toJsonRequest(),
+    if (rpcData != null)
+      'rpc_data': rpcData!.toJsonRequest(
+        forLightWallet: rpc == ActivationModeType.lightWallet.value,
+      ),
   };
 }
 
@@ -296,16 +365,22 @@ class ActivationRpcData {
   /// Creates [ActivationRpcData] from JSON configuration
   factory ActivationRpcData.fromJson(JsonMap json) {
     return ActivationRpcData(
-      lightWalletDServers:
-          json
-              .valueOrNull<List<dynamic>>('light_wallet_d_servers')
-              ?.cast<String>(),
+      lightWalletDServers: json
+          .valueOrNull<List<dynamic>>('light_wallet_d_servers')
+          ?.cast<String>(),
+      // The Komodo API uses 'servers' under rpc_data for Electrum mode.
+      // For some legacy ZHTLC examples, 'electrum' may appear at top-level config.
       electrum:
-          json
-              .valueOrNull<List<dynamic>>('electrum')
+          (json.valueOrNull<List<dynamic>>('servers') ??
+                  json.valueOrNull<List<dynamic>>('electrum') ??
+                  json.valueOrNull<List<dynamic>>('electrum_servers') ??
+                  json.valueOrNull<List<dynamic>>('nodes') ??
+                  json.valueOrNull<List<dynamic>>('rpc_urls'))
               ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
               .toList(),
-      syncParams: json.valueOrNull<dynamic>('sync_params'),
+      syncParams: ZhtlcSyncParams.tryParse(
+        json.valueOrNull<dynamic>('sync_params'),
+      ),
     );
   }
 
@@ -317,27 +392,111 @@ class ActivationRpcData {
 
   /// ZHTLC coins only. Optional, defaults to two days ago. Defines where to start
   /// scanning blockchain data upon initial activation.
-  /// Options:
-  /// - "earliest" (the coin's sapling_activation_height)
-  /// - height (a specific block height)
-  /// - date (a unix timestamp)
-  final dynamic syncParams;
+  ///
+  /// Supported values:
+  /// - Earliest: start from the coin's `sapling_activation_height`
+  /// - Height: start from a specific block height
+  /// - Date: start from a specific unix timestamp
+  final ZhtlcSyncParams? syncParams;
 
-  bool get isEmpty => [lightWalletDServers, electrum, syncParams].every(
-    (element) =>
-        element == null &&
-        (element is List && element.isEmpty ||
-            element is Map && element.isEmpty),
-  );
+  bool get isEmpty =>
+      (lightWalletDServers == null || lightWalletDServers!.isEmpty) &&
+      (electrum == null || electrum!.isEmpty) &&
+      syncParams == null;
 
-  JsonMap toJsonRequest() => {
+  JsonMap toJsonRequest({bool forLightWallet = false}) => {
     if (lightWalletDServers != null)
       'light_wallet_d_servers': lightWalletDServers,
-    if (electrum != null) ...{
-      'servers': electrum!.map((e) => e.toJsonRequest()).toList(),
-    },
-    if (syncParams != null) 'sync_params': syncParams,
+    if (electrum != null)
+      (forLightWallet ? 'electrum_servers' : 'servers'): electrum!
+          .map((e) => e.toJsonRequest())
+          .toList(),
+    if (syncParams != null) 'sync_params': syncParams!.toJsonRequest(),
   };
+}
+
+/// ZHTLC sync parameters shape for KDF API
+class ZhtlcSyncParams {
+  ZhtlcSyncParams._internal({this.height, this.date, this.isEarliest = false})
+    : assert(
+        (isEarliest ? 1 : 0) +
+                (height != null ? 1 : 0) +
+                (date != null ? 1 : 0) ==
+            1,
+        'Exactly one of earliest, height or date must be provided',
+      );
+
+  /// Start from coin's `sapling_activation_height`
+  factory ZhtlcSyncParams.earliest() =>
+      ZhtlcSyncParams._internal(isEarliest: true);
+
+  /// Start from a specific block height
+  factory ZhtlcSyncParams.height(int height) =>
+      ZhtlcSyncParams._internal(height: height);
+
+  /// Start from a specific unix timestamp
+  factory ZhtlcSyncParams.date(int unixTimestamp) =>
+      ZhtlcSyncParams._internal(date: unixTimestamp);
+
+  final int? height;
+  final int? date;
+  final bool isEarliest;
+
+  /// Best-effort parser supporting all documented and legacy shapes:
+  /// - "earliest"
+  /// - { "height": <int> }
+  /// - { "date": <int> }
+  /// - <int> (heuristic: < 1e9 => height, otherwise date)
+  static ZhtlcSyncParams? tryParse(dynamic value) {
+    if (value == null) return null;
+
+    if (value is String) {
+      if (value.toLowerCase() == 'earliest') {
+        return ZhtlcSyncParams.earliest();
+      }
+      // Unknown string value
+      return null;
+    }
+
+    if (value is int) {
+      // Heuristic: timestamps are typically >= 1,000,000,000 (10-digit seconds)
+      if (value >= 1000000000) {
+        return ZhtlcSyncParams.date(value);
+      }
+      return ZhtlcSyncParams.height(value);
+    }
+
+    if (value is Map) {
+      final map = value;
+      final dynamic heightVal = map['height'];
+      final dynamic dateVal = map['date'];
+
+      if (heightVal is int) {
+        return ZhtlcSyncParams.height(heightVal);
+      }
+      if (dateVal is int) {
+        return ZhtlcSyncParams.date(dateVal);
+      }
+      if ((map['earliest'] == true) ||
+          (map['type'] == 'earliest') ||
+          (map['type'] == 'Earliest')) {
+        return ZhtlcSyncParams.earliest();
+      }
+      return null;
+    }
+
+    return null;
+  }
+
+  /// JSON suitable for KDF API
+  /// - "earliest" | { "height": int } | { "date": int }
+  dynamic toJsonRequest() {
+    if (isEarliest) return 'earliest';
+    if (height != null) return {'height': height};
+    if (date != null) return {'date': date};
+    // Should not reach here due to constructor assert, but return null to be safe
+    return null;
+  }
 }
 
 /// Contains information about electrum servers for coins being used in 'Electrum'

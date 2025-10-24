@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -25,11 +26,10 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
         [];
 
     // If a specific type is requested, update the config
-    final configToUse =
-        requestedType != null && requestedType != primaryType
-            ? (JsonMap.from(json)
-              ..['type'] = requestedType.toString().split('.').last)
-            : json;
+    final configToUse = requestedType != null && requestedType != primaryType
+        ? (JsonMap.of(json)
+            ..['type'] = requestedType.toString().split('.').last)
+        : json;
     try {
       return switch (primaryType) {
         CoinSubClass.utxo || CoinSubClass.smartChain => UtxoProtocol.fromJson(
@@ -63,19 +63,23 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
           configToUse,
           supportedProtocols: otherTypes,
         ),
-        CoinSubClass.sia => SiaProtocol.fromJson(
+        CoinSubClass.sia when kDebugMode => SiaProtocol.fromJson(
           configToUse,
           supportedProtocols: otherTypes,
         ),
-        CoinSubClass.slp || CoinSubClass.smartBch || CoinSubClass.unknown =>
-          throw UnsupportedProtocolException(
-            'Unsupported protocol type: ${primaryType.formatted}',
-          ),
+        // ignore: deprecated_member_use_from_same_package
+        CoinSubClass.sia ||
+        CoinSubClass.slp ||
+        CoinSubClass.smartBch ||
+        CoinSubClass.unknown => throw UnsupportedProtocolException(
+          'Unsupported protocol type: ${primaryType.formatted}',
+        ),
         // _ => throw UnsupportedProtocolException(
         //     'Unsupported protocol type: ${subClass.formatted}',
         //   ),
       };
-    } catch (e) {
+    } catch (e, s) {
+      if (kDebugMode) debugPrintStack(stackTrace: s);
       throw ProtocolParsingException(primaryType, e.toString());
     }
   }
@@ -105,8 +109,8 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
   ExplorerUrlPattern get explorerPattern => ExplorerUrlPattern.fromJson(config);
 
   /// Whether the protocol supports memos
-  // TODO! Implement
-  bool get isMemoSupported => true;
+  /// Only ZHTLC and UTXO protocols support memos
+  bool get isMemoSupported;
 
   /// Convert protocol back to JSON representation
   JsonMap toJson() => {
@@ -114,8 +118,9 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
     'sub_class': subClass.toString().split('.').last,
     'is_custom_token': isCustomToken,
     if (supportedProtocols.isNotEmpty)
-      'other_types':
-          supportedProtocols.map((p) => p.toString().split('.').last).toList(),
+      'other_types': supportedProtocols
+          .map((p) => p.toString().split('.').last)
+          .toList(),
   };
 
   /// Check if this protocol supports a given protocol type
@@ -133,8 +138,11 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
     return ProtocolClass.fromJson(variantConfig);
   }
 
-  ActivationParams defaultActivationParams() =>
-      ActivationParams.fromConfigJson(config);
+  ActivationParams defaultActivationParams({
+    PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
+  }) => ActivationParams.fromConfigJson(
+    config,
+  ).genericCopyWith(privKeyPolicy: privKeyPolicy);
 
   String? get contractAddress => config.valueOrNull<String>('contract_address');
 

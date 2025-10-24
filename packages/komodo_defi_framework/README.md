@@ -1,101 +1,119 @@
-# Komodo Defi Framework Flutter Package
+# Komodo DeFi Framework (Flutter)
 
-This package provides a high-level opinionated framework for interacting with the Komodo Defi API and manages/automates the process of fetching the binary libraries.
+Low-level Flutter client for the Komodo DeFi Framework (KDF). This package powers the high-level SDK and can also be used directly for custom integrations or infrastructure tooling.
 
+It supports multiple backends:
 
-TODO: Add a proper description and documentation for the package. Below is the default README.md content for a Flutter FFI plugin.
+- Local Native (FFI) on desktop/mobile
+- Local Web (WASM) in the browser
+- Remote RPC (connect to an external KDF node)
 
+## Install
 
-
-# komodo_defi_framework
-
-A new Flutter FFI plugin project.
-
-## Getting Started
-
-This project is a starting point for a Flutter
-[FFI plugin](https://flutter.dev/to/ffi-package),
-a specialized package that includes native code directly invoked with Dart FFI.
-
-## Project structure
-
-This template uses the following structure:
-
-* `src`: Contains the native source code, and a CmakeFile.txt file for building
-  that source code into a dynamic library.
-
-* `lib`: Contains the Dart code that defines the API of the plugin, and which
-  calls into the native code using `dart:ffi`.
-
-* platform folders (`android`, `ios`, `windows`, etc.): Contains the build files
-  for building and bundling the native code library with the platform application.
-
-## Building and bundling native code
-
-The `pubspec.yaml` specifies FFI plugins as follows:
-
-```yaml
-  plugin:
-    platforms:
-      some_platform:
-        ffiPlugin: true
+```sh
+flutter pub add komodo_defi_framework
 ```
 
-This configuration invokes the native build for the various target platforms
-and bundles the binaries in Flutter applications using these FFI plugins.
+## Create a client
 
-This can be combined with dartPluginClass, such as when FFI is used for the
-implementation of one platform in a federated plugin:
+```dart
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 
-```yaml
-  plugin:
-    implements: some_other_plugin
-    platforms:
-      some_platform:
-        dartPluginClass: SomeClass
-        ffiPlugin: true
+// Local (FFI/WASM)
+final framework = KomodoDefiFramework.create(
+  hostConfig: LocalConfig(https: false, rpcPassword: 'your-secure-password'),
+  externalLogger: print, // optional
+);
+
+// Or remote
+final remote = KomodoDefiFramework.create(
+  hostConfig: RemoteConfig(
+    ipAddress: 'example.org',
+    port: 7783,
+    rpcPassword: '...',
+    https: true,
+  ),
+);
 ```
 
-A plugin can have both FFI and method channels:
+## Starting and stopping KDF (local mode)
 
-```yaml
-  plugin:
-    platforms:
-      some_platform:
-        pluginClass: SomeName
-        ffiPlugin: true
+```dart
+// Build a startup configuration (no wallet, for diagnostics)
+final startup = await KdfStartupConfig.noAuthStartup(
+  rpcPassword: 'your-secure-password',
+);
+
+final result = await framework.startKdf(startup);
+if (!result.isStartingOrAlreadyRunning()) {
+  throw StateError('Failed to start KDF: $result');
+}
+
+final status = await framework.kdfMainStatus();
+final version = await framework.version();
+
+await framework.kdfStop();
 ```
 
-The native build systems that are invoked by FFI (and method channel) plugins are:
+## Direct RPC access
 
-* For Android: Gradle, which invokes the Android NDK for native builds.
-  * See the documentation in android/build.gradle.
-* For iOS and MacOS: Xcode, via CocoaPods.
-  * See the documentation in ios/komodo_defi_framework.podspec.
-  * See the documentation in macos/komodo_defi_framework.podspec.
-* For Linux and Windows: CMake.
-  * See the documentation in linux/CMakeLists.txt.
-  * See the documentation in windows/CMakeLists.txt.
+The framework exposes `ApiClient` with typed RPC namespaces:
 
-## Binding to native code
+```dart
+final client = framework.client;
+final balance = await client.rpc.wallet.myBalance(coin: 'KMD');
+final check = await client.rpc.address.validateAddress(
+  coin: 'BTC',
+  address: 'bc1q...',
+);
+```
 
-To use the native code, bindings in Dart are needed.
-To avoid writing these by hand, they are generated from the header file
-(`src/komodo_defi_framework.h`) by `package:ffigen`.
-Regenerate the bindings by running `dart run ffigen --config ffigen.yaml`.
+## Logging
 
-## Invoking native code
+- Pass `externalLogger: print` when creating the framework to receive log lines
+- Toggle verbosity via `KdfLoggingConfig.verboseLogging = true`
+- Listen to `framework.logStream`
 
-Very short-running native functions can be directly invoked from any isolate.
-For example, see `sum` in `lib/komodo_defi_framework.dart`.
+## Seed nodes and P2P
 
-Longer-running functions should be invoked on a helper isolate to avoid
-dropping frames in Flutter applications.
-For example, see `sumAsync` in `lib/komodo_defi_framework.dart`.
+From KDF v2.5.0-beta, seed nodes are required unless P2P is disabled. Use `SeedNodeService.fetchSeedNodes()` to fetch defaults and `SeedNodeValidator.validate(...)` to validate your config. Errors are thrown for invalid combinations (e.g., bootstrap without seed, disable P2P with seed nodes, etc.).
 
-## Flutter help
+## Build artifacts and coins at build time
 
-For help getting started with Flutter, view our
-[online documentation](https://docs.flutter.dev), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+This package integrates with a Flutter asset transformer to fetch the correct KDF binaries, coins, seed nodes, and icons at build time. Add the following to your app’s `pubspec.yaml`:
 
+```yaml
+flutter:
+  assets:
+    - assets/config/
+    - assets/coin_icons/png/
+    - app_build/build_config.json
+    - path: assets/transformer_invoker.txt
+      transformers:
+        - package: komodo_wallet_build_transformer
+          args:
+            [
+              --fetch_defi_api,
+              --fetch_coin_assets,
+              --copy_platform_assets,
+              --artifact_output_package=komodo_defi_framework,
+              --config_output_path=app_build/build_config.json,
+            ]
+```
+
+You can customize sources and checksums via `app_build/build_config.json` in this package. See `packages/komodo_wallet_build_transformer/README.md` for CLI flags, environment variables, and troubleshooting.
+
+## Web (WASM)
+
+On Web, the plugin registers a WASM implementation automatically (see `lib/web/kdf_plugin_web.dart`). The WASM bundle and bootstrap scripts are provided via the build transformer.
+
+## APIs and enums
+
+- `IKdfHostConfig` with `LocalConfig`, `RemoteConfig` (and WIP: `AwsConfig`, `DigitalOceanConfig`)
+- `KdfStartupConfig` helpers: `generateWithDefaults(...)`, `noAuthStartup(...)`
+- Lifecycle: `startKdf`, `kdfMainStatus`, `kdfStop`, `version`, `logStream`
+- Errors: `JsonRpcErrorResponse`, `ConnectionError`
+
+## License
+
+MIT

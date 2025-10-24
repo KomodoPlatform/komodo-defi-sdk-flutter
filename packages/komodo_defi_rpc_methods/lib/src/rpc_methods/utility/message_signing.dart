@@ -3,14 +3,23 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Request to sign a message with a coin's signing key
 class SignMessageRequest
-    extends BaseRequest<SignMessageResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<SignMessageResponse, GeneralErrorResponse> {
   /// Creates a new request to sign a message
+  ///
+  /// [coin] - The coin to sign a message with
+  /// [message] - The message you want to sign
+  /// [addressPath] - Optional HD wallet address path (for HD wallets only)
+  ///
+  /// For non-HD wallets, omit the [addressPath] parameter.
+  /// For HD wallets, provide an [AddressPath] using either:
+  /// - `AddressPath.derivationPath("m/44'/141'/0'/0/0")`
+  /// - `AddressPath.components(accountId: 0, chain: 'External', addressId: 0)`
   SignMessageRequest({
     required String rpcPass,
     required this.coin,
     required this.message,
-  }) : super(method: 'sign_message', rpcPass: rpcPass, mmrpc: '2.0');
+    this.addressPath,
+  }) : super(method: 'sign_message', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   /// The coin to sign a message with
   final String coin;
@@ -18,11 +27,22 @@ class SignMessageRequest
   /// The message you want to sign
   final String message;
 
+  /// Optional HD address path selector
+  ///
+  /// For HD wallets only. If not provided, the root derivation path will be used.
+  /// See [AddressPath] for more details.
+  final AddressPath? addressPath;
+
   @override
   Map<String, dynamic> toJson() {
-    return super.toJson().deepMerge({
-      'params': {'coin': coin, 'message': message},
-    });
+    final params = <String, dynamic>{'coin': coin, 'message': message};
+
+    // Add HD address path if provided
+    if (addressPath != null) {
+      params['address'] = addressPath!.toJson();
+    }
+
+    return super.toJson().deepMerge({'params': params});
   }
 
   @override
@@ -57,8 +77,7 @@ class SignMessageResponse extends BaseResponse {
 
 /// Request to verify a message signature
 class VerifyMessageRequest
-    extends BaseRequest<VerifyMessageResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<VerifyMessageResponse, GeneralErrorResponse> {
   /// Creates a new request to verify a message
   VerifyMessageRequest({
     required String rpcPass,
@@ -66,7 +85,11 @@ class VerifyMessageRequest
     required this.message,
     required this.signature,
     required this.address,
-  }) : super(method: 'verify_message', rpcPass: rpcPass, mmrpc: '2.0');
+  }) : super(
+         method: 'verify_message',
+         rpcPass: rpcPass,
+         mmrpc: RpcVersion.v2_0,
+       );
 
   /// The coin to verify a message with
   final String coin;

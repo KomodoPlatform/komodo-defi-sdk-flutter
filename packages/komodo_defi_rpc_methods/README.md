@@ -1,62 +1,53 @@
-# Komodo Defi Rpc Methods
+# Komodo DeFi RPC Methods
 
-[![style: very good analysis][very_good_analysis_badge]][very_good_analysis_link]
-[![Powered by Mason](https://img.shields.io/endpoint?url=https%3A%2F%2Ftinyurl.com%2Fmason-badge)](https://github.com/felangel/mason)
+Typed RPC request/response models and method namespaces for the Komodo DeFi Framework API. This package is consumed by the framework (`ApiClient`) and the high-level SDK.
+
 [![License: MIT][license_badge]][license_link]
 
-A package containing the RPC methods and responses for the Komodo DeFi Framework API
-
-## Installation 💻
-
-**❗ In order to start using Komodo Defi Rpc Methods you must have the [Dart SDK][dart_install_link] installed on your machine.**
-
-Install via `dart pub add`:
+## Install
 
 ```sh
 dart pub add komodo_defi_rpc_methods
 ```
 
----
+## Usage
 
-## Continuous Integration 🤖
+RPC namespaces are exposed as extensions on `ApiClient` via `client.rpc` when using either the framework or the SDK.
 
-Komodo Defi Rpc Methods comes with a built-in [GitHub Actions workflow][github_actions_link] powered by [Very Good Workflows][very_good_workflows_link] but you can also add your preferred CI/CD solution.
+```dart
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 
-Out of the box, on each pull request and push, the CI `formats`, `lints`, and `tests` the code. This ensures the code remains consistent and behaves correctly as you add functionality or make changes. The project uses [Very Good Analysis][very_good_analysis_link] for a strict set of analysis options used by our team. Code coverage is enforced using the [Very Good Workflows][very_good_coverage_link].
+final framework = KomodoDefiFramework.create(
+  hostConfig: LocalConfig(https: false, rpcPassword: '...'),
+);
 
----
+final client = framework.client;
 
-## Running Tests 🧪
+// Wallet
+final names = await client.rpc.wallet.getWalletNames();
+final kmdBalance = await client.rpc.wallet.myBalance(coin: 'KMD');
 
-To run all unit tests:
+// Addresses
+final v = await client.rpc.address.validateAddress(
+  coin: 'BTC',
+  address: 'bc1q...',
+);
 
-```sh
-dart pub global activate coverage 1.2.0
-dart test --coverage=coverage
-dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info
+// General activation
+final enabled = await client.rpc.generalActivation.getEnabledCoins();
+
+// Message signing
+final signed = await client.rpc.utility.signMessage(
+  coin: 'BTC',
+  message: 'Hello, Komodo!'
+);
 ```
 
-To view the generated coverage report you can use [lcov](https://github.com/linux-test-project/lcov).
+Explore exported modules in `lib/src/rpc_methods` for the full surface (activation, wallet, utxo/eth/trezor, trading, orderbook, transaction history, withdrawal, etc.).
 
-```sh
-# Generate Coverage Report
-genhtml coverage/lcov.info -o coverage/
+## License
 
-# Open Coverage Report
-open coverage/index.html
-```
+MIT
 
-[dart_install_link]: https://dart.dev/get-dart
-[github_actions_link]: https://docs.github.com/en/actions/learn-github-actions
 [license_badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [license_link]: https://opensource.org/licenses/MIT
-[logo_black]: https://raw.githubusercontent.com/VGVentures/very_good_brand/main/styles/README/vgv_logo_black.png#gh-light-mode-only
-[logo_white]: https://raw.githubusercontent.com/VGVentures/very_good_brand/main/styles/README/vgv_logo_white.png#gh-dark-mode-only
-[mason_link]: https://github.com/felangel/mason
-[very_good_analysis_badge]: https://img.shields.io/badge/style-very_good_analysis-B22C89.svg
-[very_good_analysis_link]: https://pub.dev/packages/very_good_analysis
-[very_good_coverage_link]: https://github.com/marketplace/actions/very-good-coverage
-[very_good_ventures_link]: https://verygood.ventures
-[very_good_ventures_link_light]: https://verygood.ventures#gh-light-mode-only
-[very_good_ventures_link_dark]: https://verygood.ventures#gh-dark-mode-only
-[very_good_workflows_link]: https://github.com/VeryGoodOpenSource/very_good_workflows

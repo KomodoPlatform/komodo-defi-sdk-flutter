@@ -1,5 +1,15 @@
 {
-  "projects": {
-    "default": "komodo-defi-sdk"
-  }
+    "projects": {
+        "default": "komodo-defi-sdk"
+    },
+    "targets": {
+        "komodo-defi-sdk": {
+            "hosting": {
+                "kdf-sdk": [
+                    "kdf-sdk"
+                ]
+            }
+        }
+    },
+    "etags": {}
 }

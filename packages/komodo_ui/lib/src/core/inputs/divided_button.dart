@@ -90,6 +90,7 @@ class DividedButton extends StatelessWidget {
       ),
       onPressed: onPressed,
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           for (int i = 0; i < children.length; i++) ...[
             if (childPadding != null)

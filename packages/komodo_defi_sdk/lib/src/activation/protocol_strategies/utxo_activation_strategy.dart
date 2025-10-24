@@ -1,15 +1,20 @@
+import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class UtxoActivationStrategy extends ProtocolActivationStrategy {
-  const UtxoActivationStrategy(super.client);
+  const UtxoActivationStrategy(super.client, this.privKeyPolicy);
+
+  /// The private key management policy to use for this strategy.
+  /// Used for external wallet support.
+  final PrivateKeyPolicy privKeyPolicy;
 
   @override
   Set<CoinSubClass> get supportedProtocols => {
-        CoinSubClass.utxo,
-        CoinSubClass.smartChain,
-        // CoinSubClass.smartBch,
-      };
+    CoinSubClass.utxo,
+    CoinSubClass.smartChain,
+    // CoinSubClass.smartBch,
+  };
 
   @override
   bool get supportsBatchActivation => false;
@@ -28,11 +33,15 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Starting ${asset.id.name} activation...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 5,
         additionalInfo: {
           'chainType': protocol.subClass.formatted,
-          'mode': protocol.defaultActivationParams().mode?.rpc,
+          'mode':
+              protocol
+                  .defaultActivationParams(privKeyPolicy: privKeyPolicy)
+                  .mode
+                  ?.rpc,
           'txVersion': protocol.txVersion,
           'pubtype': protocol.pubtype,
         },
@@ -44,24 +53,25 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         status: 'Validating protocol configuration...',
         progressPercentage: 20,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'validation',
+          currentStep: ActivationStep.validation,
           stepCount: 5,
         ),
       );
 
       final taskResponse = await client.rpc.utxo.enableUtxoInit(
         ticker: asset.id.id,
-        params: protocol.defaultActivationParams(),
+        params: protocol.defaultActivationParams(privKeyPolicy: privKeyPolicy),
       );
 
       yield ActivationProgress(
         status: 'Establishing network connections...',
         progressPercentage: 40,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'connection',
+          currentStep: ActivationStep.connection,
           stepCount: 5,
           additionalInfo: {
             'electrumServers': protocol.requiredServers.toJsonRequest(),
+            'protocolType': protocol.subClass.formatted,
           },
         ),
       );
@@ -76,7 +86,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
           if (status.status == 'Ok') {
             yield ActivationProgress.success(
               details: ActivationProgressDetails(
-                currentStep: 'complete',
+                currentStep: ActivationStep.complete,
                 stepCount: 5,
                 additionalInfo: {
                   'activatedChain': asset.id.name,
@@ -92,7 +102,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
               errorMessage: status.details,
               isComplete: true,
               progressDetails: ActivationProgressDetails(
-                currentStep: 'error',
+                currentStep: ActivationStep.error,
                 stepCount: 5,
                 errorCode: 'UTXO_ACTIVATION_ERROR',
                 errorDetails: status.details,
@@ -120,7 +130,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 5,
           errorCode: 'UTXO_ACTIVATION_ERROR',
           errorDetails: e.toString(),
@@ -130,35 +140,35 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
     }
   }
 
-  ({String status, double percentage, String step, Map<String, dynamic> info})
+  ({String status, double percentage, ActivationStep step, Map<String, dynamic> info})
       _parseUtxoStatus(String status) {
     switch (status) {
       case 'ConnectingElectrum':
         return (
           status: 'Connecting to Electrum servers...',
           percentage: 60,
-          step: 'electrum_connection',
+          step: ActivationStep.electrumConnection,
           info: {'connectionType': 'Electrum'},
         );
       case 'LoadingBlockchain':
         return (
           status: 'Loading blockchain data...',
           percentage: 80,
-          step: 'blockchain_sync',
+          step: ActivationStep.blockchainSync,
           info: {'dataType': 'blockchain'},
         );
       case 'ScanningTransactions':
         return (
           status: 'Scanning transaction history...',
           percentage: 90,
-          step: 'tx_scan',
+          step: ActivationStep.txScan,
           info: {'dataType': 'transactions'},
         );
       default:
         return (
           status: 'Processing activation...',
           percentage: 95,
-          step: 'processing',
+          step: ActivationStep.processing,
           info: {'status': status},
         );
     }

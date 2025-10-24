@@ -37,7 +37,6 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
-contrib/coins_config.json
 
 # Web related
 web/dist/*.js
@@ -46,7 +45,6 @@ web/dist/*LICENSE.txt
 web/src/mm2/
 web/src/kdf/
 web/kdf/
-
 
 # Symbolication related
 app.*.symbols
@@ -89,12 +87,14 @@ macos/bin/
 # Android C++ files
 android/app/.cxx/
 
-# Coins asset files 
+# Coins asset files
 assets/config/coins.json
 assets/config/coins_config.json
+assets/config/seed_nodes.json
 assets/config/coins_ci.json
-assets/coin_icons/png/*.png
-
+assets/config/seed_nodes.json
+assets/coin_icons/**/*.png
+assets/coin_icons/**/*.jpg
 
 # MacOS
 # Flutter-related

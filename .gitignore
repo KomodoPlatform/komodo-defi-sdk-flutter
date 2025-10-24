@@ -41,7 +41,6 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
-contrib/coins_config.json
 **/.plugin_symlinks/*
 
 # Web related
@@ -91,12 +90,13 @@ macos/kdf
 # Android C++ files
 **/.cxx
 
-# Coins asset files 
+# Coins asset files
 assets/config/coins.json
 assets/config/coins_config.json
+assets/config/seed_nodes.json
 assets/config/coins_ci.json
-assets/coin_icons/
-
+assets/coin_icons/**/*.png
+assets/coin_icons/**/*.jpg
 
 # MacOS
 # Flutter-related
@@ -114,6 +114,11 @@ macos/Frameworks/*
 key.txt
 .firebaserc
 firebase.json
+# Exception for Firebase config in example and playground apps
+!packages/komodo_defi_sdk/example/.firebaserc
+!packages/komodo_defi_sdk/example/firebase.json
+!playground/.firebaserc
+!playground/firebase.json
 *_combined.txt
 # /packages/komodo_defi_framework/web/kdf
 

@@ -8,6 +8,7 @@ class EthWithTokensActivationParams extends ActivationParams {
     required this.fallbackSwapContract,
     required this.erc20Tokens,
     required this.txHistory,
+    required super.privKeyPolicy,
     super.requiredConfirmations,
     super.requiresNotarization = false,
   });
@@ -27,6 +28,7 @@ class EthWithTokensActivationParams extends ActivationParams {
           [],
       requiredConfirmations: base.requiredConfirmations,
       requiresNotarization: base.requiresNotarization,
+      privKeyPolicy: base.privKeyPolicy,
       txHistory: json.valueOrNull<bool>('tx_history'),
     );
   }
@@ -45,6 +47,7 @@ class EthWithTokensActivationParams extends ActivationParams {
     List<TokensRequest>? erc20Tokens,
     int? requiredConfirmations,
     bool? requiresNotarization,
+    PrivateKeyPolicy? privKeyPolicy,
     bool? txHistory,
   }) {
     return EthWithTokensActivationParams(
@@ -55,6 +58,7 @@ class EthWithTokensActivationParams extends ActivationParams {
       requiredConfirmations:
           requiredConfirmations ?? this.requiredConfirmations,
       requiresNotarization: requiresNotarization ?? this.requiresNotarization,
+      privKeyPolicy: privKeyPolicy ?? this.privKeyPolicy,
       txHistory: txHistory ?? this.txHistory,
     );
   }
@@ -68,6 +72,9 @@ class EthWithTokensActivationParams extends ActivationParams {
       'fallback_swap_contract': fallbackSwapContract,
       'erc20_tokens_requests': erc20Tokens.map((e) => e.toJson()).toList(),
       if (txHistory != null) 'tx_history': txHistory,
+      // Override priv_key_policy with object form for ETH/ERC20
+      'priv_key_policy':
+          (privKeyPolicy ?? const PrivateKeyPolicy.contextPrivKey()).toJson(),
     };
   }
 }

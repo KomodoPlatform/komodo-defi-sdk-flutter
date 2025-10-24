@@ -2,13 +2,12 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class EnableErc20Request
-    extends BaseRequest<EnableErc20Response, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<EnableErc20Response, GeneralErrorResponse> {
   EnableErc20Request({
     required String rpcPass,
     required this.ticker,
     required this.activationParams,
-  }) : super(method: 'enable_erc20', rpcPass: rpcPass, mmrpc: '2.0');
+  }) : super(method: 'enable_erc20', rpcPass: rpcPass, mmrpc: RpcVersion.v2_0);
 
   final String ticker;
   final Erc20ActivationParams activationParams;

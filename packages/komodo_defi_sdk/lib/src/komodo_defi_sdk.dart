@@ -1,9 +1,13 @@
+import 'dart:developer';
+import 'dart:async';
+
 import 'package:get_it/get_it.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/bootstrap.dart';
+import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
@@ -11,6 +15,7 @@ import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 
 /// A high-level SDK that provides a simple way to build cross-platform applications
 /// using the Komodo DeFi Framework, with a primary focus on wallet functionality.
@@ -106,8 +111,17 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   ///   )
   /// );
   /// ```
-  factory KomodoDefiSdk({IKdfHostConfig? host, KomodoDefiSdkConfig? config}) {
-    return KomodoDefiSdk._(host, config ?? const KomodoDefiSdkConfig(), null);
+  factory KomodoDefiSdk({
+    IKdfHostConfig? host,
+    KomodoDefiSdkConfig? config,
+    void Function(String)? onLog,
+  }) {
+    return KomodoDefiSdk._(
+      host,
+      config ?? const KomodoDefiSdkConfig(),
+      null,
+      onLog,
+    );
   }
 
   /// Creates a new SDK instance from an existing KDF framework instance.
@@ -123,24 +137,31 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   factory KomodoDefiSdk.fromFramework(
     KomodoDefiFramework framework, {
     KomodoDefiSdkConfig? config,
+    void Function(String)? onLog,
   }) {
     return KomodoDefiSdk._(
       null,
       config ?? const KomodoDefiSdkConfig(),
       framework,
+      onLog,
     );
   }
 
-  KomodoDefiSdk._(this._hostConfig, this._config, this._kdfFramework) {
-    _container = GetIt.asNewInstance();
-  }
+  KomodoDefiSdk._(
+    this._hostConfig,
+    this._config,
+    this._kdfFramework,
+    this._onLog,
+  ) : _container = GetIt.asNewInstance();
 
   final IKdfHostConfig? _hostConfig;
   final KomodoDefiSdkConfig _config;
   KomodoDefiFramework? _kdfFramework;
   late final GetIt _container;
   bool _isInitialized = false;
+  bool _isDisposed = false;
   Future<void>? _initializationFuture;
+  final void Function(String)? _onLog;
 
   /// The API client for making direct RPC calls.
   ///
@@ -174,6 +195,10 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   AddressOperations get addresses =>
       _assertSdkInitialized(_container<AddressOperations>());
 
+  /// Service for resolving/persisting activation configuration.
+  ActivationConfigService get activationConfigService =>
+      _assertSdkInitialized(_container<ActivationConfigService>());
+
   /// The asset manager instance.
   ///
   /// Handles coin/token activation and configuration.
@@ -198,6 +223,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       _assertSdkInitialized(_container<MessageSigningManager>());
 
   T _assertSdkInitialized<T>(T val) {
+    _assertNotDisposed();
     if (!_isInitialized) {
       throw StateError(
         'Cannot call $T because KomodoDefiSdk is not '
@@ -205,6 +231,12 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       );
     }
     return val;
+  }
+
+  void _assertNotDisposed() {
+    if (_isDisposed) {
+      throw StateError('KomodoDefiSdk has been disposed');
+    }
   }
 
   /// The mnemonic validator instance.
@@ -223,6 +255,15 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   WithdrawalManager get withdrawals =>
       _assertSdkInitialized(_container<WithdrawalManager>());
 
+  /// Manages security-sensitive wallet operations like private key export.
+  ///
+  /// Provides authenticated access to sensitive wallet data with proper
+  /// security warnings and user authentication checks.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  SecurityManager get security =>
+      _assertSdkInitialized(_container<SecurityManager>());
+
   /// The price manager instance.
   ///
   /// Provides functionality for fetching asset prices.
@@ -231,6 +272,9 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   MarketDataManager get marketData =>
       _assertSdkInitialized(_container<MarketDataManager>());
 
+  /// Provides access to fee management utilities.
+  FeeManager get fees => _assertSdkInitialized(_container<FeeManager>());
+
   /// Gets a reference to the balance manager for checking asset balances.
   ///
   /// Provides functionality for checking and monitoring asset balances.
@@ -238,6 +282,13 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Throws [StateError] if accessed before initialization.
   BalanceManager get balances =>
       _assertSdkInitialized(_container<BalanceManager>());
+
+  /// Public stream of framework logs.
+  ///
+  /// Subscribe to receive human-readable log messages from the underlying
+  /// Komodo DeFi Framework. Requires the SDK to be initialized.
+  Stream<String> get logStream =>
+      _assertSdkInitialized(_container<KomodoDefiFramework>().logStream);
 
   /// Initializes the SDK instance.
   ///
@@ -252,6 +303,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// await sdk.initialize();
   /// ```
   Future<void> initialize() async {
+    _assertNotDisposed();
     if (_isInitialized) return;
     _initializationFuture ??= _initialize();
     await _initializationFuture;
@@ -268,19 +320,34 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// // Now safe to use SDK functionality
   /// ```
   Future<void> ensureInitialized() async {
+    _assertNotDisposed();
     if (!_isInitialized) {
       await initialize();
     }
   }
 
   Future<void> _initialize() async {
+    _assertNotDisposed();
+
+    log('KomodoDefiSdk: Starting initialization...', name: 'KomodoDefiSdk');
+    final stopwatch = Stopwatch()..start();
+
     await bootstrap(
       hostConfig: _hostConfig,
       config: _config,
       kdfFramework: _kdfFramework,
       container: _container,
+      // Pass onLog callback to bootstrap for direct framework integration
+      externalLogger: _onLog,
     );
+
     _isInitialized = true;
+
+    stopwatch.stop();
+    log(
+      'KomodoDefiSdk: Initialization completed in ${stopwatch.elapsedMilliseconds}ms',
+      name: 'KomodoDefiSdk',
+    );
   }
 
   /// Gets the current user's authentication options.
@@ -302,18 +369,53 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
         : KomodoDefiLocalAuth.storedAuthOptions(user.walletId.name);
   }
 
+  Future<void> _disposeIfRegistered<T extends Object>(
+    Future<void> Function(T) fn,
+  ) async {
+    if (_container.isRegistered<T>()) {
+      try {
+        await fn(_container<T>());
+      } catch (e) {
+        log('Error disposing $T: $e');
+      }
+    }
+  }
+
   /// Disposes of this SDK instance and cleans up all resources.
   ///
-  /// This should be called when the SDK is no longer needed to ensure
-  /// proper cleanup of resources and background operations.
+  /// This should be called when the SDK is no longer needed to ensure proper
+  /// cleanup of resources and background operations.
+  ///
+  /// NB! By default, this will terminate the KDF process.
+  ///
+  /// TODO: Consider future refactoring to separate KDF process disposal vs
+  /// Dart object disposal.
   ///
   /// Example:
   /// ```dart
   /// await sdk.dispose();
   /// ```
   Future<void> dispose() async {
+    if (_isDisposed) return;
+    _isDisposed = true;
+
     if (!_isInitialized) return;
+
     _isInitialized = false;
+    _initializationFuture = null;
+
+    await Future.wait([
+      _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
+      _disposeIfRegistered<AssetManager>((m) => m.dispose()),
+      _disposeIfRegistered<ActivationManager>((m) => m.dispose()),
+      _disposeIfRegistered<BalanceManager>((m) => m.dispose()),
+      _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
+      _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),
+      _disposeIfRegistered<MarketDataManager>((m) => m.dispose()),
+      _disposeIfRegistered<FeeManager>((m) => m.dispose()),
+      _disposeIfRegistered<WithdrawalManager>((m) => m.dispose()),
+      _disposeIfRegistered<SecurityManager>((m) => m.dispose()),
+    ]);
 
     // Reset scoped container
     await _container.reset();

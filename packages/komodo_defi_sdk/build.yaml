@@ -1,0 +1,10 @@
+targets:
+  $default:
+    sources:
+      - lib/**
+      - pubspec.yaml
+    builders:
+      hive_ce_generator:
+        enabled: true
+        generate_for:
+          - lib/src/**.dart

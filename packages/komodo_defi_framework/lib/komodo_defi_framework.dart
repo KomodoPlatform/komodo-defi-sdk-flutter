@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
@@ -11,6 +12,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
+export 'package:komodo_defi_framework/src/services/seed_node_service.dart';
 
 export 'src/operations/kdf_operations_interface.dart';
 
@@ -66,7 +68,18 @@ class KomodoDefiFramework implements ApiClient {
       _loggerSub = null;
     }
 
-    _loggerSub = _logStream.stream.listen(logCallback);
+    _loggerSub = _logStream.stream.listen(
+      logCallback,
+      onError: (Object error, StackTrace stackTrace) {
+        // Log the error internally but don't propagate it to avoid crashing
+        if (kDebugMode) {
+          print('[KomodoDefiFramework] Error in external logger callback:');
+          print('  Error: $error');
+          print('  Stack trace:\n$stackTrace');
+        }
+      },
+      cancelOnError: false, // Continue listening even if the callback throws
+    );
   }
 
   StreamSubscription<String>? _loggerSub;
@@ -78,7 +91,11 @@ class KomodoDefiFramework implements ApiClient {
 
   Stream<String> get logStream => _logStream.stream;
 
-  void _log(String message) => _logStream.add(message);
+  void _log(String message) {
+    if (!_logStream.isClosed) {
+      _logStream.add(message);
+    }
+  }
 
   //TODO! Figure out best way to handle overlap between startup and host
   //TODO! Handle common KDF operations startup log scanning here or in a
@@ -124,13 +141,13 @@ class KomodoDefiFramework implements ApiClient {
     _log('Stopping KDF...');
     final result = await _kdfOperations.kdfStop();
     _log('KDF stop result: $result');
-    // Await a max of 5 seconds for KDF to stop. Check every 100ms.
-    for (var i = 0; i < 50; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+    // Await a max of 5 seconds for KDF to stop. Check every 500ms.
+    for (var i = 0; i < 10; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
       if (!await isRunning()) {
         break;
       }
-      if (i == 49) {
+      if (i == 9) {
         throw Exception('Error stopping KDF: KDF did not stop in time.');
       }
     }
@@ -139,7 +156,8 @@ class KomodoDefiFramework implements ApiClient {
   }
 
   Future<bool> isRunning() async {
-    final running = await _kdfOperations.isRunning() ||
+    final running =
+        await _kdfOperations.isRunning() ||
         await _kdfOperations.version() != null;
     if (!running) {
       _log('KDF is not running.');
@@ -157,8 +175,7 @@ class KomodoDefiFramework implements ApiClient {
   Future<JsonMap> executeRpc(JsonMap request) async {
     final response = (await _kdfOperations.mm2Rpc(
       request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
-    ))
-        .ensureJson();
+    )).ensureJson();
     if (KdfLoggingConfig.verboseLogging) {
       _log('RPC response: ${response.toJsonString()}');
     }
@@ -190,10 +207,22 @@ class KomodoDefiFramework implements ApiClient {
     }
   }
 
+  /// Closes the log stream and cancels the logger subscription.
+  ///
+  /// NB! This does not stop the KDF operations or the KDF process.
   Future<void> dispose() async {
-    await _logStream.close();
-
+    // Cancel subscription first before closing the stream
     await _loggerSub?.cancel();
+    _loggerSub = null;
+
+    // Close the log stream
+    if (!_logStream.isClosed) {
+      await _logStream.close();
+    }
+
+    // Dispose of KDF operations to free native resources
+    final operations = _kdfOperations;
+    operations.dispose();
   }
 
   String get operationsName => _kdfOperations.operationsName;

@@ -40,12 +40,21 @@ class KomodoDefiRpcMethods {
   TendermintMethodsNamespace get tendermint =>
       TendermintMethodsNamespace(_client);
   NftMethodsNamespace get nft => NftMethodsNamespace(_client);
+  ZhtlcMethodsNamespace get zhtlc => ZhtlcMethodsNamespace(_client);
 
-  // Add other namespaces here, e.g.:
-  // TradeNamespace get trade => TradeNamespace(_client);
+  // Hardware wallet namespaces
+  TrezorMethodsNamespace get trezor => TrezorMethodsNamespace(_client);
+
+  // Trading and DeFi namespaces
+  TradingMethodsNamespace get trading => TradingMethodsNamespace(_client);
+  OrderbookMethodsNamespace get orderbook => OrderbookMethodsNamespace(_client);
+  LightningMethodsNamespace get lightning => LightningMethodsNamespace(_client);
+
   MessageSigningMethodsNamespace get messageSigning =>
       MessageSigningMethodsNamespace(_client);
   UtilityMethods get utility => UtilityMethods(_client);
+  FeeManagementMethodsNamespace get feeManagement =>
+      FeeManagementMethodsNamespace(_client);
 }
 
 class TaskMethods extends BaseRpcMethodNamespace {
@@ -74,6 +83,18 @@ class WalletMethods extends BaseRpcMethodNamespace {
   Future<GetWalletNamesResponse> getWalletNames([String? rpcPass]) =>
       execute(GetWalletNamesRequest(rpcPass));
 
+  Future<DeleteWalletResponse> deleteWallet({
+    required String walletName,
+    required String password,
+    String? rpcPass,
+  }) => execute(
+    DeleteWalletRequest(
+      walletName: walletName,
+      password: password,
+      rpcPass: rpcPass,
+    ),
+  );
+
   Future<MyBalanceResponse> myBalance({
     required String coin,
     String? rpcPass,
@@ -81,6 +102,49 @@ class WalletMethods extends BaseRpcMethodNamespace {
 
   Future<GetPublicKeyHashResponse> getPublicKeyHash([String? rpcPass]) =>
       execute(GetPublicKeyHashRequest(rpcPass: rpcPass));
+
+  /// Gets private keys for the specified coins
+  ///
+  /// Supports both HD and Iguana (standard) export modes.
+  ///
+  /// Parameters:
+  /// - [coins]: List of coin tickers to export keys for
+  /// - [mode]: Export mode (HD or Iguana). If null, defaults based on wallet type
+  /// - [startIndex]: Starting address index for HD mode (default: 0)
+  /// - [endIndex]: Ending address index for HD mode (default: startIndex + 10)
+  /// - [accountIndex]: Account index for HD mode (default: 0)
+  /// - [rpcPass]: RPC password for authentication
+  ///
+  /// Note: startIndex, endIndex, and accountIndex are only valid for HD mode
+  Future<GetPrivateKeysResponse> getPrivateKeys({
+    required List<String> coins,
+    KeyExportMode? mode,
+    int? startIndex,
+    int? endIndex,
+    int? accountIndex,
+    String? rpcPass,
+  }) => execute(
+    GetPrivateKeysRequest(
+      rpcPass: rpcPass ?? '',
+      coins: coins,
+      mode: mode,
+      startIndex: startIndex,
+      endIndex: endIndex,
+      accountIndex: accountIndex,
+    ),
+  );
+
+  /// Unbans all banned public keys
+  ///
+  /// Parameters:
+  /// - [unbanBy]: The type of public key to unban (e.g. all, few)
+  /// - [rpcPass]: RPC password for authentication
+  ///
+  /// Returns: Response containing the result of the unban operation
+  Future<UnbanPubkeysResponse> unbanPubkeys({
+    required UnbanBy unbanBy,
+    String? rpcPass,
+  }) => execute(UnbanPubkeysRequest(rpcPass: rpcPass ?? '', unbanBy: unbanBy));
 }
 
 /// KDF v2 Utility Methods not specific to any larger feature
@@ -108,9 +172,15 @@ class UtilityMethods extends BaseRpcMethodNamespace {
   Future<SignMessageResponse> signMessage({
     required String coin,
     required String message,
+    AddressPath? addressPath,
     String? rpcPass,
   }) => execute(
-    SignMessageRequest(coin: coin, message: message, rpcPass: rpcPass ?? ''),
+    SignMessageRequest(
+      coin: coin,
+      message: message,
+      rpcPass: rpcPass ?? '',
+      addressPath: addressPath,
+    ),
   );
 
   /// Verifies a message signature
@@ -136,84 +206,4 @@ class GeneralActivationMethods extends BaseRpcMethodNamespace {
 
   Future<GetEnabledCoinsResponse> getEnabledCoins([String? rpcPass]) =>
       execute(GetEnabledCoinsRequest(rpcPass: rpcPass));
-}
-
-class HdWalletMethods extends BaseRpcMethodNamespace {
-  HdWalletMethods(super.client);
-
-  Future<GetNewAddressResponse> getNewAddress(
-    String coin, {
-    String? rpcPass,
-    int? accountId,
-    String? chain,
-    int? gapLimit,
-  }) => execute(
-    GetNewAddressRequest(
-      rpcPass: rpcPass,
-      coin: coin,
-      accountId: accountId,
-      chain: chain,
-      gapLimit: gapLimit,
-    ),
-  );
-
-  Future<NewTaskResponse> scanForNewAddressesInit(
-    String coin, {
-    String? rpcPass,
-    int? accountId,
-    int? gapLimit,
-  }) => execute(
-    ScanForNewAddressesInitRequest(
-      rpcPass: rpcPass,
-      coin: coin,
-      accountId: accountId,
-      gapLimit: gapLimit,
-    ),
-  );
-
-  Future<ScanForNewAddressesStatusResponse> scanForNewAddressesStatus(
-    int taskId, {
-    String? rpcPass,
-    bool forgetIfFinished = true,
-  }) => execute(
-    ScanForNewAddressesStatusRequest(
-      rpcPass: rpcPass,
-      taskId: taskId,
-      forgetIfFinished: forgetIfFinished,
-    ),
-  );
-
-  Future<NewTaskResponse> accountBalanceInit({
-    required String coin,
-    required int accountIndex,
-    String? rpcPass,
-  }) => execute(
-    AccountBalanceInitRequest(
-      rpcPass: rpcPass ?? this.rpcPass,
-      coin: coin,
-      accountIndex: accountIndex,
-    ),
-  );
-
-  Future<AccountBalanceStatusResponse> accountBalanceStatus({
-    required int taskId,
-    bool forgetIfFinished = true,
-    String? rpcPass,
-  }) => execute(
-    AccountBalanceStatusRequest(
-      rpcPass: rpcPass ?? this.rpcPass,
-      taskId: taskId,
-      forgetIfFinished: forgetIfFinished,
-    ),
-  );
-
-  Future<AccountBalanceCancelResponse> accountBalanceCancel({
-    required int taskId,
-    String? rpcPass,
-  }) => execute(
-    AccountBalanceCancelRequest(
-      rpcPass: rpcPass ?? this.rpcPass,
-      taskId: taskId,
-    ),
-  );
 }

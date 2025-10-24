@@ -30,4 +30,47 @@ class TendermintMethodsNamespace extends BaseRpcMethodNamespace {
       ),
     );
   }
+
+  /// Initialize task-based Tendermint activation
+  Future<NewTaskResponse> taskEnableTendermintInit({
+    required String ticker,
+    required List<TendermintTokenParams> tokensParams,
+    required List<TendermintNode> nodes,
+    bool getBalances = true,
+    bool txHistory = true,
+  }) {
+    return execute(
+      TaskEnableTendermintInitRequest(
+        rpcPass: rpcPass ?? '',
+        ticker: ticker,
+        tokensParams: tokensParams,
+        nodes: nodes,
+        getBalances: getBalances,
+        txHistory: txHistory,
+      ),
+    );
+  }
+
+  /// Check task-based Tendermint activation status
+  Future<TendermintTaskStatusResponse> taskEnableTendermintStatus({
+    required int taskId,
+    bool forgetIfFinished = false,
+  }) {
+    return execute(
+      TaskEnableTendermintStatusRequest(
+        rpcPass: rpcPass ?? '',
+        taskId: taskId,
+        forgetIfFinished: forgetIfFinished,
+      ),
+    );
+  }
+
+  /// Cancel task-based Tendermint activation
+  Future<TendermintTaskCancelResponse> taskEnableTendermintCancel({
+    required int taskId,
+  }) {
+    return execute(
+      TaskEnableTendermintCancelRequest(rpcPass: rpcPass ?? '', taskId: taskId),
+    );
+  }
 }

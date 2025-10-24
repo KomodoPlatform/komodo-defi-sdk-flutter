@@ -25,8 +25,8 @@ class Asset extends Equatable {
     );
   }
 
-  factory Asset.fromJson(JsonMap json) {
-    final assetId = AssetId.parse(json, knownIds: const {});
+  factory Asset.fromJson(JsonMap json, {Set<AssetId>? knownIds}) {
+    final assetId = AssetId.parse(json, knownIds: knownIds);
     final protocol = ProtocolClass.fromJson(json);
     return Asset(
       id: assetId,
@@ -64,12 +64,33 @@ class Asset extends Equatable {
   final bool isWalletOnly;
   final String? signMessagePrefix;
 
+  /// Whether this asset supports message signing.
+  ///
+  /// Determined by the presence of the `sign_message_prefix` field in the
+  /// coin config.
+  bool get supportsMessageSigning => signMessagePrefix != null;
+
+  /// Creates a copy of this Asset with optionally modified fields.
+  Asset copyWith({
+    AssetId? id,
+    ProtocolClass? protocol,
+    bool? isWalletOnly,
+    String? signMessagePrefix,
+  }) {
+    return Asset(
+      id: id ?? this.id,
+      protocol: protocol ?? this.protocol,
+      isWalletOnly: isWalletOnly ?? this.isWalletOnly,
+      signMessagePrefix: signMessagePrefix ?? this.signMessagePrefix,
+    );
+  }
+
   JsonMap toJson() => {
-        'protocol': protocol.toJson(),
-        'id': id.toJson(),
-        'wallet_only': isWalletOnly,
-        if (signMessagePrefix != null) 'sign_message_prefix': signMessagePrefix,
-      };
+    'protocol': protocol.toJson(),
+    'id': id.toJson(),
+    'wallet_only': isWalletOnly,
+    if (signMessagePrefix != null) 'sign_message_prefix': signMessagePrefix,
+  };
 
   @override
   List<Object?> get props => [id, protocol, isWalletOnly, signMessagePrefix];

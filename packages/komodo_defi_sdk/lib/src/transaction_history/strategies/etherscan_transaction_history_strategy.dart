@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
@@ -13,8 +13,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
     required this.pubkeyManager,
     http.Client? httpClient,
     String? baseUrl,
-  })  : _client = httpClient ?? http.Client(),
-        _protocolHelper = EtherscanProtocolHelper(baseUrl: baseUrl);
+  }) : _client = httpClient ?? http.Client(),
+       _protocolHelper = EtherscanProtocolHelper(baseUrl: baseUrl);
 
   final http.Client _client;
   final EtherscanProtocolHelper _protocolHelper;
@@ -23,9 +23,9 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   Set<Type> get supportedPaginationModes => {
-        PagePagination,
-        TransactionBasedPagination,
-      };
+    PagePagination,
+    TransactionBasedPagination,
+  };
 
   @override
   bool supportsAsset(Asset asset) => _protocolHelper.supportsProtocol(asset);
@@ -49,7 +49,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
     validatePagination(pagination);
 
-    final url = _protocolHelper.getApiUrlForAsset(asset) ??
+    final url =
+        _protocolHelper.getApiUrlForAsset(asset) ??
         (throw UnsupportedError(
           'No API URL found for asset ${asset.id.toJson()}',
         ));
@@ -62,8 +63,9 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
       for (final address in addresses) {
         final uri = url.replace(
           pathSegments: [...url.pathSegments, address.address],
-          queryParameters:
-              asset.protocol.isTestnet ? {'testnet': 'true'} : null,
+          queryParameters: asset.protocol.isTestnet
+              ? {'testnet': 'true'}
+              : null,
         );
         // Add the address as the next path segment
 
@@ -78,25 +80,26 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
       // Apply pagination based on type
       final paginatedResults = switch (pagination) {
         final PagePagination p => _applyPagePagination(
-            allTransactions,
-            p.pageNumber,
-            p.itemsPerPage,
-          ),
+          allTransactions,
+          p.pageNumber,
+          p.itemsPerPage,
+        ),
         final TransactionBasedPagination t => _applyTransactionPagination(
-            allTransactions,
-            t.fromId,
-            t.itemCount,
-          ),
+          allTransactions,
+          t.fromId,
+          t.itemCount,
+        ),
         _ => throw UnsupportedError(
-            'Unsupported pagination type: ${pagination.runtimeType}',
-          ),
+          'Unsupported pagination type: ${pagination.runtimeType}',
+        ),
       };
 
-      final currentBlock =
-          allTransactions.isNotEmpty ? allTransactions.first.blockHeight : 0;
+      final currentBlock = allTransactions.isNotEmpty
+          ? allTransactions.first.blockHeight
+          : 0;
 
       return MyTxHistoryResponse(
-        mmrpc: '2.0',
+        mmrpc: RpcVersion.v2_0,
         currentBlock: currentBlock,
         fromId: paginatedResults.transactions.lastOrNull?.txHash,
         limit: paginatedResults.pageSize,
@@ -107,12 +110,15 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
         total: allTransactions.length,
         totalPages: (allTransactions.length / paginatedResults.pageSize).ceil(),
         pageNumber: pagination is PagePagination ? pagination.pageNumber : null,
+        pagingOptions: switch (pagination) {
+          final PagePagination p => Pagination(pageNumber: p.pageNumber),
+          final TransactionBasedPagination t => Pagination(fromId: t.fromId),
+          _ => null,
+        },
         transactions: paginatedResults.transactions,
       );
     } catch (e) {
-      throw HttpException(
-        'Error fetching transaction history: $e',
-      );
+      throw HttpException('Error fetching transaction history: $e');
     }
   }
 
@@ -155,7 +161,7 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
             feeDetails: tx.valueOrNull<JsonMap>('fee_details') != null
                 ? FeeInfo.fromJson(
                     tx.value<JsonMap>('fee_details')
-                      ..setIfAbsentOrEmpty('type', 'Eth'),
+                      ..setIfAbsentOrEmpty('type', 'EthGas'),
                   )
                 : null,
             coin: coinId,
@@ -166,11 +172,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
         .toList();
   }
 
-  ({
-    List<TransactionInfo> transactions,
-    int skipped,
-    int pageSize,
-  }) _applyPagePagination(
+  ({List<TransactionInfo> transactions, int skipped, int pageSize})
+  _applyPagePagination(
     List<TransactionInfo> transactions,
     int pageNumber,
     int itemsPerPage,
@@ -183,11 +186,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
     );
   }
 
-  ({
-    List<TransactionInfo> transactions,
-    int skipped,
-    int pageSize,
-  }) _applyTransactionPagination(
+  ({List<TransactionInfo> transactions, int skipped, int pageSize})
+  _applyTransactionPagination(
     List<TransactionInfo> transactions,
     String fromId,
     int itemCount,
@@ -211,9 +211,8 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
 /// Helper class for managing Etherscan protocol endpoints and URL construction
 class EtherscanProtocolHelper {
-  const EtherscanProtocolHelper({
-    String? baseUrl,
-  }) : _baseUrl = baseUrl ?? 'https://etherscan-proxy-v2.komodo.earth/api';
+  const EtherscanProtocolHelper({String? baseUrl})
+    : _baseUrl = baseUrl ?? 'https://etherscan-proxy-v2.komodo.earth/api';
 
   final String _baseUrl;
 
@@ -221,6 +220,12 @@ class EtherscanProtocolHelper {
   bool supportsProtocol(Asset asset) {
     return asset.protocol is Erc20Protocol && getApiUrlForAsset(asset) != null;
   }
+
+  /// Whether transaction history should also be fetched via mm2.
+  ///
+  /// When Etherscan does not support the provided [asset], transaction history
+  /// must fall back to mm2 RPC calls.
+  bool shouldEnableTransactionHistory(Asset asset) => !supportsProtocol(asset);
 
   /// Constructs the appropriate API URL for a given asset
   Uri? getApiUrlForAsset(Asset asset) {
@@ -231,6 +236,10 @@ class EtherscanProtocolHelper {
 
     return Uri.parse(endpoint);
   }
+
+  /// Returns the URL for fetching transaction history by hash.
+  Uri transactionsByHashUrl(String txHash) =>
+      Uri.parse('$_txByHashUrl/$txHash');
 
   String? _getEndpointForAsset(Asset asset) {
     final baseEndpoint = _getBaseEndpoint(asset.id);
@@ -248,7 +257,12 @@ class EtherscanProtocolHelper {
     }
 
     final protocol = asset.protocol as Erc20Protocol;
-    return '$baseEndpoint/${protocol.swapContractAddress}';
+    final tokenContractAddress = protocol.contractAddress;
+    if (tokenContractAddress == null || tokenContractAddress.isEmpty) {
+      return null;
+    }
+
+    return '$baseEndpoint/$tokenContractAddress';
   }
 
   String? _getBaseEndpoint(AssetId id) {
@@ -257,7 +271,7 @@ class EtherscanProtocolHelper {
       CoinSubClass.hecoChain when isParentChain => _hecoUrl,
       CoinSubClass.hecoChain => _hecoTokenUrl,
       CoinSubClass.bep20 when isParentChain => _bnbUrl,
-      CoinSubClass.bep20 => _bepUrl,
+      CoinSubClass.bep20 => _bnbTokenUrl,
       CoinSubClass.matic when isParentChain => _maticUrl,
       CoinSubClass.matic => _maticTokenUrl,
       CoinSubClass.ftm20 when isParentChain => _ftmUrl,
@@ -266,14 +280,15 @@ class EtherscanProtocolHelper {
       CoinSubClass.avx20 => _avaxTokenUrl,
       CoinSubClass.moonriver when isParentChain => _mvrUrl,
       CoinSubClass.moonriver => _mvrTokenUrl,
-      CoinSubClass.moonbeam => _arbUrl,
-      CoinSubClass.ethereumClassic => _etcUrl,
       CoinSubClass.krc20 when isParentChain => _kcsUrl,
       CoinSubClass.krc20 => _kcsTokenUrl,
       CoinSubClass.erc20 when isParentChain => _ethUrl,
-      CoinSubClass.erc20 => _ercUrl,
+      CoinSubClass.erc20 => _ethTokenUrl,
       CoinSubClass.arbitrum when isParentChain => _arbUrl,
       CoinSubClass.arbitrum => _arbTokenUrl,
+      CoinSubClass.rskSmartBitcoin => _rskUrl,
+      CoinSubClass.moonbeam => _glmrUrl,
+      CoinSubClass.ethereumClassic => _etcUrl,
       _ => null,
     };
   }
@@ -283,24 +298,28 @@ class EtherscanProtocolHelper {
     return asset.protocol.subClass.formatted;
   }
 
-  String get _ethUrl => '$_baseUrl/v2/eth_tx_history';
-  String get _ercUrl => '$_baseUrl/v2/erc_tx_history';
+  String get _arbUrl => '$_baseUrl/v2/arb_tx_history';
+  String get _avaxUrl => '$_baseUrl/v2/avax_tx_history';
   String get _bnbUrl => '$_baseUrl/v2/bnb_tx_history';
-  String get _bepUrl => '$_baseUrl/v2/bep_tx_history';
+  String get _ethUrl => '$_baseUrl/v2/eth_tx_history';
   String get _ftmUrl => '$_baseUrl/v2/ftm_tx_history';
-  String get _ftmTokenUrl => '$_baseUrl/v2/ftm_tx_history';
-  String get _arbUrl => '$_baseUrl/v2/arbitrum_tx_history';
-  String get _arbTokenUrl => '$_baseUrl/v2/arbitrum_tx_history';
+  String get _hecoUrl => '$_baseUrl/v2/ht_tx_history';
+  String get _kcsUrl => '$_baseUrl/v2/krc_tx_history';
+  String get _maticUrl => '$_baseUrl/v2/matic_tx_history';
+  String get _mvrUrl => '$_baseUrl/v2/movr_tx_history';
+
+  String get _arbTokenUrl => '$_baseUrl/v2/arb20_tx_history';
+  String get _avaxTokenUrl => '$_baseUrl/v2/avx20_tx_history';
+  String get _bnbTokenUrl => '$_baseUrl/v2/bep20_tx_history';
+  String get _ethTokenUrl => '$_baseUrl/v2/erc20_tx_history';
+  String get _ftmTokenUrl => '$_baseUrl/v2/ftm20_tx_history';
+  String get _hecoTokenUrl => '$_baseUrl/v2/hco20_tx_history';
+  String get _kcsTokenUrl => '$_baseUrl/v2/krc20_tx_history';
+  String get _maticTokenUrl => '$_baseUrl/v2/plg20_tx_history';
+  String get _mvrTokenUrl => '$_baseUrl/v2/mvr20_tx_history';
+
   String get _etcUrl => '$_baseUrl/v2/etc_tx_history';
-  String get _avaxUrl => '$_baseUrl/v2/avx_tx_history';
-  String get _avaxTokenUrl => '$_baseUrl/v2/avx_tx_history';
-  String get _mvrUrl => '$_baseUrl/v2/moonriver_tx_history';
-  String get _mvrTokenUrl => '$_baseUrl/v2/moonriver_tx_history';
-  String get _hecoUrl => '$_baseUrl/v2/heco_tx_history';
-  String get _hecoTokenUrl => '$_baseUrl/v2/heco_tx_history';
-  String get _maticUrl => '$_baseUrl/v2/plg_tx_history';
-  String get _maticTokenUrl => '$_baseUrl/v2/plg_tx_history';
-  String get _kcsUrl => '$_baseUrl/v2/kcs_tx_history';
-  String get _kcsTokenUrl => '$_baseUrl/v2/kcs_tx_history';
+  String get _glmrUrl => '$_baseUrl/v2/glmr_tx_history';
+  String get _rskUrl => '$_baseUrl/v2/rsk_tx_history';
   String get _txByHashUrl => '$_baseUrl/v2/transactions_by_hash';
 }

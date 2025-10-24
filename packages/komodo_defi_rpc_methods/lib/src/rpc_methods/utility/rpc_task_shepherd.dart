@@ -17,7 +17,7 @@ class TaskShepherd {
   /// The [checkTaskStatus] function should return true if the task is complete.
   ///
   /// The [cancelTask] function can be used to cancel the task if needed.
-  /// If provided, it will be called when the stream is canceled by the 
+  /// If provided, it will be called when the stream is canceled by the
   /// consumer.
   /// It will NOT be called when the task completes naturally.
   /// If not provided, the task cannot be canceled and cancelling the stream

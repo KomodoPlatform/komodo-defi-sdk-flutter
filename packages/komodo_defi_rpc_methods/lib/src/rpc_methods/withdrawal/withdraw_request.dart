@@ -9,8 +9,7 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// will be deprecated in favor of the new task-based withdrawal API.
 // @Deprecated('Use the new task-based withdrawal API')
 class WithdrawRequest
-    extends BaseRequest<WithdrawStatusResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<WithdrawStatusResponse, GeneralErrorResponse> {
   // @Deprecated('Use the new task-based withdrawal API')
   WithdrawRequest({
     required super.rpcPass,
@@ -39,8 +38,7 @@ class WithdrawRequest
   final WithdrawalSource? from;
   final String? memo;
   final bool max;
-  // TODO: update to `int?` when the KDF changes in v2.5.0-beta
-  final String? ibcSourceChannel;
+  final int? ibcSourceChannel;
 
   @override
   Map<String, dynamic> toJson() => {
@@ -53,9 +51,6 @@ class WithdrawRequest
       if (fee != null) 'fee': fee!.toJson(),
       if (from != null) 'from': from!.toRpcParams(),
       if (memo != null) 'memo': memo,
-      //TODO! Migrate breaking changes when the ibc_source_channel is
-      // changed to a numeric type in KDF.
-      // https://github.com/KomodoPlatform/komodo-defi-framework/pull/2298#discussion_r2034825504
       if (ibcSourceChannel != null) 'ibc_source_channel': ibcSourceChannel,
     },
   };
@@ -80,8 +75,7 @@ class WithdrawRequest
 
 /// Request to initialize withdrawal task
 class WithdrawInitRequest
-    extends BaseRequest<WithdrawInitResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<WithdrawInitResponse, GeneralErrorResponse> {
   WithdrawInitRequest({
     required super.rpcPass,
     required WithdrawParameters params,
@@ -130,13 +124,12 @@ typedef WithdrawInitResponse = NewTaskResponse;
 
 /// Request to check withdrawal task status
 class WithdrawStatusRequest
-    extends BaseRequest<WithdrawStatusResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<WithdrawStatusResponse, GeneralErrorResponse> {
   WithdrawStatusRequest({
     required super.rpcPass,
     required this.taskId,
     this.forgetIfFinished = true,
-  }) : super(method: 'task::withdraw::status', mmrpc: '2.0');
+  }) : super(method: 'task::withdraw::status', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final bool forgetIfFinished;
@@ -197,10 +190,9 @@ class WithdrawStatusResponse extends BaseResponse {
 
 /// Request to cancel withdrawal task
 class WithdrawCancelRequest
-    extends BaseRequest<WithdrawCancelResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<WithdrawCancelResponse, GeneralErrorResponse> {
   WithdrawCancelRequest({required super.rpcPass, required this.taskId})
-    : super(method: 'task::withdraw::cancel', mmrpc: '2.0');
+    : super(method: 'task::withdraw::cancel', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
 

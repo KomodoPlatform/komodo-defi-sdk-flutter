@@ -4,14 +4,17 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 /// Request to get the ticker and decimals values required for custom token
 /// activation, given a platform and contract as input
 class GetTokenInfoRequest
-    extends BaseRequest<GetTokenInfoResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<GetTokenInfoResponse, GeneralErrorResponse> {
   GetTokenInfoRequest({
     required String rpcPass,
     required this.protocolType,
     required this.platform,
     required this.contractAddress,
-  }) : super(method: 'get_token_info', rpcPass: rpcPass, mmrpc: '2.0');
+  }) : super(
+         method: 'get_token_info',
+         rpcPass: rpcPass,
+         mmrpc: RpcVersion.v2_0,
+       );
 
   /// Token type - e.g ERC20 for tokens on the Ethereum network
   final String protocolType;

@@ -3,8 +3,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// V2 Transaction History Request
 class MyTxHistoryRequest
-    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse> {
   MyTxHistoryRequest({
     required this.coin,
     this.limit = 10,
@@ -13,7 +12,7 @@ class MyTxHistoryRequest
     this.historyTarget,
     this.pagingOptions,
     super.rpcPass,
-  }) : super(method: 'my_tx_history', mmrpc: '2.0');
+  }) : super(method: 'my_tx_history', mmrpc: RpcVersion.v2_0);
 
   final String coin;
   final int limit;
@@ -44,8 +43,7 @@ class MyTxHistoryRequest
 
 /// Legacy Transaction History Request
 class MyTxHistoryLegacyRequest
-    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<MyTxHistoryResponse, GeneralErrorResponse> {
   MyTxHistoryLegacyRequest({
     required this.coin,
     this.limit = 10,
@@ -89,11 +87,13 @@ class MyTxHistoryResponse extends BaseResponse {
     required this.total,
     required this.totalPages,
     required this.pageNumber,
+    required this.pagingOptions,
     required this.transactions,
   });
 
   factory MyTxHistoryResponse.parse(Map<String, dynamic> json) {
     final result = json.value<JsonMap>('result');
+    final pagingOptionsJson = result.valueOrNull<JsonMap>('paging_options');
     return MyTxHistoryResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
       currentBlock: result.value<int>('current_block'),
@@ -106,16 +106,18 @@ class MyTxHistoryResponse extends BaseResponse {
       total: result.value<int>('total'),
       totalPages: result.value<int>('total_pages'),
       pageNumber: result.valueOrNull<int>('page_number'),
-      transactions:
-          result
-              .value<List<dynamic>>('transactions')
-              .map((e) => TransactionInfo.fromJson(e as JsonMap))
-              .toList(),
+      pagingOptions: pagingOptionsJson != null
+          ? Pagination.fromJson(pagingOptionsJson)
+          : null,
+      transactions: result
+          .value<JsonList>('transactions')
+          .map(TransactionInfo.fromJson)
+          .toList(),
     );
   }
 
   factory MyTxHistoryResponse.empty() => MyTxHistoryResponse(
-    mmrpc: '2.0',
+    mmrpc: RpcVersion.v2_0,
     currentBlock: 0,
     fromId: null,
     limit: 0,
@@ -124,6 +126,7 @@ class MyTxHistoryResponse extends BaseResponse {
     total: 0,
     totalPages: 0,
     pageNumber: null,
+    pagingOptions: null,
     transactions: const [],
   );
 
@@ -135,6 +138,7 @@ class MyTxHistoryResponse extends BaseResponse {
   final int total;
   final int totalPages;
   final int? pageNumber;
+  final Pagination? pagingOptions;
   final List<TransactionInfo> transactions;
 
   @override
@@ -149,6 +153,7 @@ class MyTxHistoryResponse extends BaseResponse {
       'total': total,
       'total_pages': totalPages,
       if (pageNumber != null) 'page_number': pageNumber,
+      if (pagingOptions != null) 'paging_options': pagingOptions!.toJson(),
       'transactions': transactions.map((tx) => tx.toJson()).toList(),
     },
   };

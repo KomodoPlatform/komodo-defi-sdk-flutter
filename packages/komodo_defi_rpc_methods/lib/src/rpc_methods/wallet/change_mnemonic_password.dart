@@ -9,17 +9,12 @@ class ChangeMnemonicPasswordRequest
         BaseRequest<
           ChangeMnemonicPasswordResponse,
           ChangeMnemonicIncorrectPasswordErrorResponse
-        >
-    with
-        RequestHandlingMixin<
-          ChangeMnemonicPasswordResponse,
-          ChangeMnemonicIncorrectPasswordErrorResponse
         > {
   ChangeMnemonicPasswordRequest({
     required super.rpcPass,
     required this.currentPassword,
     required this.newPassword,
-  }) : super(method: 'change_mnemonic_password', mmrpc: '2.0');
+  }) : super(method: 'change_mnemonic_password', mmrpc: RpcVersion.v2_0);
 
   final String currentPassword;
   final String newPassword;

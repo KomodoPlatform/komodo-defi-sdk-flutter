@@ -7,7 +7,7 @@ class TaskEnableQtumInit
     required this.ticker,
     required this.params,
     super.rpcPass,
-  }) : super(method: 'task::enable_qtum::init', mmrpc: '2.0');
+  }) : super(method: 'task::enable_qtum::init', mmrpc: RpcVersion.v2_0);
 
   final String ticker;
 
@@ -25,11 +25,7 @@ class TaskEnableQtumInit
   };
 
   @override
-  NewTaskResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  NewTaskResponse parse(Map<String, dynamic> json) {
     return NewTaskResponse.parse(json);
   }
 }
@@ -40,7 +36,7 @@ class TaskEnableQtumStatus
     required this.taskId,
     this.forgetIfFinished = true,
     super.rpcPass,
-  }) : super(method: 'task::enable_qtum::status', mmrpc: '2.0');
+  }) : super(method: 'task::enable_qtum::status', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final bool forgetIfFinished;
@@ -55,11 +51,7 @@ class TaskEnableQtumStatus
   };
 
   @override
-  TaskStatusResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  TaskStatusResponse parse(Map<String, dynamic> json) {
     return TaskStatusResponse.parse(json);
   }
 }
@@ -71,7 +63,7 @@ class TaskEnableQtumUserAction
     required this.actionType,
     required this.pin,
     super.rpcPass,
-  }) : super(method: 'task::enable_qtum::user_action', mmrpc: '2.0');
+  }) : super(method: 'task::enable_qtum::user_action', mmrpc: RpcVersion.v2_0);
 
   final int taskId;
   final String actionType;
@@ -90,11 +82,7 @@ class TaskEnableQtumUserAction
   };
 
   @override
-  UserActionResponse parseResponse(String responseBody) {
-    final json = jsonFromString(responseBody);
-    if (GeneralErrorResponse.isErrorResponse(json)) {
-      throw GeneralErrorResponse.parse(json);
-    }
+  UserActionResponse parse(Map<String, dynamic> json) {
     return UserActionResponse.parse(json);
   }
 }

@@ -15,7 +15,7 @@
 //   }) : super(
 //           method: 'enable_bch_with_tokens',
 //           rpcPass: rpcPass,
-//           mmrpc: '2.0',
+//           mmrpc: RpcVersion.v2_0,
 //           params: activationParams,
 //         );
 
@@ -55,7 +55,7 @@
 //   }) : super(
 //           method: 'enable_erc20',
 //           rpcPass: rpcPass,
-//           mmrpc: '2.0',
+//           mmrpc: RpcVersion.v2_0,
 //           params: activationParams,
 //         );
 
@@ -88,7 +88,7 @@
 //   }) : super(
 //           method: 'enable_tendermint_token',
 //           rpcPass: rpcPass,
-//           mmrpc: '2.0',
+//           mmrpc: RpcVersion.v2_0,
 //           params: activationParams,
 //         );
 

@@ -14,7 +14,6 @@ abstract class TransactionHistoryStrategy {
     ApiClient client,
     Asset asset,
     TransactionPagination pagination,
-    // {required HistoryTarget? target,}
   );
 
   /// Whether this strategy supports the given asset
@@ -34,23 +33,5 @@ abstract class TransactionHistoryStrategy {
         '$runtimeType. Supported modes: $supportedPaginationModes',
       );
     }
-  }
-
-  /// Helper method to convert legacy pagination parameters to TransactionPagination
-  TransactionPagination _getLegacyPagination({
-    String? fromId,
-    int? pageNumber,
-    int limit = 10,
-  }) {
-    if (fromId != null) {
-      return TransactionBasedPagination(
-        fromId: fromId,
-        itemCount: limit,
-      );
-    }
-    return PagePagination(
-      pageNumber: pageNumber ?? 1,
-      itemsPerPage: limit,
-    );
   }
 }

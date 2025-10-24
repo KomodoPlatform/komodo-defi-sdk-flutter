@@ -34,8 +34,7 @@ class EnableBchWithTokensResponse extends BaseResponse {
 }
 
 class EnableBchWithTokensRequest
-    extends BaseRequest<EnableBchWithTokensResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<EnableBchWithTokensResponse, GeneralErrorResponse> {
   EnableBchWithTokensRequest({
     required String rpcPass,
     required this.ticker,
@@ -47,7 +46,7 @@ class EnableBchWithTokensRequest
   }) : super(
          method: 'enable_bch_with_tokens',
          rpcPass: rpcPass,
-         mmrpc: '2.0',
+         mmrpc: RpcVersion.v2_0,
          params: activationParams,
        );
 

@@ -2,10 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:komodo_cex_market_data/src/models/models.dart';
+import 'package:komodo_cex_market_data/src/models/_models_index.dart';
+
+/// Interface for fetching prices from Komodo API.
+abstract class IKomodoPriceProvider {
+  Future<Map<String, AssetMarketInformation>> getKomodoPrices();
+}
 
 /// A class for fetching prices from Komodo API.
-class KomodoPriceProvider {
+class KomodoPriceProvider implements IKomodoPriceProvider {
   /// Creates a new instance of [KomodoPriceProvider].
   KomodoPriceProvider({
     this.mainTickersUrl =
@@ -23,27 +28,32 @@ class KomodoPriceProvider {
   ///
   /// Example:
   /// ```dart
-  /// final Map<String, CexPrice>? prices =
-  ///   await cexPriceProvider.getLegacyKomodoPrices();
+  /// final Map<String, AssetMarketInformation> prices =
+  ///   await komodoPriceProvider.getKomodoPrices();
   /// ```
-  Future<Map<String, CexPrice>> getKomodoPrices() async {
+  @override
+  Future<Map<String, AssetMarketInformation>> getKomodoPrices() async {
     final mainUri = Uri.parse(mainTickersUrl);
 
-    http.Response res;
-    String body;
-    res = await http.get(mainUri);
-    body = res.body;
+    final res = await http.get(mainUri);
 
-    final json = jsonDecode(body) as Map<String, dynamic>?;
+    if (res.statusCode != 200) {
+      throw Exception(
+        'HTTP ${res.statusCode}: Failed to fetch prices from Komodo API',
+      );
+    }
+
+    final json = jsonDecode(res.body) as Map<String, dynamic>?;
 
     if (json == null) {
       throw Exception('Invalid response from Komodo API: empty JSON');
     }
 
-    final prices = <String, CexPrice>{};
+    final prices = <String, AssetMarketInformation>{};
     json.forEach((String priceTicker, dynamic pricesData) {
-      prices[priceTicker] =
-          CexPrice.fromJson(priceTicker, pricesData as Map<String, dynamic>);
+      prices[priceTicker] = AssetMarketInformation.fromJson(
+        pricesData as Map<String, dynamic>,
+      ).copyWith(ticker: priceTicker);
     });
     return prices;
   }

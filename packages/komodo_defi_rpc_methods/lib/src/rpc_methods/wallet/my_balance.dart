@@ -2,8 +2,7 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 class MyBalanceRequest
-    extends BaseRequest<MyBalanceResponse, GeneralErrorResponse>
-    with RequestHandlingMixin {
+    extends BaseRequest<MyBalanceResponse, GeneralErrorResponse> {
   MyBalanceRequest({required String rpcPass, required this.coin})
     : super(method: 'my_balance', rpcPass: rpcPass, mmrpc: null);
 

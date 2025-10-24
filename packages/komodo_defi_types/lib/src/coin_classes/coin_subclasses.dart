@@ -14,7 +14,6 @@ enum CoinSubClass {
   smartChain,
   moonriver,
   ethereumClassic,
-  tendermintToken,
   ubiq,
   bep20,
   matic,
@@ -22,6 +21,7 @@ enum CoinSubClass {
   smartBch,
   erc20,
   tendermint,
+  tendermintToken,
   krc20,
   ewt,
   hrc20,
@@ -29,6 +29,11 @@ enum CoinSubClass {
   rskSmartBitcoin,
   zhtlc,
   unknown;
+
+  static String _enumNameLower(CoinSubClass e) {
+    // Normalize enum value to its lowercased name without the enum prefix
+    return e.toString().split('.').last.toLowerCase();
+  }
 
   // TODO: verify all the tickers.
   String get ticker {
@@ -49,8 +54,9 @@ enum CoinSubClass {
       case CoinSubClass.avx20:
         return 'AVAX';
       case CoinSubClass.utxo:
-      case CoinSubClass.smartChain:
         return 'UTXO';
+      case CoinSubClass.smartChain:
+        return 'SMART_CHAIN';
       case CoinSubClass.moonriver:
         return 'MOVR';
       case CoinSubClass.ethereumClassic:
@@ -142,24 +148,103 @@ enum CoinSubClass {
     }
   }
 
-  // Parse
+  /// Parse a string to a coin subclass.
+  ///
+  /// Attempts to match the string to a coin subclass with the following
+  /// precedence:
+  /// - Exact enum name match (highest priority)
+  /// - Exact ticker match (with tie-breakers, e.g. 'UTXO' -> utxo)
+  /// - Partial match to the subclass name
+  /// - Partial match to the subclass ticker
+  /// - Partial match to the subclass token standard suffix
+  /// - Partial match to the subclass formatted name
+  ///
+  /// Throws [StateError] if no match is found.
   static CoinSubClass parse(String value) {
     const filteredChars = ['_', '-', ' '];
     final regex = RegExp('(${filteredChars.join('|')})');
 
     final sanitizedValue = value.toLowerCase().replaceAll(regex, '');
 
-    return CoinSubClass.values.firstWhere(
-      (e) => e.toString().toLowerCase().contains(sanitizedValue),
-    );
+    // First, try to find exact enum name match (highest priority)
+    try {
+      return CoinSubClass.values.firstWhere(
+        (e) => _enumNameLower(e) == sanitizedValue,
+      );
+      // ignore: avoid_catching_errors
+    } on StateError {
+      // If no exact match, continue with other matching strategies
+    }
+
+    // Second, try to find exact ticker match (sanitized)
+    final exactTickerMatches = CoinSubClass.values
+        .where(
+          (e) => e.ticker.toLowerCase().replaceAll(regex, '') == sanitizedValue,
+        )
+        .toList();
+    if (exactTickerMatches.isNotEmpty) {
+      // Tie-breaker for duplicated tickers. Both smartChain and utxo return
+      // 'UTXO' as ticker; prefer utxo to avoid mislabeling.
+      if (sanitizedValue == 'utxo') {
+        return CoinSubClass.utxo;
+      }
+
+      return exactTickerMatches.first;
+    }
+
+    return CoinSubClass.values.firstWhere((e) {
+      // Check if enum name contains the value
+      final enumName = _enumNameLower(e);
+      final matchesValue = enumName.contains(sanitizedValue);
+      if (matchesValue) {
+        return true;
+      }
+
+      // Check if ticker contains the value (partial ticker match, sanitized)
+      final matchesTicker = e.ticker
+          .toLowerCase()
+          .replaceAll(regex, '')
+          .contains(sanitizedValue);
+      if (matchesTicker) {
+        return true;
+      }
+
+      final matchesTokenStandardSuffix =
+          e.tokenStandardSuffix?.toLowerCase().contains(sanitizedValue) ??
+          false;
+      if (matchesTokenStandardSuffix) {
+        return true;
+      }
+
+      return e.formatted.toLowerCase().contains(sanitizedValue);
+    });
   }
 
   static CoinSubClass? tryParse(String value) {
     try {
       return parse(value);
-    } catch (_) {
+    } on StateError {
       return null;
     }
+  }
+
+  /// Checks if this subclass can be a parent of the given child subclass
+  bool canBeParentOf(CoinSubClass child) {
+    // Tendermint tokens can be a child of Tendermint, but not the
+    // other way around. This allows Tendermint to be a parent
+    // while keeping the existing parent subclass check intact.
+    if (this == CoinSubClass.tendermint &&
+        child == CoinSubClass.tendermintToken) {
+      return true;
+    }
+
+    // For most cases, parent and child should have the same subclass
+    return this == child;
+  }
+
+  /// Checks if this subclass can be a child of the given parent subclass
+  bool canBeChildOf(CoinSubClass parent) {
+    return parent.canBeParentOf(this);
   }
 
   // TODO: Consider if null or an empty string should be returned for
@@ -193,7 +278,7 @@ enum CoinSubClass {
       case CoinSubClass.matic:
         return 'Polygon';
       case CoinSubClass.utxo:
-        return 'UTXO';
+        return 'Native';
       case CoinSubClass.smartBch:
         return 'SmartBCH';
       case CoinSubClass.erc20:
@@ -275,3 +360,69 @@ enum CoinSubClass {
     }
   }
 }
+
+extension CoinSubClassTokenStandard on CoinSubClass {
+  /// Canonical short token/network standard suffix used for parent asset
+  /// disambiguation in display names. Returns null when no suffix should
+  /// be appended for the given subclass.
+  String? get tokenStandardSuffix {
+    switch (this) {
+      case CoinSubClass.erc20:
+        return 'ERC20';
+      case CoinSubClass.bep20:
+        return 'BEP20';
+      case CoinSubClass.qrc20:
+        return 'QRC20';
+      case CoinSubClass.ftm20:
+        return 'FTM20';
+      case CoinSubClass.arbitrum:
+        return 'ARB20';
+      case CoinSubClass.avx20:
+        return 'AVX20';
+      case CoinSubClass.matic:
+        return 'PLG20';
+      case CoinSubClass.moonriver:
+        return 'MVR20';
+      case CoinSubClass.krc20:
+        return 'KRC20';
+      case CoinSubClass.hrc20:
+        return 'HRC20';
+      case CoinSubClass.hecoChain:
+        return 'HCO20';
+      // Subclasses without a canonical short token/network standard suffix
+      case CoinSubClass.moonbeam:
+      case CoinSubClass.slp: // ignore: deprecated_member_use_from_same_package
+      case CoinSubClass.sia:
+      case CoinSubClass.smartChain:
+      case CoinSubClass.ethereumClassic:
+      case CoinSubClass.ubiq:
+      case CoinSubClass.utxo:
+      case CoinSubClass.smartBch:
+      case CoinSubClass.tendermint:
+      case CoinSubClass.tendermintToken:
+      case CoinSubClass.ewt:
+      case CoinSubClass.rskSmartBitcoin:
+      case CoinSubClass.zhtlc:
+      case CoinSubClass.unknown:
+        return null;
+    }
+  }
+}
+
+const Set<CoinSubClass> evmCoinSubClasses = {
+  CoinSubClass.avx20,
+  CoinSubClass.bep20,
+  CoinSubClass.ftm20,
+  CoinSubClass.matic,
+  CoinSubClass.hrc20,
+  CoinSubClass.arbitrum,
+  CoinSubClass.moonriver,
+  CoinSubClass.moonbeam,
+  CoinSubClass.ethereumClassic,
+  CoinSubClass.ubiq,
+  CoinSubClass.krc20,
+  CoinSubClass.ewt,
+  CoinSubClass.hecoChain,
+  CoinSubClass.rskSmartBitcoin,
+  CoinSubClass.erc20,
+};

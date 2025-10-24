@@ -1,60 +1,65 @@
 {
     "api": {
-        "api_commit_hash": "c800ea03f12dab33d2dc04a1d858ee6da111203f",
-        "branch": "main",
+        "api_commit_hash": "96023711777feda55990a7510c352485d8a5c7a5",
+        "branch": "staging",
         "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
             "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework",
-            "https://sdk.devbuilds.komodo.earth/"
+            "https://sdk.devbuilds.komodo.earth/",
+            "https://nebula.decker.im/"
         ],
         "platforms": {
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "fcb2f9f0a2a1d5cfeee1968359a6b542c7743f3c157864be1fc274d8ccd24bab"
+                    "37738eb7d487aefa125ffed8e2de0be0d4279752234cfb90c94542d6a054d6f3"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "6a27ab9d2a8e87c0073b78fdb086f2e950820b081cbd3acb40cdc9eb43cc9f84"
+                    "eef4d2f5ddd000d9c6be7b9b1afcd6e1265096ca4d31664b2481ea89493d1a72"
                 ],
                 "path": "ios"
             },
             "macos": {
-                "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-mac-arm64|mm2-[a-f0-9]{7,40}-Darwin-Release)\\.zip$",
+                "matching_pattern": "^(?:kdf-macos-universal2-[a-f0-9]{7,40}|kdf_[a-f0-9]{7,40}-mac-universal)\\.zip$",
+                "matching_preference": [
+                    "universal2",
+                    "mac-arm64"
+                ],
                 "valid_zip_sha256_checksums": [
-                    "70075f752d75bcf00a8a079c9cd9de6742f16c05b9569e9b6abde5ca913db12d"
+                    "3943c7ad8cab1e7263eb9693936909df87ae60816f09d16435d7122411895624"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "a50cea582feeb268924cc9591a6bdf3f7f00b344821d1a46463461050f435b1a"
+                    "c875dac3a4e850dffd68a16036350acfbdde21285f35f0889e4b8abd7c75b67f"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "d4da534726fef78ad5a7bdb83e11c74fa91c43626f7c7a654becf24be9b40c91"
+                    "4125917ceacfbc9da6856bf84281e48768e8a6d7f537019575c751ec1cab0164"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "13cf6c268db8fea69fa6289a6180e122ac3ddbec132de6bf1896bda2b8d5753b"
+                    "c99c96c08c02b9d0ebe91c5dbad57aeda3d0b39d0b960343f8831fd70e0af032"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "8bda4156401644a21897917ebe50cfa8f99dea87c31c94cd96224e8870b53c3a"
+                    "04f57689eba9c7d9a901bae3da7c954f2cfa248140a0112df1ab5920871d2926"
                 ],
                 "path": "linux/bin"
             }
@@ -63,18 +68,23 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "f09dfed313c4a9df74c9aa7dc487cd1aeea0c3e7",
+        "bundled_coins_repo_commit": "9d99819f3f7a8357464240c8c26f7442f5a7da32",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
-        "coins_repo_content_url": "https://komodoplatform.github.io/coins",
+        "coins_repo_content_url": "https://raw.githubusercontent.com/KomodoPlatform/coins",
         "coins_repo_branch": "master",
         "runtime_updates_enabled": true,
         "mapped_files": {
             "assets/config/coins_config.json": "utils/coins_config_unfiltered.json",
-            "assets/config/coins.json": "coins"
+            "assets/config/coins.json": "coins",
+            "assets/config/seed_nodes.json": "seed-nodes.json"
         },
         "mapped_folders": {
             "assets/coin_icons/png/": "icons"
         },
-        "concurrent_downloads_enabled": true
+        "concurrent_downloads_enabled": false,
+        "cdn_branch_mirrors": {
+            "master": "https://komodoplatform.github.io/coins",
+            "main": "https://komodoplatform.github.io/coins"
+        }
     }
 }

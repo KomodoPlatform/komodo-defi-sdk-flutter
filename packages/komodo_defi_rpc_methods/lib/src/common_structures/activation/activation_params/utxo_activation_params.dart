@@ -34,7 +34,7 @@ class UtxoActivationParams extends ActivationParams {
     required int gapLimit,
     int? requiredConfirmations,
     bool requiresNotarization = false,
-    PrivateKeyPolicy privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
     int? txVersion,
     int? txFee,
     int? dustAmount,
@@ -68,7 +68,7 @@ class UtxoActivationParams extends ActivationParams {
     required bool txHistory,
     int? requiredConfirmations,
     bool requiresNotarization = false,
-    PrivateKeyPolicy privKeyPolicy = PrivateKeyPolicy.contextPrivKey,
+    PrivateKeyPolicy privKeyPolicy = const PrivateKeyPolicy.contextPrivKey(),
     int? txVersion,
     int? txFee,
     int? dustAmount,
@@ -139,6 +139,7 @@ class UtxoActivationParams extends ActivationParams {
       if (p2shtype != null) 'p2shtype': p2shtype,
       if (wiftype != null) 'wiftype': wiftype,
       if (overwintered != null) 'overwintered': overwintered,
+      'max_connected': 1,
     });
   }
 

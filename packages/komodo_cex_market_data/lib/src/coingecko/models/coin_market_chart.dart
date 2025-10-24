@@ -34,8 +34,9 @@ class CoinMarketChart {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      'prices':
-          prices.map((List<num> e) => e.map((num e) => e).toList()).toList(),
+      'prices': prices
+          .map((List<num> e) => e.map((num e) => e).toList())
+          .toList(),
       'market_caps': marketCaps
           .map((List<num> e) => e.map((num e) => e).toList())
           .toList(),
