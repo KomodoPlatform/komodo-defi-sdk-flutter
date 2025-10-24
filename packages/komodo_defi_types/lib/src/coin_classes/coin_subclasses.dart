@@ -387,7 +387,7 @@ extension CoinSubClassTokenStandard on CoinSubClass {
       case CoinSubClass.arbitrum:
         return 'ARB20';
       case CoinSubClass.base:
-        return 'BASE20';
+        return 'BASE';
       case CoinSubClass.avx20:
         return 'AVX20';
       case CoinSubClass.matic:

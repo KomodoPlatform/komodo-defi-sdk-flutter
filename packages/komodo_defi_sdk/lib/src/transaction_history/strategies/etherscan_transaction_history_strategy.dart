@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
@@ -42,9 +43,9 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
     }
 
     // TODO! Remove after resolving tx history spamming issue in KW.
-    // if (kDebugMode) {
-    //   return MyTxHistoryResponse.empty();
-    // }
+    if (kDebugMode) {
+      return MyTxHistoryResponse.empty();
+    }
 
     validatePagination(pagination);
 
