@@ -171,6 +171,33 @@ class KomodoDefiFramework implements ApiClient {
     return version;
   }
 
+  /// Checks if KDF is healthy and responsive by attempting a version RPC call.
+  /// Returns true if KDF is running and responsive, false otherwise.
+  /// This is useful for detecting when KDF has become unavailable, especially
+  /// on mobile platforms after app backgrounding.
+  Future<bool> isHealthy() async {
+    try {
+      final isRunningCheck = await isRunning();
+      if (!isRunningCheck) {
+        _log('KDF health check failed: not running');
+        return false;
+      }
+      
+      // Additional check: try to get version to verify RPC is responsive
+      final versionCheck = await version();
+      if (versionCheck == null) {
+        _log('KDF health check failed: version call returned null');
+        return false;
+      }
+      
+      _log('KDF health check passed');
+      return true;
+    } catch (e) {
+      _log('KDF health check failed with exception: $e');
+      return false;
+    }
+  }
+
   @override
   Future<JsonMap> executeRpc(JsonMap request) async {
     final response = (await _kdfOperations.mm2Rpc(
