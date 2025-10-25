@@ -286,9 +286,8 @@ class EtherscanProtocolHelper {
       CoinSubClass.erc20 => _ethTokenUrl,
       CoinSubClass.arbitrum when isParentChain => _arbUrl,
       CoinSubClass.arbitrum => _arbTokenUrl,
-      // TODO: migrate to base-specific endpoint when available
-      CoinSubClass.base when isParentChain => _ethUrl,
-      CoinSubClass.base => _ethTokenUrl,
+      CoinSubClass.base when isParentChain => _ethBaseUrl,
+      CoinSubClass.base => _ethBaseTokenUrl,
       CoinSubClass.rskSmartBitcoin => _rskUrl,
       CoinSubClass.moonbeam => _glmrUrl,
       CoinSubClass.ethereumClassic => _etcUrl,
@@ -303,6 +302,7 @@ class EtherscanProtocolHelper {
 
   String get _arbUrl => '$_baseUrl/v2/arb_tx_history';
   String get _avaxUrl => '$_baseUrl/v2/avax_tx_history';
+  String get _ethBaseUrl => '$_baseUrl/v2/base_tx_history';
   String get _bnbUrl => '$_baseUrl/v2/bnb_tx_history';
   String get _ethUrl => '$_baseUrl/v2/eth_tx_history';
   String get _ftmUrl => '$_baseUrl/v2/ftm_tx_history';
@@ -313,6 +313,7 @@ class EtherscanProtocolHelper {
 
   String get _arbTokenUrl => '$_baseUrl/v2/arb20_tx_history';
   String get _avaxTokenUrl => '$_baseUrl/v2/avx20_tx_history';
+  String get _ethBaseTokenUrl => '$_baseUrl/v2/base20_tx_history';
   String get _bnbTokenUrl => '$_baseUrl/v2/bep20_tx_history';
   String get _ethTokenUrl => '$_baseUrl/v2/erc20_tx_history';
   String get _ftmTokenUrl => '$_baseUrl/v2/ftm20_tx_history';
