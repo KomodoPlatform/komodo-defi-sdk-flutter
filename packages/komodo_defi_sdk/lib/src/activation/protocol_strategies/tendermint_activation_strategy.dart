@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:developer' show log;
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -96,14 +99,40 @@ class TendermintWithTokensActivationStrategy
         ),
       );
 
+      final tokensParams = children
+          ?.map((child) => TendermintTokenParams(ticker: child.id.id))
+          .toList() ??
+          [];
+      final nodes = protocol.rpcUrlsMap.map(TendermintNode.fromJson).toList();
+      
+      // Debug logging for Tendermint activation
+      log(
+        '[RPC] Activating Tendermint platform: ${asset.id.id}',
+        name: 'TendermintWithTokensActivationStrategy',
+      );
+      log(
+        '[RPC] Activation parameters: ${jsonEncode({
+          'ticker': asset.id.id,
+          'protocol': asset.protocol.subClass.formatted,
+          'chain_id': protocol.chainId,
+          'account_prefix': protocol.accountPrefix,
+          'token_count': children?.length ?? 0,
+          'tokens': children?.map((e) => e.id.id).toList() ?? [],
+          'rpc_nodes': nodes.map((n) => n.toJson()).toList(),
+          'priv_key_policy': privKeyPolicy.toJson(),
+        })}',
+        name: 'TendermintWithTokensActivationStrategy',
+      );
+
       final taskResponse = await client.rpc.tendermint.taskEnableTendermintInit(
         ticker: asset.id.id,
-        tokensParams:
-            children
-                ?.map((child) => TendermintTokenParams(ticker: child.id.id))
-                .toList() ??
-            [],
-        nodes: protocol.rpcUrlsMap.map(TendermintNode.fromJson).toList(),
+        tokensParams: tokensParams,
+        nodes: nodes,
+      );
+      
+      log(
+        '[RPC] Task initiated for ${asset.id.id}, task_id: ${taskResponse.taskId}',
+        name: 'TendermintWithTokensActivationStrategy',
       );
 
       yield ActivationProgress(

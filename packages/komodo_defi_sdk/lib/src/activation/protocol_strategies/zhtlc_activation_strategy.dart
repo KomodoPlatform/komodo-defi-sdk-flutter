@@ -1,6 +1,9 @@
 // TODO(komodo-team): Allow passing the start sync mode; currently hard-coded
 // to sync from the time of activation.
 
+import 'dart:convert';
+import 'dart:developer' show log;
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_sdk/src/activation/protocol_strategies/zhtlc_activation_progress.dart';
@@ -92,6 +95,25 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
       }
 
       yield ZhtlcActivationProgress.validation(protocol);
+
+      // Debug logging for ZHTLC activation
+      log(
+        '[RPC] Activating ZHTLC coin: ${asset.id.id}',
+        name: 'ZhtlcActivationStrategy',
+      );
+      log(
+        '[RPC] Activation parameters: ${jsonEncode({
+          'ticker': asset.id.id,
+          'protocol': asset.protocol.subClass.formatted,
+          'activation_params': params.toRpcParams(),
+          'zcash_params_path': userConfig.zcashParamsPath,
+          'scan_blocks_per_iteration': userConfig.scanBlocksPerIteration,
+          'scan_interval_ms': userConfig.scanIntervalMs,
+          'polling_interval_ms': effectivePollingInterval.inMilliseconds,
+          'priv_key_policy': privKeyPolicy.toJson(),
+        })}',
+        name: 'ZhtlcActivationStrategy',
+      );
 
       // Initialize task and watch via TaskShepherd
       final stream = client.rpc.zhtlc
