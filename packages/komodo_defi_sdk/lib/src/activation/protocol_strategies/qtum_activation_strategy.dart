@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:developer' show log;
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -37,11 +40,33 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
     );
 
     try {
+      final activationParams = asset.protocol.defaultActivationParams(
+        privKeyPolicy: privKeyPolicy,
+      );
+      
+      // Debug logging for QTUM activation
+      log(
+        '[RPC] Activating QTUM coin: ${asset.id.id}',
+        name: 'QtumActivationStrategy',
+      );
+      log(
+        '[RPC] Activation parameters: ${jsonEncode({
+          'ticker': asset.id.id,
+          'protocol': asset.protocol.subClass.formatted,
+          'activation_params': activationParams.toRpcParams(),
+          'priv_key_policy': privKeyPolicy.toJson(),
+        })}',
+        name: 'QtumActivationStrategy',
+      );
+      
       final taskResponse = await client.rpc.qtum.enableQtumInit(
         ticker: asset.id.id,
-        params: asset.protocol.defaultActivationParams(
-          privKeyPolicy: privKeyPolicy,
-        ),
+        params: activationParams,
+      );
+      
+      log(
+        '[RPC] Task initiated for ${asset.id.id}, task_id: ${taskResponse.taskId}',
+        name: 'QtumActivationStrategy',
       );
 
       var isComplete = false;

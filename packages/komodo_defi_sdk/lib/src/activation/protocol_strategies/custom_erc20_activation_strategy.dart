@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:developer' show log;
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -60,13 +63,38 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
         throw StateError('Protocol data is missing from custom token config');
       }
 
+      final activationParams = Erc20ActivationParams.fromJsonConfig(
+        asset.protocol.config,
+      );
+      final platform = protocolData.value<String>('platform');
+      final contractAddress = protocolData.value<String>('contract_address');
+      
+      // Debug logging for custom ERC20 token activation
+      log(
+        '[RPC] Activating custom ERC20 token: ${asset.id.id}',
+        name: 'CustomErc20ActivationStrategy',
+      );
+      log(
+        '[RPC] Activation parameters: ${jsonEncode({
+          'ticker': asset.id.id,
+          'protocol': asset.protocol.subClass.formatted,
+          'platform': platform,
+          'contract_address': contractAddress,
+          'activation_params': activationParams.toRpcParams(),
+        })}',
+        name: 'CustomErc20ActivationStrategy',
+      );
+
       await client.rpc.erc20.enableCustomErc20Token(
         ticker: asset.id.id,
-        activationParams: Erc20ActivationParams.fromJsonConfig(
-          asset.protocol.config,
-        ),
-        platform: protocolData.value<String>('platform'),
-        contractAddress: protocolData.value<String>('contract_address'),
+        activationParams: activationParams,
+        platform: platform,
+        contractAddress: contractAddress,
+      );
+      
+      log(
+        '[RPC] Successfully activated custom ERC20 token: ${asset.id.id}',
+        name: 'CustomErc20ActivationStrategy',
       );
 
       yield ActivationProgress.success(
