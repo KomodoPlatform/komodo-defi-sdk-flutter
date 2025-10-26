@@ -360,7 +360,20 @@ enum ScanPolicy {
 /// Contains information about electrum & lightwallet_d servers for coins being used
 /// in 'Electrum' or 'Light' mode
 class ActivationRpcData {
-  ActivationRpcData({this.lightWalletDServers, this.electrum, this.syncParams});
+  ActivationRpcData({
+    this.lightWalletDServers,
+    this.electrum,
+    this.syncParams,
+    this.minConnected,
+    this.maxConnected = 1,
+  }) : assert(
+         minConnected == null || minConnected >= 1,
+         'min_connected must be at least 1',
+       ),
+       assert(
+         minConnected == null || (maxConnected ?? 1) >= minConnected,
+         'min_connected cannot exceed max_connected',
+       );
 
   /// Creates [ActivationRpcData] from JSON configuration
   factory ActivationRpcData.fromJson(JsonMap json) {
@@ -381,6 +394,8 @@ class ActivationRpcData {
       syncParams: ZhtlcSyncParams.tryParse(
         json.valueOrNull<dynamic>('sync_params'),
       ),
+      minConnected: json.valueOrNull<int>('min_connected'),
+      maxConnected: json.valueOrNull<int>('max_connected'),
     );
   }
 
@@ -389,6 +404,12 @@ class ActivationRpcData {
 
   /// List of electrum servers for QTUM, BCH & UTXO coins
   final List<ActivationServers>? electrum;
+
+  /// Minimum number of electrum servers to keep connected. Optional.
+  final int? minConnected;
+
+  /// Maximum number of electrum servers to keep connected. Defaults to 1.
+  final int? maxConnected;
 
   /// ZHTLC coins only. Optional, defaults to two days ago. Defines where to start
   /// scanning blockchain data upon initial activation.
@@ -411,6 +432,8 @@ class ActivationRpcData {
       (forLightWallet ? 'electrum_servers' : 'servers'): electrum!
           .map((e) => e.toJsonRequest())
           .toList(),
+    if (electrum != null) 'max_connected': (maxConnected ?? 1),
+    if (minConnected != null) 'min_connected': minConnected,
     if (syncParams != null) 'sync_params': syncParams!.toJsonRequest(),
   };
 }
