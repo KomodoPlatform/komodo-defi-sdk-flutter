@@ -8,6 +8,7 @@ import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
@@ -31,6 +32,12 @@ class KomodoDefiFramework implements ApiClient {
       _initLogStream(externalLogger);
     }
   }
+
+  /// Enable debug logging for RPC calls (method names, durations, success/failure)
+  /// This can be controlled via app configuration
+  static bool enableDebugLogging = true;
+  
+  final Logger _logger = Logger('KomodoDefiFramework');
 
   factory KomodoDefiFramework.create({
     required IKdfHostConfig hostConfig,
@@ -200,13 +207,91 @@ class KomodoDefiFramework implements ApiClient {
 
   @override
   Future<JsonMap> executeRpc(JsonMap request) async {
-    final response = (await _kdfOperations.mm2Rpc(
-      request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
-    )).ensureJson();
-    if (KdfLoggingConfig.verboseLogging) {
-      _log('RPC response: ${response.toJsonString()}');
+    if (!enableDebugLogging) {
+      final response = (await _kdfOperations.mm2Rpc(
+        request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
+      )).ensureJson();
+      if (KdfLoggingConfig.verboseLogging) {
+        _log('RPC response: ${response.toJsonString()}');
+      }
+      return response;
     }
-    return response;
+    
+    // Extract method name for logging
+    final method = request['method'] as String?;
+    final stopwatch = Stopwatch()..start();
+    
+    try {
+      final response = (await _kdfOperations.mm2Rpc(
+        request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
+      )).ensureJson();
+      stopwatch.stop();
+      
+      _logger.info(
+        '[RPC] ${method ?? 'unknown'} completed in ${stopwatch.elapsedMilliseconds}ms',
+      );
+      
+      // Log electrum-related methods with more detail
+      if (method != null && _isElectrumRelatedMethod(method)) {
+        _logger.info('[ELECTRUM] Method: $method, Duration: ${stopwatch.elapsedMilliseconds}ms');
+        _logElectrumConnectionInfo(method, response);
+      }
+      
+      if (KdfLoggingConfig.verboseLogging) {
+        _log('RPC response: ${response.toJsonString()}');
+      }
+      return response;
+    } catch (e) {
+      stopwatch.stop();
+      _logger.warning(
+        '[RPC] ${method ?? 'unknown'} failed after ${stopwatch.elapsedMilliseconds}ms: $e',
+      );
+      rethrow;
+    }
+  }
+  
+  bool _isElectrumRelatedMethod(String method) {
+    return method.contains('electrum') ||
+        method.contains('enable') ||
+        method.contains('utxo') ||
+        method == 'get_enabled_coins' ||
+        method == 'my_balance';
+  }
+  
+  void _logElectrumConnectionInfo(String method, JsonMap response) {
+    try {
+      // Log connection information from enable responses
+      if (method.contains('enable') && response['result'] != null) {
+        final result = response['result'] as Map<String, dynamic>?;
+        if (result != null) {
+          final address = result['address'] as String?;
+          final balance = result['balance'] as String?;
+          _logger.info(
+            '[ELECTRUM] Coin enabled - Address: ${address ?? 'N/A'}, Balance: ${balance ?? 'N/A'}',
+          );
+          
+          // Log server information if available
+          if (result['servers'] != null) {
+            final servers = result['servers'];
+            _logger.info('[ELECTRUM] Connected servers: $servers');
+          }
+        }
+      }
+      
+      // Log balance information
+      if (method == 'my_balance' && response['result'] != null) {
+        final result = response['result'] as Map<String, dynamic>?;
+        if (result != null) {
+          final coin = result['coin'] as String?;
+          final balance = result['balance'] as String?;
+          _logger.info(
+            '[ELECTRUM] Balance query - Coin: ${coin ?? 'N/A'}, Balance: ${balance ?? 'N/A'}',
+          );
+        }
+      }
+    } catch (e) {
+      // Silently ignore logging errors
+    }
   }
 
   void _assertHostConfigMatchesStartupConfig(

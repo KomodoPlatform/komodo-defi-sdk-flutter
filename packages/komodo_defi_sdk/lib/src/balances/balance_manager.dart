@@ -76,6 +76,9 @@ class BalanceManager implements IBalanceManager {
   final KomodoDefiLocalAuth _auth;
   StreamSubscription<KdfUser?>? _authSubscription;
   final Duration _defaultPollingInterval = const Duration(seconds: 30);
+  
+  /// Enable debug logging for balance polling
+  static bool enableDebugLogging = true;
 
   /// Cache of the latest known balances for each asset
   final Map<AssetId, BalanceInfo> _balanceCache = {};
@@ -351,6 +354,12 @@ class BalanceManager implements IBalanceManager {
               return null; // Don't fetch balance if user changed or logged out
             }
 
+            if (enableDebugLogging) {
+              _logger.info(
+                '[POLLING] Fetching balance for ${assetId.name} (every ${_defaultPollingInterval.inSeconds}s)',
+              );
+            }
+
             try {
               // Ensure asset is activated if needed
               final isActive = await _ensureAssetActivated(
@@ -361,11 +370,19 @@ class BalanceManager implements IBalanceManager {
               // Only fetch balance if asset is active
               if (isActive) {
                 final balance = await getBalance(assetId);
+                if (enableDebugLogging) {
+                  _logger.info(
+                    '[POLLING] Balance fetched for ${assetId.name}: ${balance.total}',
+                  );
+                }
                 return balance;
               }
             } catch (e) {
               // Just log the error and continue with the last known balance
               // This prevents the stream from terminating on transient errors
+              if (enableDebugLogging) {
+                _logger.warning('[POLLING] Balance fetch failed for ${assetId.name}: $e');
+              }
             }
 
             // Return the last known balance if we can't fetch a new one
