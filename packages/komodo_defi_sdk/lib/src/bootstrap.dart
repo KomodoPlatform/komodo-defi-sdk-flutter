@@ -179,11 +179,7 @@ Future<void> bootstrap({
     final auth = await container.getAsync<KomodoDefiLocalAuth>();
     final activationCoordinator = await container
         .getAsync<SharedActivationCoordinator>();
-    final pubkeyManager = PubkeyManager(
-      client,
-      auth,
-      activationCoordinator,
-    );
+    final pubkeyManager = PubkeyManager(client, auth, activationCoordinator);
 
     // Set the PubkeyManager on BalanceManager now that it's available
     final balanceManager = await container.getAsync<BalanceManager>();

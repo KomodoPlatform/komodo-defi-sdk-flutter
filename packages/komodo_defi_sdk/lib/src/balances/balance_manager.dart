@@ -76,7 +76,7 @@ class BalanceManager implements IBalanceManager {
   final KomodoDefiLocalAuth _auth;
   StreamSubscription<KdfUser?>? _authSubscription;
   final Duration _defaultPollingInterval = const Duration(minutes: 1);
-  
+
   /// Enable debug logging for balance polling
   static bool enableDebugLogging = true;
 
@@ -381,7 +381,9 @@ class BalanceManager implements IBalanceManager {
               // Just log the error and continue with the last known balance
               // This prevents the stream from terminating on transient errors
               if (enableDebugLogging) {
-                _logger.warning('[POLLING] Balance fetch failed for ${assetId.name}: $e');
+                _logger.warning(
+                  '[POLLING] Balance fetch failed for ${assetId.name}: $e',
+                );
               }
             }
 
