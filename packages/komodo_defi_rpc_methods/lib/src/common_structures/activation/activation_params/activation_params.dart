@@ -357,7 +357,7 @@ enum ScanPolicy {
   }
 }
 
-/// Contains information about electrum & lightwallet_d servers for coins being used
+/// Contains information about Electrum and lightwalletd servers for coins being used
 /// in 'Electrum' or 'Light' mode
 class ActivationRpcData {
   ActivationRpcData({
