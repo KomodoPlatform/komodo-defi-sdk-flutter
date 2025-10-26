@@ -130,6 +130,9 @@ class TrezorAuthService implements IAuthService {
   }) => _authService.deleteWallet(walletName: walletName, password: password);
 
   @override
+  Future<bool> ensureKdfHealthy() => _authService.ensureKdfHealthy();
+
+  @override
   Future<KdfUser> signIn({
     required String walletName,
     required String password,

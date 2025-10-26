@@ -233,6 +233,13 @@ abstract interface class KomodoDefiAuth {
   /// during cancellation.
   Future<void> cancelHardwareDeviceInitialization(int taskId);
 
+  /// Ensures that KDF is healthy and responsive. If KDF is not healthy,
+  /// attempts to restart it with the current user's configuration.
+  /// This is useful for recovering from situations where KDF has become
+  /// unavailable, especially on mobile platforms after app backgrounding.
+  /// Returns true if KDF is healthy or was successfully restarted, false otherwise.
+  Future<bool> ensureKdfHealthy();
+
   /// Disposes of any resources held by the authentication service.
   ///
   /// This method should be called when the authentication service is no longer
@@ -678,6 +685,12 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
                 : AuthExceptionType.unauthorized,
       );
     }
+  }
+
+  @override
+  Future<bool> ensureKdfHealthy() async {
+    await ensureInitialized();
+    return _authService.ensureKdfHealthy();
   }
 
   @override

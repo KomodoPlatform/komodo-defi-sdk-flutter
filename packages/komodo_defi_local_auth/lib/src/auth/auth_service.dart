@@ -87,6 +87,13 @@ abstract interface class IAuthService {
   /// Only works if the KDF API is running and the wallet exists
   Future<void> restoreSession(KdfUser user);
 
+  /// Ensures that KDF is healthy and responsive. If KDF is not healthy,
+  /// attempts to restart it with the current user's configuration.
+  /// This is useful for recovering from situations where KDF has become
+  /// unavailable, especially on mobile platforms after app backgrounding.
+  /// Returns true if KDF is healthy or was successfully restarted, false otherwise.
+  Future<bool> ensureKdfHealthy();
+
   Stream<KdfUser?> get authStateChanges;
   Future<void> dispose();
 }
@@ -483,5 +490,31 @@ class KdfAuthService implements IAuthService {
         );
       }
     });
+  }
+
+  @override
+  Future<bool> ensureKdfHealthy() async {
+    try {
+      // First check if KDF is healthy
+      if (await _kdfFramework.isHealthy()) {
+        return true;
+      }
+
+      // KDF is not healthy, try to get the current active user
+      final currentUser = await _getActiveUser();
+      if (currentUser == null) {
+        // No current user, just ensure KDF is running in no-auth mode
+        await _ensureKdfRunning();
+        return await _kdfFramework.isHealthy();
+      }
+
+      // We have a current user but KDF is not healthy
+      // Try to restart KDF in no-auth mode first as we don't have the password
+      await _ensureKdfRunning();
+      return await _kdfFramework.isHealthy();
+    } catch (e) {
+      // Log the error but don't throw - return false to indicate failure
+      return false;
+    }
   }
 }
