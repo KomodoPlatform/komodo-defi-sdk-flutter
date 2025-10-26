@@ -179,7 +179,11 @@ Future<void> bootstrap({
     final auth = await container.getAsync<KomodoDefiLocalAuth>();
     final activationCoordinator = await container
         .getAsync<SharedActivationCoordinator>();
-    final pubkeyManager = PubkeyManager(client, auth, activationCoordinator);
+    final pubkeyManager = PubkeyManager(
+      client,
+      auth,
+      activationCoordinator,
+    );
 
     // Set the PubkeyManager on BalanceManager now that it's available
     final balanceManager = await container.getAsync<BalanceManager>();
@@ -240,6 +244,7 @@ Future<void> bootstrap({
       final auth = await container.getAsync<KomodoDefiLocalAuth>();
       final assetProvider = await container.getAsync<AssetManager>();
       final pubkeys = await container.getAsync<PubkeyManager>();
+      final balances = await container.getAsync<BalanceManager>();
       final activationCoordinator = await container
           .getAsync<SharedActivationCoordinator>();
       return TransactionHistoryManager(
@@ -248,6 +253,7 @@ Future<void> bootstrap({
         assetProvider,
         activationCoordinator,
         pubkeyManager: pubkeys,
+        balanceManager: balances,
       );
     },
     dependsOn: [
@@ -255,6 +261,7 @@ Future<void> bootstrap({
       KomodoDefiLocalAuth,
       AssetManager,
       PubkeyManager,
+      BalanceManager,
       SharedActivationCoordinator,
     ],
   );

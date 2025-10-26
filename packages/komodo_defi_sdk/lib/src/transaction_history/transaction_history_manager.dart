@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_sdk/src/balances/balance_manager.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -36,12 +37,14 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     this._assetProvider,
     this._activationCoordinator, {
     required PubkeyManager pubkeyManager,
+    required BalanceManager balanceManager,
     TransactionStorage? storage,
   }) : _storage = storage ?? TransactionStorage.defaultForPlatform(),
        _strategyFactory = TransactionHistoryStrategyFactory(
          pubkeyManager,
          _auth,
-       ) {
+       ),
+       _balanceManager = balanceManager {
     // Subscribe to auth changes directly in constructor
     _authSubscription = _auth.authStateChanges.listen((user) {
       if (user == null) {
@@ -55,13 +58,16 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   final IAssetProvider _assetProvider;
   final SharedActivationCoordinator _activationCoordinator;
   final TransactionStorage _storage;
+  final BalanceManager _balanceManager;
 
   final _streamControllers = <AssetId, StreamController<Transaction>>{};
-  final _pollingTimers = <AssetId, Timer>{};
+  final _balanceSubscriptions = <AssetId, StreamSubscription<BalanceInfo>>{};
+  final _lastObservedBalance = <AssetId, BalanceInfo>{};
   final _syncInProgress = <AssetId>{};
   final _rateLimiter = _RateLimiter(const Duration(milliseconds: 500));
 
-  static const _defaultPollingInterval = Duration(seconds: 30);
+  // Legacy interval retained for backwards compatibility and potential feature flags.
+  // Currently unused since polling is driven by balance changes.
   static const _maxPollingRetries = 3;
   static const _maxBatchSize = 50;
 
@@ -73,11 +79,12 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   void _stopAllPolling() {
     if (_isDisposed) return;
 
-    // Cancel all polling timers
-    for (final timer in _pollingTimers.values) {
-      timer.cancel();
+    // Cancel all balance subscriptions
+    for (final sub in _balanceSubscriptions.values) {
+      sub.cancel();
     }
-    _pollingTimers.clear();
+    _balanceSubscriptions.clear();
+    _lastObservedBalance.clear();
 
     // Close controllers in a separate iteration to avoid modification during iteration
     final controllers = _streamControllers.values.toList();
@@ -107,8 +114,9 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
       final localPage = await _storage.getTransactions(
         asset.id,
         await _getCurrentWalletId(),
-        fromId:
-            pagination is TransactionBasedPagination ? pagination.fromId : null,
+        fromId: pagination is TransactionBasedPagination
+            ? pagination.fromId
+            : null,
         pageNumber: pagination is PagePagination ? pagination.pageNumber : null,
         limit: pagination.limit ?? _maxBatchSize,
       );
@@ -136,10 +144,9 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
       );
 
       // Convert API response to domain model
-      final transactions =
-          response.transactions
-              .map((tx) => tx.asTransaction(asset.id))
-              .toList();
+      final transactions = response.transactions
+          .map((tx) => tx.asTransaction(asset.id))
+          .toList();
 
       // Store in local storage efficiently
       await _batchStoreTransactions(transactions);
@@ -197,13 +204,13 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           asset,
           fromId != null
               ? TransactionBasedPagination(
-                fromId: fromId,
-                itemCount: _maxBatchSize,
-              )
+                  fromId: fromId,
+                  itemCount: _maxBatchSize,
+                )
               : const PagePagination(
-                pageNumber: 1,
-                itemsPerPage: _maxBatchSize,
-              ),
+                  pageNumber: 1,
+                  itemsPerPage: _maxBatchSize,
+                ),
         );
 
         if (response.transactions.isEmpty) {
@@ -211,10 +218,9 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           continue;
         }
 
-        final transactions =
-            response.transactions
-                .map((tx) => tx.asTransaction(asset.id))
-                .toList();
+        final transactions = response.transactions
+            .map((tx) => tx.asTransaction(asset.id))
+            .toList();
 
         await _batchStoreTransactions(transactions);
         yield transactions;
@@ -249,7 +255,8 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
       asset.id,
       () => StreamController<Transaction>.broadcast(
         onListen: () {
-          if (!_pollingTimers.containsKey(asset.id)) {
+          // Start balance-driven polling only once per asset
+          if (!_balanceSubscriptions.containsKey(asset.id)) {
             _startPolling(asset);
           }
         },
@@ -287,13 +294,13 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           asset,
           fromId != null
               ? TransactionBasedPagination(
-                fromId: fromId,
-                itemCount: _maxBatchSize,
-              )
+                  fromId: fromId,
+                  itemCount: _maxBatchSize,
+                )
               : const PagePagination(
-                pageNumber: 1,
-                itemsPerPage: _maxBatchSize,
-              ),
+                  pageNumber: 1,
+                  itemsPerPage: _maxBatchSize,
+                ),
         );
 
         if (response.transactions.isEmpty) {
@@ -301,10 +308,9 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           continue;
         }
 
-        final transactions =
-            response.transactions
-                .map((tx) => tx.asTransaction(asset.id))
-                .toList();
+        final transactions = response.transactions
+            .map((tx) => tx.asTransaction(asset.id))
+            .toList();
 
         await _batchStoreTransactions(transactions);
         fromId = response.fromId;
@@ -345,19 +351,19 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
         asset,
         lastTx != null
             ? TransactionBasedPagination(
-              fromId: lastTx,
-              itemCount: _maxBatchSize,
-            )
+                fromId: lastTx,
+                itemCount: _maxBatchSize,
+              )
             : const PagePagination(pageNumber: 1, itemsPerPage: _maxBatchSize),
       );
 
-      if (!_pollingTimers.containsKey(asset.id)) return;
+      // If asset is no longer being watched, stop
+      if (!_streamControllers.containsKey(asset.id)) return;
 
       if (response.transactions.isNotEmpty) {
-        final newTransactions =
-            response.transactions
-                .map((tx) => tx.asTransaction(asset.id))
-                .toList();
+        final newTransactions = response.transactions
+            .map((tx) => tx.asTransaction(asset.id))
+            .toList();
 
         await _batchStoreTransactions(newTransactions);
 
@@ -410,17 +416,33 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   }
 
   void _startPolling(Asset asset) {
+    // Ensure we don't duplicate subscriptions
     _stopPolling(asset.id);
-    _pollingTimers[asset.id] = Timer.periodic(
-      _defaultPollingInterval,
-      (_) => _pollNewTransactions(asset),
-    );
+
+    // Initial sync: poll once on activation
     _pollNewTransactions(asset);
+
+    // Subscribe to balance changes and trigger history fetch only when balance changes
+    _balanceSubscriptions[asset.id] = _balanceManager
+        .watchBalance(asset.id)
+        .listen((BalanceInfo balance) {
+          final last = _lastObservedBalance[asset.id];
+          final changed =
+              last == null ||
+              balance.total != last.total ||
+              balance.spendable != last.spendable;
+          _lastObservedBalance[asset.id] = balance;
+          if (changed) {
+            _pollNewTransactions(asset);
+          }
+        });
   }
 
   void _stopPolling(AssetId assetId) {
-    _pollingTimers[assetId]?.cancel();
-    _pollingTimers.remove(assetId);
+    // Cancel balance subscription
+    _balanceSubscriptions[assetId]?.cancel();
+    _balanceSubscriptions.remove(assetId);
+    _lastObservedBalance.remove(assetId);
   }
 
   Future<void> dispose() async {
@@ -428,12 +450,6 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     _isDisposed = true;
 
     await _authSubscription?.cancel();
-
-    final timers = _pollingTimers.values.toList();
-    _pollingTimers.clear();
-    for (final timer in timers) {
-      timer.cancel();
-    }
 
     final controllers = _streamControllers.values.toList();
     _streamControllers.clear();

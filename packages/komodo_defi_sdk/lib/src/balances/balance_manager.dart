@@ -75,7 +75,7 @@ class BalanceManager implements IBalanceManager {
   final IAssetLookup _assetLookup;
   final KomodoDefiLocalAuth _auth;
   StreamSubscription<KdfUser?>? _authSubscription;
-  final Duration _defaultPollingInterval = const Duration(seconds: 30);
+  final Duration _defaultPollingInterval = const Duration(minutes: 1);
   
   /// Enable debug logging for balance polling
   static bool enableDebugLogging = true;
