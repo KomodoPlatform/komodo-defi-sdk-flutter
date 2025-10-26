@@ -365,8 +365,10 @@ class ActivationRpcData {
     this.electrum,
     this.syncParams,
     this.minConnected,
-    this.maxConnected = 1,
+    this.maxConnected = _defaultMaxConnected,
   });
+
+  static const int _defaultMaxConnected = 1;
 
   /// Creates [ActivationRpcData] from JSON configuration
   factory ActivationRpcData.fromJson(JsonMap json) {
@@ -388,7 +390,8 @@ class ActivationRpcData {
         json.valueOrNull<dynamic>('sync_params'),
       ),
       minConnected: json.valueOrNull<int>('min_connected'),
-      maxConnected: json.valueOrNull<int>('max_connected'),
+      maxConnected:
+          json.valueOrNull<int>('max_connected') ?? _defaultMaxConnected,
     );
   }
 
