@@ -136,6 +136,9 @@ class _FakeAuthService implements IAuthService {
   Future<bool> isSignedIn() async => activeUser != null;
 
   @override
+  Future<bool> ensureKdfHealthy() async => true;
+
+  @override
   Future<void> restoreSession(KdfUser user) async {
     activeUser = user;
     _authStateController.add(user);
@@ -259,10 +262,9 @@ void main() {
     test(
       'signIn success: registers new wallet, sends passphrase, starts monitor',
       () async {
-        final auth =
-            _FakeAuthService()
-              // No existing users => new user => register branch
-              ..users = [];
+        final auth = _FakeAuthService()
+          // No existing users => new user => register branch
+          ..users = [];
 
         final repo = _FakeTrezorRepository();
         final monitor = _FakeConnectionMonitor();
@@ -442,21 +444,20 @@ void main() {
     });
 
     test('existing user without stored password throws before auth', () async {
-      final auth =
-          _FakeAuthService()
-            // Pre-existing Trezor user
-            ..users = [
-              KdfUser(
-                walletId: WalletId.fromName(
-                  TrezorAuthService.trezorWalletName,
-                  const AuthOptions(
-                    derivationMethod: DerivationMethod.hdWallet,
-                    privKeyPolicy: PrivateKeyPolicy.trezor(),
-                  ),
-                ),
-                isBip39Seed: true,
+      final auth = _FakeAuthService()
+        // Pre-existing Trezor user
+        ..users = [
+          KdfUser(
+            walletId: WalletId.fromName(
+              TrezorAuthService.trezorWalletName,
+              const AuthOptions(
+                derivationMethod: DerivationMethod.hdWallet,
+                privKeyPolicy: PrivateKeyPolicy.trezor(),
               ),
-            ];
+            ),
+            isBip39Seed: true,
+          ),
+        ];
 
       final repo = _FakeTrezorRepository();
       final monitor = _FakeConnectionMonitor();
@@ -516,8 +517,8 @@ void main() {
       () async {
         final auth = _FakeAuthService();
         final repo = _FakeTrezorRepository();
-        final monitor =
-            _FakeConnectionMonitor()..started = true; // simulate active
+        final monitor = _FakeConnectionMonitor()
+          ..started = true; // simulate active
 
         final service = TrezorAuthService(
           auth,
