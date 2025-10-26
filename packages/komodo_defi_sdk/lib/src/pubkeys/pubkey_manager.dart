@@ -64,6 +64,8 @@ class PubkeyManager implements IPubkeyManager {
   // Track the Asset for each AssetId that has an associated controller so that
   // we can restart watchers after auth changes without requiring new listeners
   final Map<AssetId, Asset> _watchedAssets = {};
+  // Deduplicate concurrent getPubkeys requests per asset
+  final Map<AssetId, Future<AssetPubkeys>> _inFlightPubkeyRequests = {};
 
   StreamSubscription<KdfUser?>? _authSubscription;
   WalletId? _currentWalletId;
@@ -73,12 +75,42 @@ class PubkeyManager implements IPubkeyManager {
   /// Get pubkeys for a given asset, handling HD/non-HD differences internally
   @override
   Future<AssetPubkeys> getPubkeys(Asset asset) async {
-    await retry(() => _activationCoordinator.activateAsset(asset));
-    final strategy = await _resolvePubkeyStrategy(asset);
-    final pubkeys = await strategy.getPubkeys(asset.id, _client);
-    // Persist asynchronously; do not block the call
-    unawaited(_persistPubkeys(asset, pubkeys));
-    return pubkeys;
+    // Serve from in-memory cache if available
+    final cached = _pubkeysCache[asset.id];
+    if (cached != null) {
+      return cached;
+    }
+
+    // If a request for this asset is already in flight, await it
+    final existing = _inFlightPubkeyRequests[asset.id];
+    if (existing != null) {
+      return existing;
+    }
+
+    // Otherwise, start a new request and dedupe concurrent callers
+    final future = () async {
+      // Try to hydrate from persisted storage first for instant response
+      final hydrated = await _hydrateFromStorage(asset);
+      if (hydrated != null) {
+        _pubkeysCache[asset.id] = hydrated;
+        return hydrated;
+      }
+
+      await retry(() => _activationCoordinator.activateAsset(asset));
+      final strategy = await _resolvePubkeyStrategy(asset);
+      final pubkeys = await strategy.getPubkeys(asset.id, _client);
+      _pubkeysCache[asset.id] = pubkeys;
+      // Persist asynchronously; do not block the call
+      unawaited(_persistPubkeys(asset, pubkeys));
+      return pubkeys;
+    }();
+
+    _inFlightPubkeyRequests[asset.id] = future;
+    try {
+      return await future;
+    } finally {
+      _inFlightPubkeyRequests.remove(asset.id);
+    }
   }
 
   /// Create a new pubkey for an asset if supported

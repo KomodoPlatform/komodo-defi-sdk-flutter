@@ -11,8 +11,10 @@ extension KdfAuthServiceOperationsExtension on KdfAuthService {
 
   void _startHealthCheck() {
     _healthCheckTimer?.cancel();
+    // Reduce frequency to prevent excessive wallet name checks.
+    // Health checks do not need sub-second responsiveness; 5 minutes is ample.
     _healthCheckTimer = Timer.periodic(
-      const Duration(seconds: 5),
+      const Duration(minutes: 5),
       (_) => _checkKdfHealth(),
     );
   }

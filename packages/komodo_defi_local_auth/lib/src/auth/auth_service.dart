@@ -113,6 +113,11 @@ class KdfAuthService implements IAuthService {
   KdfUser? _lastEmittedUser;
   Timer? _healthCheckTimer;
 
+  // Cache for wallet users list to avoid spamming get_wallet_names
+  List<KdfUser>? _usersCache;
+  DateTime? _usersCacheTimestamp;
+  final Duration _usersCacheTtl = const Duration(minutes: 5);
+
   ApiClient get _client => _kdfFramework.client;
   late final methods = KomodoDefiRpcMethods(_client);
 
@@ -208,6 +213,7 @@ class KdfAuthService implements IAuthService {
     return _lockWriteOperation(() async {
       final currentUser = await _registerNewUser(config, options);
       _emitAuthStateChange(currentUser);
+      _invalidateUsersCache();
       return currentUser;
     });
   }
@@ -217,9 +223,16 @@ class KdfAuthService implements IAuthService {
     await _ensureKdfRunning();
 
     return _runReadOperation(() async {
+      // Serve from cache if fresh
+      if (_usersCache != null &&
+          _usersCacheTimestamp != null &&
+          DateTime.now().difference(_usersCacheTimestamp!) < _usersCacheTtl) {
+        return _usersCache!;
+      }
+
       final walletNames = await _client.rpc.wallet.getWalletNames();
 
-      return Future.wait(
+      final users = await Future.wait(
         walletNames.walletNames.map((name) async {
           final user = await _secureStorage.getUser(name);
           if (user != null) return user;
@@ -233,6 +246,10 @@ class KdfAuthService implements IAuthService {
           return newUser;
         }),
       );
+
+      _usersCache = users;
+      _usersCacheTimestamp = DateTime.now();
+      return users;
     });
   }
 
@@ -267,7 +284,13 @@ class KdfAuthService implements IAuthService {
 
   @override
   Future<KdfUser?> getActiveUser() async {
-    return _runReadOperation(_getActiveUser);
+    return _runReadOperation(() async {
+      // Prefer last known user emitted by health checks to avoid extra RPCs
+      if (_lastEmittedUser != null) {
+        return _lastEmittedUser;
+      }
+      return _getActiveUser();
+    });
   }
 
   AuthOptions get _fallbackAuthOptions =>
@@ -348,6 +371,7 @@ class KdfAuthService implements IAuthService {
           password: password,
         );
         await _secureStorage.deleteUser(walletName);
+        _invalidateUsersCache();
       } on DeleteWalletInvalidPasswordErrorResponse catch (e) {
         throw AuthException(
           e.error ?? 'Invalid password',
@@ -388,6 +412,11 @@ class KdfAuthService implements IAuthService {
         );
       }
     });
+  }
+
+  void _invalidateUsersCache() {
+    _usersCache = null;
+    _usersCacheTimestamp = null;
   }
 
   @override
