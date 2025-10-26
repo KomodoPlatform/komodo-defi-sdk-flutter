@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:developer' show log;
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_sdk/src/transaction_history/strategies/etherscan_transaction_history_strategy.dart'
@@ -90,19 +93,43 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
+      final activationParams = EthWithTokensActivationParams.fromJson(asset.protocol.config)
+          .copyWith(
+            erc20Tokens:
+                children
+                    ?.map((e) => TokensRequest(ticker: e.id.id))
+                    .toList() ??
+                [],
+            txHistory: const EtherscanProtocolHelper()
+                .shouldEnableTransactionHistory(asset),
+            privKeyPolicy: privKeyPolicy,
+          );
+      
+      // Debug logging for ETH platform activation
+      log(
+        '[RPC] Activating ETH platform: ${asset.id.id}',
+        name: 'EthWithTokensActivationStrategy',
+      );
+      log(
+        '[RPC] Activation parameters: ${jsonEncode({
+          'ticker': asset.id.id,
+          'protocol': asset.protocol.subClass.formatted,
+          'token_count': children?.length ?? 0,
+          'tokens': children?.map((e) => e.id.id).toList() ?? [],
+          'activation_params': activationParams.toRpcParams(),
+          'priv_key_policy': privKeyPolicy.toJson(),
+        })}',
+        name: 'EthWithTokensActivationStrategy',
+      );
+
       await client.rpc.erc20.enableEthWithTokens(
         ticker: asset.id.id,
-        params: EthWithTokensActivationParams.fromJson(asset.protocol.config)
-            .copyWith(
-              erc20Tokens:
-                  children
-                      ?.map((e) => TokensRequest(ticker: e.id.id))
-                      .toList() ??
-                  [],
-              txHistory: const EtherscanProtocolHelper()
-                  .shouldEnableTransactionHistory(asset),
-              privKeyPolicy: privKeyPolicy,
-            ),
+        params: activationParams,
+      );
+      
+      log(
+        '[RPC] Successfully activated ETH platform: ${asset.id.id} with ${children?.length ?? 0} tokens',
+        name: 'EthWithTokensActivationStrategy',
       );
 
       yield const ActivationProgress(
