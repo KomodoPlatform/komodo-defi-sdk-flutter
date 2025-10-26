@@ -89,8 +89,15 @@ class PubkeyManager implements IPubkeyManager {
 
     // Otherwise, start a new request and dedupe concurrent callers
     final future = () async {
+      // Capture wallet id at start to avoid cross-wallet persistence
+      final currentUser = await _auth.currentUser;
+      if (currentUser == null) {
+        throw AuthException.notSignedIn();
+      }
+      final WalletId walletId = currentUser.walletId;
+
       // Try to hydrate from persisted storage first for instant response
-      final hydrated = await _hydrateFromStorage(asset);
+      final hydrated = await _hydrateFromStorageForWallet(walletId, asset);
       if (hydrated != null) {
         _pubkeysCache[asset.id] = hydrated;
         return hydrated;
@@ -101,7 +108,7 @@ class PubkeyManager implements IPubkeyManager {
       final pubkeys = await strategy.getPubkeys(asset.id, _client);
       _pubkeysCache[asset.id] = pubkeys;
       // Persist asynchronously; do not block the call
-      unawaited(_persistPubkeys(asset, pubkeys));
+      unawaited(_persistPubkeysForWallet(walletId, asset, pubkeys));
       return pubkeys;
     }();
 
@@ -255,6 +262,63 @@ class PubkeyManager implements IPubkeyManager {
     }
   }
 
+  // Wallet-stable variants to avoid cross-wallet contamination during async ops
+  Future<void> _persistPubkeysForWallet(
+    WalletId walletId,
+    Asset asset,
+    AssetPubkeys pubkeys,
+  ) async {
+    try {
+      await _storage.savePubkeys(walletId, asset.id.id, pubkeys);
+    } catch (_) {
+      // best-effort persistence
+    }
+  }
+
+  Future<AssetPubkeys?> _hydrateFromStorageForWallet(
+    WalletId walletId,
+    Asset asset,
+  ) async {
+    try {
+      final map = await _storage.listForWallet(walletId);
+      final raw = map[asset.id.id];
+      if (raw == null) return null;
+
+      final addresses =
+          (raw['addresses'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+          const <Map<String, dynamic>>[];
+      final keys = <PubkeyInfo>[];
+      for (final addr in addresses) {
+        final bal = BalanceInfo.fromJson(
+          (addr['balance'] as Map).cast<String, dynamic>(),
+        );
+        keys.add(
+          PubkeyInfo(
+            address: addr['address'] as String,
+            derivationPath: addr['derivation_path'] as String?,
+            chain: addr['chain'] as String?,
+            balance: bal,
+            coinTicker: asset.id.id,
+          ),
+        );
+      }
+
+      final available = (raw['available'] as num?)?.toInt() ?? keys.length;
+      final syncString = raw['sync'] as String?;
+      final sync =
+          SyncStatusEnum.tryParse(syncString) ?? SyncStatusEnum.success;
+
+      return AssetPubkeys(
+        assetId: asset.id,
+        keys: keys,
+        availableAddressesCount: available,
+        syncStatus: sync,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _startWatchingPubkeys(Asset asset, bool activateIfNeeded) async {
     final controller = _pubkeysControllers[asset.id];
     if (controller == null || _isDisposed) return;
@@ -275,12 +339,6 @@ class PubkeyManager implements IPubkeyManager {
     _currentWalletId = user.walletId;
     _logger.fine('Starting watcher for ${asset.id.name}');
 
-    // Emit last known immediately if available
-    final maybeKnown = _pubkeysCache[asset.id];
-    if (maybeKnown != null && !controller.isClosed) {
-      controller.add(maybeKnown);
-    }
-
     try {
       // Ensure activation if requested, otherwise only proceed if already active
       bool isActive = await _activationCoordinator.isAssetActive(asset.id);
@@ -293,7 +351,8 @@ class PubkeyManager implements IPubkeyManager {
 
       if (isActive) {
         // Try hydrate from persisted cache first for faster cold start
-        final hydrated = await _hydrateFromStorage(asset);
+        final walletId = _currentWalletId!;
+        final hydrated = await _hydrateFromStorageForWallet(walletId, asset);
         if (hydrated != null) {
           _pubkeysCache[asset.id] = hydrated;
           if (!controller.isClosed) controller.add(hydrated);
@@ -301,7 +360,9 @@ class PubkeyManager implements IPubkeyManager {
 
         final first = await getPubkeys(asset);
         _pubkeysCache[asset.id] = first;
-        if (!controller.isClosed) controller.add(first);
+        if (!controller.isClosed && (hydrated == null || first != hydrated)) {
+          controller.add(first);
+        }
         _logger.fine('Emitted initial pubkeys for ${asset.id.name}');
       }
 
@@ -454,6 +515,7 @@ class PubkeyManager implements IPubkeyManager {
 
     // Clear caches
     _pubkeysCache.clear();
+    _inFlightPubkeyRequests.clear();
 
     stopwatch.stop();
     _logger.fine(

@@ -22,7 +22,8 @@ extension KdfAuthServiceOperationsExtension on KdfAuthService {
   Future<void> _checkKdfHealth() async {
     try {
       final isRunning = await _kdfFramework.isRunning();
-      final currentUser = await getActiveUser();
+      // Bypass cached user to detect external changes accurately
+      final currentUser = await _getActiveUser();
 
       // If KDF is not running or we're in no-auth mode but previously had a user,
       // emit signed out state

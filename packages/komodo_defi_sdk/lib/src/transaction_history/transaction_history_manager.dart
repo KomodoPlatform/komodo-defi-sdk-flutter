@@ -66,8 +66,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   final _syncInProgress = <AssetId>{};
   final _rateLimiter = _RateLimiter(const Duration(milliseconds: 500));
 
-  // Legacy interval retained for backwards compatibility and potential feature flags.
-  // Currently unused since polling is driven by balance changes.
+  // Maximum consecutive retry attempts when polling fails transiently
   static const _maxPollingRetries = 3;
   static const _maxBatchSize = 50;
 

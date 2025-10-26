@@ -50,7 +50,8 @@ class HivePubkeysStorage implements PubkeysStorage {
       if (!key.startsWith(prefix)) continue;
       final record = box.get(key);
       if (record == null) continue;
-      // Expose as generic map for caller hydration convenience
+      // Build map structure to mirror the expected hydration format
+      // used by PubkeyManager._hydrateFromStorage* for fast hydration
       result[key.substring(prefix.length)] = {
         'available': record.available,
         'sync': record.sync,
