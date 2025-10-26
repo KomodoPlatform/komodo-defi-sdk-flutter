@@ -81,43 +81,40 @@ class PubkeyManager implements IPubkeyManager {
       return cached;
     }
 
-    // If a request for this asset is already in flight, await it
+    // If a network fetch for this asset is already in flight, await it
     final existing = _inFlightPubkeyRequests[asset.id];
     if (existing != null) {
       return existing;
     }
 
-    // Otherwise, start a new request and dedupe concurrent callers
-    final future = () async {
-      // Capture wallet id at start to avoid cross-wallet persistence
-      final currentUser = await _auth.currentUser;
-      if (currentUser == null) {
-        throw AuthException.notSignedIn();
-      }
-      final WalletId walletId = currentUser.walletId;
-
-      // Try to hydrate from persisted storage first for instant response
-      final hydrated = await _hydrateFromStorageForWallet(walletId, asset);
-      if (hydrated != null) {
-        _pubkeysCache[asset.id] = hydrated;
-        return hydrated;
-      }
-
-      await retry(() => _activationCoordinator.activateAsset(asset));
-      final strategy = await _resolvePubkeyStrategy(asset);
-      final pubkeys = await strategy.getPubkeys(asset.id, _client);
-      _pubkeysCache[asset.id] = pubkeys;
-      // Persist asynchronously; do not block the call
-      unawaited(_persistPubkeysForWallet(walletId, asset, pubkeys));
-      return pubkeys;
-    }();
-
-    _inFlightPubkeyRequests[asset.id] = future;
-    try {
-      return await future;
-    } finally {
-      _inFlightPubkeyRequests.remove(asset.id);
+    // Capture wallet id at start to avoid cross-wallet persistence
+    final currentUser = await _auth.currentUser;
+    if (currentUser == null) {
+      throw AuthException.notSignedIn();
     }
+    final WalletId walletId = currentUser.walletId;
+
+    // Try to hydrate from persisted storage first for instant response
+    final hydrated = await _hydrateFromStorageForWallet(walletId, asset);
+    if (hydrated != null) {
+      _pubkeysCache[asset.id] = hydrated;
+      // Fire-and-forget fresh refresh; deduped if one is already running
+      unawaited(() async {
+        try {
+          final fresh = await _fetchFreshPubkeys(asset, walletId);
+          final controller = _pubkeysControllers[asset.id];
+          if (controller != null && !controller.isClosed && fresh != hydrated) {
+            controller.add(fresh);
+          }
+        } catch (_) {
+          // best-effort background refresh
+        }
+      }());
+      return hydrated;
+    }
+
+    // No hydration available, fetch fresh
+    return _fetchFreshPubkeys(asset, walletId);
   }
 
   /// Create a new pubkey for an asset if supported
@@ -160,6 +157,31 @@ class PubkeyManager implements IPubkeyManager {
       throw AuthException.notSignedIn();
     }
     return asset.pubkeyStrategy(kdfUser: currentUser);
+  }
+
+  // Perform a fresh network fetch for pubkeys, deduplicated per asset
+  Future<AssetPubkeys> _fetchFreshPubkeys(
+    Asset asset,
+    WalletId walletId,
+  ) async {
+    final existing = _inFlightPubkeyRequests[asset.id];
+    if (existing != null) return existing;
+
+    final future = () async {
+      await retry(() => _activationCoordinator.activateAsset(asset));
+      final strategy = await _resolvePubkeyStrategy(asset);
+      final pubkeys = await strategy.getPubkeys(asset.id, _client);
+      _pubkeysCache[asset.id] = pubkeys;
+      unawaited(_persistPubkeysForWallet(walletId, asset, pubkeys));
+      return pubkeys;
+    }();
+
+    _inFlightPubkeyRequests[asset.id] = future;
+    try {
+      return await future;
+    } finally {
+      _inFlightPubkeyRequests.remove(asset.id);
+    }
   }
 
   /// Stream of pubkeys per asset. Polls pubkeys (not balances) and emits updates.
@@ -209,58 +231,7 @@ class PubkeyManager implements IPubkeyManager {
     return _pubkeysCache[assetId];
   }
 
-  Future<void> _persistPubkeys(Asset asset, AssetPubkeys pubkeys) async {
-    try {
-      final user = await _auth.currentUser;
-      if (user == null) return;
-      await _storage.savePubkeys(user.walletId, asset.id.id, pubkeys);
-    } catch (_) {
-      // best-effort persistence
-    }
-  }
-
-  Future<AssetPubkeys?> _hydrateFromStorage(Asset asset) async {
-    try {
-      final user = await _auth.currentUser;
-      if (user == null) return null;
-      final map = await _storage.listForWallet(user.walletId);
-      final raw = map[asset.id.id];
-      if (raw == null) return null;
-
-      final addresses =
-          (raw['addresses'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
-          const <Map<String, dynamic>>[];
-      final keys = <PubkeyInfo>[];
-      for (final addr in addresses) {
-        final bal = BalanceInfo.fromJson(
-          (addr['balance'] as Map).cast<String, dynamic>(),
-        );
-        keys.add(
-          PubkeyInfo(
-            address: addr['address'] as String,
-            derivationPath: addr['derivation_path'] as String?,
-            chain: addr['chain'] as String?,
-            balance: bal,
-            coinTicker: asset.id.id,
-          ),
-        );
-      }
-
-      final available = (raw['available'] as num?)?.toInt() ?? keys.length;
-      final syncString = raw['sync'] as String?;
-      final sync =
-          SyncStatusEnum.tryParse(syncString) ?? SyncStatusEnum.success;
-
-      return AssetPubkeys(
-        assetId: asset.id,
-        keys: keys,
-        availableAddressesCount: available,
-        syncStatus: sync,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
+  // Removed unused non-wallet-stable helpers to avoid confusion
 
   // Wallet-stable variants to avoid cross-wallet contamination during async ops
   Future<void> _persistPubkeysForWallet(
@@ -358,7 +329,7 @@ class PubkeyManager implements IPubkeyManager {
           if (!controller.isClosed) controller.add(hydrated);
         }
 
-        final first = await getPubkeys(asset);
+        final first = await _fetchFreshPubkeys(asset, walletId);
         _pubkeysCache[asset.id] = first;
         if (!controller.isClosed && (hydrated == null || first != hydrated)) {
           controller.add(first);
@@ -389,7 +360,10 @@ class PubkeyManager implements IPubkeyManager {
                 active = activationResult.isSuccess;
               }
               if (active) {
-                final pubkeys = await getPubkeys(asset);
+                final pubkeys = await _fetchFreshPubkeys(
+                  asset,
+                  currentUser.walletId,
+                );
                 _pubkeysCache[asset.id] = pubkeys;
                 return pubkeys;
               }

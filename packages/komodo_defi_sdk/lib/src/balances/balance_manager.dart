@@ -75,10 +75,10 @@ class BalanceManager implements IBalanceManager {
   final IAssetLookup _assetLookup;
   final KomodoDefiLocalAuth _auth;
   StreamSubscription<KdfUser?>? _authSubscription;
-  final Duration _defaultPollingInterval = const Duration(minutes: 1);
+  final Duration _defaultPollingInterval = const Duration(minutes: 1); // consider DI/config override
 
   /// Enable debug logging for balance polling
-  static bool enableDebugLogging = true;
+  static bool enableDebugLogging = false;
 
   /// Cache of the latest known balances for each asset
   final Map<AssetId, BalanceInfo> _balanceCache = {};
@@ -377,12 +377,14 @@ class BalanceManager implements IBalanceManager {
                 }
                 return balance;
               }
-            } catch (e) {
+            } catch (e, s) {
               // Just log the error and continue with the last known balance
               // This prevents the stream from terminating on transient errors
               if (enableDebugLogging) {
                 _logger.warning(
                   '[POLLING] Balance fetch failed for ${assetId.name}: $e',
+                  e,
+                  s,
                 );
               }
             }

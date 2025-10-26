@@ -424,17 +424,22 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     // Subscribe to balance changes and trigger history fetch only when balance changes
     _balanceSubscriptions[asset.id] = _balanceManager
         .watchBalance(asset.id)
-        .listen((BalanceInfo balance) {
-          final last = _lastObservedBalance[asset.id];
-          final changed =
-              last == null ||
-              balance.total != last.total ||
-              balance.spendable != last.spendable;
-          _lastObservedBalance[asset.id] = balance;
-          if (changed) {
-            _pollNewTransactions(asset);
-          }
-        });
+        .listen(
+          (BalanceInfo balance) {
+            final last = _lastObservedBalance[asset.id];
+            final changed =
+                last == null ||
+                balance.total != last.total ||
+                balance.spendable != last.spendable;
+            _lastObservedBalance[asset.id] = balance;
+            if (changed) {
+              _pollNewTransactions(asset);
+            }
+          },
+          onError: (Object error) {
+            // Keep subscription alive; BalanceManager should recover
+          },
+        );
   }
 
   void _stopPolling(AssetId assetId) {
