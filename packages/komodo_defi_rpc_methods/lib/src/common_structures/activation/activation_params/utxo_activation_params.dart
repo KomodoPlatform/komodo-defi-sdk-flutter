@@ -139,7 +139,9 @@ class UtxoActivationParams extends ActivationParams {
       if (p2shtype != null) 'p2shtype': p2shtype,
       if (wiftype != null) 'wiftype': wiftype,
       if (overwintered != null) 'overwintered': overwintered,
-      'max_connected': 1,
+      'mode': {
+        'rpc_data': {'max_connected': 1},
+      },
     });
   }
 
