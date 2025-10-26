@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:developer' show log;
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -58,9 +61,37 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
+      final activationParams = protocol.defaultActivationParams(privKeyPolicy: privKeyPolicy);
+      
+      // Debug logging for UTXO/Electrum activation
+      log(
+        '[ELECTRUM] Activating UTXO coin: ${asset.id.id}',
+        name: 'UtxoActivationStrategy',
+      );
+      log(
+        '[ELECTRUM] Activation parameters: ${jsonEncode({
+          'ticker': asset.id.id,
+          'mode': activationParams.mode?.rpc,
+          'utxo_params': activationParams.toRpcParams(),
+          'protocol_type': protocol.subClass.formatted,
+          'tx_version': protocol.txVersion,
+          'pubtype': protocol.pubtype,
+          'p2shtype': protocol.p2shtype,
+          'wiftype': protocol.wiftype,
+          'electrum_servers': protocol.requiredServers.toJsonRequest(),
+          'priv_key_policy': privKeyPolicy.toJson(),
+        })}',
+        name: 'UtxoActivationStrategy',
+      );
+
       final taskResponse = await client.rpc.utxo.enableUtxoInit(
         ticker: asset.id.id,
-        params: protocol.defaultActivationParams(privKeyPolicy: privKeyPolicy),
+        params: activationParams,
+      );
+      
+      log(
+        '[ELECTRUM] Task initiated for ${asset.id.id}, task_id: ${taskResponse.taskId}',
+        name: 'UtxoActivationStrategy',
       );
 
       yield ActivationProgress(
