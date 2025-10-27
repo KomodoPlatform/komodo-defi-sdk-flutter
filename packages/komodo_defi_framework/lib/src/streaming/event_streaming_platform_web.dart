@@ -24,7 +24,7 @@ SharedWorkerUnsubscribe connectSharedWorker(
     final Object sharedWorkerCtor = _getGlobalProperty('SharedWorker');
     final Object worker = _callConstructor<Object>(
       sharedWorkerCtor,
-      <Object?>['assets/packages/komodo_defi_framework/event_streaming_worker.js'],
+      <Object?>['assets/packages/komodo_defi_framework/assets/web/event_streaming_worker.js'],
     );
     final Object? portMaybe = _getProperty(worker, 'port');
     if (portMaybe == null) return () {};
