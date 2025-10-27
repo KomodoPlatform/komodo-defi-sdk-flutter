@@ -1,5 +1,5 @@
-import 'dart:developer';
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:get_it/get_it.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
@@ -12,10 +12,10 @@ import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
+import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 
 /// A high-level SDK that provides a simple way to build cross-platform applications
 /// using the Komodo DeFi Framework, with a primary focus on wallet functionality.
@@ -492,6 +492,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _initializationFuture = null;
 
     await Future.wait([
+      _disposeIfRegistered<EventStreamingManager>((m) => m.dispose()),
       _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
       _disposeIfRegistered<AssetManager>((m) => m.dispose()),
       _disposeIfRegistered<ActivatedAssetsCache>((m) => m.dispose()),

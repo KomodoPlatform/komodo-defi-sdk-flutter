@@ -17,6 +17,7 @@ import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart'
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
+import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/legacy_withdrawal_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -60,6 +61,15 @@ Future<void> bootstrap({
   container.registerSingletonAsync<ApiClient>(() async {
     final framework = await container.getAsync<KomodoDefiFramework>();
     return framework.client;
+  }, dependsOn: [KomodoDefiFramework]);
+
+  // Event streaming manager (internal use by managers for real-time updates)
+  container.registerSingletonAsync<EventStreamingManager>(() async {
+    final framework = await container.getAsync<KomodoDefiFramework>();
+    return EventStreamingManager(
+      client: framework.client,
+      eventService: framework.streaming,
+    );
   }, dependsOn: [KomodoDefiFramework]);
 
   // Auth and storage dependencies
