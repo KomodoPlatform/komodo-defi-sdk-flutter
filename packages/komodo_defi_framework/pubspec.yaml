@@ -66,6 +66,7 @@ flutter:
     - assets/config/
     - assets/coin_icons/png/
     - app_build/build_config.json
+    - assets/web/
     
     - path: assets/transformer_invoker.txt
       transformers:
