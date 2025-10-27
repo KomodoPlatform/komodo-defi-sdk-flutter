@@ -1,5 +1,6 @@
-// TODO(komodo-team): Allow passing the start sync mode; currently hard-coded
-// to sync from the time of activation.
+// Start sync mode can be passed via one-shot sync params through
+// ActivationConfigService.setOneShotSyncParams() before activation.
+// See zhtlc_config_dialog.dart for UI implementation.
 
 import 'dart:convert';
 import 'dart:developer' show log;

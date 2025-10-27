@@ -5,6 +5,7 @@ import 'package:hive_ce/hive.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 
 typedef JsonMap = Map<String, dynamic>;
 
@@ -191,10 +192,28 @@ class ActivationConfigService {
   ActivationConfigService(
     this.repo, {
     required WalletIdResolver walletIdResolver,
-  }) : _walletIdResolver = walletIdResolver;
+    Stream<KdfUser?>? authStateChanges,
+  }) : _walletIdResolver = walletIdResolver {
+    // Listen to auth state changes to clear one-shot params on sign-out
+    _authStateSubscription = authStateChanges?.listen((user) {
+      if (user == null) {
+        // User signed out, clear all one-shot params
+        _oneShotSyncParams.clear();
+      } else {
+        // User signed in or changed, clear one-shot params for previous wallet
+        // if it was different from the current one
+        if (_lastWalletId != null && _lastWalletId != user.walletId) {
+          clearOneShotSyncParamsForWallet(_lastWalletId!);
+        }
+        _lastWalletId = user.walletId;
+      }
+    });
+  }
 
   final ActivationConfigRepository repo;
   final WalletIdResolver _walletIdResolver;
+  StreamSubscription<KdfUser?>? _authStateSubscription;
+  WalletId? _lastWalletId;
 
   // One-shot sync params coordinator. Not persisted; cleared after use.
   final Map<_WalletAssetKey, ZhtlcSyncParams?> _oneShotSyncParams = {};
@@ -269,6 +288,19 @@ class ActivationConfigService {
     final key = _WalletAssetKey(walletId, id);
     final value = _oneShotSyncParams.remove(key);
     return value;
+  }
+
+  /// Clears all one-shot sync params for the specified wallet.
+  /// This should be called when a user signs out to prevent stale one-shot
+  /// params from being applied on the next activation after re-login.
+  void clearOneShotSyncParamsForWallet(WalletId walletId) {
+    _oneShotSyncParams.removeWhere((key, _) => key.walletId == walletId);
+  }
+
+  /// Disposes of the service and cleans up resources.
+  void dispose() {
+    _authStateSubscription?.cancel();
+    _authStateSubscription = null;
   }
 
   final Map<_WalletAssetKey, Completer<ZhtlcUserConfig?>> _awaitingControllers =
