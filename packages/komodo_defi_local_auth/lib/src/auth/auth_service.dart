@@ -5,6 +5,7 @@ import 'package:komodo_defi_local_auth/src/auth/storage/secure_storage.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 import 'package:mutex/mutex.dart';
 
 part 'auth_service_auth_extension.dart';
@@ -38,6 +39,13 @@ abstract interface class IAuthService {
 
   /// Returns the [KdfUser] associated with the active wallet if KDF is running,
   /// otherwise null.
+  ///
+  /// **Performance Note**: This method returns the last user emitted by health
+  /// checks (updated every 5 minutes) to reduce RPC load. This means the
+  /// returned value could be up to 5 minutes stale if the active wallet is
+  /// changed externally. For most use cases, this trade-off is acceptable and
+  /// significantly reduces RPC spam.
+  ///
   /// NOTE: this function does not start/stop KDF or modify the active user,
   /// so atomic read/write protection is not used within and not required when
   /// calling this function.
@@ -109,6 +117,7 @@ class KdfAuthService implements IAuthService {
       StreamController.broadcast();
   final SecureLocalStorage _secureStorage = SecureLocalStorage();
   final ReadWriteMutex _authMutex = ReadWriteMutex();
+  final Logger _logger = Logger('KdfAuthService');
 
   KdfUser? _lastEmittedUser;
   Timer? _healthCheckTimer;

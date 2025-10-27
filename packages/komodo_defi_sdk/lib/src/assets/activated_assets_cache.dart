@@ -33,9 +33,12 @@ class ActivatedAssetsCache {
 
   List<Asset>? _cache;
   DateTime? _lastFetchAt;
-  Future<List<Asset>>? _pendingFetch;
+  Completer<List<Asset>>? _pendingCompleter;
   StreamSubscription<KdfUser?>? _authSubscription;
   bool _isDisposed = false;
+
+  // Generation counter to invalidate in-flight fetches
+  int _generation = 0;
 
   /// Returns the cached activated assets, refreshing when the TTL has expired
   /// or when [forceRefresh] is true.
@@ -50,22 +53,32 @@ class ActivatedAssetsCache {
       return _cache!;
     }
 
-    final inflight = _pendingFetch;
-    if (inflight != null) {
-      return inflight;
+    // If a fetch is already in progress, return its future
+    if (_pendingCompleter != null) {
+      return _pendingCompleter!.future;
     }
 
-    final future = _fetchActivatedAssets();
-    _pendingFetch = future;
+    // Capture the current generation to detect if we're invalidated
+    final generation = _generation;
+    final completer = Completer<List<Asset>>();
+    _pendingCompleter = completer;
+
     try {
-      final assets = await future;
-      _cache = assets;
-      _lastFetchAt = _clock();
-      return assets;
-    } finally {
-      if (identical(_pendingFetch, future)) {
-        _pendingFetch = null;
+      final assets = await _fetchActivatedAssets();
+
+      // Only update cache if we haven't been invalidated while fetching
+      if (_generation == generation) {
+        _cache = assets;
+        _lastFetchAt = _clock();
       }
+
+      completer.complete(assets);
+      return assets;
+    } catch (e) {
+      completer.completeError(e);
+      rethrow;
+    } finally {
+      _pendingCompleter = null;
     }
   }
 
@@ -76,10 +89,18 @@ class ActivatedAssetsCache {
   }
 
   /// Clears the current cache forcing the next lookup to hit the network.
+  ///
+  /// If a fetch is currently in progress, it will be allowed to complete for
+  /// callers who are awaiting it, but its result will not update the cache.
+  /// This is achieved using a generation counter that is incremented on each
+  /// invalidation, preventing stale in-flight fetches from populating the cache.
   void invalidate() {
     _cache = null;
     _lastFetchAt = null;
-    _pendingFetch = null;
+    _pendingCompleter = null;
+
+    // Increment generation to mark any in-flight fetches as stale
+    _generation++;
   }
 
   /// Disposes the cache, cancelling auth subscriptions and clearing state.

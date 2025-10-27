@@ -66,8 +66,8 @@ class NftActivationService {
     _activatedAssetsCache.invalidate();
   }
 
-  /// Ensures all [nftTickers] are activated. Any failures are logged and the
-  /// last encountered exception is rethrown after attempting all activations.
+  /// Ensures all [nftTickers] are activated. Failures are collected and an
+  /// aggregate exception is thrown if any activations fail.
   Future<void> enableNftChains(
     Iterable<String> nftTickers, {
     NftActivationParams? activationParams,
@@ -83,18 +83,25 @@ class NftActivationService {
       return;
     }
 
-    Exception? lastError;
+    final errors = <AssetId, Object>{};
     for (final asset in assetsById.values) {
       try {
         await enableNft(asset, activationParams: activationParams);
       } on Object catch (e, s) {
         _logger.severe('Failed to enable NFT asset ${asset.id.id}', e, s);
-        lastError = e is Exception ? e : Exception(e.toString());
+        errors[asset.id] = e;
       }
     }
 
-    if (lastError != null) {
-      throw lastError;
+    if (errors.isNotEmpty) {
+      final failedAssets = errors.keys.map((id) => id.id).join(', ');
+      final errorSummary = errors.entries
+          .map((e) => '${e.key.id}: ${e.value}')
+          .join('; ');
+      throw Exception(
+        'Failed to activate ${errors.length} of ${assetsById.length} NFT assets. '
+        'Failed: [$failedAssets]. Errors: $errorSummary',
+      );
     }
   }
 }

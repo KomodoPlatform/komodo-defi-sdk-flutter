@@ -34,11 +34,17 @@ extension KdfAuthServiceOperationsExtension on KdfAuthService {
         // User state changed
         _emitAuthStateChange(currentUser);
       }
-    } catch (e) {
-      // If we can't check status, assume KDF is not running properly
-      if (_lastEmittedUser != null) {
-        _emitAuthStateChange(null);
-      }
+    } catch (e, s) {
+      // Log the error but don't immediately sign out on transient RPC failures.
+      // The next health check (in 5 minutes) will verify if this is persistent.
+      // This prevents false sign-outs during temporary network issues.
+      _logger.warning(
+        'Health check failed, will retry on next interval',
+        e,
+        s,
+      );
+      // Note: We intentionally do NOT emit null here to avoid false sign-outs
+      // from transient errors. KDF may still be running and user authenticated.
     }
   }
 }
