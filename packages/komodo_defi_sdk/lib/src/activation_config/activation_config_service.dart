@@ -44,14 +44,15 @@ class ZhtlcUserConfig {
     this.scanBlocksPerIteration = 1000,
     this.scanIntervalMs = 0,
     this.taskStatusPollingIntervalMs,
-    this.syncParams,
   });
 
   final String zcashParamsPath;
   final int scanBlocksPerIteration;
   final int scanIntervalMs;
   final int? taskStatusPollingIntervalMs;
-  final ZhtlcSyncParams? syncParams;
+  // Sync params are no longer persisted here; they are supplied one-shot
+  // via ActivationConfigService at activation time when the user requests
+  // an intentional resync.
 
   JsonMap toJson() => {
     'zcashParamsPath': zcashParamsPath,
@@ -59,7 +60,6 @@ class ZhtlcUserConfig {
     'scanIntervalMs': scanIntervalMs,
     if (taskStatusPollingIntervalMs != null)
       'taskStatusPollingIntervalMs': taskStatusPollingIntervalMs,
-    if (syncParams != null) 'syncParams': syncParams!.toJsonRequest(),
   };
 
   static ZhtlcUserConfig fromJson(JsonMap json) => ZhtlcUserConfig(
@@ -69,9 +69,6 @@ class ZhtlcUserConfig {
     scanIntervalMs: json.valueOrNull<int>('scanIntervalMs') ?? 0,
     taskStatusPollingIntervalMs: json.valueOrNull<int>(
       'taskStatusPollingIntervalMs',
-    ),
-    syncParams: ZhtlcSyncParams.tryParse(
-      json.valueOrNull<dynamic>('syncParams'),
     ),
   );
 }
@@ -194,6 +191,9 @@ class ActivationConfigService {
   final ActivationConfigRepository repo;
   final WalletIdResolver _walletIdResolver;
 
+  // One-shot sync params coordinator. Not persisted; cleared after use.
+  final Map<_WalletAssetKey, ZhtlcSyncParams?> _oneShotSyncParams = {};
+
   Future<WalletId> _requireActiveWallet() async {
     final walletId = await _walletIdResolver();
     if (walletId == null) {
@@ -241,6 +241,24 @@ class ActivationConfigService {
     final walletId = await _walletIdResolver();
     if (walletId == null) return;
     _awaitingControllers[_WalletAssetKey(walletId, id)]?.complete(config);
+  }
+
+  /// Sets a one-shot sync params value for the next activation of [id].
+  /// This is not persisted and will be consumed and cleared on activation.
+  Future<void> setOneShotSyncParams(
+    AssetId id,
+    ZhtlcSyncParams? syncParams,
+  ) async {
+    final walletId = await _requireActiveWallet();
+    _oneShotSyncParams[_WalletAssetKey(walletId, id)] = syncParams;
+  }
+
+  /// Returns and clears any pending one-shot sync params for [id].
+  Future<ZhtlcSyncParams?> takeOneShotSyncParams(AssetId id) async {
+    final walletId = await _requireActiveWallet();
+    final key = _WalletAssetKey(walletId, id);
+    final value = _oneShotSyncParams.remove(key);
+    return value;
   }
 
   final Map<_WalletAssetKey, Completer<ZhtlcUserConfig?>> _awaitingControllers =
