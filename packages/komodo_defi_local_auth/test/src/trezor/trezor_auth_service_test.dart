@@ -138,9 +138,6 @@ class _FakeAuthService implements IAuthService {
   Future<bool> isSignedIn() async => activeUser != null;
 
   @override
-  Future<bool> ensureKdfHealthy() async => true;
-
-  @override
   Future<void> restoreSession(KdfUser user) async {
     activeUser = user;
     _authStateController.add(user);
