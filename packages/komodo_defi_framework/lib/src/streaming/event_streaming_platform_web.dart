@@ -3,29 +3,34 @@
 
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html show Event;
+import 'package:flutter/foundation.dart';
 import 'package:js/js_util.dart' as jsu;
 
 typedef SharedWorkerUnsubscribe = void Function();
 
-Object _getGlobalProperty(String name) => jsu.getProperty<Object>(jsu.globalThis, name);
+Object _getGlobalProperty(String name) =>
+    jsu.getProperty<Object>(jsu.globalThis, name);
 
-Object? _getProperty(Object o, String name) => jsu.getProperty<Object?>(o, name);
+Object? _getProperty(Object o, String name) =>
+    jsu.getProperty<Object?>(o, name);
 
-void _setProperty(Object o, String name, Object? value) => jsu.setProperty(o, name, value);
+void _setProperty(Object o, String name, Object? value) =>
+    jsu.setProperty(o, name, value);
 
-T _callConstructor<T>(Object ctor, List<Object?> args) => jsu.callConstructor(ctor, args) as T;
+T _callConstructor<T>(Object ctor, List<Object?> args) =>
+    jsu.callConstructor(ctor, args) as T;
 
-T _callMethod<T>(Object o, String name, List<Object?> args) => jsu.callMethod(o, name, args) as T;
+T _callMethod<T>(Object o, String name, List<Object?> args) =>
+    jsu.callMethod(o, name, args) as T;
 
 SharedWorkerUnsubscribe connectSharedWorker(
   void Function(Object? data) onMessage,
 ) {
   try {
     final Object sharedWorkerCtor = _getGlobalProperty('SharedWorker');
-    final Object worker = _callConstructor<Object>(
-      sharedWorkerCtor,
-      <Object?>['assets/packages/komodo_defi_framework/assets/web/event_streaming_worker.js'],
-    );
+    final Object worker = _callConstructor<Object>(sharedWorkerCtor, <Object?>[
+      'assets/packages/komodo_defi_framework/assets/web/event_streaming_worker.js',
+    ]);
     final Object? portMaybe = _getProperty(worker, 'port');
     if (portMaybe == null) return () {};
     final Object port = portMaybe;
@@ -33,10 +38,14 @@ SharedWorkerUnsubscribe connectSharedWorker(
 
     void handler(html.Event e) {
       final Object? data = _getProperty(e, 'data');
+
+      if (kDebugMode) {
+        print('EventStream: Received message: $data');
+      }
       onMessage(data);
     }
 
-    _setProperty(port, 'onmessage', handler);
+    _setProperty(port, 'onmessage', jsu.allowInterop(handler));
 
     return () {
       try {
@@ -48,5 +57,3 @@ SharedWorkerUnsubscribe connectSharedWorker(
     return () {};
   }
 }
-
-

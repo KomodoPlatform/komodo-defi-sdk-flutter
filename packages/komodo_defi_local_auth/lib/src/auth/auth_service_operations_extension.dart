@@ -55,13 +55,21 @@ extension KdfAuthServiceOperationsExtension on KdfAuthService {
 
   /// Enables the shutdown signal stream on KDF.
   Future<void> _enableShutdownStream() async {
+    // TODO: Remove if/when shutdown signal stream is supported on Web
+    // and Windows
+    if (kIsWeb || Platform.isWindows) {
+      _logger.info('Shutdown signal stream not supported on Web');
+      return;
+    }
     try {
       if (!await _kdfFramework.isRunning()) {
         return;
       }
 
-      await _client.rpc.streaming.enableShutdownSignal(clientId: 1);
-      _logger.info('Shutdown signal stream enabled successfully');
+      await _client.rpc.streaming.enableShutdownSignal();
+      _logger.info(
+        '[EVENT STREAM] Shutdown signal stream enabled successfully',
+      );
     } catch (e) {
       // Log but don't throw - streaming is a nice-to-have optimization
       _logger.warning('Could not enable shutdown signal stream: $e');

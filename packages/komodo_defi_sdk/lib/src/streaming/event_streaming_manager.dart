@@ -32,7 +32,7 @@ class EventStreamingManager {
 
   // Client ID used for all streaming operations
   // In a production app, this could be configurable or derived from app state
-  static const int _defaultClientId = 1;
+  static const int _defaultClientId = 0;
 
   // Active stream subscriptions keyed by a unique identifier
   final Map<String, _StreamSubscription> _activeStreams = {};
