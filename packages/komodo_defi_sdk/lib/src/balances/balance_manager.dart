@@ -5,6 +5,7 @@ import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
 import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
+import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -60,10 +61,12 @@ class BalanceManager implements IBalanceManager {
     required KomodoDefiLocalAuth auth,
     required PubkeyManager? pubkeyManager,
     required SharedActivationCoordinator? activationCoordinator,
+    required EventStreamingManager eventStreamingManager,
   }) : _activationCoordinator = activationCoordinator,
        _pubkeyManager = pubkeyManager,
        _assetLookup = assetLookup,
-       _auth = auth {
+       _auth = auth,
+       _eventStreamingManager = eventStreamingManager {
     // Listen for auth state changes
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
     _logger.fine('Initialized');
@@ -74,11 +77,8 @@ class BalanceManager implements IBalanceManager {
   PubkeyManager? _pubkeyManager;
   final IAssetLookup _assetLookup;
   final KomodoDefiLocalAuth _auth;
+  final EventStreamingManager _eventStreamingManager;
   StreamSubscription<KdfUser?>? _authSubscription;
-  final Duration _defaultPollingInterval = const Duration(minutes: 1); // consider DI/config override
-
-  /// Enable debug logging for balance polling
-  static bool enableDebugLogging = false;
 
   /// Cache of the latest known balances for each asset
   final Map<AssetId, BalanceInfo> _balanceCache = {};
@@ -336,78 +336,45 @@ class BalanceManager implements IBalanceManager {
         if (!controller.isClosed) controller.add(balance);
       }
 
-      // Set up periodic polling for balance updates
-      final periodicStream = Stream<void>.periodic(_defaultPollingInterval);
-      _activeWatchers[assetId] = periodicStream
-          .asyncMap<BalanceInfo?>((void _) async {
-            if (_isDisposed) return null;
+      // Subscribe to balance event stream for real-time updates
+      _logger.fine('Subscribing to balance stream for ${assetId.name}');
+      final balanceStreamSubscription = await _eventStreamingManager
+          .subscribeToBalance(coin: assetId.name);
 
-            // Check if dependencies are still initialized
-            if (_activationCoordinator == null || _pubkeyManager == null) {
-              return null;
-            }
+      _activeWatchers[assetId] = balanceStreamSubscription
+        ..onData((balanceEvent) {
+          if (_isDisposed) return;
 
-            // Check if user is still authenticated
-            final currentUser = await _auth.currentUser;
-            if (currentUser == null ||
-                currentUser.walletId != _currentWalletId) {
-              return null; // Don't fetch balance if user changed or logged out
-            }
+          // Verify the event is for the correct coin
+          if (balanceEvent.coin != assetId.name) return;
 
-            if (enableDebugLogging) {
-              _logger.info(
-                '[POLLING] Fetching balance for ${assetId.name} (every ${_defaultPollingInterval.inSeconds}s)',
-              );
-            }
+          // Update cache with the new balance
+          _balanceCache[assetId] = balanceEvent.balance;
 
-            try {
-              // Ensure asset is activated if needed
-              final isActive = await _ensureAssetActivated(
-                asset,
-                activateIfNeeded,
-              );
-
-              // Only fetch balance if asset is active
-              if (isActive) {
-                final balance = await getBalance(assetId);
-                if (enableDebugLogging) {
-                  _logger.info(
-                    '[POLLING] Balance fetched for ${assetId.name}: ${balance.total}',
-                  );
-                }
-                return balance;
-              }
-            } catch (e, s) {
-              // Just log the error and continue with the last known balance
-              // This prevents the stream from terminating on transient errors
-              if (enableDebugLogging) {
-                _logger.warning(
-                  '[POLLING] Balance fetch failed for ${assetId.name}: $e',
-                  e,
-                  s,
-                );
-              }
-            }
-
-            // Return the last known balance if we can't fetch a new one
-            return lastKnown(assetId);
-          })
-          .listen(
-            (BalanceInfo? balance) {
-              if (balance != null && !controller.isClosed) {
-                controller.add(balance);
-              }
-            },
-            onError: (Object error) {
-              if (!controller.isClosed) controller.addError(error);
-            },
-            onDone: () {
-              _stopWatchingBalance(assetId);
-              _logger.fine('Stopped watching ${assetId.name}');
-            },
-            cancelOnError: false,
-          );
-    } catch (e) {
+          // Emit the balance update to listeners
+          if (!controller.isClosed) {
+            controller.add(balanceEvent.balance);
+            _logger.fine(
+              'Balance update received for ${assetId.name}: ${balanceEvent.balance.total}',
+            );
+          }
+        })
+        ..onError((Object error) {
+          if (!controller.isClosed) {
+            controller.addError(error);
+          }
+          _logger.warning('Balance stream error for ${assetId.name}', error);
+        })
+        ..onDone(() {
+          _stopWatchingBalance(assetId);
+          _logger.fine('Balance stream closed for ${assetId.name}');
+        });
+    } catch (e, s) {
+      _logger.warning(
+        'Failed to start balance watcher for ${assetId.name}',
+        e,
+        s,
+      );
       if (!controller.isClosed) controller.addError(e);
     }
   }

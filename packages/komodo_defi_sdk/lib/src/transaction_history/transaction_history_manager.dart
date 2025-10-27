@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
-import 'package:komodo_defi_sdk/src/balances/balance_manager.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
+import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Core interface for transaction history manager
@@ -37,18 +36,18 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     this._assetProvider,
     this._activationCoordinator, {
     required PubkeyManager pubkeyManager,
-    required BalanceManager balanceManager,
+    required EventStreamingManager eventStreamingManager,
     TransactionStorage? storage,
   }) : _storage = storage ?? TransactionStorage.defaultForPlatform(),
        _strategyFactory = TransactionHistoryStrategyFactory(
          pubkeyManager,
          _auth,
        ),
-       _balanceManager = balanceManager {
+       _eventStreamingManager = eventStreamingManager {
     // Subscribe to auth changes directly in constructor
     _authSubscription = _auth.authStateChanges.listen((user) {
       if (user == null) {
-        _stopAllPolling();
+        _stopAllStreaming();
       }
     });
   }
@@ -58,16 +57,13 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   final IAssetProvider _assetProvider;
   final SharedActivationCoordinator _activationCoordinator;
   final TransactionStorage _storage;
-  final BalanceManager _balanceManager;
+  final EventStreamingManager _eventStreamingManager;
 
   final _streamControllers = <AssetId, StreamController<Transaction>>{};
-  final _balanceSubscriptions = <AssetId, StreamSubscription<BalanceInfo>>{};
-  final _lastObservedBalance = <AssetId, BalanceInfo>{};
+  final _txHistorySubscriptions = <AssetId, StreamSubscription<dynamic>>{};
   final _syncInProgress = <AssetId>{};
   final _rateLimiter = _RateLimiter(const Duration(milliseconds: 500));
 
-  // Maximum consecutive retry attempts when polling fails transiently
-  static const _maxPollingRetries = 3;
   static const _maxBatchSize = 50;
 
   bool _isDisposed = false;
@@ -75,15 +71,14 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
 
   final TransactionHistoryStrategyFactory _strategyFactory;
 
-  void _stopAllPolling() {
+  void _stopAllStreaming() {
     if (_isDisposed) return;
 
-    // Cancel all balance subscriptions
-    for (final sub in _balanceSubscriptions.values) {
+    // Cancel all transaction history subscriptions
+    for (final sub in _txHistorySubscriptions.values) {
       sub.cancel();
     }
-    _balanceSubscriptions.clear();
-    _lastObservedBalance.clear();
+    _txHistorySubscriptions.clear();
 
     // Close controllers in a separate iteration to avoid modification during iteration
     final controllers = _streamControllers.values.toList();
@@ -254,14 +249,14 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
       asset.id,
       () => StreamController<Transaction>.broadcast(
         onListen: () {
-          // Start balance-driven polling only once per asset
-          if (!_balanceSubscriptions.containsKey(asset.id)) {
-            _startPolling(asset);
+          // Start transaction history streaming only once per asset
+          if (!_txHistorySubscriptions.containsKey(asset.id)) {
+            _startStreaming(asset);
           }
         },
         onCancel: () async {
           if (!_streamControllers[asset.id]!.hasListener) {
-            _stopPolling(asset.id);
+            _stopStreaming(asset.id);
             await _streamControllers[asset.id]?.close();
             _streamControllers.remove(asset.id);
           }
@@ -328,60 +323,9 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     if (_isDisposed) return;
 
     await _storage.clearTransactions(asset.id, await _getCurrentWalletId());
-    _stopPolling(asset.id);
+    _stopStreaming(asset.id);
     await _streamControllers[asset.id]?.close();
     _streamControllers.remove(asset.id);
-  }
-
-  Future<void> _pollNewTransactions(Asset asset, [int retryCount = 0]) async {
-    if (_isDisposed || _syncInProgress.contains(asset.id)) return;
-
-    try {
-      final strategy = _strategyFactory.forAsset(asset);
-      final lastTx = await _storage.getLatestTransactionId(
-        asset.id,
-        await _getCurrentWalletId(),
-      );
-
-      await _rateLimiter.throttle();
-
-      final response = await strategy.fetchTransactionHistory(
-        _client,
-        asset,
-        lastTx != null
-            ? TransactionBasedPagination(
-                fromId: lastTx,
-                itemCount: _maxBatchSize,
-              )
-            : const PagePagination(pageNumber: 1, itemsPerPage: _maxBatchSize),
-      );
-
-      // If asset is no longer being watched, stop
-      if (!_streamControllers.containsKey(asset.id)) return;
-
-      if (response.transactions.isNotEmpty) {
-        final newTransactions = response.transactions
-            .map((tx) => tx.asTransaction(asset.id))
-            .toList();
-
-        await _batchStoreTransactions(newTransactions);
-
-        final controller = _streamControllers[asset.id];
-        if (controller != null && !controller.isClosed) {
-          for (final tx in newTransactions) {
-            controller.add(tx);
-          }
-        }
-      }
-    } catch (e) {
-      if (retryCount < _maxPollingRetries) {
-        final delay = Duration(seconds: math.pow(2, retryCount).toInt());
-        await Future.delayed(
-          delay,
-          () => _pollNewTransactions(asset, retryCount + 1),
-        );
-      }
-    }
   }
 
   Future<void> _ensureAssetActivated(Asset asset) async {
@@ -414,39 +358,72 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     }
   }
 
-  void _startPolling(Asset asset) {
+  Future<void> _startStreaming(Asset asset) async {
     // Ensure we don't duplicate subscriptions
-    _stopPolling(asset.id);
+    _stopStreaming(asset.id);
 
-    // Initial sync: poll once on activation
-    _pollNewTransactions(asset);
+    // Ensure asset is activated before subscribing
+    try {
+      await _ensureAssetActivated(asset);
+    } catch (e) {
+      final controller = _streamControllers[asset.id];
+      if (controller != null && !controller.isClosed) {
+        controller.addError(e);
+      }
+      return;
+    }
 
-    // Subscribe to balance changes and trigger history fetch only when balance changes
-    _balanceSubscriptions[asset.id] = _balanceManager
-        .watchBalance(asset.id)
-        .listen(
-          (BalanceInfo balance) {
-            final last = _lastObservedBalance[asset.id];
-            final changed =
-                last == null ||
-                balance.total != last.total ||
-                balance.spendable != last.spendable;
-            _lastObservedBalance[asset.id] = balance;
-            if (changed) {
-              _pollNewTransactions(asset);
+    // Subscribe to transaction history event stream for real-time updates
+    try {
+      final txHistoryStreamSubscription = await _eventStreamingManager
+          .subscribeToTxHistory(coin: asset.id.name);
+
+      _txHistorySubscriptions[asset.id] = txHistoryStreamSubscription
+        ..onData((txHistoryEvent) async {
+          if (_isDisposed) return;
+
+          // Verify the event is for the correct coin
+          if (txHistoryEvent.coin != asset.id.name) return;
+
+          // Process new transactions
+          final transactions = txHistoryEvent.transactions
+              .map((tx) => tx.asTransaction(asset.id))
+              .toList();
+
+          if (transactions.isEmpty) return;
+
+          // Store transactions in local storage
+          await _batchStoreTransactions(transactions);
+
+          // Emit each transaction to listeners
+          final controller = _streamControllers[asset.id];
+          if (controller != null && !controller.isClosed) {
+            for (final tx in transactions) {
+              controller.add(tx);
             }
-          },
-          onError: (Object error) {
-            // Keep subscription alive; BalanceManager should recover
-          },
-        );
+          }
+        })
+        ..onError((Object error) {
+          final controller = _streamControllers[asset.id];
+          if (controller != null && !controller.isClosed) {
+            controller.addError(error);
+          }
+        })
+        ..onDone(() {
+          _stopStreaming(asset.id);
+        });
+    } catch (e) {
+      final controller = _streamControllers[asset.id];
+      if (controller != null && !controller.isClosed) {
+        controller.addError(e);
+      }
+    }
   }
 
-  void _stopPolling(AssetId assetId) {
-    // Cancel balance subscription
-    _balanceSubscriptions[assetId]?.cancel();
-    _balanceSubscriptions.remove(assetId);
-    _lastObservedBalance.remove(assetId);
+  void _stopStreaming(AssetId assetId) {
+    // Cancel transaction history subscription
+    _txHistorySubscriptions[assetId]?.cancel();
+    _txHistorySubscriptions.remove(assetId);
   }
 
   Future<void> dispose() async {

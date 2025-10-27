@@ -221,11 +221,16 @@ class EtherscanProtocolHelper {
     return asset.protocol is Erc20Protocol && getApiUrlForAsset(asset) != null;
   }
 
-  /// Whether transaction history should also be fetched via mm2.
+  /// Whether transaction history should be enabled in KDF during activation.
   ///
-  /// When Etherscan does not support the provided [asset], transaction history
-  /// must fall back to mm2 RPC calls.
-  bool shouldEnableTransactionHistory(Asset asset) => !supportsProtocol(asset);
+  /// This must always return `true` because the SDK now uses event streaming
+  /// for real-time transaction updates. Even for assets supported by Etherscan,
+  /// KDF's transaction history must be enabled to allow the streaming system
+  /// to emit transaction events.
+  ///
+  /// Note: The Etherscan strategy is still used for fetching historical
+  /// transactions (pagination), while streaming provides real-time updates.
+  bool shouldEnableTransactionHistory(Asset asset) => true;
 
   /// Constructs the appropriate API URL for a given asset
   Uri? getApiUrlForAsset(Asset asset) {

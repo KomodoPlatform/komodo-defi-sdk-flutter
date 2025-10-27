@@ -133,6 +133,8 @@ Future<void> bootstrap({
   container.registerSingletonAsync<BalanceManager>(() async {
     final assets = await container.getAsync<AssetManager>();
     final auth = await container.getAsync<KomodoDefiLocalAuth>();
+    final eventStreamingManager = await container
+        .getAsync<EventStreamingManager>();
 
     // Create BalanceManager without its dependencies on SharedActivationCoordinator and PubkeyManager initially
     return BalanceManager(
@@ -141,8 +143,9 @@ Future<void> bootstrap({
       assetLookup: assets,
       pubkeyManager: null, // Will be set after PubkeyManager is created
       auth: auth,
+      eventStreamingManager: eventStreamingManager,
     );
-  }, dependsOn: [AssetManager, KomodoDefiLocalAuth]);
+  }, dependsOn: [AssetManager, KomodoDefiLocalAuth, EventStreamingManager]);
 
   // Register activation manager with asset manager dependency
   container.registerSingletonAsync<ActivationManager>(
@@ -273,16 +276,17 @@ Future<void> bootstrap({
       final auth = await container.getAsync<KomodoDefiLocalAuth>();
       final assetProvider = await container.getAsync<AssetManager>();
       final pubkeys = await container.getAsync<PubkeyManager>();
-      final balances = await container.getAsync<BalanceManager>();
       final activationCoordinator = await container
           .getAsync<SharedActivationCoordinator>();
+      final eventStreamingManager = await container
+          .getAsync<EventStreamingManager>();
       return TransactionHistoryManager(
         client,
         auth,
         assetProvider,
         activationCoordinator,
         pubkeyManager: pubkeys,
-        balanceManager: balances,
+        eventStreamingManager: eventStreamingManager,
       );
     },
     dependsOn: [
@@ -290,8 +294,8 @@ Future<void> bootstrap({
       KomodoDefiLocalAuth,
       AssetManager,
       PubkeyManager,
-      BalanceManager,
       SharedActivationCoordinator,
+      EventStreamingManager,
     ],
   );
 
