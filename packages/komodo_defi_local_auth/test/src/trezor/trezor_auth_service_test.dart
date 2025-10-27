@@ -105,6 +105,8 @@ class _FakeAuthService implements IAuthService {
   bool signOutCalled = false;
   ({String walletName, String password, AuthOptions options})? lastSignInArgs;
   ({String walletName, String password, AuthOptions options})? lastRegisterArgs;
+  bool ensureHealthyReturn = true;
+  int ensureHealthyCalls = 0;
 
   @override
   Stream<KdfUser?> get authStateChanges => _authStateController.stream;
@@ -201,6 +203,12 @@ class _FakeAuthService implements IAuthService {
     required String currentPassword,
     required String newPassword,
   }) async => throw UnimplementedError();
+
+  @override
+  Future<bool> ensureKdfHealthy() async {
+    ensureHealthyCalls++;
+    return ensureHealthyReturn;
+  }
 }
 
 void main() {

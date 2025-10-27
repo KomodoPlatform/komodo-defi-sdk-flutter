@@ -497,6 +497,9 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
       _disposeIfRegistered<AssetManager>((m) => m.dispose()),
       _disposeIfRegistered<ActivatedAssetsCache>((m) => m.dispose()),
       _disposeIfRegistered<ActivationManager>((m) => m.dispose()),
+      _disposeIfRegistered<ActivationConfigService>(
+        (m) async => m.dispose(),
+      ),
       _disposeIfRegistered<BalanceManager>((m) => m.dispose()),
       _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
       _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),

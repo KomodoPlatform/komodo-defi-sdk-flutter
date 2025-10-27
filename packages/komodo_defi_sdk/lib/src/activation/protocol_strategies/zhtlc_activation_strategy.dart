@@ -1,5 +1,9 @@
-// TODO(komodo-team): Allow passing the start sync mode; currently hard-coded
-// to sync from the time of activation.
+// Start sync mode can be passed via one-shot sync params through
+// ActivationConfigService.setOneShotSyncParams() before activation.
+// See zhtlc_config_dialog.dart for UI implementation.
+
+import 'dart:convert';
+import 'dart:developer' show log;
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
@@ -78,20 +82,44 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
             privKeyPolicy: privKeyPolicy,
           );
 
-      // Apply sync params if provided by the user configuration via rpc_data
-      if (params.mode?.rpcData != null && userConfig.syncParams != null) {
-        final rpcData = params.mode!.rpcData!;
-        final updatedRpcData = ActivationRpcData(
-          lightWalletDServers: rpcData.lightWalletDServers,
-          electrum: rpcData.electrum,
-          syncParams: userConfig.syncParams,
-        );
-        params = params.copyWith(
-          mode: ActivationMode(rpc: params.mode!.rpc, rpcData: updatedRpcData),
-        );
+      // Apply one-shot sync_params only when explicitly provided via config form
+      // right before activation. This avoids caching and unintended rewinds.
+      if (params.mode?.rpcData != null) {
+        final oneShotSync = await configService.takeOneShotSyncParams(asset.id);
+        if (oneShotSync != null) {
+          final rpcData = params.mode!.rpcData!;
+          final updatedRpcData = ActivationRpcData(
+            lightWalletDServers: rpcData.lightWalletDServers,
+            electrum: rpcData.electrum,
+            syncParams: oneShotSync,
+          );
+          params = params.copyWith(
+            mode:
+                ActivationMode(rpc: params.mode!.rpc, rpcData: updatedRpcData),
+          );
+        }
       }
 
       yield ZhtlcActivationProgress.validation(protocol);
+
+      // Debug logging for ZHTLC activation
+      log(
+        '[RPC] Activating ZHTLC coin: ${asset.id.id}',
+        name: 'ZhtlcActivationStrategy',
+      );
+      log(
+        '[RPC] Activation parameters: ${jsonEncode({
+          'ticker': asset.id.id,
+          'protocol': asset.protocol.subClass.formatted,
+          'activation_params': params.toRpcParams(),
+          'zcash_params_path': userConfig.zcashParamsPath,
+          'scan_blocks_per_iteration': userConfig.scanBlocksPerIteration,
+          'scan_interval_ms': userConfig.scanIntervalMs,
+          'polling_interval_ms': effectivePollingInterval.inMilliseconds,
+          'priv_key_policy': privKeyPolicy.toJson(),
+        })}',
+        name: 'ZhtlcActivationStrategy',
+      );
 
       // Initialize task and watch via TaskShepherd
       final stream = client.rpc.zhtlc

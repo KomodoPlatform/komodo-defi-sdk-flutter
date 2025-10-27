@@ -1,15 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart'
-    show ZhtlcSyncParams;
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart'
     show
         DownloadProgress,
         DownloadResultPatterns,
         ZcashParamsDownloader,
         ZcashParamsDownloaderFactory,
-        ZhtlcUserConfig;
+        ZhtlcUserConfig,
+        ZhtlcSyncParams;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Handles ZHTLC configuration dialog with optional automatic Zcash parameters download.
@@ -19,6 +18,12 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 /// - Shows progress dialog during download
 /// - Displays configuration dialog for user input
 /// - Handles download failures gracefully with fallback to manual configuration
+class ZhtlcConfigDialogResult {
+  ZhtlcConfigDialogResult({required this.config, this.oneShotSync});
+  final ZhtlcUserConfig config;
+  final ZhtlcSyncParams? oneShotSync;
+}
+
 class ZhtlcConfigDialogHandler {
   /// Shows a download progress dialog for Zcash parameters.
   ///
@@ -144,7 +149,7 @@ class ZhtlcConfigDialogHandler {
   /// On desktop platforms, this method will attempt to download Zcash parameters
   /// automatically. If successful, it prefills the parameters path in the dialog.
   /// Returns null if the user cancels the download or configuration.
-  static Future<ZhtlcUserConfig?> handleZhtlcConfigDialog(
+  static Future<ZhtlcConfigDialogResult?> handleZhtlcConfigDialog(
     BuildContext context,
     Asset asset,
   ) async {
@@ -199,7 +204,7 @@ class ZhtlcConfigDialogHandler {
   ///
   /// If [prefilledZcashPath] is provided, the Zcash parameters path field
   /// will be prefilled and made read-only.
-  static Future<ZhtlcUserConfig?> _showZhtlcConfigDialog(
+  static Future<ZhtlcConfigDialogResult?> _showZhtlcConfigDialog(
     BuildContext context,
     Asset asset, {
     String? prefilledZcashPath,
@@ -208,6 +213,7 @@ class ZhtlcConfigDialogHandler {
     final blocksPerIterController = TextEditingController(text: '1000');
     final intervalMsController = TextEditingController(text: '0');
 
+    // Sync params controls (used for initial sync and intentional rewinds)
     var syncType = 'date'; // earliest | height | date
     final syncValueController = TextEditingController();
     DateTime? selectedDateTime;
@@ -225,13 +231,11 @@ class ZhtlcConfigDialogHandler {
       );
 
       if (picked != null) {
-        // Default to midnight (00:00) of the selected day
         selectedDateTime = DateTime(picked.year, picked.month, picked.day);
         syncValueController.text = formatDate(selectedDateTime!);
       }
     }
 
-    // Initialize with default date (2 days ago)
     void initializeDate() {
       selectedDateTime = DateTime.now().subtract(const Duration(days: 2));
       syncValueController.text = formatDate(selectedDateTime!);
@@ -239,7 +243,7 @@ class ZhtlcConfigDialogHandler {
 
     initializeDate();
 
-    ZhtlcUserConfig? result;
+    ZhtlcConfigDialogResult? result;
 
     await showDialog<void>(
       context: context,
@@ -375,19 +379,21 @@ class ZhtlcConfigDialogHandler {
                         );
                         return;
                       }
-                      // Convert to Unix timestamp (seconds since epoch)
                       final unixTimestamp =
                           selectedDateTime!.millisecondsSinceEpoch ~/ 1000;
                       syncParams = ZhtlcSyncParams.date(unixTimestamp);
                     }
 
-                    result = ZhtlcUserConfig(
+                    final config = ZhtlcUserConfig(
                       zcashParamsPath: path,
                       scanBlocksPerIteration:
                           int.tryParse(blocksPerIterController.text) ?? 1000,
                       scanIntervalMs:
                           int.tryParse(intervalMsController.text) ?? 0,
-                      syncParams: syncParams,
+                    );
+                    result = ZhtlcConfigDialogResult(
+                      config: config,
+                      oneShotSync: syncParams,
                     );
                     Navigator.of(context).pop();
                   },

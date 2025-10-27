@@ -228,7 +228,12 @@ class KomodoDefiFramework implements ApiClient {
     // Extract method name for logging
     final method = request['method'] as String?;
     final stopwatch = Stopwatch()..start();
-
+    
+    // Log activation parameters before the call
+    if (method != null && _isActivationMethod(method)) {
+      _logActivationParameters(method, request);
+    }
+    
     try {
       final response = (await _kdfOperations.mm2Rpc(
         request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
@@ -267,7 +272,75 @@ class KomodoDefiFramework implements ApiClient {
         method == 'get_enabled_coins' ||
         method == 'my_balance';
   }
-
+  
+  bool _isActivationMethod(String method) {
+    return method.contains('enable') ||
+        method.contains('task::enable') ||
+        method.contains('task_enable');
+  }
+  
+  void _logActivationParameters(String method, JsonMap request) {
+    try {
+      final params = request['params'] as Map<String, dynamic>?;
+      if (params == null) return;
+      
+      final ticker = params['ticker'] as String?;
+      final activationParams = params['activation_params'] as Map<String, dynamic>?;
+      
+      if (ticker != null) {
+        _logger.info('[ACTIVATION] Enabling coin: $ticker');
+      }
+      
+      if (activationParams != null) {
+        // Log key activation parameters
+        final mode = activationParams['mode'];
+        final nodes = activationParams['nodes'];
+        final servers = activationParams['servers'];
+        final rpcUrls = activationParams['rpc_urls'];
+        final tokensRequests = activationParams['erc20_tokens_requests'];
+        final bchUrls = activationParams['bchd_urls'];
+        
+        final paramsSummary = <String, dynamic>{};
+        
+        if (mode != null) paramsSummary['mode'] = mode;
+        if (nodes != null) {
+          paramsSummary['nodes_count'] = (nodes as List).length;
+        }
+        if (servers != null) {
+          paramsSummary['electrum_servers_count'] = (servers as List).length;
+        }
+        if (rpcUrls != null) {
+          paramsSummary['rpc_urls_count'] = (rpcUrls as List).length;
+        }
+        if (tokensRequests != null) {
+          paramsSummary['tokens_count'] = (tokensRequests as List).length;
+        }
+        if (bchUrls != null) {
+          paramsSummary['bchd_urls_count'] = (bchUrls as List).length;
+        }
+        
+        // Add other relevant fields
+        if (activationParams['swap_contract_address'] != null) {
+          paramsSummary['swap_contract'] = activationParams['swap_contract_address'];
+        }
+        if (activationParams['platform'] != null) {
+          paramsSummary['platform'] = activationParams['platform'];
+        }
+        if (activationParams['contract_address'] != null) {
+          paramsSummary['contract_address'] = activationParams['contract_address'];
+        }
+        
+        _logger.info('[ACTIVATION] Parameters: $paramsSummary');
+        
+        // Log full activation params for detailed debugging
+        _logger.fine('[ACTIVATION] Full params: $activationParams');
+      }
+    } catch (e) {
+      // Silently ignore logging errors
+      _logger.info('[ACTIVATION] Error logging parameters: $e');
+    }
+  }
+  
   void _logElectrumConnectionInfo(String method, JsonMap response) {
     try {
       // Log connection information from enable responses
