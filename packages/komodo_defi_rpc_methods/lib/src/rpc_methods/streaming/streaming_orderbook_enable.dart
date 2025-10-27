@@ -1,11 +1,12 @@
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 import 'streaming_common.dart';
 
 /// stream::orderbook::enable
-class StreamOrderbookEnableRequest
-    extends BaseRequest<StreamEnableResponse, GeneralErrorResponse> {
+class StreamOrderbookEnableRequest extends BaseRequest<
+    StreamEnableResponse<OrderbookEvent>, GeneralErrorResponse> {
   StreamOrderbookEnableRequest({
     required String rpcPass,
     required this.base,
@@ -31,7 +32,8 @@ class StreamOrderbookEnableRequest
   });
 
   @override
-  StreamEnableResponse parse(JsonMap json) => StreamEnableResponse.parse(json);
+  StreamEnableResponse<OrderbookEvent> parse(JsonMap json) =>
+      StreamEnableResponse<OrderbookEvent>.parse(json);
 }
 
 

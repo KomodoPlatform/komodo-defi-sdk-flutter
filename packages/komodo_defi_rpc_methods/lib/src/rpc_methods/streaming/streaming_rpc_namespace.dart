@@ -3,8 +3,8 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 /// RPC namespace for streaming methods.
 ///
 /// Provides enable/disable methods for different streaming topics such as
-/// heartbeat, network, balances, orderbook, order status, swap status, and
-/// transaction history.
+/// heartbeat, network, balances, orderbook, order status, swap status,
+/// transaction history, and shutdown signals.
 class StreamingMethodsNamespace extends BaseRpcMethodNamespace {
   StreamingMethodsNamespace(super.client);
 
@@ -112,6 +112,24 @@ class StreamingMethodsNamespace extends BaseRpcMethodNamespace {
       StreamTxHistoryEnableRequest(
         rpcPass: rpcPass ?? this.rpcPass ?? '',
         coin: coin,
+        clientId: clientId,
+      ),
+    );
+  }
+
+  /// Enable shutdown signal stream
+  ///
+  /// Enables a stream that broadcasts OS shutdown signals
+  /// (like SIGINT, SIGTERM) before the KDF gracefully shuts down.
+  ///
+  /// Note: This feature is not supported on Windows and doesn't run on Web.
+  Future<StreamEnableResponse> enableShutdownSignal({
+    int? clientId,
+    String? rpcPass,
+  }) {
+    return execute(
+      StreamShutdownSignalEnableRequest(
+        rpcPass: rpcPass ?? this.rpcPass ?? '',
         clientId: clientId,
       ),
     );

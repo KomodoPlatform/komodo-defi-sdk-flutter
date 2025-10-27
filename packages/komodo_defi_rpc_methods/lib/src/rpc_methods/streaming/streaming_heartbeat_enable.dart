@@ -1,11 +1,12 @@
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 import 'streaming_common.dart';
 
 /// stream::heartbeat::enable
-class StreamHeartbeatEnableRequest
-    extends BaseRequest<StreamEnableResponse, GeneralErrorResponse> {
+class StreamHeartbeatEnableRequest extends BaseRequest<
+    StreamEnableResponse<HeartbeatEvent>, GeneralErrorResponse> {
   StreamHeartbeatEnableRequest({
     required String rpcPass,
     this.clientId,
@@ -31,7 +32,8 @@ class StreamHeartbeatEnableRequest
   });
 
   @override
-  StreamEnableResponse parse(JsonMap json) => StreamEnableResponse.parse(json);
+  StreamEnableResponse<HeartbeatEvent> parse(JsonMap json) =>
+      StreamEnableResponse<HeartbeatEvent>.parse(json);
 }
 
 

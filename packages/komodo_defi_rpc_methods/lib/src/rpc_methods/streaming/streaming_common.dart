@@ -1,18 +1,23 @@
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Generic response for stream enable methods returning a streamer identifier
-class StreamEnableResponse extends BaseResponse {
-  StreamEnableResponse({required super.mmrpc, required this.streamerId});
+class StreamEnableResponse<T extends KdfEvent> extends BaseResponse {
+  StreamEnableResponse({
+    required super.mmrpc,
+    required this.streamerId,
+  });
 
   factory StreamEnableResponse.parse(JsonMap json) {
     final result = json.value<JsonMap>('result');
-    return StreamEnableResponse(
+    return StreamEnableResponse<T>(
       mmrpc: json.value<String>('mmrpc'),
       streamerId: result.value<String>('streamer_id'),
     );
   }
 
+  /// The unique identifier for this stream
   final String streamerId;
 
   @override

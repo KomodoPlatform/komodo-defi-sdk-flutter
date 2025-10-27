@@ -150,6 +150,11 @@ class TestUnknownRepository implements CexRepository {
   ) async {
     return false;
   }
+
+  @override
+  void dispose() {
+    // No resources to dispose in mock
+  }
 }
 
 void main() {

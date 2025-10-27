@@ -1,3 +1,4 @@
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
@@ -5,7 +6,11 @@ import 'streaming_common.dart';
 
 /// stream::tx_history::enable
 class StreamTxHistoryEnableRequest
-    extends BaseRequest<StreamEnableResponse, GeneralErrorResponse> {
+    extends
+        BaseRequest<
+          StreamEnableResponse<TxHistoryEvent>,
+          GeneralErrorResponse
+        > {
   StreamTxHistoryEnableRequest({
     required String rpcPass,
     required this.coin,
@@ -25,7 +30,6 @@ class StreamTxHistoryEnableRequest
   });
 
   @override
-  StreamEnableResponse parse(JsonMap json) => StreamEnableResponse.parse(json);
+  StreamEnableResponse<TxHistoryEvent> parse(JsonMap json) =>
+      StreamEnableResponse<TxHistoryEvent>.parse(json);
 }
-
-

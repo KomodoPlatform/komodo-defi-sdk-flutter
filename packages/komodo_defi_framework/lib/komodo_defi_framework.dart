@@ -6,42 +6,21 @@ import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
+import 'package:komodo_defi_framework/src/streaming/event_streaming_service.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
-import 'package:komodo_defi_framework/src/streaming/event_streaming_service.dart';
 
 export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 export 'package:komodo_defi_framework/src/services/seed_node_service.dart';
 export 'package:komodo_defi_framework/src/streaming/event_streaming_service.dart';
-export 'package:komodo_defi_framework/src/streaming/event_streaming_models.dart';
+export 'package:komodo_defi_framework/src/streaming/events/kdf_event.dart';
 
 export 'src/operations/kdf_operations_interface.dart';
 
 class KomodoDefiFramework implements ApiClient {
-  KomodoDefiFramework._({
-    required IKdfHostConfig hostConfig,
-    void Function(String)? externalLogger,
-    // required KdfApiClient? client,
-  }) : _hostConfig = hostConfig {
-    _kdfOperations = createKdfOperations(
-      hostConfig: hostConfig,
-      logCallback: _log,
-    );
-
-    if (externalLogger != null) {
-      _initLogStream(externalLogger);
-    }
-  }
-
-  /// Enable debug logging for RPC calls (method names, durations, success/failure)
-  /// This can be controlled via app configuration
-  static bool enableDebugLogging = true;
-
-  final Logger _logger = Logger('KomodoDefiFramework');
-
   factory KomodoDefiFramework.create({
     required IKdfHostConfig hostConfig,
     void Function(String)? externalLogger,
@@ -65,6 +44,26 @@ class KomodoDefiFramework implements ApiClient {
       // client: KdfApiClient(this, rpcPassword: hostConfig.rpcPassword),
     ).._kdfOperations = kdfOperations;
   }
+  KomodoDefiFramework._({
+    required IKdfHostConfig hostConfig,
+    void Function(String)? externalLogger,
+    // required KdfApiClient? client,
+  }) : _hostConfig = hostConfig {
+    _kdfOperations = createKdfOperations(
+      hostConfig: hostConfig,
+      logCallback: _log,
+    );
+
+    if (externalLogger != null) {
+      _initLogStream(externalLogger);
+    }
+  }
+
+  /// Enable debug logging for RPC calls (method names, durations, success/failure)
+  /// This can be controlled via app configuration
+  static bool enableDebugLogging = true;
+
+  final Logger _logger = Logger('KomodoDefiFramework');
 
   // late final ApiClient client;
   final IKdfHostConfig _hostConfig;
