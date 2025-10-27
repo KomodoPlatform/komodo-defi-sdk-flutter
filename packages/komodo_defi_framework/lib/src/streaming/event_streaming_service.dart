@@ -27,6 +27,13 @@ class KdfEventStreamingService {
         final map = JsonMap.from(data! as Map);
         // Parse to typed event using the sealed class hierarchy
         final event = KdfEvent.fromJson(map);
+
+        // Log received events in debug mode
+        if (kDebugMode) {
+          final summary = _summarizeEvent(event);
+          print('[EventStream] Received ${event.typeEnum.value}: $summary');
+        }
+
         _events.add(event);
       } catch (e) {
         // Log parsing errors for debugging (silently ignore for now)
@@ -80,6 +87,23 @@ class KdfEventStreamingService {
   Future<void> dispose() async {
     _unsubscribe?.call();
     await _events.close();
+  }
+
+  /// Provides a concise summary of an event for debug logging
+  String _summarizeEvent(KdfEvent event) {
+    return switch (event) {
+      BalanceEvent(:final coin, :final balance) =>
+        'coin=$coin, spendable=${balance.spendable}, '
+            'unspendable=${balance.unspendable}',
+      OrderbookEvent(:final base, :final rel) => 'pair=$base/$rel',
+      NetworkEvent(:final netid, :final peers) => 'netid=$netid, peers=$peers',
+      HeartbeatEvent(:final timestamp) => 'timestamp=$timestamp',
+      SwapStatusEvent(:final uuid) => 'uuid=$uuid',
+      OrderStatusEvent(:final uuid) => 'uuid=$uuid',
+      TxHistoryEvent(:final coin, :final transactions) =>
+        'coin=$coin, txCount=${transactions.length}',
+      ShutdownSignalEvent(:final signalName) => 'signal=$signalName',
+    };
   }
 
   SharedWorkerUnsubscribe? _unsubscribe;
