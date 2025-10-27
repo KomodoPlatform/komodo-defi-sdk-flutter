@@ -23,7 +23,10 @@ class SparklineRepository with RepositoryFallbackMixin {
   factory SparklineRepository.defaultInstance() {
     return SparklineRepository([
       BinanceRepository(binanceProvider: const BinanceProvider()),
-      CoinPaprikaRepository(coinPaprikaProvider: CoinPaprikaProvider()),
+      CoinPaprikaRepository(
+        coinPaprikaProvider: CoinPaprikaProvider(),
+        ownsProvider: true,
+      ),
       CoinGeckoRepository(coinGeckoProvider: CoinGeckoCexProvider()),
     ], selectionStrategy: DefaultRepositorySelectionStrategy());
   }
@@ -172,6 +175,20 @@ class SparklineRepository with RepositoryFallbackMixin {
     );
 
     return future;
+  }
+
+  /// Releases held resources such as HTTP clients and Hive boxes.
+  Future<void> dispose() async {
+    for (final repository in _repositories) {
+      repository.dispose();
+    }
+
+    final box = _box;
+    if (box != null && box.isOpen) {
+      await box.close();
+    }
+    _box = null;
+    isInitialized = false;
   }
 
   /// Internal method to perform the actual sparkline fetch

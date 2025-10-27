@@ -68,6 +68,9 @@ abstract class ICoinPaprikaProvider {
 
   /// The current API plan with its limitations and features.
   CoinPaprikaApiPlan get apiPlan;
+
+  /// Releases any resources held by the provider.
+  void dispose();
 }
 
 /// Implementation of CoinPaprika data provider using HTTP requests.
@@ -80,7 +83,8 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
     this.apiPlan = const CoinPaprikaApiPlan.free(),
     http.Client? httpClient,
   }) : _apiKey = apiKey,
-       _httpClient = httpClient ?? http.Client();
+       _httpClient = httpClient ?? http.Client(),
+       _ownsHttpClient = httpClient == null;
 
   /// The base URL for the CoinPaprika API.
   final String baseUrl;
@@ -97,6 +101,7 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
 
   /// The HTTP client for the CoinPaprika API.
   final http.Client _httpClient;
+  final bool _ownsHttpClient;
 
   static final Logger _logger = Logger('CoinPaprikaProvider');
 
@@ -513,5 +518,12 @@ class CoinPaprikaProvider implements ICoinPaprikaProvider {
           ? Decimal.parse(json['market_cap'].toString())
           : null,
     );
+  }
+
+  @override
+  void dispose() {
+    if (_ownsHttpClient) {
+      _httpClient.close();
+    }
   }
 }
