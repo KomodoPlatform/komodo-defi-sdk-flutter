@@ -34,7 +34,9 @@ export 'src/activation_config/activation_config_service.dart'
         ZhtlcUserConfig;
 export 'src/activation_config/hive_activation_config_repository.dart'
     show HiveActivationConfigRepository;
-export 'src/assets/_assets_index.dart' show AssetHdWalletAddressesExtension;
+export 'src/activation/nft_activation_service.dart' show NftActivationService;
+export 'src/assets/_assets_index.dart'
+    show AssetHdWalletAddressesExtension, ActivatedAssetsCache;
 export 'src/assets/asset_extensions.dart'
     show
         AssetFaucetExtension,

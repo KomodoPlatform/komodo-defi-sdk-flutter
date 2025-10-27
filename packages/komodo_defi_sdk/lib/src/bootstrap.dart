@@ -93,20 +93,31 @@ Future<void> bootstrap({
 
   // Register asset manager first since it's a core dependency
   container.registerSingletonAsync<AssetManager>(() async {
-    final client = await container.getAsync<ApiClient>();
     final auth = await container.getAsync<KomodoDefiLocalAuth>();
     final assetManager = AssetManager(
-      client,
       auth,
       config,
       () => container<ActivationManager>(),
       container<KomodoAssetsUpdateManager>(),
+      () => container<ActivatedAssetsCache>(),
     );
     await assetManager.init();
     // Will be removed in near future after KW is fully migrated to KDF
     await assetManager.initTickerIndex();
     return assetManager;
-  }, dependsOn: [ApiClient, KomodoDefiLocalAuth]);
+  }, dependsOn: [KomodoDefiLocalAuth]);
+
+  container.registerSingletonAsync<ActivatedAssetsCache>(() async {
+    final client = await container.getAsync<ApiClient>();
+    final auth = await container.getAsync<KomodoDefiLocalAuth>();
+    final assets = await container.getAsync<AssetManager>();
+    return ActivatedAssetsCache(
+      client: client,
+      auth: auth,
+      assetLookup: assets,
+      ttl: config.activatedAssetsCacheTtl,
+    );
+  }, dependsOn: [ApiClient, KomodoDefiLocalAuth, AssetManager]);
 
   // Register BalanceManager BEFORE ActivationManager to avoid circular dependency
   container.registerSingletonAsync<BalanceManager>(() async {
@@ -131,6 +142,8 @@ Future<void> bootstrap({
       final assetManager = await container.getAsync<AssetManager>();
       final balanceManager = await container.getAsync<BalanceManager>();
       final configService = await container.getAsync<ActivationConfigService>();
+      final activatedAssetsCache = await container
+          .getAsync<ActivatedAssetsCache>();
 
       final activationManager = ActivationManager(
         client,
@@ -142,6 +155,7 @@ Future<void> bootstrap({
         // Needed here to add custom tokens to the same instance
         // as the asset manager
         container<KomodoAssetsUpdateManager>(),
+        activatedAssetsCache,
       );
 
       return activationManager;
@@ -153,8 +167,17 @@ Future<void> bootstrap({
       BalanceManager,
       ActivationConfigService,
       KomodoAssetsUpdateManager,
+      ActivatedAssetsCache,
     ],
   );
+
+  container.registerSingletonAsync<NftActivationService>(() async {
+    final client = await container.getAsync<ApiClient>();
+    final assetManager = await container.getAsync<AssetManager>();
+    final activatedAssetsCache = await container
+        .getAsync<ActivatedAssetsCache>();
+    return NftActivationService(client, assetManager, activatedAssetsCache);
+  }, dependsOn: [ApiClient, AssetManager, ActivatedAssetsCache]);
 
   // Register shared activation coordinator
   container.registerSingletonAsync<SharedActivationCoordinator>(() async {
