@@ -109,6 +109,7 @@ abstract interface class IAuthService {
 class KdfAuthService implements IAuthService {
   KdfAuthService(this._kdfFramework, this._hostConfig) {
     _startHealthCheck();
+    _subscribeToShutdownSignals();
   }
 
   final KomodoDefiFramework _kdfFramework;
@@ -121,6 +122,7 @@ class KdfAuthService implements IAuthService {
 
   KdfUser? _lastEmittedUser;
   Timer? _healthCheckTimer;
+  StreamSubscription<ShutdownSignalEvent>? _shutdownSubscription;
 
   // Cache for wallet users list to avoid spamming get_wallet_names
   List<KdfUser>? _usersCache;
@@ -437,6 +439,8 @@ class KdfAuthService implements IAuthService {
     // only be acquired once the active read/write operations complete.
     await _lockWriteOperation(() async {
       _healthCheckTimer?.cancel();
+      await _shutdownSubscription?.cancel();
+      _shutdownSubscription = null;
       await _stopKdf();
       _authStateController.close();
       _lastEmittedUser = null;
