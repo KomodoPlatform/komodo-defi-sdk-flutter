@@ -44,12 +44,17 @@ class ZhtlcUserConfig {
     this.scanBlocksPerIteration = 1000,
     this.scanIntervalMs = 0,
     this.taskStatusPollingIntervalMs,
+    this.syncParams,
   });
 
   final String zcashParamsPath;
   final int scanBlocksPerIteration;
   final int scanIntervalMs;
   final int? taskStatusPollingIntervalMs;
+  /// Optional, accepted for backward compatibility. Not persisted.
+  /// If provided to saveZhtlcConfig, it will be applied as a one-shot
+  /// sync override for the next activation and then discarded.
+  final ZhtlcSyncParams? syncParams;
   // Sync params are no longer persisted here; they are supplied one-shot
   // via ActivationConfigService at activation time when the user requests
   // an intentional resync.
@@ -234,6 +239,11 @@ class ActivationConfigService {
 
   Future<void> saveZhtlcConfig(AssetId id, ZhtlcUserConfig config) async {
     final walletId = await _requireActiveWallet();
+    // If legacy callers provide syncParams in the config, convert it to
+    // a one-shot sync override and do not persist it.
+    if (config.syncParams != null) {
+      _oneShotSyncParams[_WalletAssetKey(walletId, id)] = config.syncParams;
+    }
     await repo.saveConfig(walletId, id, config);
   }
 
