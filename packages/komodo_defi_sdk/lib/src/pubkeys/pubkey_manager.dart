@@ -99,17 +99,19 @@ class PubkeyManager implements IPubkeyManager {
     if (hydrated != null) {
       _pubkeysCache[asset.id] = hydrated;
       // Fire-and-forget fresh refresh; deduped if one is already running
-      unawaited(() async {
-        try {
-          final fresh = await _fetchFreshPubkeys(asset, walletId);
-          final controller = _pubkeysControllers[asset.id];
-          if (controller != null && !controller.isClosed && fresh != hydrated) {
-            controller.add(fresh);
-          }
-        } catch (_) {
-          // best-effort background refresh
-        }
-      }());
+      final refreshFuture = _fetchFreshPubkeys(asset, walletId)
+          .then((fresh) {
+            final controller = _pubkeysControllers[asset.id];
+            if (controller != null &&
+                !controller.isClosed &&
+                fresh != hydrated) {
+              controller.add(fresh);
+            }
+          })
+          .catchError((_) {
+            // best-effort background refresh
+          });
+      unawaited(refreshFuture);
       return hydrated;
     }
 

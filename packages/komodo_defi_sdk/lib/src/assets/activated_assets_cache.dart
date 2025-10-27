@@ -60,6 +60,7 @@ class ActivatedAssetsCache {
 
     // Capture the current generation to detect if we're invalidated
     final generation = _generation;
+    final fetchStart = _clock(); // Capture timestamp at fetch start
     final completer = Completer<List<Asset>>();
     _pendingCompleter = completer;
 
@@ -69,7 +70,7 @@ class ActivatedAssetsCache {
       // Only update cache if we haven't been invalidated while fetching
       if (_generation == generation) {
         _cache = assets;
-        _lastFetchAt = _clock();
+        _lastFetchAt = fetchStart; // Use start time for accurate TTL
       }
 
       completer.complete(assets);

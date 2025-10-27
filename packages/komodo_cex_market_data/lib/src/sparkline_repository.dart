@@ -180,12 +180,20 @@ class SparklineRepository with RepositoryFallbackMixin {
   /// Releases held resources such as HTTP clients and Hive boxes.
   Future<void> dispose() async {
     for (final repository in _repositories) {
-      repository.dispose();
+      try {
+        repository.dispose();
+      } catch (e, st) {
+        _logger.severe('Error disposing repository: $repository', e, st);
+      }
     }
 
     final box = _box;
     if (box != null && box.isOpen) {
-      await box.close();
+      try {
+        await box.close();
+      } catch (e, st) {
+        _logger.severe('Error closing Hive box', e, st);
+      }
     }
     _box = null;
     isInitialized = false;

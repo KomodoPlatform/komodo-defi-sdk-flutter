@@ -45,8 +45,7 @@ class HivePubkeysStorage implements PubkeysStorage {
     final box = await _openBox();
     final prefix = '${walletId.compoundId}|';
     final result = <String, Map<String, dynamic>>{};
-    for (final dynamicKey in box.keys) {
-      final key = dynamicKey as String;
+    for (final key in box.keys.whereType<String>()) {
       if (!key.startsWith(prefix)) continue;
       final record = box.get(key);
       if (record == null) continue;

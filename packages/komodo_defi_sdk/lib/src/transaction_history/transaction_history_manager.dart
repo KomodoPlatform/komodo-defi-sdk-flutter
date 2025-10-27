@@ -378,6 +378,12 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
       final txHistoryStreamSubscription = await _eventStreamingManager
           .subscribeToTxHistory(coin: asset.id.name);
 
+      // Check again to avoid race condition: only store if not already present
+      if (_txHistorySubscriptions.containsKey(asset.id)) {
+        await txHistoryStreamSubscription.cancel();
+        return;
+      }
+
       _txHistorySubscriptions[asset.id] = txHistoryStreamSubscription
         ..onData((txHistoryEvent) async {
           if (_isDisposed) return;

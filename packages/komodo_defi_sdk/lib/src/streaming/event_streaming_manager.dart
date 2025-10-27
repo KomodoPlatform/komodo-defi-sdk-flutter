@@ -274,7 +274,7 @@ class EventStreamingManager {
     // Disable all streams in parallel
     await Future.wait(
       keys.map(_disableStream),
-      // Continue even if some fail
+      eagerError: false, // Continue even if some fail
     );
 
     _activeStreams.clear();
