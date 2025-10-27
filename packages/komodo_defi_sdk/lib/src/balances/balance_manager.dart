@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
 import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
+import 'package:komodo_defi_sdk/src/assets/asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
@@ -62,11 +64,13 @@ class BalanceManager implements IBalanceManager {
     required PubkeyManager? pubkeyManager,
     required SharedActivationCoordinator? activationCoordinator,
     required EventStreamingManager eventStreamingManager,
+    AssetHistoryStorage? assetHistoryStorage,
   }) : _activationCoordinator = activationCoordinator,
        _pubkeyManager = pubkeyManager,
        _assetLookup = assetLookup,
        _auth = auth,
-       _eventStreamingManager = eventStreamingManager {
+       _eventStreamingManager = eventStreamingManager,
+       _assetHistoryStorage = assetHistoryStorage ?? AssetHistoryStorage() {
     // Listen for auth state changes
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
     _logger.fine('Initialized');
@@ -78,6 +82,7 @@ class BalanceManager implements IBalanceManager {
   final IAssetLookup _assetLookup;
   final KomodoDefiLocalAuth _auth;
   final EventStreamingManager _eventStreamingManager;
+  final AssetHistoryStorage _assetHistoryStorage;
   StreamSubscription<KdfUser?>? _authSubscription;
 
   /// Cache of the latest known balances for each asset
@@ -319,19 +324,49 @@ class BalanceManager implements IBalanceManager {
     _currentWalletId = user.walletId;
     _logger.fine('Starting balance watcher for ${assetId.name}');
 
+    // Optimization: Check if this is a newly created wallet (no asset history)
+    final previouslyEnabledAssets = await _assetHistoryStorage.getWalletAssets(
+      user.walletId,
+    );
+    final isFirstTimeEnabling = !previouslyEnabledAssets.contains(assetId.id);
+    
+    // If wallet has NO asset activation history at all, it's new (not imported)
+    // This is simpler and more robust than time-based checks
+    final isNewWallet = previouslyEnabledAssets.isEmpty;
+
     // Emit the last known balance immediately if available
     final maybeKnownBalance = lastKnown(assetId);
     if (maybeKnownBalance != null) {
       controller.add(maybeKnownBalance);
       _logger.fine('Emitted initial balance for ${assetId.name}');
+    } else if (isFirstTimeEnabling && isNewWallet) {
+      // For newly created wallets (not imported) on first-time asset enablement,
+      // assume zero balance to reduce RPC spam
+      final zeroBalance = BalanceInfo(
+        total: Decimal.zero,
+        spendable: Decimal.zero,
+        unspendable: Decimal.zero,
+      );
+      _balanceCache[assetId] = zeroBalance;
+      controller.add(zeroBalance);
+      _logger.fine(
+        'Emitted zero balance for first-time asset ${assetId.name} in new wallet',
+      );
     }
 
     try {
       // Ensure asset is activated if needed
       final isActive = await _ensureAssetActivated(asset, activateIfNeeded);
 
-      // If active, get the first balance
-      if (isActive) {
+      // Mark asset as seen after successful activation
+      if (isActive && isFirstTimeEnabling) {
+        await _assetHistoryStorage.addAssetToWallet(user.walletId, assetId.id);
+        
+        // Fetch real balance (will update from zero for new wallets)
+        final balance = await getBalance(assetId);
+        if (!controller.isClosed) controller.add(balance);
+      } else if (isActive) {
+        // If active but not first time, still get balance
         final balance = await getBalance(assetId);
         if (!controller.isClosed) controller.add(balance);
       }

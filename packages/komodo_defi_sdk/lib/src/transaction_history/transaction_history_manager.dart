@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/assets/asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -38,12 +39,14 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     required PubkeyManager pubkeyManager,
     required EventStreamingManager eventStreamingManager,
     TransactionStorage? storage,
+    AssetHistoryStorage? assetHistoryStorage,
   }) : _storage = storage ?? TransactionStorage.defaultForPlatform(),
        _strategyFactory = TransactionHistoryStrategyFactory(
          pubkeyManager,
          _auth,
        ),
-       _eventStreamingManager = eventStreamingManager {
+       _eventStreamingManager = eventStreamingManager,
+       _assetHistoryStorage = assetHistoryStorage ?? AssetHistoryStorage() {
     // Subscribe to auth changes directly in constructor
     _authSubscription = _auth.authStateChanges.listen((user) {
       if (user == null) {
@@ -58,6 +61,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   final SharedActivationCoordinator _activationCoordinator;
   final TransactionStorage _storage;
   final EventStreamingManager _eventStreamingManager;
+  final AssetHistoryStorage _assetHistoryStorage;
 
   final _streamControllers = <AssetId, StreamController<Transaction>>{};
   final _txHistorySubscriptions = <AssetId, StreamSubscription<dynamic>>{};
@@ -103,6 +107,35 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
         pageNumber: 1,
         itemsPerPage: _maxBatchSize,
       );
+
+      // Optimization: Check if this is a newly created wallet (no asset history)
+      final user = await _auth.currentUser;
+      if (user != null && pagination is PagePagination && pagination.pageNumber == 1) {
+        final previouslyEnabledAssets = await _assetHistoryStorage.getWalletAssets(
+          user.walletId,
+        );
+        final isFirstTimeEnabling = !previouslyEnabledAssets.contains(asset.id.id);
+        
+        // If wallet has NO asset activation history at all, it's new (not imported)
+        final isNewWallet = previouslyEnabledAssets.isEmpty;
+
+        // For newly created wallets (not imported) on first-time asset enablement,
+        // assume empty transaction history to reduce RPC spam
+        if (isFirstTimeEnabling && isNewWallet) {
+          // Still need to activate the asset
+          await _ensureAssetActivated(asset);
+          
+          // Mark asset as seen after activation
+          await _assetHistoryStorage.addAssetToWallet(user.walletId, asset.id.id);
+          
+          return TransactionPage(
+            transactions: const [],
+            total: 0,
+            currentPage: 1,
+            totalPages: 1,
+          );
+        }
+      }
 
       // First try to get from local storage
       final localPage = await _storage.getTransactions(

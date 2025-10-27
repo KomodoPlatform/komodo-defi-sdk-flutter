@@ -144,6 +144,7 @@ Future<void> bootstrap({
       pubkeyManager: null, // Will be set after PubkeyManager is created
       auth: auth,
       eventStreamingManager: eventStreamingManager,
+      assetHistoryStorage: container<AssetHistoryStorage>(),
     );
   }, dependsOn: [AssetManager, KomodoDefiLocalAuth, EventStreamingManager]);
 
@@ -287,6 +288,7 @@ Future<void> bootstrap({
         activationCoordinator,
         pubkeyManager: pubkeys,
         eventStreamingManager: eventStreamingManager,
+        assetHistoryStorage: container<AssetHistoryStorage>(),
       );
     },
     dependsOn: [
