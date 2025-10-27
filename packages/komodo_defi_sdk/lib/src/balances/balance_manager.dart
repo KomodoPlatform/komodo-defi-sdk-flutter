@@ -324,15 +324,16 @@ class BalanceManager implements IBalanceManager {
     _currentWalletId = user.walletId;
     _logger.fine('Starting balance watcher for ${assetId.name}');
 
-    // Optimization: Check if this is a newly created wallet (no asset history)
+    // Optimization: Check if this is a newly created wallet (not imported)
     final previouslyEnabledAssets = await _assetHistoryStorage.getWalletAssets(
       user.walletId,
     );
     final isFirstTimeEnabling = !previouslyEnabledAssets.contains(assetId.id);
     
-    // If wallet has NO asset activation history at all, it's new (not imported)
-    // This is simpler and more robust than time-based checks
-    final isNewWallet = previouslyEnabledAssets.isEmpty;
+    // Check metadata to determine if this was an imported wallet
+    // Only optimize for genuinely new wallets, not imported ones
+    final isImported = user.metadata['isImported'] == true;
+    final isNewWallet = previouslyEnabledAssets.isEmpty && !isImported;
 
     // Emit the last known balance immediately if available
     final maybeKnownBalance = lastKnown(assetId);
@@ -361,7 +362,7 @@ class BalanceManager implements IBalanceManager {
       // Mark asset as seen after successful activation
       if (isActive && isFirstTimeEnabling) {
         await _assetHistoryStorage.addAssetToWallet(user.walletId, assetId.id);
-        
+
         // Fetch real balance (will update from zero for new wallets)
         final balance = await getBalance(assetId);
         if (!controller.isClosed) controller.add(balance);

@@ -222,7 +222,8 @@ class KdfAuthService implements IAuthService {
     );
 
     return _lockWriteOperation(() async {
-      final currentUser = await _registerNewUser(config, options);
+      final isImported = mnemonic != null;
+      final currentUser = await _registerNewUser(config, options, isImported);
       _emitAuthStateChange(currentUser);
       _invalidateUsersCache();
       return currentUser;

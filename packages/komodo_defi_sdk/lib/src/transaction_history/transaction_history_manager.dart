@@ -108,26 +108,34 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
         itemsPerPage: _maxBatchSize,
       );
 
-      // Optimization: Check if this is a newly created wallet (no asset history)
+      // Optimization: Check if this is a newly created wallet (not imported)
       final user = await _auth.currentUser;
-      if (user != null && pagination is PagePagination && pagination.pageNumber == 1) {
-        final previouslyEnabledAssets = await _assetHistoryStorage.getWalletAssets(
-          user.walletId,
+      if (user != null &&
+          pagination is PagePagination &&
+          pagination.pageNumber == 1) {
+        final previouslyEnabledAssets = await _assetHistoryStorage
+            .getWalletAssets(user.walletId);
+        final isFirstTimeEnabling = !previouslyEnabledAssets.contains(
+          asset.id.id,
         );
-        final isFirstTimeEnabling = !previouslyEnabledAssets.contains(asset.id.id);
-        
-        // If wallet has NO asset activation history at all, it's new (not imported)
-        final isNewWallet = previouslyEnabledAssets.isEmpty;
+
+        // Check metadata to determine if this was an imported wallet
+        // Only optimize for genuinely new wallets, not imported ones
+        final isImported = user.metadata['isImported'] == true;
+        final isNewWallet = previouslyEnabledAssets.isEmpty && !isImported;
 
         // For newly created wallets (not imported) on first-time asset enablement,
         // assume empty transaction history to reduce RPC spam
         if (isFirstTimeEnabling && isNewWallet) {
           // Still need to activate the asset
           await _ensureAssetActivated(asset);
-          
+
           // Mark asset as seen after activation
-          await _assetHistoryStorage.addAssetToWallet(user.walletId, asset.id.id);
-          
+          await _assetHistoryStorage.addAssetToWallet(
+            user.walletId,
+            asset.id.id,
+          );
+
           return TransactionPage(
             transactions: const [],
             total: 0,
