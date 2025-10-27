@@ -5,6 +5,7 @@ import 'package:hive_ce/hive.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 
 typedef JsonMap = Map<String, dynamic>;
 
@@ -51,7 +52,13 @@ class ZhtlcUserConfig {
   final int scanBlocksPerIteration;
   final int scanIntervalMs;
   final int? taskStatusPollingIntervalMs;
+  /// Optional, accepted for backward compatibility. Not persisted.
+  /// If provided to saveZhtlcConfig, it will be applied as a one-shot
+  /// sync override for the next activation and then discarded.
   final ZhtlcSyncParams? syncParams;
+  // Sync params are no longer persisted here; they are supplied one-shot
+  // via ActivationConfigService at activation time when the user requests
+  // an intentional resync.
 
   JsonMap toJson() => {
     'zcashParamsPath': zcashParamsPath,
@@ -59,7 +66,6 @@ class ZhtlcUserConfig {
     'scanIntervalMs': scanIntervalMs,
     if (taskStatusPollingIntervalMs != null)
       'taskStatusPollingIntervalMs': taskStatusPollingIntervalMs,
-    if (syncParams != null) 'syncParams': syncParams!.toJsonRequest(),
   };
 
   static ZhtlcUserConfig fromJson(JsonMap json) => ZhtlcUserConfig(
@@ -69,9 +75,6 @@ class ZhtlcUserConfig {
     scanIntervalMs: json.valueOrNull<int>('scanIntervalMs') ?? 0,
     taskStatusPollingIntervalMs: json.valueOrNull<int>(
       'taskStatusPollingIntervalMs',
-    ),
-    syncParams: ZhtlcSyncParams.tryParse(
-      json.valueOrNull<dynamic>('syncParams'),
     ),
   );
 }
@@ -189,10 +192,31 @@ class ActivationConfigService {
   ActivationConfigService(
     this.repo, {
     required WalletIdResolver walletIdResolver,
-  }) : _walletIdResolver = walletIdResolver;
+    Stream<KdfUser?>? authStateChanges,
+  }) : _walletIdResolver = walletIdResolver {
+    // Listen to auth state changes to clear one-shot params on sign-out
+    _authStateSubscription = authStateChanges?.listen((user) {
+      if (user == null) {
+        // User signed out, clear all one-shot params
+        _oneShotSyncParams.clear();
+      } else {
+        // User signed in or changed, clear one-shot params for previous wallet
+        // if it was different from the current one
+        if (_lastWalletId != null && _lastWalletId != user.walletId) {
+          clearOneShotSyncParamsForWallet(_lastWalletId!);
+        }
+        _lastWalletId = user.walletId;
+      }
+    });
+  }
 
   final ActivationConfigRepository repo;
   final WalletIdResolver _walletIdResolver;
+  StreamSubscription<KdfUser?>? _authStateSubscription;
+  WalletId? _lastWalletId;
+
+  // One-shot sync params coordinator. Not persisted; cleared after use.
+  final Map<_WalletAssetKey, ZhtlcSyncParams?> _oneShotSyncParams = {};
 
   Future<WalletId> _requireActiveWallet() async {
     final walletId = await _walletIdResolver();
@@ -234,6 +258,11 @@ class ActivationConfigService {
 
   Future<void> saveZhtlcConfig(AssetId id, ZhtlcUserConfig config) async {
     final walletId = await _requireActiveWallet();
+    // If legacy callers provide syncParams in the config, convert it to
+    // a one-shot sync override and do not persist it.
+    if (config.syncParams != null) {
+      _oneShotSyncParams[_WalletAssetKey(walletId, id)] = config.syncParams;
+    }
     await repo.saveConfig(walletId, id, config);
   }
 
@@ -241,6 +270,37 @@ class ActivationConfigService {
     final walletId = await _walletIdResolver();
     if (walletId == null) return;
     _awaitingControllers[_WalletAssetKey(walletId, id)]?.complete(config);
+  }
+
+  /// Sets a one-shot sync params value for the next activation of [id].
+  /// This is not persisted and will be consumed and cleared on activation.
+  Future<void> setOneShotSyncParams(
+    AssetId id,
+    ZhtlcSyncParams? syncParams,
+  ) async {
+    final walletId = await _requireActiveWallet();
+    _oneShotSyncParams[_WalletAssetKey(walletId, id)] = syncParams;
+  }
+
+  /// Returns and clears any pending one-shot sync params for [id].
+  Future<ZhtlcSyncParams?> takeOneShotSyncParams(AssetId id) async {
+    final walletId = await _requireActiveWallet();
+    final key = _WalletAssetKey(walletId, id);
+    final value = _oneShotSyncParams.remove(key);
+    return value;
+  }
+
+  /// Clears all one-shot sync params for the specified wallet.
+  /// This should be called when a user signs out to prevent stale one-shot
+  /// params from being applied on the next activation after re-login.
+  void clearOneShotSyncParamsForWallet(WalletId walletId) {
+    _oneShotSyncParams.removeWhere((key, _) => key.walletId == walletId);
+  }
+
+  /// Disposes of the service and cleans up resources.
+  void dispose() {
+    _authStateSubscription?.cancel();
+    _authStateSubscription = null;
   }
 
   final Map<_WalletAssetKey, Completer<ZhtlcUserConfig?>> _awaitingControllers =
