@@ -398,6 +398,12 @@ class KdfOperationsWasm implements IKdfOperations {
   }
 
   @override
+  void resetHttpClient() {
+    // No-op for WASM operations - HTTP client is managed by browser
+    _log('resetHttpClient called on WASM operations (no-op)');
+  }
+
+  @override
   void dispose() {
     // Clean up any resources used by the WASM operations
     _kdfModule = null;

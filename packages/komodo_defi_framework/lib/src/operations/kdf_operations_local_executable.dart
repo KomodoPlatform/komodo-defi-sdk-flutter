@@ -299,6 +299,12 @@ class KdfOperationsLocalExecutable implements IKdfOperations {
   }
 
   @override
+  void resetHttpClient() {
+    // Delegate to remote operations
+    _kdfRemote.resetHttpClient();
+  }
+
+  @override
   void dispose() {
     // Cancel and clean up subscriptions
     stdoutSub?.cancel().ignore();
