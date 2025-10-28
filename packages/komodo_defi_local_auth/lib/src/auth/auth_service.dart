@@ -497,6 +497,13 @@ class KdfAuthService implements IAuthService {
 
     final updatedUser = user.copyWith(metadata: metadata);
     await _secureStorage.saveUser(updatedUser);
+
+    // Update cache silently without triggering auth state change. Updating the
+    // storage and cache at the same time emulates the same behaviour as before.
+    // Update user metadata for any subsequent access without emitting auth
+    // state changes, as the metadata field is currently used for events like
+    // coin activation, wallet type (derivation), and seed backup status
+    _lastEmittedUser = updatedUser;
   }
 
   @override
