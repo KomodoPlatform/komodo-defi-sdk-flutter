@@ -88,6 +88,7 @@ Future<void> bootstrap({
     return ActivationConfigService(
       repo,
       walletIdResolver: () async => (await auth.currentUser)?.walletId,
+      authStateChanges: auth.authStateChanges,
     );
   }, dependsOn: [KomodoDefiLocalAuth]);
 

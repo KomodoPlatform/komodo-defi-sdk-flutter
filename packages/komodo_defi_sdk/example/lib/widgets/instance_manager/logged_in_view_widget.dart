@@ -216,16 +216,22 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
                 final existing = await sdk.activationConfigService
                     .getSavedZhtlc(asset.id);
                 if (existing == null && mounted) {
-                  final config =
+                  final dialogResult =
                       await ZhtlcConfigDialogHandler.handleZhtlcConfigDialog(
-                        context,
-                        asset,
-                      );
+                    context,
+                    asset,
+                  );
                   if (!mounted) return;
-                  if (config != null) {
+                  if (dialogResult != null) {
+                    if (dialogResult.oneShotSync != null) {
+                      await sdk.activationConfigService.setOneShotSyncParams(
+                        asset.id,
+                        dialogResult.oneShotSync,
+                      );
+                    }
                     await sdk.activationConfigService.saveZhtlcConfig(
                       asset.id,
-                      config,
+                      dialogResult.config,
                     );
                   } else {
                     return; // User cancelled
