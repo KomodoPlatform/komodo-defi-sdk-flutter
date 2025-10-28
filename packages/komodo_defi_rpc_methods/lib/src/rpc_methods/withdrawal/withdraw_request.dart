@@ -51,6 +51,9 @@ class WithdrawRequest
       if (fee != null) 'fee': fee!.toJson(),
       if (from != null) 'from': from!.toRpcParams(),
       if (memo != null) 'memo': memo,
+      // KMD requires kmd_rewards object with claimed_by_me flag
+      if (coin.toUpperCase() == 'KMD')
+        'kmd_rewards': {'amount': '0', 'claimed_by_me': true},
       if (ibcSourceChannel != null) 'ibc_source_channel': ibcSourceChannel,
     },
   };
@@ -112,6 +115,9 @@ class WithdrawInitRequest
       if (from != null) 'from': from!.toRpcParams(),
       if (memo != null) 'memo': memo,
       if (max) 'max': max,
+      // KMD requires kmd_rewards object with claimed_by_me flag
+      if (coin.toUpperCase() == 'KMD')
+        'kmd_rewards': {'amount': '0', 'claimed_by_me': true},
     },
   };
 
@@ -159,10 +165,9 @@ class WithdrawStatusResponse extends BaseResponse {
     return WithdrawStatusResponse(
       mmrpc: json.value<String>('mmrpc'),
       status: status,
-      details:
-          status == 'Ok'
-              ? WithdrawResult.fromJson(result.value<JsonMap>('details'))
-              : result.value<String>('details'),
+      details: status == 'Ok'
+          ? WithdrawResult.fromJson(result.value<JsonMap>('details'))
+          : result.value<String>('details'),
     );
   }
 
@@ -177,10 +182,9 @@ class WithdrawStatusResponse extends BaseResponse {
     'mmrpc': mmrpc,
     'result': {
       'status': status,
-      'details':
-          (details is WithdrawResult)
-              ? (details as WithdrawResult).toJson()
-              : details,
+      'details': (details is WithdrawResult)
+          ? (details as WithdrawResult).toJson()
+          : details,
     },
   };
 
