@@ -16,6 +16,11 @@ enum SyncStatusEnum {
         .replaceAll('SyncStatusEnum.', '')
         .toLowerCase();
 
+    // Map 'ok' to 'success' for backward compatibility with KDF API
+    if (sanitizedValue == 'ok') {
+      return SyncStatusEnum.success;
+    }
+
     return SyncStatusEnum.values.firstWhereOrNull(
       (e) => e.name.toLowerCase() == sanitizedValue,
     );
