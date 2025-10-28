@@ -91,6 +91,9 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
   @override
   bool supportsAsset(Asset asset) =>
       _supportedProtocols.any((type) => asset.protocol.runtimeType == type);
+
+  @override
+  bool requiresKdfTransactionHistory(Asset asset) => true;
 }
 
 /// Strategy for fetching transaction history using the legacy API
@@ -131,6 +134,9 @@ class LegacyTransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   bool supportsAsset(Asset asset) => asset.protocol is! ZhtlcProtocol;
+
+  @override
+  bool requiresKdfTransactionHistory(Asset asset) => true;
 }
 
 /// Strategy for fetching ZHTLC transaction history

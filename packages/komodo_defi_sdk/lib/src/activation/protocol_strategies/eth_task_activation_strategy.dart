@@ -74,6 +74,13 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
+      // Compute tx_history flag similar to non-task strategy
+      final txHistoryFlag = asset.supportsTxHistoryStreaming
+          ? true
+          : const EtherscanProtocolHelper().shouldEnableTransactionHistory(
+              asset,
+            );
+
       final activationParams =
           EthWithTokensActivationParams.fromJson(
             asset.protocol.config,
@@ -81,8 +88,7 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
             erc20Tokens:
                 children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
                 [],
-            txHistory: const EtherscanProtocolHelper()
-                .shouldEnableTransactionHistory(asset),
+            txHistory: txHistoryFlag,
             privKeyPolicy: privKeyPolicy,
           );
 

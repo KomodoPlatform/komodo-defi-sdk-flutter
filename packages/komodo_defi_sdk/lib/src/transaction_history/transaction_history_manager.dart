@@ -5,6 +5,7 @@ import 'package:komodo_defi_framework/komodo_defi_framework.dart'
     show BalanceEvent;
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_exceptions.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
@@ -69,6 +70,8 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   final _streamControllers = <AssetId, StreamController<Transaction>>{};
   final _txHistorySubscriptions = <AssetId, StreamSubscription<dynamic>>{};
   final _pollingTimers = <AssetId, Timer>{};
+  // Periodic confirmations refresh timers while streaming is healthy
+  final _confirmationsTimers = <AssetId, Timer>{};
   final _balanceFallbackSubscriptions =
       <AssetId, StreamSubscription<BalanceEvent>>{};
   final _lastBalanceForPolling = <AssetId, BalanceInfo>{};
@@ -84,12 +87,18 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
 
   final TransactionHistoryStrategyFactory _strategyFactory;
 
+  // Streaming capability helpers based on asset properties
+  bool _supportsBalanceStreaming(Asset asset) => asset.supportsBalanceStreaming;
+
+  bool _supportsTxHistoryStreaming(Asset asset) =>
+      asset.supportsTxHistoryStreaming;
+
   void _stopAllStreaming() {
     if (_isDisposed) return;
 
     // Cancel all transaction history subscriptions
     for (final sub in _txHistorySubscriptions.values) {
-      unawaited(sub.cancel());
+      sub.cancel().ignore();
     }
     _txHistorySubscriptions.clear();
 
@@ -99,8 +108,14 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     }
     _pollingTimers.clear();
 
+    // Cancel confirmations refresh timers
+    for (final timer in _confirmationsTimers.values) {
+      timer.cancel();
+    }
+    _confirmationsTimers.clear();
+
     for (final sub in _balanceFallbackSubscriptions.values) {
-      unawaited(sub.cancel());
+      sub.cancel().ignore();
     }
     _balanceFallbackSubscriptions.clear();
 
@@ -240,7 +255,21 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
       throw ArgumentError('Asset ${asset.id.name} not found');
     }
 
-    await _ensureAssetActivated(asset);
+    try {
+      await _ensureAssetActivated(asset);
+    } catch (e) {
+      if (e is ActivationFailedException) {
+        rethrow;
+      } else {
+        // Wrap other errors in ActivationFailedException for consistency
+        throw ActivationFailedException(
+          assetId: asset.id,
+          message: e.toString(),
+          errorCode: 'TX_HISTORY_ACTIVATION_ERROR',
+          originalError: e,
+        );
+      }
+    }
     final strategy = _strategyFactory.forAsset(asset);
 
     // First try to get any cached transactions
@@ -399,8 +428,11 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   Future<void> _ensureAssetActivated(Asset asset) async {
     final activationResult = await _activationCoordinator.activateAsset(asset);
     if (activationResult.isFailure) {
-      throw StateError(
-        'Failed to activate asset ${asset.id.name}. ${activationResult.errorMessage}',
+      throw ActivationFailedException(
+        assetId: asset.id,
+        message: activationResult.errorMessage ?? 'Unknown activation error',
+        errorCode: 'ACTIVATION_FAILED',
+        originalError: activationResult.errorMessage,
       );
     }
   }
@@ -436,13 +468,30 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     } catch (e) {
       final controller = _streamControllers[asset.id];
       if (controller != null && !controller.isClosed) {
-        controller.addError(e);
+        if (e is ActivationFailedException) {
+          controller.addError(e);
+        } else {
+          // Wrap other errors in ActivationFailedException for consistency
+          controller.addError(
+            ActivationFailedException(
+              assetId: asset.id,
+              message: e.toString(),
+              errorCode: 'TX_WATCH_ACTIVATION_ERROR',
+              originalError: e,
+            ),
+          );
+        }
       }
       return;
     }
 
     // Subscribe to transaction history event stream for real-time updates
     try {
+      // Gate by KDF capability to avoid unsupported streaming RPCs
+      if (!_supportsTxHistoryStreaming(asset)) {
+        await _startPolling(asset);
+        return;
+      }
       final txHistoryStreamSubscription = await _eventStreamingManager
           .subscribeToTxHistory(coin: asset.id.id);
 
@@ -509,6 +558,9 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
         ..onDone(() {
           unawaited(fallbackToPolling(reason: 'stream closed'));
         });
+
+      // Keep confirmations fresh even while the stream is healthy
+      _startConfirmationsRefresh(asset);
     } catch (_) {
       await _startPolling(asset);
     }
@@ -518,6 +570,62 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     _txHistorySubscriptions[assetId]?.cancel();
     _txHistorySubscriptions.remove(assetId);
     _stopPolling(assetId);
+    _stopConfirmationsRefresh(assetId);
+  }
+
+  bool _isPollingActive(AssetId assetId) =>
+      _pollingTimers.containsKey(assetId) ||
+      _balanceFallbackSubscriptions.containsKey(assetId);
+
+  bool _updateLastKnownBalance(AssetId assetId, BalanceInfo balance) {
+    final previous = _lastBalanceForPolling[assetId];
+    _lastBalanceForPolling[assetId] = balance;
+
+    return previous == null ||
+        previous.total != balance.total ||
+        previous.spendable != balance.spendable ||
+        previous.unspendable != balance.unspendable;
+  }
+
+  Future<void> _syncHistoryIfBalanceChanged(
+    Asset asset, {
+    BalanceInfo? balance,
+    bool force = false,
+  }) async {
+    if (_isDisposed) return;
+    if (!_isPollingActive(asset.id)) return;
+
+    var shouldSync = force;
+
+    if (balance != null) {
+      final hasChanged = _updateLastKnownBalance(asset.id, balance);
+      shouldSync = shouldSync || hasChanged;
+    }
+
+    if (!shouldSync) return;
+
+    await _pollNewTransactions(asset);
+  }
+
+  Future<void> _pollBalanceAndSyncHistory(
+    Asset asset, {
+    bool force = false,
+  }) async {
+    if (_isDisposed) return;
+
+    try {
+      await _ensureAssetActivated(asset);
+      final response = await _client.rpc.wallet.myBalance(coin: asset.id.id);
+      await _syncHistoryIfBalanceChanged(
+        asset,
+        balance: response.balance,
+        force: force,
+      );
+    } catch (_) {
+      if (force) {
+        await _pollNewTransactions(asset);
+      }
+    }
   }
 
   Future<void> _pollNewTransactions(Asset asset, [int retryCount = 0]) async {
@@ -542,7 +650,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
             : const PagePagination(pageNumber: 1, itemsPerPage: _maxBatchSize),
       );
 
-      if (!_pollingTimers.containsKey(asset.id)) return;
+      if (!_isPollingActive(asset.id)) return;
 
       if (response.transactions.isNotEmpty) {
         final newTransactions = response.transactions
@@ -575,6 +683,12 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     _stopPolling(asset.id);
 
     try {
+      // Prefer balance event stream when supported; otherwise, use timer polling
+      if (!_supportsBalanceStreaming(asset)) {
+        _startTimerPolling(asset);
+        return;
+      }
+
       final balanceSubscription = await _eventStreamingManager
           .subscribeToBalance(coin: asset.id.id);
 
@@ -583,19 +697,10 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           if (_isDisposed) return;
           if (balanceEvent.coin != asset.id.id) return;
 
-          final previous = _lastBalanceForPolling[asset.id];
-          final current = balanceEvent.balance;
-
-          final hasChanged =
-              previous == null ||
-              previous.total != current.total ||
-              previous.spendable != current.spendable ||
-              previous.unspendable != current.unspendable;
-
-          if (hasChanged) {
-            _lastBalanceForPolling[asset.id] = current;
-            unawaited(_pollNewTransactions(asset));
-          }
+          _syncHistoryIfBalanceChanged(
+            asset,
+            balance: balanceEvent.balance,
+          ).ignore();
         })
         ..onError((Object error, StackTrace stackTrace) {
           _startTimerPolling(asset);
@@ -604,8 +709,9 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           _startTimerPolling(asset);
         });
 
-      // Initial sync to ensure we have the latest data
-      unawaited(_pollNewTransactions(asset));
+      // Initial sync to ensure we have the latest data without
+      // immediately resorting to history polling on every interval.
+      unawaited(_pollBalanceAndSyncHistory(asset, force: true));
     } catch (_) {
       _startTimerPolling(asset);
     }
@@ -614,14 +720,14 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
   void _startTimerPolling(Asset asset) {
     final balanceSub = _balanceFallbackSubscriptions.remove(asset.id);
     if (balanceSub != null) {
-      unawaited(balanceSub.cancel());
+      balanceSub.cancel().ignore();
     }
     _pollingTimers[asset.id]?.cancel();
     _pollingTimers[asset.id] = Timer.periodic(
       _defaultPollingInterval,
-      (_) => _pollNewTransactions(asset),
+      (_) => _pollBalanceAndSyncHistory(asset).ignore(),
     );
-    unawaited(_pollNewTransactions(asset));
+    _pollBalanceAndSyncHistory(asset, force: true).ignore();
   }
 
   void _stopPolling(AssetId assetId) {
@@ -630,10 +736,68 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
 
     final balanceSub = _balanceFallbackSubscriptions.remove(assetId);
     if (balanceSub != null) {
-      unawaited(balanceSub.cancel());
+      balanceSub.cancel().ignore();
     }
 
     _lastBalanceForPolling.remove(assetId);
+  }
+
+  // Periodically refresh the most recent transactions to update confirmations
+  void _startConfirmationsRefresh(Asset asset) {
+    // Cancel any existing timer first
+    _confirmationsTimers[asset.id]?.cancel();
+
+    _confirmationsTimers[asset.id] = Timer.periodic(
+      _defaultPollingInterval,
+      (_) => _refreshRecentConfirmations(asset),
+    );
+
+    // Kick off an immediate refresh
+    _refreshRecentConfirmations(asset).ignore();
+  }
+
+  void _stopConfirmationsRefresh(AssetId assetId) {
+    _confirmationsTimers[assetId]?.cancel();
+    _confirmationsTimers.remove(assetId);
+  }
+
+  Future<void> _refreshRecentConfirmations(Asset asset) async {
+    if (_isDisposed) return;
+
+    try {
+      // Avoid hammering the backend
+      await _rateLimiter.throttle();
+
+      // Ensure asset is active (no-op if already active)
+      await _ensureAssetActivated(asset);
+
+      final strategy = _strategyFactory.forAsset(asset);
+      // Fetch the first page to update the most recent txs' confirmations
+      final response = await strategy.fetchTransactionHistory(
+        _client,
+        asset,
+        const PagePagination(pageNumber: 1, itemsPerPage: _maxBatchSize),
+      );
+
+      if (_isDisposed) return;
+
+      if (response.transactions.isEmpty) return;
+
+      final transactions = response.transactions
+          .map((tx) => tx.asTransaction(asset.id))
+          .toList();
+
+      await _batchStoreTransactions(transactions);
+
+      final controller = _streamControllers[asset.id];
+      if (controller != null && !controller.isClosed) {
+        for (final tx in transactions) {
+          controller.add(tx);
+        }
+      }
+    } catch (_) {
+      // Best-effort refresh; swallow transient errors
+    }
   }
 
   Future<void> dispose() async {
@@ -660,6 +824,12 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     }
 
     _syncInProgress.clear();
+
+    // Cancel confirmations refresh timers
+    for (final timer in _confirmationsTimers.values) {
+      timer.cancel();
+    }
+    _confirmationsTimers.clear();
   }
 }
 

@@ -42,4 +42,7 @@ class ZhtlcTransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   bool supportsAsset(Asset asset) => asset.protocol is ZhtlcProtocol;
+
+  @override
+  bool requiresKdfTransactionHistory(Asset asset) => true;
 }

@@ -64,7 +64,15 @@ sealed class KdfEvent {
       }
     }
 
-    return switch (typeString) {
+    // Some event types include contextual suffixes (e.g. "TX_HISTORY:COIN",
+    // "ORDERBOOK:BASE:REL"). Normalize by stripping everything after the first
+    // ':' so the base type can be matched, while keeping message payload for
+    // concrete details (coin, pair, uuid, etc.).
+    final normalizedType = typeString.contains(':')
+        ? typeString.substring(0, typeString.indexOf(':'))
+        : typeString;
+
+    return switch (normalizedType) {
       'BALANCE' => BalanceEvent.fromJson(message),
       'ORDERBOOK' => OrderbookEvent.fromJson(message),
       'NETWORK' => NetworkEvent.fromJson(message),

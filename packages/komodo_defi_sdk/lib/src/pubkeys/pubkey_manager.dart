@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_exceptions.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
@@ -111,7 +112,7 @@ class PubkeyManager implements IPubkeyManager {
           .catchError((_) {
             // best-effort background refresh
           });
-      unawaited(refreshFuture);
+      refreshFuture.ignore();
       return hydrated;
     }
 
@@ -174,7 +175,7 @@ class PubkeyManager implements IPubkeyManager {
       final strategy = await _resolvePubkeyStrategy(asset);
       final pubkeys = await strategy.getPubkeys(asset.id, _client);
       _pubkeysCache[asset.id] = pubkeys;
-      unawaited(_persistPubkeysForWallet(walletId, asset, pubkeys));
+      _persistPubkeysForWallet(walletId, asset, pubkeys).ignore();
       return pubkeys;
     }();
 
@@ -387,7 +388,21 @@ class PubkeyManager implements IPubkeyManager {
             cancelOnError: false,
           );
     } catch (e) {
-      if (!controller.isClosed) controller.addError(e);
+      if (!controller.isClosed) {
+        if (e is ActivationFailedException) {
+          controller.addError(e);
+        } else {
+          // Wrap other errors in ActivationFailedException for consistency
+          controller.addError(
+            ActivationFailedException(
+              assetId: asset.id,
+              message: e.toString(),
+              errorCode: 'PUBKEY_ACTIVATION_ERROR',
+              originalError: e,
+            ),
+          );
+        }
+      }
     }
   }
 
