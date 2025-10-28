@@ -2,6 +2,7 @@
 // messages from the WASM layer using `mm2_net::handle_worker_stream`.
 
 import 'dart:async';
+import 'dart:convert' as convert;
 
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
@@ -35,7 +36,33 @@ class KdfEventStreamingService {
 
   void _onIncomingData(Object? data) {
     try {
-      final map = JsonMap.from(data! as Map);
+      if (data == null) return;
+      JsonMap? map;
+
+      if (data is String) {
+        final String trimmed = data.trim();
+        // First attempt: direct JSON object string
+        map = tryParseJson(trimmed);
+        if (map == null) {
+          // Second attempt: payload is a JSON string wrapped in quotes
+          try {
+            final dynamic once = convert.jsonDecode(trimmed);
+            if (once is String) {
+              map = tryParseJson(once);
+            } else if (once is Map) {
+              map = JsonMap.from(once);
+            }
+          } catch (_) {}
+        }
+
+        if (map == null) {
+          throw ArgumentError('Unsupported event payload string');
+        }
+      } else if (data is Map) {
+        map = JsonMap.from(data);
+      } else {
+        throw ArgumentError('Unsupported event data type: ${data.runtimeType}');
+      }
       final event = KdfEvent.fromJson(map);
       if (kDebugMode) {
         final summary = _summarizeEvent(event);
