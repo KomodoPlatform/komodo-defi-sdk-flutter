@@ -163,7 +163,14 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
         return localPage;
       }
 
-      await _ensureAssetActivated(asset);
+      // Skip activation check if we have local transaction history, as this
+      // implies the asset was previously activated. This reduces RPC spam when
+      // opening the coin details page repeatedly for already-activated assets.
+      final hasLocalHistory = localPage.transactions.isNotEmpty;
+
+      if (!hasLocalHistory) {
+        await _ensureAssetActivated(asset);
+      }
 
       // Get appropriate strategy for the asset
       final strategy = _strategyFactory.forAsset(asset);
@@ -417,7 +424,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
     // Subscribe to transaction history event stream for real-time updates
     try {
       final txHistoryStreamSubscription = await _eventStreamingManager
-          .subscribeToTxHistory(coin: asset.id.name);
+          .subscribeToTxHistory(coin: asset.id.id);
 
       // Check again to avoid race condition: only store if not already present
       if (_txHistorySubscriptions.containsKey(asset.id)) {
@@ -430,7 +437,7 @@ class TransactionHistoryManager implements _TransactionHistoryManager {
           if (_isDisposed) return;
 
           // Verify the event is for the correct coin
-          if (txHistoryEvent.coin != asset.id.name) return;
+          if (txHistoryEvent.coin != asset.id.id) return;
 
           // Process new transactions
           final transactions = txHistoryEvent.transactions

@@ -15,7 +15,7 @@ import 'package:logging/logging.dart';
 abstract class IBalanceManager {
   /// Gets the current balance for an asset.
   /// Will ensure the asset is activated before querying.
-  /// 
+  ///
   /// Note: If the asset was recently activated through [ActivationManager],
   /// the balance will typically be pre-cached and return immediately. However,
   /// this should not be relied upon as a way to check activation status.
@@ -373,16 +373,16 @@ class BalanceManager implements IBalanceManager {
       }
 
       // Subscribe to balance event stream for real-time updates
-      _logger.fine('Subscribing to balance stream for ${assetId.name}');
+      _logger.fine('Subscribing to balance stream for ${assetId.id}');
       final balanceStreamSubscription = await _eventStreamingManager
-          .subscribeToBalance(coin: assetId.name);
+          .subscribeToBalance(coin: assetId.id);
 
       _activeWatchers[assetId] = balanceStreamSubscription
         ..onData((balanceEvent) {
           if (_isDisposed) return;
 
           // Verify the event is for the correct coin
-          if (balanceEvent.coin != assetId.name) return;
+          if (balanceEvent.coin != assetId.id) return;
 
           // Update cache with the new balance
           _balanceCache[assetId] = balanceEvent.balance;
