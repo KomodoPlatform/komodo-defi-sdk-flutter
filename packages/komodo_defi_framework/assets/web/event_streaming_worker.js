@@ -12,10 +12,8 @@ onconnect = function (e) {
     try {
       const data = msgEvent.data;
       for (const p of connections) {
-        try { p.postMessage(data); } catch (_) {}
+        try { p.postMessage(data); } catch (_) { }
       }
-    } catch (_) {}
+    } catch (_) { }
   };
 };
-
-

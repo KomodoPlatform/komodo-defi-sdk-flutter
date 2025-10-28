@@ -149,7 +149,7 @@ class KdfStartupConfig {
       enableHd: enableHd,
       eventStreamingConfiguration:
           eventStreamingConfiguration ??
-          EventStreamingConfiguration.defaultConfig,
+          EventStreamingConfiguration.defaultConfig(),
     );
   }
 
@@ -205,7 +205,7 @@ class KdfStartupConfig {
       isBootstrapNode: false,
       eventStreamingConfiguration:
           eventStreamingConfiguration ??
-          EventStreamingConfiguration.defaultConfig,
+          EventStreamingConfiguration.defaultConfig(),
     );
   }
 

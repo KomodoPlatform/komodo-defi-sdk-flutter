@@ -10,12 +10,18 @@ class EventStreamingConfiguration {
     this.workerPath,
   });
 
+  /// Default configuration with permissive CORS
+  EventStreamingConfiguration.defaultConfig()
+    : workerPath = _kDefaultWorkerPath,
+      accessControlAllowOrigin = _kDefaultAccessControlAllowOrigin;
+
   /// Create from JSON
   factory EventStreamingConfiguration.fromJson(JsonMap json) {
     return EventStreamingConfiguration(
       accessControlAllowOrigin:
-          json['access_control_allow_origin'] as String? ?? '*',
-      workerPath: json['worker_path'] as String?,
+          json['access_control_allow_origin'] as String? ??
+          _kDefaultAccessControlAllowOrigin,
+      workerPath: json['worker_path'] as String? ?? _kDefaultWorkerPath,
     );
   }
 
@@ -27,9 +33,10 @@ class EventStreamingConfiguration {
   /// Optional, defaults to null
   final String? workerPath;
 
-  /// Default configuration with permissive CORS
-  static const EventStreamingConfiguration defaultConfig =
-      EventStreamingConfiguration();
+  static const String _kDefaultWorkerPath =
+      'assets/packages/komodo_defi_framework/assets/web/event_streaming_worker.js';
+
+  static const String _kDefaultAccessControlAllowOrigin = '*';
 
   /// Convert to JSON format for KDF startup configuration
   JsonMap toJson() => {
