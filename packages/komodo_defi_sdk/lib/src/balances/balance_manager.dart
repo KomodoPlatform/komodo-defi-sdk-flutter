@@ -15,7 +15,7 @@ import 'package:logging/logging.dart';
 abstract class IBalanceManager {
   /// Gets the current balance for an asset.
   /// Will ensure the asset is activated before querying.
-  ///
+  /// 
   /// Note: If the asset was recently activated through [ActivationManager],
   /// the balance will typically be pre-cached and return immediately. However,
   /// this should not be relied upon as a way to check activation status.
@@ -329,7 +329,7 @@ class BalanceManager implements IBalanceManager {
       user.walletId,
     );
     final isFirstTimeEnabling = !previouslyEnabledAssets.contains(assetId.id);
-    
+
     // Check metadata to determine if this was an imported wallet
     // Only optimize for genuinely new wallets, not imported ones
     final isImported = user.metadata['isImported'] == true;

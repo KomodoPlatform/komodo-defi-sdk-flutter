@@ -6,7 +6,9 @@ import 'dart:html' as html show Event;
 import 'package:flutter/foundation.dart';
 import 'package:js/js_util.dart' as jsu;
 
-typedef SharedWorkerUnsubscribe = void Function();
+import 'package:komodo_defi_framework/src/config/kdf_config.dart';
+
+typedef EventStreamUnsubscribe = void Function();
 
 Object _getGlobalProperty(String name) =>
     jsu.getProperty<Object>(jsu.globalThis, name);
@@ -23,9 +25,10 @@ T _callConstructor<T>(Object ctor, List<Object?> args) =>
 T _callMethod<T>(Object o, String name, List<Object?> args) =>
     jsu.callMethod(o, name, args) as T;
 
-SharedWorkerUnsubscribe connectSharedWorker(
-  void Function(Object? data) onMessage,
-) {
+EventStreamUnsubscribe connectEventStream({
+  IKdfHostConfig? hostConfig,
+  required void Function(Object? data) onMessage,
+}) {
   try {
     final Object sharedWorkerCtor = _getGlobalProperty('SharedWorker');
     final Object worker = _callConstructor<Object>(sharedWorkerCtor, <Object?>[

@@ -1,10 +1,11 @@
-typedef SharedWorkerUnsubscribe = void Function();
+import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 
-SharedWorkerUnsubscribe connectSharedWorker(
-  void Function(Object? data) onMessage,
-) {
-  // No-op on non-web platforms
+typedef EventStreamUnsubscribe = void Function();
+
+EventStreamUnsubscribe connectEventStream({
+  IKdfHostConfig? hostConfig,
+  required void Function(Object? data) onMessage,
+}) {
+  // No-op default implementation; actual logic provided by IO/Web variants
   return () {};
 }
-
-
