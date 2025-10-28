@@ -253,13 +253,18 @@ class ActivationManager {
   }
 
   /// Check if specific asset is active
-  Future<bool> isAssetActive(AssetId assetId) async {
+  Future<bool> isAssetActive(
+    AssetId assetId, {
+    bool forceRefresh = false,
+  }) async {
     if (_isDisposed) {
       throw StateError('ActivationManager has been disposed');
     }
 
     try {
-      final activeAssets = await getActiveAssets();
+      final activeAssets = forceRefresh
+          ? await _activatedAssetsCache.getActivatedAssetIds(forceRefresh: true)
+          : await getActiveAssets();
       return activeAssets.contains(assetId);
     } catch (e) {
       debugPrint('Failed to check if asset is active: $e');

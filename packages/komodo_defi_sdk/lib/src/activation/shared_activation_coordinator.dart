@@ -320,7 +320,11 @@ class SharedActivationCoordinator {
 
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        final isAvailable = await _activationManager.isAssetActive(assetId);
+        // Force refresh to bypass cache and get fresh data from backend
+        final isAvailable = await _activationManager.isAssetActive(
+          assetId,
+          forceRefresh: true,
+        );
         if (isAvailable) {
           log(
             'Coin ${assetId.id} became available after ${attempt + 1} attempts',
