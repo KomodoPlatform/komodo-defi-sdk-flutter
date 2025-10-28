@@ -68,11 +68,9 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
 
       final effectivePollingInterval =
           userConfig.taskStatusPollingIntervalMs != null &&
-                  userConfig.taskStatusPollingIntervalMs! > 0
-              ? Duration(
-                  milliseconds: userConfig.taskStatusPollingIntervalMs!,
-                )
-              : pollingInterval;
+              userConfig.taskStatusPollingIntervalMs! > 0
+          ? Duration(milliseconds: userConfig.taskStatusPollingIntervalMs!)
+          : pollingInterval;
 
       var params = ZhtlcActivationParams.fromConfigJson(protocol.config)
           .copyWith(
@@ -94,8 +92,10 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
             syncParams: oneShotSync,
           );
           params = params.copyWith(
-            mode:
-                ActivationMode(rpc: params.mode!.rpc, rpcData: updatedRpcData),
+            mode: ActivationMode(
+              rpc: params.mode!.rpc,
+              rpcData: updatedRpcData,
+            ),
           );
         }
       }
@@ -108,16 +108,7 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
         name: 'ZhtlcActivationStrategy',
       );
       log(
-        '[RPC] Activation parameters: ${jsonEncode({
-          'ticker': asset.id.id,
-          'protocol': asset.protocol.subClass.formatted,
-          'activation_params': params.toRpcParams(),
-          'zcash_params_path': userConfig.zcashParamsPath,
-          'scan_blocks_per_iteration': userConfig.scanBlocksPerIteration,
-          'scan_interval_ms': userConfig.scanIntervalMs,
-          'polling_interval_ms': effectivePollingInterval.inMilliseconds,
-          'priv_key_policy': privKeyPolicy.toJson(),
-        })}',
+        '[RPC] Activation parameters: ${jsonEncode({'ticker': asset.id.id, 'protocol': asset.protocol.subClass.formatted, 'activation_params': params.toRpcParams(), 'zcash_params_path': userConfig.zcashParamsPath, 'scan_blocks_per_iteration': userConfig.scanBlocksPerIteration, 'scan_interval_ms': userConfig.scanIntervalMs, 'polling_interval_ms': effectivePollingInterval.inMilliseconds, 'priv_key_policy': privKeyPolicy.toJson()})}',
         name: 'ZhtlcActivationStrategy',
       );
 

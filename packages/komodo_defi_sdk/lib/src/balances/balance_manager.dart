@@ -84,6 +84,10 @@ class BalanceManager implements IBalanceManager {
   final EventStreamingManager _eventStreamingManager;
   final AssetHistoryStorage _assetHistoryStorage;
   StreamSubscription<KdfUser?>? _authSubscription;
+  final Duration _defaultPollingInterval = const Duration(seconds: 30);
+
+  /// Enable debug logging for balance polling fallback
+  static bool enableDebugLogging = true;
 
   /// Cache of the latest known balances for each asset
   final Map<AssetId, BalanceInfo> _balanceCache = {};
@@ -377,6 +381,47 @@ class BalanceManager implements IBalanceManager {
       final balanceStreamSubscription = await _eventStreamingManager
           .subscribeToBalance(coin: assetId.id);
 
+      var hasFallenBack = false;
+      Future<void> fallbackToPolling({
+        String reason = 'stream stopped',
+        Object? error,
+        StackTrace? stackTrace,
+      }) async {
+        if (hasFallenBack || _isDisposed) return;
+        hasFallenBack = true;
+
+        _logger.info(
+          'Falling back to balance polling for ${assetId.name}: $reason',
+        );
+
+        try {
+          await balanceStreamSubscription.cancel();
+        } catch (cancelError, cancelStack) {
+          _logger.fine(
+            'Error cancelling balance stream for ${assetId.name}',
+            cancelError,
+            cancelStack,
+          );
+        }
+
+        if (_activeWatchers[assetId] == balanceStreamSubscription) {
+          await _startBalancePolling(
+            asset: asset,
+            assetId: assetId,
+            controller: controller,
+            activateIfNeeded: activateIfNeeded,
+          );
+        }
+
+        if (error != null) {
+          _logger.warning(
+            'Balance stream fallback reason for ${assetId.name}: $error',
+            error,
+            stackTrace,
+          );
+        }
+      }
+
       _activeWatchers[assetId] = balanceStreamSubscription
         ..onData((balanceEvent) {
           if (_isDisposed) return;
@@ -395,15 +440,17 @@ class BalanceManager implements IBalanceManager {
             );
           }
         })
-        ..onError((Object error) {
-          if (!controller.isClosed) {
-            controller.addError(error);
-          }
-          _logger.warning('Balance stream error for ${assetId.name}', error);
+        ..onError((Object error, StackTrace stackTrace) {
+          unawaited(
+            fallbackToPolling(
+              reason: 'stream error',
+              error: error,
+              stackTrace: stackTrace,
+            ),
+          );
         })
         ..onDone(() {
-          _stopWatchingBalance(assetId);
-          _logger.fine('Balance stream closed for ${assetId.name}');
+          unawaited(fallbackToPolling(reason: 'stream closed'));
         });
     } catch (e, s) {
       _logger.warning(
@@ -411,8 +458,98 @@ class BalanceManager implements IBalanceManager {
         e,
         s,
       );
-      if (!controller.isClosed) controller.addError(e);
+      await _startBalancePolling(
+        asset: asset,
+        assetId: assetId,
+        controller: controller,
+        activateIfNeeded: activateIfNeeded,
+      );
     }
+  }
+
+  Future<void> _startBalancePolling({
+    required Asset asset,
+    required AssetId assetId,
+    required StreamController<BalanceInfo> controller,
+    required bool activateIfNeeded,
+  }) async {
+    if (_isDisposed || controller.isClosed) return;
+
+    _logger.fine('Starting balance polling fallback for ${assetId.name}');
+
+    final periodicStream = Stream<void>.periodic(_defaultPollingInterval);
+    final subscription = periodicStream
+        .asyncMap<BalanceInfo?>((_) async {
+          if (_isDisposed) return null;
+
+          if (_activationCoordinator == null || _pubkeyManager == null) {
+            return null;
+          }
+
+          final currentUser = await _auth.currentUser;
+          if (currentUser == null || currentUser.walletId != _currentWalletId) {
+            return null;
+          }
+
+          if (enableDebugLogging) {
+            _logger.info(
+              '[POLLING] Fetching balance for ${assetId.name} '
+              '(every ${_defaultPollingInterval.inSeconds}s)',
+            );
+          }
+
+          try {
+            final isActive = await _ensureAssetActivated(
+              asset,
+              activateIfNeeded,
+            );
+
+            if (isActive) {
+              final balance = await getBalance(assetId);
+              if (enableDebugLogging) {
+                _logger.info(
+                  '[POLLING] Balance fetched for ${assetId.name}: '
+                  '${balance.total}',
+                );
+              }
+              return balance;
+            }
+          } catch (error, stackTrace) {
+            if (enableDebugLogging) {
+              _logger.warning(
+                '[POLLING] Balance fetch failed for ${assetId.name}',
+                error,
+                stackTrace,
+              );
+            }
+          }
+
+          return lastKnown(assetId);
+        })
+        .listen(
+          (balance) {
+            if (balance != null && !controller.isClosed) {
+              controller.add(balance);
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            if (!controller.isClosed) {
+              controller.addError(error);
+            }
+            _logger.warning(
+              'Balance polling error for ${assetId.name}',
+              error,
+              stackTrace,
+            );
+          },
+          onDone: () {
+            _stopWatchingBalance(assetId);
+            _logger.fine('Balance polling closed for ${assetId.name}');
+          },
+          cancelOnError: false,
+        );
+
+    _activeWatchers[assetId] = subscription;
   }
 
   /// Stop watching the balance for a specific asset
