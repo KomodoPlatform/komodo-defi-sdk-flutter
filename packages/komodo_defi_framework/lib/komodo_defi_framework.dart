@@ -6,39 +6,22 @@ import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
+import 'package:komodo_defi_framework/src/streaming/event_streaming_service.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
 export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
+export 'package:komodo_defi_framework/src/config/event_streaming_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 export 'package:komodo_defi_framework/src/services/seed_node_service.dart';
+export 'package:komodo_defi_framework/src/streaming/event_streaming_service.dart';
+export 'package:komodo_defi_framework/src/streaming/events/kdf_event.dart';
 
 export 'src/operations/kdf_operations_interface.dart';
 
 class KomodoDefiFramework implements ApiClient {
-  KomodoDefiFramework._({
-    required IKdfHostConfig hostConfig,
-    void Function(String)? externalLogger,
-    // required KdfApiClient? client,
-  }) : _hostConfig = hostConfig {
-    _kdfOperations = createKdfOperations(
-      hostConfig: hostConfig,
-      logCallback: _log,
-    );
-
-    if (externalLogger != null) {
-      _initLogStream(externalLogger);
-    }
-  }
-
-  /// Enable debug logging for RPC calls (method names, durations, success/failure)
-  /// This can be controlled via app configuration
-  static bool enableDebugLogging = true;
-  
-  final Logger _logger = Logger('KomodoDefiFramework');
-
   factory KomodoDefiFramework.create({
     required IKdfHostConfig hostConfig,
     void Function(String)? externalLogger,
@@ -62,6 +45,26 @@ class KomodoDefiFramework implements ApiClient {
       // client: KdfApiClient(this, rpcPassword: hostConfig.rpcPassword),
     ).._kdfOperations = kdfOperations;
   }
+  KomodoDefiFramework._({
+    required IKdfHostConfig hostConfig,
+    void Function(String)? externalLogger,
+    // required KdfApiClient? client,
+  }) : _hostConfig = hostConfig {
+    _kdfOperations = createKdfOperations(
+      hostConfig: hostConfig,
+      logCallback: _log,
+    );
+
+    if (externalLogger != null) {
+      _initLogStream(externalLogger);
+    }
+  }
+
+  /// Enable debug logging for RPC calls (method names, durations, success/failure)
+  /// This can be controlled via app configuration
+  static bool enableDebugLogging = true;
+
+  final Logger _logger = Logger('KomodoDefiFramework');
 
   // late final ApiClient client;
   final IKdfHostConfig _hostConfig;
@@ -102,6 +105,14 @@ class KomodoDefiFramework implements ApiClient {
     if (!_logStream.isClosed) {
       _logStream.add(message);
     }
+  }
+
+  // Streaming service (web: SharedWorker; native: SSE)
+  KdfEventStreamingService? _streamingService;
+  KdfEventStreamingService get streaming {
+    return _streamingService ??= KdfEventStreamingService(
+      hostConfig: _hostConfig,
+    )..initialize();
   }
 
   //TODO! Figure out best way to handle overlap between startup and host
@@ -231,32 +242,34 @@ class KomodoDefiFramework implements ApiClient {
       }
       return response;
     }
-    
+
     // Extract method name for logging
     final method = request['method'] as String?;
     final stopwatch = Stopwatch()..start();
-    
+
     // Log activation parameters before the call
     if (method != null && _isActivationMethod(method)) {
       _logActivationParameters(method, request);
     }
-    
+
     try {
       final response = (await _kdfOperations.mm2Rpc(
         request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
       )).ensureJson();
       stopwatch.stop();
-      
+
       _logger.info(
         '[RPC] ${method ?? 'unknown'} completed in ${stopwatch.elapsedMilliseconds}ms',
       );
-      
+
       // Log electrum-related methods with more detail
       if (method != null && _isElectrumRelatedMethod(method)) {
-        _logger.info('[ELECTRUM] Method: $method, Duration: ${stopwatch.elapsedMilliseconds}ms');
+        _logger.info(
+          '[ELECTRUM] Method: $method, Duration: ${stopwatch.elapsedMilliseconds}ms',
+        );
         _logElectrumConnectionInfo(method, response);
       }
-      
+
       if (KdfLoggingConfig.verboseLogging) {
         _log('RPC response: ${response.toJsonString()}');
       }
@@ -297,7 +310,7 @@ class KomodoDefiFramework implements ApiClient {
       rethrow;
     }
   }
-  
+
   bool _isElectrumRelatedMethod(String method) {
     return method.contains('electrum') ||
         method.contains('enable') ||
@@ -305,25 +318,26 @@ class KomodoDefiFramework implements ApiClient {
         method == 'get_enabled_coins' ||
         method == 'my_balance';
   }
-  
+
   bool _isActivationMethod(String method) {
     return method.contains('enable') ||
         method.contains('task::enable') ||
         method.contains('task_enable');
   }
-  
+
   void _logActivationParameters(String method, JsonMap request) {
     try {
       final params = request['params'] as Map<String, dynamic>?;
       if (params == null) return;
-      
+
       final ticker = params['ticker'] as String?;
-      final activationParams = params['activation_params'] as Map<String, dynamic>?;
-      
+      final activationParams =
+          params['activation_params'] as Map<String, dynamic>?;
+
       if (ticker != null) {
         _logger.info('[ACTIVATION] Enabling coin: $ticker');
       }
-      
+
       if (activationParams != null) {
         // Log key activation parameters
         final mode = activationParams['mode'];
@@ -332,9 +346,9 @@ class KomodoDefiFramework implements ApiClient {
         final rpcUrls = activationParams['rpc_urls'];
         final tokensRequests = activationParams['erc20_tokens_requests'];
         final bchUrls = activationParams['bchd_urls'];
-        
+
         final paramsSummary = <String, dynamic>{};
-        
+
         if (mode != null) paramsSummary['mode'] = mode;
         if (nodes != null) {
           paramsSummary['nodes_count'] = (nodes as List).length;
@@ -351,20 +365,22 @@ class KomodoDefiFramework implements ApiClient {
         if (bchUrls != null) {
           paramsSummary['bchd_urls_count'] = (bchUrls as List).length;
         }
-        
+
         // Add other relevant fields
         if (activationParams['swap_contract_address'] != null) {
-          paramsSummary['swap_contract'] = activationParams['swap_contract_address'];
+          paramsSummary['swap_contract'] =
+              activationParams['swap_contract_address'];
         }
         if (activationParams['platform'] != null) {
           paramsSummary['platform'] = activationParams['platform'];
         }
         if (activationParams['contract_address'] != null) {
-          paramsSummary['contract_address'] = activationParams['contract_address'];
+          paramsSummary['contract_address'] =
+              activationParams['contract_address'];
         }
-        
+
         _logger.info('[ACTIVATION] Parameters: $paramsSummary');
-        
+
         // Log full activation params for detailed debugging
         _logger.fine('[ACTIVATION] Full params: $activationParams');
       }
@@ -373,7 +389,7 @@ class KomodoDefiFramework implements ApiClient {
       _logger.info('[ACTIVATION] Error logging parameters: $e');
     }
   }
-  
+
   void _logElectrumConnectionInfo(String method, JsonMap response) {
     try {
       // Log connection information from enable responses
@@ -385,7 +401,7 @@ class KomodoDefiFramework implements ApiClient {
           _logger.info(
             '[ELECTRUM] Coin enabled - Address: ${address ?? 'N/A'}, Balance: ${balance ?? 'N/A'}',
           );
-          
+
           // Log server information if available
           if (result['servers'] != null) {
             final servers = result['servers'];
@@ -393,7 +409,7 @@ class KomodoDefiFramework implements ApiClient {
           }
         }
       }
-      
+
       // Log balance information
       if (method == 'my_balance' && response['result'] != null) {
         final result = response['result'] as Map<String, dynamic>?;

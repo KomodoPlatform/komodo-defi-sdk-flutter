@@ -43,27 +43,29 @@ class AssetManager implements IAssetProvider {
   /// This is typically created by the SDK and shouldn't need to be instantiated
   /// directly.
   AssetManager(
-    this._client,
     this._auth,
     this._config,
-    this._activationManager,
+    ValueGetter<ActivationManager> activationManager,
     this._coins,
-  ) {
+    ValueGetter<ActivatedAssetsCache> activatedAssetsCache,
+  ) : _activationManager = activationManager,
+      _activatedAssetsCache = activatedAssetsCache {
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChange);
   }
-
-  final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final KomodoDefiSdkConfig _config;
   final AssetsUpdateManager _coins;
-  StreamSubscription<KdfUser?>? _authSubscription;
-  bool _isDisposed = false;
-  AssetFilterStrategy _currentFilterStrategy = const NoAssetFilterStrategy();
 
   /// NB: This cannot be used during initialization. This is a workaround
   /// to publicly expose the activation manager's activation methods.
   /// See [activateAsset] and [activateAssets] for more details.
   final ValueGetter<ActivationManager> _activationManager;
+
+  /// Activated assets cache shared across SDK consumers.
+  final ValueGetter<ActivatedAssetsCache> _activatedAssetsCache;
+  StreamSubscription<KdfUser?>? _authSubscription;
+  bool _isDisposed = false;
+  AssetFilterStrategy _currentFilterStrategy = const NoAssetFilterStrategy();
 
   /// Initializes the asset manager.
   ///
@@ -114,6 +116,7 @@ class AssetManager implements IAssetProvider {
         : const NoAssetFilterStrategy();
 
     setFilterStrategy(strategy);
+    _activatedAssetsCache().invalidate();
   }
 
   /// Returns an asset by its [AssetId], if available.
@@ -141,8 +144,7 @@ class AssetManager implements IAssetProvider {
   /// Returns an empty list if no user is signed in.
   @override
   Future<List<Asset>> getActivatedAssets() async {
-    final enabled = await getEnabledCoins();
-    return enabled.expand(findAssetsByConfigId).toList();
+    return _activatedAssetsCache().getActivatedAssets();
   }
 
   /// Returns the set of enabled coin tickers for the current user.
@@ -150,10 +152,8 @@ class AssetManager implements IAssetProvider {
   /// Returns an empty set if no user is signed in.
   @override
   Future<Set<String>> getEnabledCoins() async {
-    if (!await _auth.isSignedIn()) return {};
-
-    final enabled = await _client.rpc.generalActivation.getEnabledCoins();
-    return enabled.result.map((e) => e.ticker).toSet();
+    final activated = await _activatedAssetsCache().getActivatedAssets();
+    return activated.map((asset) => asset.id.id).toSet();
   }
 
   /// Finds all assets matching the given ID String (as is in the coins config).
@@ -220,5 +220,6 @@ class AssetManager implements IAssetProvider {
   Future<void> dispose() async {
     _isDisposed = true;
     await _authSubscription?.cancel();
+    _activatedAssetsCache().invalidate();
   }
 }

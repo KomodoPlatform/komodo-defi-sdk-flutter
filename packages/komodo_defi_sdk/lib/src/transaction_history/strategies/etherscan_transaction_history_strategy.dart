@@ -31,6 +31,13 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
   bool supportsAsset(Asset asset) => _protocolHelper.supportsProtocol(asset);
 
   @override
+  bool requiresKdfTransactionHistory(Asset asset) {
+    // Etherscan-backed history does not require KDF tx_history to be enabled
+    // for pagination; streaming remains disabled for EVM in KDF.
+    return false;
+  }
+
+  @override
   Future<MyTxHistoryResponse> fetchTransactionHistory(
     ApiClient client,
     Asset asset,
@@ -221,11 +228,13 @@ class EtherscanProtocolHelper {
     return asset.protocol is Erc20Protocol && getApiUrlForAsset(asset) != null;
   }
 
-  /// Whether transaction history should also be fetched via mm2.
+  /// Whether KDF transaction history should be enabled during activation.
   ///
-  /// When Etherscan does not support the provided [asset], transaction history
-  /// must fall back to mm2 RPC calls.
-  bool shouldEnableTransactionHistory(Asset asset) => !supportsProtocol(asset);
+  /// For EVM-compatible assets handled by the Etherscan strategy, we do not
+  /// require KDF's tx_history to be enabled at activation because history is
+  /// sourced externally and KDF does not support tx history streaming for EVM.
+  /// This reduces unnecessary RPC work during activation.
+  bool shouldEnableTransactionHistory(Asset asset) => false;
 
   /// Constructs the appropriate API URL for a given asset
   Uri? getApiUrlForAsset(Asset asset) {

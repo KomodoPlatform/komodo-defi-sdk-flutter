@@ -93,32 +93,33 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
-      final activationParams = EthWithTokensActivationParams.fromJson(asset.protocol.config)
-          .copyWith(
+      // Compute whether to enable tx_history at activation:
+      // - If tx history streaming is supported by KDF, always true.
+      // - Else, only true if the chosen history strategy requires KDF tx history.
+      final txHistoryFlag = asset.supportsTxHistoryStreaming
+          ? true
+          : const EtherscanProtocolHelper().shouldEnableTransactionHistory(
+              asset,
+            );
+
+      final activationParams =
+          EthWithTokensActivationParams.fromJson(
+            asset.protocol.config,
+          ).copyWith(
             erc20Tokens:
-                children
-                    ?.map((e) => TokensRequest(ticker: e.id.id))
-                    .toList() ??
+                children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
                 [],
-            txHistory: const EtherscanProtocolHelper()
-                .shouldEnableTransactionHistory(asset),
+            txHistory: txHistoryFlag,
             privKeyPolicy: privKeyPolicy,
           );
-      
+
       // Debug logging for ETH platform activation
       log(
         '[RPC] Activating ETH platform: ${asset.id.id}',
         name: 'EthWithTokensActivationStrategy',
       );
       log(
-        '[RPC] Activation parameters: ${jsonEncode({
-          'ticker': asset.id.id,
-          'protocol': asset.protocol.subClass.formatted,
-          'token_count': children?.length ?? 0,
-          'tokens': children?.map((e) => e.id.id).toList() ?? [],
-          'activation_params': activationParams.toRpcParams(),
-          'priv_key_policy': privKeyPolicy.toJson(),
-        })}',
+        '[RPC] Activation parameters: ${jsonEncode({'ticker': asset.id.id, 'protocol': asset.protocol.subClass.formatted, 'token_count': children?.length ?? 0, 'tokens': children?.map((e) => e.id.id).toList() ?? [], 'activation_params': activationParams.toRpcParams(), 'priv_key_policy': privKeyPolicy.toJson()})}',
         name: 'EthWithTokensActivationStrategy',
       );
 
@@ -126,7 +127,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         ticker: asset.id.id,
         params: activationParams,
       );
-      
+
       log(
         '[RPC] Successfully activated ETH platform: ${asset.id.id} with ${children?.length ?? 0} tokens',
         name: 'EthWithTokensActivationStrategy',

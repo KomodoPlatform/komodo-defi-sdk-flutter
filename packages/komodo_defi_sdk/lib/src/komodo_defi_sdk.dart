@@ -1,5 +1,5 @@
-import 'dart:developer';
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:get_it/get_it.dart';
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
@@ -12,10 +12,10 @@ import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
+import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
-import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 
 /// A high-level SDK that provides a simple way to build cross-platform applications
 /// using the Komodo DeFi Framework, with a primary focus on wallet functionality.
@@ -206,6 +206,16 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Throws [StateError] if accessed before initialization.
   AssetManager get assets => _assertSdkInitialized(_container<AssetManager>());
 
+  /// Cache of activated assets with per-instance TTL.
+  ///
+  /// Useful for avoiding repeated activation RPC calls across features.
+  ActivatedAssetsCache get activatedAssetsCache =>
+      _assertSdkInitialized(_container<ActivatedAssetsCache>());
+
+  /// NFT-specific activation helpers.
+  NftActivationService get nftActivation =>
+      _assertSdkInitialized(_container<NftActivationService>());
+
   /// The transaction history manager instance.
   ///
   /// Manages transaction history and monitoring.
@@ -289,6 +299,83 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   /// Komodo DeFi Framework. Requires the SDK to be initialized.
   Stream<String> get logStream =>
       _assertSdkInitialized(_container<KomodoDefiFramework>().logStream);
+
+  /// Waits until the percentage of enabled assets among [assetIds] meets or
+  /// exceeds [threshold], polling at [pollInterval] until [timeout].
+  ///
+  /// Returns `true` when the threshold is reached, or `false` if the timeout
+  /// elapses first.
+  Future<bool> waitForEnabledAssetsToPassThreshold(
+    Iterable<AssetId> assetIds, {
+    double threshold = 0.5,
+    Duration timeout = const Duration(seconds: 30),
+    Duration pollInterval = const Duration(seconds: 2),
+  }) async {
+    _assertSdkInitialized(activatedAssetsCache);
+
+    final targets = assetIds.toSet();
+    if (targets.isEmpty) {
+      throw ArgumentError.value(assetIds, 'assetIds', 'is empty');
+    }
+    if (threshold <= 0 || threshold > 1) {
+      throw ArgumentError.value(threshold, 'threshold', 'must be (0, 1]');
+    }
+    if (timeout <= Duration.zero) {
+      throw ArgumentError.value(timeout, 'timeout', 'must be positive');
+    }
+    if (pollInterval <= Duration.zero) {
+      throw ArgumentError.value(
+        pollInterval,
+        'pollInterval',
+        'must be positive',
+      );
+    }
+
+    final stopwatch = Stopwatch()..start();
+    var forceRefresh = true;
+
+    while (true) {
+      final enabled = await activatedAssetsCache.getActivatedAssetIds(
+        forceRefresh: forceRefresh,
+      );
+      forceRefresh = false;
+
+      final matched = enabled.intersection(targets).length;
+      final coverage = matched / targets.length;
+      if (coverage >= threshold) {
+        return true;
+      }
+
+      if (stopwatch.elapsed >= timeout) {
+        return false;
+      }
+
+      final remaining = timeout - stopwatch.elapsed;
+      await Future<void>.delayed(
+        remaining < pollInterval ? remaining : pollInterval,
+      );
+    }
+  }
+
+  /// Convenience helper that accepts asset tickers instead of [AssetId]s.
+  /// Matches assets by config ID (`asset.id.id`) before delegating to
+  /// [waitForEnabledAssetsToPassThreshold].
+  Future<bool> waitForEnabledTickersToPassThreshold(
+    Iterable<String> tickers, {
+    double threshold = 0.5,
+    Duration timeout = const Duration(seconds: 30),
+    Duration pollInterval = const Duration(seconds: 2),
+  }) {
+    final ids = tickers
+        .expand((ticker) => assets.findAssetsByConfigId(ticker))
+        .map((asset) => asset.id);
+    return waitForEnabledAssetsToPassThreshold(
+      ids,
+      threshold: threshold,
+      timeout: timeout,
+      pollInterval: pollInterval,
+    );
+  }
 
   /// Initializes the SDK instance.
   ///
@@ -405,8 +492,10 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _initializationFuture = null;
 
     await Future.wait([
+      _disposeIfRegistered<EventStreamingManager>((m) => m.dispose()),
       _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
       _disposeIfRegistered<AssetManager>((m) => m.dispose()),
+      _disposeIfRegistered<ActivatedAssetsCache>((m) => m.dispose()),
       _disposeIfRegistered<ActivationManager>((m) => m.dispose()),
       _disposeIfRegistered<ActivationConfigService>(
         (m) async => m.dispose(),

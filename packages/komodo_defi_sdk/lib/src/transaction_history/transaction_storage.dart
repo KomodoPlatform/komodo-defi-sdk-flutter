@@ -55,20 +55,25 @@ class InMemoryTransactionStorage implements TransactionStorage {
   static const int? _maxTransactionsPerAsset = null;
 
   /// Compare transactions for ordering within the SplayTreeMap
+  /// 
+  /// Orders transactions by timestamp (newest first), with internalId as a 
+  /// tiebreaker for stable ordering. All transactions being compared must 
+  /// exist in the provided [transactions] map.
   int _compareTransactions(
     String a,
     String b,
     AssetTransactionHistoryId assetTxHistoryId,
     Map<String, Transaction> transactions,
   ) {
-    final assetTxHistory = _storage[assetTxHistoryId];
-
-    // the transactions
-    final txA = transactions[a] ?? assetTxHistory?[a];
-    final txB = transactions[b] ?? assetTxHistory?[b];
+    // Look up transactions only from the provided map
+    final txA = transactions[a];
+    final txB = transactions[b];
 
     if (txA == null || txB == null) {
-      throw TransactionStorageException('Transaction not found in comparison');
+      throw TransactionStorageException(
+        'Transaction not found in comparison: '
+        '${txA == null ? a : b} missing from transactions map',
+      );
     }
 
     // Order by timestamp descending, then by internalId for stable ordering
@@ -82,10 +87,12 @@ class InMemoryTransactionStorage implements TransactionStorage {
       for (final assetTxHistoryId in _storage.keys) {
         final assetTransactions =
             _storage[assetTxHistoryId] ?? <String, Transaction>{};
+        // Convert existing map entries to a regular map for comparison function
+        final assetTxMap = <String, Transaction>{...assetTransactions};
         _storage[assetTxHistoryId] = SplayTreeMap<String, Transaction>(
           (a, b) =>
-              _compareTransactions(a, b, assetTxHistoryId, assetTransactions),
-        );
+              _compareTransactions(a, b, assetTxHistoryId, assetTxMap),
+        )..addAll(assetTxMap);
       }
     });
   }
@@ -102,21 +109,29 @@ class InMemoryTransactionStorage implements TransactionStorage {
       await _mutex.protect(() async {
         final assetHistoryId =
             AssetTransactionHistoryId(walletId, transaction.assetId);
-        final txMap = {transaction.internalId: transaction};
-        // recreate the entire splaytreemap here, since the txMap passed to
-        // _compareTransactions is not updated once the entry already exists,
-        // resulting in comparison exceptions due to missing transactions.
-        // This is a workaround for the issue, and should be revisited.
-        // TODO: consider using a standard map, and sorting the transactions at
-        // retreival instead of storage.
+        final newTxMap = {transaction.internalId: transaction};
+        
+        // Merge existing and new transactions into a single map BEFORE
+        // creating the SplayTreeMap. This prevents stack overflow by ensuring
+        // the comparison function has direct access to all transactions
+        // without needing to recursively look them up from storage.
         _storage.update(
           assetHistoryId,
-          (existingMap) => SplayTreeMap<String, Transaction>(
-            (a, b) => _compareTransactions(a, b, assetHistoryId, txMap),
-          )..[transaction.internalId] = transaction,
+          (existingMap) {
+            // Create merged map with all transactions
+            final allTxMap = <String, Transaction>{
+              ...existingMap,
+              ...newTxMap,
+            };
+            
+            // Create SplayTreeMap with merged map for comparisons
+            return SplayTreeMap<String, Transaction>(
+              (a, b) => _compareTransactions(a, b, assetHistoryId, allTxMap),
+            )..addAll(allTxMap);
+          },
           ifAbsent: () => SplayTreeMap<String, Transaction>(
-            (a, b) => _compareTransactions(a, b, assetHistoryId, txMap),
-          )..[transaction.internalId] = transaction,
+            (a, b) => _compareTransactions(a, b, assetHistoryId, newTxMap),
+          )..addAll(newTxMap),
         );
       });
 
@@ -138,27 +153,32 @@ class InMemoryTransactionStorage implements TransactionStorage {
         final grouped = groupBy(transactions, (tx) => tx.assetId);
 
         for (final entry in grouped.entries) {
-          final txMap = Map.fromEntries(
+          final newTxMap = Map.fromEntries(
             entry.value.map((tx) => MapEntry(tx.internalId, tx)),
           );
           final assetHistoryId = AssetTransactionHistoryId(user, entry.key);
 
-          // recreate the entire splaytreemap here, since the txMap passed to
-          // _compareTransactions is not updated once the entry already exists,
-          // resulting in comparison exceptions due to missing transactions.
-          // This is a workaround for the issue, and should be revisited.
-          // TODO: consider using a standard map, and sorting the transactions
-          // at retreival instead of storage.
+          // Merge existing and new transactions into a single map BEFORE
+          // creating the SplayTreeMap. This prevents stack overflow by ensuring
+          // the comparison function has direct access to all transactions
+          // without needing to recursively look them up from storage.
           _storage.update(
             assetHistoryId,
-            (existingMap) => SplayTreeMap<String, Transaction>(
-              (a, b) => _compareTransactions(a, b, assetHistoryId, txMap),
-            )
-              ..addEntries(existingMap.entries)
-              ..addEntries(txMap.entries),
+            (existingMap) {
+              // Create merged map with all transactions
+              final allTxMap = <String, Transaction>{
+                ...existingMap,
+                ...newTxMap,
+              };
+              
+              // Create SplayTreeMap with merged map for comparisons
+              return SplayTreeMap<String, Transaction>(
+                (a, b) => _compareTransactions(a, b, assetHistoryId, allTxMap),
+              )..addAll(allTxMap);
+            },
             ifAbsent: () => SplayTreeMap<String, Transaction>(
-              (a, b) => _compareTransactions(a, b, assetHistoryId, txMap),
-            )..addEntries(txMap.entries),
+              (a, b) => _compareTransactions(a, b, assetHistoryId, newTxMap),
+            )..addAll(newTxMap),
           );
         }
 

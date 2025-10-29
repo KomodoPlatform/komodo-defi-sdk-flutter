@@ -44,6 +44,7 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
   Future<KdfUser> _registerNewUser(
     KdfStartupConfig config,
     AuthOptions authOptions,
+    bool isImported,
   ) async {
     await _restartKdf(config);
     final status = await _kdfFramework.kdfMainStatus();
@@ -56,7 +57,11 @@ extension KdfAuthServiceAuthExtension on KdfAuthService {
 
     final walletId = WalletId.fromName(config.walletName!, authOptions);
     final isBip39Seed = await _isSeedBip39Compatible(config);
-    final currentUser = KdfUser(walletId: walletId, isBip39Seed: isBip39Seed);
+    final currentUser = KdfUser(
+      walletId: walletId,
+      isBip39Seed: isBip39Seed,
+      metadata: {'isImported': isImported},
+    );
     await _secureStorage.saveUser(currentUser);
 
     // Do not allow authentication to proceed for HD wallets if the seed is not

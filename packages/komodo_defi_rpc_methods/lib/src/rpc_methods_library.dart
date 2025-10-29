@@ -55,6 +55,9 @@ class KomodoDefiRpcMethods {
   UtilityMethods get utility => UtilityMethods(_client);
   FeeManagementMethodsNamespace get feeManagement =>
       FeeManagementMethodsNamespace(_client);
+
+  // Streaming namespaces
+  StreamingMethodsNamespace get streaming => StreamingMethodsNamespace(_client);
 }
 
 class TaskMethods extends BaseRpcMethodNamespace {
@@ -63,6 +66,8 @@ class TaskMethods extends BaseRpcMethodNamespace {
   // Future<TaskStatusResponse> status(int taskId, [String? rpcPass]) =>
   //     execute(TaskStatusRequest(taskId: taskId, rpcPass: rpcPass));
 }
+
+// StreamingMethodsNamespace moved to streaming/streaming_rpc_namespace.dart
 
 class WalletMethods extends BaseRpcMethodNamespace {
   WalletMethods(super.client);

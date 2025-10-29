@@ -22,6 +22,7 @@ class ActivationManager {
     this._balanceManager,
     this._configService,
     this._assetsUpdateManager,
+    this._activatedAssetsCache,
   );
 
   final ApiClient _client;
@@ -31,6 +32,7 @@ class ActivationManager {
   final IBalanceManager _balanceManager;
   final ActivationConfigService _configService;
   final KomodoAssetsUpdateManager _assetsUpdateManager;
+  final ActivatedAssetsCache _activatedAssetsCache;
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
 
@@ -215,6 +217,8 @@ class ActivationManager {
           // Pre-cache balance for the activated asset
           await _balanceManager.precacheBalance(asset);
         }
+
+        _activatedAssetsCache.invalidate();
       }
 
       if (!completer.isCompleted) {
@@ -241,13 +245,7 @@ class ActivationManager {
     }
 
     try {
-      final enabledCoins = await _client.rpc.generalActivation
-          .getEnabledCoins();
-      return enabledCoins.result
-          .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
-          .expand((assets) => assets)
-          .map((asset) => asset.id)
-          .toSet();
+      return await _activatedAssetsCache.getActivatedAssetIds();
     } catch (e) {
       debugPrint('Failed to get active assets: $e');
       return {};
@@ -255,13 +253,18 @@ class ActivationManager {
   }
 
   /// Check if specific asset is active
-  Future<bool> isAssetActive(AssetId assetId) async {
+  Future<bool> isAssetActive(
+    AssetId assetId, {
+    bool forceRefresh = false,
+  }) async {
     if (_isDisposed) {
       throw StateError('ActivationManager has been disposed');
     }
 
     try {
-      final activeAssets = await getActiveAssets();
+      final activeAssets = forceRefresh
+          ? await _activatedAssetsCache.getActivatedAssetIds(forceRefresh: true)
+          : await getActiveAssets();
       return activeAssets.contains(assetId);
     } catch (e) {
       debugPrint('Failed to check if asset is active: $e');

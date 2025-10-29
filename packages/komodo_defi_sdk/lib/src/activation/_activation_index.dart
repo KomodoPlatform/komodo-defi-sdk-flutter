@@ -6,6 +6,7 @@ library _activation;
 export 'activation_manager.dart';
 export 'base_strategies/activation_strategy_base.dart';
 export 'base_strategies/activation_strategy_factory.dart';
+export 'nft_activation_service.dart';
 export 'progress_reporting.dart';
 export 'protocol_strategies/bch_activation_strategy.dart';
 export 'protocol_strategies/bch_with_tokens_batch_strategy.dart';

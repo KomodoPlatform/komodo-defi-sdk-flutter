@@ -9,6 +9,7 @@ class KomodoDefiSdkConfig {
     this.preActivateCustomTokenAssets = true,
     this.maxPreActivationAttempts = 3,
     this.activationRetryDelay = const Duration(seconds: 2),
+    this.activatedAssetsCacheTtl = const Duration(seconds: 2),
     this.marketDataConfig = const MarketDataConfig(),
   });
 
@@ -30,6 +31,10 @@ class KomodoDefiSdkConfig {
   /// Delay between retry attempts
   final Duration activationRetryDelay;
 
+  /// Time-to-live for the activated assets cache.
+  /// Set to [Duration.zero] to disable caching.
+  final Duration activatedAssetsCacheTtl;
+
   /// Configuration for market data repositories
   final MarketDataConfig marketDataConfig;
 
@@ -40,6 +45,7 @@ class KomodoDefiSdkConfig {
     bool? preActivateCustomTokenAssets,
     int? maxPreActivationAttempts,
     Duration? activationRetryDelay,
+    Duration? activatedAssetsCacheTtl,
     MarketDataConfig? marketDataConfig,
   }) {
     return KomodoDefiSdkConfig(
@@ -53,6 +59,8 @@ class KomodoDefiSdkConfig {
       maxPreActivationAttempts:
           maxPreActivationAttempts ?? this.maxPreActivationAttempts,
       activationRetryDelay: activationRetryDelay ?? this.activationRetryDelay,
+      activatedAssetsCacheTtl:
+          activatedAssetsCacheTtl ?? this.activatedAssetsCacheTtl,
       marketDataConfig: marketDataConfig ?? this.marketDataConfig,
     );
   }

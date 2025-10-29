@@ -17,6 +17,7 @@ import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart'
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
+import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/legacy_withdrawal_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -62,6 +63,15 @@ Future<void> bootstrap({
     return framework.client;
   }, dependsOn: [KomodoDefiFramework]);
 
+  // Event streaming manager (internal use by managers for real-time updates)
+  container.registerSingletonAsync<EventStreamingManager>(() async {
+    final framework = await container.getAsync<KomodoDefiFramework>();
+    return EventStreamingManager(
+      client: framework.client,
+      eventService: framework.streaming,
+    );
+  }, dependsOn: [KomodoDefiFramework]);
+
   // Auth and storage dependencies
   container.registerSingletonAsync<KomodoDefiLocalAuth>(() async {
     final framework = await container.getAsync<KomodoDefiFramework>();
@@ -94,25 +104,38 @@ Future<void> bootstrap({
 
   // Register asset manager first since it's a core dependency
   container.registerSingletonAsync<AssetManager>(() async {
-    final client = await container.getAsync<ApiClient>();
     final auth = await container.getAsync<KomodoDefiLocalAuth>();
     final assetManager = AssetManager(
-      client,
       auth,
       config,
       () => container<ActivationManager>(),
       container<KomodoAssetsUpdateManager>(),
+      () => container<ActivatedAssetsCache>(),
     );
     await assetManager.init();
     // Will be removed in near future after KW is fully migrated to KDF
     await assetManager.initTickerIndex();
     return assetManager;
-  }, dependsOn: [ApiClient, KomodoDefiLocalAuth]);
+  }, dependsOn: [KomodoDefiLocalAuth]);
+
+  container.registerSingletonAsync<ActivatedAssetsCache>(() async {
+    final client = await container.getAsync<ApiClient>();
+    final auth = await container.getAsync<KomodoDefiLocalAuth>();
+    final assets = await container.getAsync<AssetManager>();
+    return ActivatedAssetsCache(
+      client: client,
+      auth: auth,
+      assetLookup: assets,
+      ttl: config.activatedAssetsCacheTtl,
+    );
+  }, dependsOn: [ApiClient, KomodoDefiLocalAuth, AssetManager]);
 
   // Register BalanceManager BEFORE ActivationManager to avoid circular dependency
   container.registerSingletonAsync<BalanceManager>(() async {
     final assets = await container.getAsync<AssetManager>();
     final auth = await container.getAsync<KomodoDefiLocalAuth>();
+    final eventStreamingManager = await container
+        .getAsync<EventStreamingManager>();
 
     // Create BalanceManager without its dependencies on SharedActivationCoordinator and PubkeyManager initially
     return BalanceManager(
@@ -121,8 +144,10 @@ Future<void> bootstrap({
       assetLookup: assets,
       pubkeyManager: null, // Will be set after PubkeyManager is created
       auth: auth,
+      eventStreamingManager: eventStreamingManager,
+      assetHistoryStorage: container<AssetHistoryStorage>(),
     );
-  }, dependsOn: [AssetManager, KomodoDefiLocalAuth]);
+  }, dependsOn: [AssetManager, KomodoDefiLocalAuth, EventStreamingManager]);
 
   // Register activation manager with asset manager dependency
   container.registerSingletonAsync<ActivationManager>(
@@ -132,6 +157,8 @@ Future<void> bootstrap({
       final assetManager = await container.getAsync<AssetManager>();
       final balanceManager = await container.getAsync<BalanceManager>();
       final configService = await container.getAsync<ActivationConfigService>();
+      final activatedAssetsCache = await container
+          .getAsync<ActivatedAssetsCache>();
 
       final activationManager = ActivationManager(
         client,
@@ -143,6 +170,7 @@ Future<void> bootstrap({
         // Needed here to add custom tokens to the same instance
         // as the asset manager
         container<KomodoAssetsUpdateManager>(),
+        activatedAssetsCache,
       );
 
       return activationManager;
@@ -154,8 +182,17 @@ Future<void> bootstrap({
       BalanceManager,
       ActivationConfigService,
       KomodoAssetsUpdateManager,
+      ActivatedAssetsCache,
     ],
   );
+
+  container.registerSingletonAsync<NftActivationService>(() async {
+    final client = await container.getAsync<ApiClient>();
+    final assetManager = await container.getAsync<AssetManager>();
+    final activatedAssetsCache = await container
+        .getAsync<ActivatedAssetsCache>();
+    return NftActivationService(client, assetManager, activatedAssetsCache);
+  }, dependsOn: [ApiClient, AssetManager, ActivatedAssetsCache]);
 
   // Register shared activation coordinator
   container.registerSingletonAsync<SharedActivationCoordinator>(() async {
@@ -243,12 +280,16 @@ Future<void> bootstrap({
       final pubkeys = await container.getAsync<PubkeyManager>();
       final activationCoordinator = await container
           .getAsync<SharedActivationCoordinator>();
+      final eventStreamingManager = await container
+          .getAsync<EventStreamingManager>();
       return TransactionHistoryManager(
         client,
         auth,
         assetProvider,
         activationCoordinator,
         pubkeyManager: pubkeys,
+        eventStreamingManager: eventStreamingManager,
+        assetHistoryStorage: container<AssetHistoryStorage>(),
       );
     },
     dependsOn: [
@@ -257,6 +298,7 @@ Future<void> bootstrap({
       AssetManager,
       PubkeyManager,
       SharedActivationCoordinator,
+      EventStreamingManager,
     ],
   );
 

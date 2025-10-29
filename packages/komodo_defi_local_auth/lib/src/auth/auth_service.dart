@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/src/auth/storage/secure_storage.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
@@ -40,6 +42,13 @@ abstract interface class IAuthService {
 
   /// Returns the [KdfUser] associated with the active wallet if KDF is running,
   /// otherwise null.
+  ///
+  /// **Performance Note**: This method returns the last user emitted by health
+  /// checks (updated every 5 minutes) to reduce RPC load. This means the
+  /// returned value could be up to 5 minutes stale if the active wallet is
+  /// changed externally. For most use cases, this trade-off is acceptable and
+  /// significantly reduces RPC spam.
+  ///
   /// NOTE: this function does not start/stop KDF or modify the active user,
   /// so atomic read/write protection is not used within and not required when
   /// calling this function.
@@ -104,6 +113,7 @@ class KdfAuthService implements IAuthService {
   KdfAuthService(this._kdfFramework, this._hostConfig) : _sessionId = const Uuid().v4() {
     _logger.info('[$_sessionId] KdfAuthService initialized');
     _startHealthCheck();
+    _subscribeToShutdownSignals();
   }
 
   final KomodoDefiFramework _kdfFramework;
@@ -122,6 +132,12 @@ class KdfAuthService implements IAuthService {
   Future<bool>? _ongoingHealthCheck;
   DateTime? _lastHealthCheckAttempt;
   DateTime? _lastHealthCheckCompleted;
+  StreamSubscription<ShutdownSignalEvent>? _shutdownSubscription;
+
+  // Cache for wallet users list to avoid spamming get_wallet_names
+  List<KdfUser>? _usersCache;
+  DateTime? _usersCacheTimestamp;
+  final Duration _usersCacheTtl = const Duration(minutes: 5);
 
   ApiClient get _client => _kdfFramework.client;
   late final methods = KomodoDefiRpcMethods(_client);
@@ -247,8 +263,10 @@ class KdfAuthService implements IAuthService {
     );
 
     return _lockWriteOperation(() async {
-      final currentUser = await _registerNewUser(config, options);
+      final isImported = mnemonic != null;
+      final currentUser = await _registerNewUser(config, options, isImported);
       _emitAuthStateChange(currentUser);
+      _invalidateUsersCache();
       return currentUser;
     });
   }
@@ -258,9 +276,16 @@ class KdfAuthService implements IAuthService {
     await _ensureKdfRunning();
 
     return _runReadOperation(() async {
+      // Serve from cache if fresh
+      if (_usersCache != null &&
+          _usersCacheTimestamp != null &&
+          DateTime.now().difference(_usersCacheTimestamp!) < _usersCacheTtl) {
+        return _usersCache!;
+      }
+
       final walletNames = await _client.rpc.wallet.getWalletNames();
 
-      return Future.wait(
+      final users = await Future.wait(
         walletNames.walletNames.map((name) async {
           final user = await _secureStorage.getUser(name);
           if (user != null) return user;
@@ -274,6 +299,10 @@ class KdfAuthService implements IAuthService {
           return newUser;
         }),
       );
+
+      _usersCache = users;
+      _usersCacheTimestamp = DateTime.now();
+      return users;
     });
   }
 
@@ -308,7 +337,13 @@ class KdfAuthService implements IAuthService {
 
   @override
   Future<KdfUser?> getActiveUser() async {
-    return _runReadOperation(_getActiveUser);
+    return _runReadOperation(() async {
+      // Prefer last known user emitted by health checks to avoid extra RPCs
+      if (_lastEmittedUser != null) {
+        return _lastEmittedUser;
+      }
+      return _getActiveUser();
+    });
   }
 
   AuthOptions get _fallbackAuthOptions =>
@@ -389,6 +424,7 @@ class KdfAuthService implements IAuthService {
           password: password,
         );
         await _secureStorage.deleteUser(walletName);
+        _invalidateUsersCache();
       } on DeleteWalletInvalidPasswordErrorResponse catch (e) {
         throw AuthException(
           e.error ?? 'Invalid password',
@@ -431,6 +467,11 @@ class KdfAuthService implements IAuthService {
     });
   }
 
+  void _invalidateUsersCache() {
+    _usersCache = null;
+    _usersCacheTimestamp = null;
+  }
+
   @override
   Stream<KdfUser?> get authStateChanges => _authStateController.stream;
 
@@ -440,6 +481,8 @@ class KdfAuthService implements IAuthService {
     // only be acquired once the active read/write operations complete.
     await _lockWriteOperation(() async {
       _healthCheckTimer?.cancel();
+      await _shutdownSubscription?.cancel();
+      _shutdownSubscription = null;
       await _stopKdf();
       _authStateController.close();
       _lastEmittedUser = null;
@@ -493,6 +536,13 @@ class KdfAuthService implements IAuthService {
 
     final updatedUser = user.copyWith(metadata: metadata);
     await _secureStorage.saveUser(updatedUser);
+
+    // Update cache silently without triggering auth state change. Updating the
+    // storage and cache at the same time emulates the same behaviour as before.
+    // Update user metadata for any subsequent access without emitting auth
+    // state changes, as the metadata field is currently used for events like
+    // coin activation, wallet type (derivation), and seed backup status
+    _lastEmittedUser = updatedUser;
   }
 
   @override

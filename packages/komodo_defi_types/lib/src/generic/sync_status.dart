@@ -1,3 +1,5 @@
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+
 enum SyncStatusEnum {
   notStarted,
   inProgress,
@@ -10,20 +12,18 @@ enum SyncStatusEnum {
     if (value == null) {
       return null;
     }
+    final sanitizedValue = value
+        .replaceAll('SyncStatusEnum.', '')
+        .toLowerCase();
 
-    switch (value) {
-      case 'NotStarted':
-        return SyncStatusEnum.notStarted;
-      case 'InProgress':
-        return SyncStatusEnum.inProgress;
-      case 'Success':
-      case 'Ok':
-        return SyncStatusEnum.success;
-      case 'Error':
-        return SyncStatusEnum.error;
-      default:
-        throw ArgumentError.value(value, 'value', 'Invalid sync status');
+    // Map 'ok' to 'success' for backward compatibility with KDF API
+    if (sanitizedValue == 'ok') {
+      return SyncStatusEnum.success;
     }
+
+    return SyncStatusEnum.values.firstWhereOrNull(
+      (e) => e.name.toLowerCase() == sanitizedValue,
+    );
   }
 }
 

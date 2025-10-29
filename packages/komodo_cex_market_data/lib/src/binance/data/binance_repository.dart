@@ -443,4 +443,9 @@ class BinanceRepository implements CexRepository {
       return false;
     }
   }
+
+  @override
+  void dispose() {
+    // No resources to dispose in this implementation
+  }
 }

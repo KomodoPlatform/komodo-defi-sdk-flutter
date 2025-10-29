@@ -22,12 +22,16 @@ class TaskShepherd {
   /// It will NOT be called when the task completes naturally.
   /// If not provided, the task cannot be canceled and cancelling the stream
   /// will not cancel the task.
+  ///
+  /// Note: For event-based task watching, use the `KdfEventStreamingService`
+  /// with `taskEventsForId()` method to listen for task updates instead of
+  /// polling. This provides real-time updates with lower latency and reduced
+  /// RPC calls.
   static Stream<T> executeTask<T extends BaseResponse>({
     required Future<NewTaskResponse> Function() initTask,
     required Future<T> Function(int taskId) getTaskStatus,
     required bool Function(T) checkTaskStatus,
     Future<void> Function(int taskId)? cancelTask,
-    // TODO: Implement mechanism for event-interface watching.
     Duration pollingInterval = const Duration(seconds: 1),
   }) {
     final controller = StreamController<T>();

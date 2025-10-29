@@ -426,17 +426,30 @@ class KdfFetcher {
       final checksum = await calculateChecksum(zipFilePath);
       log.info('Calculated checksum: $checksum');
 
-      // Update platform config with new checksum (accumulate unique)
-      final checksums =
-          (platformConfig['valid_zip_sha256_checksums'] as List<dynamic>)
-              .map((e) => e.toString())
-              .toSet();
-      if (!checksums.contains(checksum)) {
-        checksums.add(checksum);
-        platformConfig['valid_zip_sha256_checksums'] = checksums.toList();
-        log.info('Added new checksum to platform config: $checksum');
+      // Replace existing checksums when the commit changes; otherwise, accumulate
+      final previousCommit = (apiConfig['api_commit_hash'] as String?);
+      final isCommitChanged =
+          previousCommit == null || previousCommit != commitHash;
+
+      if (isCommitChanged) {
+        platformConfig['valid_zip_sha256_checksums'] = <String>[checksum];
+        log.info(
+          'API commit changed from ${previousCommit ?? 'undefined'} to $commitHash; '
+          'replaced existing checksums for platform $platform',
+        );
       } else {
-        log.info('Checksum already exists in platform config');
+        // Update platform config with new checksum (accumulate unique)
+        final checksums =
+            (platformConfig['valid_zip_sha256_checksums'] as List<dynamic>)
+                .map((e) => e.toString())
+                .toSet();
+        if (!checksums.contains(checksum)) {
+          checksums.add(checksum);
+          platformConfig['valid_zip_sha256_checksums'] = checksums.toList();
+          log.info('Added new checksum to platform config: $checksum');
+        } else {
+          log.info('Checksum already exists in platform config');
+        }
       }
     } catch (e) {
       log.severe('Error updating platform config for $platform: $e');

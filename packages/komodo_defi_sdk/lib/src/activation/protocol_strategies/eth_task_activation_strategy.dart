@@ -74,32 +74,31 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
-      final activationParams = EthWithTokensActivationParams.fromJson(asset.protocol.config)
-          .copyWith(
+      // Compute tx_history flag similar to non-task strategy
+      final txHistoryFlag = asset.supportsTxHistoryStreaming
+          ? true
+          : const EtherscanProtocolHelper().shouldEnableTransactionHistory(
+              asset,
+            );
+
+      final activationParams =
+          EthWithTokensActivationParams.fromJson(
+            asset.protocol.config,
+          ).copyWith(
             erc20Tokens:
-                children
-                    ?.map((e) => TokensRequest(ticker: e.id.id))
-                    .toList() ??
+                children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
                 [],
-            txHistory: const EtherscanProtocolHelper()
-                .shouldEnableTransactionHistory(asset),
+            txHistory: txHistoryFlag,
             privKeyPolicy: privKeyPolicy,
           );
-      
+
       // Debug logging for ETH task-based activation
       log(
         '[RPC] Activating ETH platform (task-based): ${asset.id.id}',
         name: 'EthTaskActivationStrategy',
       );
       log(
-        '[RPC] Activation parameters: ${jsonEncode({
-          'ticker': asset.id.id,
-          'protocol': asset.protocol.subClass.formatted,
-          'token_count': children?.length ?? 0,
-          'tokens': children?.map((e) => e.id.id).toList() ?? [],
-          'activation_params': activationParams.toRpcParams(),
-          'priv_key_policy': privKeyPolicy.toJson(),
-        })}',
+        '[RPC] Activation parameters: ${jsonEncode({'ticker': asset.id.id, 'protocol': asset.protocol.subClass.formatted, 'token_count': children?.length ?? 0, 'tokens': children?.map((e) => e.id.id).toList() ?? [], 'activation_params': activationParams.toRpcParams(), 'priv_key_policy': privKeyPolicy.toJson()})}',
         name: 'EthTaskActivationStrategy',
       );
 
@@ -107,7 +106,7 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
         ticker: asset.id.id,
         params: activationParams,
       );
-      
+
       log(
         '[RPC] Task initiated for ${asset.id.id}, task_id: ${taskResponse.taskId}',
         name: 'EthTaskActivationStrategy',
