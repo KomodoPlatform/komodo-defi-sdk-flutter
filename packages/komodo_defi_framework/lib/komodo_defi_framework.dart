@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
@@ -6,7 +7,9 @@ import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
+import 'package:komodo_defi_framework/src/platform/ios_restart_handler.dart';
 import 'package:komodo_defi_framework/src/streaming/event_streaming_service.dart';
+import 'package:komodo_defi_framework/src/streaming/events/kdf_event.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
@@ -15,6 +18,7 @@ export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
 export 'package:komodo_defi_framework/src/config/event_streaming_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
+export 'package:komodo_defi_framework/src/platform/ios_restart_handler.dart';
 export 'package:komodo_defi_framework/src/services/seed_node_service.dart';
 export 'package:komodo_defi_framework/src/streaming/event_streaming_service.dart';
 export 'package:komodo_defi_framework/src/streaming/events/kdf_event.dart';
@@ -185,15 +189,21 @@ class KomodoDefiFramework implements ApiClient {
 
   Future<String?> version() async {
     final stopwatch = Stopwatch()..start();
-    _log('version(): Starting version RPC call via ${_kdfOperations.operationsName}');
+    _log(
+      'version(): Starting version RPC call via ${_kdfOperations.operationsName}',
+    );
     try {
       final version = await _kdfOperations.version();
       stopwatch.stop();
-      _log('version(): Completed in ${stopwatch.elapsedMilliseconds}ms, result=$version');
+      _log(
+        'version(): Completed in ${stopwatch.elapsedMilliseconds}ms, result=$version',
+      );
       return version;
     } catch (e) {
       stopwatch.stop();
-      _log('version(): Failed after ${stopwatch.elapsedMilliseconds}ms with error: $e');
+      _log(
+        'version(): Failed after ${stopwatch.elapsedMilliseconds}ms with error: $e',
+      );
       rethrow;
     }
   }
@@ -202,7 +212,7 @@ class KomodoDefiFramework implements ApiClient {
   /// Returns true if KDF is running and responsive, false otherwise.
   /// This is useful for detecting when KDF has become unavailable, especially
   /// on mobile platforms after app backgrounding.
-  /// 
+  ///
   /// IMPORTANT: This method ONLY relies on actual RPC verification (version() call)
   /// to avoid false positives where native status reports "running" but HTTP listener
   /// is not accepting connections (common after iOS backgrounding).
@@ -214,7 +224,7 @@ class KomodoDefiFramework implements ApiClient {
         _log('KDF health check failed: version call returned null');
         return false;
       }
-      
+
       _log('KDF health check passed: version=$versionCheck');
       return true;
     } catch (e) {
@@ -276,7 +286,7 @@ class KomodoDefiFramework implements ApiClient {
       return response;
     } catch (e) {
       stopwatch.stop();
-      
+
       // Detect transport-fatal SocketExceptions that indicate KDF is down/dying
       // errno 32 (EPIPE): Broken pipe - writing to socket whose peer closed
       // errno 54 (ECONNRESET): Connection reset by peer
@@ -284,24 +294,44 @@ class KomodoDefiFramework implements ApiClient {
       // errno 61 (ECONNREFUSED): Connection refused - no listener on port
       final errorString = e.toString().toLowerCase();
       final isSocketException = errorString.contains('socketexception');
-      final isFatalTransportError = isSocketException && (
-        errorString.contains('broken pipe') || errorString.contains('errno = 32') ||
-        errorString.contains('connection reset') || errorString.contains('errno = 54') ||
-        errorString.contains('operation timed out') || errorString.contains('errno = 60') ||
-        errorString.contains('connection refused') || errorString.contains('errno = 61')
-      );
+      final isFatalTransportError =
+          isSocketException &&
+          (errorString.contains('broken pipe') ||
+              errorString.contains('errno = 32') ||
+              errorString.contains('connection reset') ||
+              errorString.contains('errno = 54') ||
+              errorString.contains('operation timed out') ||
+              errorString.contains('errno = 60') ||
+              errorString.contains('connection refused') ||
+              errorString.contains('errno = 61'));
 
       if (isFatalTransportError) {
-        final errorType = errorString.contains('errno = 32') || errorString.contains('broken pipe') ? 'EPIPE (32)' :
-                         errorString.contains('errno = 54') || errorString.contains('connection reset') ? 'ECONNRESET (54)' :
-                         errorString.contains('errno = 60') || errorString.contains('operation timed out') ? 'ETIMEDOUT (60)' :
-                         'ECONNREFUSED (61)';
+        final errorType =
+            errorString.contains('errno = 32') ||
+                errorString.contains('broken pipe')
+            ? 'EPIPE (32)'
+            : errorString.contains('errno = 54') ||
+                  errorString.contains('connection reset')
+            ? 'ECONNRESET (54)'
+            : errorString.contains('errno = 60') ||
+                  errorString.contains('operation timed out')
+            ? 'ETIMEDOUT (60)'
+            : 'ECONNREFUSED (61)';
         _logger.severe(
           '[RPC] ${method ?? 'unknown'} failed: KDF transport error $errorType. '
           'Resetting HTTP client to drop stale connections.',
         );
         // Reset HTTP client immediately to drop stale keep-alive connections
         resetHttpClient();
+
+        // On iOS, trigger app restart for broken pipe errors (errno 32)
+        // This handles cases where KDF has terminated unexpectedly
+        final isBrokenPipe =
+            errorString.contains('errno = 32') ||
+            errorString.contains('broken pipe');
+        if (isBrokenPipe) {
+          _handleBrokenPipeError();
+        }
       } else {
         _logger.warning(
           '[RPC] ${method ?? 'unknown'} failed after ${stopwatch.elapsedMilliseconds}ms: $e',
@@ -451,6 +481,64 @@ class KomodoDefiFramework implements ApiClient {
     }
   }
 
+  /// Handles broken pipe errors by triggering an app restart on iOS.
+  ///
+  /// Broken pipe errors (errno 32) indicate that KDF has terminated unexpectedly
+  /// or the connection has been severed. On iOS, we trigger an app restart to
+  /// recover from this state.
+  void _handleBrokenPipeError() {
+    // Only handle on iOS
+    if (kIsWeb || !Platform.isIOS) {
+      return;
+    }
+
+    _logger.severe('[iOS] Broken pipe detected - requesting app restart');
+
+    // Request app restart asynchronously (fire and forget)
+    // The app will exit shortly after this is called
+    IosRestartHandler.instance
+        .requestRestartForBrokenPipe()
+        .then((success) {
+          if (!success) {
+            _logger.severe(
+              '[iOS] Failed to request app restart for broken pipe error',
+            );
+          }
+        })
+        .catchError((Object error) {
+          _logger.severe('[iOS] Error requesting app restart: $error');
+        });
+  }
+
+  /// Handles shutdown signals by triggering an app restart on iOS.
+  ///
+  /// Called by the auth service when a shutdown signal is received from KDF.
+  /// On iOS, this triggers an app restart to recover from KDF shutdown.
+  void handleShutdownSignalForRestart(ShutdownSignalEvent event) {
+    // Only handle on iOS
+    if (kIsWeb || !Platform.isIOS) {
+      return;
+    }
+
+    _logger.severe(
+      '[iOS] Shutdown signal (${event.signalName}) detected - requesting app restart',
+    );
+
+    // Request app restart asynchronously (fire and forget)
+    IosRestartHandler.instance
+        .requestRestartForShutdownSignal(event.signalName)
+        .then((success) {
+          if (!success) {
+            _logger.severe(
+              '[iOS] Failed to request app restart for shutdown signal',
+            );
+          }
+        })
+        .catchError((Object error) {
+          _logger.severe('[iOS] Error requesting app restart: $error');
+        });
+  }
+
   /// Closes the log stream and cancels the logger subscription.
   ///
   /// NB! This does not stop the KDF operations or the KDF process.
@@ -462,6 +550,13 @@ class KomodoDefiFramework implements ApiClient {
     // Close the log stream
     if (!_logStream.isClosed) {
       await _logStream.close();
+    }
+
+    // Dispose streaming service (SSE/SharedWorker) if initialized
+    final svc = _streamingService;
+    if (svc != null) {
+      await svc.dispose();
+      _streamingService = null;
     }
 
     // Dispose of KDF operations to free native resources

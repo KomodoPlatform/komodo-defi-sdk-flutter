@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_client_sse/constants/sse_request_type_enum.dart'
     as sset;
 import 'package:flutter_client_sse/flutter_client_sse.dart' as sse;
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:logging/logging.dart';
 
 typedef EventStreamUnsubscribe = void Function();
 
@@ -33,13 +33,8 @@ EventStreamUnsubscribe connectEventStream({
   final Uri url = _buildEventsUrl(cfg);
   bool isClosed = false;
   StreamSubscription<sse.SSEModel>? sub;
-
-  void log(String msg) {
-    if (kDebugMode) {
-      // TODO: Move to central logging system
-      print('[EventStream][IO] $msg');
-    }
-  }
+  final Logger logger = Logger('KdfEventStreamingService[IO]');
+  final Stopwatch connectionTimer = Stopwatch()..start();
 
   Future<void> start() async {
     try {
@@ -66,16 +61,24 @@ EventStreamUnsubscribe connectEventStream({
                 final decoded = jsonFromString(data);
                 onMessage(decoded);
               } catch (e) {
-                log('Failed to decode event data: $e');
+                logger.warning(
+                  '[EventStream][IO] Failed to decode event data: $e',
+                );
               }
             },
             onError: (Object error) {
-              log('SSE error: $error');
+              logger.warning('[EventStream][IO] SSE error: $error');
             },
           );
-      log('Connected to $url');
+      connectionTimer.stop();
+      logger.info(
+        '[EventStream][IO] Connected to $url in ${connectionTimer.elapsedMilliseconds}ms',
+      );
     } catch (e) {
-      log('Failed to start SSE: $e');
+      connectionTimer.stop();
+      logger.severe(
+        '[EventStream][IO] Failed to start SSE after ${connectionTimer.elapsedMilliseconds}ms: $e',
+      );
     }
   }
 
@@ -87,6 +90,9 @@ EventStreamUnsubscribe connectEventStream({
     isClosed = true;
     try {
       await sub?.cancel();
-    } catch (_) {}
+      logger.info('[EventStream][IO] Disconnected from $url');
+    } catch (e) {
+      logger.warning('[EventStream][IO] Error during disconnect: $e');
+    }
   };
 }

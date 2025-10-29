@@ -26,6 +26,9 @@ extension KdfAuthServiceOperationsExtension on KdfAuthService {
   ///
   /// This provides near-instant detection of KDF shutdown (< 1 second) compared
   /// to the periodic health check (up to 30 minutes delay).
+  ///
+  /// Note: This is called once during initialization. If KDF is not running at
+  /// that time, [_enableShutdownStream] is retried after KDF successfully starts.
   void _subscribeToShutdownSignals() {
     _shutdownSubscription?.cancel();
 
@@ -45,6 +48,7 @@ extension KdfAuthServiceOperationsExtension on KdfAuthService {
 
     // Enable the shutdown signal stream on KDF
     // Note: This is fire-and-forget; if it fails, we'll rely on health checks
+    // and retry when KDF starts
     _enableShutdownStream().catchError((Object error) {
       _logger.warning(
         'Failed to enable shutdown signal stream, '
@@ -54,6 +58,10 @@ extension KdfAuthServiceOperationsExtension on KdfAuthService {
   }
 
   /// Enables the shutdown signal stream on KDF.
+  ///
+  /// This is called once during service initialization and retried after KDF
+  /// successfully starts to ensure the stream is enabled even if KDF was not
+  /// running during initialization.
   Future<void> _enableShutdownStream() async {
     // TODO: Remove if/when shutdown signal stream is supported on Web
     // and Windows
@@ -87,6 +95,17 @@ extension KdfAuthServiceOperationsExtension on KdfAuthService {
     if (_lastEmittedUser != null) {
       _emitAuthStateChange(null);
     }
+
+    // On iOS, trigger app restart for shutdown signals
+    // This handles cases where KDF receives an OS shutdown signal
+    _handleShutdownSignalRestart(event);
+  }
+
+  /// Triggers an iOS app restart when a shutdown signal is received.
+  void _handleShutdownSignalRestart(ShutdownSignalEvent event) {
+    // The actual implementation is in KomodoDefiFramework
+    // to avoid circular dependencies
+    _kdfFramework.handleShutdownSignalForRestart(event);
   }
 
   Future<void> _checkKdfHealth() async {

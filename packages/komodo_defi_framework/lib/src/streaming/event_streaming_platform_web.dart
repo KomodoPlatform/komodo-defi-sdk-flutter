@@ -3,8 +3,8 @@
 
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html show Event;
-import 'package:flutter/foundation.dart';
 import 'package:js/js_util.dart' as jsu;
+import 'package:logging/logging.dart';
 
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 
@@ -29,34 +29,48 @@ EventStreamUnsubscribe connectEventStream({
   IKdfHostConfig? hostConfig,
   required void Function(Object? data) onMessage,
 }) {
+  final Logger logger = Logger('KdfEventStreamingService[Web]');
+  final Stopwatch connectionTimer = Stopwatch()..start();
+
   try {
     final Object sharedWorkerCtor = _getGlobalProperty('SharedWorker');
     final Object worker = _callConstructor<Object>(sharedWorkerCtor, <Object?>[
       'assets/packages/komodo_defi_framework/assets/web/event_streaming_worker.js',
     ]);
     final Object? portMaybe = _getProperty(worker, 'port');
-    if (portMaybe == null) return () {};
+    if (portMaybe == null) {
+      logger.warning('[EventStream][Web] SharedWorker port is null');
+      return () {};
+    }
     final Object port = portMaybe;
     _callMethod<void>(port, 'start', const <Object>[]);
 
     void handler(html.Event e) {
       final Object? data = _getProperty(e, 'data');
-
-      if (kDebugMode) {
-        print('EventStream: Received message: $data');
-      }
       onMessage(data);
     }
 
     _setProperty(port, 'onmessage', jsu.allowInterop(handler));
 
+    connectionTimer.stop();
+    logger.info(
+      '[EventStream][Web] Connected to SharedWorker in ${connectionTimer.elapsedMilliseconds}ms',
+    );
+
     return () {
       try {
         _setProperty(port, 'onmessage', null);
         _callMethod<void>(port, 'close', const <Object>[]);
-      } catch (_) {}
+        logger.info('[EventStream][Web] Disconnected from SharedWorker');
+      } catch (e) {
+        logger.warning('[EventStream][Web] Error during disconnect: $e');
+      }
     };
-  } catch (_) {
+  } catch (e) {
+    connectionTimer.stop();
+    logger.severe(
+      '[EventStream][Web] Failed to connect to SharedWorker after ${connectionTimer.elapsedMilliseconds}ms: $e',
+    );
     return () {};
   }
 }

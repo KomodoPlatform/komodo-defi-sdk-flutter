@@ -4,21 +4,29 @@
 import 'dart:async';
 import 'dart:convert' as convert;
 
-import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
+import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/streaming/event_streaming_platform_stub.dart'
     if (dart.library.io) 'package:komodo_defi_framework/src/streaming/event_streaming_platform_io.dart'
     if (dart.library.html) 'package:komodo_defi_framework/src/streaming/event_streaming_platform_web.dart';
 import 'package:komodo_defi_framework/src/streaming/events/kdf_event.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:logging/logging.dart';
 
 typedef EventPredicate = bool Function(KdfEvent event);
 
 class KdfEventStreamingService {
   KdfEventStreamingService({IKdfHostConfig? hostConfig})
-    : _hostConfig = hostConfig;
+    : _hostConfig = hostConfig {
+    _logger = Logger('KdfEventStreamingService');
+  }
 
   final IKdfHostConfig? _hostConfig;
+  late final Logger _logger;
+
+  /// Enable debug logging for streaming events (event types, durations, errors)
+  /// This can be controlled via app configuration
+  static bool enableDebugLogging = true;
 
   final StreamController<KdfEvent> _events = StreamController.broadcast();
 
@@ -35,6 +43,25 @@ class KdfEventStreamingService {
   }
 
   void _onIncomingData(Object? data) {
+    if (!enableDebugLogging) {
+      _processEventData(data);
+      return;
+    }
+
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      _processEventData(data);
+      stopwatch.stop();
+    } catch (e) {
+      stopwatch.stop();
+      _logger.warning(
+        '[EventStream] Failed to process event after ${stopwatch.elapsedMilliseconds}ms: $e',
+      );
+    }
+  }
+
+  void _processEventData(Object? data) {
     try {
       if (data == null) return;
       JsonMap? map;
@@ -63,15 +90,24 @@ class KdfEventStreamingService {
       } else {
         throw ArgumentError('Unsupported event data type: ${data.runtimeType}');
       }
+
       final event = KdfEvent.fromJson(map);
-      if (kDebugMode) {
+
+      if (enableDebugLogging) {
         final summary = _summarizeEvent(event);
-        print('[EventStream] Received ${event.typeEnum.value}: $summary');
+        _logger.info(
+          '[EventStream] Received ${event.typeEnum.value}: $summary',
+        );
+
+        if (KdfLoggingConfig.verboseLogging) {
+          _logger.info('[EventStream] Event payload: ${map.toJsonString()}');
+        }
       }
+
       _events.add(event);
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to parse stream event: $e');
+      if (enableDebugLogging) {
+        _logger.warning('[EventStream] Failed to parse event: $e');
       }
     }
   }

@@ -70,6 +70,8 @@ extension KdfExtensions on KdfAuthService {
       await _lockWriteOperation(() async {
         await _kdfFramework.startKdf(await _noAuthConfig);
         await _waitUntilKdfRpcIsUp();
+        // Retry enabling shutdown stream now that KDF is running
+        await _enableShutdownStream();
       });
     }
   }
@@ -84,6 +86,8 @@ extension KdfExtensions on KdfAuthService {
     }
 
     await _waitUntilKdfRpcIsUp();
+    // Retry enabling shutdown stream now that KDF is running
+    await _enableShutdownStream();
   }
 
   static AuthException _mapStartupErrorToAuthException(
