@@ -259,7 +259,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   // platforms, especially after app backgrounding. See:
   // https://github.com/KomodoPlatform/komodo-wallet/issues/3213
   final Uri _url = Uri.parse('http://127.0.0.1:7783');
-  final Client _client = Client();
+  Client _client = Client();
 
   @override
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
@@ -295,6 +295,13 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       _log('Error getting KDF version: $e');
       return null;
     }
+  }
+
+  @override
+  void resetHttpClient() {
+    _log('Resetting HTTP client to drop stale keep-alive connections');
+    _client.close();
+    _client = Client();
   }
 
   static int _kdfMainIsolate(_KdfMainParams params) {

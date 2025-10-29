@@ -199,6 +199,12 @@ class KdfOperationsRemote implements IKdfOperations {
   }
 
   @override
+  void resetHttpClient() {
+    // No-op for remote operations - HTTP client is managed by http package
+    _log('resetHttpClient called on remote operations (no-op)');
+  }
+
+  @override
   void dispose() {
     // No-op for remote operations - HTTP client is managed externally
   }
