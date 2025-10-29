@@ -132,6 +132,11 @@ abstract interface class IKdfOperations {
   /// concerns.
   Future<bool> isAvailable(IKdfHostConfig hostConfig);
 
+  /// Resets the HTTP client to drop stale keep-alive connections.
+  /// This is useful after KDF has been killed and restarted to ensure
+  /// we don't try to reuse dead connections.
+  void resetHttpClient();
+
   /// Dispose of any resources used by this operations implementation
   void dispose();
 }

@@ -46,6 +46,11 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   }
 
   @override
+  void resetHttpClient() {
+    // No-op for stub
+  }
+
+  @override
   void dispose() {
     // No-op for stub
   }

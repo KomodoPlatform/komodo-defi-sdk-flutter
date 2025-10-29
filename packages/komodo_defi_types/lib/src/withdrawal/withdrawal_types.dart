@@ -280,21 +280,21 @@ class WithdrawalSource extends Equatable implements RpcRequestParams {
 class KmdRewards {
   KmdRewards({
     required this.amount,
-    required this.claimedByMe,
+    this.claimedByMe,
   });
 
   factory KmdRewards.fromJson(JsonMap json) {
     return KmdRewards(
       amount: json.value<String>('amount'),
-      claimedByMe: json.value<bool>('claimed_by_me'),
+      claimedByMe: json.valueOrNull<bool>('claimed_by_me'),
     );
   }
 
   final String amount;
-  final bool claimedByMe;
+  final bool? claimedByMe;
 
   JsonMap toJson() => {
         'amount': amount,
-        'claimed_by_me': claimedByMe,
+        if (claimedByMe != null) 'claimed_by_me': claimedByMe,
       };
 }

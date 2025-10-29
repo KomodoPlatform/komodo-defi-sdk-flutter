@@ -173,36 +173,51 @@ class KomodoDefiFramework implements ApiClient {
   }
 
   Future<String?> version() async {
-    final version = await _kdfOperations.version();
-    _log('KDF version: $version');
-    return version;
+    final stopwatch = Stopwatch()..start();
+    _log('version(): Starting version RPC call via ${_kdfOperations.operationsName}');
+    try {
+      final version = await _kdfOperations.version();
+      stopwatch.stop();
+      _log('version(): Completed in ${stopwatch.elapsedMilliseconds}ms, result=$version');
+      return version;
+    } catch (e) {
+      stopwatch.stop();
+      _log('version(): Failed after ${stopwatch.elapsedMilliseconds}ms with error: $e');
+      rethrow;
+    }
   }
 
   /// Checks if KDF is healthy and responsive by attempting a version RPC call.
   /// Returns true if KDF is running and responsive, false otherwise.
   /// This is useful for detecting when KDF has become unavailable, especially
   /// on mobile platforms after app backgrounding.
+  /// 
+  /// IMPORTANT: This method ONLY relies on actual RPC verification (version() call)
+  /// to avoid false positives where native status reports "running" but HTTP listener
+  /// is not accepting connections (common after iOS backgrounding).
   Future<bool> isHealthy() async {
     try {
-      final isRunningCheck = await isRunning();
-      if (!isRunningCheck) {
-        _log('KDF health check failed: not running');
-        return false;
-      }
-      
-      // Additional check: try to get version to verify RPC is responsive
+      // Only rely on actual RPC verification - don't trust native status alone
       final versionCheck = await version();
       if (versionCheck == null) {
         _log('KDF health check failed: version call returned null');
         return false;
       }
       
-      _log('KDF health check passed');
+      _log('KDF health check passed: version=$versionCheck');
       return true;
     } catch (e) {
       _log('KDF health check failed with exception: $e');
       return false;
     }
+  }
+
+  /// Resets the HTTP client to drop stale keep-alive connections.
+  /// This is useful after KDF has been killed and restarted to ensure
+  /// we don't try to reuse dead connections.
+  void resetHttpClient() {
+    _log('Resetting HTTP client to drop stale connections');
+    _kdfOperations.resetHttpClient();
   }
 
   @override
@@ -248,9 +263,37 @@ class KomodoDefiFramework implements ApiClient {
       return response;
     } catch (e) {
       stopwatch.stop();
-      _logger.warning(
-        '[RPC] ${method ?? 'unknown'} failed after ${stopwatch.elapsedMilliseconds}ms: $e',
+      
+      // Detect transport-fatal SocketExceptions that indicate KDF is down/dying
+      // errno 32 (EPIPE): Broken pipe - writing to socket whose peer closed
+      // errno 54 (ECONNRESET): Connection reset by peer
+      // errno 60 (ETIMEDOUT): Operation timed out
+      // errno 61 (ECONNREFUSED): Connection refused - no listener on port
+      final errorString = e.toString().toLowerCase();
+      final isSocketException = errorString.contains('socketexception');
+      final isFatalTransportError = isSocketException && (
+        errorString.contains('broken pipe') || errorString.contains('errno = 32') ||
+        errorString.contains('connection reset') || errorString.contains('errno = 54') ||
+        errorString.contains('operation timed out') || errorString.contains('errno = 60') ||
+        errorString.contains('connection refused') || errorString.contains('errno = 61')
       );
+
+      if (isFatalTransportError) {
+        final errorType = errorString.contains('errno = 32') || errorString.contains('broken pipe') ? 'EPIPE (32)' :
+                         errorString.contains('errno = 54') || errorString.contains('connection reset') ? 'ECONNRESET (54)' :
+                         errorString.contains('errno = 60') || errorString.contains('operation timed out') ? 'ETIMEDOUT (60)' :
+                         'ECONNREFUSED (61)';
+        _logger.severe(
+          '[RPC] ${method ?? 'unknown'} failed: KDF transport error $errorType. '
+          'Resetting HTTP client to drop stale connections.',
+        );
+        // Reset HTTP client immediately to drop stale keep-alive connections
+        resetHttpClient();
+      } else {
+        _logger.warning(
+          '[RPC] ${method ?? 'unknown'} failed after ${stopwatch.elapsedMilliseconds}ms: $e',
+        );
+      }
       rethrow;
     }
   }
