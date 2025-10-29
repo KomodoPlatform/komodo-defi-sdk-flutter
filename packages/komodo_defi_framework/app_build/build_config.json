@@ -2,7 +2,7 @@
     "api": {
         "api_commit_hash": "9aa41b4c741907d59e4887db08cf84fb78e967e0",
         "branch": "dev",
-        "fetch_at_build_enabled": true,
+        "fetch_at_build_enabled": false,
         "concurrent_downloads_enabled": true,
         "source_urls": [
             "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework",
@@ -68,7 +68,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "561576a817f0fb40663d0ce04a04755b7cf8a8a2",
+        "bundled_coins_repo_commit": "5344c5ab44a153020ea2bb3893a752f19df927d0",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://raw.githubusercontent.com/KomodoPlatform/coins",
         "coins_repo_branch": "master",
