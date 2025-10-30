@@ -108,11 +108,13 @@ class KomodoDefiFramework implements ApiClient {
   }
 
   // Streaming service (web: SharedWorker; native: SSE)
+  // NOTE: SSE connection should be tied to authentication state.
+  // Do NOT call initialize() automatically - let the application control when to connect.
   KdfEventStreamingService? _streamingService;
   KdfEventStreamingService get streaming {
     return _streamingService ??= KdfEventStreamingService(
       hostConfig: _hostConfig,
-    )..initialize();
+    );
   }
 
   //TODO! Figure out best way to handle overlap between startup and host

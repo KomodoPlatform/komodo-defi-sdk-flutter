@@ -293,6 +293,19 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   BalanceManager get balances =>
       _assertSdkInitialized(_container<BalanceManager>());
 
+  /// The event streaming service instance.
+  ///
+  /// Provides access to SSE (Server-Sent Events) connection lifecycle management
+  /// for real-time balance and transaction history updates.
+  ///
+  /// Use [KdfEventStreamingService.connectIfNeeded] to establish SSE connection
+  /// after authentication, and [KdfEventStreamingService.disconnect] to clean up
+  /// on sign-out.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  KdfEventStreamingService get streaming =>
+      _assertSdkInitialized(_container<KomodoDefiFramework>().streaming);
+
   /// Public stream of framework logs.
   ///
   /// Subscribe to receive human-readable log messages from the underlying

@@ -28,6 +28,7 @@ T _callMethod<T>(Object o, String name, List<Object?> args) =>
 EventStreamUnsubscribe connectEventStream({
   IKdfHostConfig? hostConfig,
   required void Function(Object? data) onMessage,
+  required void Function() onFirstByte,
 }) {
   try {
     final Object sharedWorkerCtor = _getGlobalProperty('SharedWorker');
@@ -39,8 +40,16 @@ EventStreamUnsubscribe connectEventStream({
     final Object port = portMaybe;
     _callMethod<void>(port, 'start', const <Object>[]);
 
+    bool firstMessageReceived = false;
+
     void handler(html.Event e) {
       final Object? data = _getProperty(e, 'data');
+
+      // Signal first byte received on first message
+      if (!firstMessageReceived) {
+        firstMessageReceived = true;
+        onFirstByte();
+      }
 
       if (kDebugMode) {
         print('EventStream: Received message: $data');
