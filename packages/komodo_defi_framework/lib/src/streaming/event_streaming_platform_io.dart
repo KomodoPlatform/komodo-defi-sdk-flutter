@@ -38,6 +38,7 @@ EventStreamUnsubscribe connectEventStream({
 
   Future<void> start() async {
     try {
+      logger.info('[EventStream][IO] Starting SSE connection to $url');
       // Some servers accept rpc_pass in headers, but KDF exposes `?userpass=`
       // as query for SSE. We still set Accept header to ensure SSE content type.
       sub =
@@ -53,6 +54,9 @@ EventStreamUnsubscribe connectEventStream({
             },
           ).listen(
             (event) {
+              logger.info(
+                '[EventStream][IO] Event: (${event.event}:${event.id}) ${event.data}',
+              );
               final String? raw = event.data;
               if (raw == null) return;
               final String data = raw.trim();

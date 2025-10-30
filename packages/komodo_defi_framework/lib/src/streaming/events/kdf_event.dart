@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:logging/logging.dart';
 
 part 'balance_event.dart';
 part 'heartbeat_event.dart';
@@ -13,6 +14,8 @@ part 'swap_status_event.dart';
 part 'task_event.dart';
 part 'tx_history_event.dart';
 part 'unknown_event.dart';
+
+final Logger _kdfEventLogger = Logger('KdfEvent');
 
 /// Private enum for internal event type string mapping
 enum EventTypeString {
@@ -173,7 +176,7 @@ sealed class KdfEvent {
   /// Handles unknown event types by logging and returning an UnknownEvent
   static UnknownEvent _handleUnknownEvent(String typeString, JsonMap message) {
     if (kDebugMode) {
-      print('[EventStream] Unknown event type: $typeString');
+      _kdfEventLogger.warning('[EventStream] Unknown event type: $typeString');
     }
     return UnknownEvent(typeString: typeString, rawData: message);
   }

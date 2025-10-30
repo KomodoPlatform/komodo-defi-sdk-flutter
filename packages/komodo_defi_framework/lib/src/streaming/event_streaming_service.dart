@@ -100,7 +100,7 @@ class KdfEventStreamingService {
         );
 
         if (KdfLoggingConfig.verboseLogging) {
-          _logger.info('[EventStream] Event payload: ${map.toJsonString()}');
+          _logger.fine('[EventStream] Event payload: ${map.toJsonString()}');
         }
       }
 
