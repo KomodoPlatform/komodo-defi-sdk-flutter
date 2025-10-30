@@ -159,6 +159,12 @@ class BalanceManager implements IBalanceManager {
       );
     }
 
+    // Cancel all stale balance timers to prevent timer leak on wallet change
+    for (final timer in _staleBalanceTimers.values) {
+      timer.cancel();
+    }
+    _staleBalanceTimers.clear();
+
     final List<StreamController<BalanceInfo>> controllers = _balanceControllers
         .values
         .toList();
