@@ -325,4 +325,9 @@ class CoinGeckoRepository implements CexRepository {
     // For paid plans with cutoff from 2013/2018, return a reasonable batch size
     return daysSinceCutoff > 365 ? 365 : daysSinceCutoff;
   }
+
+  @override
+  void dispose() {
+    // No resources to dispose in this implementation
+  }
 }

@@ -332,6 +332,7 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   }
 
   void dispose() {
+    _client.close();
     _logCallback.close(); // Ensure the NativeCallable is properly closed
   }
 }

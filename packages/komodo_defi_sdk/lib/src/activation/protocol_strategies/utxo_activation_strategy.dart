@@ -40,11 +40,10 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         stepCount: 5,
         additionalInfo: {
           'chainType': protocol.subClass.formatted,
-          'mode':
-              protocol
-                  .defaultActivationParams(privKeyPolicy: privKeyPolicy)
-                  .mode
-                  ?.rpc,
+          'mode': protocol
+              .defaultActivationParams(privKeyPolicy: privKeyPolicy)
+              .mode
+              ?.rpc,
           'txVersion': protocol.txVersion,
           'pubtype': protocol.pubtype,
         },
@@ -61,26 +60,17 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
-      final activationParams = protocol.defaultActivationParams(privKeyPolicy: privKeyPolicy);
-      
+      final activationParams = protocol.defaultActivationParams(
+        privKeyPolicy: privKeyPolicy,
+      );
+
       // Debug logging for UTXO/Electrum activation
       log(
         '[ELECTRUM] Activating UTXO coin: ${asset.id.id}',
         name: 'UtxoActivationStrategy',
       );
       log(
-        '[ELECTRUM] Activation parameters: ${jsonEncode({
-          'ticker': asset.id.id,
-          'mode': activationParams.mode?.rpc,
-          'utxo_params': activationParams.toRpcParams(),
-          'protocol_type': protocol.subClass.formatted,
-          'tx_version': protocol.txVersion,
-          'pubtype': protocol.pubtype,
-          'p2shtype': protocol.p2shtype,
-          'wiftype': protocol.wiftype,
-          'electrum_servers': protocol.requiredServers.toJsonRequest(),
-          'priv_key_policy': privKeyPolicy.toJson(),
-        })}',
+        '[ELECTRUM] Activation parameters: ${jsonEncode({'ticker': asset.id.id, 'mode': activationParams.mode?.rpc, 'utxo_params': activationParams.toRpcParams(), 'protocol_type': protocol.subClass.formatted, 'tx_version': protocol.txVersion, 'pubtype': protocol.pubtype, 'p2shtype': protocol.p2shtype, 'wiftype': protocol.wiftype, 'electrum_servers': protocol.requiredServers.toJsonRequest(), 'priv_key_policy': privKeyPolicy.toJson()})}',
         name: 'UtxoActivationStrategy',
       );
 
@@ -88,7 +78,7 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
         ticker: asset.id.id,
         params: activationParams,
       );
-      
+
       log(
         '[ELECTRUM] Task initiated for ${asset.id.id}, task_id: ${taskResponse.taskId}',
         name: 'UtxoActivationStrategy',
@@ -171,8 +161,13 @@ class UtxoActivationStrategy extends ProtocolActivationStrategy {
     }
   }
 
-  ({String status, double percentage, ActivationStep step, Map<String, dynamic> info})
-      _parseUtxoStatus(String status) {
+  ({
+    String status,
+    double percentage,
+    ActivationStep step,
+    Map<String, dynamic> info,
+  })
+  _parseUtxoStatus(String status) {
     switch (status) {
       case 'ConnectingElectrum':
         return (

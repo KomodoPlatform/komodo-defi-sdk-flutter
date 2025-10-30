@@ -85,6 +85,14 @@ class Asset extends Equatable {
     );
   }
 
+  /// Whether KDF supports balance streaming for this asset.
+  bool get supportsBalanceStreaming =>
+      protocol.supportsBalanceStreaming(isChildAsset: id.parentId != null);
+
+  /// Whether KDF supports transaction history streaming for this asset.
+  bool get supportsTxHistoryStreaming =>
+      protocol.supportsTxHistoryStreaming(isChildAsset: id.parentId != null);
+
   JsonMap toJson() => {
     'protocol': protocol.toJson(),
     'id': id.toJson(),

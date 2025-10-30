@@ -19,6 +19,14 @@ abstract class TransactionHistoryStrategy {
   /// Whether this strategy supports the given asset
   bool supportsAsset(Asset asset);
 
+  /// Whether this strategy requires KDF transaction history to be enabled
+  /// during activation for real-time updates and pagination to work.
+  ///
+  /// Default is true; strategies that source history externally (e.g. Etherscan)
+  /// can override to false so activation can skip setting `tx_history` when
+  /// streaming is also unsupported for the asset.
+  bool requiresKdfTransactionHistory(Asset asset) => true;
+
   /// Whether this strategy supports the given pagination mode
   bool supportsPaginationMode(Type paginationType) {
     return supportedPaginationModes.contains(paginationType);

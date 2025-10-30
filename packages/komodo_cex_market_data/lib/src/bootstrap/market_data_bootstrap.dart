@@ -128,6 +128,7 @@ class MarketDataBootstrap {
     if (config.enableCoinPaprika) {
       container.registerSingletonAsync<ICoinPaprikaProvider>(
         () async => config.coinPaprikaProvider ?? CoinPaprikaProvider(),
+        dispose: (provider) => provider.dispose(),
       );
     }
 
@@ -166,6 +167,7 @@ class MarketDataBootstrap {
           coinPaprikaProvider: await container.getAsync<ICoinPaprikaProvider>(),
         ),
         dependsOn: [ICoinPaprikaProvider],
+        dispose: (repository) => repository.dispose(),
       );
     }
 

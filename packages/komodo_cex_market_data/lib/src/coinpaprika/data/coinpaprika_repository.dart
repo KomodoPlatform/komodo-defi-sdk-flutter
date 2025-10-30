@@ -27,13 +27,16 @@ class CoinPaprikaRepository implements CexRepository {
   CoinPaprikaRepository({
     required this.coinPaprikaProvider,
     bool enableMemoization = true,
+    bool ownsProvider = false,
   }) : _idResolutionStrategy = CoinPaprikaIdResolutionStrategy(),
-       _enableMemoization = enableMemoization;
+       _enableMemoization = enableMemoization,
+       _ownsProvider = ownsProvider;
 
   /// The CoinPaprika provider to use for fetching data.
   final ICoinPaprikaProvider coinPaprikaProvider;
   final IdResolutionStrategy _idResolutionStrategy;
   final bool _enableMemoization;
+  final bool _ownsProvider;
 
   final AsyncMemoizer<List<CexCoin>> _coinListMemoizer = AsyncMemoizer();
   Set<String>? _cachedQuoteCurrencies;
@@ -435,6 +438,13 @@ class CoinPaprikaRepository implements CexRepository {
       // If we can't resolve or verify support, assume unsupported
       _logger.warning('Failed to check support for ${assetId.id}: $e');
       return false;
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_ownsProvider) {
+      coinPaprikaProvider.dispose();
     }
   }
 }
