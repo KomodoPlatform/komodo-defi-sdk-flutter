@@ -158,23 +158,26 @@ class WssWebsocketTransform implements CoinConfigTransform {
 
   @override
   /// Determines if the transform should run by checking the presence of an
-  /// `electrum` list in the configuration.
+  /// `electrum` or `servers` list in the configuration.
   bool needsTransform(JsonMap config) {
     final electrum = config.valueOrNull<JsonList>('electrum');
-    return electrum != null;
+    final servers = config.valueOrNull<JsonList>('servers');
+    return electrum != null || servers != null;
   }
 
   @override
-  /// Filters `electrum` entries based on the platform:
+  /// Filters `electrum`/`servers` entries based on the platform:
   /// - WSS-only on web
   /// - SSL-only on native by default
   /// - Full non-WSS (TCP + SSL) on native if enabled via runtime option
   JsonMap transform(JsonMap config) {
-    final electrum = JsonList.of(config.value<JsonList>('electrum'));
+    final electrum = config.valueOrNull<JsonList>('electrum');
+    final servers = config.valueOrNull<JsonList>('servers');
+
     // On web, only WSS servers are supported. On native, prefer SSL-only
     // by default, unless explicitly configured to keep the full non-WSS list.
     final filteredElectrums = filterElectrums(
-      electrum,
+      JsonList.of(electrum ?? servers ?? const []),
       serverType: kIsWeb
           ? ElectrumServerType.wssOnly
           : (CoinConfigRuntimeOptions.useFullElectrumServersOnNative
@@ -182,7 +185,14 @@ class WssWebsocketTransform implements CoinConfigTransform {
               : ElectrumServerType.sslOnly),
     );
 
-    return config..['electrum'] = filteredElectrums;
+    if (electrum != null) {
+      config['electrum'] = JsonList.of(filteredElectrums);
+    }
+    if (servers != null) {
+      config['servers'] = JsonList.of(filteredElectrums);
+    }
+
+    return config;
   }
 
   /// Returns a filtered copy of [electrums] keeping only entries allowed by
