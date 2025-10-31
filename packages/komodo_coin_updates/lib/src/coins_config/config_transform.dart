@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb, kIsWasm;
+import 'package:komodo_coin_updates/src/coins_config/runtime_options.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Defines a transform that can be applied to a single coin configuration.
@@ -164,17 +165,21 @@ class WssWebsocketTransform implements CoinConfigTransform {
   }
 
   @override
-  /// Filters `electrum` entries based on the platform: WSS-only on web and
-  /// non-WSS on native platforms.
+  /// Filters `electrum` entries based on the platform:
+  /// - WSS-only on web
+  /// - SSL-only on native by default
+  /// - Full non-WSS (TCP + SSL) on native if enabled via runtime option
   JsonMap transform(JsonMap config) {
     final electrum = JsonList.of(config.value<JsonList>('electrum'));
-    // On native, only non-WSS servers are supported. On web, only WSS servers
-    // are supported.
+    // On web, only WSS servers are supported. On native, prefer SSL-only
+    // by default, unless explicitly configured to keep the full non-WSS list.
     final filteredElectrums = filterElectrums(
       electrum,
       serverType: kIsWeb
           ? ElectrumServerType.wssOnly
-          : ElectrumServerType.nonWssOnly,
+          : (CoinConfigRuntimeOptions.useFullElectrumServersOnNative
+              ? ElectrumServerType.nonWssOnly
+              : ElectrumServerType.sslOnly),
     );
 
     return config..['electrum'] = filteredElectrums;
@@ -194,16 +199,24 @@ class WssWebsocketTransform implements CoinConfigTransform {
       }
     }
 
-    return electrumsCopy..removeWhere(
-      (JsonMap e) => serverType == ElectrumServerType.wssOnly
-          ? e['ws_url'] == null
-          : e['ws_url'] != null,
-    );
+    return electrumsCopy
+      ..removeWhere((JsonMap e) {
+        switch (serverType) {
+          case ElectrumServerType.wssOnly:
+            return e['ws_url'] == null;
+          case ElectrumServerType.nonWssOnly:
+            return e['ws_url'] != null;
+          case ElectrumServerType.sslOnly:
+            // Keep only protocol explicitly marked as 'SSL'
+            final protocol = e['protocol'];
+            return protocol != 'SSL';
+        }
+      });
   }
 }
 
 /// Specifies which type of Electrum servers to retain
-enum ElectrumServerType { wssOnly, nonWssOnly }
+enum ElectrumServerType { wssOnly, nonWssOnly, sslOnly }
 
 class ParentCoinTransform implements CoinConfigTransform {
   const ParentCoinTransform();
