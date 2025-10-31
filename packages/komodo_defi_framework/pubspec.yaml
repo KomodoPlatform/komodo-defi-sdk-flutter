@@ -23,7 +23,6 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
   http: ^1.4.0
-  flutter_client_sse: ^2.0.3
   komodo_coin_updates: ^1.1.1
   komodo_coins: ^0.3.1+2
   komodo_defi_types: ^0.3.2+1

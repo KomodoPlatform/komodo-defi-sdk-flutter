@@ -14,6 +14,12 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 typedef EventPredicate = bool Function(KdfEvent event);
 
+enum SseConnectionState {
+  disconnected,
+  connecting,
+  connected,
+}
+
 class KdfEventStreamingService {
   KdfEventStreamingService({IKdfHostConfig? hostConfig})
     : _hostConfig = hostConfig;
@@ -21,21 +27,89 @@ class KdfEventStreamingService {
   final IKdfHostConfig? _hostConfig;
 
   final StreamController<KdfEvent> _events = StreamController.broadcast();
+  Completer<void> _firstByteCompleter = Completer<void>();
+  SseConnectionState _connectionState = SseConnectionState.disconnected;
 
   Stream<KdfEvent> get events => _events.stream;
   bool _disposed = false;
   bool _initialized = false;
 
+  /// Future that completes when the first byte is received from the SSE stream.
+  /// This indicates the server's event loop is fully flowing and the client is registered.
+  Future<void> get firstByteReceived => _firstByteCompleter.future;
+  
+  /// Current connection state
+  SseConnectionState get connectionState => _connectionState;
+  
+  /// Whether the SSE connection is currently connected
+  bool get isConnected => _connectionState == SseConnectionState.connected;
+
   /// Start listening to stream events.
   /// - Web: Connects to SharedWorker forwarded messages.
   /// - Native (IO): Connects to SSE endpoint exposed by KDF RPC server.
+  /// 
+  /// DEPRECATED: Use connectIfNeeded() instead. This method is kept for backward compatibility
+  /// but should not be called at app startup. SSE connection should be tied to authentication state.
+  @Deprecated('Use connectIfNeeded() instead')
   void initialize() {
     if (_initialized) return;
     _initialized = true;
+    connectIfNeeded();
+  }
+  
+  /// Ensures SSE connection is established if not already connected.
+  /// This method is idempotent and can be called multiple times safely.
+  /// 
+  /// Should be called:
+  /// - After user authentication completes
+  /// - Before attempting enable_* RPC calls
+  /// - After detecting UnknownClient errors (to trigger reconnection)
+  void connectIfNeeded() {
+    if (_connectionState != SseConnectionState.disconnected) {
+      // Already connecting or connected
+      return;
+    }
+    
+    _connectionState = SseConnectionState.connecting;
+    _log('SSE Connect: Initiating connection...');
+    
     _unsubscribe ??= connectEventStream(
       hostConfig: _hostConfig,
       onMessage: _onIncomingData,
+      onFirstByte: _onFirstByte,
     );
+  }
+  
+  /// Disconnect the SSE connection.
+  /// Should be called when user signs out.
+  void disconnect() {
+    if (_connectionState == SseConnectionState.disconnected) {
+      return;
+    }
+    
+    _log('SSE Disconnect: Closing connection...');
+    _unsubscribe?.call();
+    _unsubscribe = null;
+    _connectionState = SseConnectionState.disconnected;
+    
+    // Reset first byte completer for next connection
+    if (_firstByteCompleter.isCompleted) {
+      _firstByteCompleter = Completer<void>();
+    }
+  }
+  
+  void _onFirstByte() {
+    if (!_firstByteCompleter.isCompleted) {
+      _firstByteCompleter.complete();
+      _connectionState = SseConnectionState.connected;
+      _log('SSE Connect: First byte received, connection established');
+    }
+  }
+  
+  void _log(String message) {
+    if (kDebugMode) {
+      print('[EventStreamingService] $message');
+    }
   }
 
   void _onIncomingData(Object? data) {
