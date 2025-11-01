@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/src/auth/storage/secure_storage.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 import 'package:mutex/mutex.dart';
+import 'package:uuid/uuid.dart';
 
 part 'auth_service_auth_extension.dart';
 part 'auth_service_kdf_extension.dart';
@@ -38,6 +42,13 @@ abstract interface class IAuthService {
 
   /// Returns the [KdfUser] associated with the active wallet if KDF is running,
   /// otherwise null.
+  ///
+  /// **Performance Note**: This method returns the last user emitted by health
+  /// checks (updated every 5 minutes) to reduce RPC load. This means the
+  /// returned value could be up to 5 minutes stale if the active wallet is
+  /// changed externally. For most use cases, this trade-off is acceptable and
+  /// significantly reduces RPC spam.
+  ///
   /// NOTE: this function does not start/stop KDF or modify the active user,
   /// so atomic read/write protection is not used within and not required when
   /// calling this function.
@@ -87,13 +98,22 @@ abstract interface class IAuthService {
   /// Only works if the KDF API is running and the wallet exists
   Future<void> restoreSession(KdfUser user);
 
+  /// Ensures that KDF is healthy and responsive. If KDF is not healthy,
+  /// attempts to restart it with the current user's configuration.
+  /// This is useful for recovering from situations where KDF has become
+  /// unavailable, especially on mobile platforms after app backgrounding.
+  /// Returns true if KDF is healthy or was successfully restarted, false otherwise.
+  Future<bool> ensureKdfHealthy();
+
   Stream<KdfUser?> get authStateChanges;
   Future<void> dispose();
 }
 
 class KdfAuthService implements IAuthService {
-  KdfAuthService(this._kdfFramework, this._hostConfig) {
+  KdfAuthService(this._kdfFramework, this._hostConfig) : _sessionId = const Uuid().v4() {
+    _logger.info('[$_sessionId] KdfAuthService initialized');
     _startHealthCheck();
+    _subscribeToShutdownSignals();
   }
 
   final KomodoDefiFramework _kdfFramework;
@@ -102,9 +122,22 @@ class KdfAuthService implements IAuthService {
       StreamController.broadcast();
   final SecureLocalStorage _secureStorage = SecureLocalStorage();
   final ReadWriteMutex _authMutex = ReadWriteMutex();
+  final Logger _logger = Logger('KdfAuthService');
+  final String _sessionId;
 
   KdfUser? _lastEmittedUser;
   Timer? _healthCheckTimer;
+
+  // Single-flight guard for ensureKdfHealthy to prevent concurrent restarts
+  Future<bool>? _ongoingHealthCheck;
+  DateTime? _lastHealthCheckAttempt;
+  DateTime? _lastHealthCheckCompleted;
+  StreamSubscription<ShutdownSignalEvent>? _shutdownSubscription;
+
+  // Cache for wallet users list to avoid spamming get_wallet_names
+  List<KdfUser>? _usersCache;
+  DateTime? _usersCacheTimestamp;
+  final Duration _usersCacheTtl = const Duration(minutes: 5);
 
   ApiClient get _client => _kdfFramework.client;
   late final methods = KomodoDefiRpcMethods(_client);
@@ -115,6 +148,37 @@ class KdfAuthService implements IAuthService {
     required String password,
     required AuthOptions options,
   }) async {
+    _logger.info('[$_sessionId] signIn: Starting login for wallet: $walletName');
+    
+    // Proactively ensure KDF is healthy before attempting login
+    // This prevents login attempts while KDF is down or restarting
+    final isHealthy = await ensureKdfHealthy().timeout(
+      const Duration(seconds: 3),
+      onTimeout: () {
+        _logger.warning('[$_sessionId] signIn: Health check timed out after 3s');
+        return false;
+      },
+    );
+    
+    if (!isHealthy) {
+      _logger.warning('[$_sessionId] signIn: KDF not healthy, retrying after 1s');
+      // Wait and retry once
+      await Future.delayed(const Duration(milliseconds: 1000));
+      final retryHealthy = await ensureKdfHealthy().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => false,
+      );
+      if (!retryHealthy) {
+        _logger.severe('[$_sessionId] signIn: KDF still not healthy after retry');
+        throw AuthException(
+          'KDF is not available. Please try again.',
+          type: AuthExceptionType.apiConnectionError,
+        );
+      }
+    }
+    
+    _logger.info('[$_sessionId] signIn: KDF healthy, proceeding with login');
+    
     // [getActiveUser] performs a read lock, which should happen outside of
     // the write lock to prevent deadlocks. If kdf is not running, null is
     // returned, so we can safely call it here without any checks.
@@ -199,8 +263,10 @@ class KdfAuthService implements IAuthService {
     );
 
     return _lockWriteOperation(() async {
-      final currentUser = await _registerNewUser(config, options);
+      final isImported = mnemonic != null;
+      final currentUser = await _registerNewUser(config, options, isImported);
       _emitAuthStateChange(currentUser);
+      _invalidateUsersCache();
       return currentUser;
     });
   }
@@ -210,9 +276,16 @@ class KdfAuthService implements IAuthService {
     await _ensureKdfRunning();
 
     return _runReadOperation(() async {
+      // Serve from cache if fresh
+      if (_usersCache != null &&
+          _usersCacheTimestamp != null &&
+          DateTime.now().difference(_usersCacheTimestamp!) < _usersCacheTtl) {
+        return _usersCache!;
+      }
+
       final walletNames = await _client.rpc.wallet.getWalletNames();
 
-      return Future.wait(
+      final users = await Future.wait(
         walletNames.walletNames.map((name) async {
           final user = await _secureStorage.getUser(name);
           if (user != null) return user;
@@ -226,6 +299,10 @@ class KdfAuthService implements IAuthService {
           return newUser;
         }),
       );
+
+      _usersCache = users;
+      _usersCacheTimestamp = DateTime.now();
+      return users;
     });
   }
 
@@ -260,7 +337,13 @@ class KdfAuthService implements IAuthService {
 
   @override
   Future<KdfUser?> getActiveUser() async {
-    return _runReadOperation(_getActiveUser);
+    return _runReadOperation(() async {
+      // Prefer last known user emitted by health checks to avoid extra RPCs
+      if (_lastEmittedUser != null) {
+        return _lastEmittedUser;
+      }
+      return _getActiveUser();
+    });
   }
 
   AuthOptions get _fallbackAuthOptions =>
@@ -341,6 +424,7 @@ class KdfAuthService implements IAuthService {
           password: password,
         );
         await _secureStorage.deleteUser(walletName);
+        _invalidateUsersCache();
       } on DeleteWalletInvalidPasswordErrorResponse catch (e) {
         throw AuthException(
           e.error ?? 'Invalid password',
@@ -383,6 +467,11 @@ class KdfAuthService implements IAuthService {
     });
   }
 
+  void _invalidateUsersCache() {
+    _usersCache = null;
+    _usersCacheTimestamp = null;
+  }
+
   @override
   Stream<KdfUser?> get authStateChanges => _authStateController.stream;
 
@@ -392,6 +481,8 @@ class KdfAuthService implements IAuthService {
     // only be acquired once the active read/write operations complete.
     await _lockWriteOperation(() async {
       _healthCheckTimer?.cancel();
+      await _shutdownSubscription?.cancel();
+      _shutdownSubscription = null;
       await _stopKdf();
       _authStateController.close();
       _lastEmittedUser = null;
@@ -445,6 +536,13 @@ class KdfAuthService implements IAuthService {
 
     final updatedUser = user.copyWith(metadata: metadata);
     await _secureStorage.saveUser(updatedUser);
+
+    // Update cache silently without triggering auth state change. Updating the
+    // storage and cache at the same time emulates the same behaviour as before.
+    // Update user metadata for any subsequent access without emitting auth
+    // state changes, as the metadata field is currently used for events like
+    // coin activation, wallet type (derivation), and seed backup status
+    _lastEmittedUser = updatedUser;
   }
 
   @override
@@ -483,5 +581,190 @@ class KdfAuthService implements IAuthService {
         );
       }
     });
+  }
+
+  @override
+  Future<bool> ensureKdfHealthy() async {
+    // Single-flight guard: if a health check is already in progress, return that future
+    if (_ongoingHealthCheck != null) {
+      _logger.info('[$_sessionId] ensureKdfHealthy: Health check already in progress, awaiting result');
+      return _ongoingHealthCheck!;
+    }
+
+    // Cooldown mechanism: prevent rapid successive health checks
+    // Only apply cooldown if a previous check has completed
+    final now = DateTime.now();
+    if (_lastHealthCheckCompleted != null) {
+      final timeSinceLastCheck = now.difference(_lastHealthCheckCompleted!);
+      if (timeSinceLastCheck.inSeconds < 2) {
+        _logger.info('[$_sessionId] ensureKdfHealthy: In cooldown period (${timeSinceLastCheck.inSeconds}s since last check)');
+        return false;
+      }
+    }
+
+    // Start the health check and store the future
+    _lastHealthCheckAttempt = now;
+    _ongoingHealthCheck = _performHealthCheck();
+
+    try {
+      final result = await _ongoingHealthCheck!;
+      _lastHealthCheckCompleted = DateTime.now();
+      final elapsed = _lastHealthCheckCompleted!.difference(_lastHealthCheckAttempt!);
+      _logger.info('[$_sessionId] ensureKdfHealthy: Completed in ${elapsed.inMilliseconds}ms, result=$result');
+      return result;
+    } finally {
+      // Clear the ongoing check flag when done
+      _ongoingHealthCheck = null;
+    }
+  }
+
+  Future<bool> _performHealthCheck() async {
+    _logger.info('[$_sessionId] _performHealthCheck: Starting health check');
+    final stopwatch = Stopwatch()..start();
+    
+    try {
+      // First check if KDF is healthy with a short timeout
+      final isHealthy = await _kdfFramework.isHealthy().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          _logger.warning('[$_sessionId] _performHealthCheck: isHealthy() timed out after 2s');
+          return false;
+        },
+      );
+      
+      if (isHealthy) {
+        // Double verification: even if isHealthy() returns true, verify with version() RPC
+        // This prevents false positives where native status reports "running" but HTTP is down
+        _logger.info('[$_sessionId] _performHealthCheck: Initial check passed, performing double verification');
+        final doubleCheck = await _verifyKdfHealthy().timeout(
+          const Duration(seconds: 2),
+          onTimeout: () {
+            _logger.warning('[$_sessionId] _performHealthCheck: Double verification timed out');
+            return false;
+          },
+        );
+        
+        if (doubleCheck) {
+          stopwatch.stop();
+          _logger.info('[$_sessionId] _performHealthCheck: KDF is healthy (double verified) in ${stopwatch.elapsedMilliseconds}ms');
+          return true;
+        }
+        
+        _logger.warning('[$_sessionId] _performHealthCheck: Double verification failed, KDF not actually healthy');
+      }
+
+      _logger.warning('[$_sessionId] _performHealthCheck: KDF is not healthy, forcing full restart');
+
+      // Use _lastEmittedUser instead of calling _getActiveUser() RPC when KDF is down
+      // This avoids blocking on a dead KDF
+      final hadAuthenticatedUser = _lastEmittedUser != null;
+      _logger.info('[$_sessionId] _performHealthCheck: hadAuthenticatedUser=$hadAuthenticatedUser');
+
+      // FORCE a full stop->start cycle when we've determined KDF is unhealthy
+      // Don't trust isRunning() as it can be stale after iOS backgrounding
+      _logger.info('[$_sessionId] _performHealthCheck: Forcing clean shutdown (ignoring isRunning status)');
+      try {
+        await _stopKdf().timeout(
+          const Duration(seconds: 2),
+          onTimeout: () {
+            _logger.warning('[$_sessionId] _performHealthCheck: kdfStop() timed out');
+          },
+        );
+      } catch (e) {
+        _logger.warning('[$_sessionId] _performHealthCheck: Error during shutdown: $e (continuing with restart)');
+        // KDF might already be dead, continue with restart
+      }
+      
+      // Reset HTTP client unconditionally to drop stale keep-alive connections
+      _logger.info('[$_sessionId] _performHealthCheck: Resetting HTTP client');
+      _kdfFramework.resetHttpClient();
+
+      // Force restart KDF in no-auth mode (we don't have the password)
+      // Use _forceStartKdf instead of _ensureKdfRunning to bypass isRunning check
+      _logger.info('[$_sessionId] _performHealthCheck: Force starting KDF');
+      final restartStopwatch = Stopwatch()..start();
+      await _forceStartKdf();
+      restartStopwatch.stop();
+      _logger.info('[$_sessionId] _performHealthCheck: KDF force start completed in ${restartStopwatch.elapsedMilliseconds}ms');
+
+      // Reset HTTP client again after restart to ensure no stale sockets
+      _logger.info('[$_sessionId] _performHealthCheck: Resetting HTTP client again after restart');
+      _kdfFramework.resetHttpClient();
+
+      // Add 200ms delay after restart before verification to avoid race where
+      // native status reports "up" but HTTP listener hasn't bound yet
+      _logger.info('[$_sessionId] _performHealthCheck: Waiting 200ms for HTTP listener to bind');
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      // Check if restart was successful with a strong health check (version RPC)
+      _logger.info('[$_sessionId] _performHealthCheck: Verifying KDF health with version check');
+      final verifyStopwatch = Stopwatch()..start();
+      final isHealthyAfterRestart = await _verifyKdfHealthy().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          _logger.warning('[$_sessionId] _performHealthCheck: Health verification timed out');
+          return false;
+        },
+      );
+      verifyStopwatch.stop();
+      _logger.info('[$_sessionId] _performHealthCheck: Health verification took ${verifyStopwatch.elapsedMilliseconds}ms, result=$isHealthyAfterRestart');
+
+      // If we had an authenticated user, emit logged-out state
+      // This will trigger the UI to show re-authentication prompt
+      if (hadAuthenticatedUser && _lastEmittedUser != null) {
+        _logger.info('[$_sessionId] _performHealthCheck: Emitting logged-out state');
+        _emitAuthStateChange(null);
+      }
+
+      stopwatch.stop();
+      _logger.info('[$_sessionId] _performHealthCheck: Health check completed in ${stopwatch.elapsedMilliseconds}ms, result=$isHealthyAfterRestart');
+      return isHealthyAfterRestart;
+    } catch (e) {
+      stopwatch.stop();
+      _logger.severe('[$_sessionId] _performHealthCheck: Error during health check after ${stopwatch.elapsedMilliseconds}ms: $e');
+      // If we can't restart KDF and had an authenticated user, emit logged-out state
+      if (_lastEmittedUser != null) {
+        _logger.info('[$_sessionId] _performHealthCheck: Emitting logged-out state due to error');
+        _emitAuthStateChange(null);
+      }
+      // Log the error but don't throw - return false to indicate failure
+      return false;
+    }
+  }
+
+  /// Force starts KDF without checking isRunning() status
+  /// This is needed when we've determined KDF is unhealthy but isRunning() returns stale true
+  Future<void> _forceStartKdf() async {
+    _logger.info('[$_sessionId] _forceStartKdf: Starting KDF (bypassing isRunning check)');
+    await _lockWriteOperation(() async {
+      final startStopwatch = Stopwatch()..start();
+      final result = await _kdfFramework.startKdf(await _noAuthConfig);
+      startStopwatch.stop();
+      _logger.info('[$_sessionId] _forceStartKdf: startKdf() returned ${result.name} in ${startStopwatch.elapsedMilliseconds}ms');
+      
+      if (!result.isStartingOrAlreadyRunning()) {
+        _logger.severe('[$_sessionId] _forceStartKdf: Failed to start KDF: ${result.name}');
+        throw KdfExtensions._mapStartupErrorToAuthException(result);
+      }
+      
+      _logger.info('[$_sessionId] _forceStartKdf: Waiting for RPC to be up');
+      final waitStopwatch = Stopwatch()..start();
+      await _waitUntilKdfRpcIsUp();
+      waitStopwatch.stop();
+      _logger.info('[$_sessionId] _forceStartKdf: RPC is up after ${waitStopwatch.elapsedMilliseconds}ms');
+    });
+  }
+
+  /// Verifies KDF is healthy by checking if it responds to a version RPC
+  /// This is a stronger check than just checking if the socket is open
+  Future<bool> _verifyKdfHealthy() async {
+    try {
+      // Try to get KDF version - this confirms KDF is actually responding to RPCs
+      await _kdfFramework.version();
+      return true;
+    } catch (e) {
+      _logger.warning('[$_sessionId] _verifyKdfHealthy: Version check failed: $e');
+      return false;
+    }
   }
 }

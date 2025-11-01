@@ -21,8 +21,11 @@ class Erc20ActivationParams extends ActivationParams {
 
   @override
   JsonMap toRpcParams() => super.toRpcParams().deepMerge({
-    'nodes': nodes.map((e) => e.url).toList(),
+    // Align with KDF API which expects node objects (url/gui_auth), not plain strings
+    'nodes': nodes.map((e) => e.toJson()).toList(),
     'swap_contract_address': swapContractAddress,
     'fallback_swap_contract': fallbackSwapContract,
+    // Ensure priv_key_policy uses the structured JSON object for EVM
+    'priv_key_policy': privKeyPolicy?.toJson(),
   });
 }

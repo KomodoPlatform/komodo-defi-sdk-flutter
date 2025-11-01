@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:developer' show log;
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
@@ -25,6 +28,7 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
     CoinSubClass.hecoChain,
     CoinSubClass.rskSmartBitcoin,
     CoinSubClass.arbitrum,
+    CoinSubClass.base,
   };
 
   @override
@@ -41,7 +45,7 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Activating ${asset.id.name}...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 2,
         additionalInfo: {
           'assetType': 'token',
@@ -59,18 +63,43 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
         throw StateError('Protocol data is missing from custom token config');
       }
 
+      final activationParams = Erc20ActivationParams.fromJsonConfig(
+        asset.protocol.config,
+      );
+      final platform = protocolData.value<String>('platform');
+      final contractAddress = protocolData.value<String>('contract_address');
+      
+      // Debug logging for custom ERC20 token activation
+      log(
+        '[RPC] Activating custom ERC20 token: ${asset.id.id}',
+        name: 'CustomErc20ActivationStrategy',
+      );
+      log(
+        '[RPC] Activation parameters: ${jsonEncode({
+          'ticker': asset.id.id,
+          'protocol': asset.protocol.subClass.formatted,
+          'platform': platform,
+          'contract_address': contractAddress,
+          'activation_params': activationParams.toRpcParams(),
+        })}',
+        name: 'CustomErc20ActivationStrategy',
+      );
+
       await client.rpc.erc20.enableCustomErc20Token(
         ticker: asset.id.id,
-        activationParams: Erc20ActivationParams.fromJsonConfig(
-          asset.protocol.config,
-        ),
-        platform: protocolData.value<String>('platform'),
-        contractAddress: protocolData.value<String>('contract_address'),
+        activationParams: activationParams,
+        platform: platform,
+        contractAddress: contractAddress,
+      );
+      
+      log(
+        '[RPC] Successfully activated custom ERC20 token: ${asset.id.id}',
+        name: 'CustomErc20ActivationStrategy',
       );
 
       yield ActivationProgress.success(
         details: ActivationProgressDetails(
-          currentStep: 'complete',
+          currentStep: ActivationStep.complete,
           stepCount: 2,
           additionalInfo: {
             'activatedChain': asset.id.name,
@@ -85,7 +114,7 @@ class CustomErc20ActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 2,
           errorCode: 'ERC20_ACTIVATION_ERROR',
           errorDetails: e.toString(),

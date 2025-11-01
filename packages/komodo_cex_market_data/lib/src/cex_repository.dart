@@ -202,4 +202,10 @@ abstract class CexRepository {
     QuoteCurrency fiatCurrency,
     PriceRequestType requestType,
   );
+
+  /// Releases any resources held by the repository.
+  ///
+  /// Repositories that allocate resources such as HTTP clients or file handles
+  /// should override this method to dispose them when no longer needed.
+  void dispose() {}
 }

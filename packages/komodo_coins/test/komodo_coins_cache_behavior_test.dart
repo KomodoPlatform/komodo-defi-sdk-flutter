@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:komodo_coin_updates/komodo_coin_updates.dart';
 import 'package:komodo_coins/komodo_coins.dart'
     show KomodoAssetsUpdateManager, StartupCoinsProvider;
@@ -38,11 +40,32 @@ class FakeRuntimeUpdateConfig extends Fake
 
 class FakeCoinConfigTransformer extends Fake implements CoinConfigTransformer {}
 
+/// Helper function to get a temporary directory for Hive tests
+Future<Directory> getTempDir() async {
+  final tempDir = Directory.systemTemp.createTempSync('hive_test_');
+  return tempDir;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUpAll(() {
+
+  late Directory tempDir;
+
+  setUpAll(() async {
+    // Initialize Hive for testing
+    tempDir = await getTempDir();
+    Hive.init(tempDir.path);
+
     registerFallbackValue(FakeRuntimeUpdateConfig());
     registerFallbackValue(FakeCoinConfigTransformer());
+  });
+
+  tearDownAll(() async {
+    await Hive.close();
+    // Clean up temporary directory
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
   });
 
   group('KomodoCoins cache behavior', () {

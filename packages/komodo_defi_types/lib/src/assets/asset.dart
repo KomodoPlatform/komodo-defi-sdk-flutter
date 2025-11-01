@@ -70,6 +70,29 @@ class Asset extends Equatable {
   /// coin config.
   bool get supportsMessageSigning => signMessagePrefix != null;
 
+  /// Creates a copy of this Asset with optionally modified fields.
+  Asset copyWith({
+    AssetId? id,
+    ProtocolClass? protocol,
+    bool? isWalletOnly,
+    String? signMessagePrefix,
+  }) {
+    return Asset(
+      id: id ?? this.id,
+      protocol: protocol ?? this.protocol,
+      isWalletOnly: isWalletOnly ?? this.isWalletOnly,
+      signMessagePrefix: signMessagePrefix ?? this.signMessagePrefix,
+    );
+  }
+
+  /// Whether KDF supports balance streaming for this asset.
+  bool get supportsBalanceStreaming =>
+      protocol.supportsBalanceStreaming(isChildAsset: id.parentId != null);
+
+  /// Whether KDF supports transaction history streaming for this asset.
+  bool get supportsTxHistoryStreaming =>
+      protocol.supportsTxHistoryStreaming(isChildAsset: id.parentId != null);
+
   JsonMap toJson() => {
     'protocol': protocol.toJson(),
     'id': id.toJson(),

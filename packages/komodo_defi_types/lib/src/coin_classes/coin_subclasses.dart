@@ -6,6 +6,7 @@ enum CoinSubClass {
   moonbeam,
   ftm20,
   arbitrum,
+  base,
   @Deprecated('No longer active. Will be removed in the future.')
   slp,
   sia,
@@ -30,6 +31,11 @@ enum CoinSubClass {
   zhtlc,
   unknown;
 
+  static String _enumNameLower(CoinSubClass e) {
+    // Normalize enum value to its lowercased name without the enum prefix
+    return e.toString().split('.').last.toLowerCase();
+  }
+
   // TODO: verify all the tickers.
   String get ticker {
     switch (this) {
@@ -39,6 +45,8 @@ enum CoinSubClass {
         return 'FTM';
       case CoinSubClass.arbitrum:
         return 'ARB';
+      case CoinSubClass.base:
+        return 'BASE';
       // ignore: deprecated_member_use_from_same_package
       case CoinSubClass.slp:
         return 'SLP';
@@ -49,8 +57,9 @@ enum CoinSubClass {
       case CoinSubClass.avx20:
         return 'AVAX';
       case CoinSubClass.utxo:
-      case CoinSubClass.smartChain:
         return 'UTXO';
+      case CoinSubClass.smartChain:
+        return 'SMART_CHAIN';
       case CoinSubClass.moonriver:
         return 'MOVR';
       case CoinSubClass.ethereumClassic:
@@ -94,6 +103,8 @@ enum CoinSubClass {
         return 'FTM';
       case CoinSubClass.arbitrum:
         return 'ARB';
+      case CoinSubClass.base:
+        return 'BASE';
       // ignore: deprecated_member_use_from_same_package
       case CoinSubClass.slp:
         return 'SLP';
@@ -144,7 +155,10 @@ enum CoinSubClass {
 
   /// Parse a string to a coin subclass.
   ///
-  /// Attempts to match the string to a coin subclass by:
+  /// Attempts to match the string to a coin subclass with the following
+  /// precedence:
+  /// - Exact enum name match (highest priority)
+  /// - Exact ticker match (with tie-breakers, e.g. 'UTXO' -> utxo)
   /// - Partial match to the subclass name
   /// - Partial match to the subclass ticker
   /// - Partial match to the subclass token standard suffix
@@ -157,15 +171,45 @@ enum CoinSubClass {
 
     final sanitizedValue = value.toLowerCase().replaceAll(regex, '');
 
+    // First, try to find exact enum name match (highest priority)
+    try {
+      return CoinSubClass.values.firstWhere(
+        (e) => _enumNameLower(e) == sanitizedValue,
+      );
+      // ignore: avoid_catching_errors
+    } on StateError {
+      // If no exact match, continue with other matching strategies
+    }
+
+    // Second, try to find exact ticker match (sanitized)
+    final exactTickerMatches = CoinSubClass.values
+        .where(
+          (e) => e.ticker.toLowerCase().replaceAll(regex, '') == sanitizedValue,
+        )
+        .toList();
+    if (exactTickerMatches.isNotEmpty) {
+      // Tie-breaker for duplicated tickers. Both smartChain and utxo return
+      // 'UTXO' as ticker; prefer utxo to avoid mislabeling.
+      if (sanitizedValue == 'utxo') {
+        return CoinSubClass.utxo;
+      }
+
+      return exactTickerMatches.first;
+    }
+
     return CoinSubClass.values.firstWhere((e) {
-      // Exit early if exact match to default to previous behavior and avoid
-      // unnecessary checks.
-      final matchesValue = e.toString().toLowerCase().contains(sanitizedValue);
+      // Check if enum name contains the value
+      final enumName = _enumNameLower(e);
+      final matchesValue = enumName.contains(sanitizedValue);
       if (matchesValue) {
         return true;
       }
 
-      final matchesTicker = e.ticker.toLowerCase().contains(sanitizedValue);
+      // Check if ticker contains the value (partial ticker match, sanitized)
+      final matchesTicker = e.ticker
+          .toLowerCase()
+          .replaceAll(regex, '')
+          .contains(sanitizedValue);
       if (matchesTicker) {
         return true;
       }
@@ -184,7 +228,7 @@ enum CoinSubClass {
   static CoinSubClass? tryParse(String value) {
     try {
       return parse(value);
-    } catch (_) {
+    } on StateError {
       return null;
     }
   }
@@ -218,6 +262,8 @@ enum CoinSubClass {
         return 'Fantom';
       case CoinSubClass.arbitrum:
         return 'Arbitrum';
+      case CoinSubClass.base:
+        return 'Base';
       case CoinSubClass.slp:
         return 'Simple Ledger Protocol';
       case CoinSubClass.sia:
@@ -239,7 +285,7 @@ enum CoinSubClass {
       case CoinSubClass.matic:
         return 'Polygon';
       case CoinSubClass.utxo:
-        return 'UTXO';
+        return 'Native';
       case CoinSubClass.smartBch:
         return 'SmartBCH';
       case CoinSubClass.erc20:
@@ -273,6 +319,8 @@ enum CoinSubClass {
         return const Color(0xFF14B4EC); // ftm: "#14b4ec"
       case CoinSubClass.arbitrum:
         return const Color(0xFF28A0F0); // arb: "#28a0f0"
+      case CoinSubClass.base:
+        return const Color(0xFF0052FF); // base: "#0052ff"
       // ignore: deprecated_member_use_from_same_package
       case CoinSubClass.slp:
         return const Color(0xFF0CC38C); // slp: "#0cc38c"
@@ -338,6 +386,8 @@ extension CoinSubClassTokenStandard on CoinSubClass {
         return 'FTM20';
       case CoinSubClass.arbitrum:
         return 'ARB20';
+      case CoinSubClass.base:
+        return 'BASE';
       case CoinSubClass.avx20:
         return 'AVX20';
       case CoinSubClass.matic:
@@ -377,6 +427,7 @@ const Set<CoinSubClass> evmCoinSubClasses = {
   CoinSubClass.matic,
   CoinSubClass.hrc20,
   CoinSubClass.arbitrum,
+  CoinSubClass.base,
   CoinSubClass.moonriver,
   CoinSubClass.moonbeam,
   CoinSubClass.ethereumClassic,

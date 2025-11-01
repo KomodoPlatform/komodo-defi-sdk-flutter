@@ -23,7 +23,10 @@ class SparklineRepository with RepositoryFallbackMixin {
   factory SparklineRepository.defaultInstance() {
     return SparklineRepository([
       BinanceRepository(binanceProvider: const BinanceProvider()),
-      CoinPaprikaRepository(coinPaprikaProvider: CoinPaprikaProvider()),
+      CoinPaprikaRepository(
+        coinPaprikaProvider: CoinPaprikaProvider(),
+        ownsProvider: true,
+      ),
       CoinGeckoRepository(coinGeckoProvider: CoinGeckoCexProvider()),
     ], selectionStrategy: DefaultRepositorySelectionStrategy());
   }
@@ -174,6 +177,28 @@ class SparklineRepository with RepositoryFallbackMixin {
     return future;
   }
 
+  /// Releases held resources such as HTTP clients and Hive boxes.
+  Future<void> dispose() async {
+    for (final repository in _repositories) {
+      try {
+        repository.dispose();
+      } catch (e, st) {
+        _logger.severe('Error disposing repository: $repository', e, st);
+      }
+    }
+
+    final box = _box;
+    if (box != null && box.isOpen) {
+      try {
+        await box.close();
+      } catch (e, st) {
+        _logger.severe('Error closing Hive box', e, st);
+      }
+    }
+    _box = null;
+    isInitialized = false;
+  }
+
   /// Internal method to perform the actual sparkline fetch
   ///
   /// This is separated from fetchSparkline to enable proper request
@@ -250,7 +275,7 @@ class SparklineRepository with RepositoryFallbackMixin {
     // If all repositories failed, cache null result to avoid repeated attempts
     final failedCacheData = SparklineData.failed();
     await _box!.put(symbol, failedCacheData);
-    _logger.warning(
+    _logger.fine(
       'All repositories failed fetching sparkline for $symbol; cached null',
     );
     return null;
@@ -288,7 +313,7 @@ class SparklineRepository with RepositoryFallbackMixin {
     try {
       final raw = _box!.get(symbol);
       if (raw is! SparklineData) {
-        _logger.warning(
+        _logger.fine(
           'Cache entry for $symbol has unexpected type: ${raw.runtimeType}; '
           'Clearing entry and skipping',
         );
@@ -308,7 +333,7 @@ class SparklineRepository with RepositoryFallbackMixin {
         return List<double>.unmodifiable(data);
       }
     } catch (e, s) {
-      _logger.severe('Error reading cache for $symbol', e, s);
+      _logger.warning('Error reading cache for $symbol', e, s);
     }
 
     _logger.fine('Cache hit (typed) for $symbol but data null (failed)');

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:get_it/get_it.dart';
@@ -11,6 +12,7 @@ import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart';
 import 'package:komodo_defi_sdk/src/message_signing/message_signing_manager.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/storage/secure_rpc_password_mixin.dart';
+import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -109,8 +111,17 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   ///   )
   /// );
   /// ```
-  factory KomodoDefiSdk({IKdfHostConfig? host, KomodoDefiSdkConfig? config}) {
-    return KomodoDefiSdk._(host, config ?? const KomodoDefiSdkConfig(), null);
+  factory KomodoDefiSdk({
+    IKdfHostConfig? host,
+    KomodoDefiSdkConfig? config,
+    void Function(String)? onLog,
+  }) {
+    return KomodoDefiSdk._(
+      host,
+      config ?? const KomodoDefiSdkConfig(),
+      null,
+      onLog,
+    );
   }
 
   /// Creates a new SDK instance from an existing KDF framework instance.
@@ -126,17 +137,22 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   factory KomodoDefiSdk.fromFramework(
     KomodoDefiFramework framework, {
     KomodoDefiSdkConfig? config,
+    void Function(String)? onLog,
   }) {
     return KomodoDefiSdk._(
       null,
       config ?? const KomodoDefiSdkConfig(),
       framework,
+      onLog,
     );
   }
 
-  KomodoDefiSdk._(this._hostConfig, this._config, this._kdfFramework) {
-    _container = GetIt.asNewInstance();
-  }
+  KomodoDefiSdk._(
+    this._hostConfig,
+    this._config,
+    this._kdfFramework,
+    this._onLog,
+  ) : _container = GetIt.asNewInstance();
 
   final IKdfHostConfig? _hostConfig;
   final KomodoDefiSdkConfig _config;
@@ -145,6 +161,7 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   bool _isInitialized = false;
   bool _isDisposed = false;
   Future<void>? _initializationFuture;
+  final void Function(String)? _onLog;
 
   /// The API client for making direct RPC calls.
   ///
@@ -178,12 +195,26 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   AddressOperations get addresses =>
       _assertSdkInitialized(_container<AddressOperations>());
 
+  /// Service for resolving/persisting activation configuration.
+  ActivationConfigService get activationConfigService =>
+      _assertSdkInitialized(_container<ActivationConfigService>());
+
   /// The asset manager instance.
   ///
   /// Handles coin/token activation and configuration.
   ///
   /// Throws [StateError] if accessed before initialization.
   AssetManager get assets => _assertSdkInitialized(_container<AssetManager>());
+
+  /// Cache of activated assets with per-instance TTL.
+  ///
+  /// Useful for avoiding repeated activation RPC calls across features.
+  ActivatedAssetsCache get activatedAssetsCache =>
+      _assertSdkInitialized(_container<ActivatedAssetsCache>());
+
+  /// NFT-specific activation helpers.
+  NftActivationService get nftActivation =>
+      _assertSdkInitialized(_container<NftActivationService>());
 
   /// The transaction history manager instance.
   ///
@@ -262,6 +293,103 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
   BalanceManager get balances =>
       _assertSdkInitialized(_container<BalanceManager>());
 
+  /// The event streaming service instance.
+  ///
+  /// Provides access to SSE (Server-Sent Events) connection lifecycle management
+  /// for real-time balance and transaction history updates.
+  ///
+  /// Use [KdfEventStreamingService.connectIfNeeded] to establish SSE connection
+  /// after authentication, and [KdfEventStreamingService.disconnect] to clean up
+  /// on sign-out.
+  ///
+  /// Throws [StateError] if accessed before initialization.
+  KdfEventStreamingService get streaming =>
+      _assertSdkInitialized(_container<KomodoDefiFramework>().streaming);
+
+  /// Public stream of framework logs.
+  ///
+  /// Subscribe to receive human-readable log messages from the underlying
+  /// Komodo DeFi Framework. Requires the SDK to be initialized.
+  Stream<String> get logStream =>
+      _assertSdkInitialized(_container<KomodoDefiFramework>().logStream);
+
+  /// Waits until the percentage of enabled assets among [assetIds] meets or
+  /// exceeds [threshold], polling at [pollInterval] until [timeout].
+  ///
+  /// Returns `true` when the threshold is reached, or `false` if the timeout
+  /// elapses first.
+  Future<bool> waitForEnabledAssetsToPassThreshold(
+    Iterable<AssetId> assetIds, {
+    double threshold = 0.5,
+    Duration timeout = const Duration(seconds: 30),
+    Duration pollInterval = const Duration(seconds: 2),
+  }) async {
+    _assertSdkInitialized(activatedAssetsCache);
+
+    final targets = assetIds.toSet();
+    if (targets.isEmpty) {
+      throw ArgumentError.value(assetIds, 'assetIds', 'is empty');
+    }
+    if (threshold <= 0 || threshold > 1) {
+      throw ArgumentError.value(threshold, 'threshold', 'must be (0, 1]');
+    }
+    if (timeout <= Duration.zero) {
+      throw ArgumentError.value(timeout, 'timeout', 'must be positive');
+    }
+    if (pollInterval <= Duration.zero) {
+      throw ArgumentError.value(
+        pollInterval,
+        'pollInterval',
+        'must be positive',
+      );
+    }
+
+    final stopwatch = Stopwatch()..start();
+    var forceRefresh = true;
+
+    while (true) {
+      final enabled = await activatedAssetsCache.getActivatedAssetIds(
+        forceRefresh: forceRefresh,
+      );
+      forceRefresh = false;
+
+      final matched = enabled.intersection(targets).length;
+      final coverage = matched / targets.length;
+      if (coverage >= threshold) {
+        return true;
+      }
+
+      if (stopwatch.elapsed >= timeout) {
+        return false;
+      }
+
+      final remaining = timeout - stopwatch.elapsed;
+      await Future<void>.delayed(
+        remaining < pollInterval ? remaining : pollInterval,
+      );
+    }
+  }
+
+  /// Convenience helper that accepts asset tickers instead of [AssetId]s.
+  /// Matches assets by config ID (`asset.id.id`) before delegating to
+  /// [waitForEnabledAssetsToPassThreshold].
+  Future<bool> waitForEnabledTickersToPassThreshold(
+    Iterable<String> tickers, {
+    double threshold = 0.5,
+    Duration timeout = const Duration(seconds: 30),
+    Duration pollInterval = const Duration(seconds: 2),
+  }) {
+    final ids = tickers
+        .expand((ticker) => assets.findAssetsByConfigId(ticker))
+        .map((asset) => asset.id);
+    return waitForEnabledAssetsToPassThreshold(
+      ids,
+      threshold: threshold,
+      timeout: timeout,
+      pollInterval: pollInterval,
+    );
+  }
+
   /// Initializes the SDK instance.
   ///
   /// This must be called before using any SDK functionality. The initialization
@@ -300,13 +428,26 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
 
   Future<void> _initialize() async {
     _assertNotDisposed();
+
+    log('KomodoDefiSdk: Starting initialization...', name: 'KomodoDefiSdk');
+    final stopwatch = Stopwatch()..start();
+
     await bootstrap(
       hostConfig: _hostConfig,
       config: _config,
       kdfFramework: _kdfFramework,
       container: _container,
+      // Pass onLog callback to bootstrap for direct framework integration
+      externalLogger: _onLog,
     );
+
     _isInitialized = true;
+
+    stopwatch.stop();
+    log(
+      'KomodoDefiSdk: Initialization completed in ${stopwatch.elapsedMilliseconds}ms',
+      name: 'KomodoDefiSdk',
+    );
   }
 
   /// Gets the current user's authentication options.
@@ -364,9 +505,14 @@ class KomodoDefiSdk with SecureRpcPasswordMixin {
     _initializationFuture = null;
 
     await Future.wait([
+      _disposeIfRegistered<EventStreamingManager>((m) => m.dispose()),
       _disposeIfRegistered<KomodoDefiLocalAuth>((m) => m.dispose()),
       _disposeIfRegistered<AssetManager>((m) => m.dispose()),
+      _disposeIfRegistered<ActivatedAssetsCache>((m) => m.dispose()),
       _disposeIfRegistered<ActivationManager>((m) => m.dispose()),
+      _disposeIfRegistered<ActivationConfigService>(
+        (m) async => m.dispose(),
+      ),
       _disposeIfRegistered<BalanceManager>((m) => m.dispose()),
       _disposeIfRegistered<PubkeyManager>((m) => m.dispose()),
       _disposeIfRegistered<TransactionHistoryManager>((m) => m.dispose()),

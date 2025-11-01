@@ -16,6 +16,7 @@ export 'auth/auth_options.dart';
 export 'auth/auth_result.dart';
 export 'auth/exceptions/auth_exception.dart';
 export 'auth/exceptions/incorrect_password_exception.dart';
+export 'auth/exceptions/wallet_changed_disconnect_exception.dart';
 export 'auth/kdf_user.dart';
 export 'coin/coin.dart';
 export 'coin_classes/coin_subclasses.dart';

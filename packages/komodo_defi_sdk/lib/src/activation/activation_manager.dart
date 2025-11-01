@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:komodo_coins/komodo_coins.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
 import 'package:komodo_defi_sdk/src/balances/balance_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mutex/mutex.dart';
@@ -16,19 +18,21 @@ class ActivationManager {
     this._client,
     this._auth,
     this._assetHistory,
-    this._customTokenHistory,
     this._assetLookup,
-    this._balanceManager, {
-    required IAssetRefreshNotifier assetRefreshNotifier,
-  }) : _assetRefreshNotifier = assetRefreshNotifier;
+    this._balanceManager,
+    this._configService,
+    this._assetsUpdateManager,
+    this._activatedAssetsCache,
+  );
 
   final ApiClient _client;
   final KomodoDefiLocalAuth _auth;
   final AssetHistoryStorage _assetHistory;
-  final CustomAssetHistoryStorage _customTokenHistory;
   final IAssetLookup _assetLookup;
-  final IAssetRefreshNotifier _assetRefreshNotifier;
   final IBalanceManager _balanceManager;
+  final ActivationConfigService _configService;
+  final KomodoAssetsUpdateManager _assetsUpdateManager;
+  final ActivatedAssetsCache _activatedAssetsCache;
   final _activationMutex = Mutex();
   static const _operationTimeout = Duration(seconds: 30);
 
@@ -83,7 +87,7 @@ class ActivationManager {
       yield ActivationProgress(
         status: 'Starting activation for ${group.primary.id.name}...',
         progressDetails: ActivationProgressDetails(
-          currentStep: 'group_start',
+          currentStep: ActivationStep.groupStart,
           stepCount: 1,
           additionalInfo: {
             'primaryAsset': group.primary.id.name,
@@ -103,6 +107,7 @@ class ActivationManager {
         final activator = ActivationStrategyFactory.createStrategy(
           _client,
           privKeyPolicy,
+          _configService,
         );
 
         await for (final progress in activator.activate(
@@ -162,7 +167,7 @@ class ActivationManager {
     return const ActivationProgress(
       status: 'Needs activation',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'init',
+        currentStep: ActivationStep.init,
         stepCount: 1,
       ),
     );
@@ -192,24 +197,28 @@ class ActivationManager {
     if (progress.isSuccess) {
       final user = await _auth.currentUser;
       if (user != null) {
-        await _assetHistory.addAssetToWallet(
-          user.walletId,
-          group.primary.id.id,
-        );
+        // Store custom tokens using CoinConfigManager
+        if (group.primary.protocol.isCustomToken) {
+          await _assetsUpdateManager.assets.storeCustomToken(group.primary);
+        } else {
+          await _assetHistory.addAssetToWallet(
+            user.walletId,
+            group.primary.id.id,
+          );
+        }
 
         final allAssets = [group.primary, ...(group.children?.toList() ?? [])];
+
         for (final asset in allAssets) {
           if (asset.protocol.isCustomToken) {
-            await _customTokenHistory.addAssetToWallet(user.walletId, asset);
+            await _assetsUpdateManager.assets.storeCustomToken(asset);
           }
+
           // Pre-cache balance for the activated asset
           await _balanceManager.precacheBalance(asset);
         }
 
-        // Notify asset manager to refresh custom tokens if any were activated
-        if (allAssets.any((asset) => asset.protocol.isCustomToken)) {
-          _assetRefreshNotifier.notifyCustomTokensChanged();
-        }
+        _activatedAssetsCache.invalidate();
       }
 
       if (!completer.isCompleted) {
@@ -236,13 +245,7 @@ class ActivationManager {
     }
 
     try {
-      final enabledCoins = await _client.rpc.generalActivation
-          .getEnabledCoins();
-      return enabledCoins.result
-          .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
-          .expand((assets) => assets)
-          .map((asset) => asset.id)
-          .toSet();
+      return await _activatedAssetsCache.getActivatedAssetIds();
     } catch (e) {
       debugPrint('Failed to get active assets: $e');
       return {};
@@ -250,13 +253,18 @@ class ActivationManager {
   }
 
   /// Check if specific asset is active
-  Future<bool> isAssetActive(AssetId assetId) async {
+  Future<bool> isAssetActive(
+    AssetId assetId, {
+    bool forceRefresh = false,
+  }) async {
     if (_isDisposed) {
       throw StateError('ActivationManager has been disposed');
     }
 
     try {
-      final activeAssets = await getActiveAssets();
+      final activeAssets = forceRefresh
+          ? await _activatedAssetsCache.getActivatedAssetIds(forceRefresh: true)
+          : await getActiveAssets();
       return activeAssets.contains(assetId);
     } catch (e) {
       debugPrint('Failed to check if asset is active: $e');

@@ -6,6 +6,7 @@ import 'package:kdf_sdk_example/widgets/assets/instance_assets_list.dart';
 import 'package:kdf_sdk_example/widgets/common/private_keys_display_widget.dart';
 import 'package:kdf_sdk_example/widgets/common/security_warning_dialog.dart';
 import 'package:kdf_sdk_example/widgets/instance_manager/kdf_instance_state.dart';
+import 'package:kdf_sdk_example/widgets/instance_manager/zhtlc_config_dialog.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -36,10 +37,9 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
 
   Future<void> _getMnemonic({required bool encrypted}) async {
     try {
-      final mnemonic =
-          encrypted
-              ? await widget.instance.sdk.auth.getMnemonicEncrypted()
-              : await _getMnemonicWithPassword();
+      final mnemonic = encrypted
+          ? await widget.instance.sdk.auth.getMnemonicEncrypted()
+          : await _getMnemonicWithPassword();
 
       if (mnemonic != null && mounted) {
         setState(() => _mnemonic = mnemonic.toJson().toJsonString());
@@ -62,38 +62,34 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
     final passwordController = TextEditingController();
     return showDialog<String>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Enter Password'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Enter your wallet password to decrypt the mnemonic:',
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(),
-                  ),
-                  obscureText: true,
-                ),
-              ],
+      builder: (context) => AlertDialog(
+        title: const Text('Enter Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter your wallet password to decrypt the mnemonic:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+              obscureText: true,
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed:
-                    () => Navigator.of(context).pop(passwordController.text),
-                child: const Text('OK'),
-              ),
-            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(passwordController.text),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -146,8 +142,8 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
           runSpacing: 8,
           children: [
             FilledButton.tonalIcon(
-              onPressed:
-                  () => context.read<AuthBloc>().add(const AuthSignedOut()),
+              onPressed: () =>
+                  context.read<AuthBloc>().add(const AuthSignedOut()),
               icon: const Icon(Icons.logout),
               label: const Text('Sign Out'),
               key: const Key('sign_out_button'),
@@ -165,14 +161,13 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
               ),
               FilledButton.tonalIcon(
                 onPressed: _isExportingPrivateKeys ? null : _exportPrivateKeys,
-                icon:
-                    _isExportingPrivateKeys
-                        ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Icon(Icons.vpn_key),
+                icon: _isExportingPrivateKeys
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.vpn_key),
                 label: Text(
                   _isExportingPrivateKeys
                       ? 'Exporting...'
@@ -214,7 +209,37 @@ class _LoggedInViewWidgetState extends State<LoggedInViewWidget> {
           child: InstanceAssetList(
             assets: widget.filteredAssets,
             searchController: widget.searchController,
-            onAssetSelected: widget.onNavigateToAsset,
+            onAssetSelected: (asset) async {
+              // If asset is ZHTLC and has no saved config, prompt user for config
+              if (asset.id.subClass == CoinSubClass.zhtlc) {
+                final sdk = widget.instance.sdk;
+                final existing = await sdk.activationConfigService
+                    .getSavedZhtlc(asset.id);
+                if (existing == null && mounted) {
+                  final dialogResult =
+                      await ZhtlcConfigDialogHandler.handleZhtlcConfigDialog(
+                    context,
+                    asset,
+                  );
+                  if (!mounted) return;
+                  if (dialogResult != null) {
+                    if (dialogResult.oneShotSync != null) {
+                      await sdk.activationConfigService.setOneShotSyncParams(
+                        asset.id,
+                        dialogResult.oneShotSync,
+                      );
+                    }
+                    await sdk.activationConfigService.saveZhtlcConfig(
+                      asset.id,
+                      dialogResult.config,
+                    );
+                  } else {
+                    return; // User cancelled
+                  }
+                }
+              }
+              widget.onNavigateToAsset(asset);
+            },
             authOptions: widget.currentUser.walletId.authOptions,
           ),
         ),

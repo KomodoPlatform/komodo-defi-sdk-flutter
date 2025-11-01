@@ -6,23 +6,39 @@ class MessageSigningMethodsNamespace extends BaseRpcMethodNamespace {
   MessageSigningMethodsNamespace(super.client);
 
   /// Signs a message with a coin's signing key
+  ///
+  /// For non-HD wallets, only [coin] and [message] are required.
+  /// For HD wallets, provide [addressPath] using either:
+  /// - `AddressPath.derivationPath("m/84'/141'/0'/0/1")`
+  /// - `AddressPath.components(accountId: 0, chain: 'External', addressId: 1)`
+  ///
+  /// Example (non-HD):
+  /// ```dart
+  /// final response = await signMessage(
+  ///   coin: 'DOC',
+  ///   message: 'Hello, world!',
+  /// );
+  /// ```
+  ///
+  /// Example (HD with AddressPath):
+  /// ```dart
+  /// final response = await signMessage(
+  ///   coin: 'KMD',
+  ///   message: 'Hello, world!',
+  ///   addressPath: AddressPath.derivationPath("m/84'/141'/0'/0/1"),
+  /// );
+  /// ```
   Future<SignMessageResponse> signMessage({
     required String coin,
     required String message,
-    String? derivationPath,
-    int? accountId,
-    String? chain,
-    int? addressId,
+    AddressPath? addressPath,
   }) {
     return execute(
       SignMessageRequest(
         rpcPass: rpcPass ?? '',
         coin: coin,
         message: message,
-        derivationPath: derivationPath,
-        accountId: accountId,
-        chain: chain,
-        addressId: addressId,
+        addressPath: addressPath,
       ),
     );
   }

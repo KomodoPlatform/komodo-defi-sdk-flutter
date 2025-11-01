@@ -26,7 +26,7 @@ class SlpActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Starting BCH/SLP activation...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 3,
         additionalInfo: {
           'assetType': isPlatformAsset ? 'platform' : 'token',
@@ -43,7 +43,7 @@ class SlpActivationStrategy extends ProtocolActivationStrategy {
           status: 'Configuring BCH platform...',
           progressPercentage: 33,
           progressDetails: ActivationProgressDetails(
-            currentStep: 'platform_setup',
+            currentStep: ActivationStep.platformSetup,
             stepCount: 3,
             additionalInfo: {
               'bchdServers': protocol.bchdUrls.length,
@@ -67,7 +67,7 @@ class SlpActivationStrategy extends ProtocolActivationStrategy {
           status: 'Activating SLP token...',
           progressPercentage: 66,
           progressDetails: ActivationProgressDetails(
-            currentStep: 'token_activation',
+            currentStep: ActivationStep.tokenActivation,
             stepCount: 3,
           ),
         );
@@ -79,7 +79,7 @@ class SlpActivationStrategy extends ProtocolActivationStrategy {
       }
       yield ActivationProgress.success(
         details: ActivationProgressDetails(
-          currentStep: 'complete',
+          currentStep: ActivationStep.complete,
           stepCount: 3,
           additionalInfo: {
             'activatedChain': asset.id.name,
@@ -93,7 +93,7 @@ class SlpActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 3,
           errorCode: 'SLP_ACTIVATION_ERROR',
           errorDetails: e.toString(),

@@ -131,6 +131,14 @@ abstract interface class IKdfOperations {
   /// to start it. This may be reworked in the future to separate these
   /// concerns.
   Future<bool> isAvailable(IKdfHostConfig hostConfig);
+
+  /// Resets the HTTP client to drop stale keep-alive connections.
+  /// This is useful after KDF has been killed and restarted to ensure
+  /// we don't try to reuse dead connections.
+  void resetHttpClient();
+
+  /// Dispose of any resources used by this operations implementation
+  void dispose();
 }
 
 class JsonRpcErrorResponse extends MapBase<String, dynamic>
@@ -139,11 +147,7 @@ class JsonRpcErrorResponse extends MapBase<String, dynamic>
     required int? code,
     required String error,
     required String message,
-  }) : _map = {
-          'code': code,
-          'error': error,
-          'message': message,
-        };
+  }) : _map = {'code': code, 'error': error, 'message': message};
 
   /// Returns null if the response is not an error response,
   /// otherwise returns a [JsonRpcErrorResponse] instance.
@@ -192,14 +196,8 @@ class JsonRpcErrorResponse extends MapBase<String, dynamic>
 }
 
 class ConnectionError extends JsonRpcErrorResponse {
-  ConnectionError(
-    String message, {
-    this.originalException,
-    super.code = -1,
-  }) : super(
-          error: 'ConnectionError',
-          message: message,
-        );
+  ConnectionError(String message, {this.originalException, super.code = -1})
+    : super(error: 'ConnectionError', message: message);
 
   Exception? originalException;
 

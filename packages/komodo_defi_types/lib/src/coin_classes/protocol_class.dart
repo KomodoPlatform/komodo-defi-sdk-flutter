@@ -47,6 +47,7 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
         CoinSubClass.matic ||
         CoinSubClass.hrc20 ||
         CoinSubClass.arbitrum ||
+        CoinSubClass.base ||
         CoinSubClass.moonriver ||
         CoinSubClass.moonbeam ||
         CoinSubClass.ethereumClassic ||
@@ -136,6 +137,38 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
       ..['type'] = type.toString().split('.').last;
 
     return ProtocolClass.fromJson(variantConfig);
+  }
+
+  /// Declarative streaming capabilities based on protocol subclass and
+  /// whether the asset is a child token (e.g. QRC20 token).
+  bool supportsBalanceStreaming({required bool isChildAsset}) {
+    // Unsupported: SLP tokens, Tendermint tokens, Sia (feature-gated)
+    if (subClass == CoinSubClass.slp ||
+        subClass == CoinSubClass.tendermintToken ||
+        subClass == CoinSubClass.sia) {
+      return false;
+    }
+    // QRC20 tokens (child assets) do not support balance streaming
+    if (subClass == CoinSubClass.qrc20 && isChildAsset) {
+      return false;
+    }
+    return true;
+  }
+
+  bool supportsTxHistoryStreaming({required bool isChildAsset}) {
+    // EVM does not support tx history streaming in KDF
+    if (evmCoinSubClasses.contains(subClass)) {
+      return false;
+    }
+    // Unsupported: QRC20 tokens, SLP tokens, Tendermint tokens
+    if (subClass == CoinSubClass.slp ||
+        subClass == CoinSubClass.tendermintToken) {
+      return false;
+    }
+    if (subClass == CoinSubClass.qrc20 && isChildAsset) {
+      return false;
+    }
+    return true;
   }
 
   ActivationParams defaultActivationParams({

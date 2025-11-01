@@ -21,7 +21,7 @@ class Erc20ErrorHandler extends ProtocolErrorHandler {
   ActivationProgressDetails handleError(Object error, StackTrace stack) {
     final code = getErrorCode(error);
     return ActivationProgressDetails(
-      currentStep: 'error',
+      currentStep: ActivationStep.error,
       stepCount: 2,
       errorCode: code,
       errorDetails: getUserMessage(error),

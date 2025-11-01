@@ -1,10 +1,14 @@
 import 'dart:async';
 
+import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
+import 'package:komodo_defi_sdk/src/activation/activation_exceptions.dart';
 import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
 import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dart';
+import 'package:komodo_defi_sdk/src/assets/asset_history_storage.dart';
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
+import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:logging/logging.dart';
 
@@ -60,10 +64,14 @@ class BalanceManager implements IBalanceManager {
     required KomodoDefiLocalAuth auth,
     required PubkeyManager? pubkeyManager,
     required SharedActivationCoordinator? activationCoordinator,
+    required EventStreamingManager eventStreamingManager,
+    AssetHistoryStorage? assetHistoryStorage,
   }) : _activationCoordinator = activationCoordinator,
        _pubkeyManager = pubkeyManager,
        _assetLookup = assetLookup,
-       _auth = auth {
+       _auth = auth,
+       _eventStreamingManager = eventStreamingManager,
+       _assetHistoryStorage = assetHistoryStorage ?? AssetHistoryStorage() {
     // Listen for auth state changes
     _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
     _logger.fine('Initialized');
@@ -74,8 +82,13 @@ class BalanceManager implements IBalanceManager {
   PubkeyManager? _pubkeyManager;
   final IAssetLookup _assetLookup;
   final KomodoDefiLocalAuth _auth;
+  final EventStreamingManager _eventStreamingManager;
+  final AssetHistoryStorage _assetHistoryStorage;
   StreamSubscription<KdfUser?>? _authSubscription;
   final Duration _defaultPollingInterval = const Duration(seconds: 30);
+
+  /// Enable debug logging for balance polling fallback
+  static bool enableDebugLogging = true;
 
   /// Cache of the latest known balances for each asset
   final Map<AssetId, BalanceInfo> _balanceCache = {};
@@ -85,6 +98,9 @@ class BalanceManager implements IBalanceManager {
 
   /// Stream controllers for each asset being watched
   final Map<AssetId, StreamController<BalanceInfo>> _balanceControllers = {};
+
+  /// Stale-guard timers to periodically refresh balances even while streaming
+  final Map<AssetId, Timer> _staleBalanceTimers = {};
 
   /// Current wallet ID being tracked
   WalletId? _currentWalletId;
@@ -109,6 +125,8 @@ class BalanceManager implements IBalanceManager {
     _pubkeyManager = manager;
   }
 
+  bool _supportsBalanceStreaming(Asset asset) => asset.supportsBalanceStreaming;
+
   /// Handle authentication state changes
   Future<void> _handleAuthStateChanged(KdfUser? user) async {
     if (_isDisposed) return;
@@ -126,33 +144,59 @@ class BalanceManager implements IBalanceManager {
   /// Reset all internal state when wallet changes
   Future<void> _resetState() async {
     _logger.fine('Resetting state');
-    // Cancel all active watchers
-    for (final subscription in _activeWatchers.values) {
-      await subscription.cancel();
-    }
+    final stopwatch = Stopwatch()..start();
+
+    final List<Future<void>> cleanupFutures = <Future<void>>[];
+    final List<StreamSubscription<dynamic>> watcherSubs = _activeWatchers.values
+        .toList();
     _activeWatchers.clear();
 
-    // Add errors to existing controllers to signal disconnection
-    for (final controller in _balanceControllers.values) {
+    for (final subscription in watcherSubs) {
+      cleanupFutures.add(
+        subscription.cancel().catchError((Object e, StackTrace s) {
+          _logger.warning('Error cancelling balance watcher', e, s);
+        }),
+      );
+    }
+
+    // Cancel all stale balance timers to prevent timer leak on wallet change
+    for (final timer in _staleBalanceTimers.values) {
+      timer.cancel();
+    }
+    _staleBalanceTimers.clear();
+
+    final List<StreamController<BalanceInfo>> controllers = _balanceControllers
+        .values
+        .toList();
+    _balanceControllers.clear();
+
+    for (final controller in controllers) {
       if (!controller.isClosed) {
+        // Add error to signal disconnection before closing
         controller.addError(
-          StateError('Wallet changed, reconnecting balance watchers'),
+          const WalletChangedDisconnectException(
+            'Wallet changed, reconnecting balance watchers',
+          ),
+        );
+
+        cleanupFutures.add(
+          controller.close().catchError((Object e, StackTrace s) {
+            _logger.warning('Error closing balance controller', e, s);
+          }),
         );
       }
     }
 
-    // Clear caches
-    _balanceCache.clear();
-
-    // Restart balance watchers for existing controllers with the new wallet
-    final existingWatches = Map<AssetId, StreamController<BalanceInfo>>.from(
-      _balanceControllers,
-    );
-    for (final entry in existingWatches.entries) {
-      if (!entry.value.isClosed) {
-        _startWatchingBalance(entry.key, true);
-      }
+    if (cleanupFutures.isNotEmpty) {
+      await Future.wait(cleanupFutures);
     }
+
+    _balanceCache.clear();
+    stopwatch.stop();
+    _logger.fine(
+      'State reset completed in ${stopwatch.elapsedMilliseconds}ms '
+      '(${watcherSubs.length} subscriptions, ${controllers.length} controllers)',
+    );
   }
 
   @override
@@ -296,79 +340,282 @@ class BalanceManager implements IBalanceManager {
     _currentWalletId = user.walletId;
     _logger.fine('Starting balance watcher for ${assetId.name}');
 
+    // Optimization: Check if this is a newly created wallet (not imported)
+    final previouslyEnabledAssets = await _assetHistoryStorage.getWalletAssets(
+      user.walletId,
+    );
+    final isFirstTimeEnabling = !previouslyEnabledAssets.contains(assetId.id);
+
+    // Check metadata to determine if this was an imported wallet
+    // Only optimize for genuinely new wallets, not imported ones
+    final isImported = user.metadata['isImported'] == true;
+    final isNewWallet = previouslyEnabledAssets.isEmpty && !isImported;
+
     // Emit the last known balance immediately if available
     final maybeKnownBalance = lastKnown(assetId);
     if (maybeKnownBalance != null) {
       controller.add(maybeKnownBalance);
       _logger.fine('Emitted initial balance for ${assetId.name}');
+    } else if (isFirstTimeEnabling && isNewWallet) {
+      // For newly created wallets (not imported) on first-time asset enablement,
+      // assume zero balance to reduce RPC spam
+      final zeroBalance = BalanceInfo(
+        total: Decimal.zero,
+        spendable: Decimal.zero,
+        unspendable: Decimal.zero,
+      );
+      _balanceCache[assetId] = zeroBalance;
+      controller.add(zeroBalance);
+      _logger.fine(
+        'Emitted zero balance for first-time asset ${assetId.name} in new wallet',
+      );
     }
 
     try {
       // Ensure asset is activated if needed
       final isActive = await _ensureAssetActivated(asset, activateIfNeeded);
 
-      // If active, get the first balance
-      if (isActive) {
+      // If activation was requested but failed, emit error
+      if (activateIfNeeded && !isActive) {
+        if (!controller.isClosed) {
+          controller.addError(
+            ActivationFailedException(
+              assetId: assetId,
+              message: 'Asset activation failed',
+              errorCode: 'BALANCE_ACTIVATION_ERROR',
+            ),
+          );
+        }
+        return;
+      }
+
+      // Mark asset as seen after successful activation
+      if (isActive && isFirstTimeEnabling) {
+        await _assetHistoryStorage.addAssetToWallet(user.walletId, assetId.id);
+
+        // Fetch real balance (will update from zero for new wallets)
+        final balance = await getBalance(assetId);
+        if (!controller.isClosed) controller.add(balance);
+      } else if (isActive) {
+        // If active but not first time, still get balance
         final balance = await getBalance(assetId);
         if (!controller.isClosed) controller.add(balance);
       }
 
-      // Set up periodic polling for balance updates
-      final periodicStream = Stream<void>.periodic(_defaultPollingInterval);
-      _activeWatchers[assetId] = periodicStream
-          .asyncMap<BalanceInfo?>((void _) async {
-            if (_isDisposed) return null;
+      // Subscribe to balance event stream for real-time updates
+      if (!_supportsBalanceStreaming(asset)) {
+        await _startBalancePolling(
+          asset: asset,
+          assetId: assetId,
+          controller: controller,
+          activateIfNeeded: activateIfNeeded,
+        );
+        return;
+      }
 
-            // Check if dependencies are still initialized
-            if (_activationCoordinator == null || _pubkeyManager == null) {
-              return null;
-            }
+      _logger.fine('Subscribing to balance stream for ${assetId.id}');
+      final balanceStreamSubscription = await _eventStreamingManager
+          .subscribeToBalance(coin: assetId.id);
 
-            // Check if user is still authenticated
-            final currentUser = await _auth.currentUser;
-            if (currentUser == null ||
-                currentUser.walletId != _currentWalletId) {
-              return null; // Don't fetch balance if user changed or logged out
-            }
+      var hasFallenBack = false;
+      Future<void> fallbackToPolling({
+        String reason = 'stream stopped',
+        Object? error,
+        StackTrace? stackTrace,
+      }) async {
+        if (hasFallenBack || _isDisposed) return;
+        hasFallenBack = true;
 
-            try {
-              // Ensure asset is activated if needed
-              final isActive = await _ensureAssetActivated(
-                asset,
-                activateIfNeeded,
-              );
+        _logger.info(
+          'Falling back to balance polling for ${assetId.name}: $reason',
+        );
 
-              // Only fetch balance if asset is active
-              if (isActive) {
-                final balance = await getBalance(assetId);
-                return balance;
-              }
-            } catch (e) {
-              // Just log the error and continue with the last known balance
-              // This prevents the stream from terminating on transient errors
-            }
-
-            // Return the last known balance if we can't fetch a new one
-            return lastKnown(assetId);
-          })
-          .listen(
-            (BalanceInfo? balance) {
-              if (balance != null && !controller.isClosed) {
-                controller.add(balance);
-              }
-            },
-            onError: (Object error) {
-              if (!controller.isClosed) controller.addError(error);
-            },
-            onDone: () {
-              _stopWatchingBalance(assetId);
-              _logger.fine('Stopped watching ${assetId.name}');
-            },
-            cancelOnError: false,
+        try {
+          await balanceStreamSubscription.cancel();
+        } catch (cancelError, cancelStack) {
+          _logger.fine(
+            'Error cancelling balance stream for ${assetId.name}',
+            cancelError,
+            cancelStack,
           );
-    } catch (e) {
-      if (!controller.isClosed) controller.addError(e);
+        }
+
+        if (_activeWatchers[assetId] == balanceStreamSubscription) {
+          await _startBalancePolling(
+            asset: asset,
+            assetId: assetId,
+            controller: controller,
+            activateIfNeeded: activateIfNeeded,
+          );
+        }
+
+        if (error != null) {
+          _logger.warning(
+            'Balance stream fallback reason for ${assetId.name}: $error',
+            error,
+            stackTrace,
+          );
+        }
+      }
+
+      _activeWatchers[assetId] = balanceStreamSubscription
+        ..onData((balanceEvent) {
+          if (_isDisposed) return;
+
+          // Verify the event is for the correct coin
+          if (balanceEvent.coin != assetId.id) return;
+
+          // Update cache with the new balance
+          _balanceCache[assetId] = balanceEvent.balance;
+
+          // Emit the balance update to listeners
+          if (!controller.isClosed) {
+            controller.add(balanceEvent.balance);
+            _logger.fine(
+              'Balance update received for ${assetId.name}: ${balanceEvent.balance.total}',
+            );
+          }
+
+          // Trigger background refresh to sync per-address balances
+          // This ensures address balances match the updated total
+          // and notifies any watchPubkeys stream listeners
+          if (_pubkeyManager != null) {
+            _pubkeyManager!
+                .precachePubkeys(asset)
+                .then((_) {
+                  _logger.fine(
+                    'Pubkeys refreshed after balance update for '
+                    '${assetId.name}',
+                  );
+                })
+                .catchError((Object e, StackTrace s) {
+                  _logger.fine(
+                    'Failed to refresh pubkeys for ${assetId.name}',
+                    e,
+                    s,
+                  );
+                })
+                .ignore();
+          }
+        })
+        ..onError((Object error, StackTrace stackTrace) {
+          unawaited(
+            fallbackToPolling(
+              reason: 'stream error',
+              error: error,
+              stackTrace: stackTrace,
+            ),
+          );
+        })
+        ..onDone(() {
+          unawaited(fallbackToPolling(reason: 'stream closed'));
+        });
+
+      // Start stale-guard to periodically confirm balance in case of missed events
+      _startStaleBalanceGuard(
+        asset: asset,
+        assetId: assetId,
+        controller: controller,
+        activateIfNeeded: activateIfNeeded,
+      );
+    } catch (e, s) {
+      _logger.warning(
+        'Failed to start balance watcher for ${assetId.name}',
+        e,
+        s,
+      );
+      await _startBalancePolling(
+        asset: asset,
+        assetId: assetId,
+        controller: controller,
+        activateIfNeeded: activateIfNeeded,
+      );
     }
+  }
+
+  Future<void> _startBalancePolling({
+    required Asset asset,
+    required AssetId assetId,
+    required StreamController<BalanceInfo> controller,
+    required bool activateIfNeeded,
+  }) async {
+    if (_isDisposed || controller.isClosed) return;
+
+    _logger.fine('Starting balance polling fallback for ${assetId.name}');
+
+    final periodicStream = Stream<void>.periodic(_defaultPollingInterval);
+    final subscription = periodicStream
+        .asyncMap<BalanceInfo?>((_) async {
+          if (_isDisposed) return null;
+
+          if (_activationCoordinator == null || _pubkeyManager == null) {
+            return null;
+          }
+
+          final currentUser = await _auth.currentUser;
+          if (currentUser == null || currentUser.walletId != _currentWalletId) {
+            return null;
+          }
+
+          if (enableDebugLogging) {
+            _logger.info(
+              '[POLLING] Fetching balance for ${assetId.name} '
+              '(every ${_defaultPollingInterval.inSeconds}s)',
+            );
+          }
+
+          try {
+            final isActive = await _ensureAssetActivated(
+              asset,
+              activateIfNeeded,
+            );
+
+            if (isActive) {
+              final balance = await getBalance(assetId);
+              if (enableDebugLogging) {
+                _logger.info(
+                  '[POLLING] Balance fetched for ${assetId.name}: '
+                  '${balance.total}',
+                );
+              }
+              return balance;
+            }
+          } catch (error, stackTrace) {
+            if (enableDebugLogging) {
+              _logger.warning(
+                '[POLLING] Balance fetch failed for ${assetId.name}',
+                error,
+                stackTrace,
+              );
+            }
+          }
+
+          return lastKnown(assetId);
+        })
+        .listen(
+          (balance) {
+            if (balance != null && !controller.isClosed) {
+              controller.add(balance);
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            if (!controller.isClosed) {
+              controller.addError(error);
+            }
+            _logger.warning(
+              'Balance polling error for ${assetId.name}',
+              error,
+              stackTrace,
+            );
+          },
+          onDone: () {
+            _stopWatchingBalance(assetId);
+            _logger.fine('Balance polling closed for ${assetId.name}');
+          },
+          cancelOnError: false,
+        );
+
+    _activeWatchers[assetId] = subscription;
   }
 
   /// Stop watching the balance for a specific asset
@@ -379,8 +626,69 @@ class BalanceManager implements IBalanceManager {
       _activeWatchers.remove(assetId);
       _logger.fine('Stopped watcher for ${assetId.name}');
     }
+    _stopStaleBalanceGuard(assetId);
     // Don't close the controller here, just remove the watcher
     // The controller will be closed when all listeners are gone
+  }
+
+  void _startStaleBalanceGuard({
+    required Asset asset,
+    required AssetId assetId,
+    required StreamController<BalanceInfo> controller,
+    required bool activateIfNeeded,
+  }) {
+    // Cancel any existing timer first
+    _staleBalanceTimers[assetId]?.cancel();
+
+    _staleBalanceTimers[assetId] = Timer.periodic(_defaultPollingInterval, (
+      _,
+    ) async {
+      if (_isDisposed || controller.isClosed) return;
+      try {
+        final isActive = await _ensureAssetActivated(asset, activateIfNeeded);
+        if (!isActive) return;
+
+        final latest = await getBalance(assetId);
+        final previous = _balanceCache[assetId];
+        final changed =
+            previous == null ||
+            previous.total != latest.total ||
+            previous.spendable != latest.spendable ||
+            previous.unspendable != latest.unspendable;
+        if (changed) {
+          _balanceCache[assetId] = latest;
+          if (!controller.isClosed) {
+            controller.add(latest);
+          }
+        }
+      } catch (_) {
+        // best-effort; swallow transient errors
+      }
+    });
+
+    // Kick off an immediate one-shot refresh
+    unawaited(() async {
+      try {
+        final isActive = await _ensureAssetActivated(asset, activateIfNeeded);
+        if (!isActive) return;
+        final latest = await getBalance(assetId);
+        final previous = _balanceCache[assetId];
+        final changed =
+            previous == null ||
+            previous.total != latest.total ||
+            previous.spendable != latest.spendable ||
+            previous.unspendable != latest.unspendable;
+        if (changed && !controller.isClosed) {
+          _balanceCache[assetId] = latest;
+          controller.add(latest);
+        }
+      } catch (_) {}
+    }());
+  }
+
+  void _stopStaleBalanceGuard(AssetId assetId) {
+    _staleBalanceTimers[assetId]?.cancel();
+    _staleBalanceTimers.remove(assetId);
   }
 
   @override
@@ -447,6 +755,12 @@ class BalanceManager implements IBalanceManager {
     _balanceCache.clear();
     _currentWalletId = null;
     _logger.fine('Disposed');
+
+    // Cancel any remaining stale-guard timers
+    for (final timer in _staleBalanceTimers.values) {
+      timer.cancel();
+    }
+    _staleBalanceTimers.clear();
   }
 
   @override

@@ -67,14 +67,41 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   ) {
     try {
       final message = messagePtr.toDartString();
-      log(message);
+      _safeLog(message, log);
     } catch (e) {
-      final unsignedLength = messagePtr.length;
-      log('Failed to decode log message ($unsignedLength bytes): $e');
+      // Message decoding failed, try manual parsing
+      final unsignedLength = _safeGetLength(messagePtr);
+      _safeLog('Failed to decode log message ($unsignedLength bytes): $e', log);
 
       final manuallyParsedMessage = _tryParseNativeLogMessage(messagePtr, log);
       if (manuallyParsedMessage.isNotEmpty) {
-        log(manuallyParsedMessage);
+        _safeLog(manuallyParsedMessage, log);
+      }
+    }
+  }
+
+  /// Safely gets the length of a pointer, returning -1 if it fails
+  static int _safeGetLength(ffi.Pointer<Utf8> messagePtr) {
+    try {
+      return messagePtr.length;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to get message length: $e');
+      }
+      return -1;
+    }
+  }
+
+  /// Safely invokes the log callback with fallback to debug print
+  static void _safeLog(String message, void Function(String) log) {
+    try {
+      log(message);
+    } catch (e, stackTrace) {
+      // Log callback failed - use debug print as fallback
+      if (kDebugMode) {
+        print('Log callback failed for message: $message');
+        print('Error: $e');
+        print('Stack trace: $stackTrace');
       }
     }
   }
@@ -97,13 +124,13 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
 
         // prevent overflows & infinite loops with a reasonable limit
         if (length >= 32767) {
-          log('Received log message longer than 32767 bytes.');
+          _safeLog('Received log message longer than 32767 bytes.', log);
           return '';
         }
       }
 
       if (length == 0) {
-        log('Received empty log message.');
+        _safeLog('Received empty log message.', log);
         return '';
       }
 
@@ -111,16 +138,17 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       // flutter devtools from crashing.
       final bytes = messagePtrAsInt.asTypedList(length);
       if (!_isValidUtf8(bytes)) {
-        log('Received invalid UTF-8 log message.');
-        final hexString =
-            bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
-        log('Raw bytes: $hexString');
+        _safeLog('Received invalid UTF-8 log message.', log);
+        final hexString = bytes
+            .map((b) => b.toRadixString(16).padLeft(2, '0'))
+            .join(' ');
+        _safeLog('Raw bytes: $hexString', log);
         return '';
       }
 
       return utf8.decode(bytes);
     } catch (e) {
-      log('Failed to decode log message: $e');
+      _safeLog('Failed to decode log message: $e', log);
     }
 
     return '';
@@ -160,8 +188,10 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
 
   @override
   Future<KdfStartupResult> kdfMain(JsonMap startParams, {int? logLevel}) async {
-    final startParamsPtr =
-        startParams.toJsonString().toNativeUtf8().cast<Utf8>();
+    final startParamsPtr = startParams
+        .toJsonString()
+        .toNativeUtf8()
+        .cast<Utf8>();
     // TODO: Implement log level
 
     final timer = Stopwatch()..start();
@@ -225,8 +255,11 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   Future<bool> isRunning() =>
       Future.sync(() => _kdfMainStatus() == MainStatus.rpcIsUp);
 
-  final Uri _url = Uri.parse('http://localhost:7783');
-  final Client _client = Client();
+  // Use 127.0.0.1 instead of localhost to avoid DNS resolution issues on mobile
+  // platforms, especially after app backgrounding. See:
+  // https://github.com/KomodoPlatform/komodo-wallet/issues/3213
+  final Uri _url = Uri.parse('http://127.0.0.1:7783');
+  Client _client = Client();
 
   @override
   Future<Map<String, dynamic>> mm2Rpc(Map<String, dynamic> request) async {
@@ -264,6 +297,13 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
     }
   }
 
+  @override
+  void resetHttpClient() {
+    _log('Resetting HTTP client to drop stale keep-alive connections');
+    _client.close();
+    _client = Client();
+  }
+
   static int _kdfMainIsolate(_KdfMainParams params) {
     final dylib = _library;
     assert(
@@ -271,12 +311,13 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
       'Symbol mm2_main not found in library',
     );
     final bindings = KomodoDefiFrameworkBindings(dylib);
-    final startParamsPtr =
-        ffi.Pointer<Utf8>.fromAddress(params.startParamsPtrAddress);
+    final startParamsPtr = ffi.Pointer<Utf8>.fromAddress(
+      params.startParamsPtrAddress,
+    );
     final logCallback =
         ffi.Pointer<ffi.NativeFunction<LogCallbackFunction>>.fromAddress(
-      params.logCallbackAddress,
-    );
+          params.logCallbackAddress,
+        );
     return bindings.mm2_main(startParamsPtr, logCallback);
   }
 
@@ -291,15 +332,13 @@ class KdfOperationsNativeLibrary implements IKdfOperations {
   }
 
   void dispose() {
+    _client.close();
     _logCallback.close(); // Ensure the NativeCallable is properly closed
   }
 }
 
 class _KdfMainParams {
-  _KdfMainParams(
-    this.startParamsPtrAddress,
-    this.logCallbackAddress,
-  );
+  _KdfMainParams(this.startParamsPtrAddress, this.logCallbackAddress);
   final int startParamsPtrAddress;
   final int logCallbackAddress;
 }
@@ -311,8 +350,8 @@ ffi.DynamicLibrary _loadLibrary() {
       final lib = path == 'PROCESS'
           ? ffi.DynamicLibrary.process()
           : path == 'EXECUTABLE'
-              ? ffi.DynamicLibrary.executable()
-              : ffi.DynamicLibrary.open(path);
+          ? ffi.DynamicLibrary.executable()
+          : ffi.DynamicLibrary.open(path);
       if (lib.providesSymbol('mm2_main')) {
         if (kDebugMode) print('Loaded library at path: $path');
         return lib;
@@ -326,19 +365,9 @@ ffi.DynamicLibrary _loadLibrary() {
 
 List<String> _getLibraryPaths() {
   if (Platform.isMacOS) {
-    return [
-      'kdf',
-      'mm2',
-      'libkdflib.dylib',
-      'PROCESS',
-      'EXECUTABLE',
-    ];
+    return ['kdf', 'mm2', 'libkdflib.dylib', 'PROCESS', 'EXECUTABLE'];
   } else if (Platform.isIOS) {
-    return [
-      'libkdflib.dylib',
-      'PROCESS',
-      'EXECUTABLE',
-    ];
+    return ['libkdflib.dylib', 'PROCESS', 'EXECUTABLE'];
   } else if (Platform.isAndroid) {
     return [
       'libkomodo_defi_framework.so',

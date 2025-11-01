@@ -16,7 +16,7 @@ _FreePlan _$FreePlanFromJson(Map<String, dynamic> json) => _FreePlan(
       (json['availableIntervals'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList() ??
-      const ['24h', '1d', '7d', '14d', '30d', '90d', '365d'],
+      CoinPaprikaIntervals.freeDefaults,
   monthlyCallLimit: (json['monthlyCallLimit'] as num?)?.toInt() ?? 20000,
   $type: json['runtimeType'] as String?,
 );
@@ -38,25 +38,7 @@ _StarterPlan _$StarterPlanFromJson(Map<String, dynamic> json) => _StarterPlan(
       (json['availableIntervals'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList() ??
-      const [
-        '24h',
-        '1d',
-        '7d',
-        '14d',
-        '30d',
-        '90d',
-        '365d',
-        '1h',
-        '2h',
-        '3h',
-        '6h',
-        '12h',
-        '5m',
-        '10m',
-        '15m',
-        '30m',
-        '45m',
-      ],
+      CoinPaprikaIntervals.premiumDefaults,
   monthlyCallLimit: (json['monthlyCallLimit'] as num?)?.toInt() ?? 400000,
   $type: json['runtimeType'] as String?,
 );
@@ -80,25 +62,7 @@ _ProPlan _$ProPlanFromJson(Map<String, dynamic> json) => _ProPlan(
       (json['availableIntervals'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList() ??
-      const [
-        '24h',
-        '1d',
-        '7d',
-        '14d',
-        '30d',
-        '90d',
-        '365d',
-        '1h',
-        '2h',
-        '3h',
-        '6h',
-        '12h',
-        '5m',
-        '10m',
-        '15m',
-        '30m',
-        '45m',
-      ],
+      CoinPaprikaIntervals.premiumDefaults,
   monthlyCallLimit: (json['monthlyCallLimit'] as num?)?.toInt() ?? 1000000,
   $type: json['runtimeType'] as String?,
 );
@@ -121,25 +85,7 @@ _BusinessPlan _$BusinessPlanFromJson(Map<String, dynamic> json) =>
           (json['availableIntervals'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
-          const [
-            '24h',
-            '1d',
-            '7d',
-            '14d',
-            '30d',
-            '90d',
-            '365d',
-            '1h',
-            '2h',
-            '3h',
-            '6h',
-            '12h',
-            '5m',
-            '10m',
-            '15m',
-            '30m',
-            '45m',
-          ],
+          CoinPaprikaIntervals.premiumDefaults,
       monthlyCallLimit: (json['monthlyCallLimit'] as num?)?.toInt() ?? 5000000,
       $type: json['runtimeType'] as String?,
     );
@@ -164,25 +110,7 @@ _UltimatePlan _$UltimatePlanFromJson(Map<String, dynamic> json) =>
           (json['availableIntervals'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
-          const [
-            '24h',
-            '1d',
-            '7d',
-            '14d',
-            '30d',
-            '90d',
-            '365d',
-            '1h',
-            '2h',
-            '3h',
-            '6h',
-            '12h',
-            '5m',
-            '10m',
-            '15m',
-            '30m',
-            '45m',
-          ],
+          CoinPaprikaIntervals.premiumDefaults,
       monthlyCallLimit: (json['monthlyCallLimit'] as num?)?.toInt() ?? 10000000,
       $type: json['runtimeType'] as String?,
     );
@@ -207,25 +135,7 @@ _EnterprisePlan _$EnterprisePlanFromJson(Map<String, dynamic> json) =>
           (json['availableIntervals'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
-          const [
-            '24h',
-            '1d',
-            '7d',
-            '14d',
-            '30d',
-            '90d',
-            '365d',
-            '1h',
-            '2h',
-            '3h',
-            '6h',
-            '12h',
-            '5m',
-            '10m',
-            '15m',
-            '30m',
-            '45m',
-          ],
+          CoinPaprikaIntervals.premiumDefaults,
       monthlyCallLimit: (json['monthlyCallLimit'] as num?)?.toInt(),
       $type: json['runtimeType'] as String?,
     );

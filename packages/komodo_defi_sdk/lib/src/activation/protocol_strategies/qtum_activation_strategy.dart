@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:developer' show log;
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -27,7 +30,7 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Starting QTUM activation...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 4,
         additionalInfo: {
           'protocol': 'QTUM',
@@ -37,11 +40,33 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
     );
 
     try {
+      final activationParams = asset.protocol.defaultActivationParams(
+        privKeyPolicy: privKeyPolicy,
+      );
+      
+      // Debug logging for QTUM activation
+      log(
+        '[RPC] Activating QTUM coin: ${asset.id.id}',
+        name: 'QtumActivationStrategy',
+      );
+      log(
+        '[RPC] Activation parameters: ${jsonEncode({
+          'ticker': asset.id.id,
+          'protocol': asset.protocol.subClass.formatted,
+          'activation_params': activationParams.toRpcParams(),
+          'priv_key_policy': privKeyPolicy.toJson(),
+        })}',
+        name: 'QtumActivationStrategy',
+      );
+      
       final taskResponse = await client.rpc.qtum.enableQtumInit(
         ticker: asset.id.id,
-        params: asset.protocol.defaultActivationParams(
-          privKeyPolicy: privKeyPolicy,
-        ),
+        params: activationParams,
+      );
+      
+      log(
+        '[RPC] Task initiated for ${asset.id.id}, task_id: ${taskResponse.taskId}',
+        name: 'QtumActivationStrategy',
       );
 
       var isComplete = false;
@@ -54,7 +79,7 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
           if (status.status == 'Ok') {
             yield ActivationProgress.success(
               details: ActivationProgressDetails(
-                currentStep: 'complete',
+                currentStep: ActivationStep.complete,
                 stepCount: 4,
                 additionalInfo: {
                   'activatedChain': asset.id.name,
@@ -68,7 +93,7 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
               errorMessage: status.details,
               isComplete: true,
               progressDetails: ActivationProgressDetails(
-                currentStep: 'error',
+                currentStep: ActivationStep.error,
                 stepCount: 4,
                 errorCode: 'QTUM_ACTIVATION_ERROR',
                 errorDetails: status.details,
@@ -96,7 +121,7 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 4,
           errorCode: 'QTUM_ACTIVATION_ERROR',
           errorDetails: e.toString(),
@@ -106,35 +131,40 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
     }
   }
 
-  ({String status, double percentage, String step, Map<String, dynamic> info})
+  ({
+    String status,
+    double percentage,
+    ActivationStep step,
+    Map<String, dynamic> info,
+  })
   _parseQtumStatus(String status) {
     switch (status) {
       case 'ConnectingNodes':
         return (
           status: 'Connecting to QTUM nodes...',
           percentage: 25,
-          step: 'connection',
+          step: ActivationStep.connection,
           info: {'status': status},
         );
       case 'ValidatingConfig':
         return (
           status: 'Validating configuration...',
           percentage: 50,
-          step: 'validation',
+          step: ActivationStep.validation,
           info: {'status': status},
         );
       case 'LoadingContracts':
         return (
           status: 'Loading smart contracts...',
           percentage: 75,
-          step: 'contracts',
+          step: ActivationStep.contracts,
           info: {'status': status},
         );
       default:
         return (
           status: 'Processing activation...',
           percentage: 85,
-          step: 'processing',
+          step: ActivationStep.processing,
           info: {'status': status},
         );
     }

@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
@@ -29,6 +29,13 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   bool supportsAsset(Asset asset) => _protocolHelper.supportsProtocol(asset);
+
+  @override
+  bool requiresKdfTransactionHistory(Asset asset) {
+    // Etherscan-backed history does not require KDF tx_history to be enabled
+    // for pagination; streaming remains disabled for EVM in KDF.
+    return false;
+  }
 
   @override
   Future<MyTxHistoryResponse> fetchTransactionHistory(
@@ -63,8 +70,9 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
       for (final address in addresses) {
         final uri = url.replace(
           pathSegments: [...url.pathSegments, address.address],
-          queryParameters:
-              asset.protocol.isTestnet ? {'testnet': 'true'} : null,
+          queryParameters: asset.protocol.isTestnet
+              ? {'testnet': 'true'}
+              : null,
         );
         // Add the address as the next path segment
 
@@ -88,14 +96,14 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
           t.fromId,
           t.itemCount,
         ),
-        _ =>
-          throw UnsupportedError(
-            'Unsupported pagination type: ${pagination.runtimeType}',
-          ),
+        _ => throw UnsupportedError(
+          'Unsupported pagination type: ${pagination.runtimeType}',
+        ),
       };
 
-      final currentBlock =
-          allTransactions.isNotEmpty ? allTransactions.first.blockHeight : 0;
+      final currentBlock = allTransactions.isNotEmpty
+          ? allTransactions.first.blockHeight
+          : 0;
 
       return MyTxHistoryResponse(
         mmrpc: RpcVersion.v2_0,
@@ -109,6 +117,11 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
         total: allTransactions.length,
         totalPages: (allTransactions.length / paginatedResults.pageSize).ceil(),
         pageNumber: pagination is PagePagination ? pagination.pageNumber : null,
+        pagingOptions: switch (pagination) {
+          final PagePagination p => Pagination(pageNumber: p.pageNumber),
+          final TransactionBasedPagination t => Pagination(fromId: t.fromId),
+          _ => null,
+        },
         transactions: paginatedResults.transactions,
       );
     } catch (e) {
@@ -152,13 +165,12 @@ class EtherscanTransactionStrategy extends TransactionHistoryStrategy {
             blockHeight: tx.value<int>('block_height'),
             confirmations: tx.value<int>('confirmations'),
             timestamp: tx.value<int>('timestamp'),
-            feeDetails:
-                tx.valueOrNull<JsonMap>('fee_details') != null
-                    ? FeeInfo.fromJson(
-                      tx.value<JsonMap>('fee_details')
-                        ..setIfAbsentOrEmpty('type', 'EthGas'),
-                    )
-                    : null,
+            feeDetails: tx.valueOrNull<JsonMap>('fee_details') != null
+                ? FeeInfo.fromJson(
+                    tx.value<JsonMap>('fee_details')
+                      ..setIfAbsentOrEmpty('type', 'EthGas'),
+                  )
+                : null,
             coin: coinId,
             internalId: tx.value<String>('internal_id'),
             memo: tx.valueOrNull<String>('memo'),
@@ -216,11 +228,13 @@ class EtherscanProtocolHelper {
     return asset.protocol is Erc20Protocol && getApiUrlForAsset(asset) != null;
   }
 
-  /// Whether transaction history should also be fetched via mm2.
+  /// Whether KDF transaction history should be enabled during activation.
   ///
-  /// When Etherscan does not support the provided [asset], transaction history
-  /// must fall back to mm2 RPC calls.
-  bool shouldEnableTransactionHistory(Asset asset) => !supportsProtocol(asset);
+  /// For EVM-compatible assets handled by the Etherscan strategy, we do not
+  /// require KDF's tx_history to be enabled at activation because history is
+  /// sourced externally and KDF does not support tx history streaming for EVM.
+  /// This reduces unnecessary RPC work during activation.
+  bool shouldEnableTransactionHistory(Asset asset) => false;
 
   /// Constructs the appropriate API URL for a given asset
   Uri? getApiUrlForAsset(Asset asset) {
@@ -252,30 +266,31 @@ class EtherscanProtocolHelper {
     }
 
     final protocol = asset.protocol as Erc20Protocol;
-    return '$baseEndpoint/${protocol.swapContractAddress}';
+    final tokenContractAddress = protocol.contractAddress;
+    if (tokenContractAddress == null || tokenContractAddress.isEmpty) {
+      return null;
+    }
+
+    return '$baseEndpoint/$tokenContractAddress';
   }
 
   String? _getBaseEndpoint(AssetId id) {
     final isParentChain = id.parentId == null;
     return switch (id.subClass) {
-      CoinSubClass.hecoChain when isParentChain => _hecoUrl,
-      CoinSubClass.hecoChain => _hecoTokenUrl,
       CoinSubClass.bep20 when isParentChain => _bnbUrl,
       CoinSubClass.bep20 => _bnbTokenUrl,
       CoinSubClass.matic when isParentChain => _maticUrl,
       CoinSubClass.matic => _maticTokenUrl,
-      CoinSubClass.ftm20 when isParentChain => _ftmUrl,
-      CoinSubClass.ftm20 => _ftmTokenUrl,
       CoinSubClass.avx20 when isParentChain => _avaxUrl,
       CoinSubClass.avx20 => _avaxTokenUrl,
       CoinSubClass.moonriver when isParentChain => _mvrUrl,
       CoinSubClass.moonriver => _mvrTokenUrl,
-      CoinSubClass.krc20 when isParentChain => _kcsUrl,
-      CoinSubClass.krc20 => _kcsTokenUrl,
       CoinSubClass.erc20 when isParentChain => _ethUrl,
       CoinSubClass.erc20 => _ethTokenUrl,
       CoinSubClass.arbitrum when isParentChain => _arbUrl,
       CoinSubClass.arbitrum => _arbTokenUrl,
+      CoinSubClass.base when isParentChain => _ethBaseUrl,
+      CoinSubClass.base => _ethBaseTokenUrl,
       CoinSubClass.rskSmartBitcoin => _rskUrl,
       CoinSubClass.moonbeam => _glmrUrl,
       CoinSubClass.ethereumClassic => _etcUrl,
@@ -290,21 +305,17 @@ class EtherscanProtocolHelper {
 
   String get _arbUrl => '$_baseUrl/v2/arb_tx_history';
   String get _avaxUrl => '$_baseUrl/v2/avax_tx_history';
+  String get _ethBaseUrl => '$_baseUrl/v2/base_tx_history';
   String get _bnbUrl => '$_baseUrl/v2/bnb_tx_history';
   String get _ethUrl => '$_baseUrl/v2/eth_tx_history';
-  String get _ftmUrl => '$_baseUrl/v2/ftm_tx_history';
-  String get _hecoUrl => '$_baseUrl/v2/ht_tx_history';
-  String get _kcsUrl => '$_baseUrl/v2/krc_tx_history';
   String get _maticUrl => '$_baseUrl/v2/matic_tx_history';
   String get _mvrUrl => '$_baseUrl/v2/movr_tx_history';
 
   String get _arbTokenUrl => '$_baseUrl/v2/arb20_tx_history';
   String get _avaxTokenUrl => '$_baseUrl/v2/avx20_tx_history';
+  String get _ethBaseTokenUrl => '$_baseUrl/v2/base20_tx_history';
   String get _bnbTokenUrl => '$_baseUrl/v2/bep20_tx_history';
   String get _ethTokenUrl => '$_baseUrl/v2/erc20_tx_history';
-  String get _ftmTokenUrl => '$_baseUrl/v2/ftm20_tx_history';
-  String get _hecoTokenUrl => '$_baseUrl/v2/hco20_tx_history';
-  String get _kcsTokenUrl => '$_baseUrl/v2/krc20_tx_history';
   String get _maticTokenUrl => '$_baseUrl/v2/plg20_tx_history';
   String get _mvrTokenUrl => '$_baseUrl/v2/mvr20_tx_history';
 

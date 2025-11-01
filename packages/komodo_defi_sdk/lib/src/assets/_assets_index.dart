@@ -3,10 +3,10 @@
 /// Internal/private classes related to the assets of the Komodo DeFi Framework ecosystem.
 library _assets;
 
+export 'activated_assets_cache.dart';
 export 'asset_extensions.dart';
 export 'asset_history_storage.dart';
 export 'asset_lookup.dart';
 export 'asset_manager.dart';
 export 'asset_pubkey_extensions.dart';
-export 'custom_asset_history_storage.dart';
 export 'legacy_asset_extensions.dart';

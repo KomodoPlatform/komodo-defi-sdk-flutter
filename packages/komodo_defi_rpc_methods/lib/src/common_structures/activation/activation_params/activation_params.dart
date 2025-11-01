@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:komodo_defi_rpc_methods/src/internal_exports.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 part 'activation_params.freezed.dart';
 part 'activation_params.g.dart';
@@ -17,10 +18,6 @@ part 'activation_params.g.dart';
 /// - [gapLimit]: Maximum number of empty addresses in a row for HD wallets
 /// - [mode]: Activation mode configuration for QTUM, UTXO & ZHTLC coins
 ///
-/// For ZHTLC coins:
-/// - [zcashParamsPath]: Path to Zcash parameters folder
-/// - [scanBlocksPerIteration]: Number of blocks scanned per iteration (default: 1000)
-/// - [scanIntervalMs]: Interval between scan iterations in ms (default: 0)
 class ActivationParams implements RpcRequestParams {
   const ActivationParams({
     this.requiredConfirmations,
@@ -30,9 +27,6 @@ class ActivationParams implements RpcRequestParams {
     this.scanPolicy,
     this.gapLimit,
     this.mode,
-    this.zcashParamsPath,
-    this.scanBlocksPerIteration,
-    this.scanIntervalMs,
   });
 
   /// Creates [ActivationParams] from configuration JSON
@@ -50,17 +44,11 @@ class ActivationParams implements RpcRequestParams {
         json.valueOrNull<dynamic>('priv_key_policy'),
       ),
       minAddressesNumber: json.valueOrNull<int>('min_addresses_number'),
-      scanPolicy:
-          json.valueOrNull<String>('scan_policy') == null
-              ? null
-              : ScanPolicy.parse(json.value<String>('scan_policy')),
+      scanPolicy: json.valueOrNull<String>('scan_policy') == null
+          ? null
+          : ScanPolicy.parse(json.value<String>('scan_policy')),
       gapLimit: json.valueOrNull<int>('gap_limit'),
       mode: mode,
-      zcashParamsPath: json.valueOrNull<String>('zcash_params_path'),
-      scanBlocksPerIteration: json.valueOrNull<int>(
-        'scan_blocks_per_iteration',
-      ),
-      scanIntervalMs: json.valueOrNull<int>('scan_interval_ms'),
     );
   }
 
@@ -91,18 +79,6 @@ class ActivationParams implements RpcRequestParams {
   /// they will not be identified when scanning.
   final int? gapLimit;
 
-  /// ZHTLC coins only. Path to folder containing Zcash parameters.
-  /// Optional, defaults to standard location.
-  final String? zcashParamsPath;
-
-  /// ZHTLC coins only. Sets the number of scanned blocks per iteration during
-  /// BuildingWalletDb state. Optional, default value is 1000.
-  final int? scanBlocksPerIteration;
-
-  /// ZHTLC coins only. Sets the interval in milliseconds between iterations of
-  /// BuildingWalletDb state. Optional, default value is 0.
-  final int? scanIntervalMs;
-
   @override
   @mustCallSuper
   JsonMap toRpcParams() {
@@ -122,10 +98,6 @@ class ActivationParams implements RpcRequestParams {
       if (scanPolicy != null) 'scan_policy': scanPolicy!.value,
       if (gapLimit != null) 'gap_limit': gapLimit,
       if (mode != null) 'mode': mode!.toJsonRequest(),
-      if (zcashParamsPath != null) 'zcash_params_path': zcashParamsPath,
-      if (scanBlocksPerIteration != null)
-        'scan_blocks_per_iteration': scanBlocksPerIteration,
-      if (scanIntervalMs != null) 'scan_interval_ms': scanIntervalMs,
     };
   }
 
@@ -137,9 +109,6 @@ class ActivationParams implements RpcRequestParams {
     ScanPolicy? scanPolicy,
     int? gapLimit,
     ActivationMode? mode,
-    String? zcashParamsPath,
-    int? scanBlocksPerIteration,
-    int? scanIntervalMs,
   }) {
     return ActivationParams(
       requiredConfirmations:
@@ -153,10 +122,6 @@ class ActivationParams implements RpcRequestParams {
       scanPolicy: scanPolicy ?? this.scanPolicy,
       gapLimit: gapLimit ?? this.gapLimit,
       mode: mode ?? this.mode,
-      zcashParamsPath: zcashParamsPath ?? this.zcashParamsPath,
-      scanBlocksPerIteration:
-          scanBlocksPerIteration ?? this.scanBlocksPerIteration,
-      scanIntervalMs: scanIntervalMs ?? this.scanIntervalMs,
     );
   }
 }
@@ -254,6 +219,22 @@ abstract class PrivateKeyPolicy with _$PrivateKeyPolicy {
   }
 }
 
+/// Utility to normalize PrivateKeyPolicy RPC serialization across protocols.
+///
+/// - For ETH/ERC20 protocols, the API expects a JSON object form.
+/// - For other protocols, the legacy PascalCase string is used.
+class PrivKeyPolicySerializer {
+  static dynamic toRpc(
+    PrivateKeyPolicy policy, {
+    required CoinSubClass protocol,
+  }) {
+    if (evmCoinSubClasses.contains(protocol)) {
+      return policy.toJson();
+    }
+    return policy.pascalCaseName;
+  }
+}
+
 /// Defines the type of activation mode for QTUM, UTXO & ZHTLC coins
 enum ActivationModeType {
   /// Use Electrum servers for activation
@@ -293,10 +274,9 @@ class ActivationMode {
   }) {
     return ActivationMode(
       rpc: type.value,
-      rpcData:
-          type == ActivationModeType.native
-              ? null
-              : ActivationRpcData.fromJson(json),
+      rpcData: type == ActivationModeType.native
+          ? null
+          : ActivationRpcData.fromJson(json),
     );
   }
 
@@ -309,7 +289,10 @@ class ActivationMode {
 
   JsonMap toJsonRequest() => {
     'rpc': rpc,
-    if (rpcData != null) 'rpc_data': rpcData!.toJsonRequest(),
+    if (rpcData != null)
+      'rpc_data': rpcData!.toJsonRequest(
+        forLightWallet: rpc == ActivationModeType.lightWallet.value,
+      ),
   };
 }
 
@@ -377,20 +360,42 @@ enum ScanPolicy {
 /// Contains information about electrum & lightwallet_d servers for coins being used
 /// in 'Electrum' or 'Light' mode
 class ActivationRpcData {
-  ActivationRpcData({this.lightWalletDServers, this.electrum, this.syncParams});
+  ActivationRpcData({
+    this.lightWalletDServers,
+    this.electrum,
+    this.syncParams,
+    this.minConnected,
+    this.maxConnected = 1,
+  }) : assert(
+         minConnected == null || minConnected >= 1,
+         'min_connected must be at least 1',
+       ),
+       assert(
+         minConnected == null || (maxConnected ?? 1) >= minConnected,
+         'min_connected cannot exceed max_connected',
+       );
 
   /// Creates [ActivationRpcData] from JSON configuration
   factory ActivationRpcData.fromJson(JsonMap json) {
     return ActivationRpcData(
-      lightWalletDServers: json.valueOrNull<List<String>>(
-        'light_wallet_d_servers',
-      ),
+      lightWalletDServers: json
+          .valueOrNull<List<dynamic>>('light_wallet_d_servers')
+          ?.cast<String>(),
+      // The Komodo API uses 'servers' under rpc_data for Electrum mode.
+      // For some legacy ZHTLC examples, 'electrum' may appear at top-level config.
       electrum:
-          json
-              .valueOrNull<JsonList>('electrum')
-              ?.map(ActivationServers.fromJsonConfig)
+          (json.valueOrNull<List<dynamic>>('servers') ??
+                  json.valueOrNull<List<dynamic>>('electrum') ??
+                  json.valueOrNull<List<dynamic>>('electrum_servers') ??
+                  json.valueOrNull<List<dynamic>>('nodes') ??
+                  json.valueOrNull<List<dynamic>>('rpc_urls'))
+              ?.map((e) => ActivationServers.fromJsonConfig(e as JsonMap))
               .toList(),
-      syncParams: json.valueOrNull<dynamic>('sync_params'),
+      syncParams: ZhtlcSyncParams.tryParse(
+        json.valueOrNull<dynamic>('sync_params'),
+      ),
+      minConnected: json.valueOrNull<int>('min_connected'),
+      maxConnected: json.valueOrNull<int>('max_connected'),
     );
   }
 
@@ -400,29 +405,121 @@ class ActivationRpcData {
   /// List of electrum servers for QTUM, BCH & UTXO coins
   final List<ActivationServers>? electrum;
 
+  /// Minimum number of electrum servers to keep connected. Optional.
+  final int? minConnected;
+
+  /// Maximum number of electrum servers to keep connected. Defaults to 1.
+  final int? maxConnected;
+
   /// ZHTLC coins only. Optional, defaults to two days ago. Defines where to start
   /// scanning blockchain data upon initial activation.
-  /// Options:
-  /// - "earliest" (the coin's sapling_activation_height)
-  /// - height (a specific block height)
-  /// - date (a unix timestamp)
-  final dynamic syncParams;
+  ///
+  /// Supported values:
+  /// - Earliest: start from the coin's `sapling_activation_height`
+  /// - Height: start from a specific block height
+  /// - Date: start from a specific unix timestamp
+  final ZhtlcSyncParams? syncParams;
 
-  bool get isEmpty => [lightWalletDServers, electrum, syncParams].every(
-    (element) =>
-        element == null &&
-        (element is List && element.isEmpty ||
-            element is Map && element.isEmpty),
-  );
+  bool get isEmpty =>
+      (lightWalletDServers == null || lightWalletDServers!.isEmpty) &&
+      (electrum == null || electrum!.isEmpty) &&
+      syncParams == null;
 
-  JsonMap toJsonRequest() => {
+  JsonMap toJsonRequest({bool forLightWallet = false}) => {
     if (lightWalletDServers != null)
       'light_wallet_d_servers': lightWalletDServers,
-    if (electrum != null) ...{
-      'servers': electrum!.map((e) => e.toJsonRequest()).toList(),
-    },
-    if (syncParams != null) 'sync_params': syncParams,
+    if (electrum != null)
+      (forLightWallet ? 'electrum_servers' : 'servers'): electrum!
+          .map((e) => e.toJsonRequest())
+          .toList(),
+    if (electrum != null) 'max_connected': (maxConnected ?? 1),
+    if (minConnected != null) 'min_connected': minConnected,
+    if (syncParams != null) 'sync_params': syncParams!.toJsonRequest(),
   };
+}
+
+/// ZHTLC sync parameters shape for KDF API
+class ZhtlcSyncParams {
+  ZhtlcSyncParams._internal({this.height, this.date, this.isEarliest = false})
+    : assert(
+        (isEarliest ? 1 : 0) +
+                (height != null ? 1 : 0) +
+                (date != null ? 1 : 0) ==
+            1,
+        'Exactly one of earliest, height or date must be provided',
+      );
+
+  /// Start from coin's `sapling_activation_height`
+  factory ZhtlcSyncParams.earliest() =>
+      ZhtlcSyncParams._internal(isEarliest: true);
+
+  /// Start from a specific block height
+  factory ZhtlcSyncParams.height(int height) =>
+      ZhtlcSyncParams._internal(height: height);
+
+  /// Start from a specific unix timestamp
+  factory ZhtlcSyncParams.date(int unixTimestamp) =>
+      ZhtlcSyncParams._internal(date: unixTimestamp);
+
+  final int? height;
+  final int? date;
+  final bool isEarliest;
+
+  /// Best-effort parser supporting all documented and legacy shapes:
+  /// - "earliest"
+  /// - { "height": <int> }
+  /// - { "date": <int> }
+  /// - <int> (heuristic: < 1e9 => height, otherwise date)
+  static ZhtlcSyncParams? tryParse(dynamic value) {
+    if (value == null) return null;
+
+    if (value is String) {
+      if (value.toLowerCase() == 'earliest') {
+        return ZhtlcSyncParams.earliest();
+      }
+      // Unknown string value
+      return null;
+    }
+
+    if (value is int) {
+      // Heuristic: timestamps are typically >= 1,000,000,000 (10-digit seconds)
+      if (value >= 1000000000) {
+        return ZhtlcSyncParams.date(value);
+      }
+      return ZhtlcSyncParams.height(value);
+    }
+
+    if (value is Map) {
+      final map = value;
+      final dynamic heightVal = map['height'];
+      final dynamic dateVal = map['date'];
+
+      if (heightVal is int) {
+        return ZhtlcSyncParams.height(heightVal);
+      }
+      if (dateVal is int) {
+        return ZhtlcSyncParams.date(dateVal);
+      }
+      if ((map['earliest'] == true) ||
+          (map['type'] == 'earliest') ||
+          (map['type'] == 'Earliest')) {
+        return ZhtlcSyncParams.earliest();
+      }
+      return null;
+    }
+
+    return null;
+  }
+
+  /// JSON suitable for KDF API
+  /// - "earliest" | { "height": int } | { "date": int }
+  dynamic toJsonRequest() {
+    if (isEarliest) return 'earliest';
+    if (height != null) return {'height': height};
+    if (date != null) return {'date': date};
+    // Should not reach here due to constructor assert, but return null to be safe
+    return null;
+  }
 }
 
 /// Contains information about electrum servers for coins being used in 'Electrum'

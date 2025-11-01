@@ -30,42 +30,84 @@ class DevBuildsArtefactDownloader implements ArtefactDownloader {
     ApiFileMatchingConfig matchingConfig,
     String platform,
   ) async {
-    final url = '$sourceUrl/$apiBranch/';
-    final response = await http.get(Uri.parse(url));
-    response.throwIfNotSuccessResponse();
+    // Try both branch-scoped and base-scoped listings to support different mirrors
+    final normalizedSource = sourceUrl.endsWith('/')
+        ? sourceUrl
+        : '$sourceUrl/';
+    final baseUri = Uri.parse(normalizedSource);
+    final candidateListingUrls = <Uri>{
+      if (apiBranch.isNotEmpty) baseUri.resolve('$apiBranch/'),
+      baseUri,
+    };
 
-    final document = parser.parse(response.body);
     final extensions = ['.zip'];
-
-    // Support both full and short hash variants
     final fullHash = apiCommitHash;
     final shortHash = apiCommitHash.substring(0, 7);
     _log.info('Looking for files with hash $fullHash or $shortHash');
 
-    // Look for files with either hash length
-    final attemptedFiles = <String>[];
-    for (final element in document.querySelectorAll('a')) {
-      final href = element.attributes['href'];
-      if (href != null) attemptedFiles.add(href);
-      if (href != null &&
-          matchingConfig.matches(href) &&
-          extensions.any(href.endsWith)) {
-        if (href.contains(fullHash) || href.contains(shortHash)) {
-          _log.info('Found matching file: $href');
-          return '$sourceUrl/$apiBranch/$href';
+    for (final listingUrl in candidateListingUrls) {
+      try {
+        final response = await http.get(listingUrl);
+        response.throwIfNotSuccessResponse();
+        final document = parser.parse(response.body);
+
+        final attemptedFiles = <String>[];
+        final resolvedCandidates =
+            <String, String>{}; // fileName -> resolvedUrl
+        for (final element in document.querySelectorAll('a')) {
+          final href = element.attributes['href'];
+          if (href == null) continue;
+          attemptedFiles.add(href);
+
+          // Normalize href for directory indexes that include absolute paths
+          final hrefPath = Uri.tryParse(href)?.path ?? href;
+          final fileName = path.basename(hrefPath);
+
+          // Ignore wallet archives on Nebula index
+          if (fileName.contains('wallet')) {
+            continue;
+          }
+
+          final matches =
+              matchingConfig.matches(fileName) &&
+              extensions.any(hrefPath.endsWith);
+          if (matches) {
+            final containsHash =
+                hrefPath.contains(fullHash) || hrefPath.contains(shortHash);
+            if (containsHash) {
+              // Build absolute URL respecting whether href is absolute or relative
+              final resolvedUrl = href.startsWith('http')
+                  ? href
+                  : listingUrl.resolve(href).toString();
+              resolvedCandidates[fileName] = resolvedUrl;
+            }
+          }
         }
+
+        if (resolvedCandidates.isNotEmpty) {
+          final preferred = matchingConfig.choosePreferred(
+            resolvedCandidates.keys,
+          );
+          final url =
+              resolvedCandidates[preferred] ?? resolvedCandidates.values.first;
+          _log.info('Selected file: $preferred at $listingUrl');
+          return url;
+        }
+
+        _log.fine(
+          'No matching files found in $listingUrl. '
+          '\nPattern: ${matchingConfig.matchingPattern}, '
+          '\nHashes tried: [$fullHash, $shortHash]'
+          '\nAvailable assets: ${attemptedFiles.join('\n')}',
+        );
+      } catch (e) {
+        _log.fine('Failed to query listing $listingUrl: $e');
       }
     }
 
-    final availableAssets = attemptedFiles.join('\n');
-    _log.fine(
-      'No matching files found in $sourceUrl. '
-      '\nPattern: ${matchingConfig.matchingPattern}, '
-      '\nHashes tried: [$fullHash, $shortHash]'
-      '\nAvailable assets: $availableAssets',
+    throw Exception(
+      'Zip file not found for platform $platform from $sourceUrl',
     );
-
-    throw Exception('Zip file not found for platform $platform');
   }
 
   @override
@@ -106,10 +148,12 @@ class DevBuildsArtefactDownloader implements ArtefactDownloader {
       // Determine the platform to use the appropriate extraction command
       if (Platform.isMacOS || Platform.isLinux) {
         // For macOS and Linux, use the `unzip` command with overwrite option
-        final result = await Process.run(
-          'unzip',
-          ['-o', filePath, '-d', destinationFolder],
-        );
+        final result = await Process.run('unzip', [
+          '-o',
+          filePath,
+          '-d',
+          destinationFolder,
+        ]);
         if (result.exitCode != 0) {
           throw Exception('Error extracting zip file: ${result.stderr}');
         }

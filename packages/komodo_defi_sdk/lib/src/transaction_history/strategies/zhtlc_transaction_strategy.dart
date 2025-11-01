@@ -6,8 +6,9 @@ class ZhtlcTransactionStrategy extends TransactionHistoryStrategy {
 
   @override
   Set<Type> get supportedPaginationModes => {
-        PagePagination,
-      };
+    PagePagination,
+    TransactionBasedPagination,
+  };
 
   @override
   Future<MyTxHistoryResponse> fetchTransactionHistory(
@@ -17,21 +18,31 @@ class ZhtlcTransactionStrategy extends TransactionHistoryStrategy {
   ) async {
     validatePagination(pagination);
 
-    if (pagination is! PagePagination) {
-      throw UnsupportedError(
-        'ZHTLC only supports page-based pagination',
-      );
-    }
+    final ({int limit, Pagination pagingOptions}) requestParams =
+        switch (pagination) {
+          final PagePagination p => (
+            limit: p.itemsPerPage,
+            pagingOptions: Pagination(pageNumber: p.pageNumber),
+          ),
+          final TransactionBasedPagination t => (
+            limit: t.itemCount,
+            pagingOptions: Pagination(fromId: t.fromId),
+          ),
+          _ => throw UnsupportedError(
+            'Pagination mode ${pagination.runtimeType} not supported',
+          ),
+        };
 
     return client.rpc.transactionHistory.zCoinTxHistory(
       coin: asset.id.id,
-      limit: pagination.itemsPerPage,
-      pagingOptions: Pagination(
-        pageNumber: pagination.pageNumber,
-      ),
+      limit: requestParams.limit,
+      pagingOptions: requestParams.pagingOptions,
     );
   }
 
   @override
   bool supportsAsset(Asset asset) => asset.protocol is ZhtlcProtocol;
+
+  @override
+  bool requiresKdfTransactionHistory(Asset asset) => true;
 }

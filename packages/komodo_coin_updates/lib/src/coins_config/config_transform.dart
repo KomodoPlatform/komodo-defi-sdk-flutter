@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, kIsWasm;
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 /// Defines a transform that can be applied to a single coin configuration.
@@ -26,7 +26,12 @@ class CoinConfigTransformer {
   /// If [transforms] is omitted, a default set is used.
   const CoinConfigTransformer({List<CoinConfigTransform>? transforms})
     : _transforms =
-          transforms ?? const [WssWebsocketTransform(), ParentCoinTransform()];
+          transforms ??
+          const [
+            WssWebsocketTransform(),
+            ZhtlcLightWalletTransform(),
+            ParentCoinTransform(),
+          ];
 
   final List<CoinConfigTransform> _transforms;
 
@@ -239,4 +244,42 @@ class _ParentCoinResolver {
   /// Returns true if this parent coin identifier needs remapping.
   static bool needsRemapping(String? parentCoin) =>
       _parentCoinMappings.containsKey(parentCoin);
+}
+
+/// Replaces `light_wallet_d_servers` with `light_wallet_d_servers_wss` for ZHTLC coins
+/// on web/wasm platforms to ensure WebSocket compatibility.
+class ZhtlcLightWalletTransform implements CoinConfigTransform {
+  const ZhtlcLightWalletTransform();
+
+  @override
+  /// Determines if the transform should run by checking if this is a ZHTLC coin
+  /// on a web/wasm platform that has both light_wallet_d_servers and light_wallet_d_servers_wss configured.
+  bool needsTransform(JsonMap config) {
+    // Only run on web or wasm platforms
+    if (!kIsWeb && !kIsWasm) return false;
+
+    // Only run for ZHTLC coin type
+    final coinType = config.valueOrNull<String>('type');
+    if (coinType != 'ZHTLC') return false;
+
+    final lightWalletServersWss = config.valueOrNull<List>(
+      'light_wallet_d_servers_wss',
+    );
+
+    return lightWalletServersWss != null && lightWalletServersWss.isNotEmpty;
+  }
+
+  @override
+  /// Replaces the `light_wallet_d_servers` list with the `light_wallet_d_servers_wss` list
+  /// for WebSocket compatibility in web/wasm environments.
+  JsonMap transform(JsonMap config) {
+    // .value used here since the needsTransform check should only allow this to
+    // run if present. No strict type given to checking here since we don't
+    // need to perform operations on the individual elements.
+    final lightWalletServersWss = config.value<List>(
+      'light_wallet_d_servers_wss',
+    );
+
+    return config..['light_wallet_d_servers'] = lightWalletServersWss;
+  }
 }

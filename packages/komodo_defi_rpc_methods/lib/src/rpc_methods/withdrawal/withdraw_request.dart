@@ -3,6 +3,19 @@ import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
+/// Default amount value for KMD rewards when claiming
+const String _kDefaultKmdRewardsAmount = '0';
+
+/// Returns KMD-specific parameters for withdrawal requests
+/// 
+/// KDF requires kmd_rewards object with claimed_by_me flag for KMD withdrawals
+Map<String, dynamic> _kmdRewardsParams() => {
+      'kmd_rewards': {
+        'amount': _kDefaultKmdRewardsAmount,
+        'claimed_by_me': true,
+      },
+    };
+
 /// Request for standard withdrawal (non-task API)
 ///
 /// After the bug with the task-based withdrawal API was fixed, this request
@@ -51,6 +64,7 @@ class WithdrawRequest
       if (fee != null) 'fee': fee!.toJson(),
       if (from != null) 'from': from!.toRpcParams(),
       if (memo != null) 'memo': memo,
+      if (coin.toUpperCase() == 'KMD') ..._kmdRewardsParams(),
       if (ibcSourceChannel != null) 'ibc_source_channel': ibcSourceChannel,
     },
   };
@@ -112,6 +126,7 @@ class WithdrawInitRequest
       if (from != null) 'from': from!.toRpcParams(),
       if (memo != null) 'memo': memo,
       if (max) 'max': max,
+      if (coin.toUpperCase() == 'KMD') ..._kmdRewardsParams(),
     },
   };
 

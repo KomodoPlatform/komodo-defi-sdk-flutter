@@ -33,7 +33,7 @@ void main(List<String> arguments) async {
       'branch',
       abbr: 'b',
       help: 'Branch to fetch commit from',
-      defaultsTo: 'master',
+      defaultsTo: 'main',
     )
     ..addOption(
       'repo',
@@ -60,6 +60,12 @@ void main(List<String> arguments) async {
       defaultsTo: 'all',
     )
     ..addOption(
+      'commit',
+      abbr: 'm',
+      help:
+          'Commit hash to pin (short or full). Overrides latest commit lookup.',
+    )
+    ..addOption(
       'source',
       abbr: 's',
       help: 'Source to fetch from (github or mirror)',
@@ -81,6 +87,13 @@ void main(List<String> arguments) async {
       abbr: 'v',
       negatable: false,
       help: 'Enable verbose logging',
+    )
+    ..addFlag(
+      'strict',
+      negatable: true,
+      defaultsTo: true,
+      help:
+          'Require exact commit-matching assets for all platforms; fail otherwise. Disable with --no-strict.',
     );
 
   ArgResults args;
@@ -110,9 +123,11 @@ void main(List<String> arguments) async {
       args['token'] as String? ??
       Platform.environment['GITHUB_API_PUBLIC_READONLY_TOKEN'];
   final platform = args['platform'] as String;
+  final pinnedCommit = (args['commit'] as String?)?.trim();
   final source = args['source'] as String;
   final mirrorUrl = args['mirror-url'] as String;
   final verbose = args['verbose'] as bool;
+  final strict = args['strict'] as bool;
 
   try {
     final fetcher = KdfFetcher(
@@ -124,13 +139,33 @@ void main(List<String> arguments) async {
       source: source,
       mirrorUrl: mirrorUrl,
       verbose: verbose,
+      strict: strict,
     );
 
     await fetcher.loadBuildConfig();
 
-    log.info('Fetching latest commit for branch: $branch');
-    final commitHash = await fetcher.fetchLatestCommit();
-    log.info('Latest commit: $commitHash');
+    String commitHash;
+    if (pinnedCommit != null && pinnedCommit.isNotEmpty) {
+      commitHash = pinnedCommit;
+      log.info('Using pinned commit: $commitHash');
+    } else {
+      log.info('Fetching latest commit for branch: $branch');
+      commitHash = await fetcher.fetchLatestCommit();
+      log.info('Latest commit: $commitHash');
+    }
+
+    // Ensure the build config is updated with a full 40-char commit SHA
+    if (commitHash.length < 40) {
+      try {
+        final fullSha = await fetcher.resolveCommitSha(commitHash);
+        log.info('Resolved short commit to full SHA: $fullSha');
+        commitHash = fullSha;
+      } catch (e) {
+        log.warning(
+          'Failed to resolve short commit to full SHA; proceeding with provided value: $commitHash',
+        );
+      }
+    }
 
     if (platform == 'all') {
       final platforms = fetcher.getSupportedPlatforms();
@@ -189,7 +224,8 @@ Examples:
     --source mirror \
     --config packages/komodo_defi_framework/app_build/build_config.json \
     --output-dir packages/komodo_defi_framework/app_build/temp_downloads \
-    --verbose
+    --verbose \
+    --strict
 
   # Update only the web platform
   dart run komodo_wallet_cli:update_api_config \
@@ -197,11 +233,12 @@ Examples:
     --source mirror \
     --platform web \
     --config packages/komodo_defi_framework/app_build/build_config.json \
-    --output-dir packages/komodo_defi_framework/app_build/temp_downloads
+    --output-dir packages/komodo_defi_framework/app_build/temp_downloads \
+    --no-strict
 
   # Update using GitHub as the source
   dart run komodo_wallet_cli:update_api_config \
-    --branch master \
+    --branch main \
     --source github \
     --config packages/komodo_defi_framework/app_build/build_config.json \
     --output-dir packages/komodo_defi_framework/app_build/temp_downloads
@@ -224,6 +261,7 @@ class KdfFetcher {
     required this.configPath,
     required this.outputDir,
     required this.verbose,
+    this.strict = true,
     this.token,
     this.source = 'github',
     this.mirrorUrl = 'https://sdk.devbuilds.komodo.earth',
@@ -256,7 +294,19 @@ class KdfFetcher {
   late final String owner;
   late final String repository;
   final bool verbose;
+  final bool strict;
   final log = Logger('KdfFetcher');
+  // Preference helper used by URL selectors
+  String _choosePreferred(Iterable<String> candidates, List<String> prefs) {
+    final list = candidates.toList();
+    if (list.isEmpty) return '';
+    if (prefs.isEmpty) return list.first;
+    for (final pref in prefs) {
+      final found = list.firstWhere((c) => c.contains(pref), orElse: () => '');
+      if (found.isNotEmpty) return found;
+    }
+    return list.first;
+  }
 
   Map<String, dynamic>? _configData;
 
@@ -291,6 +341,25 @@ class KdfFetcher {
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     return data['sha'] as String;
+  }
+
+  /// Resolves a short or full commit into a full 40-char SHA via GitHub API
+  Future<String> resolveCommitSha(String shaOrShort) async {
+    final url = '$_apiBaseUrl/commits/$shaOrShort';
+    log.fine('Resolving commit SHA from: $url');
+
+    final response = await http.get(Uri.parse(url), headers: _headers);
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to resolve commit: ${response.statusCode} ${response.reasonPhrase}',
+      );
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final sha = data['sha'] as String?;
+    if (sha == null || sha.length != 40) {
+      throw Exception('Resolved commit SHA is invalid: $sha');
+    }
+    return sha;
   }
 
   /// Loads the build config file
@@ -357,14 +426,30 @@ class KdfFetcher {
       final checksum = await calculateChecksum(zipFilePath);
       log.info('Calculated checksum: $checksum');
 
-      // Update platform config with new checksum
-      final checksums =
-          platformConfig['valid_zip_sha256_checksums'] as List<dynamic>;
-      if (!listEquals(checksums, [checksum])) {
-        log.info('Added new checksum to platform config: $checksum');
-        platformConfig['valid_zip_sha256_checksums'] = [checksum];
+      // Replace existing checksums when the commit changes; otherwise, accumulate
+      final previousCommit = (apiConfig['api_commit_hash'] as String?);
+      final isCommitChanged =
+          previousCommit == null || previousCommit != commitHash;
+
+      if (isCommitChanged) {
+        platformConfig['valid_zip_sha256_checksums'] = <String>[checksum];
+        log.info(
+          'API commit changed from ${previousCommit ?? 'undefined'} to $commitHash; '
+          'replaced existing checksums for platform $platform',
+        );
       } else {
-        log.info('Checksum already exists in platform config');
+        // Update platform config with new checksum (accumulate unique)
+        final checksums =
+            (platformConfig['valid_zip_sha256_checksums'] as List<dynamic>)
+                .map((e) => e.toString())
+                .toSet();
+        if (!checksums.contains(checksum)) {
+          checksums.add(checksum);
+          platformConfig['valid_zip_sha256_checksums'] = checksums.toList();
+          log.info('Added new checksum to platform config: $checksum');
+        } else {
+          log.info('Checksum already exists in platform config');
+        }
       }
     } catch (e) {
       log.severe('Error updating platform config for $platform: $e');
@@ -380,9 +465,14 @@ class KdfFetcher {
         (apiConfig['platforms'] as Map<String, dynamic>)[platform]
             as Map<String, dynamic>;
 
-    // Get the matching pattern/keyword
+    // Get the matching pattern/keyword and preference
     final matchingPattern = platformConfig['matching_pattern'] as String?;
     final matchingKeyword = platformConfig['matching_keyword'] as String?;
+    final matchingPreference = (platformConfig['matching_preference'] is List)
+        ? (platformConfig['matching_preference'] as List)
+              .whereType<String>()
+              .toList()
+        : <String>[];
 
     if (matchingPattern == null && matchingKeyword == null) {
       throw StateError(
@@ -396,6 +486,7 @@ class KdfFetcher {
         commitHash,
         matchingPattern,
         matchingKeyword,
+        matchingPreference,
       );
     } else {
       return _fetchMirrorDownloadUrl(
@@ -403,6 +494,7 @@ class KdfFetcher {
         commitHash,
         matchingPattern,
         matchingKeyword,
+        matchingPreference,
       );
     }
   }
@@ -413,6 +505,7 @@ class KdfFetcher {
     String commitHash,
     String? matchingPattern,
     String? matchingKeyword,
+    List<String> matchingPreference,
   ) async {
     // Get releases
     final releasesUrl = '$_apiBaseUrl/releases';
@@ -431,6 +524,7 @@ class KdfFetcher {
     // Look for the asset with the matching pattern/keyword and commit hash
     final shortHash = commitHash.substring(0, 7);
 
+    final candidates = <String, String>{};
     for (final release in releases) {
       final assets = release['assets'] as List<dynamic>;
 
@@ -451,36 +545,50 @@ class KdfFetcher {
 
         if (matches &&
             (fileName.contains(commitHash) || fileName.contains(shortHash))) {
-          return asset['browser_download_url'] as String;
+          candidates[fileName] = asset['browser_download_url'] as String;
         }
       }
     }
 
-    // If we couldn't find an exact match, try just matching the platform pattern
-    for (final release in releases) {
-      final assets = release['assets'] as List<dynamic>;
+    if (candidates.isNotEmpty) {
+      final preferred = _choosePreferred(candidates.keys, matchingPreference);
+      return candidates[preferred] ?? candidates.values.first;
+    }
 
-      for (final asset in assets) {
-        final fileName = asset['name'] as String;
+    // In strict mode do not fallback – require exact commit match
+    if (!strict) {
+      // If we couldn't find an exact match, try just matching the platform pattern
+      final candidates = <String, String>{};
+      for (final release in releases) {
+        final assets = release['assets'] as List<dynamic>;
 
-        var matches = false;
-        if (matchingPattern != null) {
-          try {
-            final regex = RegExp(matchingPattern);
-            matches = regex.hasMatch(fileName);
-          } catch (e) {
-            log.warning('Invalid regex pattern: $matchingPattern');
+        for (final asset in assets) {
+          final fileName = asset['name'] as String;
+
+          var matches = false;
+          if (matchingPattern != null) {
+            try {
+              final regex = RegExp(matchingPattern);
+              matches = regex.hasMatch(fileName);
+            } catch (e) {
+              log.warning('Invalid regex pattern: $matchingPattern');
+            }
+          } else if (matchingKeyword != null) {
+            matches = fileName.contains(matchingKeyword);
           }
-        } else if (matchingKeyword != null) {
-          matches = fileName.contains(matchingKeyword);
-        }
 
-        if (matches) {
-          log.warning(
-            'Could not find exact commit match. Using latest matching asset: $fileName',
-          );
-          return asset['browser_download_url'] as String;
+          if (matches) {
+            candidates[fileName] = asset['browser_download_url'] as String;
+          }
         }
+      }
+      if (candidates.isNotEmpty) {
+        final preferred = _choosePreferred(candidates.keys, matchingPreference);
+        final url = candidates[preferred] ?? candidates.values.first;
+        log.warning(
+          'Could not find exact commit match. Using latest matching asset: $url',
+        );
+        return url;
       }
     }
 
@@ -495,85 +603,135 @@ class KdfFetcher {
     String commitHash,
     String? matchingPattern,
     String? matchingKeyword,
+    List<String> matchingPreference,
   ) async {
-    final url = '$mirrorUrl/$branch/';
-    log.fine('Fetching files from mirror: $url');
+    // Try both branch-scoped and base listings; mirrors now expose branch paths
+    final normalizedMirror = mirrorUrl.endsWith('/')
+        ? mirrorUrl
+        : '$mirrorUrl/';
+    final mirrorUri = Uri.parse(normalizedMirror);
+    final listingUrls = <Uri>{
+      if (branch.isNotEmpty) mirrorUri.resolve('$branch/'),
+      mirrorUri,
+    };
 
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Failed to fetch files from mirror: ${response.statusCode} ${response.reasonPhrase}',
-      );
-    }
-
-    final document = parser.parse(response.body);
     final extensions = ['.zip'];
-
-    // Support both full and short hash variants
     final fullHash = commitHash;
     final shortHash = commitHash.substring(0, 7);
     log.info('Looking for files with hash $fullHash or $shortHash');
 
-    // Look for files with either hash length
-    final attemptedFiles = <String>[];
-    for (final element in document.querySelectorAll('a')) {
-      final href = element.attributes['href'];
-      if (href != null) attemptedFiles.add(href);
-
-      if (href != null && extensions.any(href.endsWith)) {
-        var matches = false;
-        if (matchingPattern != null) {
-          try {
-            final regex = RegExp(matchingPattern);
-            matches = regex.hasMatch(href);
-          } catch (e) {
-            log.warning('Invalid regex pattern: $matchingPattern');
-          }
-        } else if (matchingKeyword != null) {
-          matches = href.contains(matchingKeyword);
-        }
-
-        if (matches && (href.contains(fullHash) || href.contains(shortHash))) {
-          log.info('Found matching file: $href');
-          return '$url$href';
-        }
-      }
-    }
-
-    // If we couldn't find an exact match, try just matching the platform pattern
-    for (final element in document.querySelectorAll('a')) {
-      final href = element.attributes['href'];
-
-      if (href != null && extensions.any(href.endsWith)) {
-        var matches = false;
-        if (matchingPattern != null) {
-          try {
-            final regex = RegExp(matchingPattern);
-            matches = regex.hasMatch(href);
-          } catch (e) {
-            log.warning('Invalid regex pattern: $matchingPattern');
-          }
-        } else if (matchingKeyword != null) {
-          matches = href.contains(matchingKeyword);
-        }
-
-        if (matches) {
-          log.warning(
-            'Could not find exact commit match. Using latest matching asset: $href',
+    for (final baseUrl in listingUrls) {
+      log.fine('Fetching files from mirror: $baseUrl');
+      try {
+        final response = await http.get(baseUrl);
+        if (response.statusCode != 200) {
+          log.fine(
+            'Mirror listing failed at $baseUrl: ${response.statusCode} ${response.reasonPhrase}',
           );
-          return '$url$href';
+          continue;
         }
+
+        final document = parser.parse(response.body);
+        final attemptedFiles = <String>[];
+
+        // First pass: require short/full hash match; collect all candidates
+        final hashCandidates = <String, String>{};
+        for (final element in document.querySelectorAll('a')) {
+          final href = element.attributes['href'];
+          if (href == null) continue;
+          attemptedFiles.add(href);
+
+          // Prefer checking the path portion for extensions to ignore query params
+          final hrefPath = Uri.tryParse(href)?.path ?? href;
+          if (!extensions.any(hrefPath.endsWith)) continue;
+          if (href.contains('wallet')) continue; // Ignore wallet builds
+
+          var matches = false;
+          if (matchingPattern != null) {
+            try {
+              final regex = RegExp(matchingPattern);
+              matches = regex.hasMatch(hrefPath);
+            } catch (e) {
+              log.warning('Invalid regex pattern: $matchingPattern');
+            }
+          } else if (matchingKeyword != null) {
+            matches = hrefPath.contains(matchingKeyword);
+          }
+
+          if (matches &&
+              (hrefPath.contains(fullHash) || hrefPath.contains(shortHash))) {
+            final fileName = path.basename(hrefPath);
+            final resolved = href.startsWith('http')
+                ? href
+                : baseUrl.resolve(href).toString();
+            hashCandidates[fileName] = resolved;
+          }
+        }
+        if (hashCandidates.isNotEmpty) {
+          final preferred = _choosePreferred(
+            hashCandidates.keys,
+            matchingPreference,
+          );
+          final resolved =
+              hashCandidates[preferred] ?? hashCandidates.values.first;
+          log.info('Found matching files for commit; selected: $resolved');
+          return resolved;
+        }
+
+        // Second pass: latest matching asset without commit constraint (only when not strict)
+        if (!strict) {
+          final candidates = <String, String>{};
+          for (final element in document.querySelectorAll('a')) {
+            final href = element.attributes['href'];
+            if (href == null) continue;
+            final hrefPath = Uri.tryParse(href)?.path ?? href;
+            if (!extensions.any(hrefPath.endsWith)) continue;
+            if (href.contains('wallet')) continue;
+
+            var matches = false;
+            if (matchingPattern != null) {
+              try {
+                final regex = RegExp(matchingPattern);
+                matches = regex.hasMatch(hrefPath);
+              } catch (e) {
+                log.warning('Invalid regex pattern: $matchingPattern');
+              }
+            } else if (matchingKeyword != null) {
+              matches = hrefPath.contains(matchingKeyword);
+            }
+
+            if (matches) {
+              final fileName = path.basename(hrefPath);
+              final resolved = href.startsWith('http')
+                  ? href
+                  : baseUrl.resolve(href).toString();
+              candidates[fileName] = resolved;
+            }
+          }
+          if (candidates.isNotEmpty) {
+            final preferred = _choosePreferred(
+              candidates.keys,
+              matchingPreference,
+            );
+            final resolved = candidates[preferred] ?? candidates.values.first;
+            log.warning(
+              'Could not find exact commit match. Using latest matching asset: $resolved',
+            );
+            return resolved;
+          }
+        }
+
+        log.fine(
+          'No matching files found in $baseUrl. '
+          '\nPattern: $matchingPattern, '
+          '\nKeyword: $matchingKeyword, '
+          '\nHashes tried: [$fullHash, $shortHash]'
+          '\nAvailable assets: ${attemptedFiles.join('\n')}',
+        );
+      } catch (e) {
+        log.fine('Error querying mirror listing $baseUrl: $e');
       }
     }
-
-    final availableAssets = attemptedFiles.join('\n');
-    log.fine(
-      'No matching files found in $url. '
-      '\nPattern: $matchingPattern, '
-      '\nKeyword: $matchingKeyword, '
-      '\nHashes tried: [$fullHash, $shortHash]'
-      '\nAvailable assets: $availableAssets',
-    );
 
     throw Exception(
       'No matching asset found for platform $platform and commit $commitHash',

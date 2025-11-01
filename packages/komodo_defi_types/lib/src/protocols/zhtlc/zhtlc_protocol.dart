@@ -2,10 +2,7 @@ import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class ZhtlcProtocol extends ProtocolClass {
-  ZhtlcProtocol._({
-    required super.subClass,
-    required super.config,
-  });
+  ZhtlcProtocol._({required super.subClass, required super.config});
 
   factory ZhtlcProtocol.fromJson(JsonMap json) {
     _validateZhtlcConfig(json);
@@ -25,23 +22,21 @@ class ZhtlcProtocol extends ProtocolClass {
   bool get isMemoSupported => true;
 
   static void _validateZhtlcConfig(JsonMap json) {
-    final requiredFields = {
-      // 'zcash_params_path': 'Zcash parameters path',
-      'electrum': 'Electrum servers',
-    };
+    // ZHTLC can operate in Light mode using lightwalletd and optionally electrum servers.
+    // We require at least one of electrum servers or light wallet d servers to be present.
 
-    for (final field in requiredFields.entries) {
-      if (!json.containsKey(field.key)) {
-        throw MissingProtocolFieldException(
-          field.value,
-          field.key,
-        );
-      }
+    // Backward compatibility: some configs provided 'electrum' under config used by Electrum mode
+    final hasElectrum = json.containsKey('electrum') || json.containsKey('electrum_servers');
+    final hasLightWalletD = json.containsKey('light_wallet_d_servers');
+
+    if (!hasElectrum && !hasLightWalletD) {
+      throw MissingProtocolFieldException(
+        'Electrum or LightwalletD servers',
+        'electrum | light_wallet_d_servers',
+      );
     }
   }
 
   String get zcashParamsPath =>
-
-      //TODO! config.value<String>('zcash_params_path');
-      'PLACEHOLDER_STRING_FOR_ZCASH_PARAMS_PATH';
+      config.valueOrNull<String>('zcash_params_path') ?? '';
 }

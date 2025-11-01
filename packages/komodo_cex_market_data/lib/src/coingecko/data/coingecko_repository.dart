@@ -2,7 +2,6 @@ import 'package:async/async.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_cex_market_data/src/cex_repository.dart';
 import 'package:komodo_cex_market_data/src/coingecko/_coingecko_index.dart';
-import 'package:komodo_cex_market_data/src/coingecko/models/coin_historical_data/coin_historical_data.dart';
 import 'package:komodo_cex_market_data/src/id_resolution_strategy.dart';
 import 'package:komodo_cex_market_data/src/models/_models_index.dart';
 import 'package:komodo_cex_market_data/src/repository_selection_strategy.dart';
@@ -325,5 +324,10 @@ class CoinGeckoRepository implements CexRepository {
     // For demo plan (1 year limit), return 365
     // For paid plans with cutoff from 2013/2018, return a reasonable batch size
     return daysSinceCutoff > 365 ? 365 : daysSinceCutoff;
+  }
+
+  @override
+  void dispose() {
+    // No resources to dispose in this implementation
   }
 }

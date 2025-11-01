@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:developer' show log;
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -26,6 +29,7 @@ class Erc20ActivationStrategy extends ProtocolActivationStrategy {
     CoinSubClass.hecoChain,
     CoinSubClass.rskSmartBitcoin,
     CoinSubClass.arbitrum,
+    CoinSubClass.base,
   };
 
   @override
@@ -52,7 +56,7 @@ class Erc20ActivationStrategy extends ProtocolActivationStrategy {
     yield ActivationProgress(
       status: 'Activating ${asset.id.name} token...',
       progressDetails: ActivationProgressDetails(
-        currentStep: 'initialization',
+        currentStep: ActivationStep.initialization,
         stepCount: 2,
         additionalInfo: {
           'assetType': 'token',
@@ -62,16 +66,39 @@ class Erc20ActivationStrategy extends ProtocolActivationStrategy {
     );
 
     try {
+      final activationParams = Erc20ActivationParams.fromJsonConfig(
+        asset.protocol.config,
+      );
+      
+      // Debug logging for ERC20 token activation
+      log(
+        '[RPC] Activating ERC20 token: ${asset.id.id}',
+        name: 'Erc20ActivationStrategy',
+      );
+      log(
+        '[RPC] Activation parameters: ${jsonEncode({
+          'ticker': asset.id.id,
+          'protocol': asset.protocol.subClass.formatted,
+          'parent_id': asset.id.parentId?.id,
+          'activation_params': activationParams.toRpcParams(),
+          'priv_key_policy': privKeyPolicy.toJson(),
+        })}',
+        name: 'Erc20ActivationStrategy',
+      );
+      
       await client.rpc.erc20.enableErc20(
         ticker: asset.id.id,
-        activationParams: Erc20ActivationParams.fromJsonConfig(
-          asset.protocol.config,
-        ),
+        activationParams: activationParams,
+      );
+      
+      log(
+        '[RPC] Successfully activated ERC20 token: ${asset.id.id}',
+        name: 'Erc20ActivationStrategy',
       );
 
       yield ActivationProgress.success(
         details: ActivationProgressDetails(
-          currentStep: 'complete',
+          currentStep: ActivationStep.complete,
           stepCount: 2,
           additionalInfo: {
             'activatedToken': asset.id.name,
@@ -86,7 +113,7 @@ class Erc20ActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 2,
           errorCode: 'ERC20_ACTIVATION_ERROR',
           errorDetails: e.toString(),

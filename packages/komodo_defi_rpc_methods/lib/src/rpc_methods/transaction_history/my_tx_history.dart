@@ -87,11 +87,13 @@ class MyTxHistoryResponse extends BaseResponse {
     required this.total,
     required this.totalPages,
     required this.pageNumber,
+    required this.pagingOptions,
     required this.transactions,
   });
 
   factory MyTxHistoryResponse.parse(Map<String, dynamic> json) {
     final result = json.value<JsonMap>('result');
+    final pagingOptionsJson = result.valueOrNull<JsonMap>('paging_options');
     return MyTxHistoryResponse(
       mmrpc: json.valueOrNull<String>('mmrpc'),
       currentBlock: result.value<int>('current_block'),
@@ -104,11 +106,13 @@ class MyTxHistoryResponse extends BaseResponse {
       total: result.value<int>('total'),
       totalPages: result.value<int>('total_pages'),
       pageNumber: result.valueOrNull<int>('page_number'),
-      transactions:
-          result
-              .value<JsonList>('transactions')
-              .map(TransactionInfo.fromJson)
-              .toList(),
+      pagingOptions: pagingOptionsJson != null
+          ? Pagination.fromJson(pagingOptionsJson)
+          : null,
+      transactions: result
+          .value<JsonList>('transactions')
+          .map(TransactionInfo.fromJson)
+          .toList(),
     );
   }
 
@@ -122,6 +126,7 @@ class MyTxHistoryResponse extends BaseResponse {
     total: 0,
     totalPages: 0,
     pageNumber: null,
+    pagingOptions: null,
     transactions: const [],
   );
 
@@ -133,6 +138,7 @@ class MyTxHistoryResponse extends BaseResponse {
   final int total;
   final int totalPages;
   final int? pageNumber;
+  final Pagination? pagingOptions;
   final List<TransactionInfo> transactions;
 
   @override
@@ -147,6 +153,7 @@ class MyTxHistoryResponse extends BaseResponse {
       'total': total,
       'total_pages': totalPages,
       if (pageNumber != null) 'page_number': pageNumber,
+      if (pagingOptions != null) 'paging_options': pagingOptions!.toJson(),
       'transactions': transactions.map((tx) => tx.toJson()).toList(),
     },
   };

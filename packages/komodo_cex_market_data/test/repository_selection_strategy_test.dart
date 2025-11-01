@@ -116,6 +116,11 @@ class MockSupportingRepository implements CexRepository {
   bool canHandleAsset(AssetId assetId) => true;
 
   @override
+  void dispose() {
+    // No resources to dispose in mock
+  }
+
+  @override
   String toString() => 'MockRepository($name)';
 }
 
@@ -169,6 +174,11 @@ class MockFailingRepository implements CexRepository {
 
   @override
   bool canHandleAsset(AssetId assetId) => true;
+
+  @override
+  void dispose() {
+    // No resources to dispose in mock
+  }
 
   @override
   String toString() => 'MockFailingRepository';
@@ -421,6 +431,11 @@ class MockGeckoStyleRepository implements CexRepository {
   bool canHandleAsset(AssetId assetId) => true;
 
   @override
+  void dispose() {
+    // No resources to dispose in mock
+  }
+
+  @override
   String toString() => 'MockGeckoStyleRepository';
 }
 
@@ -487,6 +502,11 @@ class MockPaprikaStyleRepository implements CexRepository {
 
   @override
   bool canHandleAsset(AssetId assetId) => true;
+
+  @override
+  void dispose() {
+    // No resources to dispose in mock
+  }
 
   @override
   String toString() => 'MockPaprikaStyleRepository';

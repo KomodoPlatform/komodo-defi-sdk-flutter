@@ -1,36 +1,27 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:komodo_defi_framework/src/config/kdf_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_logging_config.dart';
 import 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_factory.dart';
 import 'package:komodo_defi_framework/src/operations/kdf_operations_interface.dart';
+import 'package:komodo_defi_framework/src/streaming/event_streaming_service.dart';
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:logging/logging.dart';
 
 export 'package:komodo_defi_framework/src/client/kdf_api_client.dart';
+export 'package:komodo_defi_framework/src/config/event_streaming_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_config.dart';
 export 'package:komodo_defi_framework/src/config/kdf_startup_config.dart';
 export 'package:komodo_defi_framework/src/services/seed_node_service.dart';
+export 'package:komodo_defi_framework/src/streaming/event_streaming_service.dart';
+export 'package:komodo_defi_framework/src/streaming/events/kdf_event.dart';
 
 export 'src/operations/kdf_operations_interface.dart';
 
 class KomodoDefiFramework implements ApiClient {
-  KomodoDefiFramework._({
-    required IKdfHostConfig hostConfig,
-    void Function(String)? externalLogger,
-    // required KdfApiClient? client,
-  }) : _hostConfig = hostConfig {
-    _kdfOperations = createKdfOperations(
-      hostConfig: hostConfig,
-      logCallback: _log,
-    );
-
-    if (externalLogger != null) {
-      _initLogStream(externalLogger);
-    }
-  }
-
   factory KomodoDefiFramework.create({
     required IKdfHostConfig hostConfig,
     void Function(String)? externalLogger,
@@ -54,6 +45,26 @@ class KomodoDefiFramework implements ApiClient {
       // client: KdfApiClient(this, rpcPassword: hostConfig.rpcPassword),
     ).._kdfOperations = kdfOperations;
   }
+  KomodoDefiFramework._({
+    required IKdfHostConfig hostConfig,
+    void Function(String)? externalLogger,
+    // required KdfApiClient? client,
+  }) : _hostConfig = hostConfig {
+    _kdfOperations = createKdfOperations(
+      hostConfig: hostConfig,
+      logCallback: _log,
+    );
+
+    if (externalLogger != null) {
+      _initLogStream(externalLogger);
+    }
+  }
+
+  /// Enable debug logging for RPC calls (method names, durations, success/failure)
+  /// This can be controlled via app configuration
+  static bool enableDebugLogging = true;
+
+  final Logger _logger = Logger('KomodoDefiFramework');
 
   // late final ApiClient client;
   final IKdfHostConfig _hostConfig;
@@ -67,7 +78,18 @@ class KomodoDefiFramework implements ApiClient {
       _loggerSub = null;
     }
 
-    _loggerSub = _logStream.stream.listen(logCallback);
+    _loggerSub = _logStream.stream.listen(
+      logCallback,
+      onError: (Object error, StackTrace stackTrace) {
+        // Log the error internally but don't propagate it to avoid crashing
+        if (kDebugMode) {
+          print('[KomodoDefiFramework] Error in external logger callback:');
+          print('  Error: $error');
+          print('  Stack trace:\n$stackTrace');
+        }
+      },
+      cancelOnError: false, // Continue listening even if the callback throws
+    );
   }
 
   StreamSubscription<String>? _loggerSub;
@@ -79,7 +101,21 @@ class KomodoDefiFramework implements ApiClient {
 
   Stream<String> get logStream => _logStream.stream;
 
-  void _log(String message) => _logStream.add(message);
+  void _log(String message) {
+    if (!_logStream.isClosed) {
+      _logStream.add(message);
+    }
+  }
+
+  // Streaming service (web: SharedWorker; native: SSE)
+  // NOTE: SSE connection should be tied to authentication state.
+  // Do NOT call initialize() automatically - let the application control when to connect.
+  KdfEventStreamingService? _streamingService;
+  KdfEventStreamingService get streaming {
+    return _streamingService ??= KdfEventStreamingService(
+      hostConfig: _hostConfig,
+    );
+  }
 
   //TODO! Figure out best way to handle overlap between startup and host
   //TODO! Handle common KDF operations startup log scanning here or in a
@@ -140,7 +176,8 @@ class KomodoDefiFramework implements ApiClient {
   }
 
   Future<bool> isRunning() async {
-    final running = await _kdfOperations.isRunning() ||
+    final running =
+        await _kdfOperations.isRunning() ||
         await _kdfOperations.version() != null;
     if (!running) {
       _log('KDF is not running.');
@@ -149,21 +186,246 @@ class KomodoDefiFramework implements ApiClient {
   }
 
   Future<String?> version() async {
-    final version = await _kdfOperations.version();
-    _log('KDF version: $version');
-    return version;
+    final stopwatch = Stopwatch()..start();
+    _log('version(): Starting version RPC call via ${_kdfOperations.operationsName}');
+    try {
+      final version = await _kdfOperations.version();
+      stopwatch.stop();
+      _log('version(): Completed in ${stopwatch.elapsedMilliseconds}ms, result=$version');
+      return version;
+    } catch (e) {
+      stopwatch.stop();
+      _log('version(): Failed after ${stopwatch.elapsedMilliseconds}ms with error: $e');
+      rethrow;
+    }
+  }
+
+  /// Checks if KDF is healthy and responsive by attempting a version RPC call.
+  /// Returns true if KDF is running and responsive, false otherwise.
+  /// This is useful for detecting when KDF has become unavailable, especially
+  /// on mobile platforms after app backgrounding.
+  /// 
+  /// IMPORTANT: This method ONLY relies on actual RPC verification (version() call)
+  /// to avoid false positives where native status reports "running" but HTTP listener
+  /// is not accepting connections (common after iOS backgrounding).
+  Future<bool> isHealthy() async {
+    try {
+      // Only rely on actual RPC verification - don't trust native status alone
+      final versionCheck = await version();
+      if (versionCheck == null) {
+        _log('KDF health check failed: version call returned null');
+        return false;
+      }
+      
+      _log('KDF health check passed: version=$versionCheck');
+      return true;
+    } catch (e) {
+      _log('KDF health check failed with exception: $e');
+      return false;
+    }
+  }
+
+  /// Resets the HTTP client to drop stale keep-alive connections.
+  /// This is useful after KDF has been killed and restarted to ensure
+  /// we don't try to reuse dead connections.
+  void resetHttpClient() {
+    _log('Resetting HTTP client to drop stale connections');
+    _kdfOperations.resetHttpClient();
   }
 
   @override
   Future<JsonMap> executeRpc(JsonMap request) async {
-    final response = (await _kdfOperations.mm2Rpc(
-      request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
-    ))
-        .ensureJson();
-    if (KdfLoggingConfig.verboseLogging) {
-      _log('RPC response: ${response.toJsonString()}');
+    if (!enableDebugLogging) {
+      final response = (await _kdfOperations.mm2Rpc(
+        request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
+      )).ensureJson();
+      if (KdfLoggingConfig.verboseLogging) {
+        _log('RPC response: ${response.toJsonString()}');
+      }
+      return response;
     }
-    return response;
+
+    // Extract method name for logging
+    final method = request['method'] as String?;
+    final stopwatch = Stopwatch()..start();
+
+    // Log activation parameters before the call
+    if (method != null && _isActivationMethod(method)) {
+      _logActivationParameters(method, request);
+    }
+
+    try {
+      final response = (await _kdfOperations.mm2Rpc(
+        request..setIfAbsentOrEmpty('userpass', _hostConfig.rpcPassword),
+      )).ensureJson();
+      stopwatch.stop();
+
+      _logger.info(
+        '[RPC] ${method ?? 'unknown'} completed in ${stopwatch.elapsedMilliseconds}ms',
+      );
+
+      // Log electrum-related methods with more detail
+      if (method != null && _isElectrumRelatedMethod(method)) {
+        _logger.info(
+          '[ELECTRUM] Method: $method, Duration: ${stopwatch.elapsedMilliseconds}ms',
+        );
+        _logElectrumConnectionInfo(method, response);
+      }
+
+      if (KdfLoggingConfig.verboseLogging) {
+        _log('RPC response: ${response.toJsonString()}');
+      }
+      return response;
+    } catch (e) {
+      stopwatch.stop();
+      
+      // Detect transport-fatal SocketExceptions that indicate KDF is down/dying
+      // errno 32 (EPIPE): Broken pipe - writing to socket whose peer closed
+      // errno 54 (ECONNRESET): Connection reset by peer
+      // errno 60 (ETIMEDOUT): Operation timed out
+      // errno 61 (ECONNREFUSED): Connection refused - no listener on port
+      final errorString = e.toString().toLowerCase();
+      final isSocketException = errorString.contains('socketexception');
+      final isFatalTransportError = isSocketException && (
+        errorString.contains('broken pipe') || errorString.contains('errno = 32') ||
+        errorString.contains('connection reset') || errorString.contains('errno = 54') ||
+        errorString.contains('operation timed out') || errorString.contains('errno = 60') ||
+        errorString.contains('connection refused') || errorString.contains('errno = 61')
+      );
+
+      if (isFatalTransportError) {
+        final errorType = errorString.contains('errno = 32') || errorString.contains('broken pipe') ? 'EPIPE (32)' :
+                         errorString.contains('errno = 54') || errorString.contains('connection reset') ? 'ECONNRESET (54)' :
+                         errorString.contains('errno = 60') || errorString.contains('operation timed out') ? 'ETIMEDOUT (60)' :
+                         'ECONNREFUSED (61)';
+        _logger.severe(
+          '[RPC] ${method ?? 'unknown'} failed: KDF transport error $errorType. '
+          'Resetting HTTP client to drop stale connections.',
+        );
+        // Reset HTTP client immediately to drop stale keep-alive connections
+        resetHttpClient();
+      } else {
+        _logger.warning(
+          '[RPC] ${method ?? 'unknown'} failed after ${stopwatch.elapsedMilliseconds}ms: $e',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  bool _isElectrumRelatedMethod(String method) {
+    return method.contains('electrum') ||
+        method.contains('enable') ||
+        method.contains('utxo') ||
+        method == 'get_enabled_coins' ||
+        method == 'my_balance';
+  }
+
+  bool _isActivationMethod(String method) {
+    return method.contains('enable') ||
+        method.contains('task::enable') ||
+        method.contains('task_enable');
+  }
+
+  void _logActivationParameters(String method, JsonMap request) {
+    try {
+      final params = request['params'] as Map<String, dynamic>?;
+      if (params == null) return;
+
+      final ticker = params['ticker'] as String?;
+      final activationParams =
+          params['activation_params'] as Map<String, dynamic>?;
+
+      if (ticker != null) {
+        _logger.info('[ACTIVATION] Enabling coin: $ticker');
+      }
+
+      if (activationParams != null) {
+        // Log key activation parameters
+        final mode = activationParams['mode'];
+        final nodes = activationParams['nodes'];
+        final servers = activationParams['servers'];
+        final rpcUrls = activationParams['rpc_urls'];
+        final tokensRequests = activationParams['erc20_tokens_requests'];
+        final bchUrls = activationParams['bchd_urls'];
+
+        final paramsSummary = <String, dynamic>{};
+
+        if (mode != null) paramsSummary['mode'] = mode;
+        if (nodes != null) {
+          paramsSummary['nodes_count'] = (nodes as List).length;
+        }
+        if (servers != null) {
+          paramsSummary['electrum_servers_count'] = (servers as List).length;
+        }
+        if (rpcUrls != null) {
+          paramsSummary['rpc_urls_count'] = (rpcUrls as List).length;
+        }
+        if (tokensRequests != null) {
+          paramsSummary['tokens_count'] = (tokensRequests as List).length;
+        }
+        if (bchUrls != null) {
+          paramsSummary['bchd_urls_count'] = (bchUrls as List).length;
+        }
+
+        // Add other relevant fields
+        if (activationParams['swap_contract_address'] != null) {
+          paramsSummary['swap_contract'] =
+              activationParams['swap_contract_address'];
+        }
+        if (activationParams['platform'] != null) {
+          paramsSummary['platform'] = activationParams['platform'];
+        }
+        if (activationParams['contract_address'] != null) {
+          paramsSummary['contract_address'] =
+              activationParams['contract_address'];
+        }
+
+        _logger.info('[ACTIVATION] Parameters: $paramsSummary');
+
+        // Log full activation params for detailed debugging
+        _logger.fine('[ACTIVATION] Full params: $activationParams');
+      }
+    } catch (e) {
+      // Silently ignore logging errors
+      _logger.info('[ACTIVATION] Error logging parameters: $e');
+    }
+  }
+
+  void _logElectrumConnectionInfo(String method, JsonMap response) {
+    try {
+      // Log connection information from enable responses
+      if (method.contains('enable') && response['result'] != null) {
+        final result = response['result'] as Map<String, dynamic>?;
+        if (result != null) {
+          final address = result['address'] as String?;
+          final balance = result['balance'] as String?;
+          _logger.info(
+            '[ELECTRUM] Coin enabled - Address: ${address ?? 'N/A'}, Balance: ${balance ?? 'N/A'}',
+          );
+
+          // Log server information if available
+          if (result['servers'] != null) {
+            final servers = result['servers'];
+            _logger.info('[ELECTRUM] Connected servers: $servers');
+          }
+        }
+      }
+
+      // Log balance information
+      if (method == 'my_balance' && response['result'] != null) {
+        final result = response['result'] as Map<String, dynamic>?;
+        if (result != null) {
+          final coin = result['coin'] as String?;
+          final balance = result['balance'] as String?;
+          _logger.info(
+            '[ELECTRUM] Balance query - Coin: ${coin ?? 'N/A'}, Balance: ${balance ?? 'N/A'}',
+          );
+        }
+      }
+    } catch (e) {
+      // Silently ignore logging errors
+    }
   }
 
   void _assertHostConfigMatchesStartupConfig(
@@ -195,9 +457,18 @@ class KomodoDefiFramework implements ApiClient {
   ///
   /// NB! This does not stop the KDF operations or the KDF process.
   Future<void> dispose() async {
-    await _logStream.close();
-
+    // Cancel subscription first before closing the stream
     await _loggerSub?.cancel();
+    _loggerSub = null;
+
+    // Close the log stream
+    if (!_logStream.isClosed) {
+      await _logStream.close();
+    }
+
+    // Dispose of KDF operations to free native resources
+    final operations = _kdfOperations;
+    operations.dispose();
   }
 
   String get operationsName => _kdfOperations.operationsName;

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:developer' show log;
+
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_sdk/src/transaction_history/strategies/etherscan_transaction_history_strategy.dart'
@@ -28,6 +31,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
     CoinSubClass.hecoChain,
     CoinSubClass.rskSmartBitcoin,
     CoinSubClass.arbitrum,
+    CoinSubClass.base,
   };
 
   @override
@@ -52,7 +56,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         status:
             'Activating ${asset.id.name} with ${children!.length} tokens...',
         progressDetails: ActivationProgressDetails(
-          currentStep: 'initialization',
+          currentStep: ActivationStep.initialization,
           stepCount: 3,
           additionalInfo: {
             'assetType': 'platform',
@@ -65,7 +69,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
       yield ActivationProgress(
         status: 'Activating ${asset.id.name}...',
         progressDetails: ActivationProgressDetails(
-          currentStep: 'initialization',
+          currentStep: ActivationStep.initialization,
           stepCount: 3,
           additionalInfo: {
             'assetType': 'platform',
@@ -80,7 +84,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         status: 'Configuring platform activation...',
         progressPercentage: 33,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'configuration',
+          currentStep: ActivationStep.processing,
           stepCount: 3,
           additionalInfo: {
             'method': 'enableEthWithTokens',
@@ -89,32 +93,58 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         ),
       );
 
+      // Compute whether to enable tx_history at activation:
+      // - If tx history streaming is supported by KDF, always true.
+      // - Else, only true if the chosen history strategy requires KDF tx history.
+      final txHistoryFlag = asset.supportsTxHistoryStreaming
+          ? true
+          : const EtherscanProtocolHelper().shouldEnableTransactionHistory(
+              asset,
+            );
+
+      final activationParams =
+          EthWithTokensActivationParams.fromJson(
+            asset.protocol.config,
+          ).copyWith(
+            erc20Tokens:
+                children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
+                [],
+            txHistory: txHistoryFlag,
+            privKeyPolicy: privKeyPolicy,
+          );
+
+      // Debug logging for ETH platform activation
+      log(
+        '[RPC] Activating ETH platform: ${asset.id.id}',
+        name: 'EthWithTokensActivationStrategy',
+      );
+      log(
+        '[RPC] Activation parameters: ${jsonEncode({'ticker': asset.id.id, 'protocol': asset.protocol.subClass.formatted, 'token_count': children?.length ?? 0, 'tokens': children?.map((e) => e.id.id).toList() ?? [], 'activation_params': activationParams.toRpcParams(), 'priv_key_policy': privKeyPolicy.toJson()})}',
+        name: 'EthWithTokensActivationStrategy',
+      );
+
       await client.rpc.erc20.enableEthWithTokens(
         ticker: asset.id.id,
-        params: EthWithTokensActivationParams.fromJson(
-          asset.protocol.config,
-        ).copyWith(
-          erc20Tokens:
-              children?.map((e) => TokensRequest(ticker: e.id.id)).toList() ??
-              [],
-          txHistory: const EtherscanProtocolHelper()
-              .shouldEnableTransactionHistory(asset),
-          privKeyPolicy: privKeyPolicy,
-        ),
+        params: activationParams,
+      );
+
+      log(
+        '[RPC] Successfully activated ETH platform: ${asset.id.id} with ${children?.length ?? 0} tokens',
+        name: 'EthWithTokensActivationStrategy',
       );
 
       yield const ActivationProgress(
         status: 'Finalizing activation...',
         progressPercentage: 66,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'finalization',
+          currentStep: ActivationStep.processing,
           stepCount: 3,
         ),
       );
 
       yield ActivationProgress.success(
         details: ActivationProgressDetails(
-          currentStep: 'complete',
+          currentStep: ActivationStep.complete,
           stepCount: 3,
           additionalInfo: {
             'activatedChain': asset.id.name,
@@ -130,7 +160,7 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
         errorMessage: e.toString(),
         isComplete: true,
         progressDetails: ActivationProgressDetails(
-          currentStep: 'error',
+          currentStep: ActivationStep.error,
           stepCount: 3,
           errorCode: 'ETH_WITH_TOKENS_ACTIVATION_ERROR',
           errorDetails: e.toString(),

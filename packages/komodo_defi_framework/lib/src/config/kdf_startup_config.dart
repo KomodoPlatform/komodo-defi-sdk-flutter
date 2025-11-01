@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:komodo_coins/komodo_coins.dart';
+import 'package:komodo_defi_framework/src/config/event_streaming_config.dart';
 import 'package:komodo_defi_framework/src/config/seed_node_validator.dart';
 import 'package:komodo_defi_framework/src/services/seed_node_service.dart'
     show SeedNodeService;
@@ -36,6 +37,7 @@ class KdfStartupConfig {
     required this.disableP2p,
     required this.iAmSeed,
     required this.isBootstrapNode,
+    required this.eventStreamingConfiguration,
   }) {
     SeedNodeValidator.validate(
       seedNodes: seedNodes,
@@ -65,6 +67,7 @@ class KdfStartupConfig {
   final bool? disableP2p;
   final bool? iAmSeed;
   final bool? isBootstrapNode;
+  final EventStreamingConfiguration? eventStreamingConfiguration;
 
   // Either a list of coin JSON objects or a string of the path to a file
   // containing a list of coin JSON objects.
@@ -92,6 +95,7 @@ class KdfStartupConfig {
     bool? disableP2p,
     bool? iAmSeed,
     bool? isBootstrapNode,
+    EventStreamingConfiguration? eventStreamingConfiguration,
   }) async {
     assert(
       !kIsWeb || userHome == null && dbDir == null,
@@ -108,9 +112,10 @@ class KdfStartupConfig {
     );
 
     assert(
-        hdAccountId == null,
-        'HD Account ID is not supported yet in the SDK. '
-        'Use at your own risk.');
+      hdAccountId == null,
+      'HD Account ID is not supported yet in the SDK. '
+      'Use at your own risk.',
+    );
 
     // Validate seed node configuration before creating the object
     SeedNodeValidator.validate(
@@ -142,6 +147,9 @@ class KdfStartupConfig {
       hdAccountId: hdAccountId,
       allowRegistrations: allowRegistrations,
       enableHd: enableHd,
+      eventStreamingConfiguration:
+          eventStreamingConfiguration ??
+          EventStreamingConfiguration.defaultConfig(),
     );
   }
 
@@ -166,13 +174,12 @@ class KdfStartupConfig {
     String? rpcPassword,
     String? rpcIp,
     int rpcPort = 7783,
+    EventStreamingConfiguration? eventStreamingConfiguration,
   }) async {
     final (String? home, String? dbDir) = await _getAndSetupUserHome();
 
-    final (
-      seedNodes: seeds,
-      netId: netId,
-    ) = await SeedNodeService.fetchSeedNodes();
+    final (seedNodes: seeds, netId: netId) =
+        await SeedNodeService.fetchSeedNodes();
 
     return KdfStartupConfig._(
       walletName: null,
@@ -196,6 +203,9 @@ class KdfStartupConfig {
       seedNodes: seeds,
       iAmSeed: false,
       isBootstrapNode: false,
+      eventStreamingConfiguration:
+          eventStreamingConfiguration ??
+          EventStreamingConfiguration.defaultConfig(),
     );
   }
 
@@ -225,6 +235,8 @@ class KdfStartupConfig {
       if (disableP2p != null) 'disable_p2p': disableP2p,
       if (iAmSeed != null) 'i_am_seed': iAmSeed,
       if (isBootstrapNode != null) 'is_bootstrap_node': isBootstrapNode,
+      if (eventStreamingConfiguration != null)
+        'event_streaming_configuration': eventStreamingConfiguration!.toJson(),
     };
   }
 
