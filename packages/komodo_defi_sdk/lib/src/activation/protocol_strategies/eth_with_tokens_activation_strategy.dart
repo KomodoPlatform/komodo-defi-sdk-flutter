@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer' show log;
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
@@ -114,24 +115,30 @@ class EthWithTokensActivationStrategy extends ProtocolActivationStrategy {
           );
 
       // Debug logging for ETH platform activation
-      log(
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Activating ETH platform: ${asset.id.id}',
         name: 'EthWithTokensActivationStrategy',
       );
-      log(
+      }
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Activation parameters: ${jsonEncode({'ticker': asset.id.id, 'protocol': asset.protocol.subClass.formatted, 'token_count': children?.length ?? 0, 'tokens': children?.map((e) => e.id.id).toList() ?? [], 'activation_params': activationParams.toRpcParams(), 'priv_key_policy': privKeyPolicy.toJson()})}',
         name: 'EthWithTokensActivationStrategy',
       );
+      }
 
       await client.rpc.erc20.enableEthWithTokens(
         ticker: asset.id.id,
         params: activationParams,
       );
 
-      log(
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Successfully activated ETH platform: ${asset.id.id} with ${children?.length ?? 0} tokens',
         name: 'EthWithTokensActivationStrategy',
       );
+      }
 
       yield const ActivationProgress(
         status: 'Finalizing activation...',

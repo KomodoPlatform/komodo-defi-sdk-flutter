@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer' show log;
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
@@ -106,11 +107,14 @@ class TendermintWithTokensActivationStrategy
       final nodes = protocol.rpcUrlsMap.map(TendermintNode.fromJson).toList();
       
       // Debug logging for Tendermint activation
-      log(
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Activating Tendermint platform: ${asset.id.id}',
         name: 'TendermintWithTokensActivationStrategy',
       );
-      log(
+      }
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Activation parameters: ${jsonEncode({
           'ticker': asset.id.id,
           'protocol': asset.protocol.subClass.formatted,
@@ -123,6 +127,7 @@ class TendermintWithTokensActivationStrategy
         })}',
         name: 'TendermintWithTokensActivationStrategy',
       );
+      }
 
       final taskResponse = await client.rpc.tendermint.taskEnableTendermintInit(
         ticker: asset.id.id,
@@ -130,10 +135,12 @@ class TendermintWithTokensActivationStrategy
         nodes: nodes,
       );
       
-      log(
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Task initiated for ${asset.id.id}, task_id: ${taskResponse.taskId}',
         name: 'TendermintWithTokensActivationStrategy',
       );
+      }
 
       yield ActivationProgress(
         status: 'Monitoring activation progress...',

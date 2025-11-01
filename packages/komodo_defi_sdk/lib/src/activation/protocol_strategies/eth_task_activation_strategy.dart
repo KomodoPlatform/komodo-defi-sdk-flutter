@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer' show log;
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
@@ -93,24 +94,28 @@ class EthTaskActivationStrategy extends ProtocolActivationStrategy {
           );
 
       // Debug logging for ETH task-based activation
-      log(
-        '[RPC] Activating ETH platform (task-based): ${asset.id.id}',
-        name: 'EthTaskActivationStrategy',
-      );
-      log(
-        '[RPC] Activation parameters: ${jsonEncode({'ticker': asset.id.id, 'protocol': asset.protocol.subClass.formatted, 'token_count': children?.length ?? 0, 'tokens': children?.map((e) => e.id.id).toList() ?? [], 'activation_params': activationParams.toRpcParams(), 'priv_key_policy': privKeyPolicy.toJson()})}',
-        name: 'EthTaskActivationStrategy',
-      );
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
+          '[RPC] Activating ETH platform (task-based): ${asset.id.id}',
+          name: 'EthTaskActivationStrategy',
+        );
+        log(
+          '[RPC] Activation parameters: ${jsonEncode({'ticker': asset.id.id, 'protocol': asset.protocol.subClass.formatted, 'token_count': children?.length ?? 0, 'tokens': children?.map((e) => e.id.id).toList() ?? [], 'activation_params': activationParams.toRpcParams(), 'priv_key_policy': privKeyPolicy.toJson()})}',
+          name: 'EthTaskActivationStrategy',
+        );
+      }
 
       final taskResponse = await client.rpc.erc20.enableEthInit(
         ticker: asset.id.id,
         params: activationParams,
       );
 
-      log(
-        '[RPC] Task initiated for ${asset.id.id}, task_id: ${taskResponse.taskId}',
-        name: 'EthTaskActivationStrategy',
-      );
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
+          '[RPC] Task initiated for ${asset.id.id}, task_id: ${taskResponse.taskId}',
+          name: 'EthTaskActivationStrategy',
+        );
+      }
 
       yield ActivationProgress(
         status: 'Establishing network connections...',
