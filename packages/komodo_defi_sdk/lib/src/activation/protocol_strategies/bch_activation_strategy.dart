@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer' show log;
 
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -93,20 +94,22 @@ class BchActivationStrategy extends ProtocolActivationStrategy {
             [];
         
         // Debug logging for BCH activation
-        log(
-          '[RPC] Activating BCH platform: ${asset.id.id}',
-          name: 'BchActivationStrategy',
-        );
-        log(
-          '[RPC] Activation parameters: ${jsonEncode({
-            'ticker': asset.id.id,
-            'protocol': asset.protocol.subClass.formatted,
-            'slp_token_count': children?.length ?? 0,
-            'slp_tokens': children?.map((e) => e.id.id).toList() ?? [],
-            'activation_params': bchConfig.toRpcParams(),
-          })}',
-          name: 'BchActivationStrategy',
-        );
+        if (KdfLoggingConfig.verboseLogging) {
+          log(
+            '[RPC] Activating BCH platform: ${asset.id.id}',
+            name: 'BchActivationStrategy',
+          );
+          log(
+            '[RPC] Activation parameters: ${jsonEncode({
+              'ticker': asset.id.id,
+              'protocol': asset.protocol.subClass.formatted,
+              'slp_token_count': children?.length ?? 0,
+              'slp_tokens': children?.map((e) => e.id.id).toList() ?? [],
+              'activation_params': bchConfig.toRpcParams(),
+            })}',
+            name: 'BchActivationStrategy',
+          );
+        }
 
         // Enable BCH with SLP support
         final response = await client.rpc.slp.enableBchWithTokens(
@@ -115,10 +118,12 @@ class BchActivationStrategy extends ProtocolActivationStrategy {
           slpTokensRequests: slpTokensRequests,
         );
         
-        log(
-          '[RPC] Successfully activated BCH with ${children?.length ?? 0} SLP tokens',
-          name: 'BchActivationStrategy',
-        );
+        if (KdfLoggingConfig.verboseLogging) {
+          log(
+            '[RPC] Successfully activated BCH with ${children?.length ?? 0} SLP tokens',
+            name: 'BchActivationStrategy',
+          );
+        }
 
         yield ActivationProgress(
           status: 'Verifying activation...',
@@ -156,28 +161,32 @@ class BchActivationStrategy extends ProtocolActivationStrategy {
         );
 
         // Debug logging for SLP token activation
-        log(
-          '[RPC] Activating SLP token: ${asset.id.id}',
-          name: 'BchActivationStrategy',
-        );
-        log(
-          '[RPC] Activation parameters: ${jsonEncode({
-            'ticker': asset.id.id,
-            'protocol': asset.protocol.subClass.formatted,
-            'parent_id': asset.id.parentId?.id,
-          })}',
-          name: 'BchActivationStrategy',
-        );
+        if (KdfLoggingConfig.verboseLogging) {
+          log(
+            '[RPC] Activating SLP token: ${asset.id.id}',
+            name: 'BchActivationStrategy',
+          );
+          log(
+            '[RPC] Activation parameters: ${jsonEncode({
+              'ticker': asset.id.id,
+              'protocol': asset.protocol.subClass.formatted,
+              'parent_id': asset.id.parentId?.id,
+            })}',
+            name: 'BchActivationStrategy',
+          );
+        }
 
         await client.rpc.slp.enableSlpToken(
           ticker: asset.id.id,
           params: SlpActivationParams(),
         );
         
-        log(
-          '[RPC] Successfully activated SLP token: ${asset.id.id}',
-          name: 'BchActivationStrategy',
-        );
+        if (KdfLoggingConfig.verboseLogging) {
+          log(
+            '[RPC] Successfully activated SLP token: ${asset.id.id}',
+            name: 'BchActivationStrategy',
+          );
+        }
 
         yield ActivationProgress.success(
           details: ActivationProgressDetails(

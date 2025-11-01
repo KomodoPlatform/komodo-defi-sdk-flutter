@@ -4,6 +4,7 @@
 
 import 'dart:convert';
 import 'dart:developer' show log;
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
@@ -103,14 +104,18 @@ class ZhtlcActivationStrategy extends ProtocolActivationStrategy {
       yield ZhtlcActivationProgress.validation(protocol);
 
       // Debug logging for ZHTLC activation
-      log(
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Activating ZHTLC coin: ${asset.id.id}',
         name: 'ZhtlcActivationStrategy',
       );
-      log(
+      }
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Activation parameters: ${jsonEncode({'ticker': asset.id.id, 'protocol': asset.protocol.subClass.formatted, 'activation_params': params.toRpcParams(), 'zcash_params_path': userConfig.zcashParamsPath, 'scan_blocks_per_iteration': userConfig.scanBlocksPerIteration, 'scan_interval_ms': userConfig.scanIntervalMs, 'polling_interval_ms': effectivePollingInterval.inMilliseconds, 'priv_key_policy': privKeyPolicy.toJson()})}',
         name: 'ZhtlcActivationStrategy',
       );
+      }
 
       // Initialize task and watch via TaskShepherd
       final stream = client.rpc.zhtlc
