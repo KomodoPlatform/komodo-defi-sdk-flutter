@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer' show log;
+import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
@@ -45,11 +46,14 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
       );
       
       // Debug logging for QTUM activation
-      log(
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Activating QTUM coin: ${asset.id.id}',
         name: 'QtumActivationStrategy',
       );
-      log(
+      }
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Activation parameters: ${jsonEncode({
           'ticker': asset.id.id,
           'protocol': asset.protocol.subClass.formatted,
@@ -58,16 +62,19 @@ class QtumActivationStrategy extends ProtocolActivationStrategy {
         })}',
         name: 'QtumActivationStrategy',
       );
+      }
       
       final taskResponse = await client.rpc.qtum.enableQtumInit(
         ticker: asset.id.id,
         params: activationParams,
       );
       
-      log(
+      if (KdfLoggingConfig.verboseLogging) {
+        log(
         '[RPC] Task initiated for ${asset.id.id}, task_id: ${taskResponse.taskId}',
         name: 'QtumActivationStrategy',
       );
+      }
 
       var isComplete = false;
       while (!isComplete) {
