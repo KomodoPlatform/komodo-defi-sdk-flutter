@@ -596,7 +596,7 @@ class WithdrawalManager {
       final activationResult = await _activationCoordinator.activateAsset(asset);
       if (activationResult.isFailure) {
         throw WithdrawalException(
-          'Failed to activate asset $assetId',
+          'Failed to activate asset $assetId: ${activationResult.errorMessage ?? activationResult.toString()}',
           WithdrawalErrorCode.unknownError,
         );
       }
