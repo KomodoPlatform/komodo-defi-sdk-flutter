@@ -13,7 +13,7 @@
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "f92d61595317c16b8f8294c038c7c9215aca94187e22aedc7e0adeba93c94d82"
+                    "f1349e4799858ed7e3e441e0039a65efe620dbd8041bf8773e26b8cbbf9f58e9"
                 ],
                 "path": "web/kdf/bin"
             },
