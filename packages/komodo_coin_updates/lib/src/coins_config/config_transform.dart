@@ -29,6 +29,7 @@ class CoinConfigTransformer {
           transforms ??
           const [
             WssWebsocketTransform(),
+            SslElectrumTransform(),
             ZhtlcLightWalletTransform(),
             ParentCoinTransform(),
           ];
@@ -204,6 +205,87 @@ class WssWebsocketTransform implements CoinConfigTransform {
 
 /// Specifies which type of Electrum servers to retain
 enum ElectrumServerType { wssOnly, nonWssOnly }
+
+/// Filters out insecure connections on non-web platforms, emulating the
+/// filtering applied to the coins_config_ssl.json file in KomodoPlatform/coins
+/// On non-web platforms, only SSL electrum servers and HTTPS URLs are
+/// supported for security.
+// TODO: move this to the a build-time step via the coins config and/or the
+// komodo_wallet_build_transformer package
+class SslElectrumTransform implements CoinConfigTransform {
+  const SslElectrumTransform();
+
+  @override
+  /// Determines if the transform should run by checking if this is a non-web
+  /// platform with any of the filterable fields in the configuration.
+  bool needsTransform(JsonMap config) {
+    // Only run on non-web platforms
+    if (kIsWeb || kIsWasm) return false;
+
+    final electrum = config.valueOrNull<JsonList>('electrum');
+    final rpcNodes = config.valueOrNull<JsonList>('nodes');
+    final lightWalletServers = config.valueOrNull<JsonList>(
+      'light_wallet_d_servers',
+    );
+    final lightWalletServersWss = config.valueOrNull<JsonList>(
+      'light_wallet_d_servers_wss',
+    );
+
+    return electrum != null ||
+        rpcNodes != null ||
+        lightWalletServers != null ||
+        lightWalletServersWss != null;
+  }
+
+  @override
+  /// Filters entries to keep only secure connections on non-web platforms.
+  JsonMap transform(JsonMap config) {
+    final result = JsonMap.of(config);
+
+    // Filter electrum servers - keep only SSL protocol
+    final electrum = config.valueOrNull<JsonList>('electrum');
+    if (electrum != null) {
+      final filteredElectrums = electrum.where((JsonMap e) {
+        final protocol = e.valueOrNull<String>('protocol');
+        return protocol == 'SSL';
+      }).toList();
+
+      result['electrum'] = filteredElectrums;
+    }
+
+    // Filter RPC nodes - keep only HTTPS URLs
+    final rpcNodes = config.valueOrNull<JsonList>('nodes');
+    if (rpcNodes != null) {
+      final filteredRpcNodes = rpcNodes.where((JsonMap node) {
+        final url = node.valueOrNull<String>('url');
+        return url != null && url.startsWith('https://');
+      }).toList();
+
+      result['nodes'] = filteredRpcNodes;
+    }
+
+    // Filter light wallet servers - keep only HTTPS URLs
+    final lightWalletServers = config.valueOrNull<JsonList>(
+      'light_wallet_d_servers',
+    );
+    if (lightWalletServers != null) {
+      final filteredLightWalletServers = lightWalletServers.where((
+        dynamic server,
+      ) {
+        return server is String && server.startsWith('https://');
+      }).toList();
+
+      result['light_wallet_d_servers'] = filteredLightWalletServers;
+    }
+
+    // Remove light_wallet_d_servers_wss field if it exists (not needed on non-web platforms)
+    if (config.containsKey('light_wallet_d_servers_wss')) {
+      result.remove('light_wallet_d_servers_wss');
+    }
+
+    return result;
+  }
+}
 
 class ParentCoinTransform implements CoinConfigTransform {
   const ParentCoinTransform();
