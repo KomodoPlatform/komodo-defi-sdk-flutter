@@ -225,19 +225,13 @@ class SslElectrumTransform implements CoinConfigTransform {
     // Only run on non-web platforms
     if (kIsWeb || kIsWasm) return false;
 
-    final electrum = config.valueOrNull<JsonList>('electrum');
-    final rpcNodes = config.valueOrNull<JsonList>('nodes');
-    final lightWalletServers = config.valueOrNull<JsonList>(
+    final electrum = config.valueOrNull<List>('electrum');
+    final rpcNodes = config.valueOrNull<List>('nodes');
+    final lightWalletServers = config.valueOrNull<List>(
       'light_wallet_d_servers',
     );
-    final lightWalletServersWss = config.valueOrNull<JsonList>(
-      'light_wallet_d_servers_wss',
-    );
 
-    return electrum != null ||
-        rpcNodes != null ||
-        lightWalletServers != null ||
-        lightWalletServersWss != null;
+    return electrum != null || rpcNodes != null || lightWalletServers != null;
   }
 
   @override
@@ -245,7 +239,6 @@ class SslElectrumTransform implements CoinConfigTransform {
   JsonMap transform(JsonMap config) {
     final result = JsonMap.of(config);
     final coin = config.valueOrNull<String>('coin') ?? 'unknown';
-
     // Filter electrum servers - keep only SSL protocol
     final electrum = config.valueOrNull<JsonList>('electrum');
     if (electrum != null) {
@@ -285,7 +278,7 @@ class SslElectrumTransform implements CoinConfigTransform {
     }
 
     // Filter light wallet servers - keep only HTTPS URLs
-    final lightWalletServers = config.valueOrNull<JsonList>(
+    final lightWalletServers = config.valueOrNull<List>(
       'light_wallet_d_servers',
     );
     if (lightWalletServers != null) {
@@ -307,10 +300,10 @@ class SslElectrumTransform implements CoinConfigTransform {
     }
 
     // Mark coin as having insufficient secure servers if all critical servers were filtered
-    final hasElectrum = (result['electrum'] as JsonList?)?.isNotEmpty ?? false;
-    final hasNodes = (result['nodes'] as JsonList?)?.isNotEmpty ?? false;
+    final hasElectrum = (result['electrum'] as List?)?.isNotEmpty ?? false;
+    final hasNodes = (result['nodes'] as List?)?.isNotEmpty ?? false;
     final hasLightWallet =
-        (result['light_wallet_d_servers'] as JsonList?)?.isNotEmpty ?? false;
+        (result['light_wallet_d_servers'] as List?)?.isNotEmpty ?? false;
 
     // If the coin had servers but now has none, mark it
     if (!hasElectrum &&
