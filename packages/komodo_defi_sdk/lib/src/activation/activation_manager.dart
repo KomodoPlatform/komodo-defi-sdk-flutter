@@ -108,6 +108,7 @@ class ActivationManager {
           _client,
           privKeyPolicy,
           _configService,
+          _activatedAssetsCache,
         );
 
         await for (final progress in activator.activate(
@@ -139,13 +140,8 @@ class ActivationManager {
   /// Check if asset and its children are already activated
   Future<ActivationProgress> _checkActivationStatus(_AssetGroup group) async {
     try {
-      final enabledCoins = await _client.rpc.generalActivation
-          .getEnabledCoins();
-      final enabledAssetIds = enabledCoins.result
-          .map((coin) => _assetLookup.findAssetsByConfigId(coin.ticker))
-          .expand((assets) => assets)
-          .map((asset) => asset.id)
-          .toSet();
+      // Use cache instead of direct RPC call to avoid excessive requests
+      final enabledAssetIds = await _activatedAssetsCache.getActivatedAssetIds();
 
       final isActive = enabledAssetIds.contains(group.primary.id);
       final childrenActive =

@@ -9,7 +9,7 @@ class KomodoDefiSdkConfig {
     this.preActivateCustomTokenAssets = true,
     this.maxPreActivationAttempts = 3,
     this.activationRetryDelay = const Duration(seconds: 2),
-    this.activatedAssetsCacheTtl = const Duration(seconds: 2),
+    this.activatedAssetsCacheTtl = const Duration(seconds: 10),
     this.marketDataConfig = const MarketDataConfig(),
   });
 
