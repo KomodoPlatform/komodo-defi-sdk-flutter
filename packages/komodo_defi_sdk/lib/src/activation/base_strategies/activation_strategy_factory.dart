@@ -1,6 +1,7 @@
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
 import 'package:komodo_defi_sdk/src/activation/_activation.dart';
 import 'package:komodo_defi_sdk/src/activation_config/activation_config_service.dart';
+import 'package:komodo_defi_sdk/src/assets/activated_assets_cache.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Factory for creating the complete activation strategy stack
@@ -11,10 +12,12 @@ class ActivationStrategyFactory {
   /// [privKeyPolicy] The [PrivateKeyPolicy] to use for private key management.
   /// This is used for external wallet support. E.g. trezor, wallet connect, etc
   /// [configService] The [ActivationConfigService] for resolving activation configuration.
+  /// [activatedAssetsCache] The [ActivatedAssetsCache] to use for checking activation status.
   static SmartAssetActivator createStrategy(
     ApiClient client,
     PrivateKeyPolicy privKeyPolicy,
     ActivationConfigService configService,
+    ActivatedAssetsCache activatedAssetsCache,
   ) {
     return SmartAssetActivator(
       client,
@@ -34,6 +37,7 @@ class ActivationStrategyFactory {
         ZhtlcActivationStrategy(client, privKeyPolicy, configService),
         CustomErc20ActivationStrategy(client),
       ]),
+      activatedAssetsCache,
     );
   }
 }
