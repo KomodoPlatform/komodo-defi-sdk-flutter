@@ -106,9 +106,10 @@ class AssetLogo extends StatelessWidget {
 
     final isChildAsset = resolvedId?.isChildAsset ?? false;
 
-    // Use the parent coin ticker for child assets so that token logos display
-    // the network they belong to (e.g. ETH for ERC20 tokens).
-    final protocolTicker = isChildAsset ? resolvedId?.parentId?.id : null;
+    // Use the network icon for child assets so that token logos display
+    // the chain they belong to (e.g. BASE for Base tokens instead of ETH).
+    final protocolTicker =
+        isChildAsset ? resolvedId?.subClass.iconTicker : null;
     final shouldShowProtocolIcon = isChildAsset && protocolTicker != null;
 
     final mainIcon =
