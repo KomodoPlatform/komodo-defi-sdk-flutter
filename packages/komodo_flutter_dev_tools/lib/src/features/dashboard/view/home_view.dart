@@ -167,6 +167,7 @@ class _SectionTabs extends StatelessWidget {
             border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
           child: TabBar(
+            physics: NeverScrollableScrollPhysics(),
             indicator: BoxDecoration(
               borderRadius: const BorderRadius.all(defaultRadius),
               color: theme.colorScheme.primary.withValues(alpha: 0.16),

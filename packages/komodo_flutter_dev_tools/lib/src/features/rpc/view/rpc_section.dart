@@ -216,16 +216,25 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _RpcTimelineChart extends StatelessWidget {
+enum _TimelineMetric { latency, requestsPerMinute }
+
+class _RpcTimelineChart extends StatefulWidget {
   const _RpcTimelineChart({required this.state});
 
   final RpcMetricsState state;
 
   @override
+  State<_RpcTimelineChart> createState() => _RpcTimelineChartState();
+}
+
+class _RpcTimelineChartState extends State<_RpcTimelineChart> {
+  _TimelineMetric _metric = _TimelineMetric.latency;
+
+  @override
   Widget build(BuildContext context) {
-    final calls = state.filteredCalls.isNotEmpty
-        ? state.filteredCalls
-        : state.calls;
+    final calls = widget.state.filteredCalls.isNotEmpty
+        ? widget.state.filteredCalls
+        : widget.state.calls;
     if (calls.isEmpty) {
       return RoundedOutlinedBorder(
         child: Center(
@@ -239,54 +248,126 @@ class _RpcTimelineChart extends StatelessWidget {
 
     final sorted = calls.sortedBy((call) => call.startedAt);
     final base = sorted.first.startedAt;
-    final data = <ChartData>[];
+
+    // Latency series (one point per call)
+    final latencyData = <ChartData>[];
     for (final call in sorted) {
       final seconds = call.startedAt.difference(base).inMilliseconds / 1000.0;
-      data.add(
+      latencyData.add(
         ChartData(x: seconds, y: call.duration.inMilliseconds.toDouble()),
       );
     }
 
+    // Requests per minute series (sampled every second, rolling 60s window)
+    final rpmData = <ChartData>[];
+    final timestamps = sorted.map((c) => c.startedAt).toList();
+    final end = sorted.last.startedAt;
+    final totalSeconds = end.difference(base).inSeconds;
+    var left = 0; // inclusive index of first call in window
+    var right = 0; // exclusive index of last call <= current second
+    for (var s = 0; s <= totalSeconds; s++) {
+      final ts = base.add(Duration(seconds: s));
+      while (right < timestamps.length && !timestamps[right].isAfter(ts)) {
+        right++;
+      }
+      final windowStart = ts.subtract(const Duration(seconds: 59));
+      while (left < right && timestamps[left].isBefore(windowStart)) {
+        left++;
+      }
+      final count = right - left;
+      rpmData.add(ChartData(x: s.toDouble(), y: count.toDouble()));
+    }
+
+    final currentData = _metric == _TimelineMetric.latency
+        ? latencyData
+        : rpmData;
+
     return RoundedOutlinedBorder(
       child: Padding(
         padding: const EdgeInsets.all(densePadding),
-        child: LineChart(
-          elements: [
-            ChartGridLines(isVertical: true, count: 4),
-            ChartGridLines(isVertical: false, count: 4),
-            ChartAxisLabels(
-              isVertical: true,
-              count: 4,
-              labelBuilder: (value) => formatMilliseconds(value),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                DevToolsToggleButtonGroup(
+                  selectedStates: [
+                    _metric == _TimelineMetric.latency,
+                    _metric == _TimelineMetric.requestsPerMinute,
+                  ],
+                  onPressed: (index) => setState(() {
+                    _metric = index == 0
+                        ? _TimelineMetric.latency
+                        : _TimelineMetric.requestsPerMinute;
+                  }),
+                  children: const [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: densePadding),
+                      child: Text('Latency'),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: densePadding),
+                      child: Text('Requests/min'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            ChartAxisLabels(
-              isVertical: false,
-              count: 4,
-              labelBuilder: (value) =>
-                  '+${value.toStringAsFixed(value >= 60 ? 0 : 1)}s',
-            ),
-            ChartDataSeries(
-              data: data,
-              color: Theme.of(context).colorScheme.primary,
+            const SizedBox(height: densePadding),
+            Expanded(
+              child: LineChart(
+                elements: [
+                  ChartGridLines(isVertical: true, count: 4),
+                  ChartGridLines(isVertical: false, count: 4),
+                  ChartAxisLabels(
+                    isVertical: true,
+                    count: 4,
+                    labelBuilder: (value) => _metric == _TimelineMetric.latency
+                        ? formatMilliseconds(value)
+                        : formatPerMinute(value),
+                  ),
+                  ChartAxisLabels(
+                    isVertical: false,
+                    count: 4,
+                    labelBuilder: (value) =>
+                        '+${value.toStringAsFixed(value >= 60 ? 0 : 1)}s',
+                  ),
+                  ChartDataSeries(
+                    data: currentData,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
+                tooltipBuilder: (context, dataPoints, colors) {
+                  if (dataPoints.isEmpty) {
+                    return const SizedBox();
+                  }
+                  final point = dataPoints.last;
+                  final index = currentData.indexOf(point);
+                  if (_metric == _TimelineMetric.latency) {
+                    final call = sorted[index];
+                    return _TooltipCard(
+                      title: call.method,
+                      subtitle: formatMilliseconds(
+                        call.duration.inMilliseconds.toDouble(),
+                      ),
+                    );
+                  } else {
+                    final seconds = currentData[index].x;
+                    final rpm = currentData[index].y;
+                    return _TooltipCard(
+                      title: 'Requests/min',
+                      subtitle:
+                          '${formatPerMinute(rpm)} at +${seconds.toStringAsFixed(seconds >= 60 ? 0 : 1)}s',
+                    );
+                  }
+                },
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+              ),
             ),
           ],
-          tooltipBuilder: (context, dataPoints, colors) {
-            if (dataPoints.isEmpty) {
-              return const SizedBox();
-            }
-            final point = dataPoints.last;
-            final index = data.indexOf(point);
-            final call = sorted[index];
-            return _TooltipCard(
-              title: call.method,
-              subtitle: formatMilliseconds(
-                call.duration.inMilliseconds.toDouble(),
-              ),
-            );
-          },
-          backgroundColor: Theme.of(
-            context,
-          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         ),
       ),
     );
