@@ -21,6 +21,9 @@ export 'package:komodo_defi_sdk/src/balances/balance_manager.dart'
 export 'package:komodo_defi_sdk/src/sdk/komodo_defi_sdk_config.dart';
 export 'package:komodo_defi_sdk/src/security/security_manager.dart'
     show SecurityManager;
+export 'src/devtools/devtools_integration_service.dart'
+    show DevToolsIntegrationService;
+export 'src/devtools/rpc_log_filter.dart' show RpcLogFilter;
 
 export 'src/activation_config/activation_config_service.dart'
     show

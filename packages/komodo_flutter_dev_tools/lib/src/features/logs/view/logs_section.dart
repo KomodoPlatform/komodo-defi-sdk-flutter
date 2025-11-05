@@ -140,13 +140,33 @@ class _LogLevelToggle extends StatelessWidget {
   }
 }
 
-class _LogsTable extends StatelessWidget {
+class _LogsTable extends StatefulWidget {
   const _LogsTable({required this.state});
 
   final LogsState state;
 
   @override
+  State<_LogsTable> createState() => _LogsTableState();
+}
+
+class _LogsTableState extends State<_LogsTable> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     if (state.filteredEntries.isEmpty) {
       return const Center(
         child: Text('No logs yet. Start interacting with the app to populate.'),
@@ -156,94 +176,103 @@ class _LogsTable extends StatelessWidget {
     final logsBloc = context.read<LogsBloc>();
     final theme = Theme.of(context);
 
-    return ListView.separated(
-      itemCount: state.filteredEntries.length,
-      separatorBuilder: (_, __) =>
-          Divider(color: theme.dividerColor.withValues(alpha: 0.1), height: 1),
-      itemBuilder: (context, index) {
-        final entry = state.filteredEntries[index];
-        final selected = state.selectedLogId == entry.id;
-        final color = _levelColor(entry.level, theme);
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      child: ListView.separated(
+        controller: _scrollController,
+        itemCount: state.filteredEntries.length,
+        separatorBuilder: (_, __) => Divider(
+          color: theme.dividerColor.withValues(alpha: 0.1),
+          height: 1,
+        ),
+        itemBuilder: (context, index) {
+          final entry = state.filteredEntries[index];
+          final selected = state.selectedLogId == entry.id;
+          final color = _levelColor(entry.level, theme);
 
-        return Material(
-          color: selected
-              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
-              : Colors.transparent,
-          child: InkWell(
-            onTap: () => logsBloc.add(LogsSelectionChanged(entry.id)),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: defaultSpacing,
-                vertical: densePadding,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 110,
-                    child: Text(
-                      formatTimestamp(entry.timestamp),
-                      style: theme.textTheme.labelSmall,
-                    ),
-                  ),
-                  SizedBox(
-                    width: 72,
-                    child: Text(
-                      entry.level.label,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w600,
+          return Material(
+            color: selected
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
+                : Colors.transparent,
+            child: InkWell(
+              onTap: () => logsBloc.add(LogsSelectionChanged(entry.id)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: defaultSpacing,
+                  vertical: densePadding,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 110,
+                      child: Text(
+                        formatTimestamp(entry.timestamp),
+                        style: theme.textTheme.labelSmall,
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entry.message,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: entry.isError ? FontWeight.w600 : null,
-                          ),
+                    SizedBox(
+                      width: 72,
+                      child: Text(
+                        entry.level.label,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(height: densePadding),
-                        Wrap(
-                          spacing: denseSpacing,
-                          runSpacing: densePadding,
-                          children: [
-                            _LogMetaChip(
-                              icon: Icons.category_outlined,
-                              label: entry.category,
-                            ),
-                            if (entry.requestDuration != null)
-                              _LogMetaChip(
-                                icon: Icons.timer_outlined,
-                                label: formatDurationShort(
-                                  entry.requestDuration!,
-                                ),
-                              ),
-                            if (entry.appLifetime != null)
-                              _LogMetaChip(
-                                icon: Icons.schedule,
-                                label:
-                                    '+${formatDurationShort(entry.appLifetime!)}',
-                              ),
-                            for (final tag in entry.tags.take(3))
-                              _LogMetaChip(
-                                icon: Icons.sell_outlined,
-                                label: tag,
-                              ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.message,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: entry.isError
+                                  ? FontWeight.w600
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(height: densePadding),
+                          Wrap(
+                            spacing: denseSpacing,
+                            runSpacing: densePadding,
+                            children: [
+                              _LogMetaChip(
+                                icon: Icons.category_outlined,
+                                label: entry.category,
+                              ),
+                              if (entry.requestDuration != null)
+                                _LogMetaChip(
+                                  icon: Icons.timer_outlined,
+                                  label: formatDurationShort(
+                                    entry.requestDuration!,
+                                  ),
+                                ),
+                              if (entry.appLifetime != null)
+                                _LogMetaChip(
+                                  icon: Icons.schedule,
+                                  label:
+                                      '+${formatDurationShort(entry.appLifetime!)}',
+                                ),
+                              for (final tag in entry.tags.take(3))
+                                _LogMetaChip(
+                                  icon: Icons.sell_outlined,
+                                  label: tag,
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

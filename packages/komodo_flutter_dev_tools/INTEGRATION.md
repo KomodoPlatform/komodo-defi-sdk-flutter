@@ -13,7 +13,10 @@ The DevTools extension listens for VM service extension events and provides a da
 
 ### 1. DevTools Integration Service
 
-The main integration is handled by `DevToolsIntegrationService` located at `lib/services/devtools/devtools_integration_service.dart`.
+The main integration is handled by `DevToolsIntegrationService` shipped with
+`package:komodo_defi_sdk`. The SDK initializes this automatically, and
+applications can import `DevToolsIntegrationService` from the SDK to post their
+own log entries when needed.
 
 This service:
 
@@ -24,52 +27,30 @@ This service:
 
 ### 2. Logger Integration
 
-The logger integration is in `lib/services/logger/get_logger.dart`:
+The logger integration is still in `lib/services/logger/get_logger.dart`, but it
+now imports `DevToolsIntegrationService` and `RpcLogFilter` from the SDK:
 
 ```dart
-// Initialize DevTools integration
-await DevToolsIntegrationService.instance.initialize();
+import 'package:komodo_defi_sdk/komodo_defi_sdk.dart'
+    show DevToolsIntegrationService, RpcLogFilter;
 
-// Post logs to DevTools
-DevToolsIntegrationService.instance.postLogEntry(
-  id: uniqueId,
-  timestamp: record.time,
-  level: record.level,
-  category: record.loggerName,
-  message: record.message,
-  metadata: {...},
-);
+// Post logs to DevTools (SDK initializes the service)
+if (!RpcLogFilter.isSdkRpcLog(record.message)) {
+  DevToolsIntegrationService.instance.postLogEntry(...);
+}
 ```
 
 ### 3. RPC Tracking
 
-RPC tracking is implemented in two ways:
-
-#### Legacy RPC Calls
-
-For legacy `mm2.call()` method, `RpcTrackingClient` wraps the calls:
-
-```dart
-// In lib/mm2/mm2.dart
-final trackingClient = RpcTrackingClient(_kdfSdk.client);
-return await trackingClient.executeRpc(jsonRequest);
-```
-
-#### SDK RPC Calls
-
-For direct SDK usage (`sdk.client.rpc.*` or `sdk.client.executeRpc`), the `KdfLogInterceptor` listens to framework logs:
-
-```dart
-// Automatically initialized in get_logger.dart
-KdfLogInterceptor.instance.initialize();
-```
-
-This intercepts KDF framework's built-in RPC logging and forwards to DevTools, tracking:
+RPC analytics are fully managed inside the SDK. The dependency injection layer
+wraps the framework `ApiClient` with a DevTools-aware client so every RPC
+invocation (SDK internals or legacy mm2 access) emits:
 
 - Method name
 - Duration
 - Success/error status
 - Error messages
+- Request/response payload sizes
 
 ## Testing the Integration
 
@@ -97,19 +78,17 @@ This runs the extension in a simulated DevTools environment for faster iteration
 To avoid duplicate entries in DevTools:
 
 1. RPC-related log messages are filtered out from regular log posting
-2. The `KdfLogInterceptor.isRpcLogMessage()` method identifies RPC logs by pattern:
+2. The `RpcLogFilter.isSdkRpcLog()` helper (exported by the SDK) identifies RPC
+   logs using common patterns:
    - Messages starting with `[RPC]` or `[ELECTRUM]`
    - Messages containing timing patterns like "completed in Xms" or "failed after Xms"
-3. These are only posted as RPC calls, not as regular log entries
+3. These are only posted as RPC analytics, not as regular log entries
 
 This prevents the same RPC information from appearing twice in DevTools.
 
 ## Known Limitations
 
-1. RPC tracking for SDK calls relies on KDF framework's debug logging, which provides:
-
-   - Method name and duration
-   - Success/error status
-   - But NOT request/response sizes (unlike legacy RPC tracking)
-
-2. The KdfLogInterceptor is not disposed when the app closes (minor memory leak in debug mode)
+1. RPC tracking now captures request/response sizes for all calls, but payload
+   contents are intentionally omitted for privacy/security reasons.
+2. DevTools integration is only active in debug/profile builds (gated by
+   `kDebugMode`). Release builds will no-op these hooks.

@@ -10,6 +10,7 @@ import 'package:komodo_defi_framework/komodo_defi_framework.dart';
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/komodo_defi_sdk.dart';
 import 'package:komodo_defi_sdk/src/_internal_exports.dart';
+import 'package:komodo_defi_sdk/src/devtools/sdk_devtools_integration.dart';
 import 'package:komodo_defi_sdk/src/activation_config/hive_adapters.dart';
 import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
 import 'package:komodo_defi_sdk/src/market_data/market_data_manager.dart'
@@ -43,6 +44,8 @@ Future<void> bootstrap({
   log('Bootstrap: Starting dependency injection setup...', name: 'Bootstrap');
   final stopwatch = Stopwatch()..start();
 
+  await SdkDevToolsIntegration.instance.ensureInitialized();
+
   final rpcPassword = await SecureRpcPasswordMixin().ensureRpcPassword();
 
   // Framework and core dependencies
@@ -60,7 +63,7 @@ Future<void> bootstrap({
 
   container.registerSingletonAsync<ApiClient>(() async {
     final framework = await container.getAsync<KomodoDefiFramework>();
-    return framework.client;
+    return SdkDevToolsIntegration.instance.wrapClient(framework.client);
   }, dependsOn: [KomodoDefiFramework]);
 
   // Event streaming manager (internal use by managers for real-time updates)

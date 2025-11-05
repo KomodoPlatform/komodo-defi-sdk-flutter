@@ -322,14 +322,34 @@ class _TooltipCard extends StatelessWidget {
   }
 }
 
-class _RpcMethodsTable extends StatelessWidget {
+class _RpcMethodsTable extends StatefulWidget {
   const _RpcMethodsTable({required this.state});
 
   final RpcMetricsState state;
 
   @override
+  State<_RpcMethodsTable> createState() => _RpcMethodsTableState();
+}
+
+class _RpcMethodsTableState extends State<_RpcMethodsTable> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final state = widget.state;
     return RoundedOutlinedBorder(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -340,50 +360,57 @@ class _RpcMethodsTable extends StatelessWidget {
           ),
           const Divider(height: 1),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Method')),
-                  DataColumn(label: Text('Calls')),
-                  DataColumn(label: Text('Avg')),
-                  DataColumn(label: Text('P95')),
-                  DataColumn(label: Text('Dup%')),
-                  DataColumn(label: Text('Fail%')),
-                  DataColumn(label: Text('Rate')),
-                  DataColumn(label: Text('Payload')),
-                ],
-                rows: [
-                  for (final metric in state.methodMetrics)
-                    DataRow(
-                      cells: [
-                        DataCell(Text(metric.method)),
-                        DataCell(Text(metric.callCount.toString())),
-                        DataCell(
-                          Text(formatMilliseconds(metric.averageDurationMs)),
-                        ),
-                        DataCell(
-                          Text(formatMilliseconds(metric.p95DurationMs)),
-                        ),
-                        DataCell(Text(formatPercentage(metric.duplicateRatio))),
-                        DataCell(Text(formatPercentage(metric.failureRate))),
-                        DataCell(
-                          Text(formatPerMinute(metric.callRatePerMinute)),
-                        ),
-                        DataCell(
-                          Text(
-                            formatBytes(
-                              (metric.totalBytes /
-                                      (metric.callCount == 0
-                                          ? 1
-                                          : metric.callCount))
-                                  .round(),
+            child: Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.vertical,
+                child: DataTable(
+                  columns: const [
+                    DataColumn(label: Text('Method')),
+                    DataColumn(label: Text('Calls')),
+                    DataColumn(label: Text('Avg')),
+                    DataColumn(label: Text('P95')),
+                    DataColumn(label: Text('Dup%')),
+                    DataColumn(label: Text('Fail%')),
+                    DataColumn(label: Text('Rate')),
+                    DataColumn(label: Text('Payload')),
+                  ],
+                  rows: [
+                    for (final metric in state.methodMetrics)
+                      DataRow(
+                        cells: [
+                          DataCell(Text(metric.method)),
+                          DataCell(Text(metric.callCount.toString())),
+                          DataCell(
+                            Text(formatMilliseconds(metric.averageDurationMs)),
+                          ),
+                          DataCell(
+                            Text(formatMilliseconds(metric.p95DurationMs)),
+                          ),
+                          DataCell(
+                            Text(formatPercentage(metric.duplicateRatio)),
+                          ),
+                          DataCell(Text(formatPercentage(metric.failureRate))),
+                          DataCell(
+                            Text(formatPerMinute(metric.callRatePerMinute)),
+                          ),
+                          DataCell(
+                            Text(
+                              formatBytes(
+                                (metric.totalBytes /
+                                        (metric.callCount == 0
+                                            ? 1
+                                            : metric.callCount))
+                                    .round(),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                ],
+                        ],
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -393,14 +420,34 @@ class _RpcMethodsTable extends StatelessWidget {
   }
 }
 
-class _RpcInsightsList extends StatelessWidget {
+class _RpcInsightsList extends StatefulWidget {
   const _RpcInsightsList({required this.state});
 
   final RpcMetricsState state;
 
   @override
+  State<_RpcInsightsList> createState() => _RpcInsightsListState();
+}
+
+class _RpcInsightsListState extends State<_RpcInsightsList> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final state = widget.state;
     return RoundedOutlinedBorder(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -420,20 +467,25 @@ class _RpcInsightsList extends StatelessWidget {
                       'No clear issues detected yet. Keep profiling!',
                     ),
                   )
-                : ListView.separated(
-                    itemCount: state.insights.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final insight = state.insights[index];
-                      return ListTile(
-                        leading: Icon(
-                          _insightIcon(insight.type),
-                          color: theme.colorScheme.primary,
-                        ),
-                        title: Text(insight.method),
-                        subtitle: Text(insight.message),
-                      );
-                    },
+                : Scrollbar(
+                    controller: _scrollController,
+                    thumbVisibility: true,
+                    child: ListView.separated(
+                      controller: _scrollController,
+                      itemCount: state.insights.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final insight = state.insights[index];
+                        return ListTile(
+                          leading: Icon(
+                            _insightIcon(insight.type),
+                            color: theme.colorScheme.primary,
+                          ),
+                          title: Text(insight.method),
+                          subtitle: Text(insight.message),
+                        );
+                      },
+                    ),
                   ),
           ),
         ],

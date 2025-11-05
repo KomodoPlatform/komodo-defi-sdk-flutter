@@ -14,21 +14,19 @@ class KomodoDevToolsHomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(defaultSpacing),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const _ConnectionHeader(),
-          const SizedBox(height: defaultSpacing),
-          Expanded(
-            child: SplitPane(
-              axis: Axis.horizontal,
-              initialFractions: const [0.55, 0.45],
-              children: const [LogsSection(), RpcSection()],
-            ),
-          ),
-        ],
+    return DefaultTabController(
+      length: 2,
+      initialIndex: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(defaultSpacing),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: const [
+            _ConnectionHeader(),
+            SizedBox(height: defaultSpacing),
+            Expanded(child: _SectionTabs()),
+          ],
+        ),
       ),
     );
   }
@@ -39,9 +37,6 @@ class _ConnectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logsBloc = context.read<LogsBloc>();
-    final rpcBloc = context.read<RpcMetricsBloc>();
-
     return BlocBuilder<VmConnectionBloc, VmConnectionState>(
       builder: (context, state) {
         final theme = Theme.of(context);
@@ -71,70 +66,10 @@ class _ConnectionHeader extends StatelessWidget {
                 const SizedBox(width: denseSpacing),
                 if (state.error != null)
                   Icon(Icons.warning_amber, color: theme.colorScheme.error),
-                const Spacer(),
-                BlocBuilder<LogsBloc, LogsState>(
-                  builder: (context, logsState) {
-                    return DevToolsButton(
-                      icon: Icons.download,
-                      label: logsState.isLoadingSnapshot
-                          ? 'Snapshot…'
-                          : 'Log Snapshot',
-                      onPressed:
-                          state.isConnected && !logsState.isLoadingSnapshot
-                          ? () => logsBloc.add(const LogsSnapshotRequested())
-                          : null,
-                    );
-                  },
-                ),
-                const SizedBox(width: denseSpacing),
-                BlocBuilder<RpcMetricsBloc, RpcMetricsState>(
-                  builder: (context, rpcState) {
-                    return DevToolsButton(
-                      icon: Icons.auto_graph,
-                      label: rpcState.isLoadingSnapshot
-                          ? 'Fetching…'
-                          : 'RPC Snapshot',
-                      onPressed:
-                          state.isConnected && !rpcState.isLoadingSnapshot
-                          ? () => rpcBloc.add(const RpcSnapshotRequested())
-                          : null,
-                    );
-                  },
-                ),
-                const SizedBox(width: denseSpacing),
-                BlocBuilder<RpcMetricsBloc, RpcMetricsState>(
-                  builder: (context, rpcState) {
-                    return DevToolsButton(
-                      icon: Icons.lightbulb_outline,
-                      label: 'Refresh Insights',
-                      onPressed:
-                          state.isConnected && !rpcState.isRefreshingInsights
-                          ? () =>
-                                rpcBloc.add(const RpcInsightRefreshRequested())
-                          : null,
-                    );
-                  },
-                ),
-                const SizedBox(width: denseSpacing),
-                BlocBuilder<RpcMetricsBloc, RpcMetricsState>(
-                  builder: (context, rpcState) {
-                    final enabled = rpcState.isTracingEnabled ?? true;
-                    return DevToolsButton(
-                      icon: enabled
-                          ? Icons.pause_circle
-                          : Icons.play_circle_fill,
-                      label: enabled ? 'Pause Trace' : 'Resume Trace',
-                      onPressed:
-                          state.isConnected && !rpcState.isTogglingTracing
-                          ? () => rpcBloc.add(
-                              RpcTracingToggleRequested(enable: !enabled),
-                            )
-                          : null,
-                    );
-                  },
-                ),
               ],
             ),
+            const SizedBox(height: denseSpacing),
+            _ActionsWrap(state: state),
             const SizedBox(height: denseSpacing),
             const _SnapshotMetaRow(),
             if (state.error != null) ...[
@@ -216,6 +151,50 @@ class _SnapshotMetaRow extends StatelessWidget {
   }
 }
 
+class _SectionTabs extends StatelessWidget {
+  const _SectionTabs();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHigh,
+            borderRadius: const BorderRadius.all(defaultRadius),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: TabBar(
+            indicator: BoxDecoration(
+              borderRadius: const BorderRadius.all(defaultRadius),
+              color: theme.colorScheme.primary.withValues(alpha: 0.16),
+            ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            labelColor: theme.colorScheme.primary,
+            unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+            labelStyle: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            tabs: const [
+              Tab(text: 'Logs'),
+              Tab(text: 'RPC Analytics'),
+            ],
+          ),
+        ),
+        const SizedBox(height: denseSpacing),
+        const Expanded(
+          child: TabBarView(
+            physics: NeverScrollableScrollPhysics(),
+            children: [LogsSection(), RpcSection()],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.label, required this.color});
 
@@ -242,6 +221,72 @@ class _StatusChip extends StatelessWidget {
           Text(label, style: Theme.of(context).textTheme.labelMedium),
         ],
       ),
+    );
+  }
+}
+
+class _ActionsWrap extends StatelessWidget {
+  const _ActionsWrap({required this.state});
+
+  final VmConnectionState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final logsBloc = context.read<LogsBloc>();
+    final rpcBloc = context.read<RpcMetricsBloc>();
+
+    return Wrap(
+      alignment: WrapAlignment.end,
+      spacing: denseSpacing,
+      runSpacing: densePadding,
+      children: [
+        BlocBuilder<LogsBloc, LogsState>(
+          builder: (context, logsState) {
+            return DevToolsButton(
+              icon: Icons.download,
+              label: logsState.isLoadingSnapshot ? 'Snapshot…' : 'Log Snapshot',
+              onPressed: state.isConnected && !logsState.isLoadingSnapshot
+                  ? () => logsBloc.add(const LogsSnapshotRequested())
+                  : null,
+            );
+          },
+        ),
+        BlocBuilder<RpcMetricsBloc, RpcMetricsState>(
+          builder: (context, rpcState) {
+            return DevToolsButton(
+              icon: Icons.auto_graph,
+              label: rpcState.isLoadingSnapshot ? 'Fetching…' : 'RPC Snapshot',
+              onPressed: state.isConnected && !rpcState.isLoadingSnapshot
+                  ? () => rpcBloc.add(const RpcSnapshotRequested())
+                  : null,
+            );
+          },
+        ),
+        BlocBuilder<RpcMetricsBloc, RpcMetricsState>(
+          builder: (context, rpcState) {
+            return DevToolsButton(
+              icon: Icons.lightbulb_outline,
+              label: 'Refresh Insights',
+              onPressed: state.isConnected && !rpcState.isRefreshingInsights
+                  ? () => rpcBloc.add(const RpcInsightRefreshRequested())
+                  : null,
+            );
+          },
+        ),
+        BlocBuilder<RpcMetricsBloc, RpcMetricsState>(
+          builder: (context, rpcState) {
+            final enabled = rpcState.isTracingEnabled ?? true;
+            return DevToolsButton(
+              icon: enabled ? Icons.pause_circle : Icons.play_circle_fill,
+              label: enabled ? 'Pause Trace' : 'Resume Trace',
+              onPressed: state.isConnected && !rpcState.isTogglingTracing
+                  ? () =>
+                        rpcBloc.add(RpcTracingToggleRequested(enable: !enabled))
+                  : null,
+            );
+          },
+        ),
+      ],
     );
   }
 }
