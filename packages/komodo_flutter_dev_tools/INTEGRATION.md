@@ -92,6 +92,18 @@ flutter run -d chrome --dart-define=use_simulated_environment=true
 
 This runs the extension in a simulated DevTools environment for faster iteration.
 
+## Double Logging Prevention
+
+To avoid duplicate entries in DevTools:
+
+1. RPC-related log messages are filtered out from regular log posting
+2. The `KdfLogInterceptor.isRpcLogMessage()` method identifies RPC logs by pattern:
+   - Messages starting with `[RPC]` or `[ELECTRUM]`
+   - Messages containing timing patterns like "completed in Xms" or "failed after Xms"
+3. These are only posted as RPC calls, not as regular log entries
+
+This prevents the same RPC information from appearing twice in DevTools.
+
 ## Known Limitations
 
 1. RPC tracking for SDK calls relies on KDF framework's debug logging, which provides:
