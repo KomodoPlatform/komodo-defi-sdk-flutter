@@ -1,0 +1,6 @@
+name: komodo_flutter_dev_tools
+version: 0.1.0
+issueTracker: https://github.com/KomodoPlatform/komodo-wallet/issues
+materialIconCodePoint: '0xe8b0'
+requiresConnection: true
+
