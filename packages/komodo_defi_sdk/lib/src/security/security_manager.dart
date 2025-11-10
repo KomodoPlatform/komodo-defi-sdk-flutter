@@ -106,6 +106,11 @@ class SecurityManager {
       throw AuthException.notSignedIn();
     }
 
+    // Default mode based on wallet type if not explicitly provided
+    // HD wallets use HD mode, single-address (Iguana) wallets use Iguana mode
+    final effectiveMode = mode ??
+        (currentUser.isHd ? KeyExportMode.hd : KeyExportMode.iguana);
+
     // If no assets specified, use all assets for which their activation is
     // successful, pending, or failed.
     final targetAssets =
@@ -131,7 +136,7 @@ class SecurityManager {
     };
 
     // If HD mode parameters are provided, ensure they're valid
-    if (mode == KeyExportMode.hd) {
+    if (effectiveMode == KeyExportMode.hd) {
       final start = startIndex;
       final end = endIndex;
 
@@ -154,7 +159,7 @@ class SecurityManager {
       if (accountIndex != null && accountIndex < 0) {
         throw ArgumentError('accountIndex must be non-negative');
       }
-    } else if (mode == KeyExportMode.iguana) {
+    } else if (effectiveMode == KeyExportMode.iguana) {
       // Validate that HD-specific parameters are not provided for Iguana mode
       if (startIndex != null || endIndex != null || accountIndex != null) {
         throw ArgumentError(
@@ -165,13 +170,53 @@ class SecurityManager {
 
     final response = await _client.rpc.wallet.getPrivateKeys(
       coins: coinTickers,
-      mode: mode,
+      mode: effectiveMode,
       startIndex: startIndex,
       endIndex: endIndex,
       accountIndex: accountIndex,
     );
 
-    return response.toPrivateKeyInfoMap(assetMap);
+    // Convert the response to a map of private keys
+    final privateKeyMap = response.toPrivateKeyInfoMap(assetMap);
+
+    // Fix segwit addresses: For UTXO segwit variants, the backend may return
+    // legacy (P2PKH) addresses instead of segwit addresses. We fetch the correct
+    // address from my_balance and override it in the private key data.
+    for (final entry in privateKeyMap.entries) {
+      final assetId = entry.key;
+      final privateKeys = entry.value;
+
+      // Check if this is a UTXO segwit variant
+      final isUtxoSegwit = assetId.subClass == CoinSubClass.utxo && 
+                           assetId.isSegwit;
+
+      if (isUtxoSegwit) {
+        try {
+          // Fetch the correct address from my_balance
+          final balanceResponse = await _client.rpc.wallet.myBalance(
+            coin: assetId.id,
+          );
+
+          // Override the address in each private key with the correct one
+          final correctedKeys = privateKeys.map((pk) {
+            return PrivateKey(
+              assetId: pk.assetId,
+              publicKeySecp256k1: pk.publicKeySecp256k1,
+              publicKeyAddress: balanceResponse.address,
+              privateKey: pk.privateKey,
+              hdInfo: pk.hdInfo,
+            );
+          }).toList();
+
+          privateKeyMap[assetId] = correctedKeys;
+        } catch (e) {
+          // If my_balance fails, keep the original address
+          // This ensures we don't break the export if my_balance is unavailable
+        }
+      }
+    }
+
+    return privateKeyMap;
   }
 
   /// Convenience method to get private keys for a single asset.
