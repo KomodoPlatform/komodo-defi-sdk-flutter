@@ -106,6 +106,11 @@ class SecurityManager {
       throw AuthException.notSignedIn();
     }
 
+    // default mode based on wallet type if not explicitly provided as param (missed in KW code)
+    // HD wallets use HD mode and single-address (iguana) wallets use iguana mode
+    final effectiveMode = mode ??
+        (currentUser.isHd ? KeyExportMode.hd : KeyExportMode.iguana);
+
     // If no assets specified, use all assets for which their activation is
     // successful, pending, or failed.
     final targetAssets =
@@ -131,7 +136,7 @@ class SecurityManager {
     };
 
     // If HD mode parameters are provided, ensure they're valid
-    if (mode == KeyExportMode.hd) {
+    if (effectiveMode == KeyExportMode.hd) {
       final start = startIndex;
       final end = endIndex;
 
@@ -154,7 +159,7 @@ class SecurityManager {
       if (accountIndex != null && accountIndex < 0) {
         throw ArgumentError('accountIndex must be non-negative');
       }
-    } else if (mode == KeyExportMode.iguana) {
+    } else if (effectiveMode == KeyExportMode.iguana) {
       // Validate that HD-specific parameters are not provided for Iguana mode
       if (startIndex != null || endIndex != null || accountIndex != null) {
         throw ArgumentError(
@@ -165,7 +170,7 @@ class SecurityManager {
 
     final response = await _client.rpc.wallet.getPrivateKeys(
       coins: coinTickers,
-      mode: mode,
+      mode: effectiveMode,
       startIndex: startIndex,
       endIndex: endIndex,
       accountIndex: accountIndex,
