@@ -44,7 +44,7 @@ void main() {
         protocol: TendermintProtocol.fromJson({
           'type': 'Tendermint',
           'rpc_urls': [
-            {'url': 'http://localhost:26657'},
+            {'url': 'http://127.0.0.1:26657'},
           ],
         }),
         isWalletOnly: false,
@@ -85,7 +85,7 @@ void main() {
       final protocol = TendermintProtocol.fromJson({
         'type': 'Tendermint',
         'rpc_urls': [
-          {'url': 'http://localhost:26657'},
+          {'url': 'http://127.0.0.1:26657'},
         ],
       });
       tendermintAsset = Asset(
@@ -598,7 +598,7 @@ void main() {
           protocol: TendermintProtocol.fromJson({
             'type': 'Tendermint',
             'rpc_urls': [
-              {'url': 'http://localhost:26657'},
+              {'url': 'http://127.0.0.1:26657'},
             ],
           }),
           isWalletOnly: false,
@@ -732,7 +732,7 @@ void main() {
           protocol: TendermintProtocol.fromJson({
             'type': 'Tendermint',
             'rpc_urls': [
-              {'url': 'http://localhost:26657'},
+              {'url': 'http://127.0.0.1:26657'},
             ],
           }),
           isWalletOnly: false,
@@ -808,7 +808,7 @@ void main() {
           protocol: TendermintProtocol.fromJson({
             'type': 'Tendermint',
             'rpc_urls': [
-              {'url': 'http://localhost:26657'},
+              {'url': 'http://127.0.0.1:26657'},
             ],
           }),
           isWalletOnly: false,
@@ -871,7 +871,7 @@ void main() {
           protocol: TendermintProtocol.fromJson({
             'type': 'Tendermint',
             'rpc_urls': [
-              {'url': 'http://localhost:26657'},
+              {'url': 'http://127.0.0.1:26657'},
             ],
           }),
           isWalletOnly: false,
@@ -916,7 +916,7 @@ void main() {
         protocol: TendermintProtocol.fromJson({
           'type': 'Tendermint',
           'rpc_urls': [
-            {'url': 'http://localhost:26657'},
+            {'url': 'http://127.0.0.1:26657'},
           ],
         }),
         isWalletOnly: false,
@@ -955,7 +955,7 @@ void main() {
           protocol: TendermintProtocol.fromJson({
             'type': 'Tendermint',
             'rpc_urls': [
-              {'url': 'http://localhost:26657'},
+              {'url': 'http://127.0.0.1:26657'},
             ],
           }),
           isWalletOnly: false,
@@ -1016,7 +1016,7 @@ void main() {
           protocol: TendermintProtocol.fromJson({
             'type': 'Tendermint',
             'rpc_urls': [
-              {'url': 'http://localhost:26657'},
+              {'url': 'http://127.0.0.1:26657'},
             ],
           }),
           isWalletOnly: false,
@@ -1154,7 +1154,7 @@ void main() {
             protocol: TendermintProtocol.fromJson({
               'type': 'Tendermint',
               'rpc_urls': [
-                {'url': 'http://localhost:26657'},
+                {'url': 'http://127.0.0.1:26657'},
               ],
             }),
             isWalletOnly: false,
@@ -1236,7 +1236,7 @@ void main() {
         protocol: TendermintProtocol.fromJson({
           'type': 'Tendermint',
           'rpc_urls': [
-            {'url': 'http://localhost:26657'},
+            {'url': 'http://127.0.0.1:26657'},
           ],
         }),
         isWalletOnly: false,
@@ -1286,7 +1286,7 @@ void main() {
             protocol: TendermintProtocol.fromJson({
               'type': 'Tendermint',
               'rpc_urls': [
-                {'url': 'http://localhost:26657'},
+                {'url': 'http://127.0.0.1:26657'},
               ],
             }),
             isWalletOnly: false,
@@ -1412,7 +1412,7 @@ void main() {
           protocol: TendermintProtocol.fromJson({
             'type': 'Tendermint',
             'rpc_urls': [
-              {'url': 'http://localhost:26657'},
+              {'url': 'http://127.0.0.1:26657'},
             ],
           }),
           isWalletOnly: false,
@@ -1499,7 +1499,7 @@ void main() {
           protocol: TendermintProtocol.fromJson({
             'type': 'Tendermint',
             'rpc_urls': [
-              {'url': 'http://localhost:26657'},
+              {'url': 'http://127.0.0.1:26657'},
             ],
           }),
           isWalletOnly: false,
@@ -1652,7 +1652,7 @@ void main() {
             protocol: TendermintProtocol.fromJson({
               'type': 'Tendermint',
               'rpc_urls': [
-                {'url': 'http://localhost:26657'},
+                {'url': 'http://127.0.0.1:26657'},
               ],
             }),
             isWalletOnly: false,
@@ -1752,7 +1752,7 @@ void main() {
             protocol: TendermintProtocol.fromJson({
               'type': 'Tendermint',
               'rpc_urls': [
-                {'url': 'http://localhost:26657'},
+                {'url': 'http://127.0.0.1:26657'},
               ],
             }),
             isWalletOnly: false,
@@ -1839,7 +1839,7 @@ void main() {
               protocol: TendermintProtocol.fromJson({
                 'type': 'Tendermint',
                 'rpc_urls': [
-                  {'url': 'http://localhost:26657'},
+                  {'url': 'http://127.0.0.1:26657'},
                 ],
               }),
               isWalletOnly: false,
@@ -1949,7 +1949,7 @@ void main() {
           protocol: TendermintProtocol.fromJson({
             'type': 'Tendermint',
             'rpc_urls': [
-              {'url': 'http://localhost:26657'},
+              {'url': 'http://127.0.0.1:26657'},
             ],
           }),
           isWalletOnly: false,
