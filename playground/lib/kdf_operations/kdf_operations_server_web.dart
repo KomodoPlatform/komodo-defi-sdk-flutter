@@ -243,9 +243,9 @@ class KdfHttpServerOperations implements IKdfOperations {
 
   Future<void> _startProxyServer() async {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 8080);
-    final handler = proxyHandler(Uri.parse('http://localhost:8080'));
+    final handler = proxyHandler(Uri.parse('http://127.0.0.1:8080'));
 
-    shelf_io.serve(handler, 'localhost', 8080);
+    shelf_io.serve(handler, '127.0.0.1', 8080);
     _logger?.call('HTTP server running at http://localhost:8080');
   }
 
