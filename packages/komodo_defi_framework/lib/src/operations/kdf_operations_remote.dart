@@ -37,8 +37,11 @@ class KdfOperationsRemote implements IKdfOperations {
     // If the scheme is not provided, default to http
     url = url.scheme.isEmpty ? url.replace(scheme: 'http') : url;
 
-    // If it's localhost, return the url as is
-    if (url.host.contains('localhost') || url.host.contains('127.0.0.1')) {
+    // Normalize localhost to 127.0.0.1 to avoid DNS resolution issues on Android
+    if (url.host == 'localhost') {
+      return url.replace(host: '127.0.0.1');
+    }
+    if (url.host == '127.0.0.1') {
       return url;
     }
 
