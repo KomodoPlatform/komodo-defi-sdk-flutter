@@ -1,26 +1,25 @@
 {
     "api": {
-        "api_commit_hash": "9aa41b4c741907d59e4887db08cf84fb78e967e0",
+        "api_commit_hash": "1874d4399fc8c084108e62eb781e3300d2606213",
         "branch": "dev",
-        "fetch_at_build_enabled": false,
+        "fetch_at_build_enabled": true,
         "concurrent_downloads_enabled": true,
         "source_urls": [
             "https://api.github.com/repos/KomodoPlatform/komodo-defi-framework",
-            "https://sdk.devbuilds.komodo.earth/",
-            "https://nebula.decker.im/"
+            "https://sdk.devbuilds.komodo.earth/"
         ],
         "platforms": {
             "web": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-wasm|mm2_[a-f0-9]{7,40}-wasm|mm2-[a-f0-9]{7,40}-wasm)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "f92d61595317c16b8f8294c038c7c9215aca94187e22aedc7e0adeba93c94d82"
+                    "267de38f10e2f0a545813547cc4dd0a7160ba42da2e02cdc4391d4d4ea660526"
                 ],
                 "path": "web/kdf/bin"
             },
             "ios": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-ios-aarch64|mm2_[a-f0-9]{7,40}-ios-aarch64|mm2-[a-f0-9]{7,40}-ios-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "4f18e9e82ca16e7b1133cabd898d7503f925be1b7d06693f687c34866617da2e"
+                    "32b49d10acf514884d4d599bc24f12abad0f720735fe22ab19602305fde284e4"
                 ],
                 "path": "ios"
             },
@@ -31,35 +30,35 @@
                     "mac-arm64"
                 ],
                 "valid_zip_sha256_checksums": [
-                    "169db9b1410888d7da9f6a0ead2e1a05834528982cebbb70a2e2e3d01e220b69"
+                    "99c3e3820b5a81c9e3153c4538364ea12835806b24a66b90bd6944848c46602d"
                 ],
                 "path": "macos/bin"
             },
             "windows": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-win-x86-64|mm2_[a-f0-9]{7,40}-win-x86-64|mm2-[a-f0-9]{7,40}-Win64)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "d4f5954071df5c2c23016a69074bf19d3daeba10ab413fda2fce8205ee32184c"
+                    "e16eb75012ffec284c865cf9eef6e4c58247227a26af0fd2e290af35342cfdd7"
                 ],
                 "path": "windows/bin"
             },
             "android-armv7": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-armv7|mm2_[a-f0-9]{7,40}-android-armv7|mm2-[a-f0-9]{7,40}-android-armv7-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "d964f608787683de67ddde7d827dee88185509cc5ffeb6e85d5f7e2aeba84f08"
+                    "730d1247a1f85351cfe923b8b8c58f50b54f88062f713564d63ddc9298f8cb39"
                 ],
                 "path": "android/app/src/main/cpp/libs/armeabi-v7a"
             },
             "android-aarch64": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-android-aarch64|mm2_[a-f0-9]{7,40}-android-aarch64|mm2-[a-f0-9]{7,40}-android-aarch64-CI)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "32927dfa36a283d344c34cd1514ca8ea3233f20752ec15b7929309cf4df969c2"
+                    "4c5307ccdf982780498192c28e110715f2aa05f95666e864065577e2656397f6"
                 ],
                 "path": "android/app/src/main/cpp/libs/arm64-v8a"
             },
             "linux": {
                 "matching_pattern": "^(?:kdf_[a-f0-9]{7,40}-linux-x86-64|mm2_[a-f0-9]{7,40}-linux-x86-64|mm2-[a-f0-9]{7,40}-Linux-Release)\\.zip$",
                 "valid_zip_sha256_checksums": [
-                    "e3315a46cb9e1957206b36036954bce51d61d8c4784ed878cc93360b9d01c1cb"
+                    "983f652d6a6d0f77924bdda4f0539aea51b46c2f4c07a1aecc5eec1569e5a160"
                 ],
                 "path": "linux/bin"
             }
@@ -68,7 +67,7 @@
     "coins": {
         "fetch_at_build_enabled": true,
         "update_commit_on_build": true,
-        "bundled_coins_repo_commit": "5344c5ab44a153020ea2bb3893a752f19df927d0",
+        "bundled_coins_repo_commit": "dbc5950f1df9c35e327c8b77d54957c277a6fb26",
         "coins_repo_api_url": "https://api.github.com/repos/KomodoPlatform/coins",
         "coins_repo_content_url": "https://raw.githubusercontent.com/KomodoPlatform/coins",
         "coins_repo_branch": "master",

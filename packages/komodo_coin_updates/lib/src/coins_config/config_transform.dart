@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb, kIsWasm;
 import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
+import 'package:logging/logging.dart';
 
 /// Defines a transform that can be applied to a single coin configuration.
 ///
@@ -29,6 +30,7 @@ class CoinConfigTransformer {
           transforms ??
           const [
             WssWebsocketTransform(),
+            SslElectrumTransform(),
             ZhtlcLightWalletTransform(),
             ParentCoinTransform(),
           ];
@@ -204,6 +206,121 @@ class WssWebsocketTransform implements CoinConfigTransform {
 
 /// Specifies which type of Electrum servers to retain
 enum ElectrumServerType { wssOnly, nonWssOnly }
+
+/// Filters out insecure connections on non-web platforms, emulating the
+/// filtering applied to the coins_config_ssl.json file in KomodoPlatform/coins
+/// On non-web platforms, only SSL electrum servers and HTTPS URLs are
+/// supported for security.
+// TODO: move this to a build-time step via the coins config and/or the
+// komodo_wallet_build_transformer package
+class SslElectrumTransform implements CoinConfigTransform {
+  const SslElectrumTransform();
+
+  static final _log = Logger('SslElectrumTransform');
+
+  @override
+  /// Determines if the transform should run by checking if this is a non-web
+  /// platform with any of the filterable fields in the configuration.
+  bool needsTransform(JsonMap config) {
+    // Only run on non-web platforms
+    if (kIsWeb || kIsWasm) return false;
+
+    final electrum = config.valueOrNull<List>('electrum');
+    final rpcNodes = config.valueOrNull<List>('nodes');
+    final lightWalletServers = config.valueOrNull<List>(
+      'light_wallet_d_servers',
+    );
+
+    return electrum != null || rpcNodes != null || lightWalletServers != null;
+  }
+
+  @override
+  /// Filters entries to keep only secure connections on non-web platforms.
+  JsonMap transform(JsonMap config) {
+    final result = JsonMap.of(config);
+    final coin = config.valueOrNull<String>('coin') ?? 'unknown';
+    // Filter electrum servers - keep only SSL protocol
+    final electrum = config.valueOrNull<JsonList>('electrum');
+    if (electrum != null) {
+      final originalCount = electrum.length;
+      final filteredElectrums = electrum.where((JsonMap e) {
+        final protocol = e.valueOrNull<String>('protocol');
+        return protocol == 'SSL';
+      }).toList();
+
+      if (filteredElectrums.isEmpty && originalCount > 0) {
+        _log.warning(
+          'SslElectrumTransform: All $originalCount electrum servers filtered '
+          'out for $coin (no SSL servers available)',
+        );
+      }
+
+      result['electrum'] = filteredElectrums;
+    }
+
+    // Filter RPC nodes - keep only HTTPS URLs
+    final rpcNodes = config.valueOrNull<JsonList>('nodes');
+    if (rpcNodes != null) {
+      final originalCount = rpcNodes.length;
+      final filteredRpcNodes = rpcNodes.where((JsonMap node) {
+        final url = node.valueOrNull<String>('url');
+        return url != null && url.startsWith('https://');
+      }).toList();
+
+      if (filteredRpcNodes.isEmpty && originalCount > 0) {
+        _log.warning(
+          'SslElectrumTransform: All $originalCount RPC nodes filtered '
+          'out for $coin (no HTTPS nodes available)',
+        );
+      }
+
+      result['nodes'] = filteredRpcNodes;
+    }
+
+    // Filter light wallet servers - keep only HTTPS URLs
+    final lightWalletServers = config.valueOrNull<List>(
+      'light_wallet_d_servers',
+    );
+    if (lightWalletServers != null) {
+      final originalCount = lightWalletServers.length;
+      final filteredLightWalletServers = lightWalletServers.where((
+        dynamic server,
+      ) {
+        return server is String && server.startsWith('https://');
+      }).toList();
+
+      if (filteredLightWalletServers.isEmpty && originalCount > 0) {
+        _log.warning(
+          'SslElectrumTransform: All $originalCount light wallet servers '
+          'filtered out for $coin (no HTTPS servers available)',
+        );
+      }
+
+      result['light_wallet_d_servers'] = filteredLightWalletServers;
+    }
+
+    // Mark coin as having insufficient secure servers if all critical servers were filtered
+    final hasElectrum = (result['electrum'] as List?)?.isNotEmpty ?? false;
+    final hasNodes = (result['nodes'] as List?)?.isNotEmpty ?? false;
+    final hasLightWallet =
+        (result['light_wallet_d_servers'] as List?)?.isNotEmpty ?? false;
+
+    // If the coin had servers but now has none, mark it
+    if (!hasElectrum &&
+        !hasNodes &&
+        !hasLightWallet &&
+        (electrum != null || rpcNodes != null || lightWalletServers != null)) {
+      _log.severe(
+        'SslElectrumTransform: Coin $coin has no secure servers available '
+        'after filtering - coin may not be activatable',
+      );
+      // Optionally mark the coin for exclusion or special handling
+      // result['_ssl_filtered_empty'] = true;
+    }
+
+    return result;
+  }
+}
 
 class ParentCoinTransform implements CoinConfigTransform {
   const ParentCoinTransform();

@@ -1,3 +1,4 @@
+import 'package:komodo_defi_sdk/src/assets/activated_assets_cache.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 abstract class AssetActivator {
@@ -23,9 +24,14 @@ abstract class BatchCapableActivator extends AssetActivator {
 
 /// Smart activator that chooses between batch/single methods
 class SmartAssetActivator extends BatchCapableActivator {
-  SmartAssetActivator(super.client, this._activator);
+  SmartAssetActivator(
+    super.client,
+    this._activator,
+    this._activatedAssetsCache,
+  );
 
   final CompositeAssetActivator _activator;
+  final ActivatedAssetsCache _activatedAssetsCache;
 
   @override
   bool get supportsBatchActivation => true;
@@ -75,8 +81,9 @@ class SmartAssetActivator extends BatchCapableActivator {
   }
 
   Future<bool> _isAssetActive(Asset asset) async {
-    final enabledCoins = await client.rpc.generalActivation.getEnabledCoins();
-    return enabledCoins.result.any((coin) => coin.ticker == asset.id.id);
+    // Use cache instead of direct RPC call to avoid excessive requests
+    final enabledAssetIds = await _activatedAssetsCache.getActivatedAssetIds();
+    return enabledAssetIds.contains(asset.id);
   }
 
   bool _supportsBatchActivation(Asset asset) {
