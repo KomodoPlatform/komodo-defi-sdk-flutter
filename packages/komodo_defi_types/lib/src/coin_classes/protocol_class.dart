@@ -64,12 +64,11 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
           configToUse,
           supportedProtocols: otherTypes,
         ),
-        CoinSubClass.sia when kDebugMode => SiaProtocol.fromJson(
+        CoinSubClass.sia => SiaProtocol.fromJson(
           configToUse,
           supportedProtocols: otherTypes,
         ),
         // ignore: deprecated_member_use_from_same_package
-        CoinSubClass.sia ||
         CoinSubClass.slp ||
         CoinSubClass.smartBch ||
         CoinSubClass.unknown => throw UnsupportedProtocolException(
