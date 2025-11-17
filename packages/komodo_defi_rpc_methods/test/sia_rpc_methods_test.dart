@@ -1,13 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_defi_rpc_methods/komodo_defi_rpc_methods.dart';
-import 'package:komodo_defi_types/komodo_defi_types.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart';
 
 void main() {
   group('SIA RPC', () {
     test('TaskEnableSiaInit toJson matches expected shape', () {
-      final params = SiaActivationParams(
+      const params = SiaActivationParams(
         serverUrl: 'https://api.siascan.com/wallet/api',
-        txHistory: true,
         requiredConfirmations: 1,
       );
       final req = TaskEnableSiaInit(
@@ -34,12 +33,9 @@ void main() {
           // fee_details intentionally omitted
         },
       };
-      final parsed = SiaWithdrawResponse.parse(
-        JsonMap.of(response),
-      );
+      final parsed = SiaWithdrawResponse.parse(JsonMap.of(response));
       expect(parsed.status, 'Ok');
       expect(parsed.feeDetails, isNull);
     });
   });
 }
-
