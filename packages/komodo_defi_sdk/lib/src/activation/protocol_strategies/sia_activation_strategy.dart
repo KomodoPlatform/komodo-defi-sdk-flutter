@@ -50,11 +50,11 @@ class SiaActivationStrategy extends ProtocolActivationStrategy {
             params: params,
           );
 
-      final taskId = init.result.taskId;
+      final taskId = init.taskId;
       yield ActivationProgress(
         status: 'SIA activation task started',
         progressDetails: ActivationProgressDetails(
-          currentStep: ActivationStep.taskCreated,
+          currentStep: ActivationStep.initialization,
           stepCount: 3,
           additionalInfo: {'taskId': taskId},
         ),
@@ -67,7 +67,7 @@ class SiaActivationStrategy extends ProtocolActivationStrategy {
         yield ActivationProgress(
           status: 'SIA activation in progress',
           progressDetails: ActivationProgressDetails(
-            currentStep: ActivationStep.inProgress,
+            currentStep: ActivationStep.processing,
             stepCount: 3,
             additionalInfo: {'status': status.status},
           ),
@@ -78,7 +78,7 @@ class SiaActivationStrategy extends ProtocolActivationStrategy {
             status: 'SIA activation complete',
             isComplete: true,
             progressDetails: ActivationProgressDetails(
-              currentStep: ActivationStep.completed,
+              currentStep: ActivationStep.complete,
               stepCount: 3,
               additionalInfo: {'taskId': taskId},
             ),
@@ -88,7 +88,7 @@ class SiaActivationStrategy extends ProtocolActivationStrategy {
 
         await Future<void>.delayed(kPollInterval);
       }
-    } on RpcException catch (e) {
+    } on Exception catch (e) {
       yield ActivationProgress(
         status: 'SIA activation failed',
         isComplete: true,

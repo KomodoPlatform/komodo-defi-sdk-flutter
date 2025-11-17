@@ -68,8 +68,9 @@ class SiaProtocol extends ProtocolClass {
 
   @override
   Uri? explorerAddressUrl(String address) {
-    // If an explorer pattern exists, use it; otherwise SIA may not support standard address URLs
-    if (explorerPattern.pattern == null) return null;
-    return explorerPattern.buildUrl('addresses/{ADDRESS}/events/', {'ADDRESS': address});
+    // Use configured address pattern if present, otherwise fall back to SiaScan events URL
+    final pattern =
+        explorerPattern.addressPattern ?? 'addresses/{ADDRESS}/events/';
+    return explorerPattern.buildUrl(pattern, {'ADDRESS': address});
   }
 }

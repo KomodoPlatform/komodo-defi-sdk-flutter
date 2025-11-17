@@ -105,6 +105,7 @@ export 'wallet/my_balance.dart';
 export 'wallet/unban_pubkeys.dart';
 export 'withdrawal/send_raw_transaction_request.dart';
 export 'withdrawal/withdraw_request.dart';
+export 'withdrawal/sia_withdraw_request.dart';
 export 'withdrawal/withdrawal_rpc_namespace.dart';
 export 'zhtlc/z_coin_tx_history.dart';
 export 'zhtlc/zhtlc_rpc_namespace.dart';

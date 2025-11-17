@@ -60,7 +60,7 @@ class TaskEnableSiaStatus
 }
 
 class TaskEnableSiaCancel
-    extends BaseRequest<BaseResponse, GeneralErrorResponse> {
+    extends BaseRequest<TaskStatusResponse, GeneralErrorResponse> {
   TaskEnableSiaCancel({
     required this.taskId,
     super.rpcPass,
@@ -78,6 +78,7 @@ class TaskEnableSiaCancel
       };
 
   @override
-  BaseResponse parse(Map<String, dynamic> json) => BaseResponse.parse(json);
+  TaskStatusResponse parse(Map<String, dynamic> json) =>
+      TaskStatusResponse.parse(json);
 }
 
