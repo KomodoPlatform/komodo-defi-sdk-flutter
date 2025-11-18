@@ -622,6 +622,7 @@ class WithdrawalManager {
       final response = await _client.rpc.withdraw.sendRawTransaction(
         coin: assetId,
         txHex: preview.txHex,
+        txJson: preview.txJson,
       );
 
       // Final success
@@ -751,6 +752,7 @@ class WithdrawalManager {
           final response = await _client.rpc.withdraw.sendRawTransaction(
             coin: parameters.asset,
             txHex: details.txHex,
+            txJson: details.txJson,
           );
           yield WithdrawalProgress(
             status: WithdrawalStatus.complete,

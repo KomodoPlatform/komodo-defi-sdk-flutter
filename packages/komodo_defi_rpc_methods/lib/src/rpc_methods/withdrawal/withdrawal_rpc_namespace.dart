@@ -78,7 +78,8 @@ class WithdrawMethodsNamespace extends BaseRpcMethodNamespace {
 
   Future<SendRawTransactionResponse> sendRawTransaction({
     required String coin,
-    required String txHex,
+    String? txHex,
+    Map<String, dynamic>? txJson,
     WithdrawalSource? from,
   }) {
     return execute(
@@ -86,6 +87,7 @@ class WithdrawMethodsNamespace extends BaseRpcMethodNamespace {
         rpcPass: rpcPass ?? '',
         coin: coin,
         txHex: txHex,
+        txJson: txJson,
       ),
     );
   }

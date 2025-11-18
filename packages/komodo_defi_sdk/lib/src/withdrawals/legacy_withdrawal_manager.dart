@@ -62,6 +62,7 @@ class LegacyWithdrawalManager implements WithdrawalManager {
         final broadcastResponse = await _client.rpc.withdraw.sendRawTransaction(
           coin: parameters.asset,
           txHex: result.txHex,
+          txJson: result.txJson,
         );
 
         // Final success update with actual broadcast transaction hash
@@ -168,6 +169,7 @@ class LegacyWithdrawalManager implements WithdrawalManager {
       final broadcastResponse = await _client.rpc.withdraw.sendRawTransaction(
         coin: assetId,
         txHex: preview.txHex,
+        txJson: preview.txJson,
       );
 
       // Final success update with actual broadcast transaction hash
