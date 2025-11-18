@@ -73,14 +73,41 @@ class SiaActivationStrategy extends ProtocolActivationStrategy {
           ),
         );
 
-        if (status.status == 'Ok') {
+        // Stop polling on any terminal state
+        if (status.status != 'InProgress') {
+          if (status.status == 'Ok') {
+            yield ActivationProgress(
+              status: 'SIA activation complete',
+              isComplete: true,
+              progressDetails: ActivationProgressDetails(
+                currentStep: ActivationStep.complete,
+                stepCount: 3,
+                additionalInfo: {'taskId': taskId},
+              ),
+            );
+          } else {
+            yield ActivationProgress(
+              status: 'SIA activation failed',
+              isComplete: true,
+              progressDetails: ActivationProgressDetails(
+                currentStep: ActivationStep.error,
+                stepCount: 3,
+                additionalInfo: {
+                  'taskId': taskId,
+                  'status': status.status,
+                  'details': status.details,
+                },
+              ),
+            );
+          }
           yield ActivationProgress(
-            status: 'SIA activation complete',
+            status: 'SIA activation concluded',
             isComplete: true,
             progressDetails: ActivationProgressDetails(
-              currentStep: ActivationStep.complete,
+              currentStep: status.status == 'Ok'
+                  ? ActivationStep.complete
+                  : ActivationStep.error,
               stepCount: 3,
-              additionalInfo: {'taskId': taskId},
             ),
           );
           break;

@@ -491,10 +491,11 @@ class WithdrawalManager {
           .findAssetsByConfigId(parameters.asset)
           .single;
       final isTendermintProtocol = asset.protocol is TendermintProtocol;
+      final isSiaProtocol = asset.protocol is SiaProtocol;
 
       // Tendermint assets are not yet supported by the task-based API
       // and require a legacy implementation
-      if (isTendermintProtocol) {
+      if (isTendermintProtocol || isSiaProtocol) {
         return await _legacyManager.previewWithdrawal(parameters);
       }
 
@@ -614,10 +615,11 @@ class WithdrawalManager {
           .findAssetsByConfigId(parameters.asset)
           .single;
       final isTendermintProtocol = asset.protocol is TendermintProtocol;
+      final isSiaProtocol = asset.protocol is SiaProtocol;
 
       // Tendermint assets are not yet supported by the task-based API
       // and require a legacy implementation
-      if (isTendermintProtocol) {
+      if (isTendermintProtocol || isSiaProtocol) {
         yield* _legacyManager.withdraw(parameters);
         return;
       }

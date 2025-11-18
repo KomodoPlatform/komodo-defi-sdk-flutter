@@ -17,7 +17,8 @@ void main() {
       final json = req.toJson();
       expect(json['method'], 'task::enable_sia::init');
       final p = (json['params'] as Map)['activation_params'] as Map;
-      expect(p['server_url'], 'https://api.siascan.com/wallet/api');
+      final clientConf = p['client_conf'] as Map;
+      expect(clientConf['server_url'], 'https://api.siascan.com/wallet/api');
       expect(p['tx_history'], true);
       expect(p['required_confirmations'], 1);
     });

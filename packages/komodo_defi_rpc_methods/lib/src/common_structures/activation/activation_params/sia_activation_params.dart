@@ -50,7 +50,6 @@ class SiaActivationParams extends ActivationParams {
 
   @override
   Map<String, dynamic> toRpcParams() => super.toRpcParams().deepMerge({
-        // New RPC expects a nested client_conf object for SIA activation
         'client_conf': {
           'server_url': serverUrl,
         },
