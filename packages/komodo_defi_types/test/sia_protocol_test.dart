@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:komodo_defi_types/komodo_defi_type_utils.dart' show JsonMap;
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 void main() {
