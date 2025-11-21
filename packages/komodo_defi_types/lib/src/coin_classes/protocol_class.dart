@@ -161,7 +161,8 @@ abstract class ProtocolClass with ExplorerUrlMixin implements Equatable {
     }
     // Unsupported: QRC20 tokens, SLP tokens, Tendermint tokens
     if (subClass == CoinSubClass.slp ||
-        subClass == CoinSubClass.tendermintToken) {
+        subClass == CoinSubClass.tendermintToken ||
+        subClass == CoinSubClass.sia) {
       return false;
     }
     if (subClass == CoinSubClass.qrc20 && isChildAsset) {
