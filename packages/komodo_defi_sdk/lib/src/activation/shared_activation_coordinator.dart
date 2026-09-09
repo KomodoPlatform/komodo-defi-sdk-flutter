@@ -146,10 +146,7 @@ class SharedActivationCoordinator {
     // Check if activation is already in progress
     final existingActivation = _pendingActivations[asset.id];
     if (existingActivation != null) {
-      log(
-        'Joining existing activation for ${asset.id.id}',
-        name: 'SharedActivationCoordinator',
-      );
+      log('Joining existing activation', name: 'SharedActivationCoordinator');
       return existingActivation.future;
     }
 
@@ -209,7 +206,7 @@ class SharedActivationCoordinator {
         deadlineTimer = Timer(deadline, () {
           if (completer.isCompleted) return;
           log(
-            'Activation of ${asset.id.id} exceeded ${deadline.inSeconds}s '
+            'Activation exceeded ${deadline.inSeconds}s '
             'without a terminal status; abandoning this attempt',
             name: 'SharedActivationCoordinator',
           );
@@ -273,14 +270,9 @@ class SharedActivationCoordinator {
           break;
         }
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (!completer.isCompleted) {
-        log(
-          'Activation failed for ${asset.id.id}: $e',
-          name: 'SharedActivationCoordinator',
-          error: e,
-          stackTrace: stackTrace,
-        );
+        log('Activation failed', name: 'SharedActivationCoordinator');
         completer.complete(ActivationResult.failure(asset.id, e.toString()));
       }
     } finally {
@@ -303,7 +295,7 @@ class SharedActivationCoordinator {
       // all - whereas a pending future is not.
       if (!completer.isCompleted) {
         log(
-          'Activation stream for ${asset.id.id} ended without a terminal '
+          'Activation stream ended without a terminal '
           'progress event; failing the activation rather than hanging',
           name: 'SharedActivationCoordinator',
         );
@@ -371,7 +363,7 @@ class SharedActivationCoordinator {
     const maxDelay = Duration(milliseconds: 500);
 
     log(
-      'Waiting for coin ${assetId.id} to become available after activation',
+      'Waiting for coin availability after activation',
       name: 'SharedActivationCoordinator',
     );
 
@@ -384,14 +376,14 @@ class SharedActivationCoordinator {
         );
         if (isAvailable) {
           log(
-            'Coin ${assetId.id} became available after ${attempt + 1} attempts',
+            'Coin available after ${attempt + 1} attempts',
             name: 'SharedActivationCoordinator',
           );
           return;
         }
       } catch (e) {
         log(
-          'Error checking coin availability (attempt ${attempt + 1}): $e',
+          'Coin availability check failed (attempt ${attempt + 1})',
           name: 'SharedActivationCoordinator',
         );
       }
