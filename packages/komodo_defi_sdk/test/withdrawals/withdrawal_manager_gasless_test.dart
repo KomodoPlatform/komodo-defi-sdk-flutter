@@ -9,7 +9,9 @@ import 'package:komodo_defi_sdk/src/activation/shared_activation_coordinator.dar
 import 'package:komodo_defi_sdk/src/assets/asset_lookup.dart';
 import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
 import 'package:komodo_defi_sdk/src/gasless/gasless_capability_registry.dart';
+import 'package:komodo_defi_sdk/src/storage/wallet_storage_namespace.dart';
 import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
+import 'package:komodo_defi_sdk/src/withdrawals/gasless_transfer_lock.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/legacy_withdrawal_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/pending_gasless_transfer_repository.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/withdrawal_manager.dart';
@@ -206,6 +208,40 @@ class _ResolvedAcceptanceRepository
     final accepted = await super.accept(walletId, transfer);
     await _resolveThenLoseAcknowledgement(walletId, transfer);
     return accepted;
+  }
+}
+
+class _GatedSubmissionRepository
+    extends _RecordingPendingGaslessTransferRepository {
+  _GatedSubmissionRepository(super.delegate, {required this.gateAcceptance});
+
+  final bool gateAcceptance;
+  final entered = Completer<void>();
+  final proceed = Completer<void>();
+
+  @override
+  Future<bool> reserve(
+    WalletId walletId,
+    PendingGaslessTransfer transfer,
+  ) async {
+    final reserved = await super.reserve(walletId, transfer);
+    if (!gateAcceptance) {
+      entered.complete();
+      await proceed.future;
+    }
+    return reserved;
+  }
+
+  @override
+  Future<bool> accept(
+    WalletId walletId,
+    PendingGaslessTransfer transfer,
+  ) async {
+    if (gateAcceptance) {
+      entered.complete();
+      await proceed.future;
+    }
+    return super.accept(walletId, transfer);
   }
 }
 
@@ -1450,6 +1486,315 @@ void main() {
         expect(await pendingRepository.list(_wallet), isEmpty);
       });
     }
+
+    for (final lateFailure in [false, true]) {
+      test('dispose releases a hung relay without consuming its late '
+          '${lateFailure ? 'error' : 'acceptance'}', () async {
+        final relayStarted = Completer<void>();
+        final relayResponse = Completer<Map<String, dynamic>>();
+        final requests = <String>[];
+        when(() => client.executeRpc(any())).thenAnswer((invocation) async {
+          final request =
+              invocation.positionalArguments.single as Map<String, dynamic>;
+          requests.add(request['method'] as String);
+          if (request['method'] == 'send_raw_transaction') {
+            relayStarted.complete();
+            return relayResponse.future;
+          }
+          return _traceStatus(state: 'confirmed');
+        });
+        final manager = makeManager();
+        final execution = manager
+            .executeWithdrawal(_gaslessPreview(), _coin)
+            .toList();
+        await relayStarted.future;
+        final original = (await pendingRepository.list(_wallet)).single;
+        try {
+          await manager.dispose().timeout(const Duration(seconds: 2));
+          final recoveredLease = await tryAcquireGaslessSubmissionLease(
+            walletStorageNamespace(_wallet),
+            original.journalId,
+          );
+          expect(recoveredLease, isNotNull);
+          await recoveredLease!.release();
+          expect(
+            await execution.timeout(const Duration(seconds: 2)),
+            hasLength(1),
+          );
+          final retained = (await pendingRepository.list(_wallet)).single;
+          expect(retained.traceId, isNull);
+          expect(retained.state, GaslessTransferState.submittedUnknown);
+          expect(
+            await pendingRepository.reserve(
+              _wallet,
+              _pending(journalId: 'blocked-new-send'),
+            ),
+            isFalse,
+          );
+          final replacement = makeManager();
+          expect(
+            await replacement.discardPendingGaslessTransfer(original.journalId),
+            isTrue,
+          );
+          final fresh = _pending(journalId: 'replacement-after-disposal');
+          await pendingRepository.upsert(_wallet, fresh);
+          if (lateFailure) {
+            relayResponse.completeError(StateError('late transport failure'));
+          } else {
+            relayResponse.complete({
+              'relay_type': TronGasfreeRelayPayload.relayTypeValue,
+              'trace_id': 'late-disposed-trace',
+              'state': 'WAITING',
+            });
+          }
+          await Future<void>.delayed(Duration.zero);
+          expect(await pendingRepository.list(_wallet), [fresh]);
+          expect(requests, ['send_raw_transaction']);
+        } finally {
+          if (!relayResponse.isCompleted) {
+            relayResponse.completeError(StateError('test cleanup'));
+          }
+          await execution;
+        }
+      });
+    }
+
+    for (final gateAcceptance in [false, true]) {
+      test('dispose waits for ${gateAcceptance ? 'acceptance' : 'reservation'} '
+          'persistence before releasing ownership', () async {
+        final repository = _GatedSubmissionRepository(
+          pendingRepository,
+          gateAcceptance: gateAcceptance,
+        );
+        var sends = 0;
+        when(() => client.executeRpc(any())).thenAnswer((_) async {
+          sends++;
+          return {
+            'relay_type': TronGasfreeRelayPayload.relayTypeValue,
+            'trace_id': 'persisting-disposed-trace',
+            'state': 'WAITING',
+          };
+        });
+        final manager = makeManager(repository: repository);
+        final execution = manager
+            .executeWithdrawal(_gaslessPreview(), _coin)
+            .toList();
+        await repository.entered.future;
+        final pending = (await pendingRepository.list(_wallet)).single;
+        var disposed = false;
+        final firstDispose = manager.dispose();
+        final secondDispose = manager.dispose();
+        expect(identical(firstDispose, secondDispose), isTrue);
+        unawaited(firstDispose.then((_) => disposed = true));
+        await Future<void>.delayed(Duration.zero);
+        expect(disposed, isFalse);
+        expect(
+          await tryAcquireGaslessSubmissionLease(
+            walletStorageNamespace(_wallet),
+            pending.journalId,
+          ),
+          isNull,
+        );
+
+        repository.proceed.complete();
+        await firstDispose.timeout(const Duration(seconds: 2));
+        await execution.timeout(const Duration(seconds: 2));
+        final recoveredLease = await tryAcquireGaslessSubmissionLease(
+          walletStorageNamespace(_wallet),
+          pending.journalId,
+        );
+        expect(recoveredLease, isNotNull);
+        await recoveredLease!.release();
+        if (gateAcceptance) {
+          final accepted = (await pendingRepository.list(_wallet)).single;
+          expect(accepted.traceId, 'persisting-disposed-trace');
+          expect(sends, 1);
+          await expectLater(
+            makeManager().discardPendingGaslessTransfer(pending.journalId),
+            throwsA(isA<GaslessTransferException>()),
+          );
+        } else {
+          expect(await pendingRepository.list(_wallet), isEmpty);
+          expect(sends, 0);
+        }
+      });
+    }
+
+    for (final pauseAfterAcceptance in [false, true]) {
+      test('dispose does not wait for a paused '
+          '${pauseAfterAcceptance ? 'accepted' : 'initial'} '
+          'progress consumer', () async {
+        var sends = 0;
+        when(() => client.executeRpc(any())).thenAnswer((_) async {
+          sends++;
+          return {
+            'relay_type': TronGasfreeRelayPayload.relayTypeValue,
+            'trace_id': 'paused-disposed-trace',
+            'state': 'WAITING',
+          };
+        });
+        final manager = makeManager();
+        final iterator = StreamIterator(
+          manager.executeWithdrawal(_gaslessPreview(), _coin),
+        );
+        expect(await iterator.moveNext(), isTrue);
+        if (pauseAfterAcceptance) expect(await iterator.moveNext(), isTrue);
+
+        await manager.dispose().timeout(const Duration(seconds: 2));
+
+        expect(
+          await iterator.moveNext().timeout(const Duration(seconds: 2)),
+          isFalse,
+        );
+        expect(sends, pauseAfterAcceptance ? 1 : 0);
+        await expectLater(
+          manager.executeWithdrawal(_gaslessPreview(), _coin).toList(),
+          throwsStateError,
+        );
+      });
+    }
+
+    test(
+      'dispose closes a trace registration that arrives after cancellation',
+      () async {
+        final registrationStarted = Completer<void>();
+        final registration = Completer<StreamSubscription<KdfEvent>>();
+        final cancelled = Completer<void>();
+        final events = StreamController<KdfEvent>(onCancel: cancelled.complete);
+        when(
+          () => eventStreamingManager.subscribeToGaslessTrace(coin: _coin),
+        ).thenAnswer((_) {
+          registrationStarted.complete();
+          return registration.future;
+        });
+        final manager = makeManager();
+        final execution = manager
+            .executeWithdrawal(_gaslessPreview(), _coin)
+            .toList();
+        await registrationStarted.future;
+
+        await manager.dispose().timeout(const Duration(seconds: 2));
+        await execution.timeout(const Duration(seconds: 2));
+        expect(await pendingRepository.list(_wallet), isEmpty);
+        registration.complete(events.stream.listen(null));
+
+        await cancelled.future.timeout(const Duration(seconds: 2));
+        await events.close();
+        verifyNever(() => client.executeRpc(any()));
+      },
+    );
+
+    test(
+      'dispose ends a hung pre-submission activation without invoking relay',
+      () async {
+        final activationStarted = Completer<void>();
+        final activation = Completer<ActivationResult>();
+        when(() => activationCoordinator.activateAsset(trc20Asset)).thenAnswer((
+          _,
+        ) {
+          activationStarted.complete();
+          return activation.future;
+        });
+        final manager = makeManager();
+        final execution = manager
+            .executeWithdrawal(_gaslessPreview(), _coin)
+            .toList();
+        await activationStarted.future;
+
+        await manager.dispose().timeout(const Duration(seconds: 2));
+        expect(await execution.timeout(const Duration(seconds: 2)), isEmpty);
+        activation.complete(ActivationResult.success(trc20Asset.id));
+        await Future<void>.delayed(Duration.zero);
+
+        expect(await pendingRepository.list(_wallet), isEmpty);
+        verifyNever(() => client.executeRpc(any()));
+      },
+    );
+
+    test(
+      'dispose releases ownership without waiting for remote stream disable',
+      () async {
+        final relayStarted = Completer<void>();
+        final relayResponse = Completer<Map<String, dynamic>>();
+        final cancellationStarted = Completer<void>();
+        final remoteDisable = Completer<void>();
+        final events = StreamController<KdfEvent>(
+          onCancel: () {
+            cancellationStarted.complete();
+            return remoteDisable.future;
+          },
+        );
+        when(
+          () => eventStreamingManager.subscribeToGaslessTrace(coin: _coin),
+        ).thenAnswer((_) async => events.stream.listen(null));
+        when(() => client.executeRpc(any())).thenAnswer((_) {
+          relayStarted.complete();
+          return relayResponse.future;
+        });
+        final manager = makeManager();
+        final execution = manager
+            .executeWithdrawal(_gaslessPreview(), _coin)
+            .toList();
+        await relayStarted.future;
+        final pending = (await pendingRepository.list(_wallet)).single;
+        try {
+          await manager.dispose().timeout(const Duration(seconds: 2));
+          await execution.timeout(const Duration(seconds: 2));
+          await cancellationStarted.future;
+          expect(remoteDisable.isCompleted, isFalse);
+          expect(
+            await makeManager().discardPendingGaslessTransfer(
+              pending.journalId,
+            ),
+            isTrue,
+          );
+        } finally {
+          remoteDisable.complete();
+          relayResponse.completeError(StateError('late disconnected relay'));
+          await events.close();
+        }
+      },
+    );
+
+    test(
+      'dispose detaches hung trace status and ignores late confirmation',
+      () async {
+        final statusStarted = Completer<void>();
+        final statusResponse = Completer<Map<String, dynamic>>();
+        when(() => client.executeRpc(any())).thenAnswer((invocation) async {
+          final request =
+              invocation.positionalArguments.single as Map<String, dynamic>;
+          if (request['method'] == 'send_raw_transaction') {
+            return {
+              'relay_type': TronGasfreeRelayPayload.relayTypeValue,
+              'trace_id': 'disposed-status-trace',
+              'state': 'WAITING',
+            };
+          }
+          statusStarted.complete();
+          return statusResponse.future;
+        });
+        final manager = makeManager();
+        final execution = manager
+            .executeWithdrawal(_gaslessPreview(), _coin)
+            .toList();
+        await statusStarted.future;
+        await manager.dispose().timeout(const Duration(seconds: 2));
+        final progress = await execution.timeout(const Duration(seconds: 2));
+        expect(
+          progress.every(
+            (event) => event.status == WithdrawalStatus.inProgress,
+          ),
+          isTrue,
+        );
+        final pending = (await pendingRepository.list(_wallet)).single;
+        expect(pending.traceId, 'disposed-status-trace');
+
+        statusResponse.complete(_traceStatus(state: 'confirmed'));
+        await Future<void>.delayed(Duration.zero);
+        expect(await pendingRepository.list(_wallet), [pending]);
+      },
+    );
 
     test(
       'late unknown submission cannot restore an externally removed request',
