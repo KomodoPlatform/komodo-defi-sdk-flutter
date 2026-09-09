@@ -81,6 +81,12 @@ export 'src/assets/asset_extensions.dart'
         AssetUnavailableErrorReasonExtension,
         AssetValidation;
 export 'src/assets/asset_pubkey_extensions.dart';
+export 'src/auth/wallet_operation_context.dart'
+    show
+        isDegradedWalletIdentity,
+        isSameStableWallet,
+        preferEnrichedWalletIdentity,
+        walletIdentityContinuesSession;
 export 'src/assets/legacy_asset_extensions.dart';
 export 'src/komodo_defi_sdk.dart' show KomodoDefiSdk;
 export 'src/transaction_history/transaction_merge_utils.dart'

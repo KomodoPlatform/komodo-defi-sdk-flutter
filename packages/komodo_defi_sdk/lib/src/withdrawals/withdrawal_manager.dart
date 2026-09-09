@@ -16,7 +16,9 @@ import 'package:komodo_defi_sdk/src/auth/wallet_operation_context.dart';
 import 'package:komodo_defi_sdk/src/errors/sdk_error_mapper.dart';
 import 'package:komodo_defi_sdk/src/fees/fee_manager.dart';
 import 'package:komodo_defi_sdk/src/gasless/gasless_capability_registry.dart';
+import 'package:komodo_defi_sdk/src/storage/wallet_storage_namespace.dart';
 import 'package:komodo_defi_sdk/src/streaming/event_streaming_manager.dart';
+import 'package:komodo_defi_sdk/src/withdrawals/gasless_transfer_lock.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/legacy_withdrawal_manager.dart';
 import 'package:komodo_defi_sdk/src/withdrawals/pending_gasless_transfer_repository.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -175,6 +177,23 @@ class WithdrawalManager {
   final Future<Set<String>> Function(Asset asset)? _freshSourceAddressResolver;
   final Future<WalletId?> Function()? _walletIdResolver;
   final Map<String, WalletId> _pendingGaslessWallets = <String, WalletId>{};
+  // Own the submission lease before the reservation becomes visible. Browser
+  // leases span tabs; native leases span managers within the same isolate.
+  final Map<(String, String), GaslessSubmissionLease>
+  _activeGaslessSubmissions = {};
+
+  static (String, String) _submissionKey(WalletId walletId, String journalId) =>
+      (walletStorageNamespace(walletId), journalId);
+
+  Future<void> _releaseGaslessSubmission(
+    WalletId walletId,
+    String journalId,
+  ) async {
+    await _activeGaslessSubmissions
+        .remove(_submissionKey(walletId, journalId))
+        ?.release();
+  }
+
   final math.Random _secureRandom = math.Random.secure();
   final _activeWithdrawals = <int, StreamController<WithdrawalProgress>>{};
   StreamSubscription<KdfUser?>? _gaslessAuthSubscription;
@@ -1185,8 +1204,12 @@ class WithdrawalManager {
           state: GaslessTransferState.submittedUnknown,
           updatedAt: DateTime.now().toUtc(),
         );
-        await _upsertPendingGaslessTransfer(unknown);
-        if (!await _isWalletContextCurrent(walletContext!)) return;
+        await _updatePendingGaslessTransfer(unknown);
+        await _releaseGaslessSubmission(
+          walletContext!.walletId,
+          prepared.journalId,
+        );
+        if (!await _isWalletContextCurrent(walletContext)) return;
         yield WithdrawalProgress(
           status: WithdrawalStatus.inProgress,
           message: 'Gas-free submission outcome is unknown',
@@ -1220,8 +1243,12 @@ class WithdrawalManager {
             state: GaslessTransferState.submittedUnknown,
             updatedAt: DateTime.now().toUtc(),
           );
-          await _upsertPendingGaslessTransfer(unknown);
-          if (!await _isWalletContextCurrent(walletContext!)) return;
+          await _updatePendingGaslessTransfer(unknown);
+          await _releaseGaslessSubmission(
+            walletContext!.walletId,
+            prepared.journalId,
+          );
+          if (!await _isWalletContextCurrent(walletContext)) return;
           yield WithdrawalProgress(
             status: WithdrawalStatus.inProgress,
             message: response.txHash == null
@@ -1262,8 +1289,12 @@ class WithdrawalManager {
           updatedAt: DateTime.now().toUtc(),
         );
         final persisted = await _persistAcceptedGaslessTransfer(pending);
+        await _releaseGaslessSubmission(
+          walletContext!.walletId,
+          pending.journalId,
+        );
 
-        if (!await _isWalletContextCurrent(walletContext!)) return;
+        if (!await _isWalletContextCurrent(walletContext)) return;
 
         // Surface the accepted trace before synchronous reconciliation so the
         // app can persist/render a pending activity even if status is
@@ -1349,6 +1380,12 @@ class WithdrawalManager {
         _mapError(e, operation: 'withdrawal.execute', assetId: assetId),
       );
     } finally {
+      if (operationContext != null && operationPending != null) {
+        await _releaseGaslessSubmission(
+          operationContext.walletId,
+          operationPending.journalId,
+        );
+      }
       await traceStreamSession?.close();
     }
   }
@@ -1429,14 +1466,8 @@ class WithdrawalManager {
       pending: current,
     );
     current = initial.pending;
-    if (!await _isPendingWalletCurrent(current)) return;
-    if (initial.isTerminal) {
-      final terminalWallet = _pendingGaslessWallets[current.journalId];
-      await _removePendingGaslessTransfer(traceId);
-      if (terminalWallet == null || !await _isWalletIdCurrent(terminalWallet)) {
-        return;
-      }
-    }
+    if (initial.isObsolete || !await _isPendingWalletCurrent(current)) return;
+    if (initial.isTerminal) _forgetPendingGaslessTransfer(current);
     yield initial.progress;
     if (initial.isTerminal || streamSession == null) return;
 
@@ -1457,16 +1488,11 @@ class WithdrawalManager {
           pending: current,
         );
         current = applied.pending;
-        if (!await _isPendingWalletCurrent(current)) return;
-        if (!applied.wasApplied) continue;
-        if (applied.isTerminal) {
-          final terminalWallet = _pendingGaslessWallets[current.journalId];
-          await _removePendingGaslessTransfer(traceId);
-          if (terminalWallet == null ||
-              !await _isWalletIdCurrent(terminalWallet)) {
-            return;
-          }
+        if (applied.isObsolete || !await _isPendingWalletCurrent(current)) {
+          return;
         }
+        if (!applied.wasApplied) continue;
+        if (applied.isTerminal) _forgetPendingGaslessTransfer(current);
         yield applied.progress;
         if (applied.isTerminal) return;
       }
@@ -1482,14 +1508,11 @@ class WithdrawalManager {
       withdrawalResult: withdrawalResult,
       pending: current,
     );
-    if (!await _isPendingWalletCurrent(fallback.pending)) return;
-    if (fallback.isTerminal) {
-      final terminalWallet = _pendingGaslessWallets[fallback.pending.journalId];
-      await _removePendingGaslessTransfer(traceId);
-      if (terminalWallet == null || !await _isWalletIdCurrent(terminalWallet)) {
-        return;
-      }
+    if (fallback.isObsolete ||
+        !await _isPendingWalletCurrent(fallback.pending)) {
+      return;
     }
+    if (fallback.isTerminal) _forgetPendingGaslessTransfer(fallback.pending);
     yield fallback.progress;
   }
 
@@ -1541,23 +1564,17 @@ class WithdrawalManager {
         GaslessTransferState.confirmed ||
         GaslessTransferState.failedFinal => pending,
       };
-      if (retained.state != pending.state) {
-        await _upsertPendingGaslessTransfer(retained);
-        if (!await _isPendingWalletCurrent(retained)) {
-          throw const WalletChangedDisconnectException(
-            'Wallet changed during GasFree trace reconciliation',
-          );
-        }
-      }
-      return _AppliedGaslessTrace(
-        pending: retained,
-        wasApplied: false,
-        progress: _gaslessTraceUnavailableProgress(
-          assetId: assetId,
-          traceId: traceId,
-          withdrawalResult: withdrawalResult,
+      return _commitGaslessTrace(
+        _AppliedGaslessTrace(
           pending: retained,
-          error: _mapGaslessTraceStatusError(error, traceId),
+          wasApplied: false,
+          progress: _gaslessTraceUnavailableProgress(
+            assetId: assetId,
+            traceId: traceId,
+            withdrawalResult: withdrawalResult,
+            pending: retained,
+            error: _mapGaslessTraceStatusError(error, traceId),
+          ),
         ),
       );
     }
@@ -1568,6 +1585,71 @@ class WithdrawalManager {
     required WithdrawalResult withdrawalResult,
     required PendingGaslessTransfer pending,
   }) async {
+    final proposed = _buildGaslessTraceSnapshot(
+      snapshot: snapshot,
+      withdrawalResult: withdrawalResult,
+      pending: pending,
+    );
+    return _commitGaslessTrace(proposed);
+  }
+
+  Future<_AppliedGaslessTrace> _commitGaslessTrace(
+    _AppliedGaslessTrace proposed,
+  ) async {
+    final repository = _pendingGaslessTransfers;
+    final walletId = _pendingGaslessWallets[proposed.pending.journalId];
+    if (repository == null) return proposed;
+    if (walletId == null) {
+      return _AppliedGaslessTrace(
+        pending: proposed.pending,
+        progress: proposed.progress,
+        wasApplied: false,
+        isObsolete: true,
+      );
+    }
+    final PendingGaslessTransfer? stored;
+    try {
+      // Checking presence separately from upsert still races with another
+      // poller resolving/removing this request. The repository must perform
+      // the identity check, monotonic update and terminal delete atomically.
+      stored = await repository.reconcile(walletId, proposed.pending);
+    } on Object {
+      // Status evidence remains usable even when opportunistic persistence
+      // fails; the existing journal continues to block duplicate submission.
+      log('Failed to reconcile pending GasFree relay');
+      return proposed;
+    }
+    if (stored == null) {
+      return _AppliedGaslessTrace(
+        pending: proposed.pending,
+        progress: proposed.progress,
+        wasApplied: false,
+        isObsolete: true,
+      );
+    }
+    if (stored.state == proposed.pending.state) return proposed;
+    final retainedState = _traceStateForPendingTransfer(stored);
+    return _AppliedGaslessTrace(
+      pending: stored,
+      wasApplied: false,
+      progress: WithdrawalProgress(
+        status: WithdrawalStatus.inProgress,
+        message: _gaslessStateMessage(retainedState),
+        gaslessState: retainedState,
+        taskId: stored.traceId,
+        withdrawalResult: proposed.progress.withdrawalResult,
+        gaslessTransferState: stored.state,
+        submission: proposed.progress.submission,
+        sdkError: proposed.progress.sdkError,
+      ),
+    );
+  }
+
+  _AppliedGaslessTrace _buildGaslessTraceSnapshot({
+    required _GaslessTraceSnapshot snapshot,
+    required WithdrawalResult withdrawalResult,
+    required PendingGaslessTransfer pending,
+  }) {
     final traceId = pending.traceId!;
     final submission = WithdrawalSubmission.gaslessRelay(
       traceId: traceId,
@@ -1611,7 +1693,6 @@ class WithdrawalManager {
           state: GaslessTransferState.submittedUnknown,
           updatedAt: DateTime.now().toUtc(),
         );
-        await _upsertPendingGaslessTransfer(unknown);
         return _AppliedGaslessTrace(
           pending: unknown,
           progress: WithdrawalProgress(
@@ -1715,7 +1796,6 @@ class WithdrawalManager {
       state: transferState,
       updatedAt: DateTime.now().toUtc(),
     );
-    await _upsertPendingGaslessTransfer(updated);
     return _AppliedGaslessTrace(
       pending: updated,
       progress: WithdrawalProgress(
@@ -2082,9 +2162,8 @@ class WithdrawalManager {
     _requireVerifiedGaslessJournalIdentity(walletId);
 
     await _requireWalletContextCurrent(walletContext);
-    // Strict removal, not the best-effort `_removePendingGaslessTransfer`:
-    // that helper swallows storage failures, which is right for opportunistic
-    // cleanup of a resolved transfer but not here - a reservation that did
+    // Unlike opportunistic terminal reconciliation, an explicit discard
+    // propagates storage failures: a reservation that did
     // not actually delete keeps blocking every later GasFree send, and this
     // API telling the user their acknowledged discard succeeded would leave
     // no reason to try again. Let the failure propagate instead.
@@ -2096,28 +2175,48 @@ class WithdrawalManager {
     // between. The delete would then strip an accepted transfer's reservation
     // and let a second send go out for the same custody address, while the
     // original submission re-creates its journal entry behind it.
-    final outcome = await repository.discardUntraced(walletId, journalId);
-    switch (outcome) {
-      case GaslessJournalDiscardOutcome.notFound:
-        return false;
-      case GaslessJournalDiscardOutcome.hasTrace:
-        throw GaslessTransferException(
-          kind: GaslessTransferErrorKind.capabilityNotReady,
-          code: GaslessTransferErrorCode.capabilityNotReady,
-          stage: GaslessTransferStage.recovery,
-          message:
-              'Transfer $journalId carries a relay trace and must be '
-              'reconciled, not discarded.',
-          retryable: false,
-          terminal: false,
-          localizationKey: 'sdk_errors.gasless_capability_not_ready',
-        );
-      case GaslessJournalDiscardOutcome.discarded:
-        // The repository proved this record carried no traceId under the same
-        // lock that removed it, so the journal id is its only correlation
-        // entry.
-        _pendingGaslessWallets.remove(journalId);
-        return true;
+    final lease = await tryAcquireGaslessSubmissionLease(
+      walletStorageNamespace(walletId),
+      journalId,
+    );
+    if (lease == null) {
+      throw GaslessTransferException(
+        kind: GaslessTransferErrorKind.capabilityNotReady,
+        code: GaslessTransferErrorCode.capabilityNotReady,
+        stage: GaslessTransferStage.recovery,
+        message: 'GasFree submission is still in progress.',
+        retryable: false,
+        terminal: false,
+        localizationKey: 'sdk_errors.gasless_capability_not_ready',
+      );
+    }
+    try {
+      await _requireWalletContextCurrent(walletContext);
+      final outcome = await repository.discardUntraced(walletId, journalId);
+      switch (outcome) {
+        case GaslessJournalDiscardOutcome.notFound:
+          return false;
+        case GaslessJournalDiscardOutcome.hasTrace:
+          throw GaslessTransferException(
+            kind: GaslessTransferErrorKind.capabilityNotReady,
+            code: GaslessTransferErrorCode.capabilityNotReady,
+            stage: GaslessTransferStage.recovery,
+            message:
+                'Transfer $journalId carries a relay trace and must be '
+                'reconciled, not discarded.',
+            retryable: false,
+            terminal: false,
+            localizationKey: 'sdk_errors.gasless_capability_not_ready',
+          );
+        case GaslessJournalDiscardOutcome.discarded:
+          // The repository proved this record carried no traceId under the same
+          // lock that removed it, so the journal id is its only correlation
+          // entry.
+          _pendingGaslessWallets.remove(journalId);
+          return true;
+      }
+    } finally {
+      await lease.release();
     }
   }
 
@@ -2260,12 +2359,9 @@ class WithdrawalManager {
       pending: pending,
     );
     await _requireWalletContextCurrent(walletContext);
+    if (reconciled.isObsolete) return;
     if (reconciled.isTerminal) {
-      // The terminal progress has already been fully constructed and validated
-      // at this point. Delete only under the same wallet context, then recheck
-      // before exposing completion to the caller.
-      await _removePendingGaslessTransfer(traceId);
-      await _requireWalletContextCurrent(walletContext);
+      _forgetPendingGaslessTransfer(reconciled.pending);
     }
     yield reconciled.progress;
   }
@@ -2537,10 +2633,20 @@ class WithdrawalManager {
       );
     }
     await _resolveAmbiguousLegacyTransfers(repository, walletContext);
+    final activeKey = _submissionKey(walletId, journalId);
     final bool reserved;
     try {
+      final lease = await tryAcquireGaslessSubmissionLease(
+        activeKey.$1,
+        activeKey.$2,
+      );
+      if (lease == null) {
+        throw StateError('GasFree submission is already active');
+      }
+      _activeGaslessSubmissions[activeKey] = lease;
       reserved = await repository.reserve(walletId, pending);
     } catch (_) {
+      await _releaseGaslessSubmission(walletId, journalId);
       throw GaslessTransferException(
         kind: GaslessTransferErrorKind.persistenceUnavailable,
         message: 'GasFree transfer could not be stored securely',
@@ -2552,6 +2658,7 @@ class WithdrawalManager {
       );
     }
     if (!reserved) {
+      await _releaseGaslessSubmission(walletId, journalId);
       throw GaslessTransferException(
         kind: GaslessTransferErrorKind.traceUnavailable,
         message: 'An unresolved GasFree transfer already exists',
@@ -2562,14 +2669,19 @@ class WithdrawalManager {
         localizationKey: 'sdk_errors.gasless_transfer_unresolved',
       );
     }
-    if (!await _isWalletContextCurrent(walletContext)) {
-      await repository.remove(walletId, pending.journalId);
-      throw const WalletChangedDisconnectException(
-        'Wallet changed before GasFree relay submission',
-      );
+    try {
+      if (!await _isWalletContextCurrent(walletContext)) {
+        await repository.remove(walletId, pending.journalId);
+        throw const WalletChangedDisconnectException(
+          'Wallet changed before GasFree relay submission',
+        );
+      }
+      _pendingGaslessWallets[pending.journalId] = walletId;
+      return pending;
+    } catch (_) {
+      await _releaseGaslessSubmission(walletId, journalId);
+      rethrow;
     }
-    _pendingGaslessWallets[pending.journalId] = walletId;
-    return pending;
   }
 
   Future<void> _resolveAmbiguousLegacyTransfers(
@@ -2670,16 +2782,7 @@ class WithdrawalManager {
     if (traceId != null) _pendingGaslessWallets[traceId] = walletId;
     for (var attempt = 0; attempt < 3; attempt++) {
       try {
-        await repository.upsert(walletId, transfer);
-        final stored = traceId == null
-            ? await repository.findByJournalId(walletId, transfer.journalId)
-            : await repository.findByTraceId(walletId, traceId);
-        if (stored?.journalId == transfer.journalId &&
-            stored?.traceId == transfer.traceId &&
-            stored?.state == transfer.state &&
-            stored?.custodyAddress == transfer.custodyAddress) {
-          return true;
-        }
+        if (await repository.accept(walletId, transfer)) return true;
       } catch (_) {
         // Retry the encrypted write and read-back as one durability unit.
       }
@@ -2701,7 +2804,7 @@ class WithdrawalManager {
     return current != null && isSameStableWallet(original, current);
   }
 
-  Future<void> _upsertPendingGaslessTransfer(
+  Future<void> _updatePendingGaslessTransfer(
     PendingGaslessTransfer transfer,
   ) async {
     final repository = _pendingGaslessTransfers;
@@ -2717,29 +2820,16 @@ class WithdrawalManager {
     final traceId = transfer.traceId;
     if (traceId != null) _pendingGaslessWallets[traceId] = walletId;
     try {
-      await repository.upsert(walletId, transfer);
+      await repository.reconcile(walletId, transfer);
     } catch (_) {
       log('Failed to update pending GasFree relay');
     }
   }
 
-  Future<void> _removePendingGaslessTransfer(String identity) async {
-    final repository = _pendingGaslessTransfers;
-    if (repository == null) return;
-    final walletId =
-        _pendingGaslessWallets[identity] ?? await _walletIdResolver?.call();
-    if (walletId == null) return;
-    try {
-      final pending = await repository.find(walletId, identity);
-      await repository.remove(walletId, identity);
-      _pendingGaslessWallets.remove(identity);
-      if (pending != null) {
-        _pendingGaslessWallets.remove(pending.journalId);
-        _pendingGaslessWallets.remove(pending.traceId);
-      }
-    } catch (_) {
-      log('Failed to remove terminal GasFree relay');
-    }
+  void _forgetPendingGaslessTransfer(PendingGaslessTransfer transfer) {
+    _pendingGaslessWallets
+      ..remove(transfer.journalId)
+      ..remove(transfer.traceId);
   }
 
   /// Creates a preview and immediately executes the withdrawal.
@@ -3124,12 +3214,14 @@ class _AppliedGaslessTrace {
     required this.progress,
     this.isTerminal = false,
     this.wasApplied = true,
+    this.isObsolete = false,
   });
 
   final PendingGaslessTransfer pending;
   final WithdrawalProgress progress;
   final bool isTerminal;
   final bool wasApplied;
+  final bool isObsolete;
 }
 
 /// Buffers coin-level GasFree events from before relay submission until the
