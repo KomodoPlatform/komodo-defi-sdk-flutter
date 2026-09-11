@@ -1,3 +1,9 @@
+## 2.1.1-rc.1
+
+ - **SECURITY**(seed-nodes): keep the configured URL out of seed-node fetch
+   failures by building the URI inside the same diagnostic boundary as transport
+   and response parsing, and raising a dedicated failure type.
+
 ## 2.1.0
 
  - **FEAT**(config): add `CoinConfigTransformer.additionalTransforms`, applied

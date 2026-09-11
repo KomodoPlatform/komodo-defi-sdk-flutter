@@ -1,3 +1,12 @@
+## 0.6.0-rc.1
+
+ - **SECURITY**(diagnostics): omit request, configuration, response and
+   exception bodies from native, remote, WASM, RPC-client and startup logging.
+   Every message reaching `logStream` or an external log callback is sanitized
+   to metadata first.
+ - **FIX**(logging): contain a failing external log callback instead of letting
+   it escape into the framework's own lifecycle.
+
 ## 0.5.0
 
 > Note: This release rolls the bundled KDF to the `3.1.0-beta` line.

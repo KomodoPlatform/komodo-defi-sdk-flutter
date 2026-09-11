@@ -10,6 +10,13 @@ implementations must migrate before adopting this version.
  - **FIX**(auth): reject metadata writes when either identity lacks a verified
    public-key hash, preventing stale confirmations from reaching a different
    wallet recreated under the same name during an identity lookup outage.
+ - **BREAKING** **FEAT**(auth): add `authGeneration` and `authGenerationChanges`
+   to `KomodoDefiAuth` and the auth service interface. A capability holder can
+   revoke synchronously as the generation advances, before an authentication
+   transition completes; custom implementations must provide both members.
+ - **FIX**(auth): run sign-in, registration, sign-out, session restore and
+   disposal through one serialized authentication transition, so a transition
+   cannot interleave with another or with KDF lifecycle changes.
 
 ## 0.5.0
 

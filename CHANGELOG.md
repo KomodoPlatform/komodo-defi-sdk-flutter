@@ -3,6 +3,74 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-09-09 — diagnostics and private-key export release candidate
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - [`dragon_logs` - `v3.0.0-rc.1`](#dragon_logs---v300-rc1)
+
+Packages with other changes:
+
+ - [`komodo_defi_rpc_methods` - `v0.7.0-rc.1`](#komodo_defi_rpc_methods---v070-rc1)
+ - [`komodo_defi_types` - `v0.6.0-rc.1`](#komodo_defi_types---v060-rc1)
+ - [`komodo_defi_framework` - `v0.6.0-rc.1`](#komodo_defi_framework---v060-rc1)
+ - [`komodo_coin_updates` - `v2.1.1-rc.1`](#komodo_coin_updates---v211-rc1)
+
+`komodo_defi_sdk` and `komodo_defi_local_auth` remain at the release-candidate
+versions cut on 2026-09-05. Their entries for those versions are extended in
+place rather than superseded, because neither candidate has been released.
+
+---
+
+#### `dragon_logs` - `v3.0.0-rc.1`
+
+ - **BREAKING** **FEAT**(storage): namespace and lifecycle parameters on
+   `LogStorage.init` and `LoggerInterface.init`, `dispose` on both interfaces,
+   and no process-wide `FileLogStorage` singleton.
+ - **FEAT**(storage): version persisted storage and purge unversioned records
+   before the new epoch is created.
+ - **FEAT**(diagnostics): add `DragonLogs.writeRecord` for caller-sanitized
+   JSONL, and remove cached exports in `DragonLogs.clearLogs`.
+ - **FIX**(storage): serialize appends, snapshots, migrations and disposal
+   behind one queue and a cross-process lock, using Web Locks in the browser.
+ - **FIX**(export): keep a running export's snapshot and shared file out of that
+   clear, so it cannot delete an artefact that is still being read or shared.
+
+#### `komodo_defi_rpc_methods` - `v0.7.0-rc.1`
+
+ - **FEAT**(wallet): add typed `show_priv_key` and `rpc.wallet.showPrivKey` for
+   single-asset export, and `AccountBalanceReadRequest` for read-only account
+   balance queries.
+ - **SECURITY**(wallet): redact `toString()` on private-key requests, responses
+   and key metadata, keeping strict account/range semantics in
+   `get_private_keys`.
+
+#### `komodo_defi_types` - `v0.6.0-rc.1`
+
+ - **FEAT**(private-keys): add the structured per-asset export result types and
+   carry `viewingKey` and `zDerivationPath` on private-key metadata.
+ - **FEAT**(diagnostics): add `DiagnosticSanitizer` and
+   `SecurityUtils.isSensitiveDiagnosticKey`.
+ - **SECURITY**(diagnostics): redact every non-primitive value when censoring
+   recursively, treat non-string keys as sensitive, and redact `toString()` on
+   key-bearing types.
+
+#### `komodo_defi_framework` - `v0.6.0-rc.1`
+
+ - **SECURITY**(diagnostics): omit request, configuration, response and
+   exception bodies from native, remote, WASM, RPC-client and startup logging,
+   and sanitize every message reaching `logStream` or an external callback.
+ - **FIX**(logging): contain a failing external log callback.
+
+#### `komodo_coin_updates` - `v2.1.1-rc.1`
+
+ - **SECURITY**(seed-nodes): keep the configured URL out of seed-node fetch
+   failures.
+
 ## 2026-09-05 — wallet-identity release candidate
 
 ### Changes
