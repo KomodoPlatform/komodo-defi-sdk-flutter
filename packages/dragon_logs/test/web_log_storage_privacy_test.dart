@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 
+import 'package:dragon_logs/src/storage/opfs_interop.dart';
 import 'package:dragon_logs/src/storage/storage_lifecycle.dart';
 import 'package:dragon_logs/src/storage/web_log_storage_wasm.dart';
 import 'package:test/test.dart';
@@ -206,6 +207,37 @@ void main() {
     await other.flushQueue().timeout(const Duration(seconds: 3));
     subscription.resume();
     await subscription.cancel();
+  });
+
+  test('clearing exports spares a snapshot a running export still reads', () async {
+    await init();
+    await storage.appendLog(DateTime.now(), '{"event":"retained"}');
+    final chunks = <String>[];
+    final received = Completer<void>();
+    late StreamSubscription<String> subscription;
+    subscription = storage.exportLogsStream().listen((chunk) {
+      chunks.add(chunk);
+      subscription.pause();
+      received.complete();
+    });
+    await received.future;
+    final epoch = await root.getDirectoryHandle(_epoch).toDart;
+    final cache = await epoch.getDirectoryHandle('log_export').toDart;
+    await _write(cache, 'old-export.log', _sentinel);
+
+    await storage.deleteExportedFiles().timeout(const Duration(seconds: 3));
+
+    expect(await cache.keysStream().toList(), hasLength(1));
+    final done = subscription.asFuture<void>();
+    subscription.resume();
+    await done.timeout(const Duration(seconds: 3));
+    expect(chunks.join(), contains('retained'));
+
+    await storage.deleteExportedFiles().timeout(const Duration(seconds: 3));
+    await expectLater(
+      epoch.getDirectoryHandle('log_export').toDart,
+      throwsA(isA<DOMException>()),
+    );
   });
 
   test(

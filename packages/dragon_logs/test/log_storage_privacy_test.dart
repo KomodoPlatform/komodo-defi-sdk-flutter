@@ -218,6 +218,35 @@ void main() {
     await subscription.cancel();
   });
 
+  test('clearing exports spares artefacts a running export still owns', () async {
+    await init();
+    await storage.appendLog(DateTime.now(), '{"event":"retained"}');
+    final cache = Directory('${documents.path}/$_epoch/log_export');
+    final chunks = <String>[];
+    final received = Completer<void>();
+    late StreamSubscription<String> subscription;
+    subscription = storage.exportLogsStream().listen((chunk) {
+      chunks.add(chunk);
+      subscription.pause();
+      received.complete();
+    });
+    await received.future;
+    final stale = File('${cache.path}/old-export.log');
+    await stale.writeAsString(_sentinel);
+
+    await storage.deleteExportedFiles().timeout(const Duration(seconds: 3));
+
+    expect(await stale.exists(), isFalse);
+    expect(await cache.list().toList(), hasLength(1));
+    final done = subscription.asFuture<void>();
+    subscription.resume();
+    await done.timeout(const Duration(seconds: 3));
+    expect(chunks.join(), contains('retained'));
+
+    await storage.deleteExportedFiles().timeout(const Duration(seconds: 3));
+    expect(await cache.exists(), isFalse);
+  });
+
   test(
     'raw JSONL API escapes records without legacy metadata and gates pre-init writes',
     () async {

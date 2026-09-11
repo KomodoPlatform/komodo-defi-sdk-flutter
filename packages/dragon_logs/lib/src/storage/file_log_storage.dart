@@ -28,6 +28,11 @@ class FileLogStorage
   Directory? _documentsDirectory;
   Directory? _logDirectory;
 
+  /// Entries under `log_export` that a running export still reads or shares.
+  /// Export bodies deliberately run outside the storage queue, so a concurrent
+  /// clear has to skip these rather than delete them while they are in use.
+  final Set<String> _retainedExports = {};
+
   @override
   Future<void> init({String? storageNamespace, bool purgeLegacy = false}) {
     final configuration = LogStorageConfiguration(
@@ -182,6 +187,7 @@ class FileLogStorage
           p.join(logFolderPath, 'log_export'),
         ).create();
         final directory = await cache.createTemp('snapshot_');
+        _retainedExports.add(directory.path);
         try {
           final result = File(p.join(directory.path, 'records.txt'));
           final output = await result.open(mode: FileMode.writeOnly);
@@ -203,6 +209,7 @@ class FileLogStorage
           }
           return result;
         } catch (_) {
+          _retainedExports.remove(directory.path);
           await directory.delete(recursive: true);
           rethrow;
         }
@@ -214,6 +221,7 @@ class FileLogStorage
     try {
       yield* snapshot.openRead().transform(utf8.decoder);
     } finally {
+      _retainedExports.remove(snapshot.parent.path);
       if (await snapshot.parent.exists()) {
         await snapshot.parent.delete(recursive: true);
       }
@@ -239,7 +247,21 @@ class FileLogStorage
     await serializeStorage(
       () => _withDiskLock(() async {
         final directory = Directory(p.join(logFolderPath, 'log_export'));
-        if (await directory.exists()) await directory.delete(recursive: true);
+        if (!await directory.exists()) return;
+        var retained = false;
+        // Materialize before deleting: mutating a directory while its own
+        // listing is still open can skip entries.
+        final entries = await directory.list(followLinks: false).toList();
+        for (final entity in entries) {
+          if (_retainedExports.contains(entity.path)) {
+            retained = true;
+            continue;
+          }
+          await entity.delete(recursive: true);
+        }
+        // A retained artefact is removed by the export that owns it, or by the
+        // next clear once that export has finished.
+        if (!retained) await directory.delete(recursive: true);
       }),
     );
   }
@@ -301,24 +323,30 @@ class FileLogStorage
         final directory = await Directory(
           p.join(logFolderPath, 'log_export'),
         ).create();
-        return File(p.join(directory.path, filename));
+        final result = File(p.join(directory.path, filename));
+        _retainedExports.add(result.path);
+        return result;
       }),
     );
-    final handle = await file.open(mode: FileMode.writeOnly);
     try {
-      await for (final record in exportLogsStream()) {
-        await handle.writeString(record);
+      final handle = await file.open(mode: FileMode.writeOnly);
+      try {
+        await for (final record in exportLogsStream()) {
+          await handle.writeString(record);
+        }
+        await handle.flush();
+      } finally {
+        await handle.close();
       }
-      await handle.flush();
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'text/plain')],
+          text: 'App log file export',
+        ),
+      );
     } finally {
-      await handle.close();
+      _retainedExports.remove(file.path);
     }
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path, mimeType: 'text/plain')],
-        text: 'App log file export',
-      ),
-    );
   }
 
   static Future<String> getLogFolderPath() async =>

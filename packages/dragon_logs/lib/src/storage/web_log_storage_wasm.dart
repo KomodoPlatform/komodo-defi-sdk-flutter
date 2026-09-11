@@ -31,6 +31,11 @@ class WebLogStorageWasm
   final Future<void> Function(Future<void> Function())? _lockOverride;
   FileSystemDirectoryHandle? _logDirectory;
 
+  /// Entries under `log_export` that a running export still reads. Export
+  /// bodies deliberately run outside the storage queue, so a concurrent clear
+  /// has to skip these rather than invalidate a snapshot that is being read.
+  final Set<String> _retainedExports = {};
+
   @override
   Future<void> init({String? storageNamespace, bool purgeLegacy = false}) {
     final configuration = LogStorageConfiguration(
@@ -217,6 +222,7 @@ class WebLogStorageWasm
               FileSystemGetDirectoryOptions(create: true),
             )
             .toDart;
+        _retainedExports.add(name);
         try {
           final handle = await directory
               .getFileHandle(
@@ -243,6 +249,7 @@ class WebLogStorageWasm
           // source. Copy first: this private snapshot file is never appended.
           return _WebLogSnapshot(cache, name, await handle.getFile().toDart);
         } catch (_) {
+          _retainedExports.remove(name);
           await cache
               .removeEntry(name, FileSystemRemoveOptions(recursive: true))
               .toDart;
@@ -254,6 +261,7 @@ class WebLogStorageWasm
 
   Future<void> _deleteSnapshot(_WebLogSnapshot snapshot) =>
       _withStorageLock(() async {
+        _retainedExports.remove(snapshot.name);
         try {
           await snapshot.parent
               .removeEntry(
@@ -296,12 +304,29 @@ class WebLogStorageWasm
     await serializeStorage(
       () => _withStorageLock(() async {
         try {
-          await _logDirectory!
-              .removeEntry(
-                'log_export',
-                FileSystemRemoveOptions(recursive: true),
-              )
+          final cache = await _logDirectory!
+              .getDirectoryHandle('log_export')
               .toDart;
+          var retained = false;
+          for (final name in await cache.keysStream().toList()) {
+            if (_retainedExports.contains(name)) {
+              retained = true;
+              continue;
+            }
+            await cache
+                .removeEntry(name, FileSystemRemoveOptions(recursive: true))
+                .toDart;
+          }
+          // A retained snapshot is removed by the export that owns it, or by
+          // the next clear once that export has finished.
+          if (!retained) {
+            await _logDirectory!
+                .removeEntry(
+                  'log_export',
+                  FileSystemRemoveOptions(recursive: true),
+                )
+                .toDart;
+          }
         } on DOMException catch (error) {
           if (error.name != 'NotFoundError') rethrow;
         }
