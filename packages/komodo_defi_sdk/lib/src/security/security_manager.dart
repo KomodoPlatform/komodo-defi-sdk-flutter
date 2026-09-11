@@ -391,6 +391,12 @@ class SecurityManager {
         () => _client.post(GetEnabledCoinsRequest()),
       )).result.map((coin) => coin.ticker).toSet();
 
+  // KDF can omit TRX while listing an enabled TRC20 token. After _tronPlatform
+  // validates the parent, the requested token proves platform availability.
+  bool _tronPlatformEnabled(Asset asset, Asset parent, Set<String> enabled) =>
+      enabled.contains(parent.id.id) ||
+      (asset.protocol is Trc20Protocol && enabled.contains(asset.id.id));
+
   Future<PrivateKeyExportOutcome> _tronAsset(
     Asset asset,
     PrivateKeyExportRequest request,
@@ -435,7 +441,7 @@ class SecurityManager {
     }
     try {
       final enabled = await _enabled(session);
-      if (!enabled.contains(parent.id.id)) {
+      if (!_tronPlatformEnabled(asset, parent, enabled)) {
         return _unavailable(
           asset.id,
           PrivateKeyExportFailure.platformNotEnabled,
@@ -455,7 +461,7 @@ class SecurityManager {
       );
       await ensureExportSessionCurrent(session);
       final stillEnabled = await _enabled(session);
-      if (!stillEnabled.contains(parent.id.id) ||
+      if (!_tronPlatformEnabled(asset, parent, stillEnabled) ||
           !stillEnabled.contains(asset.id.id)) {
         return _unavailable(
           asset.id,

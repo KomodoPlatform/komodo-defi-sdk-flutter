@@ -39,6 +39,13 @@ flush pending records before taking a snapshot. Native snapshots use bounded
 copies and are removed after completion or cancellation. Browser snapshots are
 read in bounded slices without holding a Web Lock while the consumer waits.
 
+Native storage instances in one Dart isolate share ownership of active exports
+through canonical directory paths. Clearing cached exports preserves those
+snapshots and share files until their export finishes, including after the
+owning storage instance is disposed. This ownership registry is not a
+cross-isolate or cross-process lease; keep native export and export-cache
+cleanup in the same isolate.
+
 Browser writes and migration require Web Locks and fail closed if unavailable.
 Already-running older tabs do not honor the new lock or namespace: they can
 recreate legacy data or use their own old upload code. Updated clients always
@@ -63,9 +70,10 @@ Your feedback and contributions to help achieve these features would be much app
 
 ## Installation
 
-```sh
-flutter pub add dragon_logs
-```
+For `dragon_logs` 3.0.0 in SDK 0.8.0, use the complete
+[pinned SDK checkout](../../docs/RELEASE_0.8.0.md#pin-the-complete-checkout).
+This stable version is prepared for the GitHub/submodule workflow; its presence
+in this checkout does not imply pub.dev publication.
 
 # Dragon Logs API Documentation and Usage
 
@@ -205,11 +213,11 @@ print(metricsSummary);
 
 ## Contributing
 
-Dragon Logs welcomes contributions from the community. Whether it's a bug report, feature suggestion, or a code contribution, we value all feedback. Please read the [CONTRIBUTING.md](link_to_contributing.md) file for detailed instructions.
+Dragon Logs welcomes contributions from the community. Whether it's a bug report, feature suggestion, or a code contribution, we value all feedback. See the [SDK contribution guidance](../../README.md#contributing).
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](link_to_license_file) file for more details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 
 ---
 

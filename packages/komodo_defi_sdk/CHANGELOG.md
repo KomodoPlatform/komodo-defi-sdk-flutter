@@ -1,8 +1,9 @@
-## 0.8.0-rc.1
+## 0.8.0 (unreleased)
 
-Release candidate for the wallet-identity hotfix and the diagnostics and
-private-key export remediation. Metadata writes have a breaking API change; this
-is not a source-compatible patch of 0.7.0.
+Prepared for SDK 0.8.0: wallet-identity, diagnostics and private-key export
+remediation. See the [complete release overview](../../CHANGELOG.md#sdk-080-overview).
+Metadata writes have a breaking API change; this is not a source-compatible
+patch of 0.7.0.
 
  - **FIX**(history): preserve verified wallet identity and active history streams
    during degraded same-wallet authentication events.
@@ -21,6 +22,9 @@ is not a source-compatible patch of 0.7.0.
    actual signing platform, validate the returned scalar, and match its derived
    owner address and HD path against fresh KDF metadata. Coverage is the
    currently activated address; no activation or full-HD fallback is implied.
+ - **FIX**(security): accept an enabled TRC20 token when KDF omits its TRX
+   platform from the enabled-coins response, preserving fresh token activation
+   checks and signing-key verification throughout export.
  - **SECURITY**(security): bind export capabilities to a verified wallet
    identity, the manager that issued them, and a source-owned authentication
    generation that revokes synchronously before an authentication transition.
@@ -29,15 +33,23 @@ is not a source-compatible patch of 0.7.0.
  - **FEAT**(diagnostics): version persisted diagnostic storage, clean up legacy
    records, and serialize writes and disposal behind stable native and browser
    snapshots.
- - **CHORE**(deps): require `komodo_defi_local_auth` `^0.6.0-rc.1`,
-   `komodo_defi_rpc_methods` `^0.7.0-rc.1`, `komodo_defi_types` `^0.6.0-rc.1`,
-   `komodo_defi_framework` `^0.6.0-rc.1` and `komodo_coin_updates`
-   `^2.1.1-rc.1`.
+ - **CHORE**(deps): require `komodo_defi_local_auth` `^0.6.0`,
+   `komodo_defi_rpc_methods` `^0.7.0`, `komodo_defi_types` `^0.6.0`,
+   `komodo_defi_framework` `^0.6.0` and `komodo_coin_updates`
+   `^2.1.1`.
  - **TEST**(history): run wallet-race regressions in Chrome/WebAssembly in CI.
  - **TEST**(security): cover structured export, typed legacy RPC and the
    bundled KDF at TRON HD indices 0 and 7.
 
-## 0.7.0
+ - **FIX**(activation): bind completion and coordinator work to the originating
+   wallet session, rejecting delayed results after a wallet switch (#376).
+ - **FIX**(gasfree): apply acceptance and reconciliation atomically and keep
+   browser recovery from discarding a live submission's journal record (#376).
+ - **FIX**(gasfree): cancel local waits during disposal, drain journal writes
+   before releasing submission ownership, and suppress detached relay/trace
+   continuations while preserving unresolved outcomes for recovery (#377).
+
+## 0.7.0 — preparation history
 
 > Note: This release has breaking GasFree activation and withdrawal behavior.
 
@@ -114,7 +126,7 @@ is not a source-compatible patch of 0.7.0.
    `10.0.0-beta.4` pre-release to `^10.0.0`. It already resolved to a stable
    10.x, and pub warns when a stable release depends on a pre-release.
 
-## 0.6.0
+## 0.6.0 — preparation history
 
 > Note: This release has breaking changes.
 
@@ -126,7 +138,7 @@ is not a source-compatible patch of 0.7.0.
  - **FEAT**(transaction-history): add a Tronscan strategy with address, cursor, and fixed-scale amount codecs (#339).
  - **BREAKING** **FEAT**(sia): route SIA activation and withdrawals through the hardened SIA strategy and RPC namespace (#343).
 
-## 0.5.0
+## 0.5.0 — preparation history
 
 > Note: This release has breaking changes.
 
