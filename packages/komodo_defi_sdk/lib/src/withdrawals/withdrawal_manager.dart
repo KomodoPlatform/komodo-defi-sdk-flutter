@@ -179,8 +179,13 @@ class WithdrawalManager {
   final Map<String, WalletId> _pendingGaslessWallets = <String, WalletId>{};
   // Own the submission lease before the reservation becomes visible. Browser
   // leases span tabs; native leases span managers within the same isolate.
-  final Map<(String, String), GaslessSubmissionLease>
+  final Map<(String, String), _GaslessSubmissionOwner>
   _activeGaslessSubmissions = {};
+  final Set<_GaslessTraceStreamSession> _gaslessTraceSessions = {};
+  final StreamController<void> _disposeSignal =
+      StreamController<void>.broadcast(sync: true);
+  bool _isDisposed = false;
+  Future<void>? _disposeFuture;
 
   static (String, String) _submissionKey(WalletId walletId, String journalId) =>
       (walletStorageNamespace(walletId), journalId);
@@ -189,9 +194,15 @@ class WithdrawalManager {
     WalletId walletId,
     String journalId,
   ) async {
-    await _activeGaslessSubmissions
-        .remove(_submissionKey(walletId, journalId))
-        ?.release();
+    final key = _submissionKey(walletId, journalId);
+    final owner = _activeGaslessSubmissions[key];
+    if (owner == null) return;
+    try {
+      await owner.lease?.release();
+    } finally {
+      _activeGaslessSubmissions.remove(key);
+      if (!owner.completed.isCompleted) owner.completed.complete();
+    }
   }
 
   final math.Random _secureRandom = math.Random.secure();
@@ -252,16 +263,39 @@ class WithdrawalManager {
   /// logging out. It attempts to cancel all active withdrawal tasks and
   /// releases associated resources.
   ///
+  /// GasFree disposal stops local execution and releases submission ownership
+  /// after any pending journal write settles. A relay already dispatched may
+  /// still complete remotely; its unresolved recovery record remains durable.
+  ///
   /// Example:
   /// ```dart
   /// // When done with the withdrawal manager
   /// await withdrawalManager.dispose();
   /// ```
-  Future<void> dispose() async {
+  Future<void> dispose() {
+    final existing = _disposeFuture;
+    if (existing != null) return existing;
+    _isDisposed = true;
+    _walletGeneration++;
+    _disposeSignal.add(null);
+    final owners = _activeGaslessSubmissions.values
+        .map((owner) => owner.completed.future)
+        .toList();
+    for (final session in _gaslessTraceSessions.toList()) {
+      _closeDisposedTraceSession(session);
+    }
+    return _disposeFuture = _finishDispose(owners);
+  }
+
+  Future<void> _finishDispose(List<Future<void>> owners) async {
+    // An already-started encrypted write must settle before its submission
+    // lease is released. Never await the consumer-controlled async* lifetime.
+    await Future.wait(owners);
     await stopGaslessReconciliation();
     await _gaslessAuthSubscription?.cancel();
     _gaslessAuthSubscription = null;
     await _walletGenerationChanges.close();
+    await _disposeSignal.close();
     final withdrawals = _activeWithdrawals.entries.toList();
     _activeWithdrawals.clear();
 
@@ -269,6 +303,54 @@ class WithdrawalManager {
       await withdrawal.value.close();
       await cancelWithdrawal(withdrawal.key);
     }
+  }
+
+  void _requireNotDisposed() {
+    if (_isDisposed) throw const _WithdrawalManagerDisposed();
+  }
+
+  Future<T> _untilDisposed<T>(
+    FutureOr<T> Function() operation, {
+    void Function(T value)? onLateResult,
+  }) async {
+    _requireNotDisposed();
+    final result = Completer<T>();
+    final cancellation = _disposeSignal.stream.listen((_) {
+      if (!result.isCompleted) {
+        result.completeError(const _WithdrawalManagerDisposed());
+      }
+    });
+    unawaited(
+      Future<T>.sync(operation).then<void>(
+        (value) {
+          if (result.isCompleted) {
+            onLateResult?.call(value);
+          } else {
+            result.complete(value);
+          }
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          // Observe errors from detached transports without re-entering the
+          // disposed manager's journal or presentation paths.
+          if (!result.isCompleted) result.completeError(error, stackTrace);
+        },
+      ),
+    );
+    try {
+      return await result.future;
+    } finally {
+      await cancellation.cancel();
+    }
+  }
+
+  void _closeDisposedTraceSession(_GaslessTraceStreamSession session) {
+    // Local delivery closes synchronously. Remote stream deregistration can
+    // hang with KDF shutdown and must not retain a submission lease.
+    unawaited(
+      Future<void>.sync(session.close).catchError((Object _) {
+        log('Failed to close disposed GasFree trace stream');
+      }),
+    );
   }
 
   /// Starts wallet-scoped, status-only recovery for unresolved GasFree sends.
@@ -287,6 +369,7 @@ class WithdrawalManager {
   }
 
   void _handleGaslessAuthStateChanged(KdfUser? user) {
+    if (_isDisposed) return;
     final nextWallet = user?.walletId;
     final hasStableIdentity =
         nextWallet?.pubkeyHash?.trim().isNotEmpty ?? false;
@@ -318,7 +401,8 @@ class WithdrawalManager {
   }
 
   Future<WalletOperationContext> _captureWalletContext() async {
-    final wallet = await _walletIdResolver?.call();
+    final wallet = await _untilDisposed(() => _walletIdResolver?.call());
+    _requireNotDisposed();
     if (wallet == null) {
       throw StateError('GasFree requires an authenticated wallet');
     }
@@ -365,13 +449,20 @@ class WithdrawalManager {
   }
 
   Future<bool> _isWalletContextCurrent(WalletOperationContext context) async {
-    if (context.generation != _walletGeneration ||
+    if (_isDisposed ||
+        context.generation != _walletGeneration ||
         _currentWalletId == null ||
         !isSameStableWallet(context.walletId, _currentWalletId!)) {
       return false;
     }
-    final current = await _walletIdResolver?.call();
-    return current != null &&
+    final WalletId? current;
+    try {
+      current = await _untilDisposed(() => _walletIdResolver?.call());
+    } on _WithdrawalManagerDisposed {
+      return false;
+    }
+    return !_isDisposed &&
+        current != null &&
         context.generation == _walletGeneration &&
         isSameStableWallet(context.walletId, current);
   }
@@ -416,9 +507,11 @@ class WithdrawalManager {
   }
 
   Future<void> _runGaslessReconciliationCycle() async {
-    if (_gaslessReconciliationStarting ||
+    if (_isDisposed ||
+        _gaslessReconciliationStarting ||
         _gaslessReconciliationSubscription != null ||
-        await _walletIdResolver?.call() == null) {
+        await _walletIdResolver?.call() == null ||
+        _isDisposed) {
       return;
     }
     _gaslessReconciliationStarting = true;
@@ -1089,6 +1182,7 @@ class WithdrawalManager {
     WithdrawalPreview preview,
     String assetId,
   ) async* {
+    if (_isDisposed) throw StateError('WithdrawalManager has been disposed');
     WalletOperationContext? operationContext;
     PendingGaslessTransfer? operationPending;
     _GaslessTraceStreamSession? traceStreamSession;
@@ -1109,9 +1203,11 @@ class WithdrawalManager {
       }
 
       // Ensure asset is activated before broadcasting
-      final activationResult = await _activationCoordinator.activateAsset(
-        asset,
-      );
+      final activationResult = isGasless
+          ? await _untilDisposed(
+              () => _activationCoordinator.activateAsset(asset),
+            )
+          : await _activationCoordinator.activateAsset(asset);
       if (activationResult.isFailure) {
         throw _mapError(
           activationResult.errorMessage ?? activationResult.toString(),
@@ -1163,10 +1259,17 @@ class WithdrawalManager {
           );
         }
         try {
-          traceStreamSession = await _GaslessTraceStreamSession.attach(
-            streamingManager,
-            assetId,
+          traceStreamSession = await _untilDisposed<_GaslessTraceStreamSession>(
+            () => _GaslessTraceStreamSession.attach(streamingManager, assetId),
+            onLateResult: _closeDisposedTraceSession,
           );
+          if (_isDisposed) {
+            _closeDisposedTraceSession(traceStreamSession);
+            throw const _WithdrawalManagerDisposed();
+          }
+          _gaslessTraceSessions.add(traceStreamSession);
+        } on _WithdrawalManagerDisposed {
+          rethrow;
         } on GaslessTraceStreamingRequestException catch (error) {
           throw _mapGaslessTraceStreamingRequestError(error);
         } on Object {
@@ -1182,18 +1285,26 @@ class WithdrawalManager {
       final SendRawTransactionResponse response;
       try {
         relayInvocationBegan = true;
-        response = await _client.rpc.withdraw.sendRawTransaction(
-          coin: assetId,
-          txHex: preview.txHex,
-          // Submit the exact payload snapshot that passed validation. The
-          // caller-owned preview map may otherwise be mutated while secure
-          // persistence and stream registration are awaiting completion.
-          gaslessRelayPayload: validated?.relay,
-          // Raw transaction JSON is reserved for non-GasFree platform
-          // transactions. GasFree always crosses this boundary as the typed
-          // payload that passed validation above.
-          txJson: validated == null ? preview.txJson : null,
-        );
+        Future<SendRawTransactionResponse> submit() =>
+            _client.rpc.withdraw.sendRawTransaction(
+              coin: assetId,
+              txHex: preview.txHex,
+              // Submit the exact payload snapshot that passed validation. The
+              // caller-owned preview map may otherwise be mutated while secure
+              // persistence and stream registration are awaiting completion.
+              gaslessRelayPayload: validated?.relay,
+              // Raw transaction JSON is reserved for non-GasFree platform
+              // transactions. GasFree always crosses this boundary as the typed
+              // payload that passed validation above.
+              txJson: validated == null ? preview.txJson : null,
+            );
+        response = prepared == null
+            ? await submit()
+            : await _untilDisposed(submit);
+      } on _WithdrawalManagerDisposed {
+        // The remote relay may still finish. Preserve the existing durable
+        // unresolved reservation. Disposal cancels only local continuation.
+        rethrow;
       } catch (error) {
         if (prepared == null) rethrow;
         // `send_raw_transaction` exposes plain-string failures and cannot
@@ -1324,7 +1435,7 @@ class WithdrawalManager {
         // secure storage cannot confirm the write.
         if (!persisted) return;
 
-        yield* _trackGaslessTrace(
+        await for (final progress in _trackGaslessTrace(
           assetId: assetId,
           traceId: traceId,
           withdrawalResult: _withdrawalResultFromPreview(
@@ -1334,7 +1445,10 @@ class WithdrawalManager {
           ),
           pending: pending,
           streamSession: traceStreamSession,
-        );
+        )) {
+          if (_isDisposed) return;
+          yield progress;
+        }
         return;
       }
 
@@ -1372,8 +1486,9 @@ class WithdrawalManager {
           log('Failed to clear unsubmitted GasFree reservation');
         }
       }
-      if (operationContext != null &&
-          !await _isWalletContextCurrent(operationContext)) {
+      if (_isDisposed ||
+          (operationContext != null &&
+              !await _isWalletContextCurrent(operationContext))) {
         return;
       }
       yield* Stream.error(
@@ -1386,7 +1501,14 @@ class WithdrawalManager {
           operationPending.journalId,
         );
       }
-      await traceStreamSession?.close();
+      if (traceStreamSession != null) {
+        _gaslessTraceSessions.remove(traceStreamSession);
+        if (_isDisposed) {
+          _closeDisposedTraceSession(traceStreamSession);
+        } else {
+          await traceStreamSession.close();
+        }
+      }
     }
   }
 
@@ -1528,9 +1650,11 @@ class WithdrawalManager {
       );
     }
     try {
-      final status = await _client.rpc.withdraw.gaslessTraceStatus(
-        coin: assetId,
-        traceId: traceId,
+      final status = await _untilDisposed(
+        () => _client.rpc.withdraw.gaslessTraceStatus(
+          coin: assetId,
+          traceId: traceId,
+        ),
       );
       if (!await _isPendingWalletCurrent(pending)) {
         throw const WalletChangedDisconnectException(
@@ -2609,6 +2733,7 @@ class WithdrawalManager {
     _ValidatedGaslessPreview validated,
     WalletOperationContext walletContext,
   ) async {
+    _requireNotDisposed();
     final journalId = _newGaslessJournalId();
     final pending = _pendingTransferFromPreview(
       preview: preview,
@@ -2633,17 +2758,21 @@ class WithdrawalManager {
       );
     }
     await _resolveAmbiguousLegacyTransfers(repository, walletContext);
+    _requireNotDisposed();
     final activeKey = _submissionKey(walletId, journalId);
+    final owner = _GaslessSubmissionOwner();
+    _activeGaslessSubmissions[activeKey] = owner;
     final bool reserved;
     try {
       final lease = await tryAcquireGaslessSubmissionLease(
         activeKey.$1,
         activeKey.$2,
       );
+      owner.lease = lease;
+      _requireNotDisposed();
       if (lease == null) {
         throw StateError('GasFree submission is already active');
       }
-      _activeGaslessSubmissions[activeKey] = lease;
       reserved = await repository.reserve(walletId, pending);
     } catch (_) {
       await _releaseGaslessSubmission(walletId, journalId);
@@ -2800,8 +2929,15 @@ class WithdrawalManager {
   }
 
   Future<bool> _isWalletIdCurrent(WalletId original) async {
-    final current = await _walletIdResolver?.call();
-    return current != null && isSameStableWallet(original, current);
+    if (_isDisposed) return false;
+    try {
+      final current = await _untilDisposed(() => _walletIdResolver?.call());
+      return !_isDisposed &&
+          current != null &&
+          isSameStableWallet(original, current);
+    } on _WithdrawalManagerDisposed {
+      return false;
+    }
   }
 
   Future<void> _updatePendingGaslessTransfer(
@@ -3208,6 +3344,15 @@ class _GaslessTraceSnapshot {
   final Decimal? finalFee;
 }
 
+final class _WithdrawalManagerDisposed implements Exception {
+  const _WithdrawalManagerDisposed();
+}
+
+final class _GaslessSubmissionOwner {
+  GaslessSubmissionLease? lease;
+  final Completer<void> completed = Completer<void>();
+}
+
 class _AppliedGaslessTrace {
   const _AppliedGaslessTrace({
     required this.pending,
@@ -3237,7 +3382,9 @@ class _GaslessTraceStreamSession {
     final subscription = await manager.subscribeToGaslessTrace(coin: coin);
     final session = _GaslessTraceStreamSession._(subscription, events);
     subscription
-      ..onData(events.add)
+      ..onData((event) {
+        if (!events.isClosed) events.add(event);
+      })
       ..onError(session._onStreamError)
       ..onDone(session._onStreamDone);
     return session;
@@ -3285,11 +3432,15 @@ class _GaslessTraceStreamSession {
                 event.traceId == traceId),
       );
 
-  Future<void> close() async {
-    await _subscription.cancel();
+  Future<void>? _closeFuture;
+
+  Future<void> close() {
+    if (_closeFuture != null) return _closeFuture!;
+    _isTerminated = true;
     // A single-subscription controller's close future waits for a listener.
     // Submission failures and immediate terminal reconciliation never consume
     // the buffered stream, so do not deadlock cleanup in those paths.
     if (!_events.isClosed) unawaited(_events.close());
+    return _closeFuture = _subscription.cancel();
   }
 }
