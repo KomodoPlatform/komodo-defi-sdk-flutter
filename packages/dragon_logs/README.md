@@ -70,9 +70,10 @@ Your feedback and contributions to help achieve these features would be much app
 
 ## Installation
 
-```sh
-flutter pub add dragon_logs
-```
+For `dragon_logs` 3.0.0 in SDK 0.8.0, use the complete
+[pinned SDK checkout](../../docs/RELEASE_0.8.0.md#pin-the-complete-checkout).
+This stable version is prepared for the GitHub/submodule workflow; its presence
+in this checkout does not imply pub.dev publication.
 
 # Dragon Logs API Documentation and Usage
 
@@ -212,11 +213,11 @@ print(metricsSummary);
 
 ## Contributing
 
-Dragon Logs welcomes contributions from the community. Whether it's a bug report, feature suggestion, or a code contribution, we value all feedback. Please read the [CONTRIBUTING.md](link_to_contributing.md) file for detailed instructions.
+Dragon Logs welcomes contributions from the community. Whether it's a bug report, feature suggestion, or a code contribution, we value all feedback. See the [SDK contribution guidance](../../README.md#contributing).
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](link_to_license_file) file for more details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 
 ---
 

@@ -1,4 +1,4 @@
-## 0.6.0-rc.1
+## 0.6.0 (unreleased)
 
  - **SECURITY**(diagnostics): omit request, configuration, response and
    exception bodies from native, remote, WASM, RPC-client and startup logging.
@@ -7,7 +7,11 @@
  - **FIX**(logging): contain a failing external log callback instead of letting
    it escape into the framework's own lifecycle.
 
-## 0.5.0
+ - **CHORE**(deps): align workspace requirements with SDK 0.8.0:
+   `komodo_defi_types` `^0.6.0`, `komodo_defi_rpc_methods` `^0.7.0`,
+   `komodo_coin_updates` `^2.1.1`.
+
+## 0.5.0 — preparation history
 
 > Note: This release rolls the bundled KDF to the `3.1.0-beta` line.
 
@@ -34,7 +38,7 @@
    that generated it, and CMake refuses to configure a directory whose cache
    came from elsewhere (#362).
 
-## 0.4.1
+## 0.4.1 — preparation history
 
  - **CHORE**(build): update bundled KDF to staging commit `52ba4f9` and use the TRON coins source for release builds.
  - **FIX**(config): carry TRON explorer URL support through bundled build configuration (#338).
@@ -42,7 +46,7 @@
  - **FEAT**(migration): expose the framework hooks needed for legacy wallet migration.
  - **FEAT**(build): align build configuration with the balance recovery and fee-info release inputs (#341).
 
-## 0.4.0
+## 0.4.0 — preparation history
 
 > Note: This release has breaking changes.
 

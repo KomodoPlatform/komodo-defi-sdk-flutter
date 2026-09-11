@@ -1,4 +1,4 @@
-## 0.7.0-rc.1
+## 0.7.0 (unreleased)
 
  - **FEAT**(wallet): add the typed `show_priv_key` request and response, and
    `rpc.wallet.showPrivKey`, so a single activated asset can be exported without
@@ -9,7 +9,10 @@
    and key metadata, and preserve strict account/range semantics in
    `get_private_keys`.
 
-## 0.6.0
+ - **CHORE**(deps): align workspace requirements with SDK 0.8.0:
+   `komodo_defi_types` `^0.6.0`.
+
+## 0.6.0 — preparation history
 
 > Note: This release has breaking GasFree relay response interfaces.
 
@@ -32,7 +35,7 @@
  - **FIX**(requests): encode request bodies through a single encodable path so
    nested parameter objects serialize consistently.
 
-## 0.5.0
+## 0.5.0 — preparation history
 
 > Note: This release has breaking changes.
 
@@ -41,7 +44,7 @@
  - **FEAT**(auth): add the RPC request and activation parameter support needed by legacy wallet migration.
  - **BREAKING** **FEAT**(sia): move SIA withdrawal handling onto hardened SIA-specific RPC models and namespace methods (#343).
 
-## 0.4.0
+## 0.4.0 — preparation history
 
 > Note: This release has breaking changes.
 

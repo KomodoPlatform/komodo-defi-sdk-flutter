@@ -1,4 +1,4 @@
-## 0.6.0-rc.1
+## 0.6.0 (unreleased)
 
  - **FEAT**(private-keys): add the structured per-asset export result types used
    by `SecurityManager.exportPrivateKeys`, and carry `viewingKey` and
@@ -10,7 +10,10 @@
    when censoring recursively, treat a non-string key as sensitive, and give
    key-bearing types a redacting `toString()`.
 
-## 0.5.0
+ - **CHORE**(deps): align workspace requirements with SDK 0.8.0:
+   `komodo_defi_rpc_methods` `^0.7.0`.
+
+## 0.5.0 — preparation history
 
 > Note: This release has breaking GasFree withdrawal interfaces.
 
@@ -43,7 +46,7 @@
  - **CHORE**(analysis): drop two null assertions the analyzer proves are
    no-ops, which `dart pub publish` reports as warnings.
 
-## 0.4.1
+## 0.4.1 — preparation history
 
  - **FIX**(tron): support TRON explorer URL templates and correct TRC20 badge classification (#338, #344).
  - **FIX**(models): accept numeric JSON values encoded as either `int` or `num` (#336).
@@ -51,7 +54,7 @@
  - **FEAT**(fees): expose richer fee information for balance recovery flows (#341).
  - **FEAT**(transaction-history): add strategy metadata needed by the Tronscan history provider (#339).
 
-## 0.4.0
+## 0.4.0 — preparation history
 
 > Note: This release has breaking changes.
 

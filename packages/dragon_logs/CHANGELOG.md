@@ -1,6 +1,6 @@
-## 3.0.0-rc.1
+## 3.0.0 (unreleased)
 
-> Note: This release candidate has breaking storage and logger interfaces.
+> Note: This version has breaking storage and logger interfaces.
 
  - **BREAKING** **FEAT**(storage): `LogStorage.init` and `LoggerInterface.init`
    take `storageNamespace` and `purgeLegacy`, both interfaces gained `dispose`,
@@ -20,7 +20,7 @@
    one isolate using canonical paths, and serialize snapshot cleanup with clear.
    Retention survives disposal; concurrent shares use separate cache directories.
 
-## 2.0.1
+## 2.0.1 — preparation history
 
  - **FIX**(web): improve wasm JS interop bindings (#315).
  - **FIX**(zhltc): zhltc activation fixes (#227).
