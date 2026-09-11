@@ -21,6 +21,9 @@ is not a source-compatible patch of 0.7.0.
    actual signing platform, validate the returned scalar, and match its derived
    owner address and HD path against fresh KDF metadata. Coverage is the
    currently activated address; no activation or full-HD fallback is implied.
+ - **FIX**(security): accept an enabled TRC20 token when KDF omits its TRX
+   platform from the enabled-coins response, preserving fresh token activation
+   checks and signing-key verification throughout export.
  - **SECURITY**(security): bind export capabilities to a verified wallet
    identity, the manager that issued them, and a source-owned authentication
    generation that revokes synchronously before an authentication transition.

@@ -535,6 +535,7 @@ void main() {
   test(
     'unknown platform and unrecognized network fail before online key RPC',
     () async {
+      enabled = ['USDT-TRC20'];
       when(() => assets.findAssetsByConfigId('TRX')).thenReturn({});
       final unknown = await manager.exportPrivateKeys(
         request: PrivateKeyExportRequest(assets: [usdt.id]),
@@ -750,6 +751,7 @@ void main() {
   test(
     'TRC20 does not export while its signing platform activation is pending',
     () async {
+      enabled = ['USDT-TRC20'];
       states[trx.id] = AssetActivationState.activating(trx.id);
       final result = await manager.exportPrivateKeys(
         request: PrivateKeyExportRequest(assets: [usdt.id]),
@@ -780,23 +782,251 @@ void main() {
     },
   );
 
-  test(
-    'a missing freshly enabled TRON platform has a stable unavailable reason',
-    () async {
+  for (final hdWallet in [true, false]) {
+    test('TRC20 exports its verified parent key when only the token is listed '
+        '(HD=$hdWallet)', () async {
       enabled = ['USDT-TRC20'];
+      if (!hdWallet) {
+        user = const KdfUser(
+          walletId: WalletId(
+            name: 'fixture',
+            pubkeyHash: 'verified-public-identity',
+            authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
+          ),
+          isBip39Seed: true,
+        );
+        final respond = client.respond;
+        client.respond = (request) => request['method'] == 'my_balance'
+            ? {
+                'coin': 'TRX',
+                'address': key.address,
+                'gasfree_address': 'custody-address',
+                'balance': '0',
+                'unspendable_balance': '0',
+              }
+            : respond(request);
+      }
+
       final result = await manager.exportPrivateKeys(
         request: PrivateKeyExportRequest(assets: [usdt.id]),
       );
+
+      expect(result.isComplete, isTrue);
+      expect(result.hasLimitedCoverage, isTrue);
+      expect(result.keysByAsset.keys, [usdt.id]);
+      final outcome = result.outcomes.single;
+      expect(outcome.signingAssetId, trx.id);
       expect(
-        result.outcomes.single.failure,
-        PrivateKeyExportFailure.platformNotEnabled,
+        outcome.coverage!.kind,
+        PrivateKeyExportCoverageKind.activeAddressOnly,
       );
+      final exported = outcome.keys.single;
+      expect(exported.assetId, usdt.id);
+      expect(exported.privateKey, scalar);
+      expect(exported.publicKeyAddress, key.address);
+      if (hdWallet) {
+        expect(exported.hdInfo!.derivationPath, "m/44'/195'/0'/0/7");
+        expect(outcome.coverage!.derivationPath, "m/44'/195'/0'/0/7");
+        expect(outcome.coverage!.accountIndex, 0);
+        expect(outcome.coverage!.chain, 'External');
+      } else {
+        expect(exported.hdInfo, isNull);
+        expect(outcome.coverage!.derivationPath, isNull);
+      }
+      expect(client.requests.map((request) => request['method']), [
+        'get_enabled_coins',
+        'show_priv_key',
+        if (hdWallet) 'account_balance' else 'my_balance',
+        'get_enabled_coins',
+      ]);
+      expect(client.requests[1]['coin'], 'TRX');
       expect(
-        client.requests.any((request) => request['method'] == 'show_priv_key'),
-        isFalse,
+        hdWallet
+            ? (client.requests[2]['params'] as Map)['coin']
+            : client.requests[2]['coin'],
+        'TRX',
+      );
+    });
+  }
+
+  test(
+    'TRC20 export remains available when only TRX disappears during retrieval',
+    () async {
+      final respond = client.respond;
+      client.respond = (request) {
+        if (request['method'] == 'show_priv_key') enabled = ['USDT-TRC20'];
+        return respond(request);
+      };
+      final result = await manager.exportPrivateKeys(
+        request: PrivateKeyExportRequest(assets: [usdt.id]),
+      );
+      expect(result.isComplete, isTrue);
+      expect(result.outcomes.single.signingAssetId, trx.id);
+      expect(result.keysByAsset[usdt.id]!.single.privateKey, scalar);
+      expect(
+        client.requests.where(
+          (request) => request['method'] == 'get_enabled_coins',
+        ),
+        hasLength(2),
       );
     },
   );
+
+  for (final remaining in [
+    <String>[],
+    ['TRX'],
+    ['OTHER-TRC20'],
+  ]) {
+    test('TRC20 export discards the key when its token disappears '
+        '(remaining=$remaining)', () async {
+      enabled = ['USDT-TRC20'];
+      final respond = client.respond;
+      client.respond = (request) {
+        if (request['method'] == 'show_priv_key') enabled = remaining;
+        return respond(request);
+      };
+      final result = await manager.exportPrivateKeys(
+        request: PrivateKeyExportRequest(assets: [usdt.id]),
+      );
+      expect(result.hasKeys, isFalse);
+      expect(
+        result.outcomes.single.failure,
+        PrivateKeyExportFailure.assetUnavailable,
+      );
+      expect(
+        client.requests.where(
+          (request) => request['method'] == 'show_priv_key',
+        ),
+        hasLength(1),
+      );
+    });
+  }
+
+  for (final (tickers, failure) in [
+    (<String>[], PrivateKeyExportFailure.platformNotEnabled),
+    (['OTHER-TRC20'], PrivateKeyExportFailure.platformNotEnabled),
+    (['TRX'], PrivateKeyExportFailure.assetUnavailable),
+    (['TRX', 'OTHER-TRC20'], PrivateKeyExportFailure.assetUnavailable),
+  ]) {
+    test(
+      'TRC20 export requires its own freshly enabled ticker (enabled=$tickers)',
+      () async {
+        enabled = tickers;
+        final result = await manager.exportPrivateKeys(
+          request: PrivateKeyExportRequest(assets: [usdt.id]),
+        );
+        expect(result.hasKeys, isFalse);
+        expect(result.outcomes.single.failure, failure);
+        expect(client.requests.map((request) => request['method']), [
+          'get_enabled_coins',
+        ]);
+      },
+    );
+  }
+
+  test('direct TRX export still requires its own enabled ticker', () async {
+    enabled = ['USDT-TRC20'];
+    final result = await manager.exportPrivateKeys(
+      request: PrivateKeyExportRequest(assets: [trx.id]),
+    );
+    expect(result.hasKeys, isFalse);
+    expect(
+      result.outcomes.single.failure,
+      PrivateKeyExportFailure.platformNotEnabled,
+    );
+    expect(client.requests.map((request) => request['method']), [
+      'get_enabled_coins',
+    ]);
+  });
+
+  test('token-only activation cannot bypass an ambiguous platform', () async {
+    enabled = ['USDT-TRC20'];
+    when(
+      () => assets.findAssetsByConfigId('TRX'),
+    ).thenReturn({trx, trx.copyWith(isWalletOnly: false)});
+    final result = await manager.exportPrivateKeys(
+      request: PrivateKeyExportRequest(assets: [usdt.id]),
+    );
+    expect(result.hasKeys, isFalse);
+    expect(
+      result.outcomes.single.failure,
+      PrivateKeyExportFailure.invalidPlatform,
+    );
+    expect(client.requests, isEmpty);
+  });
+
+  test('token-only activation cannot bypass a mismatched parent ID', () async {
+    enabled = ['USDT-TRC20'];
+    final mismatched = usdt.copyWith(id: usdt.id.copyWith(parentId: btc.id));
+    when(() => assets.fromId(usdt.id)).thenReturn(mismatched);
+    final result = await manager.exportPrivateKeys(
+      request: PrivateKeyExportRequest(assets: [usdt.id]),
+    );
+    expect(result.hasKeys, isFalse);
+    expect(
+      result.outcomes.single.failure,
+      PrivateKeyExportFailure.invalidPlatform,
+    );
+    expect(client.requests, isEmpty);
+  });
+
+  for (final method in ['show_priv_key', 'account_balance', 'my_balance']) {
+    test('token-only export fails closed when parent $method fails', () async {
+      enabled = ['USDT-TRC20'];
+      if (method == 'my_balance') {
+        user = const KdfUser(
+          walletId: WalletId(
+            name: 'fixture',
+            pubkeyHash: 'verified-public-identity',
+            authOptions: AuthOptions(derivationMethod: DerivationMethod.iguana),
+          ),
+          isBip39Seed: true,
+        );
+      }
+      final respond = client.respond;
+      client.respond = (request) {
+        if (request['method'] == method) {
+          throw StateError('Synthetic RPC failure');
+        }
+        return respond(request);
+      };
+      final result = await manager.exportPrivateKeys(
+        request: PrivateKeyExportRequest(assets: [usdt.id]),
+      );
+      expect(result.hasKeys, isFalse);
+      expect(
+        result.outcomes.single.failure,
+        PrivateKeyExportFailure.metadataUnverified,
+      );
+      expect(
+        client.requests.where((request) => request['method'] == method),
+        isNotEmpty,
+      );
+    });
+  }
+
+  for (final field in ['address', 'derivation_path']) {
+    test('token-only export rejects mismatched parent $field', () async {
+      enabled = ['USDT-TRC20'];
+      metadata.single[field] = field == 'address'
+          ? 'unrelated-address'
+          : "m/44'/60'/0'/0/7";
+      final result = await manager.exportPrivateKeys(
+        request: PrivateKeyExportRequest(assets: [usdt.id]),
+      );
+      expect(result.hasKeys, isFalse);
+      expect(
+        result.outcomes.single.failure,
+        PrivateKeyExportFailure.metadataUnverified,
+      );
+      expect(
+        client.requests.where(
+          (request) => request['method'] == 'show_priv_key',
+        ),
+        hasLength(1),
+      );
+    });
+  }
   test(
     'capabilities cannot cross managers with identical wallet and generation',
     () async {
