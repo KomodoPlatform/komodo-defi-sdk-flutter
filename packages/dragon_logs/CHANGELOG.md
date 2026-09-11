@@ -16,6 +16,9 @@
  - **FIX**(export): keep the artefacts of a running export out of that clear.
    Writing and sharing deliberately run outside the storage queue, so a clear
    could otherwise delete the snapshot being read or the file being shared.
+ - **FIX**(export): share native export ownership across storage instances in
+   one isolate using canonical paths, and serialize snapshot cleanup with clear.
+   Retention survives disposal; concurrent shares use separate cache directories.
 
 ## 2.0.1
 

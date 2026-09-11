@@ -16,13 +16,17 @@ import 'package:share_plus/share_plus.dart';
 class FileLogStorage
     with QueueMixin, LogStorageLifecycle, CommonLogStorageOperations
     implements LogStorage {
-  FileLogStorage() : _documentsOverride = null;
+  FileLogStorage() : _documentsOverride = null, _shareFileOverride = null;
 
   @visibleForTesting
-  FileLogStorage.forDirectory(Directory directory)
-    : _documentsOverride = directory;
+  FileLogStorage.forDirectory(
+    Directory directory, {
+    Future<void> Function(String path)? shareFile,
+  }) : _documentsOverride = directory,
+       _shareFileOverride = shareFile;
 
   final Directory? _documentsOverride;
+  final Future<void> Function(String path)? _shareFileOverride;
   static final Map<String, Future<void>> _processLocks = {};
   static String? _lastLogFolderPath;
   Directory? _documentsDirectory;
@@ -31,7 +35,9 @@ class FileLogStorage
   /// Entries under `log_export` that a running export still reads or shares.
   /// Export bodies deliberately run outside the storage queue, so a concurrent
   /// clear has to skip these rather than delete them while they are in use.
-  final Set<String> _retainedExports = {};
+  /// Canonical paths share ownership across instances in this isolate, even
+  /// after an owning instance is disposed. This is not a cross-process lease.
+  static final Set<String> _retainedExports = {};
 
   @override
   Future<void> init({String? storageNamespace, bool purgeLegacy = false}) {
@@ -40,9 +46,10 @@ class FileLogStorage
       purgeLegacy: purgeLegacy,
     );
     return initializeStorage(configuration, () async {
-      _documentsDirectory =
+      final documents =
           _documentsOverride ?? await getApplicationDocumentsDirectory();
-      await _documentsDirectory!.create(recursive: true);
+      await documents.create(recursive: true);
+      _documentsDirectory = Directory(await documents.resolveSymbolicLinks());
       await _withDiskLock(() async {
         final active = Directory(
           p.join(_documentsDirectory!.path, configuration.namespace),
@@ -89,12 +96,19 @@ class FileLogStorage
     });
   }
 
-  /// Serializes both Dart instances and cooperating native processes. Handles
-  /// are always closed, including failed writes, snapshots and migrations.
+  /// Serializes instances in this isolate and cooperating native processes.
+  /// Handles close after each transaction, including failed operations.
   Future<T> _withDiskLock<T>(Future<T> Function() operation) {
     final documents = _documentsDirectory;
     if (documents == null) throw StateError('Log storage is not ready');
-    final lockPath = p.join(documents.path, '.dragon_logs_storage.lock');
+    return _withDirectoryLock(documents.path, operation);
+  }
+
+  static Future<T> _withDirectoryLock<T>(
+    String documentsPath,
+    Future<T> Function() operation,
+  ) {
+    final lockPath = p.join(documentsPath, '.dragon_logs_storage.lock');
     final previous = _processLocks[lockPath] ?? Future<void>.value();
     final result = previous.then((_) async {
       final handle = await File(lockPath).open(mode: FileMode.append);
@@ -181,14 +195,17 @@ class FileLogStorage
   @override
   Stream<String> exportLogsStream() async* {
     await requireStorageReady();
-    final snapshot = await withFlushedQueue(
-      () => _withDiskLock(() async {
-        final cache = await Directory(
-          p.join(logFolderPath, 'log_export'),
-        ).create();
-        final directory = await cache.createTemp('snapshot_');
-        _retainedExports.add(directory.path);
-        try {
+    final documentsPath = _documentsDirectory!.path;
+    Directory? retainedDirectory;
+    try {
+      final snapshot = await withFlushedQueue(
+        () => _withDiskLock(() async {
+          final cache = await Directory(
+            p.join(logFolderPath, 'log_export'),
+          ).create();
+          final directory = await cache.createTemp('snapshot_');
+          retainedDirectory = directory;
+          _retainedExports.add(directory.path);
           final result = File(p.join(directory.path, 'records.txt'));
           final output = await result.open(mode: FileMode.writeOnly);
           try {
@@ -208,22 +225,26 @@ class FileLogStorage
             await output.close();
           }
           return result;
-        } catch (_) {
-          _retainedExports.remove(directory.path);
-          await directory.delete(recursive: true);
-          rethrow;
-        }
-      }),
-    );
-    // Copy in bounded chunks while locked, then stream an independent snapshot.
-    // Consumer pauses/cancellation never retain a disk or queue lock, and early
-    // cancellation (for example an export size cap) also removes the snapshot.
-    try {
+        }),
+      );
+      // Copy in bounded chunks while locked, then stream an independent
+      // snapshot. Consumer pauses never retain a disk or queue lock.
       yield* snapshot.openRead().transform(utf8.decoder);
     } finally {
-      _retainedExports.remove(snapshot.parent.path);
-      if (await snapshot.parent.exists()) {
-        await snapshot.parent.delete(recursive: true);
+      // This also covers failed creation or closing its disk-lock handle.
+      // Use captured paths after disposal or namespace changes, keeping
+      // ownership until cleanup finishes even when the lock cannot be acquired.
+      final directory = retainedDirectory;
+      if (directory != null) {
+        try {
+          await _withDirectoryLock(documentsPath, () async {
+            if (await directory.exists()) {
+              await directory.delete(recursive: true);
+            }
+          });
+        } finally {
+          _retainedExports.remove(directory.path);
+        }
       }
     }
   }
@@ -318,17 +339,21 @@ class FileLogStorage
     final now = DateTime.now();
     final filename =
         'export_${formatter.format(now)}_${now.microsecondsSinceEpoch}.log';
-    final file = await serializeStorage(
-      () => _withDiskLock(() async {
-        final directory = await Directory(
-          p.join(logFolderPath, 'log_export'),
-        ).create();
-        final result = File(p.join(directory.path, filename));
-        _retainedExports.add(result.path);
-        return result;
-      }),
-    );
+    Directory? retainedDirectory;
     try {
+      final file = await serializeStorage(
+        () => _withDiskLock(() async {
+          final cache = await Directory(
+            p.join(logFolderPath, 'log_export'),
+          ).create();
+          // Each concurrent share owns a unique directory, even if their
+          // timestamp-based display filenames happen to match.
+          final directory = await cache.createTemp('share_');
+          retainedDirectory = directory;
+          _retainedExports.add(directory.path);
+          return File(p.join(directory.path, filename));
+        }),
+      );
       final handle = await file.open(mode: FileMode.writeOnly);
       try {
         await for (final record in exportLogsStream()) {
@@ -338,14 +363,20 @@ class FileLogStorage
       } finally {
         await handle.close();
       }
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path, mimeType: 'text/plain')],
-          text: 'App log file export',
-        ),
-      );
+      final shareFile = _shareFileOverride;
+      if (shareFile != null) {
+        await shareFile(file.path);
+      } else {
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path, mimeType: 'text/plain')],
+            text: 'App log file export',
+          ),
+        );
+      }
     } finally {
-      _retainedExports.remove(file.path);
+      final directory = retainedDirectory;
+      if (directory != null) _retainedExports.remove(directory.path);
     }
   }
 

@@ -39,6 +39,13 @@ flush pending records before taking a snapshot. Native snapshots use bounded
 copies and are removed after completion or cancellation. Browser snapshots are
 read in bounded slices without holding a Web Lock while the consumer waits.
 
+Native storage instances in one Dart isolate share ownership of active exports
+through canonical directory paths. Clearing cached exports preserves those
+snapshots and share files until their export finishes, including after the
+owning storage instance is disposed. This ownership registry is not a
+cross-isolate or cross-process lease; keep native export and export-cache
+cleanup in the same isolate.
+
 Browser writes and migration require Web Locks and fail closed if unavailable.
 Already-running older tabs do not honor the new lock or namespace: they can
 recreate legacy data or use their own old upload code. Updated clients always
