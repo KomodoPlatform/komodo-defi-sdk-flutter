@@ -1,3 +1,14 @@
+## 0.7.0-rc.1
+
+ - **FEAT**(wallet): add the typed `show_priv_key` request and response, and
+   `rpc.wallet.showPrivKey`, so a single activated asset can be exported without
+   the wallet-wide `get_private_keys` payload.
+ - **FEAT**(hd-wallet): add `AccountBalanceReadRequest` for read-only account
+   balance queries during export verification.
+ - **SECURITY**(wallet): redact `toString()` on private-key requests, responses
+   and key metadata, and preserve strict account/range semantics in
+   `get_private_keys`.
+
 ## 0.6.0
 
 > Note: This release has breaking GasFree relay response interfaces.

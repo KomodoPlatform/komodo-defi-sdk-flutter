@@ -1,3 +1,15 @@
+## 0.6.0-rc.1
+
+ - **FEAT**(private-keys): add the structured per-asset export result types used
+   by `SecurityManager.exportPrivateKeys`, and carry `viewingKey` and
+   `zDerivationPath` on private-key metadata.
+ - **FEAT**(diagnostics): add `DiagnosticSanitizer` for metadata-only
+   diagnostics, and expose the shared sensitive-field taxonomy through
+   `SecurityUtils.isSensitiveDiagnosticKey`.
+ - **SECURITY**(diagnostics): reduce every non-primitive value to `<redacted>`
+   when censoring recursively, treat a non-string key as sensitive, and give
+   key-bearing types a redacting `toString()`.
+
 ## 0.5.0
 
 > Note: This release has breaking GasFree withdrawal interfaces.

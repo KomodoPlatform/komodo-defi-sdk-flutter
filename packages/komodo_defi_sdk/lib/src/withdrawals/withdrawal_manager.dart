@@ -245,10 +245,9 @@ class WithdrawalManager {
     try {
       final response = await _client.rpc.withdraw.cancel(taskId);
       return response.result == 'success';
-    } catch (e, stackTrace) {
-      // Log the error and stack trace for debugging purposes
-      log('Error while canceling withdrawal: $e');
-      log('Stack trace: $stackTrace');
+    } catch (_) {
+      // Diagnostic output excludes RPC error payloads.
+      log('Withdrawal cancellation failed');
       return false;
     } finally {
       await _activeWithdrawals[taskId]?.close();
@@ -778,10 +777,9 @@ class WithdrawalManager {
           log('Fee options not supported for protocol ${protocol.runtimeType}');
           return null;
       }
-    } catch (e, stackTrace) {
-      // Log the error and stack trace for debugging purposes
-      log('Error while getting fee options for $assetId: $e');
-      log('Stack trace: $stackTrace');
+    } catch (_) {
+      // Diagnostic output excludes RPC error payloads.
+      log('Withdrawal fee options lookup failed');
       return null;
     }
   }
@@ -3022,10 +3020,9 @@ class WithdrawalManager {
 
       final preview = await previewWithdrawal(parameters);
       yield* executeWithdrawal(preview, parameters.asset);
-    } catch (e, stackTrace) {
-      // Log the error and stack trace for debugging purposes
-      log('Error during withdrawal: $e');
-      log('Stack trace: $stackTrace');
+    } catch (e) {
+      // Diagnostic output excludes RPC error payloads.
+      log('Withdrawal failed');
       yield* Stream.error(
         _mapError(
           e,
@@ -3278,10 +3275,9 @@ class WithdrawalManager {
         feeMethod: params.feeMethod,
         gaslessOptions: params.gaslessOptions,
       );
-    } catch (e, stackTrace) {
-      // Log the error and stack trace for debugging purposes
-      log('Error while estimating fee for ${asset.id.id}: $e');
-      log('Stack trace: $stackTrace');
+    } catch (_) {
+      // Diagnostic output excludes RPC error payloads.
+      log('Withdrawal fee estimation failed');
       return params;
     }
   }

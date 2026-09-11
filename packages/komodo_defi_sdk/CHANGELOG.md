@@ -1,7 +1,8 @@
 ## 0.8.0-rc.1
 
-Release candidate for the wallet-identity hotfix. Metadata writes have a breaking
-API change; this is not a source-compatible patch of 0.7.0.
+Release candidate for the wallet-identity hotfix and the diagnostics and
+private-key export remediation. Metadata writes have a breaking API change; this
+is not a source-compatible patch of 0.7.0.
 
  - **FIX**(history): preserve verified wallet identity and active history streams
    during degraded same-wallet authentication events.
@@ -14,8 +15,27 @@ API change; this is not a source-compatible patch of 0.7.0.
    require the original `expectedWalletId`. Writes fail closed when identity
    cannot be verified or the active wallet changes. See the
    [local-auth migration guidance](../komodo_defi_local_auth/README.md#migrating-metadata-writes).
- - **CHORE**(deps): require `komodo_defi_local_auth` `^0.6.0-rc.1`.
+ - **FEAT**(security): add `SecurityManager.exportPrivateKeys`, exporting each
+   offline-supported asset independently with concurrency limited to two.
+ - **FEAT**(security): for an already-activated TRON or TRC20 asset, resolve the
+   actual signing platform, validate the returned scalar, and match its derived
+   owner address and HD path against fresh KDF metadata. Coverage is the
+   currently activated address; no activation or full-HD fallback is implied.
+ - **SECURITY**(security): bind export capabilities to a verified wallet
+   identity, the manager that issued them, and a source-owned authentication
+   generation that revokes synchronously before an authentication transition.
+ - **SECURITY**(diagnostics): keep RPC and startup diagnostics metadata-only,
+   and redact secret-bearing diagnostic strings.
+ - **FEAT**(diagnostics): version persisted diagnostic storage, clean up legacy
+   records, and serialize writes and disposal behind stable native and browser
+   snapshots.
+ - **CHORE**(deps): require `komodo_defi_local_auth` `^0.6.0-rc.1`,
+   `komodo_defi_rpc_methods` `^0.7.0-rc.1`, `komodo_defi_types` `^0.6.0-rc.1`,
+   `komodo_defi_framework` `^0.6.0-rc.1` and `komodo_coin_updates`
+   `^2.1.1-rc.1`.
  - **TEST**(history): run wallet-race regressions in Chrome/WebAssembly in CI.
+ - **TEST**(security): cover structured export, typed legacy RPC and the
+   bundled KDF at TRON HD indices 0 and 7.
 
 ## 0.7.0
 

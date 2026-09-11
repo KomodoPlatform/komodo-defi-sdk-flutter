@@ -582,9 +582,7 @@ class ActivationManager {
         _setActivationStates(_groupStates(group, _activatingState));
       }
       if (!registration.shouldStartActivation) {
-        debugPrint(
-          'Activation already in progress for ${group.primary.id.name}',
-        );
+        debugPrint('Activation already in progress');
         try {
           await primaryCompleter.future;
           await _requireWalletContextCurrent(walletContext);
@@ -652,11 +650,7 @@ class ActivationManager {
       // ever attempted. An asset with a start and no finish is the signature of
       // the stall that cost users minutes.
       final activationStopwatch = Stopwatch()..start();
-      _logger.info(
-        'Activating ${group.primary.id.id}'
-        '${group.children.isEmpty ? '' : ' with ${group.children.length} '
-                  'token(s)'}',
-      );
+      _logger.info('Activation started token_count=${group.children.length}');
 
       try {
         // Signing mode and the first-sign-in hint belong to the captured
@@ -739,10 +733,7 @@ class ActivationManager {
           _requireWalletContextCurrentSync(walletContext);
           if (progress.isComplete) {
             if (completionHandled) {
-              debugPrint(
-                'Ignoring duplicate completion event for '
-                '${group.primary.id.name}',
-              );
+              debugPrint('Ignoring duplicate activation completion event');
             } else {
               completionHandled = true;
               // Finalize before exposing the terminal event. The shared
@@ -826,7 +817,7 @@ class ActivationManager {
           continue;
         }
 
-        debugPrint('Activation failed: $e');
+        debugPrint('Activation failed');
         final mappedError = _mapError(e, group.primary.id);
         if (!primaryCompleter.isCompleted) {
           primaryCompleter.completeError(mappedError);
@@ -853,7 +844,7 @@ class ActivationManager {
         // including the `_failGroupIfStillActivating` correction below and any
         // GasFree downgrade applied on the way through.
         _logger.info(
-          'Activated ${group.primary.id.id} in '
+          'Activation completed in '
           '${activationStopwatch.elapsedMilliseconds}ms '
           '(${_activationStates[group.primary.id]?.status.name ?? 'unknown'})',
         );
@@ -871,7 +862,7 @@ class ActivationManager {
         try {
           await _cleanupActivation(group.primary.id, registration);
         } catch (e) {
-          debugPrint('Failed to cleanup activation: $e');
+          debugPrint('Activation cleanup failed');
         }
       }
     }
@@ -954,7 +945,7 @@ class ActivationManager {
     } on WalletChangedDisconnectException {
       rethrow;
     } catch (e) {
-      debugPrint('Failed to check activation status: $e');
+      debugPrint('Activation status check failed');
     }
 
     return const ActivationProgress(
@@ -1124,9 +1115,7 @@ class ActivationManager {
         // future) stay inline and still gate the terminal event.
         unawaited(
           _balanceManager.precacheBalance(asset).catchError((Object e) {
-            debugPrint(
-              'Background balance pre-cache failed for ${asset.id.id}: $e',
-            );
+            debugPrint('Background balance pre-cache failed');
           }),
         );
       }
@@ -1372,7 +1361,7 @@ class ActivationManager {
     try {
       return await _readActivatedAssetIds();
     } catch (e) {
-      debugPrint('Failed to get active assets: $e');
+      debugPrint('Active assets lookup failed');
       return {};
     }
   }
@@ -1392,7 +1381,7 @@ class ActivationManager {
           : await getActiveAssets();
       return activeAssets.contains(assetId);
     } catch (e) {
-      debugPrint('Failed to check if asset is active: $e');
+      debugPrint('Asset activation check failed');
       return false;
     }
   }
