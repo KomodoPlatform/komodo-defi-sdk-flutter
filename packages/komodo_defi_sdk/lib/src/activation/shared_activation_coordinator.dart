@@ -3,6 +3,7 @@ import 'dart:developer' show log;
 
 import 'package:komodo_defi_local_auth/komodo_defi_local_auth.dart';
 import 'package:komodo_defi_sdk/src/activation/activation_manager.dart';
+import 'package:komodo_defi_sdk/src/auth/wallet_operation_context.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 /// Shared coordinator for asset activations across all managers.
@@ -18,7 +19,10 @@ import 'package:komodo_defi_types/komodo_defi_types.dart';
 class SharedActivationCoordinator {
   SharedActivationCoordinator(this._activationManager, this._auth) {
     // Listen for auth state changes
-    _authSubscription = _auth.authStateChanges.listen(_handleAuthStateChanged);
+    _authSubscription = _auth.authStateChanges.listen((user) {
+      _authRevision++;
+      _handleAuthStateChanged(user);
+    });
   }
 
   final ActivationManager _activationManager;
@@ -30,23 +34,30 @@ class SharedActivationCoordinator {
 
   /// Current wallet ID being tracked
   WalletId? _currentWalletId;
+  int _walletGeneration = 0;
+  int _authRevision = 0;
 
   bool _isDisposed = false;
 
   /// Handle authentication state changes
-  Future<void> _handleAuthStateChanged(KdfUser? user) async {
+  void _handleAuthStateChanged(KdfUser? user) {
     if (_isDisposed) return;
-    final newWalletId = user?.walletId;
-    // If the wallet ID has changed, reset all state
-    if (_currentWalletId != newWalletId) {
-      await _resetState();
-      _activationManager.resetActivationSessionState();
-      _currentWalletId = newWalletId;
+    final next = user?.walletId;
+    final previous = _currentWalletId;
+    if (previous != null && next != null) {
+      if (isSameStableWallet(previous, next)) {
+        _currentWalletId = preferEnrichedWalletIdentity(previous, next);
+        return;
+      }
+      if (isDegradedWalletIdentity(previous, next)) return;
     }
+    if (previous != null || next == null) _resetState();
+    _currentWalletId = next;
   }
 
   /// Reset all internal state when wallet changes
-  Future<void> _resetState() async {
+  void _resetState() {
+    _walletGeneration++;
     log(
       'Resetting SharedActivationCoordinator state due to wallet change',
       name: 'SharedActivationCoordinator',
@@ -143,6 +154,26 @@ class SharedActivationCoordinator {
       throw StateError('SharedActivationCoordinator has been disposed');
     }
 
+    // Seed before consulting the pending registry: the first auth-stream
+    // event may arrive after an activation started, or a new wallet may be
+    // observable through currentUser before its stream event is delivered.
+    final entryGeneration = _walletGeneration;
+    final authRevision = _authRevision;
+    final user = await _auth.currentUser;
+    final observedWallet = _currentWalletId;
+    if (_isDisposed ||
+        user == null ||
+        entryGeneration != _walletGeneration ||
+        (authRevision != _authRevision &&
+            observedWallet != null &&
+            !walletIdentityContinuesSession(observedWallet, user.walletId))) {
+      throw const WalletChangedDisconnectException(
+        'Wallet changed during asset activation',
+      );
+    }
+    _handleAuthStateChanged(user);
+    final walletGeneration = _walletGeneration;
+
     // Check if activation is already in progress
     final existingActivation = _pendingActivations[asset.id];
     if (existingActivation != null) {
@@ -158,6 +189,11 @@ class SharedActivationCoordinator {
 
     // Check if asset is already active
     final isActive = await _activationManager.isAssetActive(asset.id);
+    if (_isDisposed || walletGeneration != _walletGeneration) {
+      throw const WalletChangedDisconnectException(
+        'Wallet changed during asset activation',
+      );
+    }
     if (isActive && !shouldRefreshTronGaslessActivation) {
       return ActivationResult.alreadyActive(asset.id);
     }
@@ -249,6 +285,7 @@ class SharedActivationCoordinator {
                 completer.complete(result);
               }
             } catch (e) {
+              if (completer.isCompleted) break;
               _activationManager.recordActivationFailure(
                 asset.id,
                 'Activation completed but the coin did not become available',
